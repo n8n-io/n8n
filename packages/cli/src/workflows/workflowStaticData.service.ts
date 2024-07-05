@@ -1,13 +1,14 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { type IDataObject, type Workflow, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { isWorkflowIdValid } from '@/utils';
-import config from '@/config';
 
 @Service()
 export class WorkflowStaticDataService {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
@@ -50,7 +51,7 @@ export class WorkflowStaticDataService {
 			.set({
 				staticData: newStaticData,
 				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+					if (['mysqldb', 'mariadb'].includes(this.globalConfig.database.type)) {
 						return 'updatedAt';
 					}
 					return '"updatedAt"';

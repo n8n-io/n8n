@@ -217,6 +217,15 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
 
+  packages/@n8n/config:
+    dependencies:
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+      typedi:
+        specifier: 0.10.0
+        version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
+
   packages/@n8n/imap:
     dependencies:
       iconv-lite:
@@ -532,6 +541,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../@n8n/config
       '@n8n/localtunnel':
         specifier: 2.1.0
         version: 2.1.0
@@ -628,6 +640,9 @@ importers:
       fast-glob:
         specifier: 3.2.12
         version: 3.2.12
+      flat:
+        specifier: 5.0.2
+        version: 5.0.2
       flatted:
         specifier: 3.2.7
         version: 3.2.7
@@ -821,6 +836,9 @@ importers:
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
+      '@types/flat':
+        specifier: ^5.0.5
+        version: 5.0.5
       '@types/formidable':
         specifier: ^3.4.5
         version: 3.4.5
@@ -5503,6 +5521,9 @@ packages:
 
   '@types/find-cache-dir@3.2.1':
     resolution: {integrity: sha512-frsJrz2t/CeGifcu/6uRo4b+SzAwT4NYCVPu1GN8IB9XTzrpPkGuV0tmh9mN+/L0PklAlsC3u5Fxt0ju00LXIw==}
+
+  '@types/flat@5.0.5':
+    resolution: {integrity: sha512-nPLljZQKSnac53KDUDzuzdRfGI0TDb5qPrb+SrQyN3MtdQrOnGsKniHN1iYZsJEBIVQve94Y6gNz22sgISZq+Q==}
 
   '@types/formidable@3.4.5':
     resolution: {integrity: sha512-s7YPsNVfnsng5L8sKnG/Gbb2tiwwJTY1conOkJzTMRvJAlLFW1nEua+ADsJQu8N1c0oTHx9+d5nqg10WuT9gHQ==}
@@ -13525,8 +13546,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.0.24:
-    resolution: {integrity: sha512-Jr5N8QVYEcbQuMN1LRgvg61758G8HTnzUlQsAFOxx6Y6X8kmhJ7C+jOvWsQruYxi3uHhhS6BghyRlyiwO99DBg==}
+  vue-component-type-helpers@2.0.26:
+    resolution: {integrity: sha512-sO9qQ8oC520SW6kqlls0iqDak53gsTVSrYylajgjmkt1c0vcgjsGSy1KzlDrbEx8pm02IEYhlUkU5hCYf8rwtg==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -17166,17 +17187,6 @@ snapshots:
       - langchain
       - openai
 
-
-  '@langchain/pinecone@0.0.6(langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(openai@4.52.1(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.52.1(encoding@0.1.13))':
-    dependencies:
-      '@langchain/core': 0.2.9(langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@pinecone-database/pinecone@2.1.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2)(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(openai@4.52.1(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.52.1(encoding@0.1.13))
-      '@pinecone-database/pinecone': 2.2.1
-      flat: 5.0.2
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - langchain
-      - openai
-
   '@langchain/qdrant@0.0.5(langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(openai@4.47.1(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1))(openai@4.47.1(encoding@0.1.13))(typescript@5.5.2)':
     dependencies:
       '@langchain/core': 0.2.9(langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(openai@4.47.1(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1))(openai@4.47.1(encoding@0.1.13))
@@ -17186,7 +17196,6 @@ snapshots:
       - langchain
       - openai
       - typescript
-
 
   '@langchain/redis@0.0.5(langchain@0.2.2(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@google-ai/generativelanguage@2.5.0(encoding@0.1.13))(@pinecone-database/pinecone@2.2.1)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.6.7)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.3.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(openai@4.47.1(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.12)(ws@8.17.1))(openai@4.47.1(encoding@0.1.13))':
     dependencies:
@@ -19308,7 +19317,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.0.24
+      vue-component-type-helpers: 2.0.26
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -19589,6 +19598,8 @@ snapshots:
   '@types/file-saver@2.0.5': {}
 
   '@types/find-cache-dir@3.2.1': {}
+
+  '@types/flat@5.0.5': {}
 
   '@types/formidable@3.4.5':
     dependencies:
@@ -22508,7 +22519,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -22533,7 +22544,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -22553,7 +22564,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -23088,7 +23099,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -23437,7 +23448,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -26243,7 +26254,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -27274,7 +27285,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -27677,7 +27688,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7
@@ -28932,7 +28943,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.0.24: {}
+  vue-component-type-helpers@2.0.26: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:
