@@ -68,6 +68,7 @@
     "@types/convict": "^6.1.1",
     "@types/cookie-parser": "^1.4.2",
     "@types/express": "^4.17.21",
+    "@types/flat": "^5.0.5",
     "@types/formidable": "^3.4.5",
     "@types/json-diff": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.6",
@@ -91,6 +92,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
@@ -123,6 +125,7 @@
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "3.2.12",
+    "flat": "5.0.2",
     "flatted": "3.2.7",
     "formidable": "3.5.1",
     "google-timezones-json": "1.1.0",

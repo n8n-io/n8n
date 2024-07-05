@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
@@ -95,7 +96,9 @@ export class Server extends AbstractServer {
 		}
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		const globalConfig = Container.get(GlobalConfig);
+		this.endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
