@@ -4,9 +4,9 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';
-import { getLdapSynchronizations } from './helpers';
+import { getLdapSynchronizations } from './helpers.ee';
 import { LdapConfiguration } from './types';
-import { LdapService } from './ldap.service';
+import { LdapService } from './ldap.service.ee';
 
 @RestController('/ldap')
 export class LdapController {
