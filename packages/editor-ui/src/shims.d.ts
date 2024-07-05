@@ -11,7 +11,6 @@ declare global {
 			PROD: boolean;
 			NODE_ENV: 'development' | 'production';
 			VUE_APP_URL_BASE_API: string;
-			VUE_APP_MAX_PINNED_DATA_SIZE: string;
 		};
 	}
 
@@ -20,6 +19,7 @@ declare global {
 		REST_ENDPOINT: string;
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
+		maxPinnedDataSize?: number;
 	}
 
 	namespace JSX {
