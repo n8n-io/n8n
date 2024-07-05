@@ -137,7 +137,9 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		projectPermissions() {
-			return getResourcePermissions(this.projectsStore.currentProject?.scopes);
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
 		},
 	},
 	watch: {

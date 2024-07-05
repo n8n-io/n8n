@@ -264,7 +264,9 @@ const WorkflowsView = defineComponent({
 				: this.$locale.baseText('workflows.add');
 		},
 		projectPermissions() {
-			return getResourcePermissions(this.projectsStore.currentProject?.scopes);
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
 		},
 		emptyListDescription() {
 			if (this.readOnlyEnv) {

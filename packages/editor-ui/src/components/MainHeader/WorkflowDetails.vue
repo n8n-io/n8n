@@ -135,7 +135,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if (!props.readOnly && workflowPermissions.value.update) {
 		actions.unshift({
 			id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 			label: locale.baseText('menuActions.duplicate'),
@@ -570,7 +570,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 							:preview-value="shortenedName"
 							:is-edit-enabled="isNameEditEnabled"
 							:max-length="MAX_WORKFLOW_NAME_LENGTH"
-							:disabled="readOnly"
+							:disabled="readOnly || !workflowPermissions.update"
 							placeholder="Enter workflow name"
 							class="name"
 							@toggle="onNameToggle"
@@ -583,7 +583,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<TagsDropdown
-				v-if="isTagsEditEnabled && !readOnly"
+				v-if="isTagsEditEnabled && !readOnly && workflowPermissions.update"
 				ref="dropdown"
 				v-model="appliedTagIds"
 				:create-enabled="true"
@@ -594,7 +594,9 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				@blur="onTagsBlur"
 				@esc="onTagsEditEsc"
 			/>
-			<div v-else-if="(workflow.tags ?? []).length === 0 && !readOnly">
+			<div
+				v-else-if="(workflow.tags ?? []).length === 0 && !readOnly && workflowPermissions.update"
+			>
 				<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
@@ -657,7 +659,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				<SaveButton
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-					:disabled="isWorkflowSaving || readOnly"
+					:disabled="isWorkflowSaving || readOnly || !workflowPermissions.update"
 					with-shortcut
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
