@@ -38,7 +38,7 @@ import {
 	resolveEntryBinaryAttributes,
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
-} from './helpers';
+} from './helpers.ee';
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_FEATURE_NAME,

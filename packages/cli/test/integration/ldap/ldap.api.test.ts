@@ -8,8 +8,8 @@ import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
-import { LdapService } from '@/Ldap/ldap.service';
-import { saveLdapSynchronization } from '@/Ldap/helpers';
+import { LdapService } from '@/Ldap/ldap.service.ee';
+import { saveLdapSynchronization } from '@/Ldap/helpers.ee';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
