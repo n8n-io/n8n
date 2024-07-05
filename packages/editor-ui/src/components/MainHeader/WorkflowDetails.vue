@@ -660,7 +660,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly || !workflowPermissions.update"
-					with-shortcut
+					:with-shortcut="!readOnly && workflowPermissions.update"
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"

@@ -744,7 +744,7 @@ export default defineComponent({
 		},
 		workflowPermissions() {
 			return getResourcePermissions(
-				this.workflowsStore.workflowsById[this.$route.params.name.toString()]?.scopes,
+				this.workflowsStore.getWorkflowById(this.currentWorkflow)?.scopes,
 			).workflow;
 		},
 	},
