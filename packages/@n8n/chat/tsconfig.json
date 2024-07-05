@@ -13,12 +13,12 @@
 		"baseUrl": ".",
 		"types": ["vitest/globals", "unplugin-icons/types/vue"],
 		"paths": {
-			"@/*": ["src/*"],
-			"@n8n/chat/*": ["src/*"]
+			"@/*": ["./src/*"],
+			"@n8n/chat/*": ["./src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue", "**/*.d.ts"]
+	"include": ["./src/**/*.ts", "./src/**/*.vue", "**/*.d.ts"]
 }
