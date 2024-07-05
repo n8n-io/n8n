@@ -235,14 +235,14 @@ export async function execute(
 				| 'AND'
 				| 'OR';
 
-			responseData = await sheet.lookupValues(
-				data as string[][],
-				headerRow,
-				firstDataRow,
+			responseData = await sheet.lookupValues({
+				inputData: data as string[][],
+				keyRowIndex: headerRow,
+				dataStartRowIndex: firstDataRow,
 				lookupValues,
 				returnAllMatches,
 				combineFilters,
-			);
+			});
 		} else {
 			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
 		}

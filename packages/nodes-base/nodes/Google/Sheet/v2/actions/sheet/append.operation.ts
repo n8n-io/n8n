@@ -259,28 +259,30 @@ export async function execute(
 	if (setData.length === 0) {
 		return [];
 	} else if (options.useAppend) {
-		await sheet.appendSheetData(
-			setData,
-			sheetName,
-			headerRow,
-			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-			false,
-			undefined,
-			undefined,
-			options.useAppend as boolean,
-		);
+		await sheet.appendSheetData({
+			inputData: setData,
+			range: sheetName,
+			keyRowIndex: headerRow,
+			valueInputMode: (options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
+			usePathForKeyRow: false,
+			columnNamesList: undefined,
+			lastRow: undefined,
+			useAppend: options.useAppend as boolean,
+		});
 	} else {
 		//if no trailing empty row exists in the sheet update operation will fail
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 
 		await sheet.appendSheetData(
-			setData,
-			sheetName,
-			headerRow,
-			(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-			false,
-			undefined,
-			(sheetData ?? []).length + 1, //target appended row for update
+			{
+				inputData: setData,
+				range: sheetName,
+				keyRowIndex: headerRow,
+				valueInputMode: (options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
+				usePathForKeyRow: false,
+				columnNamesList: undefined,
+				lastRow: (sheetData ?? []).length + 1,
+			}, //target appended row for update
 		);
 	}
 

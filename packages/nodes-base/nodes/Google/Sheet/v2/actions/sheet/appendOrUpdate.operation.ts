@@ -291,13 +291,13 @@ export async function execute(
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
-	const columnValues = await sheet.getColumnValues(
+	const columnValues = await sheet.getColumnValues({
 		range,
 		keyIndex,
-		firstDataRow,
+		dataStartRowIndex: firstDataRow,
 		valueRenderMode,
 		sheetData,
-	);
+	});
 
 	const updateData: ISheetUpdateData[] = [];
 	const appendData: IDataObject[] = [];
@@ -397,17 +397,17 @@ export async function execute(
 			newColumns.clear();
 		}
 
-		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
-			data,
-			columnsToMatchOn[0],
+		const preparedData = await sheet.prepareDataForUpdateOrUpsert({
+			inputData: data,
+			indexKey: columnsToMatchOn[0],
 			range,
-			headerRow,
-			firstDataRow,
+			keyRowIndex: headerRow,
+			dataStartRowIndex: firstDataRow,
 			valueRenderMode,
-			true,
-			[columnNames.concat([...newColumns])],
-			columnValues,
-		);
+			upsert: true,
+			columnNamesList: [columnNames.concat([...newColumns])],
+			columnValuesList: columnValues,
+		});
 
 		updateData.push(...preparedData.updateData);
 		appendData.push(...preparedData.appendData);
@@ -419,27 +419,27 @@ export async function execute(
 	if (appendData.length) {
 		const lastRow = sheetData.length + 1;
 		if (options.useAppend) {
-			await sheet.appendSheetData(
-				appendData,
+			await sheet.appendSheetData({
+				inputData: appendData,
 				range,
-				headerRow + 1,
+				keyRowIndex: headerRow + 1,
 				valueInputMode,
-				false,
-				[columnNames.concat([...newColumns])],
+				usePathForKeyRow: false,
+				columnNamesList: [columnNames.concat([...newColumns])],
 				lastRow,
-				options.useAppend as boolean,
-			);
+				useAppend: options.useAppend as boolean,
+			});
 		} else {
 			await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
-			await sheet.appendSheetData(
-				appendData,
+			await sheet.appendSheetData({
+				inputData: appendData,
 				range,
-				headerRow + 1,
+				keyRowIndex: headerRow + 1,
 				valueInputMode,
-				false,
-				[columnNames.concat([...newColumns])],
+				usePathForKeyRow: false,
+				columnNamesList: [columnNames.concat([...newColumns])],
 				lastRow,
-			);
+			});
 		}
 	}
 

@@ -283,13 +283,13 @@ export async function execute(
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
 	//not used when updating row
-	const columnValues = await sheet.getColumnValues(
+	const columnValues = await sheet.getColumnValues({
 		range,
 		keyIndex,
-		firstDataRow,
+		dataStartRowIndex: firstDataRow,
 		valueRenderMode,
 		sheetData,
-	);
+	});
 
 	const updateData: ISheetUpdateData[] = [];
 
@@ -398,17 +398,17 @@ export async function execute(
 				columnNames.concat([...newColumns]),
 			]);
 		} else {
-			preparedData = await sheet.prepareDataForUpdateOrUpsert(
-				data,
-				columnsToMatchOn[0],
+			preparedData = await sheet.prepareDataForUpdateOrUpsert({
+				inputData: data,
+				indexKey: columnsToMatchOn[0],
 				range,
-				headerRow,
-				firstDataRow,
+				keyRowIndex: headerRow,
+				dataStartRowIndex: firstDataRow,
 				valueRenderMode,
-				false,
-				[columnNames.concat([...newColumns])],
-				columnValues,
-			);
+				upsert: false,
+				columnNamesList: [columnNames.concat([...newColumns])],
+				columnValuesList: columnValues,
+			});
 		}
 
 		updateData.push(...preparedData.updateData);
