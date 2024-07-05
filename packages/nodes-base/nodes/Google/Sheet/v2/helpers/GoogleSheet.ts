@@ -394,7 +394,7 @@ export class GoogleSheet {
 		range: string;
 		keyRowIndex: number;
 		valueInputMode: ValueInputOption;
-		usePathForKeyRow: boolean;
+		usePathForKeyRow?: boolean;
 		columnNamesList?: string[][];
 		lastRow?: number;
 		useAppend?: boolean;
@@ -772,7 +772,7 @@ export class GoogleSheet {
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
-		usePathForKeyRow: boolean,
+		usePathForKeyRow?: boolean,
 		columnNamesList?: string[][],
 		emptyValue: string | null = '',
 	): Promise<string[][]> {
