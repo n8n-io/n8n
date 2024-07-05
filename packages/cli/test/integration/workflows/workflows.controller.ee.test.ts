@@ -432,7 +432,7 @@ describe('GET /workflows/:workflowId', () => {
 		['owner', () => owner],
 		['admin', () => admin],
 	])(
-		'should return workflow with credentials saying %s does have access event when not shared',
+		'should return workflow with credentials saying %s does have access even when not shared',
 		async (_description, getActor) => {
 			const actor = getActor();
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
