@@ -13,7 +13,7 @@ export class ExecutionMetadataService {
 		const metadataRows = [];
 		for (const [key, value] of Object.entries(executionMetadata)) {
 			metadataRows.push({
-				execution: { id: executionId },
+				executionId,
 				key,
 				value,
 			});
