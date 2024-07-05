@@ -1,11 +1,7 @@
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import {
-	CanvasConnection,
-	CanvasConnectionPortType,
-	CanvasConnectionPort,
-	CanvasConnectionMode,
-} from '@/types';
+import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';

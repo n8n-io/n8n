@@ -3,7 +3,8 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { CanvasConnectionMode, CanvasElement } from '@/types';
+import type { CanvasElement } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,

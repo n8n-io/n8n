@@ -9,7 +9,8 @@ import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } fr
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
 import type { RouteLocationRaw } from 'vue-router';
-import { CanvasConnectionMode, canvasConnectionModes } from '@/types';
+import type { CanvasConnectionMode } from '@/types';
+import { canvasConnectionModes } from '@/types';
 
 /*
 	Type guards used in editor-ui project
