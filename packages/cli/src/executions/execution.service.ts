@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
@@ -80,6 +81,7 @@ export const allowedExecutionsQueryFilterFields = Object.keys(
 @Service()
 export class ExecutionService {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
@@ -337,7 +339,7 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		if (config.getEnv('database.type') === 'postgresdb') {
+		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
 			if (liveRows === -1) return { count: -1, estimated: false, results };

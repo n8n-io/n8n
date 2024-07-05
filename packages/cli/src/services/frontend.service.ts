@@ -4,7 +4,7 @@ import uniq from 'lodash/uniq';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
-
+import { GlobalConfig } from '@n8n/config';
 import type {
 	ICredentialType,
 	IN8nUISettings,
@@ -41,6 +41,7 @@ export class FrontendService {
 	private communityPackagesService?: CommunityPackagesService;
 
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
@@ -85,7 +86,7 @@ export class FrontendService {
 
 		this.settings = {
 			isDocker: this.isDocker(),
-			databaseType: config.getEnv('database.type'),
+			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
