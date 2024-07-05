@@ -1,14 +1,18 @@
-import type { Redis, Cluster } from 'ioredis';
-import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	IRun,
+	WorkflowExecuteMode as WorkflowExecutionMode,
+} from 'n8n-workflow';
 import type Bull from 'bull';
+import type PCancelable from 'p-cancelable';
 
 export type Queue = Bull.Queue<JobData>;
 
 export type Job = Bull.Job<JobData>;
 
 export type JobId = Job['id'];
-
-export type JobProcessorFn = Bull.ProcessCallbackFunction<JobData>;
 
 export type JobData = {
 	executionId: string;
@@ -20,22 +24,40 @@ export type JobResult = {
 	error?: ExecutionError;
 };
 
-export type JobName = 'job';
-
 export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-export type JobProgressReport = WebhookResponse; // in future, possibly more
+export type JobProgressReport =
+	| WebhookResponseReport
+	| JobStartedRunningReport
+	| JobFinishedRunningReport;
 
-type WebhookResponse = {
+export type WebhookResponseReport = {
 	kind: 'webhook-response';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
 };
 
-/**
- * Store
- */
+export type JobStartedRunningReport = {
+	kind: 'job-started-running';
+	jobId: JobId;
+} & RunningJobProps;
 
-export type Store = Redis | Cluster;
+export type RunningJobProps = {
+	executionId: string;
+	workflowId: string;
+	workflowName: string;
+	mode: WorkflowExecutionMode;
+	startedAt: Date;
+	retryOf: string;
+	status: ExecutionStatus;
+	run: PCancelable<IRun>;
+};
+
+export type RunningJobSummary = Omit<RunningJobProps, 'run'>;
+
+export type JobFinishedRunningReport = {
+	kind: 'job-finished-running';
+	jobId: JobId;
+};

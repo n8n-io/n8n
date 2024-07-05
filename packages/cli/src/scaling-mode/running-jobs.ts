@@ -1,25 +1,27 @@
 import { Service } from 'typedi';
-import type { IRun } from 'n8n-workflow';
-import type PCancelable from 'p-cancelable';
-import type { JobId } from './types';
+import type { JobId, RunningJobProps, RunningJobSummary } from './types';
 
 @Service()
 export class RunningJobs {
-	private readonly jobs: { [jobId: JobId]: PCancelable<IRun> } = {};
+	private readonly jobs: { [jobId: JobId]: RunningJobProps } = {};
 
-	add(jobId: JobId, job: PCancelable<IRun>) {
-		this.jobs[jobId] = job;
+	set(jobId: JobId, props: RunningJobProps) {
+		this.jobs[jobId] = props;
 	}
 
-	remove(jobId: JobId) {
+	clear(jobId: JobId) {
 		delete this.jobs[jobId];
 	}
 
 	cancel(jobId: JobId) {
-		this.jobs[jobId]?.cancel();
+		this.jobs[jobId]?.run.cancel();
 	}
 
-	getAllIds(): JobId[] {
+	getIds(): JobId[] {
 		return Object.keys(this.jobs);
+	}
+
+	getSummaries(): RunningJobSummary[] {
+		return Object.values(this.jobs).map(({ run, ...props }) => props);
 	}
 }

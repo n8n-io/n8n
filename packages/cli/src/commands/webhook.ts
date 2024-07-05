@@ -94,7 +94,7 @@ export class Webhook extends BaseCommand {
 			);
 		}
 
-		await Container.get(ScalingMode).init();
+		await Container.get(ScalingMode).setupQueue();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');

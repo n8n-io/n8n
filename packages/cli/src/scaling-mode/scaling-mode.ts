@@ -1,31 +1,16 @@
 import Container, { Service } from 'typedi';
-import type PCancelable from 'p-cancelable';
-import type { IRun } from 'n8n-workflow';
-
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { SCALING_MODE_JOB_TYPE, SCALING_MODE_QUEUE_NAME } from './constants';
 import { decodeWebhookResponse } from './webhook-response';
 import { RunningJobs } from './running-jobs';
-import type {
-	Queue,
-	Job,
-	JobData,
-	JobOptions,
-	JobProgressReport,
-	JobStatus,
-	JobId,
-	JobProcessorFn,
-} from './types';
+import { JobProcessor } from './job-processor';
+import type { Queue, Job, JobData, JobOptions, JobProgressReport, JobStatus, JobId } from './types';
 
-/**
- * @docs https://optimalbits.github.io/bull
- */
 @Service()
 export class ScalingMode {
 	private queue: Queue;
@@ -38,13 +23,14 @@ export class ScalingMode {
 		private readonly logger: Logger,
 		private readonly runningJobs: RunningJobs,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly jobProcessor: JobProcessor,
 	) {}
 
 	/**
 	 * Lifecycle
 	 */
 
-	async init() {
+	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
 		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 		const service = Container.get(RedisClientService);
@@ -60,16 +46,24 @@ export class ScalingMode {
 
 		this.registerListeners();
 
-		this.logger.debug('[ScalingMode] Init completed');
+		this.logger.debug('[ScalingMode] Queue setup completed');
 	}
 
-	defineProcessor(processorFn: JobProcessorFn, concurrency: number) {
-		void this.queue.process(this.jobType, concurrency, processorFn);
+	setupWorker(concurrency: number) {
+		void this.queue.process(
+			this.jobType,
+			concurrency,
+			async (job: Job) => await this.jobProcessor.processJob(job),
+		);
+
+		this.logger.debug('[ScalingMode] Worker setup completed');
 	}
 
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	async shutdown() {
 		await this.queue.pause(true, true);
+
+		this.logger.debug('[ScalingMode] Queue paused');
 	}
 
 	async pingStore() {
@@ -85,7 +79,7 @@ export class ScalingMode {
 
 		const job = await this.queue.add(this.jobType, jobData, jobOptions);
 
-		this.logger.info('[ScalingMode] Enqueued job', { jobId: job.id, executionId });
+		this.logger.info(`[ScalingMode] Added job ${job.id} (execution ${executionId})`);
 
 		return job;
 	}
@@ -110,12 +104,10 @@ export class ScalingMode {
 			data: { executionId },
 		} = job;
 
-		this.logger.debug('[ScalingMode] Stopping job...', { jobId, executionId });
-
 		try {
 			if (await job.isActive()) {
 				this.runningJobs.cancel(jobId);
-				this.runningJobs.remove(jobId);
+				this.runningJobs.clear(jobId);
 				this.logger.debug('[ScalingMode] Stopped active job', { jobId, executionId });
 				return true;
 			}
@@ -129,24 +121,12 @@ export class ScalingMode {
 		}
 	}
 
-	/**
-	 * Running jobs
-	 */
-
-	registerRunningJob(jobId: JobId, run: PCancelable<IRun>) {
-		this.runningJobs.add(jobId, run);
-	}
-
-	deregisterRunningJob(jobId: JobId) {
-		this.runningJobs.remove(jobId);
-	}
-
-	cancelRunningJob(jobId: JobId) {
-		this.runningJobs.cancel(jobId);
-	}
-
 	getRunningJobIds() {
-		return this.runningJobs.getAllIds();
+		return this.runningJobs.getIds();
+	}
+
+	getRunningJobsSummary() {
+		return this.runningJobs.getSummaries();
 	}
 
 	/**
@@ -154,12 +134,21 @@ export class ScalingMode {
 	 */
 
 	private registerListeners() {
-		this.queue.on('progress', (job: Job, report: JobProgressReport) => {
-			this.logger.error('[ScalingMode] Received job progress report', { jobId: job.id });
-
+		this.queue.on('global:progress', (_job: Job, report: JobProgressReport) => {
 			if (report.kind === 'webhook-response') {
 				const { executionId, response } = report;
 				this.activeExecutions.resolveResponsePromise(executionId, decodeWebhookResponse(response));
+				return;
+			}
+
+			if (report.kind === 'job-started-running') {
+				const { jobId, kind: _, ...props } = report;
+				this.runningJobs.set(jobId, props);
+				return;
+			}
+
+			if (report.kind === 'job-finished-running') {
+				this.runningJobs.clear(report.jobId);
 			}
 		});
 

@@ -211,7 +211,7 @@ export class Server extends AbstractServer {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { ScalingMode } = await import('@/scaling-mode/scaling-mode');
-			await Container.get(ScalingMode).init();
+			await Container.get(ScalingMode).setupQueue();
 		}
 
 		await handleMfaDisable();

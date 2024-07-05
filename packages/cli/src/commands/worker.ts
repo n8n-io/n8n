@@ -2,20 +2,13 @@ import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
-import type PCancelable from 'p-cancelable';
-import { WorkflowExecute } from 'n8n-core';
-import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
-import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
+import { sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import config from '@/config';
-import type { Job, JobResult } from '@/scaling-mode/types';
 import { ScalingMode } from '@/scaling-mode/scaling-mode';
 import { N8N_VERSION, inTest } from '@/constants';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -24,10 +17,8 @@ import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisService
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
-import { encodeWebhookResponse } from '@/scaling-mode/webhook-response';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 export class Worker extends BaseCommand {
@@ -42,10 +33,6 @@ export class Worker extends BaseCommand {
 			description: 'How many jobs can run in parallel.',
 		}),
 	};
-
-	static runningJobsSummary: {
-		[jobId: string]: WorkerJobStatusSummary;
-	} = {};
 
 	/**
 	 * How many jobs this worker may run concurrently.
@@ -93,143 +80,6 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResult> {
-		const { executionId, loadStaticData } = job.data;
-		const executionRepository = Container.get(ExecutionRepository);
-		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!fullExecutionData) {
-			this.logger.error(
-				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
-				{ executionId },
-			);
-			throw new ApplicationError(
-				'Unable to find data of execution in database. Aborting execution.',
-				{ extra: { executionId } },
-			);
-		}
-		const workflowId = fullExecutionData.workflowData.id;
-
-		this.logger.info(
-			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
-		);
-		await executionRepository.updateStatus(executionId, 'running');
-
-		let { staticData } = fullExecutionData.workflowData;
-		if (loadStaticData) {
-			const workflowData = await Container.get(WorkflowRepository).findOne({
-				select: ['id', 'staticData'],
-				where: {
-					id: workflowId,
-				},
-			});
-			if (workflowData === null) {
-				this.logger.error(
-					'Worker execution failed because workflow could not be found in database.',
-					{ workflowId, executionId },
-				);
-				throw new ApplicationError('Workflow could not be found', { extra: { workflowId } });
-			}
-			staticData = workflowData.staticData;
-		}
-
-		const workflowSettings = fullExecutionData.workflowData.settings ?? {};
-
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
-
-		let executionTimeoutTimestamp: number | undefined;
-		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
-			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
-		}
-
-		const workflow = new Workflow({
-			id: workflowId,
-			name: fullExecutionData.workflowData.name,
-			nodes: fullExecutionData.workflowData.nodes,
-			connections: fullExecutionData.workflowData.connections,
-			active: fullExecutionData.workflowData.active,
-			nodeTypes,
-			staticData,
-			settings: fullExecutionData.workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			undefined,
-			undefined,
-			executionTimeoutTimestamp,
-		);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-			fullExecutionData.mode,
-			job.data.executionId,
-			fullExecutionData.workflowData,
-			{
-				retryOf: fullExecutionData.retryOf as string,
-			},
-		);
-
-		additionalData.hooks.hookFunctions.sendResponse = [
-			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				await job.progress({
-					kind: 'webhook-response',
-					executionId,
-					response: encodeWebhookResponse(response),
-				});
-			},
-		];
-
-		additionalData.executionId = executionId;
-
-		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
-			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
-			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
-		};
-
-		let workflowExecute: WorkflowExecute;
-		let workflowRun: PCancelable<IRun>;
-		if (fullExecutionData.data !== undefined) {
-			workflowExecute = new WorkflowExecute(
-				additionalData,
-				fullExecutionData.mode,
-				fullExecutionData.data,
-			);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
-		} else {
-			// Execute all nodes
-			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, fullExecutionData.mode);
-			workflowRun = workflowExecute.run(workflow);
-		}
-
-		this.scalingMode.registerRunningJob(job.id, workflowRun);
-		Worker.runningJobsSummary[job.id] = {
-			jobId: job.id.toString(),
-			executionId,
-			workflowId: fullExecutionData.workflowId ?? '',
-			workflowName: fullExecutionData.workflowData.name,
-			mode: fullExecutionData.mode,
-			startedAt: fullExecutionData.startedAt,
-			retryOf: fullExecutionData.retryOf ?? '',
-			status: fullExecutionData.status,
-		};
-
-		// Wait till the execution is finished
-		await workflowRun;
-
-		this.scalingMode.deregisterRunningJob(job.id);
-		delete Worker.runningJobsSummary[job.id];
-
-		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
-		// already!
-
-		return {
-			success: true,
-		};
-	}
-
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 
@@ -271,7 +121,6 @@ export class Worker extends BaseCommand {
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
 		await this.initScalingMode();
-		this.logger.debug('Scaling mode init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
@@ -304,7 +153,7 @@ export class Worker extends BaseCommand {
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => this.scalingMode.getRunningJobIds() as string[],
-			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
+			getRunningJobsSummary: () => this.scalingMode.getRunningJobsSummary(),
 		});
 	}
 
@@ -319,12 +168,9 @@ export class Worker extends BaseCommand {
 	async initScalingMode() {
 		this.scalingMode = Container.get(ScalingMode);
 
-		await this.scalingMode.init();
+		await this.scalingMode.setupQueue();
 
-		this.scalingMode.defineProcessor(
-			async (job: Job) => await this.runJob(job, this.nodeTypes),
-			this.concurrency,
-		);
+		this.scalingMode.setupWorker(this.concurrency);
 	}
 
 	async setupHealthMonitor() {
