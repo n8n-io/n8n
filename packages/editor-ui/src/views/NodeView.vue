@@ -90,7 +90,7 @@
 			</div>
 			<NodeDetailsView
 				:workflow-object="currentWorkflowObject"
-				:read-only="isReadOnlyRoute || readOnlyEnv"
+				:read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@redraw-node="redrawNode"
@@ -382,6 +382,7 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { getResourcePermissions } from '@/permissions';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -664,7 +665,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive['workflowRunning'];
+			return this.uiStore.isActionActive.workflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -740,6 +741,11 @@ export default defineComponent({
 		},
 		isProductionExecutionPreview(): boolean {
 			return this.nodeHelpers.isProductionExecutionPreview.value;
+		},
+		workflowPermissions() {
+			return getResourcePermissions(
+				this.workflowsStore.workflowsById[this.$route.params.name.toString()]?.scopes,
+			).workflow;
 		},
 	},
 	watch: {

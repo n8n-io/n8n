@@ -4,7 +4,28 @@ import type { Scope } from '@n8n/permissions';
 
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
-		expect(getResourcePermissions()).toEqual({});
+		expect(getResourcePermissions()).toEqual({
+			auditLogs: {},
+			banner: {},
+			communityPackage: {},
+			credential: {},
+			externalSecretsProvider: {},
+			externalSecret: {},
+			eventBusDestination: {},
+			ldap: {},
+			license: {},
+			logStreaming: {},
+			orchestration: {},
+			project: {},
+			saml: {},
+			securityAudit: {},
+			sourceControl: {},
+			tag: {},
+			user: {},
+			variable: {},
+			workersView: {},
+			workflow: {},
+		});
 	});
 	it('getResourcePermissions', () => {
 		const scopes: Scope[] = [
@@ -37,6 +58,9 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			auditLogs: {},
+			banner: {},
+			communityPackage: {},
 			credential: {
 				create: true,
 				delete: true,
@@ -50,10 +74,19 @@ describe('permissions', () => {
 				list: true,
 				test: true,
 			},
+			externalSecret: {},
+			externalSecretsProvider: {},
+			ldap: {},
+			license: {},
+			logStreaming: {},
+			orchestration: {},
 			project: {
 				list: true,
 				read: true,
 			},
+			saml: {},
+			securityAudit: {},
+			sourceControl: {},
 			tag: {
 				create: true,
 				list: true,
@@ -67,6 +100,7 @@ describe('permissions', () => {
 				list: true,
 				read: true,
 			},
+			workersView: {},
 			workflow: {
 				create: true,
 				delete: true,

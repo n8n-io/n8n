@@ -17,7 +17,7 @@
 					<InlineNameEdit
 						:model-value="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions?.update || !credentialType"
+						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
 						data-test-id="credential-name"
 						@update:model-value="onNameEdit"
@@ -25,7 +25,7 @@
 				</div>
 				<div :class="$style.credActions">
 					<n8n-icon-button
-						v-if="currentCredential && credentialPermissions?.delete"
+						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
 						type="tertiary"
@@ -394,10 +394,6 @@ const requiredPropertiesFilled = computed(() => {
 });
 
 const credentialPermissions = computed(() => {
-	if (loading.value) {
-		return;
-	}
-
 	return getResourcePermissions(
 		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
 			?.scopes,
@@ -439,7 +435,7 @@ const defaultCredentialTypeName = computed(() => {
 const showSaveButton = computed(() => {
 	return (
 		(hasUnsavedChanges.value || !!credentialId.value) &&
-		(credentialPermissions.value?.create || credentialPermissions.value?.update)
+		(credentialPermissions.value.create || credentialPermissions.value.update)
 	);
 });
 
@@ -490,7 +486,7 @@ onMounted(async () => {
 
 	setTimeout(async () => {
 		if (credentialId.value) {
-			if (!requiredPropertiesFilled.value && credentialPermissions.value?.update) {
+			if (!requiredPropertiesFilled.value && credentialPermissions.value.update) {
 				// sharees can't see properties, so this check would always fail for them
 				// if the credential contains required fields.
 				showValidationWarning.value = true;
@@ -916,14 +912,14 @@ async function updateCredential(
 ): Promise<ICredentialsResponse | null> {
 	let credential: ICredentialsResponse | null = null;
 	try {
-		if (credentialPermissions.value?.update) {
+		if (credentialPermissions.value.update) {
 			credential = await credentialsStore.updateCredential({
 				id: credentialId.value,
 				data: credentialDetails,
 			});
 		}
 		if (
-			credentialPermissions.value?.share &&
+			credentialPermissions.value.share &&
 			isSharedWithChanged.value &&
 			credentialDetails.sharedWithProjects
 		) {

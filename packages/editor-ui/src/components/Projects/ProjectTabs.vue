@@ -50,7 +50,7 @@ const options = computed(() => {
 		},
 	];
 
-	if (projectId && projectPermissions.value?.update) {
+	if (projectId && projectPermissions.value.update) {
 		tabs.push({
 			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,

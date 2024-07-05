@@ -20,7 +20,7 @@
 			</div>
 			<div v-else :class="$style.container">
 				<n8n-info-tip
-					v-if="!workflowPermissions?.share && !isHomeTeamProject"
+					v-if="!workflowPermissions.share && !isHomeTeamProject"
 					:bold="false"
 					class="mb-s"
 				>
@@ -37,8 +37,8 @@
 							:home-project="workflow.homeProject"
 							:projects="projects"
 							:roles="workflowRoles"
-							:readonly="!workflowPermissions?.share"
-							:static="isHomeTeamProject || !workflowPermissions?.share"
+							:readonly="!workflowPermissions.share"
+							:static="isHomeTeamProject || !workflowPermissions.share"
 							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
@@ -103,7 +103,7 @@
 				</n8n-button>
 				<n8n-button
 					v-else
-					v-show="workflowPermissions?.share"
+					v-show="workflowPermissions.share"
 					:loading="loading"
 					:disabled="!isDirty"
 					data-test-id="workflow-sharing-modal-save-button"

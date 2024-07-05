@@ -204,13 +204,13 @@ function focusFirstInput() {
 				</n8n-button>
 			</div>
 			<div v-else :class="[$style.buttons, $style.hoverButtons]">
-				<n8n-tooltip :disabled="permissions?.update" placement="top">
+				<n8n-tooltip :disabled="permissions.update" placement="top">
 					<div>
 						<n8n-button
 							data-test-id="variable-row-edit-button"
 							type="tertiary"
 							class="mr-xs"
-							:disabled="!permissions?.update"
+							:disabled="!permissions.update"
 							@click="onEdit"
 						>
 							{{ i18n.baseText('variables.row.button.edit') }}
@@ -220,12 +220,12 @@ function focusFirstInput() {
 						{{ i18n.baseText('variables.row.button.edit.onlyRoleCanEdit') }}
 					</template>
 				</n8n-tooltip>
-				<n8n-tooltip :disabled="permissions?.delete" placement="top">
+				<n8n-tooltip :disabled="permissions.delete" placement="top">
 					<div>
 						<n8n-button
 							data-test-id="variable-row-delete-button"
 							type="tertiary"
-							:disabled="!permissions?.delete"
+							:disabled="!permissions.delete"
 							@click="onDelete"
 						>
 							{{ i18n.baseText('variables.row.button.delete') }}

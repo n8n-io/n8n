@@ -93,14 +93,14 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value?.move) {
+	if (workflowPermissions.value.move) {
 		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
 		});
 	}
 
-	if (workflowPermissions.value?.delete && !props.readOnly) {
+	if (workflowPermissions.value.delete && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.delete'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,

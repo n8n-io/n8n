@@ -7,7 +7,7 @@
 				:message="
 					$locale.baseText(
 						`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-							credentialPermissions?.update ? '' : '.sharee'
+							credentialPermissions.update ? '' : '.sharee'
 						}`,
 						{ interpolate: { owner: credentialOwnerName } },
 					)
@@ -20,7 +20,7 @@
 				:message="
 					$locale.baseText(
 						`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-							credentialPermissions?.update ? '' : '.sharee'
+							credentialPermissions.update ? '' : '.sharee'
 						}`,
 						{ interpolate: { owner: credentialOwnerName } },
 					)
@@ -65,7 +65,7 @@
 				@click="$emit('retest')"
 			/>
 
-			<template v-if="credentialPermissions?.update">
+			<template v-if="credentialPermissions.update">
 				<n8n-notice v-if="documentationUrl && credentialProperties.length && !docs" theme="warning">
 					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
@@ -110,7 +110,7 @@
 			</EnterpriseEdition>
 
 			<CredentialInputs
-				v-if="credentialType && credentialPermissions?.update"
+				v-if="credentialType && credentialPermissions.update"
 				:credential-data="credentialData"
 				:credential-properties="credentialProperties"
 				:documentation-url="documentationUrl"
@@ -123,7 +123,7 @@
 					isOAuthType &&
 					requiredPropertiesFilled &&
 					!isOAuthConnected &&
-					credentialPermissions?.update
+					credentialPermissions.update
 				"
 				:is-google-o-auth-type="isGoogleOAuthType"
 				data-test-id="oauth-connect-button"
@@ -193,7 +193,7 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
-	credentialPermissions?: PermissionsRecord['credential'];
+	credentialPermissions: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
 	authError?: string;
@@ -211,7 +211,7 @@ const props = withDefaults(defineProps<Props>(), {
 	credentialId: '',
 	authError: '',
 	showValidationWarning: false,
-	credentialPermissions: () => ({}),
+	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];

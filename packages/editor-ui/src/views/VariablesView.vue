@@ -51,7 +51,7 @@ const variablesToResources = computed((): IResource[] =>
 	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
 );
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value?.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{

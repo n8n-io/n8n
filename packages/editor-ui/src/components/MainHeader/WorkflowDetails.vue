@@ -49,7 +49,7 @@ import type {
 } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { BaseTextKey } from '../../plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 
 const props = defineProps<{
@@ -107,7 +107,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive['workflowSaving'];
+	return uiStore.isActionActive.workflowSaving;
 });
 
 const onWorkflowPage = computed(() => {
@@ -174,7 +174,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if ((workflowPermissions.value?.delete && !props.readOnly) || isNewWorkflow.value) {
+	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
 			label: locale.baseText('menuActions.delete'),

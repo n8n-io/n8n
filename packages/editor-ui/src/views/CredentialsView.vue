@@ -7,7 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
-		:disabled="readOnlyEnv || !projectPermissions?.credential?.create"
+		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>

@@ -55,14 +55,14 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value?.delete) {
+	if (credentialPermissions.value.delete) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 		});
 	}
 
-	if (credentialPermissions.value?.move) {
+	if (credentialPermissions.value.move) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,

@@ -8,7 +8,7 @@
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
-		:disabled="readOnlyEnv || !projectPermissions?.workflow?.create"
+		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
@@ -63,7 +63,7 @@
 				<n8n-text size="large" color="text-base">{{ emptyListDescription }}</n8n-text>
 			</div>
 			<div
-				v-if="!readOnlyEnv && projectPermissions?.workflow?.create"
+				v-if="!readOnlyEnv && projectPermissions.workflow.create"
 				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 			>
 				<a
@@ -269,7 +269,7 @@ const WorkflowsView = defineComponent({
 		emptyListDescription() {
 			if (this.readOnlyEnv) {
 				return this.$locale.baseText('workflows.empty.description.readOnlyEnv');
-			} else if (!this.projectPermissions?.workflow?.create) {
+			} else if (!this.projectPermissions.workflow.create) {
 				return this.$locale.baseText('workflows.empty.description.noPermission');
 			} else {
 				return this.$locale.baseText('workflows.empty.description');
