@@ -8,8 +8,8 @@ import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/Pos
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 
-import config from '@/config';
 import { entities } from './entities';
 import { subscribers } from './subscribers';
 import { mysqlMigrations } from './migrations/mysqldb';
@@ -17,19 +17,19 @@ import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
 
 const getCommonOptions = () => {
-	const entityPrefix = config.getEnv('database.tablePrefix');
-	const maxQueryExecutionTime = config.getEnv('database.logging.maxQueryExecutionTime');
+	const { tablePrefix: entityPrefix, logging: loggingConfig } =
+		Container.get(GlobalConfig).database;
 
-	let loggingOption: LoggerOptions = config.getEnv('database.logging.enabled');
+	let loggingOption: LoggerOptions = loggingConfig.enabled;
 	if (loggingOption) {
-		const optionsString = config.getEnv('database.logging.options').replace(/\s+/g, '');
-
+		const optionsString = loggingConfig.options.replace(/\s+/g, '');
 		if (optionsString === 'all') {
 			loggingOption = optionsString;
 		} else {
 			loggingOption = optionsString.split(',') as LoggerOptions;
 		}
 	}
+
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
@@ -37,33 +37,35 @@ const getCommonOptions = () => {
 		migrationsTableName: `${entityPrefix}migrations`,
 		migrationsRun: false,
 		synchronize: false,
-		maxQueryExecutionTime,
+		maxQueryExecutionTime: loggingConfig.maxQueryExecutionTime,
 		logging: loggingOption,
 	};
 };
 
-export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
-	database: config.getEnv(`database.${dbType}.database`),
-	host: config.getEnv(`database.${dbType}.host`),
-	port: config.getEnv(`database.${dbType}.port`),
-	username: config.getEnv(`database.${dbType}.user`),
-	password: config.getEnv(`database.${dbType}.password`),
-});
+export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => {
+	const globalConfig = Container.get(GlobalConfig);
+	const dbConfig = globalConfig.database[dbType];
+	return {
+		database: dbConfig.database,
+		host: dbConfig.host,
+		port: dbConfig.port,
+		username: dbConfig.user,
+		password: dbConfig.password,
+	};
+};
 
 const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledConnectionOptions => {
-	const poolSize = config.getEnv('database.sqlite.poolSize');
+	const globalConfig = Container.get(GlobalConfig);
+	const sqliteConfig = globalConfig.database.sqlite;
 	const commonOptions = {
 		...getCommonOptions(),
-		database: path.resolve(
-			Container.get(InstanceSettings).n8nFolder,
-			config.getEnv('database.sqlite.database'),
-		),
+		database: path.resolve(Container.get(InstanceSettings).n8nFolder, sqliteConfig.database),
 		migrations: sqliteMigrations,
 	};
-	if (poolSize > 0) {
+	if (sqliteConfig.poolSize > 0) {
 		return {
 			type: 'sqlite-pooled',
-			poolSize,
+			poolSize: sqliteConfig.poolSize,
 			enableWAL: true,
 			acquireTimeout: 60_000,
 			destroyTimeout: 5_000,
@@ -72,19 +74,19 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 	} else {
 		return {
 			type: 'sqlite',
-			enableWAL: config.getEnv('database.sqlite.enableWAL'),
+			enableWAL: sqliteConfig.enableWAL,
 			...commonOptions,
 		};
 	}
 };
 
 const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
-	const sslCa = config.getEnv('database.postgresdb.ssl.ca');
-	const sslCert = config.getEnv('database.postgresdb.ssl.cert');
-	const sslKey = config.getEnv('database.postgresdb.ssl.key');
-	const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
+	const postgresConfig = Container.get(GlobalConfig).database.postgresdb;
+	const {
+		ssl: { ca: sslCa, cert: sslCert, key: sslKey, rejectUnauthorized: sslRejectUnauthorized },
+	} = postgresConfig;
 
-	let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
+	let ssl: TlsOptions | boolean = postgresConfig.ssl.enabled;
 	if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
 		ssl = {
 			ca: sslCa || undefined,
@@ -98,8 +100,8 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 		type: 'postgres',
 		...getCommonOptions(),
 		...getOptionOverrides('postgresdb'),
-		schema: config.getEnv('database.postgresdb.schema'),
-		poolSize: config.getEnv('database.postgresdb.poolSize'),
+		schema: postgresConfig.schema,
+		poolSize: postgresConfig.poolSize,
 		migrations: postgresMigrations,
 		ssl,
 	};
@@ -114,7 +116,8 @@ const getMysqlConnectionOptions = (dbType: 'mariadb' | 'mysqldb'): MysqlConnecti
 });
 
 export function getConnectionOptions(): DataSourceOptions {
-	const dbType = config.getEnv('database.type');
+	const globalConfig = Container.get(GlobalConfig);
+	const { type: dbType } = globalConfig.database;
 	switch (dbType) {
 		case 'sqlite':
 			return getSqliteConnectionOptions();
