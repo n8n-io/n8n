@@ -29,7 +29,7 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { isLdapEnabled } from '@/Ldap/helpers';
+import { isLdapEnabled } from '@/Ldap/helpers.ee';
 import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -113,8 +113,8 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/Ldap/ldap.service');
-			await import('@/Ldap/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service.ee');
+			await import('@/Ldap/ldap.controller.ee');
 			await Container.get(LdapService).init();
 		}
 

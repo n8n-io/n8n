@@ -20,7 +20,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { getLdapLoginLabel } from '@/Ldap/helpers';
+import { getLdapLoginLabel } from '@/Ldap/helpers.ee';
 import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
 import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
 import {
