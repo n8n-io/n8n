@@ -8,7 +8,7 @@
 		:href="href"
 		aria-live="polite"
 		v-bind="{
-			...$attrs,
+			...attrs,
 			...(props.nativeType ? { type: props.nativeType } : {}),
 		}"
 	>
@@ -29,7 +29,7 @@ import N8nSpinner from '../N8nSpinner';
 import type { ButtonProps } from 'n8n-design-system/types/button';
 
 const $style = useCssModule();
-const $attrs = useAttrs();
+const attrs = useAttrs();
 
 defineOptions({ name: 'N8nButton' });
 const props = withDefaults(defineProps<ButtonProps>(), {
