@@ -63,6 +63,7 @@ module.exports = {
 				defineEmits: 'emit',
 				defineSlots: 'slots',
 				useSlots: 'slots',
+				useAttrs: 'attrs',
 			},
 		],
 

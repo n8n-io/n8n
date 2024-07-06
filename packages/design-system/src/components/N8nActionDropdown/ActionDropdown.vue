@@ -88,8 +88,8 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	teleported: true,
 });
 
-const $attrs = useAttrs();
-const testIdPrefix = $attrs['data-test-id'];
+const attrs = useAttrs();
+const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
 const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
