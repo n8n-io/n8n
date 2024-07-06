@@ -193,7 +193,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -570,7 +570,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -904,7 +904,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1185,7 +1185,7 @@ importers:
         version: 10.5.0(vue@3.4.21(typescript@5.5.2))
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1356,6 +1356,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 1.0.6
         version: 1.0.6
+      '@mozilla/readability':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
@@ -1425,6 +1428,9 @@ importers:
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
+      jsdom:
+        specifier: ^23.0.1
+        version: 23.0.1
       jsonwebtoken:
         specifier: 9.0.2
         version: 9.0.2
@@ -1536,6 +1542,9 @@ importers:
       ts-ics:
         specifier: ^1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.23.8)
+      turndown:
+        specifier: ^7.2.0
+        version: 7.2.0
       typedi:
         specifier: 0.10.0
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
@@ -1618,6 +1627,9 @@ importers:
       '@types/tmp':
         specifier: ^0.2.0
         version: 0.2.3
+      '@types/turndown':
+        specifier: ^5.0.4
+        version: 5.0.4
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
@@ -1644,7 +1656,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@3.2.7)
+        version: 1.6.7(debug@4.3.4)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -3980,6 +3992,9 @@ packages:
   '@mistralai/mistralai@0.1.3':
     resolution: {integrity: sha512-WUHxC2xdeqX9PTXJEqdiNY54vT2ir72WSJrZTTBKRnkfhX6zIfCYA24faRlWjUB5WTpn+wfdGsTMl3ArijlXFA==}
 
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
+
   '@mongodb-js/saslprep@1.1.0':
     resolution: {integrity: sha512-Xfijy7HvfzzqiOAhAepF4SGN5e9leLkMvg/OPOF97XemjfVCYN/oWa75wnkc6mltMSTwY+XlbhWgUOJmkFspSw==}
 
@@ -5680,6 +5695,9 @@ packages:
 
   '@types/tunnel@0.0.3':
     resolution: {integrity: sha512-sOUTGn6h1SfQ+gbgqC364jLFBw2lnFqkgF3q0WovEHRLMrVD1sd5aufqi/aJObLekJO+Aq5z646U4Oxy6shXMA==}
+
+  '@types/turndown@5.0.4':
+    resolution: {integrity: sha512-28GI33lCCkU4SGH1GvjDhFgOVr+Tym4PXGBIU1buJUa6xQolniPArtUT+kv42RR2N9MsMLInkr904Aq+ESHBJg==}
 
   '@types/unist@3.0.2':
     resolution: {integrity: sha512-dqId9J8K/vGi5Zr7oo212BGii5m3q5Hxlkwy3WpYuKPklmBEvsbMYYyLxAQpSffdLl/gdW0XUpKWFvYmyoWCoQ==}
@@ -12697,6 +12715,9 @@ packages:
     resolution: {integrity: sha512-/Ftmxd5Mq//a9yMonvmwENNUN65jOVTwhhBPQjEtNZutYT9YKyzydFGLyVM1nzhpLWahQSMamRc/RDBv5EapzA==}
     hasBin: true
 
+  turndown@7.2.0:
+    resolution: {integrity: sha512-eCZGBN4nNNqM9Owkv9HAtWRYfLA4h909E/WGAWWBpmB275ehNhZyk87/Tpvjbp0jjNl9XwCsbe6bm6CqFsgD+A==}
+
   tween-functions@1.2.0:
     resolution: {integrity: sha512-PZBtLYcCLtEcjL14Fzb1gSxPBeL7nWvGhO5ZFPGqziCcr8uvHp0NDmdjBchp6KHL+tExcg0m3NISmKxhU394dA==}
 
@@ -16819,6 +16840,8 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
+  '@mixmark-io/domino@2.2.0': {}
+
   '@mongodb-js/saslprep@1.1.0':
     dependencies:
       sparse-bitfield: 3.0.3
@@ -17418,7 +17441,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.7(tslib@2.6.2)':
     dependencies:
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -19351,6 +19374,8 @@ snapshots:
   '@types/tunnel@0.0.3':
     dependencies:
       '@types/node': 18.16.16
+
+  '@types/turndown@5.0.4': {}
 
   '@types/unist@3.0.2': {}
 
@@ -21888,7 +21913,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21913,7 +21938,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21933,7 +21958,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -22468,7 +22493,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22809,7 +22834,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23063,7 +23088,7 @@ snapshots:
   http-proxy-agent@7.0.0:
     dependencies:
       agent-base: 7.1.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23154,7 +23179,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -24169,7 +24194,7 @@ snapshots:
       '@pinecone-database/pinecone': 2.2.1
       '@supabase/supabase-js': 2.43.4
       '@xata.io/client': 0.28.4(typescript@5.5.2)
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       cheerio: 1.0.0-rc.12
       d3-dsv: 2.0.0
       epub2: 3.0.2(ts-toolbelt@9.6.0)
@@ -24212,7 +24237,7 @@ snapshots:
       '@pinecone-database/pinecone': 2.2.1
       '@supabase/supabase-js': 2.43.4
       '@xata.io/client': 0.28.4(typescript@5.5.2)
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       cheerio: 1.0.0-rc.12
       d3-dsv: 2.0.0
       epub2: 3.0.2(ts-toolbelt@9.6.0)
@@ -24250,7 +24275,7 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     optionalDependencies:
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       jsdom: 23.0.1
     transitivePeerDependencies:
       - encoding
@@ -25582,7 +25607,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25777,7 +25802,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.6.7(debug@3.2.7)
+      axios: 1.6.7(debug@4.3.4)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26464,7 +26489,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26851,7 +26876,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7
@@ -27622,6 +27647,10 @@ snapshots:
       turbo-linux-arm64: 2.0.6
       turbo-windows-64: 2.0.6
       turbo-windows-arm64: 2.0.6
+
+  turndown@7.2.0:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
 
   tween-functions@1.2.0: {}
 

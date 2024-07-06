@@ -1,4 +1,8 @@
 import cheerio from 'cheerio';
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
+import Turndown from 'turndown';
+import { writeFile } from 'fs/promises';
 import type {
 	INodeExecutionData,
 	IExecuteFunctions,
@@ -9,6 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
+import { file as tmpFile } from 'tmp-promise';
+
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
 import type { IValueData } from './types';
@@ -158,6 +164,11 @@ export class Html implements INodeType {
 						value: 'convertToHtmlTable',
 						action: 'Convert to HTML Table',
 					},
+					{
+						name: 'Extract Markdown Content',
+						value: 'extractMarkdownContent',
+						action: 'Extract Markdown Content',
+					},
 				],
 				default: 'generateHtmlTemplate',
 			},
@@ -207,7 +218,7 @@ export class Html implements INodeType {
 				description: 'If HTML should be read from binary or JSON data',
 				displayOptions: {
 					show: {
-						operation: ['extractHtmlContent'],
+						operation: ['extractHtmlContent', 'extractMarkdownContent'],
 					},
 				},
 			},
@@ -218,7 +229,7 @@ export class Html implements INodeType {
 				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
-						operation: ['extractHtmlContent'],
+						operation: ['extractHtmlContent', 'extractMarkdownContent'],
 						sourceData: ['binary'],
 					},
 				},
@@ -233,7 +244,7 @@ export class Html implements INodeType {
 				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
-						operation: ['extractHtmlContent'],
+						operation: ['extractHtmlContent', 'extractMarkdownContent'],
 						sourceData: ['json'],
 					},
 				},
@@ -498,17 +509,12 @@ export class Html implements INodeType {
 					);
 
 					returnData.push(...result);
-				} else if (operation === 'extractHtmlContent') {
+				} else if (operation === 'extractHtmlContent' || operation === 'extractMarkdownContent') {
 					// ----------------------------------
 					//         extractHtmlContent
 					// ----------------------------------
 
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
-					const extractionValues = this.getNodeParameter(
-						'extractionValues',
-						itemIndex,
-					) as IDataObject;
-					const options = this.getNodeParameter('options', itemIndex, {});
 					const sourceData = this.getNodeParameter('sourceData', itemIndex) as string;
 
 					item = items[itemIndex];
@@ -550,41 +556,75 @@ export class Html implements INodeType {
 						htmlArray = [htmlArray];
 					}
 
-					for (const html of htmlArray) {
-						const $ = cheerio.load(html);
+					if (operation === 'extractHtmlContent') {
+						const options = this.getNodeParameter('options', itemIndex, {});
+						const extractionValues = this.getNodeParameter(
+							'extractionValues',
+							itemIndex,
+						) as IDataObject;
+						for (const html of htmlArray) {
+							const $ = cheerio.load(html);
 
-						const newItem: INodeExecutionData = {
-							json: {},
-							pairedItem: {
-								item: itemIndex,
-							},
-						};
+							const newItem: INodeExecutionData = {
+								json: {},
+								pairedItem: {
+									item: itemIndex,
+								},
+							};
 
-						// Iterate over all the defined values which should be extracted
-						let htmlElement;
-						for (const valueData of extractionValues.values as IValueData[]) {
-							htmlElement = $(valueData.cssSelector);
+							// Iterate over all the defined values which should be extracted
+							let htmlElement;
+							for (const valueData of extractionValues.values as IValueData[]) {
+								htmlElement = $(valueData.cssSelector);
 
-							if (valueData.returnArray) {
-								// An array should be returned so iterate over one
-								// value at a time
-								newItem.json[valueData.key] = [];
-								htmlElement.each((_, el) => {
-									(newItem.json[valueData.key] as Array<string | undefined>).push(
-										getValue($(el), valueData, options, nodeVersion),
+								if (valueData.returnArray) {
+									// An array should be returned so iterate over one
+									// value at a time
+									newItem.json[valueData.key] = [];
+									htmlElement.each((_, el) => {
+										(newItem.json[valueData.key] as Array<string | undefined>).push(
+											getValue($(el), valueData, options, nodeVersion),
+										);
+									});
+								} else {
+									// One single value should be returned
+									newItem.json[valueData.key] = getValue(
+										htmlElement,
+										valueData,
+										options,
+										nodeVersion,
 									);
+								}
+							}
+							returnData.push(newItem);
+						}
+					} else {
+						for (const html of htmlArray) {
+							const htmlFile = await tmpFile({ prefix: 'n8n-http-' });
+							try {
+								await writeFile(htmlFile.path, html, 'utf8');
+								const dom = await JSDOM.fromFile(htmlFile.path);
+								const article = new Readability(dom.window.document, {
+									keepClasses: true,
+								}).parse();
+								if (!article) continue;
+								const turndown = new Turndown({
+									headingStyle: 'atx',
+									hr: '---',
+									bulletListMarker: '-',
+									codeBlockStyle: 'fenced',
 								});
-							} else {
-								// One single value should be returned
-								newItem.json[valueData.key] = getValue(
-									htmlElement,
-									valueData,
-									options,
-									nodeVersion,
-								);
+								const markdown = turndown.turndown(article.content);
+								returnData.push({
+									json: { [dataPropertyName]: markdown },
+									pairedItem: {
+										item: itemIndex,
+									},
+								});
+							} finally {
+								await htmlFile.cleanup();
 							}
 						}
-						returnData.push(newItem);
 					}
 				}
 			} catch (error) {
