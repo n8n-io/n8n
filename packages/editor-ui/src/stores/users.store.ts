@@ -35,6 +35,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const usersById = ref<Record<string, IUser>>({});
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 
+	// Stores
+
 	const RBACStore = useRBACStore();
 	const npsSurveyStore = useNpsSurveyStore();
 	const uiStore = useUIStore();
@@ -42,7 +44,11 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
 
+	// Composables
+
 	const postHogStore = usePostHog();
+
+	// Computed
 
 	const allUsers = computed(() => Object.values(usersById.value));
 
@@ -72,6 +78,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 		return getPersonalizedNodeTypes(answers);
 	});
+
+	// Methods
 
 	const addUsers = (newUsers: IUserResponse[]) => {
 		newUsers.forEach((userResponse: IUserResponse) => {
