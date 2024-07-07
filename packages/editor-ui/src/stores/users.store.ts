@@ -73,7 +73,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		return getPersonalizedNodeTypes(answers);
 	});
 
-	const addUsers = async (newUsers: IUserResponse[]) => {
+	const addUsers = (newUsers: IUserResponse[]) => {
 		newUsers.forEach((userResponse: IUserResponse) => {
 			const prevUser = users.value[userResponse.id] || {};
 			const updatedUser = {
