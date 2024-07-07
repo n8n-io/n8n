@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import type { Mock, MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -11,8 +11,8 @@ const renderComponent = createComponentRenderer(WorkflowPreview);
 
 let pinia: ReturnType<typeof createPinia>;
 let executionsStore: ReturnType<typeof useExecutionsStore>;
-let postMessageSpy: vi.SpyInstance;
-let consoleErrorSpy: vi.SpyInstance;
+let postMessageSpy: Mock;
+let consoleErrorSpy: MockInstance;
 
 const sendPostMessageCommand = (command: string) => {
 	window.postMessage(`{"command":"${command}"}`, '*');
@@ -179,7 +179,7 @@ describe('WorkflowPreview', () => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: { id: 'abc' },
+					executionId: 'abc',
 				}),
 				'*',
 			);

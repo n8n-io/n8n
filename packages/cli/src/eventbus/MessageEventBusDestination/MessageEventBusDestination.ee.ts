@@ -8,6 +8,7 @@ import type { EventMessageTypes } from '../EventMessageClasses';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
+import { License } from '@/License';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -17,6 +18,8 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	readonly eventBusInstance: MessageEventBus;
 
 	protected readonly logger: Logger;
+
+	protected readonly license: License;
 
 	__type: MessageEventBusDestinationTypeNames;
 
@@ -31,7 +34,10 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	anonymizeAuditMessages: boolean;
 
 	constructor(eventBusInstance: MessageEventBus, options: MessageEventBusDestinationOptions) {
+		// @TODO: Use DI
 		this.logger = Container.get(Logger);
+		this.license = Container.get(License);
+
 		this.eventBusInstance = eventBusInstance;
 		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;

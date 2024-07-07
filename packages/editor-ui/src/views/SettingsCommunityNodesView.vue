@@ -95,59 +95,6 @@ export default defineComponent({
 			loading: false,
 		};
 	},
-	beforeMount() {
-		this.pushConnection.initialize();
-		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushStore.pushConnect();
-	},
-	async mounted() {
-		try {
-			this.loading = true;
-			await this.communityNodesStore.fetchInstalledPackages();
-
-			const installedPackages: PublicInstalledPackage[] =
-				this.communityNodesStore.getInstalledPackages;
-			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(
-				(p) => p.updateAvailable,
-			);
-			this.$telemetry.track('user viewed cnr settings page', {
-				num_of_packages_installed: installedPackages.length,
-				installed_packages: installedPackages.map((p) => {
-					return {
-						package_name: p.packageName,
-						package_version: p.installedVersion,
-						package_nodes: p.installedNodes.map((node) => `${node.name}-v${node.latestVersion}`),
-						is_update_available: p.updateAvailable !== undefined,
-					};
-				}),
-				packages_to_update: packagesToUpdate.map((p) => {
-					return {
-						package_name: p.packageName,
-						package_version_current: p.installedVersion,
-						package_version_available: p.updateAvailable,
-					};
-				}),
-				number_of_updates_available: packagesToUpdate.length,
-			});
-		} catch (error) {
-			this.showError(
-				error,
-				this.$locale.baseText('settings.communityNodes.fetchError.title'),
-				this.$locale.baseText('settings.communityNodes.fetchError.message'),
-			);
-		} finally {
-			this.loading = false;
-		}
-		try {
-			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
-		} finally {
-			this.loading = false;
-		}
-	},
-	beforeUnmount() {
-		this.pushStore.pushDisconnect();
-		this.pushConnection.terminate();
-	},
 	computed: {
 		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore, usePushConnectionStore),
 		getEmptyStateDescription(): string {
@@ -213,6 +160,59 @@ export default defineComponent({
 				hideButton: false,
 			};
 		},
+	},
+	beforeMount() {
+		this.pushConnection.initialize();
+		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
+		this.pushStore.pushConnect();
+	},
+	async mounted() {
+		try {
+			this.loading = true;
+			await this.communityNodesStore.fetchInstalledPackages();
+
+			const installedPackages: PublicInstalledPackage[] =
+				this.communityNodesStore.getInstalledPackages;
+			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(
+				(p) => p.updateAvailable,
+			);
+			this.$telemetry.track('user viewed cnr settings page', {
+				num_of_packages_installed: installedPackages.length,
+				installed_packages: installedPackages.map((p) => {
+					return {
+						package_name: p.packageName,
+						package_version: p.installedVersion,
+						package_nodes: p.installedNodes.map((node) => `${node.name}-v${node.latestVersion}`),
+						is_update_available: p.updateAvailable !== undefined,
+					};
+				}),
+				packages_to_update: packagesToUpdate.map((p) => {
+					return {
+						package_name: p.packageName,
+						package_version_current: p.installedVersion,
+						package_version_available: p.updateAvailable,
+					};
+				}),
+				number_of_updates_available: packagesToUpdate.length,
+			});
+		} catch (error) {
+			this.showError(
+				error,
+				this.$locale.baseText('settings.communityNodes.fetchError.title'),
+				this.$locale.baseText('settings.communityNodes.fetchError.message'),
+			);
+		} finally {
+			this.loading = false;
+		}
+		try {
+			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
+		} finally {
+			this.loading = false;
+		}
+	},
+	beforeUnmount() {
+		this.pushStore.pushDisconnect();
+		this.pushConnection.terminate();
 	},
 	methods: {
 		onClickEmptyStateButton(): void {

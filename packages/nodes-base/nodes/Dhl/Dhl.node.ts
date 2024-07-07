@@ -145,7 +145,7 @@ export class Dhl implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.description });
 					continue;
 				}

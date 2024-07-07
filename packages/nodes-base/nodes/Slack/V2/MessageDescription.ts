@@ -860,6 +860,72 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
+		displayName: 'Message Type',
+		name: 'messageType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+			},
+		},
+		description:
+			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
+		options: [
+			{
+				name: 'Simple Text Message',
+				value: 'text',
+				description: 'Supports basic Markdown',
+			},
+			{
+				name: 'Blocks',
+				value: 'block',
+				description:
+					"Combine text, buttons, form elements, dividers and more in Slack 's visual builder",
+			},
+			{
+				name: 'Attachments',
+				value: 'attachment',
+			},
+		],
+		default: 'text',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksUi',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		typeOptions: {
+			rows: 3,
+		},
+		description:
+			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		default: '',
+	},
+	{
+		displayName: 'Notification Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['message'],
+				messageType: ['block'],
+			},
+		},
+		description:
+			'Fallback text to display in slack notifications. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
+	},
+	{
 		displayName: 'Message Text',
 		name: 'text',
 		type: 'string',
@@ -868,6 +934,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['update'],
+				messageType: ['text'],
 			},
 		},
 		description:

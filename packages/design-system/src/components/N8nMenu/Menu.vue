@@ -82,9 +82,9 @@ const props = withDefaults(defineProps<MenuProps>(), {
 });
 const $route = useRoute();
 
-const $emit = defineEmits<{
-	(event: 'select', itemId: string);
-	(event: 'update:modelValue', itemId: string);
+const emit = defineEmits<{
+	select: [itemId: string];
+	'update:modelValue': [itemId: string];
 }>();
 
 const activeTab = ref(props.modelValue);
@@ -112,7 +112,7 @@ onMounted(() => {
 		activeTab.value = props.items.length > 0 ? props.items[0].id : '';
 	}
 
-	$emit('update:modelValue', activeTab.value);
+	emit('update:modelValue', activeTab.value);
 });
 
 const onSelect = (item: IMenuItem): void => {
@@ -120,8 +120,8 @@ const onSelect = (item: IMenuItem): void => {
 		activeTab.value = item.id;
 	}
 
-	$emit('select', item.id);
-	$emit('update:modelValue', item.id);
+	emit('select', item.id);
+	emit('update:modelValue', item.id);
 };
 </script>
 
@@ -133,11 +133,18 @@ const onSelect = (item: IMenuItem): void => {
 	background-color: var(--menu-background, var(--color-background-xlight));
 }
 
+.menuHeader {
+	display: flex;
+	flex-direction: column;
+	flex: 0 1 auto;
+	overflow-y: auto;
+}
+
 .menuContent {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	flex-grow: 1;
+	flex: 1 1 auto;
 
 	& > div > :global(.el-menu) {
 		background: none;

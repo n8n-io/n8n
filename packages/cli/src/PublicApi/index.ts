@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Container } from 'typedi';
 import type { Router } from 'express';
 import express from 'express';
@@ -153,11 +152,6 @@ export const loadPublicApiVersions = async (
 	};
 };
 
-function isApiEnabledByLicense(): boolean {
-	const license = Container.get(License);
-	return !license.isAPIDisabled();
-}
-
 export function isApiEnabled(): boolean {
-	return !config.get('publicApi.disabled') && isApiEnabledByLicense();
+	return !config.get('publicApi.disabled') && !Container.get(License).isAPIDisabled();
 }

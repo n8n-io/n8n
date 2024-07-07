@@ -15,8 +15,7 @@ export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
 		name: 'flow',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:flow.png',
+		icon: 'file:flow.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

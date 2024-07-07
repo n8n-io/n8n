@@ -11,7 +11,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 		startData: {},
 		resultData: {
 			runData: {
-				'When clicking "Test workflow"': [
+				'When clicking ‘Test workflow’': [
 					{
 						startTime: 1706027170005,
 						executionTime: 0,
@@ -24,7 +24,7 @@ const MOCK_EXECUTION: Partial<IExecutionResponse> = {
 					{
 						startTime: 1706027170005,
 						executionTime: 1,
-						source: [{ previousNode: 'When clicking "Test workflow"' }],
+						source: [{ previousNode: 'When clicking ‘Test workflow’' }],
 						executionStatus: 'success',
 						data: {
 							main: [
@@ -258,54 +258,54 @@ describe('pairedItemUtils', () => {
 			const actual = getPairedItemsMapping(MOCK_EXECUTION);
 			const expected = {
 				DebugHelper_r0_o0_i0: new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'If_r0_o0_i0',
 					'Edit Fields_r1_o0_i0',
 					'Edit Fields1_r1_o0_i0',
 				]),
 				DebugHelper_r0_o0_i1: new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'If_r0_o1_i0',
 					'Edit Fields_r0_o0_i0',
 					'Edit Fields1_r0_o0_i0',
 				]),
 				'Edit Fields1_r0_o0_i0': new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i1',
 					'If_r0_o1_i0',
 					'Edit Fields_r0_o0_i0',
 				]),
 				'Edit Fields1_r1_o0_i0': new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i0',
 					'If_r0_o0_i0',
 					'Edit Fields_r1_o0_i0',
 				]),
 				'Edit Fields_r0_o0_i0': new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i1',
 					'If_r0_o1_i0',
 					'Edit Fields1_r0_o0_i0',
 				]),
 				'Edit Fields_r1_o0_i0': new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i0',
 					'If_r0_o0_i0',
 					'Edit Fields1_r1_o0_i0',
 				]),
 				If_r0_o0_i0: new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i0',
 					'Edit Fields_r1_o0_i0',
 					'Edit Fields1_r1_o0_i0',
 				]),
 				If_r0_o1_i0: new Set([
-					'When clicking "Test workflow"_r0_o0_i0',
+					'When clicking ‘Test workflow’_r0_o0_i0',
 					'DebugHelper_r0_o0_i1',
 					'Edit Fields_r0_o0_i0',
 					'Edit Fields1_r0_o0_i0',
 				]),
-				'When clicking "Test workflow"_r0_o0_i0': new Set([
+				'When clicking ‘Test workflow’_r0_o0_i0': new Set([
 					'DebugHelper_r0_o0_i0',
 					'DebugHelper_r0_o0_i1',
 					'If_r0_o0_i0',

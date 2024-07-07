@@ -46,7 +46,13 @@ export class CreateTable extends TableOperation {
 
 	withForeignKey(
 		columnName: string,
-		ref: { tableName: string; columnName: string; onDelete?: 'CASCADE'; onUpdate?: 'CASCADE' },
+		ref: {
+			tableName: string;
+			columnName: string;
+			onDelete?: 'CASCADE';
+			onUpdate?: 'CASCADE';
+			name?: string;
+		},
 	) {
 		const foreignKey: TableForeignKeyOptions = {
 			columnNames: [columnName],
@@ -55,6 +61,7 @@ export class CreateTable extends TableOperation {
 		};
 		if (ref.onDelete) foreignKey.onDelete = ref.onDelete;
 		if (ref.onUpdate) foreignKey.onUpdate = ref.onUpdate;
+		if (ref.name) foreignKey.name = ref.name;
 		this.foreignKeys.add(foreignKey);
 		return this;
 	}

@@ -70,7 +70,7 @@ $border-radius-circle: 100%;
 
 /* Outline
 -------------------------- */
-$focus-outline-width: 2px;
+$focus-outline-width: 3px;
 
 /* Box shadow
 -------------------------- */
@@ -551,7 +551,7 @@ $button-hover-border-color: var(
 );
 $button-hover-background-color: var(
 	--button-hover-background-color,
-	var(--color-button-primary-hover-active-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 
 // Active
@@ -562,7 +562,7 @@ $button-active-border-color: var(
 );
 $button-active-background-color: var(
 	--button-active-background-color,
-	var(--color-button-primary-hover-active-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 
 // Focus
@@ -570,7 +570,7 @@ $button-focus-font-color: var(--button-focus-font-color, var(--color-button-prim
 $button-focus-border-color: var(--button-focus-border-color, var(--color-button-primary-border));
 $button-focus-background-color: var(
 	--button-focus-background-color,
-	var(--color-button-primary-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 $button-focus-outline-color: var(
 	--button-focus-outline-color,

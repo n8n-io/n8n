@@ -77,7 +77,7 @@ import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import { useSettingsStore } from '@/stores/settings.store';

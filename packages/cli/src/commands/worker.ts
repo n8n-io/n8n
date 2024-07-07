@@ -3,6 +3,7 @@ import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
 import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
@@ -14,10 +15,9 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { N8N_VERSION } from '@/constants';
+import { N8N_VERSION, inTest } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -30,6 +30,7 @@ import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/typ
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -64,23 +65,20 @@ export class Worker extends BaseCommand {
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
 
-		// Stop accepting new jobs
-		await Worker.jobQueue.pause(true);
-
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
 
-			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
+			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
+					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
-						} active executions to finish... (wait ${waitLeft} more seconds)`,
+						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
 
@@ -117,8 +115,6 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 		await executionRepository.updateStatus(executionId, 'running');
-
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
@@ -160,7 +156,7 @@ export class Worker extends BaseCommand {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner.id,
+			undefined,
 			undefined,
 			executionTimeoutTimestamp,
 		);
@@ -237,7 +233,7 @@ export class Worker extends BaseCommand {
 
 		if (!process.env.N8N_ENCRYPTION_KEY) {
 			throw new ApplicationError(
-				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/',
 			);
 		}
 
@@ -276,7 +272,7 @@ export class Worker extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		await Container.get(OrchestrationWorkerService).publishToEventLog(
+		await Container.get(MessageEventBus).send(
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
@@ -290,6 +286,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
+		Container.get(AuditEventRelay).init();
 	}
 
 	/**
@@ -320,8 +317,12 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
+
+		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
+		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+
 		void Worker.jobQueue.process(
-			flags.concurrency,
+			concurrency,
 			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 
@@ -388,7 +389,7 @@ export class Worker extends BaseCommand {
 		app.get(
 			'/healthz',
 
-			async (req: express.Request, res: express.Response) => {
+			async (_req: express.Request, res: express.Response) => {
 				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
@@ -429,7 +430,9 @@ export class Worker extends BaseCommand {
 		);
 
 		let presetCredentialsLoaded = false;
-		const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		const globalConfig = Container.get(GlobalConfig);
+		const endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
 		if (endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			app.post(
@@ -486,8 +489,18 @@ export class Worker extends BaseCommand {
 			await this.setupHealthMonitor();
 		}
 
+		if (process.stdout.isTTY) {
+			process.stdin.setRawMode(true);
+			process.stdin.resume();
+			process.stdin.setEncoding('utf8');
+
+			process.stdin.on('data', (key: string) => {
+				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
+			});
+		}
+
 		// Make sure that the process does not close
-		await new Promise(() => {});
+		if (!inTest) await new Promise(() => {});
 	}
 
 	async catch(error: Error) {

@@ -108,6 +108,6 @@ export class VectorStoreInMemoryInsert implements INodeType {
 			clearStore,
 		);
 
-		return await this.prepareOutputData(serializedDocuments);
+		return [serializedDocuments];
 	}
 }

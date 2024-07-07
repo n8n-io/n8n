@@ -74,7 +74,7 @@ interface DatatableProps {
 	rows: DatatableRow[];
 	currentPage?: number;
 	pagination?: boolean;
-	rowsPerPage?: number | '*';
+	rowsPerPage?: number;
 }
 
 defineOptions({ name: 'N8nDatatable' });
@@ -84,7 +84,10 @@ const props = withDefaults(defineProps<DatatableProps>(), {
 	rowsPerPage: 10,
 });
 
-const $emit = defineEmits(['update:currentPage', 'update:rowsPerPage']);
+const emit = defineEmits<{
+	'update:currentPage': [value: number];
+	'update:rowsPerPage': [value: number];
+}>();
 
 const { t } = useI18n();
 const rowsPerPageOptions = ref([10, 25, 50, 100]);
@@ -92,10 +95,6 @@ const rowsPerPageOptions = ref([10, 25, 50, 100]);
 const $style = useCssModule();
 
 const totalPages = computed(() => {
-	if (props.rowsPerPage === '*') {
-		return 1;
-	}
-
 	return Math.ceil(props.rows.length / props.rowsPerPage);
 });
 
@@ -104,10 +103,6 @@ const totalRows = computed(() => {
 });
 
 const visibleRows = computed(() => {
-	if (props.rowsPerPage === '*') {
-		return props.rows;
-	}
-
 	const start = (props.currentPage - 1) * props.rowsPerPage;
 	const end = start + props.rowsPerPage;
 
@@ -120,13 +115,13 @@ const classes = computed(() => ({
 }));
 
 function onUpdateCurrentPage(value: number) {
-	$emit('update:currentPage', value);
+	emit('update:currentPage', value);
 }
 
-function onRowsPerPageChange(value: number | '*') {
-	$emit('update:rowsPerPage', value);
+function onRowsPerPageChange(value: number) {
+	emit('update:rowsPerPage', value);
 
-	const maxPage = value === '*' ? 1 : Math.ceil(totalRows.value / value);
+	const maxPage = Math.ceil(totalRows.value / value);
 	if (maxPage < props.currentPage) {
 		onUpdateCurrentPage(maxPage);
 	}

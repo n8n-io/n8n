@@ -31,12 +31,12 @@ const { debounce } = useDebounce();
 const telemetry = useTelemetry();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
-	workflows: [] as Array<IWorkflowDb | IWorkflowShortResponse>,
+	workflows: () => [] as Array<IWorkflowDb | IWorkflowShortResponse>,
 	popoverPlacement: 'bottom' as Placement,
 	teleported: true,
 });
 const emit = defineEmits<{
-	(event: 'filterChanged', value: ExecutionFilterType): void;
+	filterChanged: [value: ExecutionFilterType];
 }>();
 const debouncedEmit = debounce(emit, {
 	debounceTime: 500,

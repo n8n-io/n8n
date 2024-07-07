@@ -253,3 +253,27 @@ Program(Resolvable)
 ==>
 
 Program(Resolvable)
+
+# Resolvable with general punctuation char
+
+{{ '†' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with superscript char
+
+{{ '⁷' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with CJK char
+
+{{ '漢' }}
+
+==>
+
+Program(Resolvable)

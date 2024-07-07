@@ -23,25 +23,26 @@ const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 type Props = {
 	path: string;
 	modelValue: string;
-	isReadOnly: boolean;
-	rows: number;
-	isAssignment: boolean;
-	additionalExpressionData: IDataObject;
-	eventBus: EventBus;
+	rows?: number;
+	additionalExpressionData?: IDataObject;
+	eventBus?: EventBus;
+	isReadOnly?: boolean;
+	isAssignment?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isAssignment: false,
+	isReadOnly: false,
 	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
 const emit = defineEmits<{
-	(event: 'modal-opener-click'): void;
-	(event: 'update:model-value', value: string): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
+	'modal-opener-click': [];
+	'update:model-value': [value: string];
+	focus: [];
+	blur: [];
 }>();
 
 const telemetry = useTelemetry();

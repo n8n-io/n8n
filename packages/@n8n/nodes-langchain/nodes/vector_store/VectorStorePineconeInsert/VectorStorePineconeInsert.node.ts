@@ -134,6 +134,6 @@ export class VectorStorePineconeInsert implements INodeType {
 			pineconeIndex,
 		});
 
-		return await this.prepareOutputData(serializedDocuments);
+		return [serializedDocuments];
 	}
 }

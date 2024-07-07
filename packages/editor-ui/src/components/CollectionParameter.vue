@@ -72,12 +72,13 @@ export interface Props {
 	nodeValues: INodeParameters;
 	parameter: INodeProperties;
 	path: string;
-	values: INodeProperties;
+	values: INodeParameters;
 	isReadOnly?: boolean;
 }
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
+
 const props = defineProps<Props>();
 const ndvStore = useNDVStore();
 const i18n = useI18n();

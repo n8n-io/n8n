@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, ref, getCurrentInstance } from 'vue';
+import { computed, watch, ref } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,6 +8,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
 import ItemsRenderer from './ItemsRenderer.vue';
 import CategoryItem from '../ItemTypes/CategoryItem.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -23,8 +24,7 @@ const props = withDefaults(defineProps<Props>(), {
 	elements: () => [],
 });
 
-const instance = getCurrentInstance();
-
+const telemetry = useTelemetry();
 const { popViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const { workflowId } = useWorkflowsStore();
@@ -41,7 +41,7 @@ function setExpanded(isExpanded: boolean) {
 	expanded.value = isExpanded;
 
 	if (expanded.value) {
-		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
+		telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
 			category_name: props.category,
 			workflow_id: workflowId,
 		});

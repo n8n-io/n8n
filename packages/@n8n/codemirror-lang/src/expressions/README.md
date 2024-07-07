@@ -24,3 +24,9 @@ export function n8nExpressionLanguageSupport() {
 	return new LanguageSupport(n8nLanguage);
 }
 ```
+
+## Supported Unicode ranges
+
+- From `Basic Latin` up to and including `Currency Symbols`
+- `Miscellaneous Symbols and Pictographs`
+- `CJK Unified Ideographs`

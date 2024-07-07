@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import config from '@/config';
+import type { GlobalConfig } from '@n8n/config';
 import { N8N_VERSION } from '@/constants';
 import { InternalHooks } from '@/InternalHooks';
 import type { License } from '@/License';
@@ -16,15 +16,28 @@ jest.mock('node:os', () => ({
 describe('InternalHooks', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
+	const globalConfig = mock<GlobalConfig>({
+		database: {
+			type: 'sqlite',
+		},
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+			},
+		},
+	});
 	const internalHooks = new InternalHooks(
+		globalConfig,
 		telemetry,
 		mock(),
 		mock(),
 		mock(),
 		mock(),
 		mock(),
-		mock(),
 		license,
+		mock(),
+		mock(),
+		mock(),
 	);
 
 	beforeEach(() => jest.clearAllMocks());
@@ -35,12 +48,13 @@ describe('InternalHooks', () => {
 
 	it('Should forward license plan name and tenant id to identify when provided', async () => {
 		license.getPlanName.mockReturnValue('Best Plan');
+		globalConfig.database.type = 'sqlite';
 
 		await internalHooks.onServerStarted();
 
 		expect(telemetry.identify).toHaveBeenCalledWith({
 			version_cli: N8N_VERSION,
-			db_type: config.get('database.type'),
+			db_type: 'sqlite',
 			n8n_version_notifications_enabled: true,
 			n8n_disable_production_main_process: false,
 			system_info: {

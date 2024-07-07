@@ -1,64 +1,59 @@
 <template>
 	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
-		<div v-if="!renderHTML" :class="classes"><span v-html="simplyText"></span></div>
+		<div
+			v-if="!renderHTML"
+			:class="{
+				[$style.singleline]: singleLine,
+				[$style.highlight]: highlight,
+			}"
+		>
+			<span v-html="simplyText"></span>
+		</div>
 		<div
 			v-else
-			ref="hint"
+			ref="hintTextRef"
 			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
 			v-html="sanitizeHtml(hint)"
 		></div>
 	</n8n-text>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
 import { sanitizeHtml } from '@/utils/htmlUtils';
+import { computed, onMounted, ref } from 'vue';
 
-export default defineComponent({
-	name: 'InputHint',
-	props: {
-		hint: {
-			type: String,
-		},
-		highlight: {
-			type: Boolean,
-		},
-		singleLine: {
-			type: Boolean,
-		},
-		renderHTML: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		classes() {
-			return {
-				[this.$style.singleline]: this.singleLine,
-				[this.$style.highlight]: this.highlight,
-			};
-		},
-		simplyText(): string {
-			if (this.hint) {
-				return String(this.hint)
-					.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
-					.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
-					.replace(/>/g, '&gt;')
-					.replace(/"/g, '&quot;')
-					.replace(/ /g, '&nbsp;');
-			}
+type Props = {
+	hint: string;
+	highlight?: boolean;
+	singleLine?: boolean;
+	renderHTML?: boolean;
+};
 
-			return '';
-		},
-	},
-	mounted() {
-		if (this.$refs.hint) {
-			(this.$refs.hint as Element).querySelectorAll('a').forEach((a) => (a.target = '_blank'));
-		}
-	},
-	methods: {
-		sanitizeHtml,
-	},
+const hintTextRef = ref<HTMLDivElement>();
+
+const props = withDefaults(defineProps<Props>(), {
+	highlight: false,
+	singleLine: false,
+	renderHTML: false,
+});
+
+onMounted(() => {
+	if (hintTextRef.value) {
+		hintTextRef.value.querySelectorAll('a').forEach((a) => (a.target = '_blank'));
+	}
+});
+
+const simplyText = computed(() => {
+	if (props.hint) {
+		return String(props.hint)
+			.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
+			.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/ /g, '&nbsp;');
+	}
+
+	return '';
 });
 </script>
 

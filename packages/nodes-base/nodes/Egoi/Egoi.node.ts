@@ -17,8 +17,8 @@ export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'E-goi',
 		name: 'egoi',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:egoi.png',
+
+		icon: 'file:egoi.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -733,7 +733,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					throw error;
 				} else {
 					// Return the actual reason as error

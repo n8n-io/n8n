@@ -1,8 +1,21 @@
+import type { Completion } from '@codemirror/autocomplete';
 import type { DocMetadata, DocMetadataArgument, DocMetadataExample } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { i18n } from '@/plugins/i18n';
 
-const renderFunctionHeader = (doc?: DocMetadata) => {
+const shouldHighlightArgument = (
+	arg: DocMetadataArgument,
+	index: number,
+	highlightArgIndex?: number,
+) => {
+	if (arg.variadic) {
+		return (highlightArgIndex ?? 0) >= index;
+	}
+
+	return highlightArgIndex === index;
+};
+
+const renderFunctionHeader = (doc?: DocMetadata, highlightArgIndex?: number) => {
 	const header = document.createElement('div');
 	if (doc) {
 		const functionNameSpan = document.createElement('span');
@@ -17,7 +30,10 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 		const argsSpan = document.createElement('span');
 		doc.args?.forEach((arg, index, array) => {
 			const optional = arg.optional && !arg.name.endsWith('?');
-			const argSpan = document.createElement('span');
+			const argSpan = document.createElement(
+				shouldHighlightArgument(arg, index, highlightArgIndex) ? 'strong' : 'span',
+			);
+			argSpan.classList.add('autocomplete-info-arg');
 			argSpan.textContent = arg.name;
 
 			if (optional) {
@@ -28,27 +44,19 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 				argSpan.textContent = '...' + argSpan.textContent;
 			}
 
-			argSpan.classList.add('autocomplete-info-arg');
 			argsSpan.appendChild(argSpan);
 
 			if (index !== array.length - 1) {
 				const separatorSpan = document.createElement('span');
 				separatorSpan.textContent = ', ';
 				argsSpan.appendChild(separatorSpan);
-			} else {
-				argSpan.textContent += ')';
 			}
 		});
 		header.appendChild(argsSpan);
 
-		const preTypeInfo = document.createElement('span');
-		preTypeInfo.textContent = !doc.args || doc.args.length === 0 ? '): ' : ': ';
-		header.appendChild(preTypeInfo);
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.textContent = doc.returnType;
-		returnTypeSpan.classList.add('autocomplete-info-return');
-		header.appendChild(returnTypeSpan);
+		const closingBracket = document.createElement('span');
+		closingBracket.textContent = ')';
+		header.appendChild(closingBracket);
 	}
 	return header;
 };
@@ -58,13 +66,9 @@ const renderPropHeader = (doc?: DocMetadata) => {
 	if (doc) {
 		const propNameSpan = document.createElement('span');
 		propNameSpan.classList.add('autocomplete-info-name');
-		propNameSpan.innerText = doc.name;
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.textContent = ': ' + doc.returnType;
+		propNameSpan.textContent = doc.name;
 
 		header.appendChild(propNameSpan);
-		header.appendChild(returnTypeSpan);
 	}
 	return header;
 };
@@ -110,7 +114,67 @@ const renderDescription = ({
 	return descriptionBody;
 };
 
-const renderArgs = (args: DocMetadataArgument[]) => {
+const renderArg = (arg: DocMetadataArgument, highlight: boolean) => {
+	const argItem = document.createElement('li');
+	const argName = document.createElement(highlight ? 'strong' : 'span');
+	argName.classList.add('autocomplete-info-arg-name');
+	argName.textContent = arg.name.replaceAll('?', '');
+	const tags = [];
+
+	if (arg.type) {
+		tags.push(arg.type);
+	}
+
+	if (!!arg.optional || arg.name.endsWith('?')) {
+		tags.push(i18n.baseText('codeNodeEditor.optional'));
+	}
+
+	if (tags.length > 0) {
+		argName.textContent += ` (${tags.join(', ')})`;
+	}
+
+	if (arg.description) {
+		argName.textContent += ':';
+	}
+	argItem.appendChild(argName);
+
+	if (arg.description) {
+		const argDescription = document.createElement('span');
+		argDescription.classList.add('autocomplete-info-arg-description');
+
+		if (arg.default && arg.optional && !arg.description.toLowerCase().includes('default')) {
+			const separator = arg.description.endsWith('.') ? ' ' : '. ';
+			arg.description +=
+				separator +
+				i18n.baseText('codeNodeEditor.defaultsTo', {
+					interpolate: { default: arg.default },
+				});
+		}
+
+		argDescription.innerHTML = sanitizeHtml(arg.description.replace(/`(.*?)`/g, '<code>$1</code>'));
+
+		argItem.appendChild(argDescription);
+	}
+
+	if (Array.isArray(arg.args)) {
+		argItem.appendChild(renderArgList(arg.args));
+	}
+
+	return argItem;
+};
+
+const renderArgList = (args: DocMetadataArgument[], highlightArgIndex?: number) => {
+	const argsList = document.createElement('ul');
+	argsList.classList.add('autocomplete-info-args');
+
+	args.forEach((arg, index) => {
+		argsList.appendChild(renderArg(arg, shouldHighlightArgument(arg, index, highlightArgIndex)));
+	});
+
+	return argsList;
+};
+
+const renderArgs = (args: DocMetadataArgument[], highlightArgIndex?: number) => {
 	const argsContainer = document.createElement('div');
 	argsContainer.classList.add('autocomplete-info-args-container');
 
@@ -118,58 +182,7 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 	argsTitle.classList.add('autocomplete-info-section-title');
 	argsTitle.textContent = i18n.baseText('codeNodeEditor.parameters');
 	argsContainer.appendChild(argsTitle);
-
-	const argsList = document.createElement('ul');
-	argsList.classList.add('autocomplete-info-args');
-
-	for (const arg of args.filter((a) => a.name !== '...')) {
-		const argItem = document.createElement('li');
-		const argName = document.createElement('span');
-		argName.classList.add('autocomplete-info-arg-name');
-		argName.textContent = arg.name.replaceAll('?', '');
-		const tags = [];
-
-		if (arg.type) {
-			tags.push(arg.type);
-		}
-
-		if (arg.optional || arg.name.endsWith('?')) {
-			tags.push(i18n.baseText('codeNodeEditor.optional'));
-		}
-
-		if (args.length > 0) {
-			argName.textContent += ` (${tags.join(', ')})`;
-		}
-
-		if (arg.description) {
-			argName.textContent += ':';
-		}
-		argItem.appendChild(argName);
-
-		if (arg.description) {
-			const argDescription = document.createElement('span');
-			argDescription.classList.add('autocomplete-info-arg-description');
-
-			if (arg.default && !arg.description.toLowerCase().includes('default')) {
-				const separator = arg.description.endsWith('.') ? ' ' : '. ';
-				arg.description +=
-					separator +
-					i18n.baseText('codeNodeEditor.defaultsTo', {
-						interpolate: { default: arg.default },
-					});
-			}
-
-			argDescription.innerHTML = sanitizeHtml(
-				arg.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-			);
-
-			argItem.appendChild(argDescription);
-		}
-
-		argsList.appendChild(argItem);
-	}
-
-	argsContainer.appendChild(argsList);
+	argsContainer.appendChild(renderArgList(args, highlightArgIndex));
 	return argsContainer;
 };
 
@@ -224,7 +237,7 @@ const renderExamples = (examples: DocMetadataExample[]) => {
 
 export const createInfoBoxRenderer =
 	(doc?: DocMetadata, isFunction = false) =>
-	() => {
+	(_completion: Completion, highlightArgIndex = -1) => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
 		tooltipContainer.setAttribute('title', '');
@@ -236,7 +249,9 @@ export const createInfoBoxRenderer =
 		const hasArgs = args && args.length > 0;
 		const hasExamples = examples && examples.length > 0;
 
-		const header = isFunction ? renderFunctionHeader(doc) : renderPropHeader(doc);
+		const header = isFunction
+			? renderFunctionHeader(doc, highlightArgIndex)
+			: renderPropHeader(doc);
 		header.classList.add('autocomplete-info-header');
 		tooltipContainer.appendChild(header);
 
@@ -250,7 +265,7 @@ export const createInfoBoxRenderer =
 		}
 
 		if (hasArgs) {
-			const argsContainer = renderArgs(args);
+			const argsContainer = renderArgs(args, highlightArgIndex);
 			tooltipContainer.appendChild(argsContainer);
 		}
 

@@ -10,6 +10,7 @@ export class NoOp implements INodeType {
 		displayName: 'No Operation, do nothing',
 		name: 'noOp',
 		icon: 'fa:arrow-right',
+		iconColor: 'gray',
 		group: ['organization'],
 		version: 1,
 		description: 'No Operation',

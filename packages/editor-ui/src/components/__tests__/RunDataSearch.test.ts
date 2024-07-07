@@ -67,7 +67,7 @@ describe('RunDataSearch', () => {
 			},
 		});
 
-		const input = getByRole('textbox');
+		const input = getByRole<HTMLInputElement>('textbox');
 
 		await userEvent.click(input);
 		expect(emitted().focus).toHaveLength(1);

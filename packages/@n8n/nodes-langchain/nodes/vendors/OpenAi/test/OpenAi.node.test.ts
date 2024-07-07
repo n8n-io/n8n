@@ -84,13 +84,24 @@ describe('OpenAi, Assistant resource', () => {
 		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants', {
 			body: {
 				description: 'description',
-				file_ids: [],
 				instructions: 'some instructions',
 				model: 'gpt-model',
 				name: 'name',
-				tools: [{ type: 'code_interpreter' }, { type: 'retrieval' }],
+				tool_resources: {
+					code_interpreter: {
+						file_ids: [],
+					},
+					file_search: {
+						vector_stores: [
+							{
+								file_ids: [],
+							},
+						],
+					},
+				},
+				tools: [{ type: 'code_interpreter' }, { type: 'file_search' }],
 			},
-			headers: { 'OpenAI-Beta': 'assistants=v1' },
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
 		});
 	});
 
@@ -124,7 +135,7 @@ describe('OpenAi, Assistant resource', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v1' },
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
 		});
 	});
 
@@ -185,17 +196,28 @@ describe('OpenAi, Assistant resource', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
 		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v1' },
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
 		});
 		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
 			body: {
-				file_ids: [],
 				instructions: 'some instructions',
 				model: 'gpt-model',
 				name: 'name',
-				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'retrieval' }],
+				tool_resources: {
+					code_interpreter: {
+						file_ids: [],
+					},
+					file_search: {
+						vector_stores: [
+							{
+								file_ids: [],
+							},
+						],
+					},
+				},
+				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
 			},
-			headers: { 'OpenAI-Beta': 'assistants=v1' },
+			headers: { 'OpenAI-Beta': 'assistants=v2' },
 		});
 	});
 });

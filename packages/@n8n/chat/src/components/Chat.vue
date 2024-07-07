@@ -1,5 +1,4 @@
 <script setup lang="ts">
-// eslint-disable-next-line import/no-unresolved
 import Close from 'virtual:icons/mdi/close';
 import { computed, nextTick, onMounted } from 'vue';
 import Layout from '@n8n/chat/components/Layout.vue';

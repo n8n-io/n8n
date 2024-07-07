@@ -77,7 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 
 const sqlEditor = ref<HTMLElement>();
@@ -163,7 +163,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	codeNodeEditorEventBus.off('error-line-number', highlightLine);
-	emit('update:model-value', readEditorValue());
 });
 
 function line(lineNumber: number): Line | null {

@@ -504,7 +504,12 @@ import TextEdit from '@/components/TextEdit.vue';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
-import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
+import {
+	CORE_NODES_CATEGORY,
+	CUSTOM_API_CALL_KEY,
+	HTML_NODE_TYPE,
+	NODES_USING_CODE_NODE_EDITOR,
+} from '@/constants';
 
 import { useDebounce } from '@/composables/useDebounce';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -537,7 +542,7 @@ type Props = {
 	hint?: string;
 	inputSize?: InputSize;
 	eventSource?: string;
-	expressionEvaluated?: string;
+	expressionEvaluated: unknown;
 	documentationUrl?: string;
 	isAssignment?: boolean;
 	isReadOnly?: boolean;
@@ -555,7 +560,6 @@ const props = withDefaults(defineProps<Props>(), {
 	hint: undefined,
 	inputSize: undefined,
 	eventSource: undefined,
-	expressionEvaluated: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
 	isAssignment: false,
@@ -565,11 +569,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'drop', expression: string): void;
-	(event: 'textInput', update: IUpdateInformation): void;
-	(event: 'update', update: IUpdateInformation): void;
+	focus: [];
+	blur: [];
+	drop: [expression: string];
+	textInput: [update: IUpdateInformation];
+	update: [update: IUpdateInformation];
 }>();
 
 const externalHooks = useExternalHooks();
@@ -633,6 +637,15 @@ const dateTimePickerOptions = ref({
 const isFocused = ref(false);
 
 const displayValue = computed<string | number | boolean | null>(() => {
+	if (remoteParameterOptionsLoadingIssues.value) {
+		if (!nodeType.value || nodeType.value?.codex?.categories?.includes(CORE_NODES_CATEGORY)) {
+			return i18n.baseText('parameterInput.loadOptionsError');
+		}
+		return i18n.baseText('parameterInput.loadOptionsErrorService', {
+			interpolate: { service: nodeType.value.displayName },
+		});
+	}
+
 	if (remoteParameterOptionsLoading.value) {
 		// If it is loading options from server display
 		// to user that the data is loading. If not it would
@@ -732,6 +745,9 @@ const dependentParametersValues = computed<string | null>(() => {
 });
 
 const node = computed(() => ndvStore.activeNode ?? undefined);
+const nodeType = computed(
+	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
+);
 
 const displayTitle = computed<string>(() => {
 	const interpolation = { interpolate: { shortPath: shortPath.value } };
@@ -1190,6 +1206,13 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	if (remoteParameterOptionsLoading.value) {
 		return;
 	}
+	// Only update the value if it has changed
+	const oldValue = node.value?.parameters
+		? nodeHelpers.getParameterValue(node.value?.parameters, props.parameter.name, '')
+		: undefined;
+	if (oldValue !== undefined && oldValue === value) {
+		return;
+	}
 
 	if (props.parameter.name === 'nodeCredentialType') {
 		activeCredentialType.value = value as string;
@@ -1266,7 +1289,7 @@ async function optionSelected(command: string) {
 
 		await setFocus();
 	} else if (command === 'removeExpression') {
-		let value: NodeParameterValueType = props.expressionEvaluated;
+		let value = props.expressionEvaluated;
 
 		isFocused.value = false;
 
@@ -1374,6 +1397,10 @@ watch(
 		tempValue.value = displayValue.value as string;
 	},
 );
+
+watch(remoteParameterOptionsLoading, () => {
+	tempValue.value = displayValue.value as string;
+});
 
 onUpdated(async () => {
 	await nextTick();

@@ -9,7 +9,7 @@ import {
 	mockViewCreateElement,
 	mockSectionCreateElement,
 } from './utils';
-import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
+import ItemsRenderer from '@/components/Node/NodeCreator/Renderers/ItemsRenderer.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 
 const renderComponent = createComponentRenderer(ItemsRenderer);
@@ -88,8 +88,21 @@ describe('ItemsRenderer', () => {
 
 		for (const [index, itemType] of Object.keys(itemTypes).entries()) {
 			const itemElement = itemTypes[itemType as keyof typeof itemTypes];
-			await fireEvent.click(itemElement!);
-			expect(emitted().selected[index][0].type).toBe(itemType);
+			if (itemElement) {
+				await fireEvent.click(itemElement);
+				const emittedEvent = emitted().selected[index];
+				// Use a type guard to check if emittedEvent is an array and if its first element has a 'type' property
+				if (
+					Array.isArray(emittedEvent) &&
+					emittedEvent.length > 0 &&
+					typeof emittedEvent[0] === 'object' &&
+					'type' in emittedEvent[0]
+				) {
+					expect(emittedEvent[0].type).toBe(itemType);
+				} else {
+					fail('Emitted event is not an array or does not have a type property');
+				}
+			}
 		}
 	});
 });

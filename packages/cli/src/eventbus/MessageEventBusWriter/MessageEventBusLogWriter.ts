@@ -6,10 +6,18 @@ import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
-import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash/remove';
 import config from '@/config';
-import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
+import type { EventMessageGenericOptions } from '../EventMessageClasses/EventMessageGeneric';
+import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
+import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
+import type { EventMessageWorkflowOptions } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageWorkflow } from '../EventMessageClasses/EventMessageWorkflow';
+import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
+import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
+import type { EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '../EventMessageClasses/EventMessageNode';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
@@ -94,15 +102,6 @@ export class MessageEventBusLogWriter {
 	startLogging() {
 		if (this.worker) {
 			this.worker.postMessage({ command: 'startLogging', data: {} });
-		}
-	}
-
-	/**
-	 *  Pauses all logging. Events are still received by the worker, they just are not logged any more
-	 */
-	async pauseLogging() {
-		if (this.worker) {
-			this.worker.postMessage({ command: 'pauseLogging', data: {} });
 		}
 	}
 
@@ -209,7 +208,7 @@ export class MessageEventBusLogWriter {
 					try {
 						const json = jsonParse(line);
 						if (isEventMessageOptions(json) && json.__type !== undefined) {
-							const msg = getEventMessageObjectByType(json);
+							const msg = this.getEventMessageObjectByType(json);
 							if (msg !== null) results.loggedMessages.push(msg);
 							if (msg?.eventName && msg.payload?.executionId) {
 								const executionId = msg.payload.executionId as string;
@@ -223,6 +222,8 @@ export class MessageEventBusLogWriter {
 									case 'n8n.workflow.success':
 									case 'n8n.workflow.failed':
 									case 'n8n.workflow.crashed':
+									case 'n8n.execution.throttled':
+									case 'n8n.execution.started-during-bootup':
 										delete results.unfinishedExecutions[executionId];
 										break;
 									case 'n8n.node.started':
@@ -311,7 +312,7 @@ export class MessageEventBusLogWriter {
 							json.__type !== undefined &&
 							json.payload?.executionId === executionId
 						) {
-							const msg = getEventMessageObjectByType(json);
+							const msg = this.getEventMessageObjectByType(json);
 							if (msg !== null) messages.push(msg);
 						}
 					} catch {
@@ -354,5 +355,20 @@ export class MessageEventBusLogWriter {
 			unsentMessages: result.loggedMessages,
 			unfinishedExecutions: result.unfinishedExecutions,
 		};
+	}
+
+	getEventMessageObjectByType(message: AbstractEventMessageOptions): EventMessageTypes | null {
+		switch (message.__type as EventMessageTypeNames) {
+			case EventMessageTypeNames.generic:
+				return new EventMessageGeneric(message as EventMessageGenericOptions);
+			case EventMessageTypeNames.workflow:
+				return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
+			case EventMessageTypeNames.audit:
+				return new EventMessageAudit(message as EventMessageAuditOptions);
+			case EventMessageTypeNames.node:
+				return new EventMessageNode(message as EventMessageNodeOptions);
+			default:
+				return null;
+		}
 	}
 }

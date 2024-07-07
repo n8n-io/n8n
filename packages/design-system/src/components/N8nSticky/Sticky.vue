@@ -27,6 +27,7 @@
 					:content="modelValue"
 					:with-multi-breaks="true"
 					@markdown-click="onMarkdownClick"
+					@update-content="onUpdateModelValue"
 				/>
 			</div>
 			<div
@@ -93,13 +94,13 @@ const props = withDefaults(defineProps<StickyProps>(), {
 	backgroundColor: 1,
 });
 
-const $emit = defineEmits<{
-	(event: 'edit', editing: boolean);
-	(event: 'update:modelValue', value: string);
-	(event: 'markdown-click', link: string, e: Event);
-	(event: 'resize', values: ResizeData);
-	(event: 'resizestart');
-	(event: 'resizeend', value: unknown);
+const emit = defineEmits<{
+	edit: [editing: boolean];
+	'update:modelValue': [value: string];
+	'markdown-click': [link: string, e: Event];
+	resize: [values: ResizeData];
+	resizestart: [];
+	resizeend: [];
 }>();
 
 const { t } = useI18n();
@@ -136,33 +137,33 @@ watch(
 );
 
 const onDoubleClick = () => {
-	if (!props.readOnly) $emit('edit', true);
+	if (!props.readOnly) emit('edit', true);
 };
 
 const onInputBlur = () => {
-	if (!isResizing.value) $emit('edit', false);
+	if (!isResizing.value) emit('edit', false);
 };
 
 const onUpdateModelValue = (value: string) => {
-	$emit('update:modelValue', value);
+	emit('update:modelValue', value);
 };
 
 const onMarkdownClick = (link: string, event: Event) => {
-	$emit('markdown-click', link, event);
+	emit('markdown-click', link, event);
 };
 
 const onResize = (values: ResizeData) => {
-	$emit('resize', values);
+	emit('resize', values);
 };
 
 const onResizeStart = () => {
 	isResizing.value = true;
-	$emit('resizestart');
+	emit('resizestart');
 };
 
-const onResizeEnd = (resizeEnd: unknown) => {
+const onResizeEnd = () => {
 	isResizing.value = false;
-	$emit('resizeend', resizeEnd);
+	emit('resizeend');
 };
 
 const onInputScroll = (event: WheelEvent) => {

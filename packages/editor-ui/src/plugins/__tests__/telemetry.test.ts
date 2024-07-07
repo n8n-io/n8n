@@ -66,6 +66,30 @@ describe('telemetry', () => {
 			});
 		});
 
+		it('Rudderstack identify method should be called when proving userId and versionCli and projectId', () => {
+			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+
+			const userId = '1';
+			const instanceId = '1';
+			const versionCli = '1';
+			const projectId = '1';
+
+			settingsStore.setSettings(
+				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+					deployment: {
+						type: '',
+					},
+				}),
+			);
+
+			telemetry.identify(userId, instanceId, versionCli, projectId);
+			expect(identifyFunction).toHaveBeenCalledTimes(1);
+			expect(identifyFunction).toHaveBeenCalledWith(`${instanceId}#${userId}#${projectId}`, {
+				instance_id: instanceId,
+				version_cli: versionCli,
+			});
+		});
+
 		it('Rudderstack identify method should be called when proving userId and deployment type is cloud ', () => {
 			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
 

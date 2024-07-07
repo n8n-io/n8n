@@ -349,7 +349,8 @@ export class SamlService {
 		} catch (error) {
 			// throw error;
 			throw new AuthError(
-				`SAML Authentication failed. Could not parse SAML response. ${(error as Error).message}`,
+				// INFO: The error can be a string. Samlify rejects promises with strings.
+				`SAML Authentication failed. Could not parse SAML response. ${error instanceof Error ? error.message : error}`,
 			);
 		}
 		const { attributes, missingAttributes } = getMappedSamlAttributesFromFlowResult(

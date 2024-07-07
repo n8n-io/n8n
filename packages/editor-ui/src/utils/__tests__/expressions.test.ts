@@ -24,6 +24,10 @@ describe('stringifyExpressionResult()', () => {
 		expect(stringifyExpressionResult({ ok: true, result: null })).toEqual('');
 	});
 
+	it('should return NaN when result is NaN', () => {
+		expect(stringifyExpressionResult({ ok: true, result: NaN })).toEqual('NaN');
+	});
+
 	it('should return [empty] message when result is empty string', () => {
 		expect(stringifyExpressionResult({ ok: true, result: '' })).toEqual('[empty]');
 	});

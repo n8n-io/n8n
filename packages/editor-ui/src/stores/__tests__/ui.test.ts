@@ -1,10 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
+import { generateUpgradeLinkUrl, useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useRootStore } from '@/stores/n8nRoot.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
 import {
@@ -18,7 +17,6 @@ import { ROLE } from '@/constants';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
-let rootStore: ReturnType<typeof useRootStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
 function setUser(role: IRole) {
@@ -52,7 +50,7 @@ describe('UI store', () => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
-		rootStore = useRootStore();
+
 		cloudPlanStore = useCloudPlanStore();
 
 		mockedCloudStore = vi.spyOn(cloudPlanStore, 'getAutoLoginCode');
@@ -100,7 +98,7 @@ describe('UI store', () => {
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 	])(
-		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
+		'"generateUpgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
 		async (type, environment, role, expectation) => {
 			setUser(role as IRole);
 
@@ -117,7 +115,7 @@ describe('UI store', () => {
 				}),
 			);
 
-			const updateLinkUrl = await uiStore.upgradeLinkUrl('test_source', 'utm-test-campaign', type);
+			const updateLinkUrl = await generateUpgradeLinkUrl('test_source', 'utm-test-campaign', type);
 
 			expect(updateLinkUrl).toBe(expectation);
 		},

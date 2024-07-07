@@ -1,7 +1,12 @@
+import { Container } from 'typedi';
 import convict from 'convict';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
+import { flatten } from 'flat';
+import merge from 'lodash/merge';
+import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
+
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
@@ -33,9 +38,32 @@ if (!inE2ETests && !inTest) {
 	// optional configuration files
 	const { N8N_CONFIG_FILES } = process.env;
 	if (N8N_CONFIG_FILES !== undefined) {
+		const globalConfig = Container.get(GlobalConfig);
 		const configFiles = N8N_CONFIG_FILES.split(',');
-		console.debug('Loading config overwrites', configFiles);
-		config.loadFile(configFiles);
+		for (const configFile of configFiles) {
+			if (!configFile) continue;
+			// NOTE: This is "temporary" code until we have migrated all config to the new package
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const data = JSON.parse(readFileSync(configFile, 'utf8'));
+				for (const prefix in data) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+					const innerData = data[prefix];
+					if (prefix in globalConfig) {
+						// @ts-ignore
+						merge(globalConfig[prefix], innerData);
+					} else {
+						const flattenedData: Record<string, string> = flatten(innerData);
+						for (const key in flattenedData) {
+							config.set(`${prefix}.${key}`, flattenedData[key]);
+						}
+					}
+				}
+				console.debug('Loaded config overwrites from', configFile);
+			} catch (error) {
+				console.error('Error loading config file', configFile, error);
+			}
+		}
 	}
 
 	// Overwrite config from files defined in "_FILE" environment variables

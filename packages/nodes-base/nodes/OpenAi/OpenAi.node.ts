@@ -9,7 +9,7 @@ export class OpenAi implements INodeType {
 		displayName: 'OpenAI',
 		name: 'openAi',
 		hidden: true,
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

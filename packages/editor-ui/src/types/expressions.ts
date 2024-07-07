@@ -16,6 +16,7 @@ export type Resolvable = {
 	resolved: unknown;
 	state: ResolvableState;
 	error: Error | null;
+	fullError?: Error;
 } & Range;
 
 export type Resolved = Resolvable;

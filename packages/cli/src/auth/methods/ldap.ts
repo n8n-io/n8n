@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 
 import { InternalHooks } from '@/InternalHooks';
-import { LdapService } from '@/Ldap/ldap.service';
+import { LdapService } from '@/Ldap/ldap.service.ee';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -10,8 +10,9 @@ import {
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/Ldap/helpers';
+} from '@/Ldap/helpers.ee';
 import type { User } from '@db/entities/User';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export const handleLdapLogin = async (
 	loginId: string,
@@ -54,6 +55,7 @@ export const handleLdapLogin = async (
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});
+			Container.get(EventRelay).emit('user-signed-up', { user });
 			return user;
 		}
 	} else {

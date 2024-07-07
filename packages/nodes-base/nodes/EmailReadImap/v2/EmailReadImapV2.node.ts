@@ -67,6 +67,7 @@ const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
+	iconColor: 'green',
 	group: ['trigger'],
 	version: 2,
 	description: 'Triggers the workflow when a new email is received',
@@ -298,7 +299,11 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns the email text
 
-		const getText = async (parts: MessagePart[], message: Message, subtype: string) => {
+		const getText = async (
+			parts: MessagePart[],
+			message: Message,
+			subtype: string,
+		): Promise<string> => {
 			if (!message.attributes.struct) {
 				return '';
 			}
@@ -309,12 +314,14 @@ export class EmailReadImapV2 implements INodeType {
 				);
 			});
 
-			if (textParts.length === 0) {
+			const part = textParts[0];
+			if (!part) {
 				return '';
 			}
 
 			try {
-				return await connection.getPartData(message, textParts[0]);
+				const partData = await connection.getPartData(message, part);
+				return partData.toString();
 			} catch {
 				return '';
 			}
@@ -355,7 +362,7 @@ export class EmailReadImapV2 implements INodeType {
 								?.filename as string,
 						);
 						// Return it in the format n8n expects
-						return await this.helpers.prepareBinaryData(Buffer.from(partData), fileName);
+						return await this.helpers.prepareBinaryData(partData.buffer, fileName);
 					});
 
 				attachmentPromises.push(attachmentPromise);

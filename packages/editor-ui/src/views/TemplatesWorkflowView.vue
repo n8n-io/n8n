@@ -31,15 +31,15 @@
 				<WorkflowPreview
 					v-if="showPreview"
 					:loading="loading"
-					:workflow="template && template.workflow"
+					:workflow="template?.workflow"
 					@close="onHidePreview"
 				/>
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown" data-test-id="template-description">
 					<n8n-markdown
-						:content="template && template.description"
-						:images="template && template.image"
+						:content="template?.description"
+						:images="template?.image"
 						:loading="loading"
 					/>
 				</div>

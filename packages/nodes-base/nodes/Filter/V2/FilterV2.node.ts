@@ -101,7 +101,7 @@ export class FilterV2 implements INodeType {
 					discardedItems.push(item);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					discardedItems.push(item);
 				} else {
 					throw error;

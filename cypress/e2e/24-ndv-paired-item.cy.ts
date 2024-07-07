@@ -1,5 +1,4 @@
 import { WorkflowPage, NDV } from '../pages';
-import { v4 as uuid } from 'uuid';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -7,7 +6,7 @@ const ndv = new NDV();
 describe('NDV', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
-		workflowPage.actions.renameWorkflow(uuid());
+		workflowPage.actions.renameWithUniqueName();
 		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
@@ -113,6 +112,9 @@ describe('NDV', () => {
 		workflowPage.actions.executeWorkflow();
 		workflowPage.actions.openNode('Set3');
 
+		ndv.actions.switchInputMode('Table');
+		ndv.actions.switchOutputMode('Table');
+
 		ndv.getters
 			.inputRunSelector()
 			.should('exist')
@@ -123,9 +125,6 @@ describe('NDV', () => {
 			.should('exist')
 			.find('input')
 			.should('include.value', '2 of 2 (6 items)');
-
-		ndv.actions.switchInputMode('Table');
-		ndv.actions.switchOutputMode('Table');
 
 		ndv.actions.changeOutputRunSelector('1 of 2 (6 items)');
 		ndv.getters.inputRunSelector().find('input').should('include.value', '1 of 2 (6 items)');

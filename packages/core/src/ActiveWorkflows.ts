@@ -85,6 +85,7 @@ export class ActiveWorkflows {
 				if (triggerResponse !== undefined) {
 					// If a response was given save it
 
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 					this.activeWorkflows[workflowId].triggerResponses!.push(triggerResponse);
 				}
 			} catch (e) {
@@ -105,6 +106,7 @@ export class ActiveWorkflows {
 
 		for (const pollNode of pollingNodes) {
 			try {
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 				this.activeWorkflows[workflowId].pollResponses!.push(
 					await this.activatePolling(
 						pollNode,
@@ -181,7 +183,7 @@ export class ActiveWorkflows {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
 				throw new ApplicationError(
-					'The polling interval is too short. It has to be at least a minute!',
+					'The polling interval is too short. It has to be at least a minute.',
 				);
 			}
 

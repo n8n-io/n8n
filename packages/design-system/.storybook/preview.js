@@ -2,7 +2,7 @@ import { setup } from '@storybook/vue3';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
 
 import './storybook.scss';
-import '../src/css/tailwind/index.css';
+// import '../src/css/tailwind/index.css';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { fas } from '@fortawesome/free-solid-svg-icons';
