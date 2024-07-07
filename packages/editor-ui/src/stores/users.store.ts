@@ -32,7 +32,7 @@ const _isDefaultUser = (user: IUserResponse | null) =>
 export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
 	const currentUserId = ref<string | null>(null);
-	const users = ref<Record<string, IUser>>({});
+	const usersById = ref<Record<string, IUser>>({});
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
 
 	const RBACStore = useRBACStore();
@@ -44,10 +44,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const postHogStore = usePostHog();
 
-	const allUsers = computed(() => Object.values(users.value));
+	const allUsers = computed(() => Object.values(usersById.value));
 
 	const currentUser = computed(() =>
-		currentUserId.value ? users.value[currentUserId.value] : null,
+		currentUserId.value ? usersById.value[currentUserId.value] : null,
 	);
 
 	const userActivated = computed(() => Boolean(currentUser.value?.settings?.userActivated));
@@ -75,7 +75,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const addUsers = (newUsers: IUserResponse[]) => {
 		newUsers.forEach((userResponse: IUserResponse) => {
-			const prevUser = users.value[userResponse.id] || {};
+			const prevUser = usersById.value[userResponse.id] || {};
 			const updatedUser = {
 				...prevUser,
 				...userResponse,
@@ -89,8 +89,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 				isPendingUser: _isPendingUser(updatedUser),
 			};
 
-			users.value = {
-				...users.value,
+			usersById.value = {
+				...usersById.value,
 				[user.id]: user,
 			};
 		});
@@ -133,8 +133,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const deleteUserById = (userId: string) => {
-		const { [userId]: _, ...rest } = users.value;
-		users.value = rest;
+		const { [userId]: _, ...rest } = usersById.value;
+		usersById.value = rest;
 	};
 
 	const setPersonalizationAnswers = (answers: IPersonalizationLatestVersion) => {
@@ -142,8 +142,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		users.value = {
-			...users.value,
+		usersById.value = {
+			...usersById.value,
 			[currentUser.value.id]: {
 				...currentUser.value,
 				personalizationAnswers: answers,
@@ -246,8 +246,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			userId,
 			settings,
 		);
-		users.value[userId].settings = updatedSettings;
-		addUsers([users.value[userId]]);
+		usersById.value[userId].settings = updatedSettings;
+		addUsers([usersById.value[userId]]);
 	};
 
 	const updateCurrentUserPassword = async ({
@@ -361,14 +361,14 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const reset = () => {
 		initialized.value = false;
 		currentUserId.value = null;
-		users.value = {};
+		usersById.value = {};
 		currentUserCloudInfo.value = null;
 	};
 
 	return {
 		initialized,
 		currentUserId,
-		users,
+		usersById,
 		currentUserCloudInfo,
 		allUsers,
 		currentUser,

@@ -23,7 +23,7 @@ describe('V1 Banner', () => {
 	});
 
 	it('should render banner with dismiss call if user is owner', () => {
-		usersStore.users = { '1': { role: ROLE.Owner } as IUser };
+		usersStore.usersById = { '1': { role: ROLE.Owner } as IUser };
 		usersStore.currentUserId = '1';
 
 		const { container } = render(V1Banner);
