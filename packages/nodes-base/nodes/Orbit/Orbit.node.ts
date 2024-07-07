@@ -1,12 +1,13 @@
-import {
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+
+import { NodeApiError } from 'n8n-workflow';
 
 import { activityFields, activityOperations } from './ActivityDescription';
 
