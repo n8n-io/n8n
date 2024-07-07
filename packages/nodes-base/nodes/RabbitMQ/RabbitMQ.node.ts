@@ -457,7 +457,7 @@ export class RabbitMQ implements INodeType {
 					queuePromises.push(
 						channel.sendToQueue(queue, Buffer.from(message), {
 							headers,
-							...(options.arguments as Options.Publish),
+							...(options.arguments ? (options.arguments as Options.Publish) : {}),
 						}),
 					);
 				}
@@ -529,7 +529,7 @@ export class RabbitMQ implements INodeType {
 					exchangePromises.push(
 						channel.publish(exchange, routingKey, Buffer.from(message), {
 							headers,
-							...(options.arguments as Options.Publish),
+							...(options.arguments ? (options.arguments as Options.Publish) : {}),
 						}),
 					);
 				}
