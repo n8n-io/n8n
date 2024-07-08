@@ -1,8 +1,15 @@
 import CanvasNodeConfiguration from '@/components/canvas/elements/nodes/render-types/CanvasNodeConfiguration.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 const renderComponent = createComponentRenderer(CanvasNodeConfiguration);
+
+beforeEach(() => {
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
+});
 
 describe('CanvasNodeConfiguration', () => {
 	it('should render node correctly', () => {
