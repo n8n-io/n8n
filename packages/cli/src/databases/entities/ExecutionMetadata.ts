@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { ExecutionEntity } from './ExecutionEntity';
 
 @Entity()
@@ -11,10 +11,10 @@ export class ExecutionMetadata {
 	})
 	execution: ExecutionEntity;
 
-	@PrimaryColumn()
+	@Column()
 	executionId: string;
 
-	@PrimaryColumn('text')
+	@Column('text')
 	key: string;
 
 	@Column('text')
