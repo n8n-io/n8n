@@ -75,7 +75,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useCommunityNodesStore),
 		activePackage() {
-			return this.communityNodesStore.getInstalledPackageByName(this.activePackageName);
+			return this.communityNodesStore.installedPackages[this.activePackageName];
 		},
 		getModalContent() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
