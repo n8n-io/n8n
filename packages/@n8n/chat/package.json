@@ -39,15 +39,19 @@
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "catalog:",
-    "vue": "catalog:",
+    "vue": "catalog:frontend",
     "vue-markdown-render": "^2.1.1"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
     "@types/markdown-it": "^12.2.3",
+    "@vitest/coverage-v8": "catalog:frontend",
     "unplugin-icons": "^0.19.0",
-    "vite-plugin-dts": "^3.9.1"
+    "vite": "catalog:frontend",
+    "vitest": "catalog:frontend",
+    "vite-plugin-dts": "^3.9.1",
+    "vue-tsc": "catalog:frontend"
   },
   "files": [
     "README.md",
