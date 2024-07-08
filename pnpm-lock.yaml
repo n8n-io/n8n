@@ -9,6 +9,9 @@ catalogs:
     lodash:
       specifier: 4.17.21
       version: 4.17.21
+    typedi:
+      specifier: 0.10.0
+      version: 0.10.0
     uuid:
       specifier: 8.3.2
       version: 8.3.2
@@ -232,7 +235,7 @@ importers:
         specifier: 0.2.2
         version: 0.2.2
       typedi:
-        specifier: 0.10.0
+        specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
 
   packages/@n8n/imap:
@@ -794,7 +797,7 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       typedi:
-        specifier: 0.10.0
+        specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
@@ -963,7 +966,7 @@ importers:
         specifier: 1.15.0
         version: 1.15.0
       typedi:
-        specifier: 0.10.0
+        specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'
@@ -1347,7 +1350,7 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3
       typedi:
-        specifier: ^0.10.0
+        specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
     devDependencies:
       '@types/inquirer':
@@ -1534,7 +1537,7 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(date-fns@2.30.0)(lodash@4.17.21)(zod@3.23.8)
       typedi:
-        specifier: 0.10.0
+        specifier: 'catalog:'
         version: 0.10.0(patch_hash=sk6omkefrosihg7lmqbzh7vfxe)
       uuid:
         specifier: 'catalog:'

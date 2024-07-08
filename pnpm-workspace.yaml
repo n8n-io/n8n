@@ -7,5 +7,6 @@ packages:
 catalog:
   axios: 1.6.7
   lodash: 4.17.21
+  typedi: 0.10.0
   uuid: 8.3.2
   vue: 3.4.21

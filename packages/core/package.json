@@ -52,7 +52,7 @@
     "pretty-bytes": "5.6.0",
     "qs": "6.11.0",
     "ssh2": "1.15.0",
-    "typedi": "0.10.0",
+    "typedi": "catalog:",
     "uuid": "catalog:",
     "xml2js": "0.6.2"
   }

@@ -886,7 +886,7 @@
     "ssh2-sftp-client": "7.2.3",
     "tmp-promise": "3.0.3",
     "ts-ics": "^1.2.2",
-    "typedi": "0.10.0",
+    "typedi": "catalog:",
     "uuid": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "0.6.2"
