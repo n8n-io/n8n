@@ -854,7 +854,7 @@
     "jsonwebtoken": "9.0.2",
     "kafkajs": "1.16.0",
     "ldapts": "4.2.6",
-    "lodash": "4.17.21",
+    "lodash": "catalog:",
     "lossless-json": "1.0.5",
     "luxon": "3.3.0",
     "mailparser": "3.6.7",

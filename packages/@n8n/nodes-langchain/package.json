@@ -167,7 +167,7 @@
     "jsdom": "^23.0.1",
     "json-schema-to-zod": "2.1.0",
     "langchain": "0.2.2",
-    "lodash": "4.17.21",
+    "lodash": "catalog:",
     "mammoth": "1.7.2",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
