@@ -9,7 +9,7 @@ import {
 	ref,
 	useCssModule,
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -31,7 +31,10 @@ import type { CanvasElement } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
+	MAIN_HEADER_TABS,
+	MODAL_CANCEL,
 	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -70,6 +73,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { getNodeViewTab } from '@/utils/canvasUtils';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -146,7 +150,7 @@ const isExecutionWaitingForWebhook = ref(false);
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
 
-const workflowId = computed<string>(() => route.params.workflowId as string);
+const workflowId = computed<string>(() => route.params.name as string);
 const workflow = computed(() => workflowsStore.workflowsById[workflowId.value]);
 
 const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW_V2);
@@ -238,16 +242,10 @@ async function initializeView() {
 		// const templateId = route.params.id;
 		// await openWorkflowTemplate(templateId.toString());
 	} else {
-		// Get workflow id
-		let workflowIdParam: string | null = null;
-		if (route.params.workflowId) {
-			workflowIdParam = route.params.workflowId.toString();
-		}
-
 		historyStore.reset();
 
 		// If there is no workflow id, treat it as a new workflow
-		if (!workflowIdParam || isNewWorkflowRoute.value) {
+		if (!workflowId.value || isNewWorkflowRoute.value) {
 			if (route.meta?.nodeView === true) {
 				await initializeViewForNewWorkflow();
 			}
@@ -256,7 +254,7 @@ async function initializeView() {
 
 		// Load workflow data
 		try {
-			await workflowsStore.fetchWorkflow(workflowIdParam);
+			await workflowsStore.fetchWorkflow(workflowId.value);
 
 			titleChange.titleSet(workflow.value.name, 'IDLE');
 			await openWorkflow(workflow.value);
@@ -316,29 +314,6 @@ async function runAutoAddManualTriggerExperiment() {
 	if (manualTriggerNode) {
 		await addNodes([manualTriggerNode]);
 		uiStore.lastSelectedNode = manualTriggerNode.name;
-	}
-}
-
-// @ts-expect-error @TODO Add binding on route leave
-async function promptSaveOnBeforeRouteLeave() {
-	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
-		const confirmModal = await message.confirm(
-			i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-			{
-				title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-				type: 'warning',
-				confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				showClose: true,
-			},
-		);
-
-		if (confirmModal === MODAL_CONFIRM) {
-			const saved = await workflowHelpers.saveCurrentWorkflow();
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-		}
 	}
 }
 
@@ -831,6 +806,66 @@ function registerCustomActions() {
 	// 	},
 	// });
 }
+
+/**
+ * Routing
+ */
+
+onBeforeRouteLeave(async (to, from, next) => {
+	const toNodeViewTab = getNodeViewTab(to);
+
+	if (
+		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
+		from.name === VIEWS.TEMPLATE_IMPORT ||
+		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
+	) {
+		next();
+		return;
+	}
+
+	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
+		const confirmModal = await message.confirm(
+			i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+			{
+				title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+				type: 'warning',
+				confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+				cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+				showClose: true,
+			},
+		);
+
+		if (confirmModal === MODAL_CONFIRM) {
+			// Make sure workflow id is empty when leaving the editor
+			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			const saved = await workflowHelpers.saveCurrentWorkflow({}, false);
+			if (saved) {
+				await npsSurveyStore.fetchPromptsData();
+			}
+			uiStore.stateIsDirty = false;
+
+			if (from.name === VIEWS.NEW_WORKFLOW_V2) {
+				// Replace the current route with the new workflow route
+				// before navigating to the new route when saving new workflow.
+				await router.replace({
+					name: VIEWS.WORKFLOW_V2,
+					params: { name: workflowId.value },
+				});
+
+				await router.push(to);
+			} else {
+				next();
+			}
+		} else if (confirmModal === MODAL_CANCEL) {
+			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			resetWorkspace();
+			uiStore.stateIsDirty = false;
+			next();
+		}
+	} else {
+		next();
+	}
+});
 
 /**
  * Lifecycle
