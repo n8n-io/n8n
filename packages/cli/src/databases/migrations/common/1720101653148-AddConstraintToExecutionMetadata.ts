@@ -1,4 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { nanoid } from 'nanoid';
 
 export class AddConstraintToExecutionMetadata1720101653148 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -14,9 +15,6 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 		const key = escape.columnName('key');
 		const value = escape.columnName('value');
 
-		//CREATE TABLE `test_execution_metadata_temp` (`id` int NOT NULL AUTO_INCREMENT, `executionId` int NOT NULL, `key` text NOT NULL, `value` text NOT NULL, UNIQUE INDEX `IDX_1cd301d79996ba307cf3906f3e` (`executionId`, `key`), C ONSTRAINT `FK_8464d79ae0da9eca88e68bdb53b` FOREIGN KEY (`executionId`) REFERENCES `test_execution_entity` (`id`) ON DELETE CASCADE, PRIMARY KEY (`id`)) ENGINE=InnoDB
-		//CREATE TABLE `test_execution_metadata_temp` (`id` int NOT NULL AUTO_INCREMENT, `executionId` int NOT NULL, `key` text NOT NULL, `value` text NOT NULL, CONSTRAINT `FK_8464d79ae0da9eca88e68bdb53b` FOREIGN KEY (`executionId`) REFERE NCES `test_execution_entity` (`id`) ON DELETE CASCADE, PRIMARY KEY (`id`)) ENGINE=InnoDB
-
 		await createTable(executionMetadataTableTempRaw)
 			.withColumns(
 				column('id').int.notNull.primary.autoGenerate,
@@ -31,13 +29,35 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+				// In MySQL foreignKey names must be unique across all tables and
+				// TypeORM creates predictable names based on the columnName.
+				// So the temp table's foreignKey clashes with the current table's.
+				name: context.isMysql ? nanoid() : undefined,
 			})
 			.withIndexOn(['executionId', 'key'], true);
 
-		await context.runQuery(`
+		if (context.isMysql) {
+			await context.runQuery(`
+				INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
+				SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
+				FROM ${executionMetadataTable}
+				GROUP BY ${executionId}, ${key}
+				ON DUPLICATE KEY UPDATE
+						id = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${id}), ${executionMetadataTableTemp}.${id}),
+						value = IF(VALUES(${id}) > ${executionMetadataTableTemp}.${id}, VALUES(${value}), ${executionMetadataTableTemp}.${value});
+				`);
+		} else {
+			await context.runQuery(`
 			INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
-			SELECT ${id}, ${executionId}, ${key}, ${value} FROM ${executionMetadataTable};
+			SELECT MAX(${id}) as ${id}, ${executionId}, ${key}, MAX(${value})
+			FROM ${executionMetadataTable}
+			GROUP BY ${executionId}, ${key}
+			ON CONFLICT (${executionId}, ${key}) DO UPDATE SET
+					id = EXCLUDED.id,
+					value = EXCLUDED.value
+			WHERE EXCLUDED.id > ${executionMetadataTableTemp}.id;
 		`);
+		}
 
 		await dropTable(executionMetadataTableRaw);
 		await context.runQuery(
@@ -60,7 +80,11 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 
 		await createTable(executionMetadataTableTempRaw)
 			.withColumns(
-				column('id').int.notNull.primary.autoGenerate,
+				// INFO: The PK names that TypeORM creates are predictable and thus it
+				// will create a PK name which already exists in the current
+				// execution_metadata table. That's why we have to randomize the PK name
+				// here.
+				column('id').int.notNull.primaryWithName(nanoid()).autoGenerate,
 				column('executionId').int.notNull,
 				column('key').text.notNull,
 				column('value').text.notNull,
@@ -69,8 +93,11 @@ export class AddConstraintToExecutionMetadata1720101653148 implements Reversible
 				tableName: 'execution_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+				// In MySQL foreignKey names must be unique across all tables and
+				// TypeORM creates predictable names based on the columnName.
+				// So the temp table's foreignKey clashes with the current table's.
+				name: context.isMysql ? nanoid() : undefined,
 			});
-		//.withIndexOn(['executionId', 'key'], true);
 
 		await context.runQuery(`
 			INSERT INTO ${executionMetadataTableTemp} (${id}, ${executionId}, ${key}, ${value})
