@@ -23,9 +23,8 @@ describe('V1 Banner', () => {
 	});
 
 	it('should render banner with dismiss call if user is owner', () => {
-		vi.spyOn(usersStore, 'currentUser', 'get').mockReturnValue({
-			role: ROLE.Owner,
-		} as IUser);
+		usersStore.usersById = { '1': { role: ROLE.Owner } as IUser };
+		usersStore.currentUserId = '1';
 
 		const { container } = render(V1Banner);
 		expect(container).toMatchSnapshot();
