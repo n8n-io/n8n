@@ -363,7 +363,7 @@ export const routes: RouteRecordRaw[] = [
 		redirect: '/workflow/new',
 	},
 	{
-		path: '/workflow-v2/:workflowId',
+		path: '/workflow-v2/:name',
 		name: VIEWS.WORKFLOW_V2,
 		components: {
 			default: NodeViewV2,
