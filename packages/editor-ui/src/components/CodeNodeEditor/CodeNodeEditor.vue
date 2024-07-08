@@ -94,7 +94,7 @@ const props = withDefaults(defineProps<Props>(), {
 	rows: 4,
 });
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 const message = useMessage();

@@ -9,7 +9,7 @@ import type {
 
 import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
-import { isoCountryCodes } from './IsoCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {

@@ -57,7 +57,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'click'): void;
+	click: [];
 }>();
 
 const rootStore = useRootStore();

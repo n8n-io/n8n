@@ -2,7 +2,7 @@ import type { User } from '@db/entities/User';
 import { PasswordUtility } from '@/services/password.utility';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
-import { isLdapLoginEnabled } from '@/Ldap/helpers';
+import { isLdapLoginEnabled } from '@/Ldap/helpers.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 

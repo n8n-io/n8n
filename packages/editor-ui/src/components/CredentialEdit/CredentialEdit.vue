@@ -448,8 +448,8 @@ const showSharingContent = computed(() => activeTab.value === 'sharing' && !!cre
 
 onMounted(async () => {
 	requiredCredentials.value =
-		isCredentialModalState(uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
-		uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
+		isCredentialModalState(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
+		uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
 
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({

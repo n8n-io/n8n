@@ -155,9 +155,9 @@ const htmlContent = computed(() => {
 	return safeHtml;
 });
 
-const $emit = defineEmits<{
-	(event: 'markdown-click', link: string, e: MouseEvent): void;
-	(event: 'update-content', content: string): void;
+const emit = defineEmits<{
+	'markdown-click': [link: string, e: MouseEvent];
+	'update-content': [content: string];
 }>();
 
 const onClick = (event: MouseEvent) => {
@@ -174,7 +174,7 @@ const onClick = (event: MouseEvent) => {
 		}
 	}
 	if (clickedLink) {
-		$emit('markdown-click', clickedLink?.href, event);
+		emit('markdown-click', clickedLink?.href, event);
 	}
 };
 
@@ -209,7 +209,7 @@ const onCheckboxChange = (index: number) => {
 
 	// We are using index to connect the checkbox with the corresponding line in the markdown
 	const newContent = toggleCheckbox(currentContent, index);
-	$emit('update-content', newContent);
+	emit('update-content', newContent);
 };
 </script>
 

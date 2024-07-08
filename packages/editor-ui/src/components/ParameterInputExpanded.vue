@@ -84,7 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 });
 const emit = defineEmits<{
-	(event: 'update', value: IUpdateInformation): void;
+	update: [value: IUpdateInformation];
 }>();
 
 const focused = ref(false);

@@ -5,13 +5,13 @@ import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 
 defineEmits<{
-	(key: 'click', event: MouseEvent): void;
+	click: [event: MouseEvent];
 }>();
 
 const uiStore = useUIStore();
 const locale = useI18n();
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
 
 const runButtonText = computed(() => {
 	if (!workflowRunning.value) {

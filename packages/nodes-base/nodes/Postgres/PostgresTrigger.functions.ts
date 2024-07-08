@@ -6,8 +6,9 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
-import type pg from 'pg-promise/typescript/pg-subset';
+
+import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';
+import { configurePostgres } from './v2/transport';
 
 export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
 	let suffix = id.replace(/-/g, '_');
@@ -35,7 +36,7 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	additionalFields: IDataObject,
 	functionName: string,
 	triggerName: string,
@@ -86,43 +87,12 @@ export async function pgTriggerFunction(
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
 	const options = this.getNodeParameter('options', {}) as {
 		connectionTimeout?: number;
 		delayClosingIdleConnection?: number;
 	};
-	const pgp = pgPromise({
-		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
-		noWarnings: true,
-	});
-	const config: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
-		keepAlive: true,
-	};
-
-	if (options.connectionTimeout) {
-		config.connectionTimeoutMillis = options.connectionTimeout * 1000;
-	}
-
-	if (options.delayClosingIdleConnection) {
-		config.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
-	}
-
-	if (credentials.allowUnauthorizedCerts === true) {
-		config.ssl = {
-			rejectUnauthorized: false,
-		};
-	} else {
-		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		config.sslmode = (credentials.ssl as string) || 'disable';
-	}
-
-	const db = pgp(config);
-	return { db, pgp };
+	return await configurePostgres.call(this, credentials, options);
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {

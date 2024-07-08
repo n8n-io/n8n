@@ -108,7 +108,7 @@ export function hasNoParams(toResolve: string) {
 //        state-based utils
 // ----------------------------------
 
-export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
+export const isCredentialsModalOpen = () => useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY].open;
 
 export const isInHttpNodePagination = () => {
 	const ndvStore = useNDVStore();

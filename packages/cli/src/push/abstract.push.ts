@@ -1,9 +1,6 @@
-import { EventEmitter } from 'events';
 import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import type { Logger } from '@/Logger';
-import type { User } from '@db/entities/User';
-import type { OrchestrationService } from '@/services/orchestration.service';
 
 /**
  * Abstract class for two-way push communication.
@@ -11,23 +8,16 @@ import type { OrchestrationService } from '@/services/orchestration.service';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> extends EventEmitter {
+export abstract class AbstractPush<T> {
 	protected connections: Record<string, T> = {};
-
-	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOneConnection(connection: T, data: string): void;
 
-	constructor(
-		protected readonly logger: Logger,
-		private readonly orchestrationService: OrchestrationService,
-	) {
-		super();
-	}
+	constructor(protected readonly logger: Logger) {}
 
-	protected add(pushRef: string, userId: User['id'], connection: T) {
-		const { connections, userIdByPushRef } = this;
+	protected add(pushRef: string, connection: T) {
+		const { connections } = this;
 		this.logger.debug('Add editor-UI session', { pushRef });
 
 		const existingConnection = connections[pushRef];
@@ -38,15 +28,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 
 		connections[pushRef] = connection;
-		userIdByPushRef[pushRef] = userId;
-	}
-
-	protected onMessageReceived(pushRef: string, msg: unknown) {
-		this.logger.debug('Received message from editor-UI', { pushRef, msg });
-
-		const userId = this.userIdByPushRef[pushRef];
-
-		this.emit('message', { pushRef, userId, msg });
 	}
 
 	protected remove(pushRef?: string) {
@@ -55,7 +36,6 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		this.logger.debug('Removed editor-UI session', { pushRef });
 
 		delete this.connections[pushRef];
-		delete this.userIdByPushRef[pushRef];
 	}
 
 	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
@@ -77,36 +57,13 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		this.sendTo(type, data, Object.keys(this.connections));
 	}
 
-	sendToOneSession(type: IPushDataType, data: unknown, pushRef: string) {
-		/**
-		 * Multi-main setup: In a manual webhook execution, the main process that
-		 * handles a webhook might not be the same as the main process that created
-		 * the webhook. If so, the handler process commands the creator process to
-		 * relay the former's execution lifecycle events to the creator's frontend.
-		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.hasPushRef(pushRef)) {
-			const payload = { type, args: data, pushRef };
-
-			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
-
-			return;
-		}
-
+	sendToOne(type: IPushDataType, data: unknown, pushRef: string) {
 		if (this.connections[pushRef] === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
 		this.sendTo(type, data, [pushRef]);
-	}
-
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
-		const { connections } = this;
-		const userPushRefs = Object.keys(connections).filter((pushRef) =>
-			userIds.includes(this.userIdByPushRef[pushRef]),
-		);
-
-		this.sendTo(type, data, userPushRefs);
 	}
 
 	closeAllConnections() {

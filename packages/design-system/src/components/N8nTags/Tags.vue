@@ -4,7 +4,7 @@
 			v-for="tag in visibleTags"
 			:key="tag.id"
 			:text="tag.name"
-			@click="$emit('click:tag', tag.id, $event)"
+			@click="emit('click:tag', tag.id, $event)"
 		/>
 		<N8nLink
 			v-if="truncate && !showAll && hiddenTagsLength > 0"
@@ -42,9 +42,9 @@ const props = withDefaults(defineProps<TagsProp>(), {
 	truncateAt: 3,
 });
 
-const $emit = defineEmits<{
-	(event: 'expand', value: boolean): void;
-	(event: 'click:tag', tagId: string, e: MouseEvent): void;
+const emit = defineEmits<{
+	expand: [value: boolean];
+	'click:tag': [tagId: string, e: MouseEvent];
 }>();
 
 const { t } = useI18n();
@@ -63,7 +63,7 @@ const hiddenTagsLength = computed((): number => props.tags.length - props.trunca
 
 const onExpand = () => {
 	showAll.value = true;
-	$emit('expand', true);
+	emit('expand', true);
 };
 </script>
 
