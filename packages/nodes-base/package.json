@@ -802,7 +802,7 @@
   "devDependencies": {
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
-    "@types/basic-auth": "^1.1.3",
+    "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/eventsource": "^1.1.2",
     "@types/express": "catalog:",
@@ -833,7 +833,7 @@
     "amqplib": "0.10.3",
     "alasql": "^4.4.0",
     "aws4": "1.11.0",
-    "basic-auth": "2.0.1",
+    "basic-auth": "catalog:",
     "change-case": "4.1.2",
     "cheerio": "1.0.0-rc.6",
     "chokidar": "3.5.2",

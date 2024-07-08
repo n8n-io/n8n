@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@types/basic-auth':
+      specifier: ^1.1.3
+      version: 1.1.3
     '@types/express':
       specifier: ^4.17.21
       version: 4.17.21
@@ -18,9 +21,15 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
+    basic-auth:
+      specifier: 2.0.1
+      version: 2.0.1
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
+    form-data:
+      specifier: 4.0.0
+      version: 4.0.0
     lodash:
       specifier: 4.17.21
       version: 4.17.21
@@ -383,7 +392,7 @@ importers:
         specifier: 0.28.4
         version: 0.28.4(typescript@5.5.2)
       basic-auth:
-        specifier: 2.0.1
+        specifier: 'catalog:'
         version: 2.0.1
       cheerio:
         specifier: 1.0.0-rc.12
@@ -398,7 +407,7 @@ importers:
         specifier: 3.0.2
         version: 3.0.2(ts-toolbelt@9.6.0)
       form-data:
-        specifier: 4.0.0
+        specifier: 'catalog:'
         version: 4.0.0
       generate-schema:
         specifier: 2.6.0
@@ -456,7 +465,7 @@ importers:
         version: 3.23.0(zod@3.23.8)
     devDependencies:
       '@types/basic-auth':
-        specifier: ^1.1.3
+        specifier: 'catalog:'
         version: 1.1.3
       '@types/cheerio':
         specifier: ^0.22.15
@@ -960,7 +969,7 @@ importers:
         specifier: 16.5.4
         version: 16.5.4
       form-data:
-        specifier: 4.0.0
+        specifier: 'catalog:'
         version: 4.0.0
       lodash:
         specifier: 'catalog:'
@@ -1402,7 +1411,7 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       basic-auth:
-        specifier: 2.0.1
+        specifier: 'catalog:'
         version: 2.0.1
       change-case:
         specifier: 4.1.2
@@ -1580,7 +1589,7 @@ importers:
         specifier: ^1.5.1
         version: 1.11.2
       '@types/basic-auth':
-        specifier: ^1.1.3
+        specifier: 'catalog:'
         version: 1.1.3
       '@types/cheerio':
         specifier: ^0.22.15
@@ -1673,7 +1682,7 @@ importers:
         specifier: 5.8.4
         version: 5.8.4
       form-data:
-        specifier: 4.0.0
+        specifier: 'catalog:'
         version: 4.0.0
       jmespath:
         specifier: 0.16.0

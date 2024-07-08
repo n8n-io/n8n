@@ -42,7 +42,7 @@
     "cron": "3.1.7",
     "fast-glob": "catalog:",
     "file-type": "16.5.4",
-    "form-data": "4.0.0",
+    "form-data": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",

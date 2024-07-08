@@ -119,7 +119,7 @@
     ]
   },
   "devDependencies": {
-    "@types/basic-auth": "^1.1.3",
+    "@types/basic-auth": "catalog:",
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
@@ -156,12 +156,12 @@
     "@supabase/supabase-js": "2.43.4",
     "@types/pg": "^8.11.3",
     "@xata.io/client": "0.28.4",
-    "basic-auth": "2.0.1",
+    "basic-auth": "catalog:",
     "cheerio": "1.0.0-rc.12",
     "cohere-ai": "7.10.1",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.2",
-    "form-data": "4.0.0",
+    "form-data": "catalog:",
     "generate-schema": "2.6.0",
     "html-to-text": "9.0.5",
     "jsdom": "^23.0.1",
