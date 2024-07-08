@@ -65,9 +65,8 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
 
 	return endpoint.replace(
-		/({{ *(access_token|dtable_uuid|server) *}})/g,
+		/{{ *(access_token|dtable_uuid|server) *}}/g,
 		(match: string, name: TEndpointVariableName) => {
-			// I need expr. Why?
 			return (endpointVariables[name] as string) || match;
 		},
 	);
@@ -127,7 +126,7 @@ export async function seaTableApiRequest(
 	}
 
 	// DEBUG-MODE OR API-REQUESTS
-	// console.log(options);
+	//console.log(options);
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;

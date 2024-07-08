@@ -1,8 +1,8 @@
 import type { INodeProperties } from 'n8n-workflow';
-import * as snapshot from './snapshot';
-import * as metadata from './metadata';
-import * as apiCall from './apiCall';
-import * as collaborator from './collaborator';
+import * as snapshot from './snapshot.operation';
+import * as metadata from './metadata.operation';
+import * as apiCall from './apiCall.operation';
+import * as collaborator from './collaborator.operation';
 
 export { snapshot, metadata, apiCall, collaborator };
 
