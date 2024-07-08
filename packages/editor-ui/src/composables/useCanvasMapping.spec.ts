@@ -7,24 +7,27 @@ import { mock } from 'vitest-mock-extended';
 
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { IWorkflowDb } from '@/Interface';
-import { createTestWorkflowObject, mockNode, mockNodes } from '@/__tests__/mocks';
-import { MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-
-vi.mock('@/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(() => ({
-			name: 'test',
-			description: 'Test Node Description',
-		})),
-		isTriggerNode: vi.fn(),
-		isConfigNode: vi.fn(),
-		isConfigurableNode: vi.fn(),
-	})),
-}));
+import {
+	createTestWorkflowObject,
+	mockNode,
+	mockNodes,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
+import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 beforeEach(() => {
 	const pinia = createPinia();
 	setActivePinia(pinia);
+
+	useNodeTypesStore().setNodeTypes([
+		mockNodeTypeDescription({
+			name: MANUAL_TRIGGER_NODE_TYPE,
+		}),
+		mockNodeTypeDescription({
+			name: SET_NODE_TYPE,
+		}),
+	]);
 });
 
 afterEach(() => {
@@ -75,13 +78,41 @@ describe('useCanvasMapping', () => {
 						type: manualTriggerNode.type,
 						typeVersion: expect.anything(),
 						disabled: false,
-						inputs: [],
-						outputs: [],
+						execution: {
+							status: 'new',
+							waiting: undefined,
+						},
+						issues: {
+							items: [],
+							visible: false,
+						},
+						pinnedData: {
+							count: 0,
+							visible: false,
+						},
+						runData: {
+							count: 0,
+							visible: false,
+						},
+						inputs: [
+							{
+								index: 0,
+								label: undefined,
+								type: 'main',
+							},
+						],
+						outputs: [
+							{
+								index: 0,
+								label: undefined,
+								type: 'main',
+							},
+						],
 						connections: {
 							input: {},
 							output: {},
 						},
-						renderType: 'default',
+						renderType: 'trigger',
 					},
 				},
 			]);
@@ -173,6 +204,7 @@ describe('useCanvasMapping', () => {
 							index: 0,
 							type: NodeConnectionType.Main,
 						},
+						status: undefined,
 						target: {
 							index: 0,
 							type: NodeConnectionType.Main,
@@ -219,6 +251,7 @@ describe('useCanvasMapping', () => {
 							index: 0,
 							type: NodeConnectionType.AiTool,
 						},
+						status: undefined,
 						target: {
 							index: 0,
 							type: NodeConnectionType.AiTool,
@@ -239,6 +272,7 @@ describe('useCanvasMapping', () => {
 							index: 0,
 							type: NodeConnectionType.AiDocument,
 						},
+						status: undefined,
 						target: {
 							index: 1,
 							type: NodeConnectionType.AiDocument,

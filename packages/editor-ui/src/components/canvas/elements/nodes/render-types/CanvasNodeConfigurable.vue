@@ -1,33 +1,40 @@
 <script lang="ts" setup>
-import { computed, inject, useCssModule } from 'vue';
-import { CanvasNodeKey, NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import { computed, useCssModule } from 'vue';
+import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { useI18n } from '@/composables/useI18n';
 import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThrough.vue';
-
-const node = inject(CanvasNodeKey);
+import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 
 const $style = useCssModule();
 const i18n = useI18n();
 
-const label = computed(() => node?.label.value ?? '');
-
-const inputs = computed(() => node?.data.value.inputs ?? []);
-const outputs = computed(() => node?.data.value.outputs ?? []);
-const connections = computed(() => node?.data.value.connections ?? { input: {}, output: {} });
+const {
+	label,
+	inputs,
+	outputs,
+	connections,
+	isDisabled,
+	isSelected,
+	hasPinnedData,
+	hasRunData,
+	hasIssues,
+} = useCanvasNode();
 const { nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
 });
 
-const isDisabled = computed(() => node?.data.value.disabled ?? false);
-
 const classes = computed(() => {
 	return {
 		[$style.node]: true,
-		[$style.selected]: node?.selected.value,
+		[$style.selected]: isSelected.value,
 		[$style.disabled]: isDisabled.value,
+		[$style.success]: hasRunData.value,
+		[$style.error]: hasIssues.value,
+		[$style.pinned]: hasPinnedData.value,
 	};
 });
 
@@ -54,6 +61,7 @@ const styles = computed(() => {
 <template>
 	<div :class="classes" :style="styles" data-test-id="canvas-node-configurable">
 		<slot />
+		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
 		<div :class="$style.label">
 			{{ label }}
@@ -80,6 +88,31 @@ const styles = computed(() => {
 	background: var(--canvas-node--background, var(--color-node-background));
 	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
+
+	&.selected {
+		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+	}
+
+	/**
+	 * State classes
+	 * The reverse order defines the priority in case multiple states are active
+	 */
+
+	&.error {
+		border-color: var(--color-canvas-node-error-border-color, var(--color-danger));
+	}
+
+	&.success {
+		border-color: var(--color-canvas-node-success-border-color, var(--color-success));
+	}
+
+	&.pinned {
+		border-color: var(--color-canvas-node-pinned-border, var(--color-node-pinned-border));
+	}
+
+	&.disabled {
+		border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
+	}
 }
 
 .label {
@@ -93,11 +126,9 @@ const styles = computed(() => {
 	);
 }
 
-.selected {
-	box-shadow: 0 0 0 4px var(--color-canvas-selected);
-}
-
-.disabled {
-	border-color: var(--color-canvas-node-disabled-border, var(--color-foreground-base));
+.statusIcons {
+	position: absolute;
+	top: calc(var(--canvas-node--height) - 24px);
+	right: var(--spacing-xs);
 }
 </style>

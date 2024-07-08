@@ -451,6 +451,7 @@ export const enum VIEWS {
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
+	NEW_WORKFLOW_V2 = 'NodeViewNewV2',
 	WORKFLOW = 'NodeViewExisting',
 	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',
@@ -489,8 +490,9 @@ export const enum VIEWS {
 export const EDITABLE_CANVAS_VIEWS = [
 	VIEWS.WORKFLOW,
 	VIEWS.NEW_WORKFLOW,
-	VIEWS.EXECUTION_DEBUG,
 	VIEWS.WORKFLOW_V2,
+	VIEWS.NEW_WORKFLOW_V2,
+	VIEWS.EXECUTION_DEBUG,
 ];
 
 export const enum FAKE_DOOR_FEATURES {
