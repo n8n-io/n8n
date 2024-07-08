@@ -177,7 +177,7 @@ describe('Data pinning', () => {
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
 
-		cy.get('div').contains(output).should('exist');
+		cy.get('div').contains(output).should('be.visible');
 	});
 
 	it('should use pin data in manual executions that are started by a webhook', () => {
