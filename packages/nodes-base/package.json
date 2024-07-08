@@ -842,7 +842,7 @@
     "currency-codes": "2.1.0",
     "eventsource": "2.0.2",
     "html-to-text": "9.0.5",
-    "fast-glob": "3.2.12",
+    "fast-glob": "catalog:",
     "fflate": "0.7.4",
     "get-system-fonts": "2.0.2",
     "gm": "1.25.0",
@@ -889,6 +889,6 @@
     "typedi": "catalog:",
     "uuid": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
-    "xml2js": "0.6.2"
+    "xml2js": "catalog:"
   }
 }

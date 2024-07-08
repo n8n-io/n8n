@@ -6,12 +6,18 @@ settings:
 
 catalogs:
   default:
+    fast-glob:
+      specifier: 3.2.12
+      version: 3.2.12
     lodash:
       specifier: 4.17.21
       version: 4.17.21
     luxon:
       specifier: 3.4.4
       version: 3.4.4
+    nanoid:
+      specifier: 3.3.6
+      version: 3.3.6
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -21,6 +27,9 @@ catalogs:
     vue:
       specifier: 3.4.21
       version: 3.4.21
+    xml2js:
+      specifier: 0.6.2
+      version: 0.6.2
 
 overrides:
   '@types/node': ^18.16.16
@@ -157,7 +166,7 @@ importers:
         specifier: 'catalog:'
         version: 4.17.21
       nanoid:
-        specifier: 3.3.6
+        specifier: 'catalog:'
         version: 3.3.6
       start-server-and-test:
         specifier: ^2.0.3
@@ -659,7 +668,7 @@ importers:
         specifier: 7.2.0
         version: 7.2.0(express@4.19.2)
       fast-glob:
-        specifier: 3.2.12
+        specifier: 'catalog:'
         version: 3.2.12
       flat:
         specifier: 5.0.2
@@ -719,7 +728,7 @@ importers:
         specifier: workspace:*
         version: link:../workflow
       nanoid:
-        specifier: 3.3.6
+        specifier: 'catalog:'
         version: 3.3.6
       nodemailer:
         specifier: 6.9.9
@@ -815,7 +824,7 @@ importers:
         specifier: '>=8.17.1'
         version: 8.17.1
       xml2js:
-        specifier: 0.6.2
+        specifier: 'catalog:'
         version: 0.6.2
       xmllint-wasm:
         specifier: 3.0.1
@@ -933,7 +942,7 @@ importers:
         specifier: 3.1.7
         version: 3.1.7
       fast-glob:
-        specifier: 3.2.12
+        specifier: 'catalog:'
         version: 3.2.12
       file-type:
         specifier: 16.5.4
@@ -975,7 +984,7 @@ importers:
         specifier: 'catalog:'
         version: 8.3.2
       xml2js:
-        specifier: 0.6.2
+        specifier: 'catalog:'
         version: 0.6.2
     devDependencies:
       '@types/aws4':
@@ -1335,7 +1344,7 @@ importers:
         specifier: ^4.1.1
         version: 4.1.2
       fast-glob:
-        specifier: ^3.2.5
+        specifier: 'catalog:'
         version: 3.2.12
       inquirer:
         specifier: ^7.0.1
@@ -1405,7 +1414,7 @@ importers:
         specifier: 2.0.2
         version: 2.0.2
       fast-glob:
-        specifier: 3.2.12
+        specifier: 'catalog:'
         version: 3.2.12
       fflate:
         specifier: 0.7.4
@@ -1549,7 +1558,7 @@ importers:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
       xml2js:
-        specifier: 0.6.2
+        specifier: 'catalog:'
         version: 0.6.2
     devDependencies:
       '@types/amqplib':
@@ -1682,7 +1691,7 @@ importers:
         specifier: 2.3.5
         version: 2.3.5
       xml2js:
-        specifier: 0.6.2
+        specifier: 'catalog:'
         version: 0.6.2
     devDependencies:
       '@langchain/core':
@@ -22332,7 +22341,7 @@ snapshots:
     dependencies:
       array-union: 2.1.0
       dir-glob: 3.0.1
-      fast-glob: 3.2.12
+      fast-glob: 3.3.2
       ignore: 5.2.4
       merge2: 1.4.1
       slash: 3.0.0
@@ -22653,7 +22662,7 @@ snapshots:
 
   ics@2.40.0:
     dependencies:
-      nanoid: 3.3.6
+      nanoid: 3.3.7
       yup: 0.32.11
 
   ieee754@1.2.1: {}
@@ -24287,7 +24296,7 @@ snapshots:
   minifaker@1.34.1:
     dependencies:
       '@types/uuid': 8.3.4
-      nanoid: 3.3.6
+      nanoid: 3.3.7
       uuid: 8.3.2
 
   minimalistic-assert@1.0.1: {}
@@ -25320,7 +25329,7 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.6
+      nanoid: 3.3.7
       picocolors: 1.0.0
       source-map-js: 1.2.0
 

@@ -40,7 +40,7 @@
     "axios": "catalog:",
     "concat-stream": "2.0.0",
     "cron": "3.1.7",
-    "fast-glob": "3.2.12",
+    "fast-glob": "catalog:",
     "file-type": "16.5.4",
     "form-data": "4.0.0",
     "lodash": "catalog:",
@@ -54,6 +54,6 @@
     "ssh2": "1.15.0",
     "typedi": "catalog:",
     "uuid": "catalog:",
-    "xml2js": "0.6.2"
+    "xml2js": "catalog:"
   }
 }

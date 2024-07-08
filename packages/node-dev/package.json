@@ -40,7 +40,7 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "change-case": "^4.1.1",
-    "fast-glob": "^3.2.5",
+    "fast-glob": "catalog:",
     "inquirer": "^7.0.1",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
