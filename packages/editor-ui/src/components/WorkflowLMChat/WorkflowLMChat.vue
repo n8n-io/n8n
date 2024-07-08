@@ -555,6 +555,7 @@ function onArrowKeyDown({ currentInputValue, key }: ArrowKeyDownPayload) {
 		currentInputValue.length === 0 || pastMessages.includes(currentInputValue);
 
 	if (isCurrentInputEmptyOrMatch && (key === 'ArrowUp' || key === 'ArrowDown')) {
+		// Blur the input when the user presses the up or down arrow key
 		chatEventBus.emit('blurInput');
 
 		if (pastMessages.length === 1) {
