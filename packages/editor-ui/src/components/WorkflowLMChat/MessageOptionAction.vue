@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 const emit = defineEmits<{
-	(event: 'click'): void;
+	click: [];
 }>();
 
 defineProps<{
