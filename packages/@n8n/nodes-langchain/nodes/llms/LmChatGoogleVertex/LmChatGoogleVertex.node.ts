@@ -226,30 +226,25 @@ export class LmChatGoogleVertex implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		try {
-			const model = new ChatVertexAI({
-				authOptions: {
-					projectId,
-					credentials: {
-						client_email: credentials.email as string,
-						private_key: credentials.privateKey as string,
-					},
+		const model = new ChatVertexAI({
+			authOptions: {
+				projectId,
+				credentials: {
+					client_email: credentials.email as string,
+					private_key: credentials.privateKey as string,
 				},
-				model: modelName,
-				topK: options.topK,
-				topP: options.topP,
-				temperature: options.temperature,
-				maxOutputTokens: options.maxOutputTokens,
-				safetySettings,
-				callbacks: [new N8nLlmTracing(this)],
-			});
+			},
+			model: modelName,
+			topK: options.topK,
+			topP: options.topP,
+			temperature: options.temperature,
+			maxOutputTokens: options.maxOutputTokens,
+			safetySettings,
+			callbacks: [new N8nLlmTracing(this)],
+		});
 
-			return {
-				response: model,
-			};
-		} catch (e) {
-			console.error(e);
-			throw e;
-		}
+		return {
+			response: model,
+		};
 	}
 }
