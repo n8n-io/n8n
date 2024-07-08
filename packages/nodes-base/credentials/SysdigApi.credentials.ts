@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class SysdigApi implements ICredentialType {
 	name = 'sysdigApi';
@@ -23,6 +28,15 @@ export class SysdigApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.malcore.io/api',
+			url: '/urlcheck',
+			method: 'POST',
+			body: { url: 'google.com' },
 		},
 	};
 }
