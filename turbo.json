@@ -1,17 +1,74 @@
 {
-	"$schema": "https://turborepo.org/schema.json",
-	"pipeline": {
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "stream",
+	"tasks": {
 		"clean": {
 			"cache": false
+		},
+		"build:backend": {
+			"dependsOn": ["n8n#build"]
+		},
+		"build:frontend": {
+			"dependsOn": ["n8n-editor-ui#build"]
+		},
+		"build:nodes": {
+			"dependsOn": ["n8n-nodes-base#build", "@n8n/n8n-nodes-langchain#build"]
 		},
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"]
 		},
-		"typecheck": {},
+		"typecheck": {
+			"dependsOn": ["^typecheck"]
+		},
 		"format": {},
+		"lint:backend": {
+			"dependsOn": [
+				"@n8n/client-oauth2#lint",
+				"@n8n/imap#lint",
+				"@n8n/permissions#lint",
+				"n8n-workflow#lint",
+				"n8n-core#lint",
+				"n8n-node-dev#lint",
+				"n8n#lint"
+			]
+		},
+		"lint:frontend": {
+			"dependsOn": [
+				"@n8n/chat#lint",
+				"@n8n/codemirror-lang#lint",
+				"@n8n/storybook#lint",
+				"n8n-cypress#lint",
+				"n8n-design-system#lint",
+				"n8n-editor-ui#lint"
+			]
+		},
+		"lint:nodes": {
+			"dependsOn": ["n8n-nodes-base#lint", "@n8n/n8n-nodes-langchain#lint"]
+		},
 		"lint": {},
 		"lintfix": {},
+		"test:backend": {
+			"dependsOn": [
+				"@n8n/client-oauth2#test",
+				"@n8n/imap#test",
+				"@n8n/permissions#test",
+				"n8n-workflow#test",
+				"n8n-core#test",
+				"n8n#test"
+			]
+		},
+		"test:frontend": {
+			"dependsOn": [
+				"@n8n/chat#test",
+				"@n8n/codemirror-lang#test",
+				"n8n-design-system#test",
+				"n8n-editor-ui#test"
+			]
+		},
+		"test:nodes": {
+			"dependsOn": ["n8n-nodes-base#test", "@n8n/n8n-nodes-langchain#test"]
+		},
 		"test": {},
 		"watch": {
 			"cache": false,

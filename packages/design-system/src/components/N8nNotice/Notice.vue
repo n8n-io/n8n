@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<NoticeProps>(), {
 	fullContent: '',
 });
 
-const $emit = defineEmits<{
+const emit = defineEmits<{
 	action: [key: string];
 }>();
 
@@ -75,7 +75,7 @@ const onClick = (event: MouseEvent) => {
 		} else if (canTruncate.value && anchorKey === 'toggle-expand') {
 			showFullContent.value = !showFullContent.value;
 		} else {
-			$emit('action', anchorKey);
+			emit('action', anchorKey);
 		}
 	}
 };

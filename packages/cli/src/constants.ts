@@ -165,3 +165,7 @@ export const ARTIFICIAL_TASK_DATA = {
 		],
 	],
 };
+
+export const LOWEST_SHUTDOWN_PRIORITY = 0;
+export const DEFAULT_SHUTDOWN_PRIORITY = 100;
+export const HIGHEST_SHUTDOWN_PRIORITY = 200;

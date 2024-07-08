@@ -17,6 +17,16 @@ export const versionDescription: INodeTypeDescription = {
 	},
 	inputs: ['main'],
 	outputs: ['main'],
+	hints: [
+		{
+			message:
+				"Use the 'Use Append' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
+			displayCondition:
+				'={{$parameter["operation"] === "append" && !$parameter["options"]["useAppend"]}}',
+			whenToDisplay: 'beforeExecution',
+			location: 'outputPane',
+		},
+	],
 	credentials: [
 		{
 			name: 'googleApi',
