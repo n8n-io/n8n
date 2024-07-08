@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -68,6 +68,7 @@
     "@types/convict": "^6.1.1",
     "@types/cookie-parser": "^1.4.2",
     "@types/express": "^4.17.21",
+    "@types/flat": "^5.0.5",
     "@types/formidable": "^3.4.5",
     "@types/json-diff": "^1.0.0",
     "@types/jsonwebtoken": "^9.0.6",
@@ -90,18 +91,14 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/community": "0.2.2",
-    "@langchain/core": "0.2.9",
-    "@langchain/openai": "0.0.33",
-    "@langchain/pinecone": "0.0.6",
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "0.3.20-10",
     "@n8n_io/license-sdk": "2.13.0",
     "@oclif/core": "4.0.7",
-    "@pinecone-database/pinecone": "2.1.0",
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
@@ -128,9 +125,9 @@
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "3.2.12",
+    "flat": "5.0.2",
     "flatted": "3.2.7",
     "formidable": "3.5.1",
-    "fuse.js": "^7.0.0",
     "google-timezones-json": "1.1.0",
     "handlebars": "4.7.8",
     "helmet": "7.1.0",
@@ -141,7 +138,6 @@
     "json-diff": "1.0.6",
     "jsonschema": "1.4.1",
     "jsonwebtoken": "9.0.2",
-    "langchain": "0.2.2",
     "ldapts": "4.2.6",
     "lodash": "4.17.21",
     "luxon": "3.3.0",
@@ -185,7 +181,6 @@
     "xml2js": "0.6.2",
     "xmllint-wasm": "3.0.1",
     "yamljs": "0.3.0",
-    "zod": "3.22.4",
-    "zod-to-json-schema": "3.22.4"
+    "zod": "3.22.4"
   }
 }

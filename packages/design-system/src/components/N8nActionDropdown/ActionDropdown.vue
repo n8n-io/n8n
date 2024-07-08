@@ -5,6 +5,7 @@
 			:placement="placement"
 			:trigger="trigger"
 			:popper-class="popperClass"
+			:teleported="teleported"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -74,6 +75,7 @@ interface ActionDropdownProps {
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -83,10 +85,11 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	iconSize: 'medium',
 	trigger: 'click',
 	hideArrow: false,
+	teleported: true,
 });
 
-const $attrs = useAttrs();
-const testIdPrefix = $attrs['data-test-id'];
+const attrs = useAttrs();
+const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
 const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
@@ -98,15 +101,18 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	};
 };
 
-const $emit = defineEmits(['select', 'visibleChange']);
+const emit = defineEmits<{
+	select: [action: string];
+	visibleChange: [open: boolean];
+}>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
 	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
 );
 
-const onSelect = (action: string) => $emit('select', action);
-const onVisibleChange = (open: boolean) => $emit('visibleChange', open);
+const onSelect = (action: string) => emit('select', action);
+const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
 	// Hide dropdown when clicking outside of current document

@@ -9,7 +9,7 @@ import {
 } from '@/TelemetryHelpers';
 import { nodeTypes } from './ExpressionExtensions/Helpers';
 import * as nodeHelpers from '@/NodeHelpers';
-import type { IWorkflowBase } from '@/Interfaces';
+import { NodeConnectionType, type IWorkflowBase } from '@/Interfaces';
 import { STICKY_NODE_TYPE } from '@/Constants';
 import { ApplicationError } from '@/errors';
 import { randomInt } from '@/utils';
@@ -111,7 +111,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -215,7 +215,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -291,7 +291,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -369,7 +369,7 @@ describe('generateNodesGraph', () => {
 			],
 			connections: {
 				'When clicking "Execute Workflow"': {
-					main: [[{ node: 'Google Sheets', type: 'main', index: 0 }]],
+					main: [[{ node: 'Google Sheets', type: NodeConnectionType.Main, index: 0 }]],
 				},
 			},
 			settings: { executionOrder: 'v1' },
@@ -701,7 +701,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -712,7 +712,7 @@ describe('generateNodesGraph', () => {
 						[
 							{
 								node: 'Chain',
-								type: 'ai_languageModel',
+								type: NodeConnectionType.AiLanguageModel,
 								index: 0,
 							},
 						],

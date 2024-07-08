@@ -6,15 +6,17 @@ import type { Application } from 'express';
 import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
+
 import config from '@/config';
-import { SSEPush } from './sse.push';
-import { WebSocketPush } from './websocket.push';
-import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
-import type { IPushDataType } from '@/Interfaces';
-import type { User } from '@db/entities/User';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { IPushDataType } from '@/Interfaces';
+import { OrchestrationService } from '@/services/orchestration.service';
+
+import { SSEPush } from './sse.push';
+import { WebSocketPush } from './websocket.push';
+import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -27,14 +29,10 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends EventEmitter {
-	public isBidirectional = useWebSockets;
-
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
-	constructor() {
+	constructor(private readonly orchestrationService: OrchestrationService) {
 		super();
-
-		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
@@ -54,9 +52,9 @@ export class Push extends EventEmitter {
 		}
 
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(pushRef, user.id, req.ws);
+			(this.backend as WebSocketPush).add(pushRef, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(pushRef, user.id, { req, res });
+			(this.backend as SSEPush).add(pushRef, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
 			return;
@@ -70,15 +68,23 @@ export class Push extends EventEmitter {
 	}
 
 	send(type: IPushDataType, data: unknown, pushRef: string) {
-		this.backend.sendToOneSession(type, data, pushRef);
+		/**
+		 * Multi-main setup: In a manual webhook execution, the main process that
+		 * handles a webhook might not be the same as the main process that created
+		 * the webhook. If so, the handler process commands the creator process to
+		 * relay the former's execution lifecycle events to the creator's frontend.
+		 */
+		if (this.orchestrationService.isMultiMainSetupEnabled && !this.backend.hasPushRef(pushRef)) {
+			const payload = { type, args: data, pushRef };
+			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
+			return;
+		}
+
+		this.backend.sendToOne(type, data, pushRef);
 	}
 
 	getBackend() {
 		return this.backend;
-	}
-
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
-		this.backend.sendToUsers(type, data, userIds);
 	}
 
 	@OnShutdown()

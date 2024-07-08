@@ -148,8 +148,6 @@ export const TEST_WEBHOOK_TIMEOUT = 2 * TIME.MINUTE;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * TIME.SECOND;
 
-export const N8N_DOCS_URL = 'https://docs.n8n.io';
-
 export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'oAuth2Api',
 	'googleOAuth2Api',
@@ -167,3 +165,7 @@ export const ARTIFICIAL_TASK_DATA = {
 		],
 	],
 };
+
+export const LOWEST_SHUTDOWN_PRIORITY = 0;
+export const DEFAULT_SHUTDOWN_PRIORITY = 100;
+export const HIGHEST_SHUTDOWN_PRIORITY = 200;

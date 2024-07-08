@@ -13,11 +13,11 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 }>();
 
-const $emit = defineEmits({
-	credentialSelected: (_credentialId: string) => true,
-	credentialDeselected: () => true,
-	credentialModalOpened: () => true,
-});
+const emit = defineEmits<{
+	credentialSelected: [credentialId: string];
+	credentialDeselected: [];
+	credentialModalOpened: [];
+}>();
 
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
@@ -38,18 +38,18 @@ const credentialOptions = computed(() => {
 });
 
 const onCredentialSelected = (credentialId: string) => {
-	$emit('credentialSelected', credentialId);
+	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
 	uiStore.openNewCredential(props.credentialType, true);
 	wasModalOpenedFromHere.value = true;
-	$emit('credentialModalOpened');
+	emit('credentialModalOpened');
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
 	uiStore.openExistingCredential(props.selectedCredentialId);
 	wasModalOpenedFromHere.value = true;
-	$emit('credentialModalOpened');
+	emit('credentialModalOpened');
 };
 
 listenForCredentialChanges({
@@ -59,7 +59,7 @@ listenForCredentialChanges({
 			return;
 		}
 
-		$emit('credentialSelected', credential.id);
+		emit('credentialSelected', credential.id);
 	},
 	onCredentialDeleted: (deletedCredentialId) => {
 		if (!wasModalOpenedFromHere.value) {
@@ -74,9 +74,9 @@ listenForCredentialChanges({
 			.map((credential) => credential.id)
 			.filter((id) => id !== deletedCredentialId);
 		if (optionsWoDeleted.length > 0) {
-			$emit('credentialSelected', optionsWoDeleted[0]);
+			emit('credentialSelected', optionsWoDeleted[0]);
 		} else {
-			$emit('credentialDeselected');
+			emit('credentialDeselected');
 		}
 	},
 });

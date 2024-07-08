@@ -167,7 +167,7 @@ export default function useCanvasMouseSelect() {
 			return;
 		}
 
-		if (uiStore.isActionActive('dragActive')) {
+		if (uiStore.isActionActive['dragActive']) {
 			// If a node does currently get dragged we do not activate the selection
 			return;
 		}

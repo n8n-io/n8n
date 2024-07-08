@@ -84,7 +84,10 @@ const props = withDefaults(defineProps<DatatableProps>(), {
 	rowsPerPage: 10,
 });
 
-const $emit = defineEmits(['update:currentPage', 'update:rowsPerPage']);
+const emit = defineEmits<{
+	'update:currentPage': [value: number];
+	'update:rowsPerPage': [value: number];
+}>();
 
 const { t } = useI18n();
 const rowsPerPageOptions = ref([10, 25, 50, 100]);
@@ -112,11 +115,11 @@ const classes = computed(() => ({
 }));
 
 function onUpdateCurrentPage(value: number) {
-	$emit('update:currentPage', value);
+	emit('update:currentPage', value);
 }
 
 function onRowsPerPageChange(value: number) {
-	$emit('update:rowsPerPage', value);
+	emit('update:rowsPerPage', value);
 
 	const maxPage = Math.ceil(totalRows.value / value);
 	if (maxPage < props.currentPage) {

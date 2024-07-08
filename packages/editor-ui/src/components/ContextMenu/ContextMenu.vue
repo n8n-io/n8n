@@ -7,7 +7,7 @@ import { watch, ref } from 'vue';
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
 const dropdown = ref<InstanceType<typeof N8nActionDropdown>>();
-const emit = defineEmits<{ (event: 'action', action: ContextMenuAction, nodes: INode[]): void }>();
+const emit = defineEmits<{ action: [action: ContextMenuAction, nodes: INode[]] }>();
 
 watch(
 	isOpen,

@@ -11,6 +11,7 @@ export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 
 	// mock SIGINT/SIGTERM registration
 	process.once = jest.fn();
+	process.exit = jest.fn() as never;
 
 	beforeAll(async () => {
 		await testDb.init();

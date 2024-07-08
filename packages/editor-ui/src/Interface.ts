@@ -6,7 +6,6 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
-	VIEWS,
 	ROLE,
 } from '@/constants';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
@@ -432,16 +431,6 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export type PushDataUsersForWorkflow = {
-	workflowId: string;
-	activeUsers: Array<{ user: IUser; lastSeen: string }>;
-};
-
-type PushDataWorkflowUsersChanged = {
-	data: PushDataUsersForWorkflow;
-	type: 'activeWorkflowUsersChanged';
-};
-
 export type IPushData =
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
@@ -456,8 +445,7 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved
-	| PushDataWorkflowFailedToActivate
-	| PushDataWorkflowUsersChanged;
+	| PushDataWorkflowFailedToActivate;
 
 export type PushDataActiveWorkflowAdded = {
 	data: IActiveWorkflowAdded;
@@ -1275,41 +1263,6 @@ export interface NotificationOptions extends Partial<ElementNotificationOptions>
 	message: string | ElementNotificationOptions['message'];
 }
 
-export interface UIState {
-	activeActions: string[];
-	activeCredentialType: string | null;
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: Modals;
-	isPageLoading: boolean;
-	currentView: string;
-	mainPanelPosition: number;
-	fakeDoorFeatures: IFakeDoor[];
-	draggable: {
-		isDragging: boolean;
-		type: string;
-		data: string;
-		canDrop: boolean;
-		stickyPosition: null | XYPosition;
-	};
-	stateIsDirty: boolean;
-	lastSelectedNode: string | null;
-	lastSelectedNodeOutputIndex: number | null;
-	lastSelectedNodeEndpointUuid: string | null;
-	nodeViewOffsetPosition: XYPosition;
-	nodeViewMoveInProgress: boolean;
-	selectedNodes: INodeUi[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	bannersHeight: number;
-	bannerStack: BannerName[];
-	theme: ThemeOption;
-	pendingNotificationsForViews: {
-		[key in VIEWS]?: NotificationOptions[];
-	};
-	isCreateNodeActive: boolean;
-}
-
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: BaseTextKey;
@@ -1379,7 +1332,6 @@ export interface ISettingsState {
 	mfa: {
 		enabled: boolean;
 	};
-	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -1473,16 +1425,6 @@ export interface IInviteResponse {
 		inviteAcceptUrl: string;
 	};
 	error?: string;
-}
-
-export interface IOnboardingCallPromptResponse {
-	nextPrompt: IOnboardingCallPrompt;
-}
-
-export interface IOnboardingCallPrompt {
-	title: string;
-	description: string;
-	toast_sequence_number: number;
 }
 
 export interface ITab {
@@ -1901,10 +1843,6 @@ export type NewConnectionInfo = {
 	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
-};
-
-export type AIAssistantConnectionInfo = NewConnectionInfo & {
-	stepName?: string;
 };
 
 export type EnterpriseEditionFeatureKey =
