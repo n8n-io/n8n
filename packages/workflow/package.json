@@ -31,12 +31,12 @@
   "devDependencies": {
     "@langchain/core": "^0.2.9",
     "@types/deep-equal": "^1.0.1",
-    "@types/express": "^4.17.21",
+    "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",
-    "@types/lodash": "^4.14.195",
+    "@types/lodash": "catalog:",
     "@types/luxon": "^3.2.0",
     "@types/md5": "^2.3.5",
-    "@types/xml2js": "^0.4.14"
+    "@types/xml2js": "catalog:"
   },
   "dependencies": {
     "@n8n/tournament": "1.0.2",

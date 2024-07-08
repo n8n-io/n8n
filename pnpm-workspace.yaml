@@ -5,6 +5,10 @@ packages:
   - cypress
 
 catalog:
+  '@types/express': ^4.17.21
+  '@types/lodash': ^4.14.195
+  '@types/uuid': ^8.3.2
+  '@types/xml2js': ^0.4.14
   axios: 1.6.7
   fast-glob: 3.2.12
   lodash: 4.17.21

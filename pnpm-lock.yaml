@@ -6,6 +6,18 @@ settings:
 
 catalogs:
   default:
+    '@types/express':
+      specifier: ^4.17.21
+      version: 4.17.21
+    '@types/lodash':
+      specifier: ^4.14.195
+      version: 4.14.195
+    '@types/uuid':
+      specifier: ^8.3.2
+      version: 8.3.4
+    '@types/xml2js':
+      specifier: ^0.4.14
+      version: 0.4.14
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
@@ -173,7 +185,7 @@ importers:
         version: 2.0.3
     devDependencies:
       '@types/lodash':
-        specifier: ^4.14.195
+        specifier: 'catalog:'
         version: 4.14.195
       eslint-plugin-cypress:
         specifier: ^3.3.0
@@ -855,7 +867,7 @@ importers:
         specifier: ^1.4.2
         version: 1.4.3
       '@types/express':
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.17.21
       '@types/flat':
         specifier: ^5.0.5
@@ -870,7 +882,7 @@ importers:
         specifier: ^9.0.6
         version: 9.0.6
       '@types/lodash':
-        specifier: ^4.14.195
+        specifier: 'catalog:'
         version: 4.14.195
       '@types/psl':
         specifier: ^1.1.0
@@ -894,7 +906,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.2
       '@types/uuid':
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.4
       '@types/validator':
         specifier: ^13.7.0
@@ -903,7 +915,7 @@ importers:
         specifier: ^8.5.4
         version: 8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)
       '@types/xml2js':
-        specifier: ^0.4.14
+        specifier: 'catalog:'
         version: 0.4.14
       '@types/yamljs':
         specifier: ^0.2.31
@@ -994,19 +1006,19 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
       '@types/express':
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.17.21
       '@types/lodash':
-        specifier: ^4.14.195
+        specifier: 'catalog:'
         version: 4.14.195
       '@types/mime-types':
         specifier: ^2.1.0
         version: 2.1.1
       '@types/uuid':
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.4
       '@types/xml2js':
-        specifier: ^0.4.14
+        specifier: 'catalog:'
         version: 0.4.14
 
   packages/design-system:
@@ -1320,7 +1332,7 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0
       '@types/uuid':
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.4
       cross-env:
         specifier: ^7.0.3
@@ -1577,7 +1589,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.9
       '@types/express':
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.17.21
       '@types/gm':
         specifier: ^1.25.0
@@ -1592,7 +1604,7 @@ importers:
         specifier: ^9.0.6
         version: 9.0.6
       '@types/lodash':
-        specifier: ^4.14.195
+        specifier: 'catalog:'
         version: 4.14.195
       '@types/lossless-json':
         specifier: ^1.0.0
@@ -1625,10 +1637,10 @@ importers:
         specifier: ^5.1.0
         version: 5.3.2
       '@types/uuid':
-        specifier: ^8.3.2
+        specifier: 'catalog:'
         version: 8.3.4
       '@types/xml2js':
-        specifier: ^0.4.14
+        specifier: 'catalog:'
         version: 0.4.14
       eslint-plugin-n8n-nodes-base:
         specifier: ^1.16.0
@@ -1701,13 +1713,13 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       '@types/express':
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.17.21
       '@types/jmespath':
         specifier: ^0.15.0
         version: 0.15.0
       '@types/lodash':
-        specifier: ^4.14.195
+        specifier: 'catalog:'
         version: 4.14.195
       '@types/luxon':
         specifier: ^3.2.0
@@ -1716,7 +1728,7 @@ importers:
         specifier: ^2.3.5
         version: 2.3.5
       '@types/xml2js':
-        specifier: ^0.4.14
+        specifier: 'catalog:'
         version: 0.4.14
 
 packages:
