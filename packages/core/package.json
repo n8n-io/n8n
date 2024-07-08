@@ -44,7 +44,7 @@
     "file-type": "16.5.4",
     "form-data": "4.0.0",
     "lodash": "catalog:",
-    "luxon": "^3.4.4",
+    "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",
     "oauth-1.0a": "2.2.6",

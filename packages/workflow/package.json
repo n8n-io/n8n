@@ -51,7 +51,7 @@
     "js-base64": "3.7.2",
     "jssha": "3.3.1",
     "lodash": "catalog:",
-    "luxon": "3.3.0",
+    "luxon": "catalog:",
     "md5": "2.3.0",
     "recast": "0.21.5",
     "title-case": "3.0.3",

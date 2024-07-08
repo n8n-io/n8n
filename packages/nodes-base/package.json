@@ -856,7 +856,7 @@
     "ldapts": "4.2.6",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
-    "luxon": "3.3.0",
+    "luxon": "catalog:",
     "mailparser": "3.6.7",
     "minifaker": "1.34.1",
     "moment-timezone": "0.5.37",

@@ -9,6 +9,9 @@ catalogs:
     lodash:
       specifier: 4.17.21
       version: 4.17.21
+    luxon:
+      specifier: 3.4.4
+      version: 3.4.4
     typedi:
       specifier: 0.10.0
       version: 0.10.0
@@ -698,8 +701,8 @@ importers:
         specifier: 'catalog:'
         version: 4.17.21
       luxon:
-        specifier: 3.3.0
-        version: 3.3.0
+        specifier: 'catalog:'
+        version: 3.4.4
       mysql2:
         specifier: 3.10.0
         version: 3.10.0
@@ -942,7 +945,7 @@ importers:
         specifier: 'catalog:'
         version: 4.17.21
       luxon:
-        specifier: ^3.4.4
+        specifier: 'catalog:'
         version: 3.4.4
       mime-types:
         specifier: 2.1.35
@@ -1220,8 +1223,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       luxon:
-        specifier: ^3.3.0
-        version: 3.3.0
+        specifier: 'catalog:'
+        version: 3.4.4
       n8n-design-system:
         specifier: workspace:*
         version: link:../design-system
@@ -1447,8 +1450,8 @@ importers:
         specifier: 1.0.5
         version: 1.0.5
       luxon:
-        specifier: 3.3.0
-        version: 3.3.0
+        specifier: 'catalog:'
+        version: 3.4.4
       mailparser:
         specifier: 3.6.7
         version: 3.6.7
@@ -1664,8 +1667,8 @@ importers:
         specifier: 'catalog:'
         version: 4.17.21
       luxon:
-        specifier: 3.3.0
-        version: 3.3.0
+        specifier: 'catalog:'
+        version: 3.4.4
       md5:
         specifier: 2.3.0
         version: 2.3.0
@@ -9822,10 +9825,6 @@ packages:
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
-
-  luxon@3.3.0:
-    resolution: {integrity: sha512-An0UCfG/rSiqtAIiBPO0Y9/zAnHUZxAMiCpTd5h2smgsj7GGmcenvrvww2cqNA8/4A5ZrD1gJpHN2mIHZQF+Mg==}
-    engines: {node: '>=12'}
 
   luxon@3.4.4:
     resolution: {integrity: sha512-zobTr7akeGHnv7eBOXcRgMeCP6+uyYsczwmeRCauvpvaAltgNyTbLH/+VaEAPUeWBT+1GuNmz4wC/6jtQzbbVA==}
@@ -24100,8 +24099,6 @@ snapshots:
   lru-cache@9.1.2: {}
 
   lunr@2.3.9: {}
-
-  luxon@3.3.0: {}
 
   luxon@3.4.4: {}
 

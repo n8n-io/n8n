@@ -55,7 +55,7 @@
     "humanize-duration": "^3.27.2",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",
-    "luxon": "^3.3.0",
+    "luxon": "catalog:",
     "n8n-design-system": "workspace:*",
     "n8n-workflow": "workspace:*",
     "pinia": "^2.1.6",
