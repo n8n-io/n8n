@@ -44,6 +44,7 @@ function onClick() {
 <template>
 	<div class="chat-file" @click="onClick">
 		<TypeIcon />
+		<p class="chat-file-name">{{ file.name }}</p>
 		<IconDelete v-if="isRemovable" class="chat-file-delete" />
 		<IconPreview v-if="isPreviewable" class="chat-file-preview" />
 	</div>

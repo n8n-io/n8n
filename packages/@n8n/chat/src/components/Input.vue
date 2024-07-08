@@ -144,6 +144,11 @@ function onKeyDown(event: KeyboardEvent) {
 		});
 	}
 }
+
+function onOpenFileDialog() {
+	if (isFileUploadDisabled.value) return;
+	openFileDialog({ accept: unref(allowedFileTypes) });
+}
 </script>
 
 <template>
@@ -162,7 +167,7 @@ function onKeyDown(event: KeyboardEvent) {
 					v-if="isFileUploadAllowed"
 					:disabled="isFileUploadDisabled"
 					class="chat-input-send-button"
-					@click="() => openFileDialog({ accept: unref(allowedFileTypes) })"
+					@click="onOpenFileDialog"
 				>
 					<IconFilePlus height="24" width="24" />
 				</button>
