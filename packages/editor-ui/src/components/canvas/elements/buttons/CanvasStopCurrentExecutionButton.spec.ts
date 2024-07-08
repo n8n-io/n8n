@@ -4,20 +4,16 @@ import CanvasStopCurrentExecutionButton from './CanvasStopCurrentExecutionButton
 const renderComponent = createComponentRenderer(CanvasStopCurrentExecutionButton);
 
 describe('CanvasStopCurrentExecutionButton', () => {
-	it('displays title when not loading', () => {
-		const wrapper = renderComponent({
-			props: {
-				loading: false,
-			},
-		});
+	it('should render correctly', () => {
+		const wrapper = renderComponent();
 
-		expect(wrapper.getByTitle('Stop current execution')).toBeInTheDocument();
+		expect(wrapper.html()).toMatchSnapshot();
 	});
 
-	it('displays different title when loading', () => {
+	it('should render different title when loading', () => {
 		const wrapper = renderComponent({
 			props: {
-				loading: true,
+				stopping: true,
 			},
 		});
 

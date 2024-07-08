@@ -71,6 +71,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
+import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -115,7 +116,7 @@ const pushConnectionStore = usePushConnectionStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
-const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	renameNode,
@@ -559,11 +560,16 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
  * Executions
  */
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
+const isStoppingExecution = ref(false);
+
+const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
+);
+const isStopWaitingForWebhookButtonVisible = computed(
+	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
 
 async function onRunWorkflow() {
@@ -594,7 +600,13 @@ async function openExecution(_executionId: string) {
 }
 
 async function onStopExecution() {
+	isStoppingExecution.value = true;
 	await stopCurrentExecution();
+	isStoppingExecution.value = false;
+}
+
+async function onStopWaitingForWebhook() {
+	await stopWaitingForWebhook();
 }
 
 /**
@@ -891,10 +903,19 @@ onBeforeUnmount(() => {
 		@click:pane="onClickPane"
 	>
 		<div :class="$style.executionButtons">
-			<CanvasExecuteWorkflowButton @click="onRunWorkflow" />
+			<CanvasExecuteWorkflowButton
+				:waiting-for-webhook="isExecutionWaitingForWebhook"
+				:executing="isWorkflowRunning"
+				@click="onRunWorkflow"
+			/>
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
-				@click.stop="onStopExecution"
+				:stopping="isStoppingExecution"
+				@click="onStopExecution"
+			/>
+			<CanvasStopWaitingForWebhookButton
+				v-if="isStopWaitingForWebhookButtonVisible"
+				@click="onStopWaitingForWebhook"
 			/>
 		</div>
 		<Suspense>
