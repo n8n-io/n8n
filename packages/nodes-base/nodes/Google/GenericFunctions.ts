@@ -52,6 +52,7 @@ const googleServiceAccountScopes = {
 		'https://www.googleapis.com/auth/cloud-translation',
 		'https://www.googleapis.com/auth/cloud-platform',
 	],
+	vertex: ['https://www.googleapis.com/auth/cloud-platform'],
 };
 
 type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;

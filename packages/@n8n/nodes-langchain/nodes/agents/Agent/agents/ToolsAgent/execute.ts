@@ -20,6 +20,7 @@ import {
 	getConnectedTools,
 } from '../../../../../utils/helpers';
 import { SYSTEM_MESSAGE } from './prompt';
+import { getErrorMessageByStatusCode } from './error-handling';
 
 function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, any, any, any> {
 	const parserType = outputParser.lc_namespace[outputParser.lc_namespace.length - 1];
@@ -181,9 +182,20 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				),
 			});
 		} catch (error) {
+			const customErrorMessage: string | undefined = getErrorMessageByStatusCode(
+				error?.response?.status,
+			);
+
 			if (this.continueOnFail(error)) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				returnData.push({
+					json: { error: customErrorMessage ?? error.message },
+					pairedItem: { item: itemIndex },
+				});
 				continue;
+			}
+
+			if (customErrorMessage) {
+				throw new NodeOperationError(this.getNode(), customErrorMessage);
 			}
 
 			throw error;
