@@ -58,6 +58,10 @@ function onNodeDragStop(e: NodeDragEvent) {
 	});
 }
 
+function onSelectionDragStop(e: NodeDragEvent) {
+	onNodeDragStop(e);
+}
+
 function onSetNodeActive(id: string) {
 	emit('update:node:active', id);
 }
@@ -121,6 +125,7 @@ function onClickPane(event: MouseEvent) {
 		:max-zoom="2"
 		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
+		@selection-drag-stop="onSelectionDragStop"
 		@edge-mouse-enter="onMouseEnterEdge"
 		@edge-mouse-leave="onMouseLeaveEdge"
 		@pane-click="onClickPane"
@@ -155,8 +160,6 @@ function onClickPane(event: MouseEvent) {
 		></Controls>
 	</VueFlow>
 </template>
-
-<style lang="scss" module></style>
 
 <style lang="scss">
 .vue-flow__controls {

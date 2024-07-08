@@ -2,8 +2,15 @@ import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/C
 import { createComponentRenderer } from '@/__tests__/render';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);
+
+beforeEach(() => {
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
+});
 
 describe('CanvasNodeDefault', () => {
 	it('should render node correctly', () => {

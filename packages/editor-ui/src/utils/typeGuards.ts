@@ -9,6 +9,8 @@ import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } fr
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
 import type { RouteLocationRaw } from 'vue-router';
+import type { CanvasConnectionMode } from '@/types';
+import { canvasConnectionModes } from '@/types';
 
 /*
 	Type guards used in editor-ui project
@@ -67,6 +69,10 @@ export function isValidNodeConnectionType(
 	connectionType: string,
 ): connectionType is NodeConnectionType {
 	return nodeConnectionTypes.includes(connectionType as NodeConnectionType);
+}
+
+export function isValidCanvasConnectionMode(mode: string): mode is CanvasConnectionMode {
+	return canvasConnectionModes.includes(mode as CanvasConnectionMode);
 }
 
 export function isTriggerPanelObject(
