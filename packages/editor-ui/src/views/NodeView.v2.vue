@@ -70,6 +70,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -114,7 +115,7 @@ const pushConnectionStore = usePushConnectionStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
-const { runWorkflow } = useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	renameNode,
@@ -141,7 +142,6 @@ const readOnlyNotification = ref<null | { visible: boolean }>(null);
 
 const isProductionExecutionPreview = ref(false);
 const isExecutionPreview = ref(false);
-const isExecutionWaitingForWebhook = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
@@ -559,6 +559,13 @@ function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
  * Executions
  */
 
+const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
+const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+
+const isStopExecutionButtonVisible = computed(
+	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
+);
+
 async function onRunWorkflow() {
 	trackRunWorkflow();
 
@@ -586,8 +593,12 @@ async function openExecution(_executionId: string) {
 	// @TODO
 }
 
+async function onStopExecution() {
+	await stopCurrentExecution();
+}
+
 /**
- * Keboard
+ * Keyboard
  */
 
 function addKeyboardEventBindings() {
@@ -881,6 +892,10 @@ onBeforeUnmount(() => {
 	>
 		<div :class="$style.executionButtons">
 			<CanvasExecuteWorkflowButton @click="onRunWorkflow" />
+			<CanvasStopCurrentExecutionButton
+				v-if="isStopExecutionButtonVisible"
+				@click.stop="onStopExecution"
+			/>
 		</div>
 		<Suspense>
 			<NodeCreation
@@ -898,12 +913,12 @@ onBeforeUnmount(() => {
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
 				@value-changed="onRenameNode"
+				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenConnectionNodeCreator"
 			/>
 			<!--
 				:renaming="renamingActive"
-				@stop-execution="stopExecution"
 				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			-->
 		</Suspense>
