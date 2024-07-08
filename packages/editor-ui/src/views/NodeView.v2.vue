@@ -317,29 +317,6 @@ async function runAutoAddManualTriggerExperiment() {
 	}
 }
 
-// @ts-expect-error @TODO Add binding on route leave
-async function promptSaveOnBeforeRouteLeave() {
-	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
-		const confirmModal = await message.confirm(
-			i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-			{
-				title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-				type: 'warning',
-				confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				showClose: true,
-			},
-		);
-
-		if (confirmModal === MODAL_CONFIRM) {
-			const saved = await workflowHelpers.saveCurrentWorkflow();
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-		}
-	}
-}
-
 function resetWorkspace() {
 	onToggleNodeCreator({ createNodeActive: false });
 	nodeCreatorStore.setShowScrim(false);
@@ -867,7 +844,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 			uiStore.stateIsDirty = false;
 
-			if (from.name === VIEWS.NEW_WORKFLOW) {
+			if (from.name === VIEWS.NEW_WORKFLOW_V2) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
 				await router.replace({
