@@ -153,7 +153,7 @@ const hideNodeIssues = ref(false);
 const workflowId = computed<string>(() => route.params.name as string);
 const workflow = computed(() => workflowsStore.workflowsById[workflowId.value]);
 
-const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW_V2);
+const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => route?.meta?.readOnlyCanvas === true);
 const isReadOnlyEnvironment = computed(() => {
@@ -265,7 +265,7 @@ async function initializeView() {
 			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
 			void router.push({
-				name: VIEWS.NEW_WORKFLOW_V2,
+				name: VIEWS.NEW_WORKFLOW,
 			});
 		}
 	}
@@ -844,11 +844,11 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 			uiStore.stateIsDirty = false;
 
-			if (from.name === VIEWS.NEW_WORKFLOW_V2) {
+			if (from.name === VIEWS.NEW_WORKFLOW) {
 				// Replace the current route with the new workflow route
 				// before navigating to the new route when saving new workflow.
 				await router.replace({
-					name: VIEWS.WORKFLOW_V2,
+					name: VIEWS.WORKFLOW,
 					params: { name: workflowId.value },
 				});
 
