@@ -115,6 +115,7 @@ import { ndvEventBus } from '@/event-bus';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
 
 // Types
 
@@ -167,6 +168,7 @@ const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 const { activeNode } = storeToRefs(ndvStore);
 
 // Composables
@@ -183,8 +185,8 @@ const pinnedData = usePinnedData(activeNode, {
 
 const outputMode = ref<OutputType>('regular');
 const outputTypes = ref([
-	{ label: 'ndv.output.outType.regular', value: OUTPUT_TYPE.REGULAR },
-	{ label: 'ndv.output.outType.logs', value: OUTPUT_TYPE.LOGS },
+	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 ]);
 const runDataRef = ref<RunDataRef>(null);
 
