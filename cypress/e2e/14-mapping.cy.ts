@@ -41,6 +41,8 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }}');
 
+		ndv.getters.inputPanel().click(); // Dismiss CM Autocomplete
+
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
