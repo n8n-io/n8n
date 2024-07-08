@@ -40,9 +40,40 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			{
 				name: 'googleFirebaseCloudFirestoreOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['googleFirebaseCloudFirestoreOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'googleFirebaseCloudFirestoreOAuth2Api',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'googleFirebaseCloudFirestoreOAuth2Api',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -157,6 +188,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					items.map(async (item: IDataObject, i: number) => {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const columns = this.getNodeParameter('columns', i) as string;
+						const documentId = this.getNodeParameter('documentId', i) as string;
 						const columnList = columns.split(',').map((column) => column.trim());
 						const document = { fields: {} };
 						columnList.map((column) => {
@@ -174,6 +206,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							'POST',
 							`/${projectId}/databases/${database}/documents/${collection}`,
 							document,
+							{ documentId },
 						);
 
 						responseData.id = (responseData.name as string).split('/').pop();
