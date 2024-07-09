@@ -5,17 +5,17 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class IrisDfirApi implements ICredentialType {
-	name = 'irisDfirApi';
+export class DfirIrisApi implements ICredentialType {
+	name = 'dfirIrisApi';
 
-	displayName = 'IRIS DFIR API';
+	displayName = 'DFIR-IRIS API';
 
-	documentationUrl = 'irisdfir';
+	documentationUrl = 'dfiriris';
 
-	icon = { light: 'file:icons/IrisDfir.svg', dark: 'file:icons/IrisDfir.svg' } as const;
+	icon = { light: 'file:icons/DfirIris.svg', dark: 'file:icons/DfirIris.svg' } as const;
 
 	httpRequestNode = {
-		name: 'IRIS DFIR',
+		name: 'DFIR-IRIS',
 		docsUrl: 'https://docs.dfir-iris.org/operations/api/',
 		apiBaseUrlPlaceholder: 'http://<yourserver_ip>/manage/cases/list',
 	};
