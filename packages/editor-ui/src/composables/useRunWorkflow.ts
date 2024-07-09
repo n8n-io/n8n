@@ -15,7 +15,7 @@ import type {
 	StartNodeData,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionType, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
