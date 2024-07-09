@@ -74,6 +74,7 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { getNodeViewTab } from '@/utils/canvasUtils';
+import { useNDVStore } from '@/stores/ndv.store';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -115,6 +116,7 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
+const ndvStore = useNDVStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
@@ -557,6 +559,26 @@ function trackRunWorkflow() {
 	});
 }
 
+async function onRunWorkflowToNode(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	if (!node) return;
+
+	trackRunWorkflowToNode(node);
+	await runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+}
+
+function trackRunWorkflowToNode(node: INodeUi) {
+	const telemetryPayload = {
+		node_type: node.type,
+		workflow_id: workflowsStore.workflowId,
+		source: 'canvas',
+		push_ref: ndvStore.pushRef,
+	};
+
+	telemetry.track('User clicked execute node button', telemetryPayload);
+	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
+}
+
 async function openExecution(_executionId: string) {
 	// @TODO
 }
@@ -909,6 +931,7 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
 		@delete:connection="onDeleteConnection"
