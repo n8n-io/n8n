@@ -135,7 +135,11 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		workflowsPage.getters.workflowCards().should('have.length', 2);
 		workflowsPage.getters.workflowCard('Workflow W1').click();
 		workflowPage.actions.openNode('Notion');
-		ndv.getters.credentialInput().should('have.value', 'Credential C1').should('be.disabled');
+		ndv.getters
+			.credentialInput()
+			.find('input')
+			.should('have.value', 'Credential C1')
+			.should('be.enabled');
 		ndv.actions.close();
 
 		cy.waitForLoad();
