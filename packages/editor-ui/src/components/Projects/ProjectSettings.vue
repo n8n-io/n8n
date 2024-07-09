@@ -69,7 +69,7 @@ const firstLicensedRole = computed(() => projectRoles.value.find((role) => role.
 
 const onAddMember = (userId: string) => {
 	isDirty.value = true;
-	const user = usersStore.getUserById(userId);
+	const user = usersStore.usersById[userId];
 	if (!user) return;
 
 	const { id, firstName, lastName, email } = user;

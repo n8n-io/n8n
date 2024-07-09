@@ -23,7 +23,7 @@ const pinia = createTestingPinia({
 			},
 		},
 		[STORES.USERS]: {
-			users: {
+			usersById: {
 				123: {
 					email: 'john@doe.com',
 					firstName: 'John',
