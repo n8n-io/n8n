@@ -129,6 +129,7 @@ import {
 	faSync,
 	faSyncAlt,
 	faTable,
+	faTags,
 	faTasks,
 	faTerminal,
 	faThLarge,
@@ -300,6 +301,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSync);
 		addIcon(faSyncAlt);
 		addIcon(faTable);
+		addIcon(faTags);
 		addIcon(faTasks);
 		addIcon(faTerminal);
 		addIcon(faThLarge);
