@@ -17,7 +17,9 @@ watch(nodeViewVersion, () => {
 
 <template>
 	<Suspense>
-		<NodeViewV2 v-if="nodeViewVersion === '2'" />
-		<NodeViewV1 v-else />
+		<KeepAlive>
+			<NodeViewV2 v-if="nodeViewVersion === '2'" />
+			<NodeViewV1 v-else />
+		</KeepAlive>
 	</Suspense>
 </template>
