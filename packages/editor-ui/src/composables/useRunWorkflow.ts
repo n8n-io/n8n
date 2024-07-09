@@ -15,7 +15,7 @@ import type {
 	StartNodeData,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionType, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -29,6 +29,7 @@ import {
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -48,6 +49,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const executionsStore = useExecutionsStore();
 
@@ -277,14 +279,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				if (node.name === options.destinationNode || !node.disabled) {
 					let testUrl = '';
 
-					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
-						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.webhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
-					}
-
-					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
-						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.formTestUrl}/${webhookPath}`;
+					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+					if (nodeType?.webhooks?.length) {
+						testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
 					}
 
 					if (

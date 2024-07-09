@@ -1,10 +1,16 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import { computed, toRefs } from 'vue';
+import { computed, ref, toRefs, onMounted } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import python from 'highlight.js/lib/languages/python';
+import xml from 'highlight.js/lib/languages/xml';
+import bash from 'highlight.js/lib/languages/bash';
 import markdownLink from 'markdown-it-link-attributes';
 import type MarkdownIt from 'markdown-it';
+import ChatFile from './ChatFile.vue';
 import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 import { useOptions } from '@n8n/chat/composables';
 
@@ -12,8 +18,21 @@ const props = defineProps<{
 	message: ChatMessage;
 }>();
 
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('bash', bash);
+
+defineSlots<{
+	beforeMessage(props: { message: ChatMessage }): ChatMessage;
+	default: { message: ChatMessage };
+}>();
+
 const { message } = toRefs(props);
 const { options } = useOptions();
+const messageContainer = ref<HTMLElement | null>(null);
+const fileSources = ref<Record<string, string>>({});
 
 const messageText = computed(() => {
 	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
@@ -36,6 +55,14 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 	});
 };
 
+const scrollToView = () => {
+	if (messageContainer.value?.scrollIntoView) {
+		messageContainer.value.scrollIntoView({
+			block: 'center',
+		});
+	}
+};
+
 const markdownOptions = {
 	highlight(str: string, lang: string) {
 		if (lang && hljs.getLanguage(lang)) {
@@ -48,10 +75,37 @@ const markdownOptions = {
 	},
 };
 
-const messageComponents = options?.messageComponents ?? {};
+const messageComponents = { ...(options?.messageComponents ?? {}) };
+
+defineExpose({ scrollToView });
+
+const readFileAsDataURL = async (file: File): Promise<string> =>
+	await new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
+
+onMounted(async () => {
+	if (message.value.files) {
+		for (const file of message.value.files) {
+			try {
+				const dataURL = await readFileAsDataURL(file);
+				fileSources.value[file.name] = dataURL;
+			} catch (error) {
+				console.error('Error reading file:', error);
+			}
+		}
+	}
+});
 </script>
+
 <template>
-	<div class="chat-message" :class="classes">
+	<div ref="messageContainer" class="chat-message" :class="classes">
+		<div v-if="$slots.beforeMessage" class="chat-message-actions">
+			<slot name="beforeMessage" v-bind="{ message }" />
+		</div>
 		<slot>
 			<template v-if="message.type === 'component' && messageComponents[message.key]">
 				<component :is="messageComponents[message.key]" v-bind="message.arguments" />
@@ -63,6 +117,11 @@ const messageComponents = options?.messageComponents ?? {};
 				:options="markdownOptions"
 				:plugins="[linksNewTabPlugin]"
 			/>
+			<div v-if="(message.files ?? []).length > 0" class="chat-message-files">
+				<div v-for="file in message.files ?? []" :key="file.name" class="chat-message-file">
+					<ChatFile :file="file" :is-removable="false" :is-previewable="true" />
+				</div>
+			</div>
 		</slot>
 	</div>
 </template>
@@ -70,10 +129,32 @@ const messageComponents = options?.messageComponents ?? {};
 <style lang="scss">
 .chat-message {
 	display: block;
+	position: relative;
 	max-width: 80%;
 	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
+
+	.chat-message-actions {
+		position: absolute;
+		bottom: 100%;
+		left: 0;
+		opacity: 0;
+		transform: translateY(-0.25rem);
+		display: flex;
+		gap: 1rem;
+	}
+
+	&.chat-message-from-user .chat-message-actions {
+		left: auto;
+		right: 0;
+	}
+
+	&:hover {
+		.chat-message-actions {
+			opacity: 1;
+		}
+	}
 
 	p {
 		line-height: var(--chat--message-line-height, 1.8);
@@ -82,7 +163,7 @@ const messageComponents = options?.messageComponents ?? {};
 
 	// Default message gap is half of the spacing
 	+ .chat-message {
-		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 0.5));
+		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 1));
 	}
 
 	// Spacing between messages from different senders is double the individual message gap
@@ -132,6 +213,12 @@ const messageComponents = options?.messageComponents ?? {};
 			background: var(--chat--message--pre--background);
 			border-radius: var(--chat--border-radius);
 		}
+	}
+	.chat-message-files {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		padding-top: 0.5rem;
 	}
 }
 </style>
