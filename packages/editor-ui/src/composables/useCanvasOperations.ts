@@ -340,13 +340,6 @@ export function useCanvasOperations({
 		const outputIndex = lastSelectedNodeOutputIndex ?? 0;
 		const targetEndpoint = lastSelectedNodeEndpointUuid ?? '';
 
-		console.log(
-			'lastSelectedNode',
-			lastSelectedNode,
-			lastSelectedNodeEndpointUuid,
-			options.isAutoAdd,
-		);
-
 		// Create a connection between the last selected node and the new one
 		if (lastSelectedNode && !options.isAutoAdd) {
 			// If we have a specific endpoint to connect to
@@ -359,8 +352,6 @@ export function useCanvasOperations({
 				const newNodeHandle = `${CanvasConnectionMode.Input}/${connectionType}/0`;
 				const lasSelectedNodeId = lastSelectedNode.id;
 				const lastSelectedNodeHandle = targetEndpoint;
-
-				console.log('IM HERE', newNodeId, newNodeHandle, lasSelectedNodeId, lastSelectedNodeHandle);
 
 				if (mode === CanvasConnectionMode.Input) {
 					createConnection({
