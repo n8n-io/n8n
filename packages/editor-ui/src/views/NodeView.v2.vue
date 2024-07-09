@@ -136,6 +136,7 @@ const {
 	revertDeleteConnection,
 	setNodeActiveByName,
 	addConnections,
+	resolveNodeData,
 	editableWorkflow,
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
@@ -347,7 +348,9 @@ async function openWorkflow(data: IWorkflowDb) {
 
 	resetWorkspace();
 
-	await workflowHelpers.initState(data, true);
+	await workflowHelpers.initState(data);
+	await addNodes(data.nodes);
+	workflowsStore.setConnections(data.connections);
 
 	if (data.sharedWithProjects) {
 		workflowsEEStore.setWorkflowSharedWith({
