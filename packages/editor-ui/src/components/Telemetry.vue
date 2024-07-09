@@ -61,6 +61,10 @@ export default defineComponent({
 			)
 				return;
 
+			this.$gtag('Session started', {
+				instanceId: this.rootStore.instanceId,
+			});
+
 			this.$telemetry.init(this.telemetry, {
 				instanceId: this.rootStore.instanceId,
 				userId: this.currentUserId,

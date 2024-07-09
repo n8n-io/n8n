@@ -28,6 +28,7 @@ import { FontAwesomePlugin } from './plugins/icons';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 import { ChartJSPlugin } from '@/plugins/chartjs';
+import { gtagPlugin } from './plugins/gtag';
 
 const pinia = createPinia();
 
@@ -44,6 +45,7 @@ app.use(pinia);
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);
+app.use(gtagPlugin);
 
 app.mount('#app');
 

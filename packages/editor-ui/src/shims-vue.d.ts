@@ -23,6 +23,7 @@ declare module 'vue' {
 		$style: Record<string, string>;
 		$locale: I18nClass;
 		$telemetry: Telemetry;
+		$gtag: (event: string, eventData: Record<string, any>) => void;
 	}
 }
 

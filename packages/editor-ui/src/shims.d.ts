@@ -20,6 +20,7 @@ declare global {
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;
+		dataLayer?: Record<string, unknown>[];
 	}
 
 	namespace JSX {
