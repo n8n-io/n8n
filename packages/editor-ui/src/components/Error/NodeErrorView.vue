@@ -375,6 +375,9 @@ function copySuccess() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
+			<div>
+				<n8n-ask-assistant-button />
+			</div>
 		</div>
 
 		<div class="node-error-view__info">
