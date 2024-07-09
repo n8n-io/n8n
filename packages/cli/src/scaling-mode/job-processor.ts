@@ -9,15 +9,9 @@ import { NodeTypes } from '@/NodeTypes';
 import { encodeWebhookResponse } from './webhook-response';
 import { WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type {
-	Job,
-	JobFinishedRunningReport,
-	JobResult,
-	JobStartedRunningReport,
-	RunningJobProps,
-	WebhookResponseReport,
-} from './types';
+import type { Job, JobId, JobResult, RunningJobProps, WebhookResponseReport } from './types';
 import type PCancelable from 'p-cancelable';
+import { RunningJobs } from './running-jobs';
 
 @Service()
 export class JobProcessor {
@@ -26,6 +20,7 @@ export class JobProcessor {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly runningJobs: RunningJobs,
 	) {}
 
 	async processJob(job: Job): Promise<JobResult> {
@@ -144,22 +139,11 @@ export class JobProcessor {
 			status: execution.status,
 		};
 
-		const jobStartedReport: JobStartedRunningReport = {
-			kind: 'job-started-running',
-			jobId: job.id,
-			...props,
-		};
-
-		await job.progress(jobStartedReport);
+		this.runningJobs.set(job.id, props);
 
 		await workflowRun;
 
-		const jobFinishedReport: JobFinishedRunningReport = {
-			kind: 'job-finished-running',
-			jobId: job.id,
-		};
-
-		await job.progress(jobFinishedReport);
+		this.runningJobs.clear(job.id);
 
 		this.logger.debug('[JobProcessor] Job finished running', { jobId: job.id });
 
@@ -169,5 +153,18 @@ export class JobProcessor {
 		 */
 
 		return { success: true };
+	}
+
+	stopJob(jobId: JobId) {
+		this.runningJobs.cancel(jobId);
+		this.runningJobs.clear(jobId);
+	}
+
+	getRunningJobIds() {
+		return this.runningJobs.getIds();
+	}
+
+	getRunningJobsSummary() {
+		return this.runningJobs.getSummaries();
 	}
 }

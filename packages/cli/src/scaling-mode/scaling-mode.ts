@@ -7,7 +7,6 @@ import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { SCALING_MODE_JOB_TYPE, SCALING_MODE_QUEUE_NAME } from './constants';
 import { decodeWebhookResponse } from './webhook-response';
-import { RunningJobs } from './running-jobs';
 import { JobProcessor } from './job-processor';
 import type { Queue, Job, JobData, JobOptions, JobProgressReport, JobStatus, JobId } from './types';
 
@@ -21,7 +20,6 @@ export class ScalingMode {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly runningJobs: RunningJobs,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobProcessor: JobProcessor,
 	) {}
@@ -106,8 +104,7 @@ export class ScalingMode {
 
 		try {
 			if (await job.isActive()) {
-				this.runningJobs.cancel(jobId);
-				this.runningJobs.clear(jobId);
+				this.jobProcessor.stopJob(jobId);
 				this.logger.debug('[ScalingMode] Stopped active job', { jobId, executionId });
 				return true;
 			}
@@ -122,11 +119,11 @@ export class ScalingMode {
 	}
 
 	getRunningJobIds() {
-		return this.runningJobs.getIds();
+		return this.jobProcessor.getRunningJobIds();
 	}
 
 	getRunningJobsSummary() {
-		return this.runningJobs.getSummaries();
+		return this.jobProcessor.getRunningJobsSummary();
 	}
 
 	/**
@@ -138,17 +135,6 @@ export class ScalingMode {
 			if (report.kind === 'webhook-response') {
 				const { executionId, response } = report;
 				this.activeExecutions.resolveResponsePromise(executionId, decodeWebhookResponse(response));
-				return;
-			}
-
-			if (report.kind === 'job-started-running') {
-				const { jobId, kind: _, ...props } = report;
-				this.runningJobs.set(jobId, props);
-				return;
-			}
-
-			if (report.kind === 'job-finished-running') {
-				this.runningJobs.clear(report.jobId);
 			}
 		});
 

@@ -28,21 +28,13 @@ export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-export type JobProgressReport =
-	| WebhookResponseReport
-	| JobStartedRunningReport
-	| JobFinishedRunningReport;
+export type JobProgressReport = WebhookResponseReport;
 
 export type WebhookResponseReport = {
 	kind: 'webhook-response';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
 };
-
-export type JobStartedRunningReport = {
-	kind: 'job-started-running';
-	jobId: JobId;
-} & RunningJobProps;
 
 export type RunningJobProps = {
 	executionId: string;
@@ -56,8 +48,3 @@ export type RunningJobProps = {
 };
 
 export type RunningJobSummary = Omit<RunningJobProps, 'run'>;
-
-export type JobFinishedRunningReport = {
-	kind: 'job-finished-running';
-	jobId: JobId;
-};
