@@ -1,10 +1,17 @@
 <template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:form-loading="loading"
-		data-test-id="setup-form"
-		@submit="onSubmit"
-	/>
+	<div>
+		<iframe
+			v-if="isTelemetryEnabled"
+			:class="$style['self-install-iframe']"
+			:src="selfInstallSrc"
+		/>
+		<AuthView
+			:form="FORM_CONFIG"
+			:form-loading="loading"
+			data-test-id="setup-form"
+			@submit="onSubmit"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
@@ -18,6 +25,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/root.store';
 
 export default defineComponent({
 	name: 'SetupView',
@@ -91,7 +99,13 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useRootStore),
+		isTelemetryEnabled() {
+			return this.settingsStore.isTelemetryEnabled;
+		},
+		selfInstallSrc() {
+			return 'https://n8n.io/self-install?instanceId=' + this.rootStore.instanceId;
+		},
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string | boolean }) {
@@ -121,3 +135,9 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.self-install-iframe {
+	display: none;
+}
+</style>
