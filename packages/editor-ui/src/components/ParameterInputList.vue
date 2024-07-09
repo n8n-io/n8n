@@ -167,6 +167,7 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 	NodeParameterValueType,
+	NodePropertyAction,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
@@ -484,9 +485,30 @@ function onNoticeAction(action: string) {
  * @param parameter
  */
 function onButtonAction(parameter: INodeProperties) {
-	const action: string | undefined = parameter.typeOptions?.action;
+	const action: string | NodePropertyAction | undefined = parameter.typeOptions?.action;
 
-	switch (action) {
+	if (!action) return;
+
+	if (typeof action === 'string') {
+		switch (action) {
+			default:
+				return;
+		}
+	}
+
+	const { type, source, target } = action;
+	switch (type) {
+		case 'updateProperty':
+			const sourceValue = getParameterValue(source as string);
+			// const targetValue = getParameterValue(target as string);
+
+			const parameterData: IUpdateInformation = {
+				name: getPath(target as string),
+				value: sourceValue,
+			};
+
+			//TODO: code editor does not displays updated value, needs to be closed and reopened
+			emit('valueChanged', parameterData);
 		default:
 			return;
 	}

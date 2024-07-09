@@ -1214,8 +1214,15 @@ export interface ILoadOptions {
 	};
 }
 
+export type NodePropertyAction = {
+	type: 'updateProperty';
+	handler: string;
+	source?: string;
+	target?: string;
+};
+
 export interface INodePropertyTypeOptions {
-	action?: string; // Supported by: button
+	action?: string | NodePropertyAction; // Supported by: button
 	actionHandler?: string; // Supported by: button
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
