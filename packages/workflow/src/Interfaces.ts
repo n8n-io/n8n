@@ -1216,6 +1216,7 @@ export interface ILoadOptions {
 
 export interface INodePropertyTypeOptions {
 	action?: string; // Supported by: button
+	actionHandler?: string; // Supported by: button
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
