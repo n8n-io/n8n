@@ -15,7 +15,6 @@ const commonThemeProps = {
 	},
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
-		height: '220px',
 		padding: 'var(--spacing-xs)',
 		color: 'var(--input-font-color, var(--color-text-dark))',
 		caretColor: 'var(--color-code-caret)',

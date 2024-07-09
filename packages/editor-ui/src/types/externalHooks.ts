@@ -180,7 +180,6 @@ export interface ExternalHooks {
 		>;
 	};
 	expressionEdit: {
-		itemSelected: Array<ExternalHooksMethod<InsertedItemFromExpEditorEventData>>;
 		dialogVisibleChanged: Array<ExternalHooksMethod<ExpressionEditorEventsData>>;
 		closeDialog: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		mounted: Array<
@@ -230,9 +229,6 @@ export interface ExternalHooks {
 	};
 	userInfo: {
 		mounted: Array<ExternalHooksMethod<{ userInfoRef: HTMLElement }>>;
-	};
-	variableSelectorItem: {
-		mounted: Array<ExternalHooksMethod<{ variableSelectorItemRef: HTMLElement }>>;
 	};
 	mainSidebar: {
 		mounted: Array<ExternalHooksMethod<{ userRef: Element }>>;

@@ -424,6 +424,7 @@
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					:class="$style.schema"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -1985,6 +1986,10 @@ export default defineComponent({
 	margin-bottom: var(--spacing-xs);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
+}
+
+.schema {
+	padding: 0 var(--spacing-s);
 }
 </style>
 
