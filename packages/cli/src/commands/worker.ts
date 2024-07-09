@@ -21,6 +21,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
+import { JobProcessor } from '@/scaling-mode/job-processor';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -45,6 +46,8 @@ export class Worker extends BaseCommand {
 
 	scalingMode: ScalingMode;
 
+	jobProcessor: JobProcessor;
+
 	redisSubscriber: RedisServicePubSubSubscriber;
 
 	/**
@@ -62,12 +65,12 @@ export class Worker extends BaseCommand {
 
 			// Wait for active workflow executions to finish
 			let count = 0;
-			while (Object.keys(this.scalingMode.getRunningJobIds()).length !== 0) {
+			while (Object.keys(this.jobProcessor.getRunningJobIds()).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
-							Object.keys(this.scalingMode.getRunningJobIds()).length
+							Object.keys(this.jobProcessor.getRunningJobIds()).length
 						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
@@ -153,8 +156,8 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.scalingMode.getRunningJobIds() as string[],
-			getRunningJobsSummary: () => this.scalingMode.getRunningJobsSummary(),
+			getRunningJobIds: () => this.jobProcessor.getRunningJobIds() as string[],
+			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
 		});
 	}
 
@@ -172,6 +175,8 @@ export class Worker extends BaseCommand {
 		await this.scalingMode.setupQueue();
 
 		this.scalingMode.setupWorker(this.concurrency);
+
+		this.jobProcessor = Container.get(JobProcessor);
 	}
 
 	async setupHealthMonitor() {

@@ -121,16 +121,6 @@ export class ScalingMode {
 		}
 	}
 
-	// @TODO: These two should be from worker
-
-	getRunningJobIds() {
-		return this.jobProcessor.getRunningJobIds();
-	}
-
-	getRunningJobsSummary() {
-		return this.jobProcessor.getRunningJobsSummary();
-	}
-
 	/**
 	 * Listeners
 	 */
