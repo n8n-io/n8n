@@ -64,6 +64,7 @@ declare global {
 					innerWidth: number;
 					innerHeight: number;
 					preventNodeViewBeforeUnload?: boolean;
+					maxPinnedDataSize?: number;
 					featureFlags: {
 						override: (feature: string, value: unknown) => void;
 					};

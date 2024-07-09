@@ -10,9 +10,17 @@ export function createCanvasNodeData({
 	inputs = [],
 	outputs = [],
 	connections = { input: {}, output: {} },
+	execution = {},
+	issues = { items: [], visible: false },
+	pinnedData = { count: 0, visible: false },
+	runData = { count: 0, visible: false },
 	renderType = 'default',
 }: Partial<CanvasElementData> = {}): CanvasElementData {
 	return {
+		execution,
+		issues,
+		pinnedData,
+		runData,
 		id,
 		type,
 		typeVersion,

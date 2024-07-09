@@ -3,6 +3,7 @@ import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import { sleep, ApplicationError } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -225,7 +226,9 @@ export class Worker extends BaseCommand {
 		);
 
 		let presetCredentialsLoaded = false;
-		const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		const globalConfig = Container.get(GlobalConfig);
+		const endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
 		if (endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			app.post(

@@ -428,10 +428,11 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 
 describe('parseCanvasConnectionHandleString', () => {
 	it('should parse valid handle string', () => {
-		const handle = 'outputs/main/1';
+		const handle = 'inputs/main/1';
 		const result = parseCanvasConnectionHandleString(handle);
 
 		expect(result).toEqual({
+			mode: 'inputs',
 			type: 'main',
 			index: 1,
 		});
@@ -442,6 +443,7 @@ describe('parseCanvasConnectionHandleString', () => {
 		const result = parseCanvasConnectionHandleString(handle);
 
 		expect(result).toEqual({
+			mode: 'outputs',
 			type: 'main',
 			index: 0,
 		});
@@ -452,6 +454,7 @@ describe('parseCanvasConnectionHandleString', () => {
 		const result = parseCanvasConnectionHandleString(handle);
 
 		expect(result).toEqual({
+			mode: 'outputs',
 			type: 'main',
 			index: 0,
 		});
@@ -462,6 +465,7 @@ describe('parseCanvasConnectionHandleString', () => {
 		const result = parseCanvasConnectionHandleString(handle);
 
 		expect(result).toEqual({
+			mode: 'outputs',
 			type: 'main',
 			index: 1,
 		});
@@ -472,6 +476,7 @@ describe('parseCanvasConnectionHandleString', () => {
 		const result = parseCanvasConnectionHandleString(handle);
 
 		expect(result).toEqual({
+			mode: 'outputs',
 			type: 'main',
 			index: 0,
 		});
