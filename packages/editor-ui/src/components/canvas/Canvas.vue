@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasElement } from '@/types';
+import type { CanvasConnection, CanvasElement, ConnectStartEvent } from '@/types';
 import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
@@ -19,7 +19,10 @@ const emit = defineEmits<{
 	'update:node:selected': [id?: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
+	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
+	'create:connection:end': [connection: Connection];
+	'create:connection:cancelled': [handle: ConnectStartEvent];
 	'click:pane': [position: XYPosition];
 }>();
 
@@ -38,9 +41,10 @@ const props = withDefaults(
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
-	id: props.id,
-});
+const { getSelectedEdges, getSelectedNodes, viewportRef, findNode, addSelectedNodes, project } =
+	useVueFlow({
+		id: props.id,
+	});
 
 const hoveredEdges = ref<Record<string, boolean>>({});
 
@@ -79,12 +83,48 @@ function onDeleteNode(id: string) {
 	emit('delete:node', id);
 }
 
-function onDeleteConnection(connection: Connection) {
-	emit('delete:connection', connection);
+/**
+ * Connections
+ */
+
+const connectionCreated = ref(false);
+const connectionEventData = ref<ConnectStartEvent | Connection>();
+
+const isConnection = (data: ConnectStartEvent | Connection | undefined): data is Connection =>
+	!!data && connectionCreated.value;
+
+const isConnectionCancelled = (
+	data: ConnectStartEvent | Connection | undefined,
+): data is ConnectStartEvent => !!data && !connectionCreated.value;
+
+function onConnectStart(handle: ConnectStartEvent) {
+	emit('create:connection:start', handle);
+
+	connectionEventData.value = handle;
+	connectionCreated.value = false;
 }
 
-function onConnect(...args: unknown[]) {
-	emit('create:connection', args[0] as Connection);
+function onConnect(connection: Connection) {
+	emit('create:connection', connection);
+
+	connectionEventData.value = connection;
+	connectionCreated.value = true;
+}
+
+function onConnectEnd() {
+	if (isConnection(connectionEventData.value)) {
+		emit('create:connection:end', connectionEventData.value);
+	} else if (isConnectionCancelled(connectionEventData.value)) {
+		emit('create:connection:cancelled', connectionEventData.value);
+
+		const selectedNode = findNode(connectionEventData.value.nodeId);
+		console.log({ selectedNode });
+		addSelectedNodes([selectedNode]);
+	}
+}
+
+function onDeleteConnection(connection: Connection) {
+	emit('delete:connection', connection);
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -128,8 +168,10 @@ function onClickPane(event: MouseEvent) {
 		@selection-drag-stop="onSelectionDragStop"
 		@edge-mouse-enter="onMouseEnterEdge"
 		@edge-mouse-leave="onMouseLeaveEdge"
-		@pane-click="onClickPane"
+		@connect-start="onConnectStart"
 		@connect="onConnect"
+		@connect-end="onConnectEnd"
+		@pane-click="onClickPane"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<CanvasNode

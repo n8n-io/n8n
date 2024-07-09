@@ -185,8 +185,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		uiStore.lastSelectedNode = sourceNode.name;
 		uiStore.lastSelectedNodeEndpointUuid = info.endpointUuid ?? null;
 		uiStore.lastSelectedNodeOutputIndex = info.index;
-		// canvasStore.newNodeInsertPosition = null;
 
+		// canvasStore.newNodeInsertPosition = null;
+		//
 		// @TODO Add connection to store
 		// if (info.connection) {
 		// 	canvasStore.setLastSelectedConnection(info.connection);

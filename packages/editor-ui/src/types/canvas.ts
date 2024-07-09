@@ -96,3 +96,5 @@ export interface CanvasNodeInjectionData {
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 }
+
+export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
