@@ -405,6 +405,7 @@ export function useCanvasOperations({
 		}
 
 		const newNodeData: INodeUi = {
+			...node,
 			id: node.id ?? uuid(),
 			name: node.name ?? (nodeTypeDescription.defaults.name as string),
 			type: nodeTypeDescription.name,
