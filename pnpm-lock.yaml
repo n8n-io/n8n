@@ -157,6 +157,9 @@ importers:
 
   packages/@n8n/chat:
     dependencies:
+      '@vueuse/core':
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.4.21(typescript@5.5.2))
       highlight.js:
         specifier: ^11.8.0
         version: 11.9.0
@@ -1178,14 +1181,14 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.5.2)))
       '@vueuse/components':
-        specifier: ^10.5.0
-        version: 10.5.0(vue@3.4.21(typescript@5.5.2))
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.4.21(typescript@5.5.2))
       '@vueuse/core':
-        specifier: ^10.5.0
-        version: 10.5.0(vue@3.4.21(typescript@5.5.2))
+        specifier: ^10.11.0
+        version: 10.11.0(vue@3.4.21(typescript@5.5.2))
       axios:
         specifier: 1.6.7
-        version: 1.6.7
+        version: 1.6.7(debug@3.2.7)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -5705,8 +5708,8 @@ packages:
   '@types/web-bluetooth@0.0.16':
     resolution: {integrity: sha512-oh8q2Zc32S6gd/j50GowEjKLoOVOwHP/bWVjKJInBwQqdOYMdPrf1oVlelTlyfFK3CKxL1uahMDAr+vy8T7yMQ==}
 
-  '@types/web-bluetooth@0.0.18':
-    resolution: {integrity: sha512-v/ZHEj9xh82usl8LMR3GarzFY1IrbXJw5L4QfQhokjRV91q+SelFqxQWSep1ucXEZ22+dSTwLFkXeur25sPIbw==}
+  '@types/web-bluetooth@0.0.20':
+    resolution: {integrity: sha512-g9gZnnXVq7gM7v3tJCWV/qw7w+KeOlSHAhgF9RytFyifW6AF61hdT2ucrYhPq9hLs5JIryeupHV3qGk95dH9ow==}
 
   '@types/webidl-conversions@7.0.0':
     resolution: {integrity: sha512-xTE1E+YF4aWPJJeUzaZI5DRntlkY3+BCVJi0axFptnjGmAoWxkyREIh/XMrfxVLejwQxMCfDXdICo0VLxThrog==}
@@ -5985,23 +5988,23 @@ packages:
   '@vue/tsconfig@0.5.1':
     resolution: {integrity: sha512-VcZK7MvpjuTPx2w6blwnwZAu5/LgBUtejFOi3pPGQFXQN5Ela03FUtd2Qtg4yWGGissVL0dr6Ro1LfOFh+PCuQ==}
 
-  '@vueuse/components@10.5.0':
-    resolution: {integrity: sha512-zWQZ8zkNBvX++VHfyiUaQ4otb+4PWI8679GR8FvdrNnj+01LXnqvrkyKd8yTCMJ9nHqwRRTJikS5fu4Zspn9DQ==}
+  '@vueuse/components@10.11.0':
+    resolution: {integrity: sha512-ZvLZI23d5ZAtva5fGyYh/jQtZO8l+zJ5tAXyYNqHJZkq1o5yWyqZhENvSv5mfDmN5IuAOp4tq02mRmX/ipFGcg==}
 
-  '@vueuse/core@10.5.0':
-    resolution: {integrity: sha512-z/tI2eSvxwLRjOhDm0h/SXAjNm8N5ld6/SC/JQs6o6kpJ6Ya50LnEL8g5hoYu005i28L0zqB5L5yAl8Jl26K3A==}
+  '@vueuse/core@10.11.0':
+    resolution: {integrity: sha512-x3sD4Mkm7PJ+pcq3HX8PLPBadXCAlSDR/waK87dz0gQE+qJnaaFhc/dZVfJz+IUYzTMVGum2QlR7ImiJQN4s6g==}
 
   '@vueuse/core@9.13.0':
     resolution: {integrity: sha512-pujnclbeHWxxPRqXWmdkKV5OX4Wk4YeK7wusHqRwU0Q7EFusHoqNA/aPhB6KCh9hEqJkLAJo7bb0Lh9b+OIVzw==}
 
-  '@vueuse/metadata@10.5.0':
-    resolution: {integrity: sha512-fEbElR+MaIYyCkeM0SzWkdoMtOpIwO72x8WsZHRE7IggiOlILttqttM69AS13nrDxosnDBYdyy3C5mR1LCxHsw==}
+  '@vueuse/metadata@10.11.0':
+    resolution: {integrity: sha512-kQX7l6l8dVWNqlqyN3ePW3KmjCQO3ZMgXuBMddIu83CmucrsBfXlH+JoviYyRBws/yLTQO8g3Pbw+bdIoVm4oQ==}
 
   '@vueuse/metadata@9.13.0':
     resolution: {integrity: sha512-gdU7TKNAUVlXXLbaF+ZCfte8BjRJQWPCa2J55+7/h+yDtzw3vOoGQDRXzI6pyKyo6bXFT5/QoPE4hAknExjRLQ==}
 
-  '@vueuse/shared@10.5.0':
-    resolution: {integrity: sha512-18iyxbbHYLst9MqU1X1QNdMHIjks6wC7XTVf0KNOv5es/Ms6gjVFCAAWTVP2JStuGqydg3DT+ExpFORUEi9yhg==}
+  '@vueuse/shared@10.11.0':
+    resolution: {integrity: sha512-fyNoIXEq3PfX1L3NkNhtVQUSRtqYwJtJg+Bp9rIzculIZWHTkKSysujrOk2J+NrRulLTQH9+3gGSfYLWSEWU1A==}
 
   '@vueuse/shared@9.13.0':
     resolution: {integrity: sha512-UrnhU+Cnufu4S6JLCPZnkWh0WwZGUp72ktOF2DFptMlOs3TOdVv8xJN53zhHGARmVOsz5KqOls09+J1NR6sBKw==}
@@ -13152,6 +13155,17 @@ packages:
       '@vue/composition-api':
         optional: true
 
+  vue-demi@0.14.8:
+    resolution: {integrity: sha512-Uuqnk9YE9SsWeReYqK2alDI5YzciATE0r2SkA6iMAtuXvNTMNACJLJEXNXaEy94ECuBe4Sk6RzRU80kjdbIo1Q==}
+    engines: {node: '>=12'}
+    hasBin: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
+
   vue-docgen-api@4.76.0:
     resolution: {integrity: sha512-Nykmg/Net1BhoS1tENGqcevDdgha4us0x2Xnin7n5SxxAH6+s10FXTWtg7E9+jhC3GWEE83lcFHMS/Ml4C1dog==}
     peerDependencies:
@@ -16118,7 +16132,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/types': 2.0.0
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       kolorist: 1.8.0
       local-pkg: 0.4.3
     transitivePeerDependencies:
@@ -19370,7 +19384,7 @@ snapshots:
 
   '@types/web-bluetooth@0.0.16': {}
 
-  '@types/web-bluetooth@0.0.18': {}
+  '@types/web-bluetooth@0.0.20': {}
 
   '@types/webidl-conversions@7.0.0': {}
 
@@ -19639,7 +19653,7 @@ snapshots:
 
   '@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.5.2))':
     dependencies:
-      '@vueuse/core': 10.5.0(vue@3.4.21(typescript@5.5.2))
+      '@vueuse/core': 10.11.0(vue@3.4.21(typescript@5.5.2))
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
@@ -19772,21 +19786,21 @@ snapshots:
 
   '@vue/tsconfig@0.5.1': {}
 
-  '@vueuse/components@10.5.0(vue@3.4.21(typescript@5.5.2))':
+  '@vueuse/components@10.11.0(vue@3.4.21(typescript@5.5.2))':
     dependencies:
-      '@vueuse/core': 10.5.0(vue@3.4.21(typescript@5.5.2))
-      '@vueuse/shared': 10.5.0(vue@3.4.21(typescript@5.5.2))
-      vue-demi: 0.14.6(vue@3.4.21(typescript@5.5.2))
+      '@vueuse/core': 10.11.0(vue@3.4.21(typescript@5.5.2))
+      '@vueuse/shared': 10.11.0(vue@3.4.21(typescript@5.5.2))
+      vue-demi: 0.14.8(vue@3.4.21(typescript@5.5.2))
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
 
-  '@vueuse/core@10.5.0(vue@3.4.21(typescript@5.5.2))':
+  '@vueuse/core@10.11.0(vue@3.4.21(typescript@5.5.2))':
     dependencies:
-      '@types/web-bluetooth': 0.0.18
-      '@vueuse/metadata': 10.5.0
-      '@vueuse/shared': 10.5.0(vue@3.4.21(typescript@5.5.2))
-      vue-demi: 0.14.6(vue@3.4.21(typescript@5.5.2))
+      '@types/web-bluetooth': 0.0.20
+      '@vueuse/metadata': 10.11.0
+      '@vueuse/shared': 10.11.0(vue@3.4.21(typescript@5.5.2))
+      vue-demi: 0.14.8(vue@3.4.21(typescript@5.5.2))
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
@@ -19796,25 +19810,25 @@ snapshots:
       '@types/web-bluetooth': 0.0.16
       '@vueuse/metadata': 9.13.0
       '@vueuse/shared': 9.13.0(vue@3.4.21(typescript@5.5.2))
-      vue-demi: 0.14.5(vue@3.4.21(typescript@5.5.2))
+      vue-demi: 0.14.6(vue@3.4.21(typescript@5.5.2))
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
 
-  '@vueuse/metadata@10.5.0': {}
+  '@vueuse/metadata@10.11.0': {}
 
   '@vueuse/metadata@9.13.0': {}
 
-  '@vueuse/shared@10.5.0(vue@3.4.21(typescript@5.5.2))':
+  '@vueuse/shared@10.11.0(vue@3.4.21(typescript@5.5.2))':
     dependencies:
-      vue-demi: 0.14.6(vue@3.4.21(typescript@5.5.2))
+      vue-demi: 0.14.8(vue@3.4.21(typescript@5.5.2))
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
 
   '@vueuse/shared@9.13.0(vue@3.4.21(typescript@5.5.2))':
     dependencies:
-      vue-demi: 0.14.5(vue@3.4.21(typescript@5.5.2))
+      vue-demi: 0.14.6(vue@3.4.21(typescript@5.5.2))
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
@@ -19962,7 +19976,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -20265,14 +20279,6 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.23.6
       is-retry-allowed: 2.2.0
-
-  axios@1.6.7:
-    dependencies:
-      follow-redirects: 1.15.6
-      form-data: 4.0.0
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
 
   axios@1.6.7(debug@3.2.7):
     dependencies:
@@ -21299,10 +21305,6 @@ snapshots:
       ms: 2.1.3
     optionalDependencies:
       supports-color: 8.1.1
-
-  debug@4.3.4:
-    dependencies:
-      ms: 2.1.2
 
   debug@4.3.4(supports-color@8.1.1):
     dependencies:
@@ -22478,8 +22480,6 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.15.6: {}
-
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
       debug: 3.2.7(supports-color@5.5.0)
@@ -23092,7 +23092,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -27828,7 +27828,7 @@ snapshots:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/utils': 2.1.11
-      debug: 4.3.4
+      debug: 4.3.4(supports-color@8.1.1)
       kolorist: 1.8.0
       local-pkg: 0.5.0
       unplugin: 1.5.1
@@ -28068,6 +28068,10 @@ snapshots:
       vue: 3.4.21(typescript@5.5.2)
 
   vue-demi@0.14.6(vue@3.4.21(typescript@5.5.2)):
+    dependencies:
+      vue: 3.4.21(typescript@5.5.2)
+
+  vue-demi@0.14.8(vue@3.4.21(typescript@5.5.2)):
     dependencies:
       vue: 3.4.21(typescript@5.5.2)
 
