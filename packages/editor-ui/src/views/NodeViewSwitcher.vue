@@ -1,10 +1,9 @@
 <script lang="ts" setup>
 import { useLocalStorage } from '@vueuse/core';
-import { defineAsyncComponent, watch } from 'vue';
+import { watch } from 'vue';
 import { useRouter } from 'vue-router';
-
-const NodeViewV1 = defineAsyncComponent(async () => await import('@/views/NodeView.vue'));
-const NodeViewV2 = defineAsyncComponent(async () => await import('@/views/NodeView.v2.vue'));
+import NodeViewV1 from '@/views/NodeView.vue';
+import NodeViewV2 from '@/views/NodeView.v2.vue';
 
 const router = useRouter();
 
@@ -16,10 +15,6 @@ watch(nodeViewVersion, () => {
 </script>
 
 <template>
-	<Suspense>
-		<KeepAlive>
-			<NodeViewV2 v-if="nodeViewVersion === '2'" />
-			<NodeViewV1 v-else />
-		</KeepAlive>
-	</Suspense>
+	<NodeViewV2 v-if="nodeViewVersion === '2'" />
+	<NodeViewV1 v-else />
 </template>
