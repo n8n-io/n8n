@@ -65,7 +65,7 @@ describe('useCanvasOperations', () => {
 			usedCredentials: [],
 		});
 		workflowsStore.workflowsById[workflowId] = workflow;
-		await workflowHelpers.initState(workflow, true);
+		await workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
 	});

@@ -946,7 +946,6 @@ export function useCanvasOperations({
 		triggerNodes,
 		initializeNodeDataWithDefaultCredentials,
 		addNodes,
-		resolveNodeData,
 		updateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,

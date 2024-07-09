@@ -136,7 +136,6 @@ const {
 	revertDeleteConnection,
 	setNodeActiveByName,
 	addConnections,
-	resolveNodeData,
 	editableWorkflow,
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
