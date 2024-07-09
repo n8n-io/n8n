@@ -42,7 +42,7 @@ export class ScalingMode {
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
-		this.registerListeners();
+		this.registerResponseListener();
 
 		this.logger.debug('[ScalingMode] Queue setup completed');
 	}
@@ -53,6 +53,8 @@ export class ScalingMode {
 			concurrency,
 			async (job: Job) => await this.jobProcessor.processJob(job),
 		);
+
+		this.registerWorkerListeners();
 
 		this.logger.debug('[ScalingMode] Worker setup completed');
 	}
@@ -104,7 +106,7 @@ export class ScalingMode {
 
 		try {
 			if (await job.isActive()) {
-				this.jobProcessor.stopJob(jobId);
+				await job.progress(-1);
 				this.logger.debug('[ScalingMode] Stopped active job', { jobId, executionId });
 				return true;
 			}
@@ -113,10 +115,13 @@ export class ScalingMode {
 			this.logger.debug('[ScalingMode] Stopped inactive job', { jobId, executionId });
 			return true;
 		} catch (error: unknown) {
+			await job.progress(-1);
 			this.logger.error('[ScalingMode] Failed to stop job', { jobId, executionId, error });
 			return false;
 		}
 	}
+
+	// @TODO: These two should be from worker
 
 	getRunningJobIds() {
 		return this.jobProcessor.getRunningJobIds();
@@ -130,12 +135,22 @@ export class ScalingMode {
 	 * Listeners
 	 */
 
-	private registerListeners() {
+	private registerResponseListener() {
+		if (config.getEnv('generic.instanceType') !== 'main') return;
+
 		this.queue.on('global:progress', (_job: Job, report: JobProgressReport) => {
 			if (report.kind === 'webhook-response') {
 				const { executionId, response } = report;
 				this.activeExecutions.resolveResponsePromise(executionId, decodeWebhookResponse(response));
 			}
+		});
+	}
+
+	private registerWorkerListeners() {
+		if (config.getEnv('generic.instanceType') !== 'worker') return;
+
+		this.queue.on('global:progress', (jobId: JobId, progress) => {
+			if (progress === -1) this.jobProcessor.stopJob(jobId);
 		});
 
 		let latestAttemptTs = 0;
