@@ -1,9 +1,10 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { omit } from 'lodash';
 import type { Tool } from '@langchain/core/tools';
@@ -13,6 +14,7 @@ import type { ZodObject } from 'zod';
 import { z } from 'zod';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { OutputFixingParser } from 'langchain/output_parsers';
+import { HumanMessage } from '@langchain/core/messages';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -37,6 +39,40 @@ function getOutputParserSchema(outputParser: BaseOutputParser): ZodObject<any, a
 	}
 
 	return schema;
+}
+
+async function extractBinaryMessages(ctx: IExecuteFunctions) {
+	const binaryData = ctx.getInputData(0, 'main')?.[0]?.binary ?? {};
+	const binaryMessages = await Promise.all(
+		Object.values(binaryData)
+			.filter((data) => data.mimeType.startsWith('image/'))
+			.map(async (data) => {
+				let binaryUrlString;
+
+				// In filesystem mode we need to get binary stream by id before converting it to buffer
+				if (data.id) {
+					const binaryBuffer = await ctx.helpers.binaryToBuffer(
+						await ctx.helpers.getBinaryStream(data.id),
+					);
+
+					binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(BINARY_ENCODING)}`;
+				} else {
+					binaryUrlString = data.data.includes('base64')
+						? data.data
+						: `data:${data.mimeType};base64,${data.data}`;
+				}
+
+				return {
+					type: 'image_url',
+					image_url: {
+						url: binaryUrlString,
+					},
+				};
+			}),
+	);
+	return new HumanMessage({
+		content: [...binaryMessages],
+	});
 }
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -113,12 +149,20 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		returnIntermediateSteps?: boolean;
 	};
 
-	const prompt = ChatPromptTemplate.fromMessages([
+	const passthroughBinaryImages = this.getNodeParameter('options.passthroughBinaryImages', 0, true);
+	const messages: BaseMessagePromptTemplateLike[] = [
 		['system', `{system_message}${outputParser ? '\n\n{formatting_instructions}' : ''}`],
 		['placeholder', '{chat_history}'],
 		['human', '{input}'],
 		['placeholder', '{agent_scratchpad}'],
-	]);
+	];
+
+	const hasBinaryData = this.getInputData(0, 'main')?.[0]?.binary !== undefined;
+	if (hasBinaryData && passthroughBinaryImages) {
+		const binaryMessage = await extractBinaryMessages(this);
+		messages.push(binaryMessage);
+	}
+	const prompt = ChatPromptTemplate.fromMessages(messages);
 
 	const agent = createToolCallingAgent({
 		llm: model,

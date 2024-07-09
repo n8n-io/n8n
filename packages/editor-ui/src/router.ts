@@ -24,8 +24,7 @@ const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const NodeView = async () => await import('@/views/NodeView.vue');
-const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
+const NodeView = async () => await import('@/views/NodeViewSwitcher.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
@@ -68,10 +67,6 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 	}
 
 	return false;
-}
-
-function nodeViewV2CustomMiddleware() {
-	return !!localStorage.getItem('features.NodeViewV2');
 }
 
 export const routes: RouteRecordRaw[] = [
@@ -361,40 +356,6 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
-	},
-	{
-		path: '/workflow-v2/:name',
-		name: VIEWS.WORKFLOW_V2,
-		components: {
-			default: NodeViewV2,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'custom'],
-			middlewareOptions: {
-				custom: nodeViewV2CustomMiddleware,
-			},
-		},
-	},
-	{
-		path: '/workflow-v2/new',
-		name: VIEWS.NEW_WORKFLOW_V2,
-		components: {
-			default: NodeViewV2,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'custom'],
-			middlewareOptions: {
-				custom: nodeViewV2CustomMiddleware,
-			},
-		},
 	},
 	{
 		path: '/signin',

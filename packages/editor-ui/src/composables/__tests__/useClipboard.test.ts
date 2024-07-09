@@ -32,12 +32,29 @@ describe('useClipboard()', () => {
 		userEvent.setup();
 	});
 
+	beforeEach(() => {
+		// Mock document.execCommand implementation to set clipboard items
+		document.execCommand = vi.fn().mockImplementation((command) => {
+			if (command === 'copy') {
+				Object.defineProperty(window.navigator, 'clipboard', {
+					value: { items: [testValue] },
+					configurable: true,
+				});
+			}
+			return true;
+		});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	describe('copy()', () => {
 		it('should copy text value', async () => {
 			const { getByTestId } = render(TestComponent);
 
 			const copyButton = getByTestId('copy');
-			copyButton.click();
+			await userEvent.click(copyButton);
 			expect((window.navigator.clipboard as unknown as { items: string[] }).items).toHaveLength(1);
 		});
 	});

@@ -364,10 +364,18 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
 			);
