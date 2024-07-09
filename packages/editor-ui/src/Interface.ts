@@ -1376,13 +1376,6 @@ export interface IVersionsState {
 	currentVersion: IVersion | undefined;
 }
 
-export interface IUsersState {
-	initialized: boolean;
-	currentUserId: null | string;
-	users: { [userId: string]: IUser };
-	currentUserCloudInfo: Cloud.UserAccount | null;
-}
-
 export interface IWorkflowsState {
 	currentWorkflowExecutions: ExecutionSummary[];
 	activeWorkflowExecution: ExecutionSummary | null;
