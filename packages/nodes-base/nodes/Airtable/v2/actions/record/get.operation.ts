@@ -45,40 +45,6 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
-	// {
-	// 	displayName: 'Instructions',
-	// 	name: 'instructions',
-	// 	type: 'string',
-	// 	noDataExpression: true,
-	// 	default: '',
-	// 	placeholder: 'Describe how you want to transform your data and click Generate',
-	// 	typeOptions: {
-	// 		rows: 5,
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Generate Code',
-	// 	name: 'generate',
-	// 	type: 'button',
-	// 	default: '',
-	// 	typeOptions: {
-	// 		action: {
-	// 			type: 'updateProperty',
-	// 			handler: 'generateCodeUsingAiService',
-	// 			target: 'jsCode',
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Code',
-	// 	name: 'jsCode',
-	// 	type: 'string',
-	// 	default: '',
-	// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-	// 	typeOptions: {
-	// 		rows: 5,
-	// 	},
-	// },
 ];
 
 const displayOptions = {
