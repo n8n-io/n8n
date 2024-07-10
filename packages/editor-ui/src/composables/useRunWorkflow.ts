@@ -435,10 +435,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
+	async function stopWaitingForWebhook() {
+		try {
+			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
+			return;
+		}
+	}
+
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
 		runWorkflowApi,
 		stopCurrentExecution,
+		stopWaitingForWebhook,
 	};
 }

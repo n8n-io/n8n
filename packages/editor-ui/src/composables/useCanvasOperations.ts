@@ -11,13 +11,19 @@ import type {
 	INodeUpdatePropertiesInformation,
 	XYPosition,
 } from '@/Interface';
-import { QUICKSTART_NOTE_NAME, STICKY_NODE_TYPE } from '@/constants';
+import {
+	FORM_TRIGGER_NODE_TYPE,
+	QUICKSTART_NOTE_NAME,
+	STICKY_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
+	AddNodeCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
@@ -53,10 +59,8 @@ import type { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-type AddNodeData = {
-	name?: string;
+type AddNodeData = Partial<INodeUi> & {
 	type: string;
-	position?: XYPosition;
 };
 
 type AddNodeOptions = {
@@ -266,13 +270,12 @@ export function useCanvasOperations({
 	) {
 		let currentPosition = position;
 		let lastAddedNode: INodeUi | undefined;
-		for (const { type, name, position: nodePosition, isAutoAdd, openDetail } of nodes) {
+		for (const { isAutoAdd, openDetail, ...nodeData } of nodes) {
 			try {
 				await createNode(
 					{
-						name,
-						type,
-						position: nodePosition ?? currentPosition,
+						...nodeData,
+						position: nodeData.position ?? currentPosition,
 					},
 					{
 						dragAndDrop,
@@ -328,14 +331,16 @@ export function useCanvasOperations({
 
 		workflowsStore.addNode(newNodeData);
 
-		// @TODO Figure out why this is needed and if we can do better...
-		// this.matchCredentials(node);
+		nodeHelpers.matchCredentials(newNodeData);
 
 		const lastSelectedNode = uiStore.getLastSelectedNode;
 		const lastSelectedNodeOutputIndex = uiStore.lastSelectedNodeOutputIndex;
 		const lastSelectedNodeEndpointUuid = uiStore.lastSelectedNodeEndpointUuid;
 
 		historyStore.startRecordingUndo();
+		if (options.trackHistory) {
+			historyStore.pushCommandToUndo(new AddNodeCommand(newNodeData));
+		}
 
 		const outputIndex = lastSelectedNodeOutputIndex ?? 0;
 		const targetEndpoint = lastSelectedNodeEndpointUuid ?? '';
@@ -399,12 +404,14 @@ export function useCanvasOperations({
 		}
 
 		const newNodeData: INodeUi = {
-			id: uuid(),
+			...node,
+			id: node.id ?? uuid(),
 			name: node.name ?? (nodeTypeDescription.defaults.name as string),
 			type: nodeTypeDescription.name,
 			typeVersion: nodeVersion,
 			position: node.position ?? [0, 0],
-			parameters: {},
+			disabled: node.disabled ?? false,
+			parameters: node.parameters ?? {},
 		};
 
 		await loadNodeTypesProperties([{ name: newNodeData.type, version: newNodeData.typeVersion }]);
@@ -662,6 +669,14 @@ export function useCanvasOperations({
 
 		if (nodeTypeDescription.webhooks?.length) {
 			newNodeData.webhookId = uuid();
+		}
+
+		// if it's a webhook and the path is empty set the UUID as the default path
+		if (
+			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE].includes(newNodeData.type) &&
+			newNodeData.parameters.path === ''
+		) {
+			newNodeData.parameters.path = newNodeData.webhookId as string;
 		}
 
 		workflowsStore.setNodePristine(newNodeData.name, true);
