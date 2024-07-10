@@ -1253,6 +1253,7 @@ export function useNodeHelpers() {
 		updateNodesCredentialsIssues,
 		getNodeInputData,
 		setSuccessOutput,
+		matchCredentials,
 		isInsertingNodes,
 		credentialsUpdated,
 		isProductionExecutionPreview,

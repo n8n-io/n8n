@@ -4,16 +4,17 @@ import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { computed, useCssModule } from 'vue';
+import type { CanvasConnectionData } from '@/types';
 
 const emit = defineEmits<{
 	delete: [connection: Connection];
 }>();
 
-const props = defineProps<
-	EdgeProps & {
-		hovered?: boolean;
-	}
->();
+export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	hovered?: boolean;
+};
+
+const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
 
@@ -27,6 +28,8 @@ const statusColor = computed(() => {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
+	} else if (status.value === 'running') {
+		return 'var(--color-primary)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}

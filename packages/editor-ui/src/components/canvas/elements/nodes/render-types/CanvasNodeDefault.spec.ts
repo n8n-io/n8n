@@ -32,7 +32,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								outputs: [{ type: NodeConnectionType.Main }],
+								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
 							},
 						}),
 					},
@@ -50,9 +50,9 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								outputs: [
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
 								],
 							},
 						}),
@@ -119,6 +119,19 @@ describe('CanvasNodeDefault', () => {
 		});
 	});
 
+	describe('running', () => {
+		it('should apply running class when node is running', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
 	describe('configurable', () => {
 		it('should render configurable node correctly', () => {
 			const { getByTestId } = renderComponent({
@@ -147,10 +160,10 @@ describe('CanvasNodeDefault', () => {
 							...createCanvasNodeProvide({
 								data: {
 									inputs: [
-										{ type: NodeConnectionType.Main },
-										{ type: NodeConnectionType.AiTool },
-										{ type: NodeConnectionType.AiDocument, required: true },
-										{ type: NodeConnectionType.AiMemory, required: true },
+										{ type: NodeConnectionType.Main, index: 0 },
+										{ type: NodeConnectionType.AiTool, index: 0 },
+										{ type: NodeConnectionType.AiDocument, index: 0, required: true },
+										{ type: NodeConnectionType.AiMemory, index: 0, required: true },
 									],
 									render: {
 										type: 'default',

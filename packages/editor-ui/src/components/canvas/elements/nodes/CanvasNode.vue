@@ -17,6 +17,7 @@ import type { NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
+	run: [id: string];
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
@@ -110,6 +111,10 @@ function onDelete() {
 	emit('delete', props.id);
 }
 
+function onRun() {
+	emit('run', props.id);
+}
+
 function onDisabledToggle() {
 	emit('toggle', props.id);
 }
@@ -151,6 +156,7 @@ function onActivate() {
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
+			@run="onRun"
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
@@ -164,19 +170,21 @@ function onActivate() {
 .canvasNode {
 	&:hover {
 		.canvasNodeToolbar {
-			display: flex;
 			opacity: 1;
 		}
 	}
 }
 
 .canvasNodeToolbar {
-	display: none;
+	transition: opacity 0.1s ease-in;
 	position: absolute;
 	top: 0;
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
-	transition: opacity 0.3s ease;
+}
+
+.canvasNodeToolbar:focus-within {
+	opacity: 1;
 }
 </style>
