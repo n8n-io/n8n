@@ -38,6 +38,7 @@
 
 <style lang="scss" module>
 // todo use tokens for colors and stuff
+// todo localization?
 .button {
 	$border: 1px;
 	border-radius: 4px;
