@@ -4,10 +4,12 @@ import AssistantText from './AssistantText.vue';
 
 interface Props {
 	size: 'small' | 'medium';
+	static: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
+	static: false,
 });
 
 const sizes = {
@@ -26,10 +28,15 @@ const sizes = {
 		height: '18px',
 	},
 };
+// todo if static, disable click
+// todo hoverable class not clean below
 </script>
 
 <template>
-	<button :class="$style.button" :style="{ height: sizes[props.size].height }">
+	<button
+		:class="[$style.button, props.static ? '' : $style.hoverable]"
+		:style="{ height: sizes[props.size].height }"
+	>
 		<div>
 			<div :style="{ padding: sizes[props.size].padding }">
 				<AssistantIcon :size="sizes[props.size].iconSize" :class="$style.icon" />
@@ -59,7 +66,7 @@ const sizes = {
 	> div {
 		background: var(--color-background-xlight);
 		border-radius: inherit;
-			height: 100%;
+		height: 100%;
 
 		> div {
 			height: 100%;
@@ -69,7 +76,9 @@ const sizes = {
 			line-height: unset;
 		}
 	}
+}
 
+.hoverable {
 	&:hover {
 		cursor: pointer;
 

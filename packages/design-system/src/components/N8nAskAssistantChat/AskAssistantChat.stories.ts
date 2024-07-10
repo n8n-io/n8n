@@ -15,7 +15,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		AskAssistantChat,
 	},
-	template: '<div style="width:275px"><ask-assistant-chat v-bind="args" /></div>',
+	template: '<div style="width:275px; height:100%"><ask-assistant-chat v-bind="args" /></div>',
 	methods,
 });
 

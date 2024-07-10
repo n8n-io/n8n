@@ -11,6 +11,10 @@
 	margin-bottom: 10px;
 }
 
+#storybook-root {
+	height: 100%;
+}
+
 // #storybook-root > div:not([class]) > *,
 // #storybook-root > * {
 // 	margin: var(--spacing-5xs);

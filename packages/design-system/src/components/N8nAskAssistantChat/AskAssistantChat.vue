@@ -26,7 +26,7 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 				<p>I'm here to assist you with building workflows.</p>
 				<p>
 					Whenever you encounter a task that I can help with, you'll see the
-					<n8n-ask-assistant-button size="small" /> button.
+					<n8n-ask-assistant-button size="small" :static="true" /> button.
 				</p>
 				<p>Clicking it starts a chat session with me.</p>
 			</div>
@@ -47,7 +47,8 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 <style lang="scss" module>
 .container {
 	min-width: 250px;
-	max-width: 250px;
+	max-width: 425px;
+	height: 100%;
 }
 
 .header {
@@ -73,6 +74,7 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 	padding: 16px;
 	border: var(--border-base);
 	border-top: 0; // todo
+	height: 100%;
 }
 
 .beta {
