@@ -2,7 +2,6 @@ import { usePushConnection } from '@/composables/usePushConnection';
 import { useRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import type { IPushData, PushDataWorkerStatusMessage } from '@/Interface';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 
@@ -21,7 +20,6 @@ vi.useFakeTimers();
 describe('usePushConnection()', () => {
 	let router: ReturnType<typeof useRouter>;
 	let pushStore: ReturnType<typeof usePushConnectionStore>;
-	let collaborationStore: ReturnType<typeof useCollaborationStore>;
 	let orchestrationStore: ReturnType<typeof useOrchestrationStore>;
 	let pushConnection: ReturnType<typeof usePushConnection>;
 
@@ -30,7 +28,6 @@ describe('usePushConnection()', () => {
 
 		router = vi.mocked(useRouter)();
 		pushStore = usePushConnectionStore();
-		collaborationStore = useCollaborationStore();
 		orchestrationStore = useOrchestrationStore();
 		pushConnection = usePushConnection({ router });
 	});
@@ -41,12 +38,6 @@ describe('usePushConnection()', () => {
 
 			pushConnection.initialize();
 
-			expect(spy).toHaveBeenCalled();
-		});
-
-		it('should initialize collaborationStore', () => {
-			const spy = vi.spyOn(collaborationStore, 'initialize').mockImplementation(() => {});
-			pushConnection.initialize();
 			expect(spy).toHaveBeenCalled();
 		});
 	});
@@ -60,12 +51,6 @@ describe('usePushConnection()', () => {
 			pushConnection.terminate();
 
 			expect(returnFn).toHaveBeenCalled();
-		});
-
-		it('should terminate collaborationStore', () => {
-			const spy = vi.spyOn(collaborationStore, 'terminate').mockImplementation(() => {});
-			pushConnection.terminate();
-			expect(spy).toHaveBeenCalled();
 		});
 	});
 

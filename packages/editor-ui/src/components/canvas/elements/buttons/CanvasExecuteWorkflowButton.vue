@@ -2,29 +2,36 @@
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
 
-defineEmits(['click']);
+defineEmits<{
+	click: [event: MouseEvent];
+}>();
 
-const uiStore = useUIStore();
-const locale = useI18n();
+const props = defineProps<{
+	waitingForWebhook: boolean;
+	executing: boolean;
+}>();
 
-const workflowRunning = computed(() => uiStore.isActionActive('workflowRunning'));
+const i18n = useI18n();
 
-const runButtonText = computed(() => {
-	if (!workflowRunning.value) {
-		return locale.baseText('nodeView.runButtonText.executeWorkflow');
+const label = computed(() => {
+	if (!props.executing) {
+		return i18n.baseText('nodeView.runButtonText.executeWorkflow');
 	}
 
-	return locale.baseText('nodeView.runButtonText.executingWorkflow');
+	if (props.waitingForWebhook) {
+		return i18n.baseText('nodeView.runButtonText.waitingForTriggerEvent');
+	}
+
+	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
 </script>
 
 <template>
-	<KeyboardShortcutTooltip :label="runButtonText" :shortcut="{ metaKey: true, keys: ['↵'] }">
+	<KeyboardShortcutTooltip :label="label" :shortcut="{ metaKey: true, keys: ['↵'] }">
 		<N8nButton
-			:loading="workflowRunning"
-			:label="runButtonText"
+			:loading="executing"
+			:label="label"
 			size="large"
 			icon="flask"
 			type="primary"

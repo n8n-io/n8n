@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue';
+import { ref, watch } from 'vue';
 import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
 import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -46,8 +46,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(event: 'toggle'): void;
-	(event: 'submit', payload: { name: string; onSubmit: (updated: boolean) => void }): void;
+	toggle: [];
+	submit: [payload: { name: string; onSubmit: (updated: boolean) => void }];
 }>();
 
 const isDisabled = ref(props.disabled);

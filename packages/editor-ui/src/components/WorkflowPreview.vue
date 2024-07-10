@@ -53,7 +53,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	(event: 'close'): void;
+	close: [];
 }>();
 
 const i18n = useI18n();

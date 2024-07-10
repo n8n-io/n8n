@@ -6,7 +6,6 @@ describe('components', () => {
 		it('should render default styling correctly', () => {
 			const wrapper = render(N8nActionDropdown, {
 				props: {
-					teleported: false,
 					items: [
 						{
 							id: 'item1',

@@ -22,6 +22,10 @@ on:
         required: false
         default: false
         type: boolean
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov upload token.'
+        required: false
 
 jobs:
   unit-test:
@@ -45,6 +49,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
         run: pnpm build
@@ -67,6 +74,6 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: inputs.collectCoverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4.5.0
         with:
-          files: packages/@n8n/chat/coverage/cobertura-coverage.xml,packages/@n8n/nodes-langchain/coverage/cobertura-coverage.xml,packages/@n8n/permissions/coverage/cobertura-coverage.xml,packages/@n8n/client-oauth2/coverage/cobertura-coverage.xml,packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/@n8n/codemirror-lang/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}

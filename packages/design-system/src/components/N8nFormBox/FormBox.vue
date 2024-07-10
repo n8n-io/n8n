@@ -68,12 +68,16 @@ withDefaults(defineProps<FormBoxProps>(), {
 });
 
 const formBus = createEventBus();
-const $emit = defineEmits(['submit', 'update', 'secondaryClick']);
+const emit = defineEmits<{
+	submit: [value: { [key: string]: Value }];
+	update: [value: { name: string; value: Value }];
+	secondaryClick: [value: Event];
+}>();
 
-const onUpdateModelValue = (e: { name: string; value: Value }) => $emit('update', e);
-const onSubmit = (e: { [key: string]: Value }) => $emit('submit', e);
+const onUpdateModelValue = (e: { name: string; value: Value }) => emit('update', e);
+const onSubmit = (e: { [key: string]: Value }) => emit('submit', e);
 const onButtonClick = () => formBus.emit('submit');
-const onSecondaryButtonClick = (event: Event) => $emit('secondaryClick', event);
+const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 </script>
 
 <style lang="scss" module>

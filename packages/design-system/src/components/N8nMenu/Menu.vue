@@ -82,9 +82,9 @@ const props = withDefaults(defineProps<MenuProps>(), {
 });
 const $route = useRoute();
 
-const $emit = defineEmits<{
-	(event: 'select', itemId: string): void;
-	(event: 'update:modelValue', itemId: string): void;
+const emit = defineEmits<{
+	select: [itemId: string];
+	'update:modelValue': [itemId: string];
 }>();
 
 const activeTab = ref(props.modelValue);
@@ -112,7 +112,7 @@ onMounted(() => {
 		activeTab.value = props.items.length > 0 ? props.items[0].id : '';
 	}
 
-	$emit('update:modelValue', activeTab.value);
+	emit('update:modelValue', activeTab.value);
 });
 
 const onSelect = (item: IMenuItem): void => {
@@ -120,8 +120,8 @@ const onSelect = (item: IMenuItem): void => {
 		activeTab.value = item.id;
 	}
 
-	$emit('select', item.id);
-	$emit('update:modelValue', item.id);
+	emit('select', item.id);
+	emit('update:modelValue', item.id);
 };
 </script>
 

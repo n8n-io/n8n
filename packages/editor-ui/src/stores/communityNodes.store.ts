@@ -11,12 +11,13 @@ const LOADER_DELAY = 300;
 
 export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => {
 	const availablePackageCount = ref(-1);
-
 	const installedPackages = ref<CommunityPackageMap>({});
 
-	// ---------------------------------------------------------------------------
-	// #region Computed
-	// ---------------------------------------------------------------------------
+	// Stores
+
+	const rootStore = useRootStore();
+
+	// Computed
 
 	const getInstalledPackages = computed(() => {
 		return Object.values(installedPackages.value).sort((a, b) =>
@@ -24,11 +25,7 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		);
 	});
 
-	// #endregion
-
-	// ---------------------------------------------------------------------------
-	// #region Methods
-	// ---------------------------------------------------------------------------
+	// Methods
 
 	const fetchAvailableCommunityPackageCount = async (): Promise<void> => {
 		if (availablePackageCount.value === -1) {
@@ -47,7 +44,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 	};
 
 	const fetchInstalledPackages = async (): Promise<void> => {
-		const rootStore = useRootStore();
 		const installedPackages = await communityNodesApi.getInstalledCommunityNodes(
 			rootStore.restApiContext,
 		);
@@ -60,7 +56,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const installPackage = async (packageName: string): Promise<void> => {
 		try {
-			const rootStore = useRootStore();
 			await communityNodesApi.installNewPackage(rootStore.restApiContext, packageName);
 			await fetchInstalledPackages();
 		} catch (error) {
@@ -70,7 +65,6 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const uninstallPackage = async (packageName: string): Promise<void> => {
 		try {
-			const rootStore = useRootStore();
 			await communityNodesApi.uninstallPackage(rootStore.restApiContext, packageName);
 			removePackageByName(packageName);
 		} catch (error) {
@@ -89,9 +83,8 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 
 	const updatePackage = async (packageName: string): Promise<void> => {
 		try {
-			const rootStore = useRootStore();
-			const packageToUpdate: PublicInstalledPackage = getInstalledPackageByName.value(packageName);
-			const updatedPackage: PublicInstalledPackage = await communityNodesApi.updatePackage(
+			const packageToUpdate = installedPackages.value[packageName];
+			const updatedPackage = await communityNodesApi.updatePackage(
 				rootStore.restApiContext,
 				packageToUpdate.packageName,
 			);
@@ -101,14 +94,8 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, () => 
 		}
 	};
 
-	// #endregion
-
-	const getInstalledPackageByName = computed(() => {
-		return (name: string): PublicInstalledPackage => installedPackages.value[name];
-	});
-
 	return {
-		getInstalledPackageByName,
+		installedPackages,
 		getInstalledPackages,
 		availablePackageCount,
 		fetchAvailableCommunityPackageCount,

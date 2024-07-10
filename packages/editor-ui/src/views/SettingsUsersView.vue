@@ -216,13 +216,13 @@ export default defineComponent({
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
 		},
 		async onDelete(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user) {
 				this.uiStore.openDeleteUserModal(userId);
 			}
 		},
 		async onReinvite(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user?.email && user?.role) {
 				if (!['global:admin', 'global:member'].includes(user.role)) {
 					throw new Error('Invalid role name on reinvite');
@@ -245,7 +245,7 @@ export default defineComponent({
 			}
 		},
 		async onCopyInviteLink(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user?.inviteAcceptUrl) {
 				void this.clipboard.copy(user.inviteAcceptUrl);
 
@@ -257,7 +257,7 @@ export default defineComponent({
 			}
 		},
 		async onCopyPasswordResetLink(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
 				void this.clipboard.copy(url.link);
@@ -270,7 +270,7 @@ export default defineComponent({
 			}
 		},
 		async onAllowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user) {
 				if (!user.settings) {
 					user.settings = {};
@@ -286,7 +286,7 @@ export default defineComponent({
 			}
 		},
 		async onDisallowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.usersById[userId];
 			if (user?.settings) {
 				user.settings.allowSSOManualLogin = false;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);

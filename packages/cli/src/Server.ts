@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
@@ -29,7 +30,7 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { isLdapEnabled } from '@/Ldap/helpers';
+import { isLdapEnabled } from '@/Ldap/helpers.ee';
 import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -37,9 +38,9 @@ import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 import '@/controllers/activeWorkflows.controller';
-import '@/controllers/ai.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binaryData.controller';
 import '@/controllers/curl.controller';
@@ -66,7 +67,6 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
-import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 
 const exec = promisify(callbackExec);
 
@@ -96,7 +96,9 @@ export class Server extends AbstractServer {
 		}
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		const globalConfig = Container.get(GlobalConfig);
+		this.endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -114,8 +116,8 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/Ldap/ldap.service');
-			await import('@/Ldap/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service.ee');
+			await import('@/Ldap/ldap.controller.ee');
 			await Container.get(LdapService).init();
 		}
 
@@ -333,6 +335,7 @@ export class Server extends AbstractServer {
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
 				'assets',
+				'static',
 				'types',
 				'healthz',
 				'metrics',
@@ -362,12 +365,20 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));

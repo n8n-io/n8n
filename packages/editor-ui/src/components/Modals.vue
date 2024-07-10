@@ -11,7 +11,6 @@ import {
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
@@ -29,7 +28,6 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	GENERATE_CURL_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 } from '@/constants';
@@ -45,17 +43,15 @@ import InviteUsersModal from '@/components/InviteUsersModal.vue';
 import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
-import OnboardingCallSignupModal from '@/components/OnboardingCallSignupModal.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import TagsManager from '@/components/TagsManager/TagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat.vue';
+import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
 import ImportCurlModal from '@/components/ImportCurlModal.vue';
-import GenerateCurlModal from '@/components/GenerateCurlModal.vue';
 import MfaSetupModal from '@/components/MfaSetupModal.vue';
 import WorkflowShareModal from '@/components/WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -154,20 +150,12 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
-			<OnboardingCallSignupModal />
-		</ModalRoot>
-
 		<ModalRoot :name="COMMUNITY_PACKAGE_INSTALL_MODAL_KEY">
 			<CommunityPackageInstallModal />
 		</ModalRoot>
 
 		<ModalRoot :name="IMPORT_CURL_MODAL_KEY">
 			<ImportCurlModal />
-		</ModalRoot>
-
-		<ModalRoot :name="GENERATE_CURL_MODAL_KEY">
-			<GenerateCurlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">

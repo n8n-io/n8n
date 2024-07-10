@@ -9,9 +9,7 @@ import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
 export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
-export const MAX_PINNED_DATA_SIZE = import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE
-	? parseInt(import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
-	: 1024 * 1024 * 12; // 12 MB; Workflow pinned data size limit in bytes
+export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12; // 12 MB; Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 1024 * 1024; // 1 MB
 export const MAX_DISPLAY_DATA_SIZE_SCHEMA_VIEW = 1024 * 1024 * 4; // 4 MB
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
@@ -54,11 +52,9 @@ export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
-export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
-export const GENERATE_CURL_MODAL_KEY = 'generateCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
@@ -403,6 +399,7 @@ export const ROLE_OTHER = 'other';
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
+export const MODAL_CLOSE = 'close';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -456,7 +453,6 @@ export const enum VIEWS {
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
-	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
@@ -490,21 +486,13 @@ export const enum VIEWS {
 	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
-export const EDITABLE_CANVAS_VIEWS = [
-	VIEWS.WORKFLOW,
-	VIEWS.NEW_WORKFLOW,
-	VIEWS.EXECUTION_DEBUG,
-	VIEWS.WORKFLOW_V2,
-];
+export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
 	SSO = 'sso',
 }
-
-export const ONBOARDING_PROMPT_TIMEBOX = 14;
-export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export const TEST_PIN_DATA = [
 	{
@@ -552,6 +540,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
 }
 
 /**
@@ -637,7 +626,6 @@ export const enum STORES {
 	HISTORY = 'history',
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
-	COLLABORATION = 'collaboration',
 	PUSH = 'push',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 }
@@ -672,12 +660,6 @@ export const ASK_AI_EXPERIMENT = {
 
 export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
-export const AI_ASSISTANT_EXPERIMENT = {
-	name: '19_ai_assistant_experiment',
-	control: 'control',
-	variant: 'variant',
-};
-
 export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	name: '20_canvas_auto_add_manual_trigger',
 	control: 'control',
@@ -687,7 +669,6 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
-	AI_ASSISTANT_EXPERIMENT.name,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 ];
 
@@ -848,13 +829,6 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
-
-export const AI_ASSISTANT_EXPERIMENT_URLS = {
-	FEEDBACK_FORM: 'https://chat.arro.co/to4639rATEMV',
-	SIGN_UP: 'https://adore.app.n8n.cloud/form/4704cce3-4cef-4dc8-b67f-8a510c5d561a',
-};
-
-export const AI_ASSISTANT_LOCAL_STORAGE_KEY = 'N8N_AI_ASSISTANT_EXPERIMENT';
 
 /**
  * Injection Keys

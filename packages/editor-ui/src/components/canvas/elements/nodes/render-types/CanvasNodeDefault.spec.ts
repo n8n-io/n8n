@@ -2,8 +2,15 @@ import CanvasNodeDefault from '@/components/canvas/elements/nodes/render-types/C
 import { createComponentRenderer } from '@/__tests__/render';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);
+
+beforeEach(() => {
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
+});
 
 describe('CanvasNodeDefault', () => {
 	it('should render node correctly', () => {
@@ -25,7 +32,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								outputs: [{ type: NodeConnectionType.Main }],
+								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
 							},
 						}),
 					},
@@ -43,9 +50,9 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								outputs: [
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
 								],
 							},
 						}),
@@ -109,6 +116,19 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+	});
+
+	describe('running', () => {
+		it('should apply running class when node is running', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
 		});
 	});
 });

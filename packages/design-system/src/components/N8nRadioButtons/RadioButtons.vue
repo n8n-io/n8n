@@ -38,8 +38,8 @@ const props = withDefaults(defineProps<RadioButtonsProps>(), {
 	size: 'medium',
 });
 
-const $emit = defineEmits<{
-	(event: 'update:modelValue', value: string, e: MouseEvent): void;
+const emit = defineEmits<{
+	'update:modelValue': [value: string, e: MouseEvent];
 }>();
 
 const onClick = (
@@ -49,7 +49,7 @@ const onClick = (
 	if (props.disabled || option.disabled) {
 		return;
 	}
-	$emit('update:modelValue', option.value, event);
+	emit('update:modelValue', option.value, event);
 };
 </script>
 

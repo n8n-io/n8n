@@ -64,18 +64,52 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		mfa: {
 			enabled: false,
 		},
-		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
+		saveDataProgressExecution: false,
 	}),
 	getters: {
+		isDocker(): boolean {
+			return this.settings.isDocker;
+		},
+		databaseType(): 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' {
+			return this.settings.databaseType;
+		},
+		planName(): string {
+			return this.settings.license.planName ?? 'Community';
+		},
+		consumerId(): string {
+			return this.settings.license.consumerId;
+		},
+		binaryDataMode(): 'default' | 'filesystem' | 's3' {
+			return this.settings.binaryDataMode;
+		},
+		pruning(): { isEnabled: boolean; maxAge: number; maxCount: number } {
+			return this.settings.pruning;
+		},
+		security(): {
+			blockFileAccessToN8nFiles: boolean;
+			secureCookie: boolean;
+		} {
+			return {
+				blockFileAccessToN8nFiles: this.settings.security.blockFileAccessToN8nFiles,
+				secureCookie: this.settings.authCookie.secure,
+			};
+		},
 		isEnterpriseFeatureEnabled() {
 			return (feature: EnterpriseEditionFeatureValue): boolean =>
 				Boolean(this.settings.enterprise?.[feature]);
 		},
+
 		versionCli(): string {
 			return this.settings.versionCli;
+		},
+		nodeJsVersion(): string {
+			return this.settings.nodeJsVersion;
+		},
+		concurrency(): number {
+			return this.settings.concurrency;
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
@@ -230,7 +264,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			}
 			this.api = settings.publicApi;
-			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 			if (settings.sso?.ldap) {
 				this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
 				this.ldap.loginLabel = settings.sso.ldap.loginLabel;
@@ -269,6 +302,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.setAllowedModules(settings.allowedModules);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
+			this.setSaveDataProgressExecution(settings.saveExecutionProgress);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
 
 			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
@@ -357,14 +391,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const rootStore = useRootStore();
 			return await runLdapSync(rootStore.restApiContext, data);
 		},
-		setSaveDataErrorExecution(newValue: string) {
+		setSaveDataErrorExecution(newValue: WorkflowSettings.SaveDataExecution) {
 			this.saveDataErrorExecution = newValue;
 		},
-		setSaveDataSuccessExecution(newValue: string) {
+		setSaveDataSuccessExecution(newValue: WorkflowSettings.SaveDataExecution) {
 			this.saveDataSuccessExecution = newValue;
 		},
 		setSaveManualExecutions(saveManualExecutions: boolean) {
 			this.saveManualExecutions = saveManualExecutions;
+		},
+		setSaveDataProgressExecution(newValue: boolean) {
+			this.saveDataProgressExecution = newValue;
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();

@@ -9,8 +9,8 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
-import { LdapService } from '@/Ldap/ldap.service';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers.ee';
+import { LdapService } from '@/Ldap/ldap.service.ee';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 

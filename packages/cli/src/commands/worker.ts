@@ -3,6 +3,7 @@ import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
 import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
@@ -29,6 +30,7 @@ import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/typ
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -62,9 +64,6 @@ export class Worker extends BaseCommand {
 	 */
 	async stopProcess() {
 		this.logger.info('Stopping n8n...');
-
-		// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
-		await Worker.jobQueue.pause({ isLocal: true, doNotWaitActive: true });
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
@@ -287,6 +286,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
+		Container.get(AuditEventRelay).init();
 	}
 
 	/**
@@ -430,7 +430,9 @@ export class Worker extends BaseCommand {
 		);
 
 		let presetCredentialsLoaded = false;
-		const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		const globalConfig = Container.get(GlobalConfig);
+		const endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
 		if (endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			app.post(
