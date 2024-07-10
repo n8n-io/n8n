@@ -11,19 +11,22 @@ import { NodeConnectionType } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
-import { PromptTemplate } from '@langchain/core/prompts';
+import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
 import { getTracingConfig } from '../../../utils/tracing';
+import { getPromptInputByType } from '../../../utils/helpers';
 
 const SYSTEM_PROMPT_TEMPLATE =
 	"Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json.";
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
+	const fallback = parameters?.fallback as boolean;
 	const ret = categories.map((cat) => {
 		return { type: NodeConnectionType.Main, displayName: cat.category };
 	});
+	if (fallback) ret.push({ type: NodeConnectionType.Main, displayName: 'Other' });
 	return ret;
 };
 
@@ -101,6 +104,50 @@ export class TextClassifier implements INodeType {
 				default: false,
 			},
 			{
+				displayName: 'Add Fallback Option',
+				name: 'fallback',
+				type: 'boolean',
+				default: false,
+				description: 'If no other categories match, select a "fallback" option',
+			},
+			{
+				displayName: 'Prompt',
+				name: 'promptType',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Take from previous node automatically',
+						value: 'auto',
+						description: 'Looks for an input field called chatInput',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define below',
+						value: 'define',
+						description:
+							'Use an expression to reference data in previous nodes or enter static text',
+					},
+				],
+				default: 'auto',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
+				typeOptions: {
+					rows: 2,
+				},
+				displayOptions: {
+					show: {
+						promptType: ['define'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -135,52 +182,73 @@ export class TextClassifier implements INodeType {
 				categories: [{ category: string; description: string }];
 			}
 		)?.categories;
-		const input = this.evaluateExpression('{{ $json["chatInput"] }}', 0) as string;
 
 		const options = this.getNodeParameter('options', 0, {}) as {
 			systemPromptTemplate?: string;
 		};
 		const multiClass = this.getNodeParameter('multiClass', 0) as boolean;
+		const fallback = this.getNodeParameter('fallback', 0) as boolean;
 
-		const schema = z.object(
-			Object.fromEntries(
-				categories.map((cat) => [
-					cat.category,
-					z
-						.boolean()
-						.describe(
-							`Should be true if the input has category "${cat.category}" (description: ${cat.description})`,
-						),
-				]),
-			),
-		);
+		const schemaEntries = categories.map((cat) => [
+			cat.category,
+			z
+				.boolean()
+				.describe(
+					`Should be true if the input has category "${cat.category}" (description: ${cat.description})`,
+				),
+		]);
+		if (fallback)
+			schemaEntries.push([
+				'fallback',
+				z.boolean().describe('Should be true if none of the other categories apply'),
+			]);
+		const schema = z.object(Object.fromEntries(schemaEntries));
 
 		const parser = StructuredOutputParser.fromZodSchema(schema);
 
 		const multiClassPrompt = multiClass
 			? 'Categories are not mutually exclusive, and multiple can be true'
 			: 'Categories are mutually exclusive, and only one can be true';
+		const fallbackPrompt = fallback
+			? 'If no categories apply, select the "fallback" option.'
+			: 'One of the options must always be true.';
 
-		const systemPromptTemplate = PromptTemplate.fromTemplate(
+		const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
 			(options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE) +
 				'\n{format_instructions}\n' +
-				multiClassPrompt,
+				multiClassPrompt +
+				'\n' +
+				fallbackPrompt,
 		);
-		const inputPrompt = new HumanMessage(input);
-		const messages = [
-			await systemPromptTemplate.format({
-				categories: JSON.stringify(categories),
-				format_instructions: parser.getFormatInstructions(),
-			}),
-			inputPrompt,
-		];
 
-		const responses = (await llm.withConfig(getTracingConfig(this)).invoke(messages)) as {
-			content: string;
-		};
-		const output = await parser.parse(responses.content);
-		return Array.from({ length: categories.length }, (_, i) =>
-			output[categories[i].category] ? items : [],
+		const returnData: INodeExecutionData[][] = Array.from(
+			{ length: categories.length + (fallback ? 1 : 0) },
+			(_) => [],
 		);
+		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
+			const input = getPromptInputByType({
+				ctx: this,
+				i: itemIdx,
+				inputKey: 'text',
+				promptTypeKey: 'promptType',
+			});
+			const inputPrompt = new HumanMessage(input);
+			const messages = [
+				await systemPromptTemplate.format({
+					categories: JSON.stringify(categories),
+					format_instructions: parser.getFormatInstructions(),
+				}),
+				inputPrompt,
+			];
+			const prompt = ChatPromptTemplate.fromMessages(messages);
+			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+			const output = await chain.invoke(messages);
+			categories.forEach((cat, idx) => {
+				if (output[cat.category]) returnData[idx].push(items[itemIdx]);
+			});
+			if (fallback && output.fallback) returnData[returnData.length - 1].push(items[itemIdx]);
+		}
+		return returnData;
 	}
 }
