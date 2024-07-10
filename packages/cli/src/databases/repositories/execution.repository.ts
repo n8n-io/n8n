@@ -643,6 +643,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
 
+		execution.data = execution.data || { resultData: {} };
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,

@@ -20,6 +20,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
+import { ExecutionCancelledError } from '@/errors/execution-cancelled.error';
 
 @Service()
 export class ActiveExecutions {
@@ -147,7 +148,7 @@ export class ActiveExecutions {
 	/**
 	 * Forces an execution to stop
 	 */
-	async stopExecution(executionId: string): Promise<IRun | undefined> {
+	stopExecution(executionId: string): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
@@ -156,7 +157,11 @@ export class ActiveExecutions {
 
 		execution.workflowExecution!.cancel();
 
-		return await this.getPostExecutePromise(executionId);
+		// Reject all the waiting promises
+		const reason = new ExecutionCancelledError(executionId);
+		for (const promise of execution.postExecutePromises) {
+			promise.reject(reason);
+		}
 	}
 
 	/**
@@ -215,11 +220,7 @@ export class ActiveExecutions {
 				await this.concurrencyControl.removeAll(this.activeExecutions);
 			}
 
-			const stopPromises = executionIds.map(
-				async (executionId) => await this.stopExecution(executionId),
-			);
-
-			await Promise.allSettled(stopPromises);
+			executionIds.forEach((executionId) => this.stopExecution(executionId));
 		}
 
 		let count = 0;
