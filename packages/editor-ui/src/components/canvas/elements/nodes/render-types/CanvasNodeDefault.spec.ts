@@ -32,7 +32,7 @@ describe('CanvasNodeDefault', () => {
 					provide: {
 						...createCanvasNodeProvide({
 							data: {
-								outputs: [{ type: NodeConnectionType.Main }],
+								outputs: [{ type: NodeConnectionType.Main, index: 0 }],
 							},
 						}),
 					},
@@ -50,9 +50,9 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								outputs: [
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.Main },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.Main, index: 0 },
 								],
 							},
 						}),
@@ -116,6 +116,19 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).not.toHaveClass('disabled');
+		});
+	});
+
+	describe('running', () => {
+		it('should apply running class when node is running', () => {
+			const { getByText } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
+					},
+				},
+			});
+			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
 		});
 	});
 });

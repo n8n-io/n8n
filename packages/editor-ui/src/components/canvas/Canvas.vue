@@ -126,6 +126,8 @@ function onClickPane(event: MouseEvent) {
 		:apply-changes="false"
 		fit-view-on-init
 		pan-on-scroll
+		snap-to-grid
+		:snap-grid="[16, 16]"
 		:min-zoom="0.2"
 		:max-zoom="2"
 		data-test-id="canvas"

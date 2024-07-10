@@ -21,7 +21,9 @@ export function useCanvasNode() {
 				connections: { input: {}, output: {} },
 				issues: { items: [], visible: false },
 				pinnedData: { count: 0, visible: false },
-				execution: {},
+				execution: {
+					running: false,
+				},
 				runData: { count: 0, visible: false },
 				renderType: 'default',
 			},
@@ -45,6 +47,7 @@ export function useCanvasNode() {
 
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
+	const executionRunning = computed(() => data.value.execution.running);
 
 	const runDataCount = computed(() => data.value.runData.count);
 	const hasRunData = computed(() => data.value.runData.visible);
@@ -65,5 +68,6 @@ export function useCanvasNode() {
 		hasIssues,
 		executionStatus,
 		executionWaiting,
+		executionRunning,
 	};
 }

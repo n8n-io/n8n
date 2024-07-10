@@ -15,6 +15,7 @@ import {
 } from '@/__tests__/mocks';
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '../stores/workflows.store';
 
 beforeEach(() => {
 	const pinia = createPinia();
@@ -80,6 +81,7 @@ describe('useCanvasMapping', () => {
 						disabled: false,
 						execution: {
 							status: 'new',
+							running: false,
 							waiting: undefined,
 						},
 						issues: {
@@ -135,6 +137,27 @@ describe('useCanvasMapping', () => {
 			});
 
 			expect(elements.value[0]?.data?.disabled).toEqual(true);
+		});
+
+		it('should handle execution state', () => {
+			const manualTriggerNode = mockNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+				disabled: true,
+			});
+			const workflow = mock<IWorkflowDb>({
+				nodes: [manualTriggerNode],
+			});
+			const workflowObject = createTestWorkflowObject(workflow);
+
+			useWorkflowsStore().addExecutingNode(manualTriggerNode.name);
+
+			const { elements } = useCanvasMapping({
+				workflow: ref(workflow),
+				workflowObject: ref(workflowObject) as Ref<Workflow>,
+			});
+
+			expect(elements.value[0]?.data?.execution.running).toEqual(true);
 		});
 
 		it('should handle input and output connections', () => {
@@ -217,6 +240,7 @@ describe('useCanvasMapping', () => {
 					target: setNode.id,
 					targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 					type: 'canvas-edge',
+					animated: false,
 				},
 			]);
 		});
@@ -264,6 +288,7 @@ describe('useCanvasMapping', () => {
 					target: setNode.id,
 					targetHandle: `inputs/${NodeConnectionType.AiTool}/0`,
 					type: 'canvas-edge',
+					animated: false,
 				},
 				{
 					data: {
@@ -285,6 +310,7 @@ describe('useCanvasMapping', () => {
 					target: setNode.id,
 					targetHandle: `inputs/${NodeConnectionType.AiDocument}/1`,
 					type: 'canvas-edge',
+					animated: false,
 				},
 			]);
 		});
