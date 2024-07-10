@@ -335,6 +335,7 @@ export class Server extends AbstractServer {
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
 				'assets',
+				'static',
 				'types',
 				'healthz',
 				'metrics',
@@ -364,12 +365,20 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));

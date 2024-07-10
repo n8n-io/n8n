@@ -428,28 +428,38 @@ describe('GET /workflows/:workflowId', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
-	test('should return workflow with credentials saying owner does not have access when not shared', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	test.each([
+		['owner', () => owner],
+		['admin', () => admin],
+	])(
+		'should return workflow with credentials saying %s does have access even when not shared',
+		async (_description, getActor) => {
+			const actor = getActor();
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
-		const workflowPayload = makeWorkflow({
-			withPinData: false,
-			withCredential: { id: savedCredential.id, name: savedCredential.name },
-		});
-		const workflow = await createWorkflow(workflowPayload, owner);
+			const workflowPayload = makeWorkflow({
+				withPinData: false,
+				withCredential: { id: savedCredential.id, name: savedCredential.name },
+			});
+			const workflow = await createWorkflow(workflowPayload, actor);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
-		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+			const response = await testServer
+				.authAgentFor(actor)
+				.get(`/workflows/${workflow.id}`)
+				.expect(200);
+			const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(responseWorkflow.usedCredentials).toMatchObject([
-			{
-				id: savedCredential.id,
-				name: savedCredential.name,
-				currentUserHasAccess: false, // although owner can see, they do not have access
-			},
-		]);
+			expect(responseWorkflow.usedCredentials).toMatchObject([
+				{
+					id: savedCredential.id,
+					name: savedCredential.name,
+					currentUserHasAccess: true,
+				},
+			]);
 
-		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
-	});
+			expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
+		},
+	);
 
 	test('should return workflow with credentials for all users with or without access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
