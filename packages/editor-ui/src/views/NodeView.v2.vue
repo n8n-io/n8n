@@ -27,13 +27,14 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasElement } from '@/types';
+import type { CanvasElement, ConnectStartEvent } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
+	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 } from '@/constants';
@@ -75,6 +76,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getNodeViewTab } from '@/utils/canvasUtils';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 
@@ -321,7 +323,7 @@ async function runAutoAddManualTriggerExperiment() {
 }
 
 function resetWorkspace() {
-	onToggleNodeCreator({ createNodeActive: false });
+	onOpenNodeCreator({ createNodeActive: false });
 	nodeCreatorStore.setShowScrim(false);
 
 	// Make sure that if there is a waiting test-webhook that it gets removed
@@ -488,6 +490,19 @@ function onCreateConnection(connection: Connection) {
 	createConnection(connection);
 }
 
+function onCreateConnectionCancelled(event: ConnectStartEvent) {
+	const { type, index } = parseCanvasConnectionHandleString(event.handleId);
+	setTimeout(() => {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			index,
+			endpointUuid: event.handleId,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+			outputType: type,
+			sourceId: event.nodeId,
+		});
+	});
+}
+
 function onDeleteConnection(connection: Connection) {
 	deleteConnection(connection, { trackHistory: true });
 }
@@ -527,11 +542,11 @@ async function onSwitchActiveNode(nodeName: string) {
 	setNodeActiveByName(nodeName);
 }
 
-async function onOpenConnectionNodeCreator(node: string, connectionType: NodeConnectionType) {
+async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
-function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.openNodeCreator(options);
 }
 
@@ -959,6 +974,7 @@ onBeforeUnmount(() => {
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
+		@create:connection:cancelled="onCreateConnectionCancelled"
 		@delete:connection="onDeleteConnection"
 		@click:pane="onClickPane"
 	>
@@ -983,7 +999,7 @@ onBeforeUnmount(() => {
 				v-if="!isReadOnlyRoute && !isReadOnlyEnvironment"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="1"
-				@toggle-node-creator="onToggleNodeCreator"
+				@toggle-node-creator="onOpenNodeCreator"
 				@add-nodes="onAddNodesAndConnections"
 			/>
 		</Suspense>
@@ -996,7 +1012,7 @@ onBeforeUnmount(() => {
 				@value-changed="onRenameNode"
 				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
-				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@open-connection-node-creator="onOpenSelectiveNodeCreator"
 			/>
 			<!--
 				:renaming="renamingActive"
