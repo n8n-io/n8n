@@ -19,6 +19,8 @@ export interface NotificationErrorWithNodeAndDescription extends Error {
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
 	position: 'bottom-right',
+	zIndex: 3000, // above NDV and chat window
+	// todo find a way to order the
 };
 
 const stickyNotificationQueue: NotificationHandle[] = [];
@@ -152,7 +154,9 @@ export function useToast() {
 	}
 
 	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification(config);
+		return Notification({
+			...config,
+		});
 	}
 
 	function causedByCredential(message: string | undefined) {

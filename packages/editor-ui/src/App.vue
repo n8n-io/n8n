@@ -26,6 +26,7 @@
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
+			<AskAssistantChat />
 			<Modals />
 			<Telemetry />
 		</div>
@@ -40,6 +41,7 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { loadLanguage } from '@/plugins/i18n';
@@ -65,6 +67,7 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
+		AskAssistantChat,
 	},
 	setup() {
 		return {
@@ -127,9 +130,9 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners'
-		'sidebar header'
-		'sidebar content';
+		'banners banners banners'
+		'sidebar header rightsidebar'
+		'sidebar content rightsidebar';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;

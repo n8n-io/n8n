@@ -46,15 +46,15 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 
 <style lang="scss" module>
 .container {
-	min-width: 250px;
-	max-width: 425px;
 	height: 100%;
 }
 
 .header {
-	padding: 12px 23px;
+	padding: 23px 23px;
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
+	// todo
+	border-top: 0;
 	display: flex;
 
 	div {
