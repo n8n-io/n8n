@@ -22,12 +22,12 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Select a table',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'getTableNameAndId',
+			loadOptionsMethod: 'getTableNames',
 		},
 		default: '',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Choose from the list, or specify by using an expression. Provide it in the way "table_name:::table_id".',
+			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
