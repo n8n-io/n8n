@@ -108,7 +108,7 @@ export class TextClassifier implements INodeType {
 				name: 'fallback',
 				type: 'boolean',
 				default: false,
-				description: 'If no other categories match, select a "fallback" option',
+				description: 'Whether to add a "fallback" option if no other categories match',
 			},
 			{
 				displayName: 'Prompt',
