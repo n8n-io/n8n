@@ -114,7 +114,14 @@ describe('useCanvasMapping', () => {
 							input: {},
 							output: {},
 						},
-						renderType: 'trigger',
+						render: {
+							type: 'default',
+							options: {
+								configurable: false,
+								configuration: false,
+								trigger: true,
+							},
+						},
 					},
 				},
 			]);
