@@ -63,7 +63,10 @@ export interface CanvasElementData {
 		count: number;
 		visible: boolean;
 	};
-	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
+	render: {
+		type: 'default';
+		options: Record<string, unknown>;
+	};
 }
 
 export type CanvasElement = Node<CanvasElementData>;

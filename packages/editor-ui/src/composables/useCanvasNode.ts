@@ -23,7 +23,10 @@ export function useCanvasNode() {
 				pinnedData: { count: 0, visible: false },
 				execution: {},
 				runData: { count: 0, visible: false },
-				renderType: 'default',
+				render: {
+					type: 'default',
+					options: {},
+				},
 			},
 	);
 
@@ -49,6 +52,8 @@ export function useCanvasNode() {
 	const runDataCount = computed(() => data.value.runData.count);
 	const hasRunData = computed(() => data.value.runData.visible);
 
+	const renderOptions = computed(() => data.value.render.options);
+
 	return {
 		node,
 		label,
@@ -65,5 +70,6 @@ export function useCanvasNode() {
 		hasIssues,
 		executionStatus,
 		executionWaiting,
+		renderOptions,
 	};
 }
