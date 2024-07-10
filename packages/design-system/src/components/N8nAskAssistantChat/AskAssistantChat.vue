@@ -16,7 +16,7 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 				/>
 				<div :class="$style.beta">beta</div>
 			</div>
-			<div>
+			<div :class="$style.back">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
@@ -55,14 +55,15 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 	padding: 12px 23px;
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
+	display: flex;
 
 	div {
 		display: flex;
 		align-items: center;
 	}
 
-	> div:last-of-type {
-		float: right;
+	> div:first-of-type {
+		width: 100%;
 	}
 }
 .name {
@@ -103,5 +104,9 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 .info {
 	font-size: var(--font-size-s);
 	color: var(--color-text-base);
+}
+
+.back:hover {
+	cursor: pointer;
 }
 </style>
