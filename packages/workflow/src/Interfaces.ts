@@ -1521,7 +1521,7 @@ export interface INodeType {
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
-		actionHandlers?: {
+		actionHandler?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
 		};
 	};

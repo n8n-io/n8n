@@ -498,32 +498,36 @@ async function onButtonAction(parameter: INodeProperties) {
 
 	const { type, handler, target } = action;
 
-	const currentNodeParameters = ndvStore.activeNode.parameters;
-	const actionResult = await nodeTypesStore.getNodeParameterActionResult({
-		nodeTypeAndVersion: {
-			name: ndvStore.activeNode.type,
-			version: ndvStore.activeNode.typeVersion,
-		},
-		path: props.path,
-		currentNodeParameters,
-		credentials: ndvStore.activeNode.credentials,
-		handler,
-		target,
-	});
+	try {
+		const currentNodeParameters = ndvStore.activeNode.parameters;
+		const actionResult = await nodeTypesStore.getNodeParameterActionResult({
+			nodeTypeAndVersion: {
+				name: ndvStore.activeNode.type,
+				version: ndvStore.activeNode.typeVersion,
+			},
+			path: props.path,
+			currentNodeParameters,
+			credentials: ndvStore.activeNode.credentials,
+			handler,
+			target,
+		});
 
-	if (actionResult === undefined) return;
+		if (actionResult === undefined) return;
 
-	switch (type) {
-		case 'updateProperty':
-			const parameterData: IUpdateInformation = {
-				name: getPath(target as string),
-				value: actionResult,
-			};
+		switch (type) {
+			case 'updateProperty':
+				const parameterData: IUpdateInformation = {
+					name: getPath(target as string),
+					value: actionResult,
+				};
 
-			//TODO: code editor does not displays updated value, needs to be closed and reopened
-			emit('valueChanged', parameterData);
-		default:
-			return;
+				//TODO: code editor does not displays updated value, needs to be closed and reopened
+				emit('valueChanged', parameterData);
+			default:
+				return;
+		}
+	} catch (error) {
+		console.log(error);
 	}
 }
 

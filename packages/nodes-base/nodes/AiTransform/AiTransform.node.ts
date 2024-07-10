@@ -80,7 +80,7 @@ export class AiTransform implements INodeType {
 	};
 
 	methods = {
-		actionHandlers: {
+		actionHandler: {
 			async generateCodeUsingAiService(this: ILoadOptionsFunctions) {
 				const instructions = this.getNodeParameter('instructions') as string;
 				return instructions;

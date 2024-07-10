@@ -157,7 +157,7 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
-	/** Returns the available options via a predefined method */
+	/** Returns the result of the action handler */
 	async getActionResult(
 		handler: string,
 		path: string,
@@ -167,7 +167,7 @@ export class DynamicNodeParametersService {
 		credentials?: INodeCredentials,
 	): Promise<NodeParameterValueType> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
-		const method = this.getMethod('actionHandlers', handler, nodeType);
+		const method = this.getMethod('actionHandler', handler, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -194,13 +194,13 @@ export class DynamicNodeParametersService {
 		nodeType: INodeType,
 	): (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 	private getMethod(
-		type: 'actionHandlers',
+		type: 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
 	): (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
 
 	private getMethod(
-		type: 'resourceMapping' | 'listSearch' | 'loadOptions' | 'actionHandlers',
+		type: 'resourceMapping' | 'listSearch' | 'loadOptions' | 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
 	) {
