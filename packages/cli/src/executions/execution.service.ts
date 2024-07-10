@@ -24,7 +24,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { ScalingMode } from '@/scaling-mode/scaling-mode';
+import { ScalingService } from '@/scaling/scaling.service';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -83,7 +83,7 @@ export class ExecutionService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly scalingMode: ScalingMode,
+		private readonly scalingService: ScalingService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -468,10 +468,12 @@ export class ExecutionService {
 			await this.waitTracker.stopExecution(execution.id);
 		}
 
-		const job = await this.scalingMode.findRunningJobBy({ executionId: execution.id });
+		const jobs = await this.scalingService.findJobsByState(['active', 'waiting']);
+
+		const job = jobs.find(({ data }) => data.executionId === execution.id) ?? null;
 
 		if (job) {
-			await this.scalingMode.stopJob(job);
+			await this.scalingService.stopJob(job);
 		} else {
 			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}

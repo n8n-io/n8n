@@ -28,8 +28,8 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobResult } from './scaling-mode/types';
-import { ScalingMode } from '@/scaling-mode/scaling-mode';
+import type { Job, JobData, JobResult } from './scaling/types';
+import { ScalingService } from '@/scaling/scaling.service';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -41,7 +41,7 @@ import { EventRelay } from './eventbus/event-relay.service';
 
 @Service()
 export class WorkflowRunner {
-	private scalingMode: ScalingMode;
+	private scalingService: ScalingService;
 
 	private executionsMode = config.getEnv('executions.mode');
 
@@ -56,7 +56,7 @@ export class WorkflowRunner {
 		private readonly eventRelay: EventRelay,
 	) {
 		if (this.executionsMode === 'queue') {
-			this.scalingMode = Container.get(ScalingMode);
+			this.scalingService = Container.get(ScalingService);
 		}
 	}
 
@@ -383,7 +383,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.scalingMode.enqueueJob(jobData, jobOptions);
+			job = await this.scalingService.addJob(jobData, jobOptions);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -412,7 +412,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					await Container.get(ScalingMode).stopJob(job);
+					await Container.get(ScalingService).stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -453,7 +453,7 @@ export class WorkflowRunner {
 
 					const watchDog: Promise<JobResult> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.scalingMode.getJob(job.id);
+							const currentJob = await this.scalingService.getJob(job.id);
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message

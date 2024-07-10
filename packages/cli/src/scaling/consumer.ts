@@ -1,26 +1,32 @@
 import { Service } from 'typedi';
-import { ApplicationError, Workflow } from 'n8n-workflow';
+import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import { WorkflowExecute } from 'n8n-core';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { NodeTypes } from '@/NodeTypes';
-import { encodeWebhookResponse } from './webhook-response';
-import { WorkflowExecute } from 'n8n-core';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJobProps, WebhookResponseReport } from './types';
+import type {
+	Job,
+	JobId,
+	JobResult,
+	RunningJobProps,
+	RunningJobSummary,
+	WebhookResponseReport,
+} from './types';
 import type PCancelable from 'p-cancelable';
-import { RunningJobs } from './running-jobs';
 
 @Service()
-export class JobProcessor {
+export class Consumer {
+	private readonly runningJobs: { [jobId: JobId]: RunningJobProps } = {};
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
-		private readonly runningJobs: RunningJobs,
 	) {}
 
 	async processJob(job: Job): Promise<JobResult> {
@@ -32,7 +38,7 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			this.logger.error('[JobProcessor] Failed to find execution data', { executionId });
+			this.logger.error('[Consumer] Failed to find execution data', { executionId });
 			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
 				extra: { executionId },
 			});
@@ -40,7 +46,7 @@ export class JobProcessor {
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[Consumer] Starting job ${job.id} (execution ${executionId})`);
 
 		await this.executionRepository.updateStatus(executionId, 'running');
 
@@ -53,7 +59,7 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				this.logger.error('[JobProcessor] Failed to find workflow', { workflowId, executionId });
+				this.logger.error('[Consumer] Failed to find workflow', { workflowId, executionId });
 				throw new ApplicationError('Failed to find workflow', { extra: { workflowId } });
 			}
 
@@ -100,7 +106,7 @@ export class JobProcessor {
 				const webhookResponseReport: WebhookResponseReport = {
 					kind: 'webhook-response',
 					executionId,
-					response: encodeWebhookResponse(response),
+					response: this.encodeWebhookResponse(response),
 				};
 
 				await job.progress(webhookResponseReport);
@@ -112,7 +118,7 @@ export class JobProcessor {
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
-				`[JobProcessor] Queued worker execution status for ${executionId} is "${status}"`,
+				`[Consumer] Queued worker execution status for ${executionId} is "${status}"`,
 			);
 		};
 
@@ -139,13 +145,13 @@ export class JobProcessor {
 			status: execution.status,
 		};
 
-		this.runningJobs.set(job.id, props);
+		this.runningJobs[job.id] = props;
 
 		await workflowRun;
 
-		this.runningJobs.clear(job.id);
+		delete this.runningJobs[job.id];
 
-		this.logger.debug('[JobProcessor] Job finished running', { jobId: job.id });
+		this.logger.debug('[Consumer] Job finished running', { jobId: job.id });
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.
@@ -156,15 +162,27 @@ export class JobProcessor {
 	}
 
 	stopJob(jobId: JobId) {
-		this.runningJobs.cancel(jobId);
-		this.runningJobs.clear(jobId);
+		this.runningJobs[jobId]?.run.cancel();
+		delete this.runningJobs[jobId];
 	}
 
-	getRunningJobIds() {
-		return this.runningJobs.getIds();
+	getRunningJobIds(): JobId[] {
+		return Object.keys(this.runningJobs);
 	}
 
-	getRunningJobsSummary() {
-		return this.runningJobs.getSummaries();
+	getRunningJobsSummary(): RunningJobSummary[] {
+		return Object.values(this.runningJobs).map(({ run, ...props }) => props);
+	}
+
+	private encodeWebhookResponse(
+		response: IExecuteResponsePromiseData,
+	): IExecuteResponsePromiseData {
+		if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
+			response.body = {
+				'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
+			};
+		}
+
+		return response;
 	}
 }

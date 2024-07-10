@@ -8,7 +8,7 @@ import type {
 import type Bull from 'bull';
 import type PCancelable from 'p-cancelable';
 
-export type Queue = Bull.Queue<JobData>;
+export type JobQueue = Bull.Queue<JobData>;
 
 export type Job = Bull.Job<JobData>;
 

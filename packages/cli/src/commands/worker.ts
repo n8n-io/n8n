@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
-import { ScalingMode } from '@/scaling-mode/scaling-mode';
+import { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -21,7 +21,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
-import { JobProcessor } from '@/scaling-mode/job-processor';
+import { Consumer } from '@/scaling/consumer';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -44,9 +44,9 @@ export class Worker extends BaseCommand {
 	 */
 	concurrency: number;
 
-	scalingMode: ScalingMode;
+	scalingService: ScalingService;
 
-	jobProcessor: JobProcessor;
+	consumer: Consumer;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -65,12 +65,12 @@ export class Worker extends BaseCommand {
 
 			// Wait for active workflow executions to finish
 			let count = 0;
-			while (Object.keys(this.jobProcessor.getRunningJobIds()).length !== 0) {
+			while (Object.keys(this.consumer.getRunningJobIds()).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
-							Object.keys(this.jobProcessor.getRunningJobIds()).length
+							Object.keys(this.consumer.getRunningJobIds()).length
 						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
@@ -124,7 +124,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
-		await this.initScalingMode();
+		await this.initScalingService();
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
@@ -156,8 +156,8 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.jobProcessor.getRunningJobIds() as string[],
-			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
+			getRunningJobIds: () => this.consumer.getRunningJobIds() as string[],
+			getRunningJobsSummary: () => this.consumer.getRunningJobsSummary(),
 		});
 	}
 
@@ -169,14 +169,14 @@ export class Worker extends BaseCommand {
 		this.concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
 	}
 
-	async initScalingMode() {
-		this.scalingMode = Container.get(ScalingMode);
+	async initScalingService() {
+		this.scalingService = Container.get(ScalingService);
 
-		await this.scalingMode.setupQueue();
+		await this.scalingService.setupQueue();
 
-		this.scalingMode.setupWorker(this.concurrency);
+		this.scalingService.setupWorker(this.concurrency);
 
-		this.jobProcessor = Container.get(JobProcessor);
+		this.consumer = Container.get(Consumer);
 	}
 
 	async setupHealthMonitor() {
@@ -212,7 +212,7 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await this.scalingMode.pingStore();
+					await this.scalingService.pingQueue();
 				} catch (e) {
 					this.logger.error('No Redis connection!', e as Error);
 					const error = new ServiceUnavailableError('No Redis connection!');

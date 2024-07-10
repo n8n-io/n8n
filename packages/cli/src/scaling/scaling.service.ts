@@ -1,27 +1,34 @@
 import Container, { Service } from 'typedi';
+import { ApplicationError, BINARY_ENCODING } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { SCALING_MODE_JOB_TYPE, SCALING_MODE_QUEUE_NAME } from './constants';
-import { decodeWebhookResponse } from './webhook-response';
-import { JobProcessor } from './job-processor';
-import type { Queue, Job, JobData, JobOptions, JobProgressReport, JobStatus, JobId } from './types';
+import { ABORT_JOB_SIGNAL, JOB_TYPE_NAME, QUEUE_NAME } from './constants';
+import { Consumer } from './consumer';
+import type {
+	JobQueue,
+	Job,
+	JobData,
+	JobOptions,
+	JobProgressReport,
+	JobStatus,
+	JobId,
+} from './types';
+import type { IDataObject, IExecuteResponsePromiseData } from 'n8n-workflow';
 
 @Service()
-export class ScalingMode {
-	private queue: Queue;
+export class ScalingService {
+	private queue: JobQueue;
 
-	private readonly jobType = SCALING_MODE_JOB_TYPE;
-
-	private readonly queueName = SCALING_MODE_QUEUE_NAME;
+	private readonly instanceType = config.getEnv('generic.instanceType');
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly jobProcessor: JobProcessor,
+		private readonly consumer: Consumer,
 	) {}
 
 	/**
@@ -36,37 +43,37 @@ export class ScalingMode {
 		const bullPrefix = config.getEnv('queue.bull.prefix');
 		const prefix = service.toValidPrefix(bullPrefix);
 
-		this.queue = new BullQueue(this.queueName, {
+		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
 			settings: config.get('queue.bull.settings'),
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
-		this.registerResponseListener();
+		this.registerListeners();
 
-		this.logger.debug('[ScalingMode] Queue setup completed');
+		this.logger.debug('[ScalingService] Queue setup completed');
 	}
 
 	setupWorker(concurrency: number) {
+		this.assertWorker();
+
 		void this.queue.process(
-			this.jobType,
+			JOB_TYPE_NAME,
 			concurrency,
-			async (job: Job) => await this.jobProcessor.processJob(job),
+			async (job: Job) => await this.consumer.processJob(job),
 		);
 
-		this.registerWorkerListeners();
-
-		this.logger.debug('[ScalingMode] Worker setup completed');
+		this.logger.debug('[ScalingService] Worker setup completed');
 	}
 
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
-	async shutdown() {
+	async pauseQueue() {
 		await this.queue.pause(true, true);
 
-		this.logger.debug('[ScalingMode] Queue paused');
+		this.logger.debug('[ScalingService] Queue paused');
 	}
 
-	async pingStore() {
+	async pingQueue() {
 		await this.queue.client.ping();
 	}
 
@@ -74,12 +81,12 @@ export class ScalingMode {
 	 * Jobs
 	 */
 
-	async enqueueJob(jobData: JobData, jobOptions: JobOptions) {
+	async addJob(jobData: JobData, jobOptions: JobOptions) {
 		const { executionId } = jobData;
 
-		const job = await this.queue.add(this.jobType, jobData, jobOptions);
+		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
 
-		this.logger.info(`[ScalingMode] Added job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[ScalingService] Added job ${job.id} (execution ${executionId})`);
 
 		return job;
 	}
@@ -92,31 +99,22 @@ export class ScalingMode {
 		return await this.queue.getJobs(statuses);
 	}
 
-	async findRunningJobBy({ executionId }: { executionId: string }) {
-		const activeOrWaitingJobs = await this.findJobsByState(['active', 'waiting']);
-
-		return activeOrWaitingJobs.find(({ data }) => data.executionId === executionId) ?? null;
-	}
-
 	async stopJob(job: Job) {
-		const {
-			id: jobId,
-			data: { executionId },
-		} = job;
+		const props = { jobId: job.id, executionId: job.data.executionId };
 
 		try {
 			if (await job.isActive()) {
-				await job.progress(-1);
-				this.logger.debug('[ScalingMode] Stopped active job', { jobId, executionId });
+				await job.progress(ABORT_JOB_SIGNAL);
+				this.logger.debug('[ScalingService] Stopped active job', props);
 				return true;
 			}
 
 			await job.remove();
-			this.logger.debug('[ScalingMode] Stopped inactive job', { jobId, executionId });
+			this.logger.debug('[ScalingService] Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {
-			await job.progress(-1);
-			this.logger.error('[ScalingMode] Failed to stop job', { jobId, executionId, error });
+			await job.progress(ABORT_JOB_SIGNAL);
+			this.logger.error('[ScalingService] Failed to stop job', { ...props, error });
 			return false;
 		}
 	}
@@ -125,22 +123,19 @@ export class ScalingMode {
 	 * Listeners
 	 */
 
-	private registerResponseListener() {
-		if (config.getEnv('generic.instanceType') !== 'main') return;
-
+	private registerListeners() {
 		this.queue.on('global:progress', (_job: Job, report: JobProgressReport) => {
 			if (report.kind === 'webhook-response') {
 				const { executionId, response } = report;
-				this.activeExecutions.resolveResponsePromise(executionId, decodeWebhookResponse(response));
+				this.activeExecutions.resolveResponsePromise(
+					executionId,
+					this.decodeWebhookResponse(response),
+				);
 			}
 		});
-	}
-
-	private registerWorkerListeners() {
-		if (config.getEnv('generic.instanceType') !== 'worker') return;
 
 		this.queue.on('global:progress', (jobId: JobId, progress) => {
-			if (progress === -1) this.jobProcessor.stopJob(jobId);
+			if (progress === ABORT_JOB_SIGNAL) this.consumer.stopJob(jobId);
 		});
 
 		let latestAttemptTs = 0;
@@ -150,7 +145,7 @@ export class ScalingMode {
 		const RESET_LENGTH_MS = 30_000;
 
 		this.queue.on('error', (error: Error) => {
-			this.logger.error('[ScalingMode] Queue errored', { error });
+			this.logger.error('[ScalingService] Queue errored', { error });
 
 			/**
 			 * On Redis connection failure, try to reconnect. On every failed attempt,
@@ -166,17 +161,20 @@ export class ScalingMode {
 					cumulativeTimeoutMs += nowTs - latestAttemptTs;
 					latestAttemptTs = nowTs;
 					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
-						this.logger.error('[ScalingMode] Redis unavailable after max timeout');
-						this.logger.error('[ScalingMode] Exiting process...');
+						this.logger.error('[ScalingService] Redis unavailable after max timeout');
+						this.logger.error('[ScalingService] Exiting process...');
 						process.exit(1);
 					}
 				}
 
-				this.logger.warn('[ScalingMode] Redis unavailable - retrying to connect...');
+				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
 				return;
 			}
 
-			if (error.message.includes('job stalled more than maxStalledCount')) {
+			if (
+				this.instanceType === 'worker' &&
+				error.message.includes('job stalled more than maxStalledCount')
+			) {
 				throw new MaxStalledCountError(error);
 			}
 
@@ -184,13 +182,39 @@ export class ScalingMode {
 			 * Non-recoverable error on worker start with Redis unavailable.
 			 * Even if Redis recovers, worker will remain unable to process jobs.
 			 */
-			if (error.message.includes('Error initializing Lua scripts')) {
-				this.logger.error('[ScalingMode] Fatal error initializing worker', { error });
-				this.logger.error('[ScalingMode] Exiting process...');
+			if (
+				this.instanceType === 'worker' &&
+				error.message.includes('Error initializing Lua scripts')
+			) {
+				this.logger.error('[ScalingService] Fatal error initializing worker', { error });
+				this.logger.error('[ScalingService] Exiting process...');
 				process.exit(1);
 			}
 
 			throw error;
 		});
+	}
+
+	private decodeWebhookResponse(
+		response: IExecuteResponsePromiseData,
+	): IExecuteResponsePromiseData {
+		if (
+			typeof response === 'object' &&
+			typeof response.body === 'object' &&
+			(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+		) {
+			response.body = Buffer.from(
+				(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
+				BINARY_ENCODING,
+			);
+		}
+
+		return response;
+	}
+
+	private assertWorker() {
+		if (this.instanceType === 'worker') return;
+
+		throw new ApplicationError('This method must be called on a `worker` instance');
 	}
 }
