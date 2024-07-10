@@ -14,7 +14,7 @@ beforeEach(() => {
 
 describe('CanvasNodeDefault', () => {
 	it('should render node correctly', () => {
-		const { getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
@@ -22,7 +22,7 @@ describe('CanvasNodeDefault', () => {
 			},
 		});
 
-		expect(getByText('Test Node')).toBeInTheDocument();
+		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
 	});
 
 	describe('outputs', () => {
@@ -40,7 +40,7 @@ describe('CanvasNodeDefault', () => {
 			});
 
 			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--node-main-output-count': '1' }); // height calculation based on the number of outputs
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-output-count': '1' }); // height calculation based on the number of outputs
 		});
 
 		it('should adjust height css variable based on the number of outputs (multiple outputs)', () => {
@@ -61,7 +61,7 @@ describe('CanvasNodeDefault', () => {
 			});
 
 			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).toHaveStyle({ '--node-main-output-count': '3' }); // height calculation based on the number of outputs
+			expect(nodeElement).toHaveStyle({ '--canvas-node--main-output-count': '3' }); // height calculation based on the number of outputs
 		});
 	});
 
@@ -129,6 +129,97 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 			expect(getByText('Test Node').closest('.node')).toHaveClass('running');
+		});
+	});
+
+	describe('configurable', () => {
+		it('should render configurable node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: 'default',
+									options: { configurable: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
+		});
+
+		describe('inputs', () => {
+			it('should adjust width css variable based on the number of non-main inputs', () => {
+				const { getByText } = renderComponent({
+					global: {
+						provide: {
+							...createCanvasNodeProvide({
+								data: {
+									inputs: [
+										{ type: NodeConnectionType.Main, index: 0 },
+										{ type: NodeConnectionType.AiTool, index: 0 },
+										{ type: NodeConnectionType.AiDocument, index: 0, required: true },
+										{ type: NodeConnectionType.AiMemory, index: 0, required: true },
+									],
+									render: {
+										type: 'default',
+										options: {
+											configurable: true,
+										},
+									},
+								},
+							}),
+						},
+					},
+				});
+
+				const nodeElement = getByText('Test Node').closest('.node');
+				expect(nodeElement).toHaveStyle({ '--configurable-node--input-count': '3' });
+			});
+		});
+	});
+
+	describe('configuration', () => {
+		it('should render configuration node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: 'default',
+									options: { configuration: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configuration-node')).toMatchSnapshot();
+		});
+
+		it('should render configurable configuration node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: 'default',
+									options: { configurable: true, configuration: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
 	});
 });
