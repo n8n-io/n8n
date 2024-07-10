@@ -24,7 +24,10 @@ describe('CanvasNodeToolbar', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: 'default',
+								options: { configuration: true },
+							},
 						},
 					}),
 				},
