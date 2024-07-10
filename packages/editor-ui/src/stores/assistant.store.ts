@@ -9,7 +9,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatEnabled = ref<boolean>(false);
 	const chatWidth = ref<number>(275);
 
-	const chatWindowOpen = ref<boolean>(false);
+	const chatWindowOpen = ref<boolean>(true);
 
 	function closeChat() {
 		chatWindowOpen.value = false;
@@ -29,5 +29,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		closeChat,
 		openChat,
 		updateWindowWidth,
+		chatWindowOpen,
 	};
 });

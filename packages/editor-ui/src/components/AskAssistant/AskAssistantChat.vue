@@ -15,9 +15,9 @@ const onResizeDebounced = (data: { direction: string; x: number; width: number }
 
 <template>
 	<n8n-resize-wrapper
+		v-if="assistantStore.chatWindowOpen"
 		:supported-directions="['left']"
 		:width="assistantStore.chatWidth"
-		:min-width="assistantStore.MIN_CHAT_WIDTH"
 		@resize="onResizeDebounced"
 		:class="$style.container"
 	>
