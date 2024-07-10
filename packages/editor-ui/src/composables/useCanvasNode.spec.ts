@@ -29,6 +29,7 @@ describe('useCanvasNode', () => {
 		expect(result.executionStatus.value).toBeUndefined();
 		expect(result.executionWaiting.value).toBeUndefined();
 		expect(result.executionRunning.value).toBe(false);
+		expect(result.renderOptions.value).toEqual({});
 	});
 
 	it('should return node data when node is provided', () => {
@@ -45,7 +46,14 @@ describe('useCanvasNode', () => {
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { count: 1, visible: true },
 				pinnedData: { count: 1, visible: true },
-				renderType: 'default',
+				render: {
+					type: 'default',
+					options: {
+						configurable: false,
+						configuration: false,
+						trigger: false,
+					},
+				},
 			}),
 			id: ref('1'),
 			label: ref('Node 1'),
@@ -71,5 +79,6 @@ describe('useCanvasNode', () => {
 		expect(result.executionStatus.value).toBe('running');
 		expect(result.executionWaiting.value).toBe('waiting');
 		expect(result.executionRunning.value).toBe(true);
+		expect(result.renderOptions.value).toBe(node.data.value.render.options);
 	});
 });
