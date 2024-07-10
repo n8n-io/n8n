@@ -45,7 +45,7 @@ describe('useCanvasNode', () => {
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { count: 1, visible: true },
 				pinnedData: { count: 1, visible: true },
-				renderType: 'default',
+				render: { type: 'default', options: {} },
 			}),
 			id: ref('1'),
 			label: ref('Node 1'),
