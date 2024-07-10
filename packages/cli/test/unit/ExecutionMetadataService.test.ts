@@ -15,20 +15,26 @@ describe('ExecutionMetadataService', () => {
 
 		await Container.get(ExecutionMetadataService).save(executionId, toSave);
 
-		expect(repository.save).toHaveBeenCalledTimes(1);
-		expect(repository.save.mock.calls[0]).toEqual([
+		expect(repository.upsert).toHaveBeenCalledTimes(1);
+		expect(repository.upsert.mock.calls[0]).toEqual([
 			[
 				{
-					execution: { id: executionId },
+					executionId,
 					key: 'test1',
 					value: 'value1',
 				},
 				{
-					execution: { id: executionId },
+					executionId,
 					key: 'test2',
 					value: 'value2',
 				},
 			],
+			{
+				conflictPaths: {
+					executionId: true,
+					key: true,
+				},
+			},
 		]);
 	});
 });
