@@ -214,11 +214,10 @@ export class TextClassifier implements INodeType {
 			: 'One of the options must always be true.';
 
 		const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-			(options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE) +
-				'\n{format_instructions}\n' +
-				multiClassPrompt +
-				'\n' +
-				fallbackPrompt,
+			`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
+{format_instructions}
+${multiClassPrompt}
+${fallbackPrompt}`,
 		);
 
 		const returnData: INodeExecutionData[][] = Array.from(
