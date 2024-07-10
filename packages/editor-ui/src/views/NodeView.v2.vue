@@ -27,10 +27,11 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasElement, ConnectStartEvent } from '@/types';
+import { CanvasNode, CanvasNodeRenderType, ConnectStartEvent } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
+	INTERNAL_ADD_NODES_NODE_TYPE,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
@@ -164,6 +165,25 @@ const isReadOnlyRoute = computed(() => route?.meta?.readOnlyCanvas === true);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+
+const isCanvasReadOnly = computed(() => {
+	return isLoading.value || isDemoRoute.value || isReadOnlyEnvironment.value;
+});
+
+const fallbackNodes = computed<INodeUi[]>(() =>
+	isCanvasReadOnly.value
+		? []
+		: [
+				{
+					id: CanvasNodeRenderType.AddNodes,
+					name: CanvasNodeRenderType.AddNodes,
+					type: CanvasNodeRenderType.AddNodes,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+);
 
 /**
  * Initialization
@@ -412,7 +432,7 @@ function makeNewWorkflowShareable() {
  * Nodes
  */
 
-function onUpdateNodePosition(id: string, position: CanvasElement['position']) {
+function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
 	updateNodePosition(id, position, { trackHistory: true });
 }
 
@@ -834,7 +854,7 @@ async function checkAndInitDebugMode() {
  * Mouse events
  */
 
-function onClickPane(position: CanvasElement['position']) {
+function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	canvasStore.newNodeInsertPosition = [position.x, position.y];
 }
@@ -967,6 +987,7 @@ onBeforeUnmount(() => {
 		v-if="editableWorkflow && editableWorkflowObject"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
+		:fallback-nodes="fallbackNodes"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"

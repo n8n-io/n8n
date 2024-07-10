@@ -1,4 +1,4 @@
-import type { CanvasElementData } from '@/types';
+import type { CanvasNodeData } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -8,9 +8,9 @@ export function useNodeConnections({
 	outputs,
 	connections,
 }: {
-	inputs: MaybeRef<CanvasElementData['inputs']>;
-	outputs: MaybeRef<CanvasElementData['outputs']>;
-	connections: MaybeRef<CanvasElementData['connections']>;
+	inputs: MaybeRef<CanvasNodeData['inputs']>;
+	outputs: MaybeRef<CanvasNodeData['outputs']>;
+	connections: MaybeRef<CanvasNodeData['connections']>;
 }) {
 	/**
 	 * Inputs

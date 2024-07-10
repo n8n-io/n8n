@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import type { CanvasElement } from '@/types';
+import type { CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type {
 	AddedNodesAndConnections,
@@ -105,7 +105,7 @@ export function useCanvasOperations({
 
 	function updateNodePosition(
 		id: string,
-		position: CanvasElement['position'],
+		position: CanvasNode['position'],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
 		const node = workflowsStore.getNodeById(id);

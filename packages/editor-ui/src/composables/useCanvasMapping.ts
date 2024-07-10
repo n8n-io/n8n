@@ -12,9 +12,10 @@ import type {
 	CanvasConnection,
 	CanvasConnectionData,
 	CanvasConnectionPort,
-	CanvasElement,
-	CanvasElementData,
+	CanvasNode,
+	CanvasNodeData,
 } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
@@ -32,10 +33,12 @@ import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export function useCanvasMapping({
-	workflow,
+	nodes,
+	connections,
 	workflowObject,
 }: {
-	workflow: Ref<IWorkflowDb>;
+	nodes: Ref<IWorkflowDb['nodes']>;
+	connections: Ref<IWorkflowDb['connections']>;
 	workflowObject: Ref<Workflow>;
 }) {
 	const i18n = useI18n();
@@ -44,24 +47,36 @@ export function useCanvasMapping({
 
 	const renderTypeByNodeType = computed(
 		() =>
-			workflow.value.nodes.reduce<Record<string, CanvasElementData['render']>>((acc, node) => {
+			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
 				// @TODO Add support for sticky notes here
-
-				acc[node.type] = {
-					type: 'default',
-					options: {
-						trigger: nodeTypesStore.isTriggerNode(node.type),
-						configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
-						configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
-					},
-				};
+				switch (node.type) {
+					case `${CanvasNodeRenderType.AddNodes}`:
+						acc[node.type] = {
+							type: CanvasNodeRenderType.AddNodes,
+							options: {},
+						};
+						break;
+					default:
+						acc[node.type] = {
+							type: CanvasNodeRenderType.Default,
+							options: {
+								trigger: nodeTypesStore.isTriggerNode(node.type),
+								configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
+								configurable: nodeTypesStore.isConfigurableNode(
+									workflowObject.value,
+									node,
+									node.type,
+								),
+							},
+						};
+				}
 
 				return acc;
 			}, {}) ?? {},
 	);
 
 	const nodeInputsById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
+		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type);
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
 
@@ -81,7 +96,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeOutputsById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
+		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
 			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type);
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
 
@@ -101,21 +116,21 @@ export function useCanvasMapping({
 	);
 
 	const nodePinnedDataById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
+		nodes.value.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
 			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
 			return acc;
 		}, {}),
 	);
 
 	const nodeExecutionRunningById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, boolean>>((acc, node) => {
+		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
 	);
 
 	const nodeExecutionStatusById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, ExecutionStatus>>((acc, node) => {
+		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			acc[node.id] =
 				workflowsStore.getWorkflowRunData?.[node.name]?.filter(Boolean)[0].executionStatus ?? 'new';
 			return acc;
@@ -123,14 +138,14 @@ export function useCanvasMapping({
 	);
 
 	const nodeExecutionRunDataById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, ITaskData[] | null>>((acc, node) => {
+		nodes.value.reduce<Record<string, ITaskData[] | null>>((acc, node) => {
 			acc[node.id] = workflowsStore.getWorkflowResultDataByNodeName(node.name);
 			return acc;
 		}, {}),
 	);
 
 	const nodeIssuesById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, string[]>>((acc, node) => {
+		nodes.value.reduce<Record<string, string[]>>((acc, node) => {
 			const issues: string[] = [];
 			const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[node.name];
 			if (nodeExecutionRunData) {
@@ -154,7 +169,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeHasIssuesById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, boolean>>((acc, node) => {
+		nodes.value.reduce<Record<string, boolean>>((acc, node) => {
 			if (['crashed', 'error'].includes(nodeExecutionStatusById.value[node.id])) {
 				acc[node.id] = true;
 			} else if (nodePinnedDataById.value[node.id]) {
@@ -168,7 +183,7 @@ export function useCanvasMapping({
 	);
 
 	const nodeExecutionWaitingById = computed(() =>
-		workflow.value.nodes.reduce<Record<string, string | undefined>>((acc, node) => {
+		nodes.value.reduce<Record<string, string | undefined>>((acc, node) => {
 			const isExecutionSummary = (execution: object): execution is ExecutionSummary =>
 				'waitTill' in execution;
 
@@ -198,12 +213,12 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
-	const elements = computed<CanvasElement[]>(() => [
-		...workflow.value.nodes.map<CanvasElement>((node) => {
+	const mappedNodes = computed<CanvasNode[]>(() => [
+		...nodes.value.map<CanvasNode>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
 			const outputConnections = workflowObject.value.connectionsBySourceNode[node.name] ?? {};
 
-			const data: CanvasElementData = {
+			const data: CanvasNodeData = {
 				id: node.id,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -244,10 +259,10 @@ export function useCanvasMapping({
 		}),
 	]);
 
-	const connections = computed<CanvasConnection[]>(() => {
+	const mappedConnections = computed<CanvasConnection[]>(() => {
 		const mappedConnections = mapLegacyConnectionsToCanvasConnections(
-			workflow.value.connections ?? [],
-			workflow.value.nodes ?? [],
+			connections.value ?? [],
+			nodes.value ?? [],
 		);
 
 		return mappedConnections.map((connection) => {
@@ -266,9 +281,7 @@ export function useCanvasMapping({
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {
-		const fromNode = workflow.value.nodes.find(
-			(node) => node.name === connection.data?.fromNodeName,
-		);
+		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
 
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
@@ -297,9 +310,7 @@ export function useCanvasMapping({
 	}
 
 	function getConnectionLabel(connection: CanvasConnection): string {
-		const fromNode = workflow.value.nodes.find(
-			(node) => node.name === connection.data?.fromNodeName,
-		);
+		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
 
 		if (!fromNode) {
 			return '';
@@ -323,7 +334,7 @@ export function useCanvasMapping({
 	}
 
 	return {
-		connections,
-		elements,
+		connections: mappedConnections,
+		nodes: mappedNodes,
 	};
 }

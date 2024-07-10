@@ -42,17 +42,18 @@ describe('useCanvasMapping', () => {
 		});
 		const workflowObject = createTestWorkflowObject(workflow);
 
-		const { elements, connections } = useCanvasMapping({
-			workflow: ref(workflow),
+		const { nodes, connections } = useCanvasMapping({
+			nodes: ref(workflow.nodes),
+			connections: ref(workflow.connections),
 			workflowObject: ref(workflowObject) as Ref<Workflow>,
 		});
 
-		expect(elements.value).toEqual([]);
+		expect(nodes.value).toEqual([]);
 		expect(connections.value).toEqual([]);
 	});
 
-	describe('elements', () => {
-		it('should map nodes to canvas elements', () => {
+	describe('nodes', () => {
+		it('should map nodes to canvas nodes', () => {
 			const manualTriggerNode = mockNode({
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
@@ -63,12 +64,13 @@ describe('useCanvasMapping', () => {
 			});
 			const workflowObject = createTestWorkflowObject(workflow);
 
-			const { elements } = useCanvasMapping({
-				workflow: ref(workflow),
+			const { nodes } = useCanvasMapping({
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(elements.value).toEqual([
+			expect(nodes.value).toEqual([
 				{
 					id: manualTriggerNode.id,
 					label: manualTriggerNode.name,
@@ -138,12 +140,13 @@ describe('useCanvasMapping', () => {
 			});
 			const workflowObject = createTestWorkflowObject(workflow);
 
-			const { elements } = useCanvasMapping({
-				workflow: ref(workflow),
+			const { nodes } = useCanvasMapping({
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(elements.value[0]?.data?.disabled).toEqual(true);
+			expect(nodes.value[0]?.data?.disabled).toEqual(true);
 		});
 
 		it('should handle execution state', () => {
@@ -159,12 +162,13 @@ describe('useCanvasMapping', () => {
 
 			useWorkflowsStore().addExecutingNode(manualTriggerNode.name);
 
-			const { elements } = useCanvasMapping({
-				workflow: ref(workflow),
+			const { nodes } = useCanvasMapping({
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(elements.value[0]?.data?.execution.running).toEqual(true);
+			expect(nodes.value[0]?.data?.execution.running).toEqual(true);
 		});
 
 		it('should handle input and output connections', () => {
@@ -181,13 +185,14 @@ describe('useCanvasMapping', () => {
 			});
 			const workflowObject = createTestWorkflowObject(workflow);
 
-			const { elements } = useCanvasMapping({
-				workflow: ref(workflow),
+			const { nodes } = useCanvasMapping({
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(elements.value[0]?.data?.connections.output).toHaveProperty(NodeConnectionType.Main);
-			expect(elements.value[0]?.data?.connections.output[NodeConnectionType.Main][0][0]).toEqual(
+			expect(nodes.value[0]?.data?.connections.output).toHaveProperty(NodeConnectionType.Main);
+			expect(nodes.value[0]?.data?.connections.output[NodeConnectionType.Main][0][0]).toEqual(
 				expect.objectContaining({
 					node: setNode.name,
 					type: NodeConnectionType.Main,
@@ -195,8 +200,8 @@ describe('useCanvasMapping', () => {
 				}),
 			);
 
-			expect(elements.value[1]?.data?.connections.input).toHaveProperty(NodeConnectionType.Main);
-			expect(elements.value[1]?.data?.connections.input[NodeConnectionType.Main][0][0]).toEqual(
+			expect(nodes.value[1]?.data?.connections.input).toHaveProperty(NodeConnectionType.Main);
+			expect(nodes.value[1]?.data?.connections.input[NodeConnectionType.Main][0][0]).toEqual(
 				expect.objectContaining({
 					node: manualTriggerNode.name,
 					type: NodeConnectionType.Main,
@@ -222,7 +227,8 @@ describe('useCanvasMapping', () => {
 			const workflowObject = createTestWorkflowObject(workflow);
 
 			const { connections } = useCanvasMapping({
-				workflow: ref(workflow),
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
@@ -270,7 +276,8 @@ describe('useCanvasMapping', () => {
 			const workflowObject = createTestWorkflowObject(workflow);
 
 			const { connections } = useCanvasMapping({
-				workflow: ref(workflow),
+				nodes: ref(workflow.nodes),
+				connections: ref(workflow.connections),
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 

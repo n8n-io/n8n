@@ -4,7 +4,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from '@/components/canvas/Canvas.vue';
 import { createPinia, setActivePinia } from 'pinia';
-import type { CanvasConnection, CanvasElement } from '@/types';
+import type { CanvasConnection, CanvasNode } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
 import { NodeConnectionType } from 'n8n-workflow';
 
@@ -44,7 +44,7 @@ describe('Canvas', () => {
 	});
 
 	it('should render nodes and edges', async () => {
-		const elements: CanvasElement[] = [
+		const elements: CanvasNode[] = [
 			createCanvasNodeElement({
 				id: '1',
 				label: 'Node 1',

@@ -5,11 +5,11 @@
 
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
-import type { CanvasElementData } from '@/types';
+import type { CanvasNodeData } from '@/types';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
-	const data = computed<CanvasElementData>(
+	const data = computed<CanvasNodeData>(
 		() =>
 			node?.data.value ?? {
 				id: '',

@@ -1,11 +1,7 @@
 <script lang="ts" setup>
 import { Position } from '@vue-flow/core';
 import { computed, provide, toRef, watch } from 'vue';
-import type {
-	CanvasElementData,
-	CanvasConnectionPort,
-	CanvasElementPortWithPosition,
-} from '@/types';
+import type { CanvasNodeData, CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
@@ -22,7 +18,7 @@ const emit = defineEmits<{
 	toggle: [id: string];
 	activate: [id: string];
 }>();
-const props = defineProps<NodeProps<CanvasElementData>>();
+const props = defineProps<NodeProps<CanvasNodeData>>();
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -159,9 +155,15 @@ function onActivate() {
 			@run="onRun"
 		/>
 
-		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
-			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="isDisabled" />
-			<!--			:color-default="iconColorDefault"-->
+		<CanvasNodeRenderer @dblclick="onActivate">
+			<NodeIcon
+				v-if="nodeType"
+				:node-type="nodeType"
+				:size="40"
+				:shrink="false"
+				:disabled="isDisabled"
+			/>
+			<!-- @TODO :color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
 	</div>
 </template>

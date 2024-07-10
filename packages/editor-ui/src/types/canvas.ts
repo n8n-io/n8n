@@ -9,6 +9,7 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
+import { INTERNAL_ADD_NODES_NODE_TYPE } from '@/constants';
 
 export type CanvasElementType = 'node' | 'note';
 
@@ -36,7 +37,12 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 	offset?: { top?: string; left?: string };
 }
 
-export interface CanvasElementData {
+export const enum CanvasNodeRenderType {
+	Default = 'default',
+	AddNodes = 'n8n-nodes-internal.addNodes',
+}
+
+export interface CanvasNodeData {
 	id: INodeUi['id'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
@@ -65,12 +71,12 @@ export interface CanvasElementData {
 		visible: boolean;
 	};
 	render: {
-		type: 'default';
+		type: CanvasNodeRenderType;
 		options: Record<string, unknown>;
 	};
 }
 
-export type CanvasElement = Node<CanvasElementData>;
+export type CanvasNode = Node<CanvasNodeData>;
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
@@ -91,7 +97,7 @@ export interface CanvasPlugin {
 
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
-	data: Ref<CanvasElementData>;
+	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
 	nodeType: ComputedRef<INodeTypeDescription | null>;
