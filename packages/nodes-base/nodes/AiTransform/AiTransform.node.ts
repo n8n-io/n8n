@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -48,34 +49,43 @@ export class AiTransform implements INodeType {
 					action: {
 						type: 'updateProperty',
 						handler: 'generateCodeUsingAiService',
-						source: 'instructions',
 						target: 'jsCode',
 					},
+				},
+			},
+			{
+				displayName: 'Code',
+				name: 'jsCode',
+				type: 'string',
+				default: '',
+				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+				typeOptions: {
+					rows: 5,
 				},
 			},
 			// {
 			// 	displayName: 'Code',
 			// 	name: 'jsCode',
 			// 	type: 'string',
-			// 	default: '',
-			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
 			// 	typeOptions: {
-			// 		rows: 5,
+			// 		editor: 'codeNodeEditor',
+			// 		editorIsReadOnly: true,
+			// 		editorLanguage: 'javaScript',
 			// 	},
+			// 	default: '',
+			// 	noDataExpression: true,
+			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
 			// },
-			{
-				displayName: 'Code',
-				name: 'jsCode',
-				type: 'string',
-				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
-				},
-				default: '',
-				noDataExpression: true,
-				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-			},
 		],
+	};
+
+	methods = {
+		actionHandlers: {
+			async generateCodeUsingAiService(this: ILoadOptionsFunctions) {
+				const instructions = this.getNodeParameter('instructions') as string;
+				return instructions;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {

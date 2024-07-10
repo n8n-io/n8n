@@ -484,10 +484,10 @@ function onNoticeAction(action: string) {
  * Handles default node button parameter type actions
  * @param parameter
  */
-function onButtonAction(parameter: INodeProperties) {
+async function onButtonAction(parameter: INodeProperties) {
 	const action: string | NodePropertyAction | undefined = parameter.typeOptions?.action;
 
-	if (!action) return;
+	if (!action || !ndvStore.activeNode) return;
 
 	if (typeof action === 'string') {
 		switch (action) {
@@ -496,15 +496,28 @@ function onButtonAction(parameter: INodeProperties) {
 		}
 	}
 
-	const { type, source, target } = action;
+	const { type, handler, target } = action;
+
+	const currentNodeParameters = ndvStore.activeNode.parameters;
+	const actionResult = await nodeTypesStore.getNodeParameterActionResult({
+		nodeTypeAndVersion: {
+			name: ndvStore.activeNode.type,
+			version: ndvStore.activeNode.typeVersion,
+		},
+		path: props.path,
+		currentNodeParameters,
+		credentials: ndvStore.activeNode.credentials,
+		handler,
+		target,
+	});
+
+	if (actionResult === undefined) return;
+
 	switch (type) {
 		case 'updateProperty':
-			const sourceValue = getParameterValue(source as string);
-			// const targetValue = getParameterValue(target as string);
-
 			const parameterData: IUpdateInformation = {
 				name: getPath(target as string),
-				value: sourceValue,
+				value: actionResult,
 			};
 
 			//TODO: code editor does not displays updated value, needs to be closed and reopened

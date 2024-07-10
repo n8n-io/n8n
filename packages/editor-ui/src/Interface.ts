@@ -1564,6 +1564,11 @@ export declare namespace DynamicNodeParameters {
 	interface ResourceMapperFieldsRequest extends BaseRequest {
 		methodName: string;
 	}
+
+	interface ActionResultRequest extends BaseRequest {
+		handler: string;
+		target?: string;
+	}
 }
 
 export interface EnvironmentVariable {

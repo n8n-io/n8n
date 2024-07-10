@@ -1217,7 +1217,6 @@ export interface ILoadOptions {
 export type NodePropertyAction = {
 	type: 'updateProperty';
 	handler: string;
-	source?: string;
 	target?: string;
 };
 
@@ -1228,6 +1227,7 @@ export interface INodePropertyTypeOptions {
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
+	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -1520,6 +1520,9 @@ export interface INodeType {
 		};
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		actionHandlers?: {
+			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
 		};
 	};
 	webhookMethods?: {

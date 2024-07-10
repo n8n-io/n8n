@@ -134,7 +134,7 @@
 					:model-value="modelValueString"
 					:default-value="parameter.default"
 					:language="editorLanguage"
-					:is-read-only="isReadOnly"
+					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
 					@update:model-value="valueChangedDebounced"
@@ -854,6 +854,9 @@ const getIssues = computed<string[]>(() => {
 
 const editorType = computed<EditorType | 'json' | 'code'>(() => {
 	return getArgument<EditorType>('editor');
+});
+const editorIsReadOnly = computed<boolean>(() => {
+	return getArgument<boolean>('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeEditorLanguage>(() => {

@@ -3,6 +3,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
+	// ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import { versionDescription } from './actions/versionDescription';
@@ -23,6 +24,12 @@ export class AirtableV2 implements INodeType {
 		listSearch,
 		loadOptions,
 		resourceMapping,
+		// actionHandlers: {
+		// 	async generateCodeUsingAiService(this: ILoadOptionsFunctions) {
+		// 		const instructions = this.getNodeParameter('instructions') as string;
+		// 		return instructions;
+		// 	},
+		// },
 	};
 
 	async execute(this: IExecuteFunctions) {
