@@ -4,18 +4,29 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 </script>
 
 <template>
-	<div>
+	<div :class="$style.container">
 		<div :class="$style.header">
-			<AssistantIcon :size="18" :class="$style.icon" />
-			<AssistantText :class="$style.name" font-size="14px" line-height="18px" text="AI Assistant" />
-			<div :class="$style.beta">beta</div>
+			<div>
+				<AssistantIcon :size="18" :class="$style.icon" />
+				<AssistantText
+					:class="$style.name"
+					font-size="14px"
+					line-height="18px"
+					text="AI Assistant"
+				/>
+				<div :class="$style.beta">beta</div>
+			</div>
+			<div>
+				<n8n-icon icon="arrow-right" color="text-base" />
+			</div>
 		</div>
 		<div :class="$style.body">
 			<div :class="$style.greeting">Hi Max 👋</div>
 			<div :class="$style.info">
 				<p>I'm here to assist you with building workflows.</p>
 				<p>
-					Whenever you encounter a task that I can help with, you'll see the <n8n-ask-assistant-button size="small" /> button.
+					Whenever you encounter a task that I can help with, you'll see the
+					<n8n-ask-assistant-button size="small" /> button.
 				</p>
 				<p>Clicking it starts a chat session with me.</p>
 			</div>
@@ -34,12 +45,24 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 </template>
 
 <style lang="scss" module>
+.container {
+	min-width: 250px;
+	max-width: 250px;
+}
+
 .header {
 	padding: 12px 23px;
 	background-color: var(--color-background-xlight);
-	display: flex;
-	align-items: center;
 	border: var(--border-base);
+
+	div {
+		display: flex;
+		align-items: center;
+	}
+
+	> div:last-of-type {
+		float: right;
+	}
 }
 .name {
 	margin-right: 6px;
