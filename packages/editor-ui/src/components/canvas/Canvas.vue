@@ -17,6 +17,7 @@ const emit = defineEmits<{
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
+	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
 	'create:connection': [connection: Connection];
@@ -79,6 +80,10 @@ function onDeleteNode(id: string) {
 	emit('delete:node', id);
 }
 
+function onRunNode(id: string) {
+	emit('run:node', id);
+}
+
 function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
@@ -135,6 +140,7 @@ function onClickPane(event: MouseEvent) {
 			<CanvasNode
 				v-bind="canvasNodeProps"
 				@delete="onDeleteNode"
+				@run="onRunNode"
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
