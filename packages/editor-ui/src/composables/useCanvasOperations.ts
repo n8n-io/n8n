@@ -331,7 +331,6 @@ export function useCanvasOperations({
 
 		workflowsStore.addNode(newNodeData);
 
-		// @TODO Figure out why this is needed and if we can do better...
 		nodeHelpers.matchCredentials(newNodeData);
 
 		const lastSelectedNode = uiStore.getLastSelectedNode;
