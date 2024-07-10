@@ -35,6 +35,14 @@ const properties: INodeProperties[] = [
 			'ID of the collection to add an item to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'ID of the item to update',
+	},
+	{
 		displayName: 'Live',
 		name: 'live',
 		type: 'boolean',
@@ -84,7 +92,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['item'],
-		operation: ['create'],
+		operation: ['update'],
 	},
 };
 
@@ -99,6 +107,7 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const collectionId = this.getNodeParameter('collectionId', i) as string;
+			const itemId = this.getNodeParameter('itemId', i) as string;
 
 			const uiFields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
 
@@ -114,8 +123,8 @@ export async function execute(
 
 			responseData = await webflowApiRequest.call(
 				this,
-				'POST',
-				`/collections/${collectionId}/items`,
+				'PATCH',
+				`/collections/${collectionId}/items/${itemId}`,
 				body,
 				{ live },
 			);

@@ -23,6 +23,7 @@ export async function webflowApiRequest(
 		body,
 		uri: uri || `https://api.webflow.com/v2${resource}`,
 		json: true,
+		resolveWithFullResponse: true,
 	};
 	options = Object.assign({}, options, option);
 
@@ -52,11 +53,11 @@ export async function webflowApiRequestAllItems(
 
 	do {
 		responseData = await webflowApiRequest.call(this, method, endpoint, body, query);
-		if (responseData.offset !== undefined) {
+		if (responseData.body.pagination.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items as IDataObject[]);
-	} while (returnData.length < responseData.total);
+		returnData.push.apply(returnData, responseData.body.items as IDataObject[]);
+	} while (returnData.length < responseData.body.pagination.total);
 
 	return returnData;
 }

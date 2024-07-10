@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { webflowApiRequest } from '../../transport';
+import { webflowApiRequest, webflowApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -35,19 +35,34 @@ const properties: INodeProperties[] = [
 			'ID of the collection whose items to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Item ID',
-		name: 'itemId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'ID of the item to operate on',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
+		default: 100,
+		description: 'Max number of results to return',
 	},
 ];
 
 const displayOptions = {
 	show: {
 		resource: ['item'],
-		operation: ['get'],
+		operation: ['getAll'],
 	},
 };
 
@@ -61,16 +76,31 @@ export async function execute(
 	let responseData;
 	for (let i = 0; i < items.length; i++) {
 		try {
+			const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 			const collectionId = this.getNodeParameter('collectionId', i) as string;
-			const itemId = this.getNodeParameter('itemId', i) as string;
-			responseData = await webflowApiRequest.call(
-				this,
-				'GET',
-				`/collections/${collectionId}/items/${itemId}`,
-			);
+			const qs: IDataObject = {};
+
+			if (returnAll) {
+				responseData = await webflowApiRequestAllItems.call(
+					this,
+					'GET',
+					`/collections/${collectionId}/items`,
+					{},
+				);
+			} else {
+				qs.limit = this.getNodeParameter('limit', i);
+				responseData = await webflowApiRequest.call(
+					this,
+					'GET',
+					`/collections/${collectionId}/items`,
+					{},
+					qs,
+				);
+				responseData = responseData.body.items;
+			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(responseData.body as IDataObject[]),
+				wrapData(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 

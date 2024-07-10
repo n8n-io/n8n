@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['item'],
-		operation: ['get'],
+		operation: ['deleteItem'],
 	},
 };
 
@@ -58,19 +58,25 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
-	let responseData;
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const collectionId = this.getNodeParameter('collectionId', i) as string;
 			const itemId = this.getNodeParameter('itemId', i) as string;
-			responseData = await webflowApiRequest.call(
+			let responseData = await webflowApiRequest.call(
 				this,
-				'GET',
+				'DELETE',
 				`/collections/${collectionId}/items/${itemId}`,
 			);
 
+			if (responseData.statusCode === 204) {
+				responseData = { success: true };
+			} else {
+				responseData = { success: false };
+			}
+
 			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(responseData.body as IDataObject[]),
+				wrapData(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
