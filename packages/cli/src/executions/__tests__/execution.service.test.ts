@@ -235,6 +235,7 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
+					expect(activeExecutions.stopExecution).toHaveBeenCalled();
 					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
 					expect(queue.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
@@ -260,6 +261,7 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).toHaveBeenCalled();
 					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
 					expect(queue.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
