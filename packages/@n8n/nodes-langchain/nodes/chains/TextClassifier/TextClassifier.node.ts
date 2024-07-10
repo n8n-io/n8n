@@ -68,7 +68,7 @@ export class TextClassifier implements INodeType {
 			{
 				displayName: 'Categories',
 				name: 'categories',
-				placeholder: 'Add some categories',
+				placeholder: 'Add Category',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -159,7 +159,7 @@ export class TextClassifier implements INodeType {
 						name: 'systemPromptTemplate',
 						type: 'string',
 						default: SYSTEM_PROMPT_TEMPLATE,
-						description: 'String to use directly as the human message template',
+						description: 'String to use directly as the system prompt template',
 						typeOptions: {
 							rows: 6,
 						},
