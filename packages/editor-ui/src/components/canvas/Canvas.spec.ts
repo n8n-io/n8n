@@ -107,6 +107,7 @@ describe('Canvas', () => {
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
-		expect(emitted()['update:node:position']).toEqual([['1', { x: 100, y: 100 }]]);
+		// Snap to 16px grid: 100 -> 96
+		expect(emitted()['update:node:position']).toEqual([['1', { x: 96, y: 96 }]]);
 	});
 });

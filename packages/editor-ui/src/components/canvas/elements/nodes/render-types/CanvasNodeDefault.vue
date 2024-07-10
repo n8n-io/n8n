@@ -17,6 +17,7 @@ const {
 	isDisabled,
 	isSelected,
 	hasPinnedData,
+	executionRunning,
 	hasRunData,
 	hasIssues,
 } = useCanvasNode();
@@ -34,6 +35,7 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value,
 		[$style.error]: hasIssues.value,
 		[$style.pinned]: hasPinnedData.value,
+		[$style.running]: executionRunning.value,
 	};
 });
 
@@ -94,6 +96,11 @@ const styles = computed(() => {
 	&.disabled {
 		border-color: var(--color-canvas-node-disabled-border-color, var(--color-foreground-base));
 	}
+
+	&.running {
+		background-color: var(--color-node-executing-background);
+		border-color: var(--color-canvas-node-running-border-color, var(--color-node-running-border));
+	}
 }
 
 .label {
@@ -108,7 +115,7 @@ const styles = computed(() => {
 
 .statusIcons {
 	position: absolute;
-	top: calc(var(--canvas-node--height) - 24px);
-	right: var(--spacing-xs);
+	bottom: var(--spacing-2xs);
+	right: var(--spacing-2xs);
 }
 </style>

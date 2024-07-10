@@ -47,30 +47,4 @@ const { elements, connections } = useCanvasMapping({ workflow, workflowObject })
 	position: relative;
 	display: block;
 }
-
-.executionButtons {
-	position: absolute;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-l);
-	width: auto;
-
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 150px;
-	}
-
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		margin-left: 0.625rem;
-
-		&:first-child {
-			margin: 0;
-		}
-	}
-}
 </style>
