@@ -4,13 +4,18 @@ import type {
 	IBinaryKeyData,
 	IConnections,
 	IDataObject,
+	IExecuteData,
 	INode,
+	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypes,
 	IRunExecutionData,
+	ITriggerFunctions,
+	ITriggerResponse,
+	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 } from '@/Interfaces';
 import { Workflow, type WorkflowParameters } from '@/Workflow';
@@ -2013,6 +2018,69 @@ describe('Workflow', () => {
 					name: 'Switch',
 				},
 			]);
+		});
+	});
+
+	describe('runNode', () => {
+		const nodeTypes = mock<INodeTypes>();
+		const triggerNode = mock<INode>();
+		const triggerResponse = mock<ITriggerResponse>({
+			closeFunction: jest.fn(),
+			// This node should never trigger, or return
+			manualTriggerFunction: async () => await new Promise(() => {}),
+		});
+		const triggerNodeType = mock<INodeType>({
+			description: {
+				properties: [],
+			},
+			execute: undefined,
+			poll: undefined,
+			webhook: undefined,
+			async trigger(this: ITriggerFunctions) {
+				return triggerResponse;
+			},
+		});
+
+		nodeTypes.getByNameAndVersion.mockReturnValue(triggerNodeType);
+
+		const workflow = new Workflow({
+			nodeTypes,
+			nodes: [triggerNode],
+			connections: {},
+			active: false,
+		});
+
+		const executionData = mock<IExecuteData>();
+		const runExecutionData = mock<IRunExecutionData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const nodeExecuteFunctions = mock<INodeExecuteFunctions>();
+		const triggerFunctions = mock<ITriggerFunctions>();
+		nodeExecuteFunctions.getExecuteTriggerFunctions.mockReturnValue(triggerFunctions);
+		const abortController = new AbortController();
+
+		test('should call closeFunction when manual trigger is aborted', async () => {
+			const runPromise = workflow.runNode(
+				executionData,
+				runExecutionData,
+				0,
+				additionalData,
+				nodeExecuteFunctions,
+				'manual',
+				abortController.signal,
+			);
+			// Yield back to the event-loop to let async parts of `runNode` execute
+			await new Promise((resolve) => setImmediate(resolve));
+
+			let isSettled = false;
+			void runPromise.then(() => {
+				isSettled = true;
+			});
+			expect(isSettled).toBe(false);
+			expect(abortController.signal.aborted).toBe(false);
+			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+
+			abortController.abort();
+			expect(triggerResponse.closeFunction).toHaveBeenCalled();
 		});
 	});
 });
