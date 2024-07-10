@@ -8,11 +8,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 >
   
   
-  <div
-    class="canvasNodeStatusIcons statusIcons"
-  >
-    <!--v-if-->
-  </div>
+  <!--v-if-->
   <!--v-if-->
   <div
     class="label"
@@ -31,11 +27,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 >
   
   
-  <div
-    class="canvasNodeStatusIcons statusIcons"
-  >
-    <!--v-if-->
-  </div>
+  <!--v-if-->
   <!--v-if-->
   <div
     class="label"
@@ -54,11 +46,7 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
 >
   
   
-  <div
-    class="canvasNodeStatusIcons statusIcons"
-  >
-    <!--v-if-->
-  </div>
+  <!--v-if-->
   <!--v-if-->
   <div
     class="label"
@@ -77,11 +65,7 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
 >
   
   
-  <div
-    class="canvasNodeStatusIcons statusIcons"
-  >
-    <!--v-if-->
-  </div>
+  <!--v-if-->
   <!--v-if-->
   <div
     class="label"
