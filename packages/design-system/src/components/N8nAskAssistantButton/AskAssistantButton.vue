@@ -15,24 +15,30 @@ const sizes = {
 		fontSize: '12px',
 		iconSize: 12,
 		lineHeight: '16px',
+		padding: '0px 12px',
+		height: '28px',
 	},
 	small: {
 		fontSize: '9px',
 		iconSize: 9,
 		lineHeight: '12px',
+		padding: '0px 3px',
+		height: '18px',
 	},
 };
 </script>
 
 <template>
-	<button :class="$style.button">
+	<button :class="$style.button" :style="{ height: sizes[props.size].height }">
 		<div>
-			<AssistantIcon :size="sizes[props.size].iconSize" :class="$style.icon" />
-			<AssistantText
-				:font-size="sizes[props.size].fontSize"
-				:line-height="sizes[props.size].lineHeight"
-				text="Ask Assistant"
-			/>
+			<div :style="{ padding: sizes[props.size].padding }">
+				<AssistantIcon :size="sizes[props.size].iconSize" :class="$style.icon" />
+				<AssistantText
+					:font-size="sizes[props.size].fontSize"
+					:line-height="sizes[props.size].lineHeight"
+					text="Ask Assistant"
+				/>
+			</div>
 		</div>
 	</button>
 </template>
@@ -44,34 +50,30 @@ const sizes = {
 .button {
 	$border: 1px;
 	border-radius: 4px;
-	margin: 1px;
 	position: relative;
 	border: 0;
-	padding: 0;
+	padding: 1px;
+
+	background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
 
 	> div {
 		background: var(--color-background-xlight);
-		padding: 5px 12px; // 1px less in vertical padding
-		border-radius: inherit; /* !important */
-	}
+		border-radius: inherit;
+			height: 100%;
 
-	// border
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		right: 0;
-		left: 0;
-		bottom: 0;
-		z-index: -1;
-		margin: -$border; /* !important */
-		border-radius: inherit; /* !important */
-		background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
+		> div {
+			height: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			line-height: unset;
+		}
 	}
 
 	&:hover {
-		> div {
-			cursor: pointer;
+		cursor: pointer;
+
+		> div > div {
 			background: linear-gradient(
 				108.82deg,
 				rgba(236, 123, 142, 0.12) 0%,
@@ -82,8 +84,7 @@ const sizes = {
 	}
 
 	&:active {
-		> div {
-			// cursor: pointer;
+		> div > div {
 			background: linear-gradient(
 				108.82deg,
 				rgba(236, 123, 142, 0.25) 0%,
