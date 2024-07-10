@@ -21,7 +21,7 @@ describe('CanvasNodeRenderer', () => {
 			},
 		});
 
-		expect(getByTestId('canvas-node-default')).toBeInTheDocument();
+		expect(getByTestId('canvas-default-node')).toBeInTheDocument();
 	});
 
 	it('should render configuration node correctly', async () => {
@@ -30,14 +30,17 @@ describe('CanvasNodeRenderer', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: 'default',
+								options: { configuration: true },
+							},
 						},
 					}),
 				},
 			},
 		});
 
-		expect(getByTestId('canvas-node-configuration')).toBeInTheDocument();
+		expect(getByTestId('canvas-configuration-node')).toBeInTheDocument();
 	});
 
 	it('should render configurable node correctly', async () => {
@@ -46,13 +49,16 @@ describe('CanvasNodeRenderer', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configurable',
+							render: {
+								type: 'default',
+								options: { configurable: true },
+							},
 						},
 					}),
 				},
 			},
 		});
 
-		expect(getByTestId('canvas-node-configurable')).toBeInTheDocument();
+		expect(getByTestId('canvas-configurable-node')).toBeInTheDocument();
 	});
 });

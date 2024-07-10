@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { Connection } from '@vue-flow/core';
-import type { IConnection } from 'n8n-workflow';
+import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasElement } from '@/types';
@@ -65,7 +65,7 @@ describe('useCanvasOperations', () => {
 			usedCredentials: [],
 		});
 		workflowsStore.workflowsById[workflowId] = workflow;
-		await workflowHelpers.initState(workflow, true);
+		await workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
 	});
@@ -248,8 +248,8 @@ describe('useCanvasOperations', () => {
 		it('should add nodes at current position when position is not specified', async () => {
 			const nodeTypeName = 'type';
 			const nodes = [
-				mockNode({ name: 'Node 1', type: nodeTypeName, position: [40, 40] }),
-				mockNode({ name: 'Node 2', type: nodeTypeName, position: [100, 240] }),
+				mockNode({ name: 'Node 1', type: nodeTypeName, position: [120, 120] }),
+				mockNode({ name: 'Node 2', type: nodeTypeName, position: [180, 320] }),
 			];
 			const workflowStoreAddNodeSpy = vi.spyOn(workflowsStore, 'addNode');
 
@@ -292,9 +292,16 @@ describe('useCanvasOperations', () => {
 				}),
 			]);
 
-			canvasOperations.editableWorkflowObject.value.getParentNodesByDepth = vi
-				.fn()
-				.mockReturnValue(nodes.map((node) => node.name));
+			vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockImplementation(() =>
+				mock<Workflow>({
+					getParentNodesByDepth: () =>
+						nodes.map((node) => ({
+							name: node.name,
+							depth: 0,
+							indicies: [],
+						})),
+				}),
+			);
 
 			await canvasOperations.addNodes(nodes, {});
 

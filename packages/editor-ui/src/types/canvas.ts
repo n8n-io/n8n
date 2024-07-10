@@ -58,12 +58,16 @@ export interface CanvasElementData {
 	execution: {
 		status?: ExecutionStatus;
 		waiting?: string;
+		running: boolean;
 	};
 	runData: {
 		count: number;
 		visible: boolean;
 	};
-	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
+	render: {
+		type: 'default';
+		options: Record<string, unknown>;
+	};
 }
 
 export type CanvasElement = Node<CanvasElementData>;
@@ -72,7 +76,7 @@ export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
-	status?: 'success' | 'error' | 'pinned';
+	status?: 'success' | 'error' | 'pinned' | 'running';
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -96,3 +100,5 @@ export interface CanvasNodeInjectionData {
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 }
+
+export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };

@@ -27,13 +27,14 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasElement } from '@/types';
+import type { CanvasElement, ConnectStartEvent } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
+	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 } from '@/constants';
@@ -73,7 +74,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { getNodeViewTab } from '@/utils/canvasUtils';
+import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
+import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -115,10 +120,11 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
+const ndvStore = useNDVStore();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
-const { runWorkflow } = useRunWorkflow({ router });
+const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
 	renameNode,
@@ -145,7 +151,6 @@ const readOnlyNotification = ref<null | { visible: boolean }>(null);
 
 const isProductionExecutionPreview = ref(false);
 const isExecutionPreview = ref(false);
-const isExecutionWaitingForWebhook = ref(false);
 
 const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
@@ -318,7 +323,7 @@ async function runAutoAddManualTriggerExperiment() {
 }
 
 function resetWorkspace() {
-	onToggleNodeCreator({ createNodeActive: false });
+	onOpenNodeCreator({ createNodeActive: false });
 	nodeCreatorStore.setShowScrim(false);
 
 	// Make sure that if there is a waiting test-webhook that it gets removed
@@ -346,7 +351,9 @@ async function openWorkflow(data: IWorkflowDb) {
 
 	resetWorkspace();
 
-	await workflowHelpers.initState(data, true);
+	await workflowHelpers.initState(data);
+	await addNodes(data.nodes);
+	workflowsStore.setConnections(data.connections);
 
 	if (data.sharedWithProjects) {
 		workflowsEEStore.setWorkflowSharedWith({
@@ -483,6 +490,19 @@ function onCreateConnection(connection: Connection) {
 	createConnection(connection);
 }
 
+function onCreateConnectionCancelled(event: ConnectStartEvent) {
+	const { type, index } = parseCanvasConnectionHandleString(event.handleId);
+	setTimeout(() => {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			index,
+			endpointUuid: event.handleId,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+			outputType: type,
+			sourceId: event.nodeId,
+		});
+	});
+}
+
 function onDeleteConnection(connection: Connection) {
 	deleteConnection(connection, { trackHistory: true });
 }
@@ -522,17 +542,29 @@ async function onSwitchActiveNode(nodeName: string) {
 	setNodeActiveByName(nodeName);
 }
 
-async function onOpenConnectionNodeCreator(node: string, connectionType: NodeConnectionType) {
+async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
-function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.openNodeCreator(options);
 }
 
 /**
  * Executions
  */
+
+const isStoppingExecution = ref(false);
+
+const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
+const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+
+const isStopExecutionButtonVisible = computed(
+	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
+);
+const isStopWaitingForWebhookButtonVisible = computed(
+	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
+);
 
 async function onRunWorkflow() {
 	trackRunWorkflow();
@@ -557,12 +589,42 @@ function trackRunWorkflow() {
 	});
 }
 
+async function onRunWorkflowToNode(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	if (!node) return;
+
+	trackRunWorkflowToNode(node);
+	await runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+}
+
+function trackRunWorkflowToNode(node: INodeUi) {
+	const telemetryPayload = {
+		node_type: node.type,
+		workflow_id: workflowsStore.workflowId,
+		source: 'canvas',
+		push_ref: ndvStore.pushRef,
+	};
+
+	telemetry.track('User clicked execute node button', telemetryPayload);
+	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
+}
+
 async function openExecution(_executionId: string) {
 	// @TODO
 }
 
+async function onStopExecution() {
+	isStoppingExecution.value = true;
+	await stopCurrentExecution();
+	isStoppingExecution.value = false;
+}
+
+async function onStopWaitingForWebhook() {
+	await stopWaitingForWebhook();
+}
+
 /**
- * Keboard
+ * Keyboard
  */
 
 function addKeyboardEventBindings() {
@@ -909,20 +971,35 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
+		@create:connection:cancelled="onCreateConnectionCancelled"
 		@delete:connection="onDeleteConnection"
 		@click:pane="onClickPane"
 	>
 		<div :class="$style.executionButtons">
-			<CanvasExecuteWorkflowButton @click="onRunWorkflow" />
+			<CanvasExecuteWorkflowButton
+				:waiting-for-webhook="isExecutionWaitingForWebhook"
+				:executing="isWorkflowRunning"
+				@click="onRunWorkflow"
+			/>
+			<CanvasStopCurrentExecutionButton
+				v-if="isStopExecutionButtonVisible"
+				:stopping="isStoppingExecution"
+				@click="onStopExecution"
+			/>
+			<CanvasStopWaitingForWebhookButton
+				v-if="isStopWaitingForWebhookButtonVisible"
+				@click="onStopWaitingForWebhook"
+			/>
 		</div>
 		<Suspense>
 			<NodeCreation
 				v-if="!isReadOnlyRoute && !isReadOnlyEnvironment"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="1"
-				@toggle-node-creator="onToggleNodeCreator"
+				@toggle-node-creator="onOpenNodeCreator"
 				@add-nodes="onAddNodesAndConnections"
 			/>
 		</Suspense>
@@ -933,12 +1010,12 @@ onBeforeUnmount(() => {
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
 				@value-changed="onRenameNode"
+				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
-				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@open-connection-node-creator="onOpenSelectiveNodeCreator"
 			/>
 			<!--
 				:renaming="renamingActive"
-				@stop-execution="stopExecution"
 				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			-->
 		</Suspense>

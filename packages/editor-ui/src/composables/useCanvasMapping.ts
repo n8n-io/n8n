@@ -44,21 +44,18 @@ export function useCanvasMapping({
 
 	const renderTypeByNodeType = computed(
 		() =>
-			workflow.value.nodes.reduce<Record<string, CanvasElementData['renderType']>>((acc, node) => {
-				let renderType: CanvasElementData['renderType'] = 'default';
-				switch (true) {
-					case nodeTypesStore.isTriggerNode(node.type):
-						renderType = 'trigger';
-						break;
-					case nodeTypesStore.isConfigNode(workflowObject.value, node, node.type):
-						renderType = 'configuration';
-						break;
-					case nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type):
-						renderType = 'configurable';
-						break;
-				}
+			workflow.value.nodes.reduce<Record<string, CanvasElementData['render']>>((acc, node) => {
+				// @TODO Add support for sticky notes here
 
-				acc[node.type] = renderType;
+				acc[node.type] = {
+					type: 'default',
+					options: {
+						trigger: nodeTypesStore.isTriggerNode(node.type),
+						configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
+						configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+					},
+				};
+
 				return acc;
 			}, {}) ?? {},
 	);
@@ -106,6 +103,13 @@ export function useCanvasMapping({
 	const nodePinnedDataById = computed(() =>
 		workflow.value.nodes.reduce<Record<string, INodeExecutionData[] | undefined>>((acc, node) => {
 			acc[node.id] = workflowsStore.pinDataByNodeName(node.name);
+			return acc;
+		}, {}),
+	);
+
+	const nodeExecutionRunningById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, boolean>>((acc, node) => {
+			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
 			return acc;
 		}, {}),
 	);
@@ -221,12 +225,13 @@ export function useCanvasMapping({
 				execution: {
 					status: nodeExecutionStatusById.value[node.id],
 					waiting: nodeExecutionWaitingById.value[node.id],
+					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
 					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
 					visible: !!nodeExecutionRunDataById.value[node.id],
 				},
-				renderType: renderTypeByNodeType.value[node.type] ?? 'default',
+				render: renderTypeByNodeType.value[node.type] ?? { type: 'default', options: {} },
 			};
 
 			return {
@@ -255,6 +260,7 @@ export function useCanvasMapping({
 				data,
 				type,
 				label,
+				animated: data.status === 'running',
 			};
 		});
 	});
@@ -266,7 +272,12 @@ export function useCanvasMapping({
 
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
-			if (nodePinnedDataById.value[fromNode.id] && nodeExecutionRunDataById.value[fromNode.id]) {
+			if (nodeExecutionRunningById.value[fromNode.id]) {
+				status = 'running';
+			} else if (
+				nodePinnedDataById.value[fromNode.id] &&
+				nodeExecutionRunDataById.value[fromNode.id]
+			) {
 				status = 'pinned';
 			} else if (nodeHasIssuesById.value[fromNode.id]) {
 				status = 'error';

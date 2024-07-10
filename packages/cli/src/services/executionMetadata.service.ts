@@ -6,19 +6,18 @@ import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 export class ExecutionMetadataService {
 	constructor(private readonly executionMetadataRepository: ExecutionMetadataRepository) {}
 
-	async save(
-		executionId: string,
-		executionMetadata: Record<string, string>,
-	): Promise<ExecutionMetadata[]> {
-		const metadataRows = [];
+	async save(executionId: string, executionMetadata: Record<string, string>): Promise<void> {
+		const metadataRows: Array<Pick<ExecutionMetadata, 'executionId' | 'key' | 'value'>> = [];
 		for (const [key, value] of Object.entries(executionMetadata)) {
 			metadataRows.push({
-				execution: { id: executionId },
+				executionId,
 				key,
 				value,
 			});
 		}
 
-		return await this.executionMetadataRepository.save(metadataRows);
+		await this.executionMetadataRepository.upsert(metadataRows, {
+			conflictPaths: { executionId: true, key: true },
+		});
 	}
 }
