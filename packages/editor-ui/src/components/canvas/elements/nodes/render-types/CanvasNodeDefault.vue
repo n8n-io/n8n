@@ -100,8 +100,8 @@ const dataTestId = computed(() => {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 50px);
-	--canvas-node--width: 100px;
+	--canvas-node--height: calc(96px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
+	--canvas-node--width: 96px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
@@ -129,8 +129,8 @@ const dataTestId = computed(() => {
 	 */
 
 	&.configuration {
-		--canvas-node--width: 75px;
-		--canvas-node--height: 75px;
+		--canvas-node--width: 76px;
+		--canvas-node--height: 76px;
 
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
@@ -143,7 +143,7 @@ const dataTestId = computed(() => {
 	}
 
 	&.configurable {
-		--canvas-node--height: 100px;
+		--canvas-node--height: 96px;
 		--canvas-node--width: calc(
 			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
