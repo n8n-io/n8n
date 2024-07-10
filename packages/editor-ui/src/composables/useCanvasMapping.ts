@@ -110,6 +110,13 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeExecutionRunningById = computed(() =>
+		workflow.value.nodes.reduce<Record<string, boolean>>((acc, node) => {
+			acc[node.id] = workflowsStore.isNodeExecuting(node.name);
+			return acc;
+		}, {}),
+	);
+
 	const nodeExecutionStatusById = computed(() =>
 		workflow.value.nodes.reduce<Record<string, ExecutionStatus>>((acc, node) => {
 			acc[node.id] =
@@ -221,6 +228,7 @@ export function useCanvasMapping({
 				execution: {
 					status: nodeExecutionStatusById.value[node.id],
 					waiting: nodeExecutionWaitingById.value[node.id],
+					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
 					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
@@ -255,6 +263,7 @@ export function useCanvasMapping({
 				data,
 				type,
 				label,
+				animated: data.status === 'running',
 			};
 		});
 	});
@@ -266,7 +275,12 @@ export function useCanvasMapping({
 
 		let status: CanvasConnectionData['status'];
 		if (fromNode) {
-			if (nodePinnedDataById.value[fromNode.id] && nodeExecutionRunDataById.value[fromNode.id]) {
+			if (nodeExecutionRunningById.value[fromNode.id]) {
+				status = 'running';
+			} else if (
+				nodePinnedDataById.value[fromNode.id] &&
+				nodeExecutionRunDataById.value[fromNode.id]
+			) {
 				status = 'pinned';
 			} else if (nodeHasIssuesById.value[fromNode.id]) {
 				status = 'error';

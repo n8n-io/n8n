@@ -89,10 +89,10 @@ describe('CanvasNodeConfigurable', () => {
 						...createCanvasNodeProvide({
 							data: {
 								inputs: [
-									{ type: NodeConnectionType.Main },
-									{ type: NodeConnectionType.AiTool },
-									{ type: NodeConnectionType.AiDocument, required: true },
-									{ type: NodeConnectionType.AiMemory, required: true },
+									{ type: NodeConnectionType.Main, index: 0 },
+									{ type: NodeConnectionType.AiTool, index: 0 },
+									{ type: NodeConnectionType.AiDocument, index: 0, required: true },
+									{ type: NodeConnectionType.AiMemory, index: 0, required: true },
 								],
 							},
 						}),
