@@ -865,8 +865,7 @@ export class StripeTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const webhookDescription = `Created by n8n for workflow ID ${this.getWorkflow().id}:
-				 ${this.getWorkflow().name}`;
+				const webhookDescription = `Created by n8n for workflow ID: ${this.getWorkflow().id}`;
 
 				const events = this.getNodeParameter('events', []);
 
