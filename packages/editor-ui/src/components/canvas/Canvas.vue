@@ -41,10 +41,9 @@ const props = withDefaults(
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, findNode, addSelectedNodes, project } =
-	useVueFlow({
-		id: props.id,
-	});
+const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
+	id: props.id,
+});
 
 const hoveredEdges = ref<Record<string, boolean>>({});
 
@@ -116,10 +115,6 @@ function onConnectEnd() {
 		emit('create:connection:end', connectionEventData.value);
 	} else if (isConnectionCancelled(connectionEventData.value)) {
 		emit('create:connection:cancelled', connectionEventData.value);
-
-		const selectedNode = findNode(connectionEventData.value.nodeId);
-		console.log({ selectedNode });
-		addSelectedNodes([selectedNode]);
 	}
 }
 
