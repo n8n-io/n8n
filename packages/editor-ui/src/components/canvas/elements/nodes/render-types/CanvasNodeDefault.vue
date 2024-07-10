@@ -6,6 +6,7 @@ import CanvasNodeDisabledStrikeThrough from './parts/CanvasNodeDisabledStrikeThr
 import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
+import { N8nTooltip } from 'n8n-design-system';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -80,6 +81,14 @@ const dataTestId = computed(() => {
 <template>
 	<div :class="classes" :style="styles" :data-test-id="dataTestId">
 		<slot />
+		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
+			<template #content>
+				<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+			</template>
+			<div :class="$style.triggerIcon">
+				<FontAwesomeIcon icon="bolt" size="lg" />
+			</div>
+		</N8nTooltip>
 		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
 		<div v-if="label" :class="$style.label">
@@ -93,10 +102,12 @@ const dataTestId = computed(() => {
 .node {
 	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 50px);
 	--canvas-node--width: 100px;
+	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
-	--configurable-node--input-width: 65px;
+	--configurable-node--input-width: 64px;
 	--configurable-node--icon-offset: 40px;
 	--configurable-node--icon-size: 30px;
+	--trigger-node--border-radius: 36px;
 
 	height: var(--canvas-node--height);
 	width: var(--canvas-node--width);
@@ -104,8 +115,14 @@ const dataTestId = computed(() => {
 	align-items: center;
 	justify-content: center;
 	background: var(--canvas-node--background, var(--color-node-background));
-	border: 2px solid var(--canvas-node--border-color, var(--color-foreground-xdark));
+	border: var(--canvas-node-border-width) solid
+		var(--canvas-node--border-color, var(--color-foreground-xdark));
 	border-radius: var(--border-radius-large);
+
+	&.trigger {
+		border-radius: var(--trigger-node--border-radius) var(--border-radius-large)
+			var(--border-radius-large) var(--trigger-node--border-radius);
+	}
 
 	/**
 	 * Node types
@@ -116,7 +133,8 @@ const dataTestId = computed(() => {
 		--canvas-node--height: 75px;
 
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
-		border: 2px solid var(--canvas-node--border-color, var(--color-foreground-dark));
+		border: var(--canvas-node-border-width) solid
+			var(--canvas-node--border-color, var(--color-foreground-dark));
 		border-radius: 50px;
 
 		.statusIcons {
@@ -190,5 +208,13 @@ const dataTestId = computed(() => {
 	position: absolute;
 	bottom: var(--spacing-2xs);
 	right: var(--spacing-2xs);
+}
+
+.triggerIcon {
+	position: absolute;
+	right: 100%;
+	margin: auto;
+	color: var(--color-primary);
+	padding: var(--spacing-2xs);
 }
 </style>
