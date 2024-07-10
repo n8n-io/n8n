@@ -7,6 +7,7 @@ import { computed, useCssModule } from 'vue';
 import type { CanvasConnectionData } from '@/types';
 
 const emit = defineEmits<{
+	add: [connection: Connection];
 	delete: [connection: Connection];
 }>();
 
@@ -17,6 +18,8 @@ export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
 const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
+
+const connectionType = computed(() => props.data.type);
 
 const isFocused = computed(() => props.selected || props.hovered);
 
@@ -86,6 +89,10 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
+function onAdd() {
+	emit('add', connection.value);
+}
+
 function onDelete() {
 	emit('delete', connection.value);
 }
@@ -105,7 +112,13 @@ function onDelete() {
 		:label-show-bg="false"
 	/>
 	<EdgeLabelRenderer>
-		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
+		<CanvasEdgeToolbar
+			:type="connectionType"
+			:class="edgeToolbarClasses"
+			:style="edgeToolbarStyle"
+			@add="onAdd"
+			@delete="onDelete"
+		/>
 	</EdgeLabelRenderer>
 </template>
 
