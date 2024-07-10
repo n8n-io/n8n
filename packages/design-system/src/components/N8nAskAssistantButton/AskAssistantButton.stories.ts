@@ -18,7 +18,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		AskAssistantButton,
 	},
-	template: '<n8n-ask-assistant-button v-bind="args" @click="onClick" />',
+	template: '<ask-assistant-button v-bind="args" @click="onClick" />',
 	methods,
 });
 
