@@ -58,6 +58,7 @@ export interface CanvasElementData {
 	execution: {
 		status?: ExecutionStatus;
 		waiting?: string;
+		running: boolean;
 	};
 	runData: {
 		count: number;
@@ -72,7 +73,7 @@ export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
-	status?: 'success' | 'error' | 'pinned';
+	status?: 'success' | 'error' | 'pinned' | 'running';
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

@@ -17,6 +17,7 @@ const emit = defineEmits<{
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
+	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
 	'create:connection:start': [handle: ConnectStartEvent];
@@ -122,6 +123,10 @@ function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
 
+function onRunNode(id: string) {
+	emit('run:node', id);
+}
+
 function onKeyDown(e: KeyboardEvent) {
 	if (e.key === 'Delete') {
 		getSelectedEdges.value.forEach(onDeleteConnection);
@@ -156,6 +161,8 @@ function onClickPane(event: MouseEvent) {
 		:apply-changes="false"
 		fit-view-on-init
 		pan-on-scroll
+		snap-to-grid
+		:snap-grid="[16, 16]"
 		:min-zoom="0.2"
 		:max-zoom="2"
 		data-test-id="canvas"
@@ -172,6 +179,7 @@ function onClickPane(event: MouseEvent) {
 			<CanvasNode
 				v-bind="canvasNodeProps"
 				@delete="onDeleteNode"
+				@run="onRunNode"
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"

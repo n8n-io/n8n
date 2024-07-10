@@ -399,6 +399,7 @@ export const ROLE_OTHER = 'other';
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
+export const MODAL_CLOSE = 'close';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -451,9 +452,7 @@ export const enum VIEWS {
 	CREDENTIALS = 'CredentialsView',
 	VARIABLES = 'VariablesView',
 	NEW_WORKFLOW = 'NodeViewNew',
-	NEW_WORKFLOW_V2 = 'NodeViewNewV2',
 	WORKFLOW = 'NodeViewExisting',
-	WORKFLOW_V2 = 'NodeViewV2',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
@@ -487,13 +486,7 @@ export const enum VIEWS {
 	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
-export const EDITABLE_CANVAS_VIEWS = [
-	VIEWS.WORKFLOW,
-	VIEWS.NEW_WORKFLOW,
-	VIEWS.WORKFLOW_V2,
-	VIEWS.NEW_WORKFLOW_V2,
-	VIEWS.EXECUTION_DEBUG,
-];
+export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
 
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
@@ -547,6 +540,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+	SWITCH_NODE_VIEW_VERSION = 'switch-node-view-version',
 }
 
 /**

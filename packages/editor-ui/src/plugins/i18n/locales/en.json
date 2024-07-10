@@ -860,6 +860,8 @@
 	"menuActions.importFromUrl": "Import from URL...",
 	"menuActions.importFromFile": "Import from File...",
 	"menuActions.delete": "Delete",
+	"menuActions.switchToNewNodeViewVersion": "Switch to new canvas",
+	"menuActions.switchToOldNodeViewVersion": "Switch to old canvas",
 	"multipleParameter.addItem": "Add item",
 	"multipleParameter.currentlyNoItemsExist": "Currently no items exist",
 	"multipleParameter.deleteItem": "Delete item",
