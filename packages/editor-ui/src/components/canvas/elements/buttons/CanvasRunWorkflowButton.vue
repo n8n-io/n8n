@@ -4,12 +4,15 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 
 defineEmits<{
+	mouseenter: [event: MouseEvent];
+	mouseleave: [event: MouseEvent];
 	click: [event: MouseEvent];
 }>();
 
 const props = defineProps<{
 	waitingForWebhook: boolean;
 	executing: boolean;
+	disabled?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -32,10 +35,13 @@ const label = computed(() => {
 		<N8nButton
 			:loading="executing"
 			:label="label"
+			:disabled="disabled"
 			size="large"
 			icon="flask"
 			type="primary"
 			data-test-id="execute-workflow-button"
+			@mouseenter="$emit('mouseenter', $event)"
+			@mouseleave="$emit('mouseleave', $event)"
 			@click.stop="$emit('click', $event)"
 		/>
 	</KeyboardShortcutTooltip>

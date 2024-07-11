@@ -1,9 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import CanvasExecuteWorkflowButton from './CanvasExecuteWorkflowButton.vue';
+import CanvasRunWorkflowButton from './CanvasRunWorkflowButton.vue';
 
-const renderComponent = createComponentRenderer(CanvasExecuteWorkflowButton);
+const renderComponent = createComponentRenderer(CanvasRunWorkflowButton);
 
-describe('CanvasExecuteWorkflowButton', () => {
+describe('CanvasRunWorkflowButton', () => {
 	it('should render correctly', () => {
 		const wrapper = renderComponent();
 
