@@ -1,7 +1,24 @@
-export function getErrorMessageByStatusCode(statusCode: number): string | undefined {
-	const errorMessages: Record<number, string> = {
-		403: 'Error 403: Unauthorized. Please check your credentials and Project ID',
-		404: 'Error 404: The resource was not found. Please check the model name',
+export interface ErrorLike {
+	message?: string;
+	description?: string;
+}
+
+export interface ErrorContext {
+	modelName?: string;
+}
+
+export function makeErrorFromStatus(statusCode: number, context?: ErrorContext): ErrorLike {
+	const errorMessages: Record<number, ErrorLike> = {
+		403: {
+			message: 'Unauthorized for this project',
+			description:
+				'Check your Google Cloud project ID, and that your credential has access to that project',
+		},
+		404: {
+			message: context?.modelName
+				? `No model found called '${context.modelName}'`
+				: 'No model found',
+		},
 	};
 
 	return errorMessages[statusCode];

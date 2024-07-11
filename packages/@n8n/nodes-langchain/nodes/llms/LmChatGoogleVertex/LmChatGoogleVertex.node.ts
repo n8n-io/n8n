@@ -14,7 +14,7 @@ import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
-import { getErrorMessageByStatusCode } from './error-handling';
+import { makeErrorFromStatus } from './error-handling';
 import { additionalOptions } from '../gemini-common/additional-options';
 
 export class LmChatGoogleVertex implements INodeType {
@@ -165,12 +165,12 @@ export class LmChatGoogleVertex implements INodeType {
 				callbacks: [new N8nLlmTracing(this)],
 				// Handle ChatVertexAI invocation errors to provide better error messages
 				onFailedAttempt: (error: any) => {
-					const customErrorMessage: string | undefined = getErrorMessageByStatusCode(
-						error?.response?.status,
-					);
+					const customError = makeErrorFromStatus(Number(error?.response?.status), {
+						modelName,
+					});
 
-					if (customErrorMessage) {
-						throw new NodeOperationError(this.getNode(), customErrorMessage);
+					if (customError) {
+						throw new NodeOperationError(this.getNode(), error as JsonObject, customError);
 					}
 
 					throw error;
@@ -181,11 +181,12 @@ export class LmChatGoogleVertex implements INodeType {
 				response: model,
 			};
 		} catch (e) {
-			// Catch model name validation error from Langchain (https://github.com/langchain-ai/langchainjs/blob/ef201d0ee85ee4049078270a0cfd7a1767e624f8/libs/langchain-google-common/src/utils/common.ts#L124)
+			// Catch model name validation error from LangChain (https://github.com/langchain-ai/langchainjs/blob/ef201d0ee85ee4049078270a0cfd7a1767e624f8/libs/langchain-google-common/src/utils/common.ts#L124)
 			// to show more helpful error message
 			if (e?.message?.startsWith('Unable to verify model params')) {
 				throw new NodeOperationError(this.getNode(), e as JsonObject, {
-					message: 'Only models starting with "gemini" are supported',
+					message: 'Unsupported model',
+					description: "Only models starting with 'gemini' are supported.",
 				});
 			}
 
