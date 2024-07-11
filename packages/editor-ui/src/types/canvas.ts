@@ -42,6 +42,20 @@ export const enum CanvasNodeRenderType {
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
+export type CanvasNodeDefaultRender = {
+	type: CanvasNodeRenderType.Default;
+	options: Partial<{
+		configurable: boolean;
+		configuration: boolean;
+		trigger: boolean;
+	}>;
+};
+
+export type CanvasNodeAddNodesRender = {
+	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	type: INodeUi['type'];
@@ -70,10 +84,7 @@ export interface CanvasNodeData {
 		count: number;
 		visible: boolean;
 	};
-	render: {
-		type: CanvasNodeRenderType;
-		options: Record<string, unknown>;
-	};
+	render: CanvasNodeDefaultRender | CanvasNodeAddNodesRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

@@ -103,6 +103,8 @@ provide(CanvasNodeKey, {
 	nodeType,
 });
 
+const nodeIconSize = computed(() => (data.value.render.options.configuration ? 30 : 40));
+
 function onDelete() {
 	emit('delete', props.id);
 }
@@ -159,7 +161,7 @@ function onActivate() {
 			<NodeIcon
 				v-if="nodeType"
 				:node-type="nodeType"
-				:size="40"
+				:size="nodeIconSize"
 				:shrink="false"
 				:disabled="isDisabled"
 			/>
