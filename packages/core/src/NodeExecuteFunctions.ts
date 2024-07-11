@@ -765,9 +765,13 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
-async function binaryToString(body: Buffer | Readable) {
+async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
 	const buffer = await binaryToBuffer(body);
-	return buffer.toString();
+	if (!encoding && body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+	return buffer.toString(encoding);
 }
 
 export async function proxyRequestToAxios(
