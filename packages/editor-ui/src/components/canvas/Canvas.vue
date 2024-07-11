@@ -8,7 +8,8 @@ import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
-import { createEventBus, EventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 const $style = useCssModule();
 
