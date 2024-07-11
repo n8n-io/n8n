@@ -3579,6 +3579,8 @@ export function getExecuteFunctions(
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			...executionCancellationFunctions(abortSignal),
+			callAgent: async (agentType, settings) =>
+				additionalData.callAgent(agentType, settings, connectionInputData),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
 				await getCredentials(

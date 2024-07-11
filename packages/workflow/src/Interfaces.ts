@@ -918,6 +918,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
 
+		callAgent(agentType: string, settings: IDataObject): Promise<INodeExecutionData[]>;
+
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
@@ -2180,6 +2182,11 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<void>;
 	parentCallbackManager?: CallbackManager;
+	callAgent: (
+		agentType: string,
+		settings: IDataObject,
+		nodeExecutionData: INodeExecutionData[],
+	) => Promise<INodeExecutionData[]>;
 }
 
 export type WorkflowExecuteMode =

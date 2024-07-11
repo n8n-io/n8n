@@ -39,6 +39,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { AuditEventRelay } from './eventbus/audit-event-relay.service';
+import { setupAgentHandler, setupAgentServer } from './services/agent.service';
 
 import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
@@ -211,6 +212,7 @@ export class Server extends AbstractServer {
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
+		setupAgentHandler(restEndpoint, app);
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { Queue } = await import('@/Queue');
@@ -388,5 +390,10 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		setupPushServer(restEndpoint, server, app);
+	}
+
+	protected setupAgentServer(): void {
+		const { restEndpoint, server, app } = this;
+		setupAgentServer(restEndpoint, server, app);
 	}
 }

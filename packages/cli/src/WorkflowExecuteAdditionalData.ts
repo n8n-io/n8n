@@ -72,6 +72,7 @@ import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventRelay } from './eventbus/event-relay.service';
+import { AgentService } from './services/agent.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -1032,6 +1033,8 @@ export async function getBase(
 				payload,
 			});
 		},
+		callAgent: async (agentType, settings, nodeExecutionData) =>
+			await Container.get(AgentService).startExecution(agentType, settings, nodeExecutionData),
 	};
 }
 
