@@ -1,19 +1,33 @@
 <script setup lang="ts">
 import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
+import AssistantAvatar from './AssistantAvatar.vue';
+import CodeDiff from './CodeDiff.vue';
+import type { AssistantMessage } from './types';
+
+import Markdown from 'markdown-it';
+
+const md = new Markdown({
+	breaks: true,
+});
+
+interface Props {
+	user: {
+		firstName: string;
+		lastName: string;
+	};
+	messages?: AssistantMessage[];
+}
+
+const props = defineProps<Props>();
 </script>
 
 <template>
 	<div :class="$style.container">
 		<div :class="$style.header">
-			<div>
-				<AssistantIcon :size="18" :class="$style.icon" />
-				<AssistantText
-					:class="$style.name"
-					font-size="14px"
-					line-height="18px"
-					text="AI Assistant"
-				/>
+			<div :class="$style.chatTitle">
+				<AssistantIcon :size="18" />
+				<AssistantText font-size="14px" line-height="18px" text="AI Assistant" />
 				<div :class="$style.beta">beta</div>
 			</div>
 			<div :class="$style.back">
@@ -21,26 +35,55 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div :class="$style.greeting">Hi Max 👋</div>
-			<div :class="$style.info">
-				<p>I'm here to assist you with building workflows.</p>
-				<p>
-					Whenever you encounter a task that I can help with, you'll see the
-					<n8n-ask-assistant-button size="small" :static="true" /> button.
-				</p>
-				<p>Clicking it starts a chat session with me.</p>
+			<div v-if="messages?.length" :class="$style.messages">
+				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
+					<div v-if="i === 0 || message.role !== messages[i - 1].role" :class="$style.roleName">
+						<AssistantAvatar v-if="message.role === 'assistant'" />
+						<n8n-avatar
+							v-else
+							:first-name="user.firstName"
+							:last-name="user.lastName"
+							size="xsmall"
+						/>
+
+						<span v-if="message.role === 'assistant'">AI Assistant</span>
+						<span v-else>You</span>
+					</div>
+					<div v-if="message.type === 'text' && message.title">
+						<div>{{ message.title }}</div>
+						<div>{{ message.content }}</div>
+					</div>
+					<div v-else-if="message.type === 'text'">
+						<span v-if="message.role === 'user'">{{ message.content }}</span>
+						<!-- eslint-disable-next-line vue/no-v-html -->
+						<span v-else v-html="md.render(message.content)"></span>
+					</div>
+					<div v-else-if="message.type === 'code-diff'">
+						<CodeDiff :title="message.description" :content="message.codeDiff" />
+					</div>
+					<div v-else-if="message.type === 'quick-replies'">
+						<div>Quick reply 👇</div>
+						<div v-for="opt in message.options" :key="opt.type">
+							<button>
+								{{ opt.label }}
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div v-else :class="$style.placeholder">
+				<div :class="$style.greeting">Hi {{ props.user.firstName }} 👋</div>
+				<div :class="$style.info">
+					<p>I'm here to assist you with building workflows.</p>
+					<p>
+						Whenever you encounter a task that I can help with, you'll see the
+						<n8n-ask-assistant-button size="small" :static="true" /> button.
+					</p>
+					<p>Clicking it starts a chat session with me.</p>
+				</div>
 			</div>
 		</div>
-		<!-- <div>
-			<div data-test-id="message">
-				<div>
-					AI Assistant
-				</div>
-				<div>
-					Hi Max! Here is my top solution to fix the error in your Transform data node👇
-				</div>
-			</div>
-		</div> -->
 	</div>
 </template>
 
@@ -66,16 +109,26 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 		width: 100%;
 	}
 }
-.name {
-	margin-right: 6px;
-}
 
 .body {
 	background-color: var(--color-background-light);
-	padding: 16px;
 	border: var(--border-base);
 	border-top: 0; // todo
 	height: 100%;
+}
+
+.placeholder {
+	padding: 16px;
+}
+
+.messages {
+	padding: 12px;
+}
+
+.message {
+	margin-bottom: 12px;
+	font-size: 12px;
+	line-height: 19px;
 }
 
 .beta {
@@ -90,7 +143,20 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 	border-radius: 16px;
 }
 
-.icon {
+.roleName {
+	display: flex;
+	align-items: center;
+	margin-bottom: 6px;
+
+	font-weight: 600;
+	font-size: 12px;
+
+	> * {
+		margin-right: 6px;
+	}
+}
+
+.chatTitle > * {
 	margin-right: var(--spacing-xs);
 }
 

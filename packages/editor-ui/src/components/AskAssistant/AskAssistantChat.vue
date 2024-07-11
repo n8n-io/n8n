@@ -1,8 +1,16 @@
 <script lang="ts" setup>
 import { useAssistantStore } from '@/stores/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
+import { useUsersStore } from '@/stores/users.store';
+import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
+const usersStore = useUsersStore();
+
+const user = computed(() => ({
+	firstName: usersStore.currentUser?.firstName ?? '',
+	lastName: usersStore.currentUser?.lastName ?? '',
+}));
 
 const onResize = (data: { direction: string; x: number; width: number }) => {
 	assistantStore.updateWindowWidth(data.width);
@@ -26,7 +34,7 @@ const onResizeDebounced = (data: { direction: string; x: number; width: number }
 			:class="$style.wrapper"
 			data-test-id="ask-assistant-chat"
 		>
-			<n8n-ask-assistant-chat />
+			<n8n-ask-assistant-chat :user="user" />
 		</div>
 	</n8n-resize-wrapper>
 </template>

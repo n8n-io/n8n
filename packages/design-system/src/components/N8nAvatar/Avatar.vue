@@ -8,7 +8,7 @@
 			:colors="getColors(colors)"
 		/>
 		<div v-else :class="[$style.empty, $style[size]]"></div>
-		<span v-if="firstName" :class="$style.initials">{{ initials }}</span>
+		<span v-if="firstName" :class="[$style.initials, $style[`text-${size}`]]">{{ initials }}</span>
 	</span>
 </template>
 
@@ -19,7 +19,7 @@ import Avatar from 'vue-boring-avatars';
 interface AvatarProps {
 	firstName: string;
 	lastName: string;
-	size?: string;
+	size?: 'xsmall' | 'small' | 'medium' | 'large';
 	colors?: string[];
 }
 
@@ -49,6 +49,7 @@ const getColors = (colors: string[]): string[] => {
 };
 
 const sizes: { [size: string]: number } = {
+	xsmall: 20,
 	small: 28,
 	large: 48,
 	medium: 40,
@@ -76,6 +77,15 @@ const getSize = (size: string): number => sizes[size];
 	font-weight: var(--font-weight-bold);
 	color: var(--color-avatar-font);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
+}
+
+.text-xsmall {
+	font-size: 6px;
+}
+
+.xsmall {
+	height: 20px;
+	width: 20px;
 }
 
 .small {
