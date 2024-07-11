@@ -222,4 +222,25 @@ describe('CanvasNodeDefault', () => {
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
 	});
+
+	describe('trigger', () => {
+		it('should render trigger node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: 'default',
+									options: { trigger: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-trigger-node')).toMatchSnapshot();
+		});
+	});
 });
