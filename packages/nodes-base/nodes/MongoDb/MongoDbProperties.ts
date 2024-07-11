@@ -259,7 +259,7 @@ export const nodeProperties: INodeProperties[] = [
 				name: 'dateFields',
 				type: 'string',
 				default: '',
-				description: 'Comma separeted list of fields that will be parsed as Mongo Date type',
+				description: 'Comma separated list of fields that will be parsed as Mongo Date type',
 			},
 			{
 				displayName: 'Use Dot Notation',
