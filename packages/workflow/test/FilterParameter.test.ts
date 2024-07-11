@@ -1,4 +1,4 @@
-import { executeFilter } from '@/NodeParameters/FilterParameter';
+import { arrayContainsValue, executeFilter } from '@/NodeParameters/FilterParameter';
 import type { FilterConditionValue, FilterValue } from '@/Interfaces';
 import merge from 'lodash/merge';
 import { DateTime } from 'luxon';
@@ -1251,6 +1251,39 @@ describe('FilterParameter', () => {
 						}),
 					);
 					expect(result).toBe(expected);
+				});
+			});
+
+			describe('arrayContainsValue', () => {
+				test('should return true if the array contains the value', () => {
+					expect(arrayContainsValue([1, 2, 3], 2, false)).toBe(true);
+				});
+
+				test('should return false if the array does not contain the value', () => {
+					expect(arrayContainsValue([1, 2, 3], 4, false)).toBe(false);
+				});
+
+				test('should return true if the array contains the string value and ignoreCase is true', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'A', true)).toBe(true);
+				});
+
+				test('should return false if the array contains the string value but ignoreCase is false', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'A', false)).toBe(false);
+				});
+
+				test('should return false if the array does not contain the string value and ignoreCase is true', () => {
+					expect(arrayContainsValue(['a', 'b', 'c'], 'd', true)).toBe(false);
+				});
+
+				test('should handle non-string values correctly when ignoreCase is true', () => {
+					expect(arrayContainsValue([1, 2, 3], 2, true)).toBe(true);
+					expect(arrayContainsValue([1, 2, 3], '2', true)).toBe(false);
+				});
+
+				test('should handle mixed types in the array correctly', () => {
+					expect(arrayContainsValue(['a', 2, 'c'], 'A', true)).toBe(true);
+					expect(arrayContainsValue(['a', 2, 'c'], 2, false)).toBe(true);
+					expect(arrayContainsValue(['a', 2, 'c'], '2', false)).toBe(false);
 				});
 			});
 		});
