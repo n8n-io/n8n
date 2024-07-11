@@ -6,6 +6,7 @@
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasNodeData } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -26,7 +27,7 @@ export function useCanvasNode() {
 				},
 				runData: { count: 0, visible: false },
 				render: {
-					type: 'default',
+					type: CanvasNodeRenderType.Default,
 					options: {},
 				},
 			},

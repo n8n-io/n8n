@@ -1,6 +1,7 @@
 import { CanvasNodeKey } from '@/constants';
 import { ref } from 'vue';
 import type { CanvasNode, CanvasNodeData } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -15,7 +16,7 @@ export function createCanvasNodeData({
 	pinnedData = { count: 0, visible: false },
 	runData = { count: 0, visible: false },
 	render = {
-		type: 'default',
+		type: CanvasNodeRenderType.Default,
 		options: { configurable: false, configuration: false, trigger: false },
 	},
 }: Partial<CanvasNodeData> = {}): CanvasNodeData {
