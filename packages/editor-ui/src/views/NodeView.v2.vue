@@ -23,6 +23,7 @@ import type {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
+	IWorkflowTemplate,
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
@@ -84,6 +85,9 @@ import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/butto
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
+import { tryToParseNumber } from '@/utils/typesUtils';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { createEventBus } from 'n8n-design-system';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -126,6 +130,9 @@ const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
+const templatesStore = useTemplatesStore();
+
+const canvasEventBus = createEventBus();
 
 const lastClickPosition = ref<XYPosition>([450, 450]);
 
@@ -267,9 +274,8 @@ async function initializeView() {
 	if (isBlankRedirect.value) {
 		isBlankRedirect.value = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
-		// @TODO Implement template import
-		// const templateId = route.params.id;
-		// await openWorkflowTemplate(templateId.toString());
+		const templateId = route.params.id;
+		await openWorkflowTemplate(templateId.toString());
 	} else {
 		historyStore.reset();
 
@@ -430,6 +436,75 @@ function makeNewWorkflowShareable() {
 
 	workflowsStore.workflow.homeProject = homeProject as ProjectSharingData;
 	workflowsStore.workflow.scopes = scopes;
+}
+
+/**
+ * Templates
+ */
+
+async function openWorkflowTemplate(templateId: string) {
+	resetWorkspace();
+
+	canvasStore.startLoading();
+	canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
+
+	workflowsStore.currentWorkflowExecutions = [];
+	executionsStore.activeExecution = null;
+
+	let data: IWorkflowTemplate | undefined;
+	try {
+		void externalHooks.run('template.requested', { templateId });
+
+		data = await templatesStore.getFixedWorkflowTemplate(templateId);
+		if (!data) {
+			throw new Error(
+				i18n.baseText('nodeView.workflowTemplateWithIdCouldNotBeFound', {
+					interpolate: { templateId },
+				}),
+			);
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.couldntImportWorkflow'));
+		await router.replace({ name: VIEWS.NEW_WORKFLOW });
+		return;
+	}
+
+	trackOpenWorkflowTemplate(templateId);
+
+	isBlankRedirect.value = true;
+	await router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+
+	const convertedNodes = data.workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi);
+
+	workflowsStore.setConnections(data.workflow.connections);
+	await addNodes(convertedNodes);
+	await workflowsStore.getNewWorkflowData(data.name, projectsStore.currentProjectId);
+	workflowsStore.addToWorkflowMetadata({ templateId });
+
+	uiStore.stateIsDirty = true;
+
+	canvasEventBus.emit('fitView');
+	canvasStore.stopLoading();
+
+	void externalHooks.run('template.open', {
+		templateId,
+		templateName: data.name,
+		workflow: data.workflow,
+	});
+}
+
+function trackOpenWorkflowTemplate(templateId: string) {
+	telemetry.track(
+		'User inserted workflow template',
+		{
+			source: 'workflow',
+			template_id: tryToParseNumber(templateId),
+			wf_template_repo_session_id: templatesStore.previousSessionId,
+		},
+		{
+			withPostHog: true,
+		},
+	);
 }
 
 /**
@@ -1077,6 +1152,7 @@ onBeforeUnmount(() => {
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
+		:event-bus="canvasEventBus"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
