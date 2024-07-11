@@ -24,6 +24,7 @@ const emit = defineEmits<{
 	'create:connection': [connection: Connection];
 	'create:connection:end': [connection: Connection];
 	'create:connection:cancelled': [handle: ConnectStartEvent];
+	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 }>();
 
@@ -123,6 +124,10 @@ function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
 
+function onClickConnectionAdd(connection: Connection) {
+	emit('click:connection:add', connection);
+}
+
 function onRunNode(id: string) {
 	emit('run:node', id);
 }
@@ -190,6 +195,7 @@ function onClickPane(event: MouseEvent) {
 			<Edge
 				v-bind="canvasEdgeProps"
 				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
 		</template>
