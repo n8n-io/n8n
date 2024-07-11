@@ -15,7 +15,6 @@ import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
 import { getTracingConfig } from '../../../utils/tracing';
-import { getPromptInputByType } from '../../../utils/helpers';
 
 const SYSTEM_PROMPT_TEMPLATE =
 	"Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json.";
@@ -66,6 +65,17 @@ export class TextClassifier implements INodeType {
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		properties: [
 			{
+				displayName: 'Input Prompt',
+				name: 'inputPrompt',
+				type: 'string',
+				required: true,
+				default: '={{ $json.text }}',
+				description: 'Use an expression to reference data in previous nodes or enter static text',
+				typeOptions: {
+					rows: 2,
+				},
+			},
+			{
 				displayName: 'Categories',
 				name: 'categories',
 				placeholder: 'Add Category',
@@ -96,43 +106,6 @@ export class TextClassifier implements INodeType {
 						],
 					},
 				],
-			},
-			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
-				default: 'auto',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. Hello, how can you help me?',
-				typeOptions: {
-					rows: 2,
-				},
-				displayOptions: {
-					show: {
-						promptType: ['define'],
-					},
-				},
 			},
 			{
 				displayName: 'Options',
@@ -226,12 +199,7 @@ ${fallbackPrompt}`,
 			(_) => [],
 		);
 		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
-			const input = getPromptInputByType({
-				ctx: this,
-				i: itemIdx,
-				inputKey: 'text',
-				promptTypeKey: 'promptType',
-			});
+			const input = this.getNodeParameter('inputPrompt', itemIdx) as string;
 			const inputPrompt = new HumanMessage(input);
 			const messages = [
 				await systemPromptTemplate.format({
