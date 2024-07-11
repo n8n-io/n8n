@@ -1222,7 +1222,9 @@ export type NodePropertyAction = {
 
 export interface INodePropertyTypeOptions {
 	action?: string | NodePropertyAction; // Supported by: button
-	actionHandler?: string; // Supported by: button
+	buttonLabel?: string; // Supported by: button
+	buttonHasInputField?: boolean; // Supported by: button
+	buttonInputFieldMaxLength?: number; // Supported by: button
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string

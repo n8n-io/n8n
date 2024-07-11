@@ -35,14 +35,18 @@
 				@action="onNoticeAction"
 			/>
 
-			<n8n-button
-				v-else-if="parameter.type === 'button'"
-				class="parameter-item"
-				block
-				@click="onButtonAction(parameter)"
-			>
-				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
-			</n8n-button>
+			<div v-else-if="parameter.type === 'button'" class="parameter-item">
+				<n8n-button block="false" @click="onButtonAction(parameter)">
+					{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
+				</n8n-button>
+				<ButtonParameter
+					:parameter="parameter"
+					:path="getPath(parameter.name)"
+					:value="getParameterValue(parameter.name)"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -192,6 +196,8 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
+
+import ButtonParameter from './ButtonParameter.vue';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),

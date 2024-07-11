@@ -41,11 +41,15 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
-				displayName: 'Generate Code',
+				displayName: 'Instructions',
 				name: 'generate',
 				type: 'button',
 				default: '',
+				placeholder: 'Describe how you want to transform your data and click Generate',
 				typeOptions: {
+					buttonLabel: 'Generate Code',
+					buttonHasInputField: true,
+					buttonInputFieldMaxLength: 500,
 					action: {
 						type: 'updateProperty',
 						handler: 'generateCodeUsingAiService',
@@ -53,29 +57,30 @@ export class AiTransform implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Code',
-				name: 'jsCode',
-				type: 'string',
-				default: '',
-				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-				typeOptions: {
-					rows: 5,
-				},
-			},
 			// {
 			// 	displayName: 'Code',
 			// 	name: 'jsCode',
 			// 	type: 'string',
-			// 	typeOptions: {
-			// 		editor: 'codeNodeEditor',
-			// 		editorIsReadOnly: true,
-			// 		editorLanguage: 'javaScript',
-			// 	},
 			// 	default: '',
-			// 	noDataExpression: true,
 			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+			// 	typeOptions: {
+			// 		rows: 5,
+			// 	},
 			// },
+			{
+				displayName: 'Code',
+				name: 'jsCode',
+				type: 'string',
+				typeOptions: {
+					// editor: 'codeNodeEditor',
+					// editorLanguage: 'javaScript',
+					editor: 'jsEditor',
+					editorIsReadOnly: true,
+				},
+				default: '',
+				noDataExpression: true,
+				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+			},
 		],
 	};
 
