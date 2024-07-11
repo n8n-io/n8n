@@ -23,12 +23,13 @@ import {
 import type {
 	ExecutionStatus,
 	ExecutionSummary,
+	IConnections,
 	INodeExecutionData,
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 
@@ -37,8 +38,8 @@ export function useCanvasMapping({
 	connections,
 	workflowObject,
 }: {
-	nodes: Ref<IWorkflowDb['nodes']>;
-	connections: Ref<IWorkflowDb['connections']>;
+	nodes: Ref<INodeUi[]>;
+	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
 }) {
 	const i18n = useI18n();
@@ -260,24 +261,21 @@ export function useCanvasMapping({
 	]);
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
-		const mappedConnections = mapLegacyConnectionsToCanvasConnections(
-			connections.value ?? [],
-			nodes.value ?? [],
+		return mapLegacyConnectionsToCanvasConnections(connections.value ?? [], nodes.value ?? []).map(
+			(connection) => {
+				const type = getConnectionType(connection);
+				const label = getConnectionLabel(connection);
+				const data = getConnectionData(connection);
+
+				return {
+					...connection,
+					data,
+					type,
+					label,
+					animated: data.status === 'running',
+				};
+			},
 		);
-
-		return mappedConnections.map((connection) => {
-			const type = getConnectionType(connection);
-			const label = getConnectionLabel(connection);
-			const data = getConnectionData(connection);
-
-			return {
-				...connection,
-				data,
-				type,
-				label,
-				animated: data.status === 'running',
-			};
-		});
 	});
 
 	function getConnectionData(connection: CanvasConnection): CanvasConnectionData {

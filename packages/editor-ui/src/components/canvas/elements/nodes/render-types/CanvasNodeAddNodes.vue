@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
+import { nodeViewEventBus } from '@/event-bus';
 
 const nodeCreatorStore = useNodeCreatorStore();
 
-const showTooltip = ref(false);
+const isTooltipVisible = ref(false);
+
+onMounted(() => {
+	nodeViewEventBus.on('runWorkflowButton:mouseenter', onShowTooltip);
+	nodeViewEventBus.on('runWorkflowButton:mouseleave', onHideTooltip);
+});
+
+onBeforeUnmount(() => {
+	nodeViewEventBus.off('runWorkflowButton:mouseenter', onShowTooltip);
+	nodeViewEventBus.off('runWorkflowButton:mouseleave', onHideTooltip);
+});
+
+function onShowTooltip() {
+	isTooltipVisible.value = true;
+}
+
+function onHideTooltip() {
+	isTooltipVisible.value = false;
+}
 
 function onClick() {
 	nodeCreatorStore.openNodeCreatorForTriggerNodes(
@@ -15,20 +34,20 @@ function onClick() {
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
-		<n8n-tooltip
+		<N8nTooltip
 			placement="top"
-			:visible="showTooltip"
+			:visible="isTooltipVisible"
 			:disabled="nodeCreatorStore.showScrim"
 			:popper-class="$style.tooltip"
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click="onClick">
-				<font-awesome-icon icon="plus" size="lg" />
+				<FontAwesomeIcon icon="plus" size="lg" />
 			</button>
 			<template #content>
 				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
-		</n8n-tooltip>
+		</N8nTooltip>
 		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
 	</div>
 </template>
