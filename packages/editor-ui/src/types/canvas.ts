@@ -9,9 +9,6 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
-import { INTERNAL_ADD_NODES_NODE_TYPE } from '@/constants';
-
-export type CanvasElementType = 'node' | 'note';
 
 export type CanvasConnectionPortType = ConnectionTypes;
 
