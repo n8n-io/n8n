@@ -29,6 +29,7 @@
 			<AskAssistantChat />
 			<Modals />
 			<Telemetry />
+			<AskAssistantFloatingButton />
 		</div>
 	</div>
 </template>
@@ -42,6 +43,7 @@ import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { loadLanguage } from '@/plugins/i18n';
@@ -68,6 +70,7 @@ export default defineComponent({
 		Telemetry,
 		Modals,
 		AskAssistantChat,
+		AskAssistantFloatingButton,
 	},
 	setup() {
 		return {

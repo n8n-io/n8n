@@ -34,7 +34,7 @@ const onResizeDebounced = (data: { direction: string; x: number; width: number }
 			:class="$style.wrapper"
 			data-test-id="ask-assistant-chat"
 		>
-			<n8n-ask-assistant-chat :user="user" />
+			<n8n-ask-assistant-chat :user="user" @close="() => assistantStore.closeChat()" />
 		</div>
 	</n8n-resize-wrapper>
 </template>

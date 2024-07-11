@@ -4,6 +4,7 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
 import CodeDiff from './CodeDiff.vue';
 import type { AssistantMessage } from './types';
+import { defineEmits } from 'vue';
 
 import Markdown from 'markdown-it';
 
@@ -19,6 +20,12 @@ interface Props {
 	messages?: AssistantMessage[];
 }
 
+const emit = defineEmits<{
+	close: [];
+}>();
+
+const onClose = () => emit('close');
+
 const props = defineProps<Props>();
 </script>
 
@@ -30,7 +37,7 @@ const props = defineProps<Props>();
 				<AssistantText font-size="14px" line-height="18px" text="AI Assistant" />
 				<div :class="$style.beta">beta</div>
 			</div>
-			<div :class="$style.back">
+			<div :class="$style.back" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>

@@ -6,17 +6,17 @@ const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatEnabled = ref<boolean>(false);
+	const chatEnabled = ref<boolean>(true); // todo
 	const chatWidth = ref<number>(275);
 
-	const chatWindowOpen = ref<boolean>(true);
+	const chatWindowOpen = ref<boolean>(false);
 
 	function closeChat() {
 		chatWindowOpen.value = false;
 	}
 
 	function openChat() {
-		chatWindowOpen.value = false;
+		chatWindowOpen.value = true;
 	}
 
 	function updateWindowWidth(width: number) {
