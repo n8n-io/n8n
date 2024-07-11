@@ -56,7 +56,6 @@ import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type { ProjectSharingData } from '@/types/projects.types';
 import type { Connection } from '@jsplumb/core';
-import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
@@ -1833,7 +1832,7 @@ export type NewConnectionInfo = {
 	sourceId: string;
 	index: number;
 	eventSource: NodeCreatorOpenSource;
-	connection?: Connection | VueFlowConnection;
+	connection?: Connection;
 	nodeCreatorView?: NodeFilterType;
 	outputType?: NodeConnectionType;
 	endpointUuid?: string;
