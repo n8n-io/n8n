@@ -13,7 +13,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
-import CanvasExecuteWorkflowButton from '@/components/canvas/elements/buttons/CanvasExecuteWorkflowButton.vue';
+import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
@@ -27,15 +27,19 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasElement, ConnectStartEvent } from '@/types';
+import type { CanvasNode, ConnectStartEvent } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
+	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	START_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -79,6 +83,7 @@ import { getNodeViewTab } from '@/utils/canvasUtils';
 import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import { nodeViewEventBus } from '@/event-bus';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -164,6 +169,25 @@ const isReadOnlyRoute = computed(() => route?.meta?.readOnlyCanvas === true);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
+
+const isCanvasReadOnly = computed(() => {
+	return isLoading.value || isDemoRoute.value || isReadOnlyEnvironment.value;
+});
+
+const fallbackNodes = computed<INodeUi[]>(() =>
+	isCanvasReadOnly.value
+		? []
+		: [
+				{
+					id: CanvasNodeRenderType.AddNodes,
+					name: CanvasNodeRenderType.AddNodes,
+					type: CanvasNodeRenderType.AddNodes,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+);
 
 /**
  * Initialization
@@ -412,7 +436,20 @@ function makeNewWorkflowShareable() {
  * Nodes
  */
 
-function onUpdateNodePosition(id: string, position: CanvasElement['position']) {
+const triggerNodes = computed(() => {
+	return editableWorkflow.value.nodes.filter(
+		(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
+	);
+});
+
+const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
+
+const allTriggerNodesDisabled = computed(() => {
+	const disabledTriggerNodes = triggerNodes.value.filter((node) => node.disabled);
+	return disabledTriggerNodes.length === triggerNodes.value.length;
+});
+
+function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
 	updateNodePosition(id, position, { trackHistory: true });
 }
 
@@ -559,6 +596,18 @@ const isStoppingExecution = ref(false);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
+const isExecutionDisabled = computed(() => {
+	if (
+		containsChatTriggerNodes.value &&
+		isOnlyChatTriggerNodeActive.value &&
+		!chatTriggerNodePinnedData.value
+	) {
+		return true;
+	}
+
+	return !containsTriggerNodes.value || allTriggerNodesDisabled.value;
+});
+
 const isStopExecutionButtonVisible = computed(
 	() => isWorkflowRunning.value && !isExecutionWaitingForWebhook.value,
 );
@@ -622,6 +671,43 @@ async function onStopExecution() {
 async function onStopWaitingForWebhook() {
 	await stopWaitingForWebhook();
 }
+
+function onRunWorkflowButtonMouseEnter() {
+	nodeViewEventBus.emit('runWorkflowButton:mouseenter');
+}
+
+function onRunWorkflowButtonMouseLeave() {
+	nodeViewEventBus.emit('runWorkflowButton:mouseleave');
+}
+
+/**
+ * Chat
+ */
+
+const chatTriggerNode = computed(() => {
+	return editableWorkflow.value.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+});
+
+const containsChatTriggerNodes = computed(() => {
+	return (
+		!isExecutionWaitingForWebhook.value &&
+		!!editableWorkflow.value.nodes.find(
+			(node) =>
+				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
+				node.disabled !== true,
+		)
+	);
+});
+
+const isOnlyChatTriggerNodeActive = computed(() => {
+	return triggerNodes.value.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE);
+});
+
+const chatTriggerNodePinnedData = computed(() => {
+	if (!chatTriggerNode.value) return null;
+
+	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
+});
 
 /**
  * Keyboard
@@ -834,7 +920,7 @@ async function checkAndInitDebugMode() {
  * Mouse events
  */
 
-function onClickPane(position: CanvasElement['position']) {
+function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	canvasStore.newNodeInsertPosition = [position.x, position.y];
 }
@@ -967,6 +1053,7 @@ onBeforeUnmount(() => {
 		v-if="editableWorkflow && editableWorkflowObject"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
+		:fallback-nodes="fallbackNodes"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
@@ -979,9 +1066,12 @@ onBeforeUnmount(() => {
 		@click:pane="onClickPane"
 	>
 		<div :class="$style.executionButtons">
-			<CanvasExecuteWorkflowButton
+			<CanvasRunWorkflowButton
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
+				:disabled="isExecutionDisabled"
 				:executing="isWorkflowRunning"
+				@mouseenter="onRunWorkflowButtonMouseEnter"
+				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="onRunWorkflow"
 			/>
 			<CanvasStopCurrentExecutionButton
