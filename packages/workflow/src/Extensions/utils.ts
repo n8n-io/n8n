@@ -25,7 +25,7 @@ export function checkIfValueDefinedOrThrow<T>(value: T, functionName: string): v
 			`${functionName}() could not be called on "${String(value)}" type`,
 			{
 				description:
-					'Likely you are accesing a field that does not exist, modify your expression or set a default value',
+					'You are trying to access a field that does not exist, modify your expression or set a default value',
 			},
 		);
 	}

@@ -244,7 +244,7 @@ describe('tmpl Expression Parser', () => {
 		});
 	});
 
-	describe('Test estend with undefined', () => {
+	describe('Test extend with undefined', () => {
 		test('input is undefined', () => {
 			try {
 				extend(undefined, 'toDateTime', []);
