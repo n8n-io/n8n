@@ -1,18 +1,18 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasElement, ConnectStartEvent } from '@/types';
+import type { CanvasConnection, CanvasNode, ConnectStartEvent } from '@/types';
 import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
-import CanvasNode from './elements/nodes/CanvasNode.vue';
-import CanvasEdge from './elements/edges/CanvasEdge.vue';
+import Node from './elements/nodes/CanvasNode.vue';
+import Edge from './elements/edges/CanvasEdge.vue';
 import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
-	'update:modelValue': [elements: CanvasElement[]];
+	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
@@ -30,13 +30,13 @@ const emit = defineEmits<{
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		elements: CanvasElement[];
+		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 	}>(),
 	{
 		id: 'canvas',
-		elements: () => [],
+		nodes: () => [],
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 	},
@@ -156,7 +156,7 @@ function onClickPane(event: MouseEvent) {
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="elements"
+		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
 		fit-view-on-init
@@ -176,7 +176,7 @@ function onClickPane(event: MouseEvent) {
 		@pane-click="onClickPane"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode
+			<Node
 				v-bind="canvasNodeProps"
 				@delete="onDeleteNode"
 				@run="onRunNode"
@@ -187,7 +187,7 @@ function onClickPane(event: MouseEvent) {
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge
+			<Edge
 				v-bind="canvasEdgeProps"
 				:hovered="hoveredEdges[canvasEdgeProps.id]"
 				@delete="onDeleteConnection"
