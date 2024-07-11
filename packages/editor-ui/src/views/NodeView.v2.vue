@@ -80,7 +80,6 @@ import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
@@ -529,14 +528,13 @@ function onCreateConnection(connection: Connection) {
 }
 
 function onCreateConnectionCancelled(event: ConnectStartEvent) {
-	const { type, index } = parseCanvasConnectionHandleString(event.handleId);
 	setTimeout(() => {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
-			index,
-			endpointUuid: event.handleId,
+			connection: {
+				source: event.nodeId,
+				sourceHandle: event.handleId,
+			},
 			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-			outputType: type,
-			sourceId: event.nodeId,
 		});
 	});
 }
@@ -574,6 +572,8 @@ async function onAddNodesAndConnections(
 	await addConnections(connections, {
 		offsetIndex: editableWorkflow.value.nodes.length - nodes.length,
 	});
+
+	uiStore.lastSelectedNodeConnection = null;
 }
 
 async function onSwitchActiveNode(nodeName: string) {
@@ -586,6 +586,13 @@ async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConn
 
 function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.openNodeCreator(options);
+}
+
+function onClickConnectionAdd(connection: Connection) {
+	nodeCreatorStore.openNodeCreatorForConnectingNode({
+		connection,
+		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+	});
 }
 
 /**
@@ -1079,6 +1086,7 @@ onBeforeUnmount(() => {
 		@create:connection="onCreateConnection"
 		@create:connection:cancelled="onCreateConnectionCancelled"
 		@delete:connection="onDeleteConnection"
+		@click:connection:add="onClickConnectionAdd"
 		@click:pane="onClickPane"
 	>
 		<div :class="$style.executionButtons">
