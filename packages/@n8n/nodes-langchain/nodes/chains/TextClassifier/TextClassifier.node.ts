@@ -22,7 +22,7 @@ const SYSTEM_PROMPT_TEMPLATE =
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const categories = ((parameters.categories as IDataObject)?.categories as IDataObject[]) ?? [];
-	const fallback = parameters?.fallback as boolean;
+	const fallback = (parameters.options as IDataObject)?.fallback as boolean;
 	const ret = categories.map((cat) => {
 		return { type: NodeConnectionType.Main, displayName: cat.category };
 	});
@@ -98,19 +98,6 @@ export class TextClassifier implements INodeType {
 				],
 			},
 			{
-				displayName: 'Allow Multiple Classes To Be True',
-				name: 'multiClass',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Add Fallback Option',
-				name: 'fallback',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to add a "fallback" option if no other categories match',
-			},
-			{
 				displayName: 'Prompt',
 				name: 'promptType',
 				type: 'options',
@@ -155,6 +142,19 @@ export class TextClassifier implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
+						displayName: 'Allow Multiple Classes To Be True',
+						name: 'multiClass',
+						type: 'boolean',
+						default: false,
+					},
+					{
+						displayName: 'Add Fallback Option',
+						name: 'fallback',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to add a "fallback" option if no other categories match',
+					},
+					{
 						displayName: 'System Prompt Template',
 						name: 'systemPromptTemplate',
 						type: 'string',
@@ -177,16 +177,18 @@ export class TextClassifier implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-const categories = this.getNodeParameter('categories.categories', 0) as Array<{
+		const categories = this.getNodeParameter('categories.categories', 0) as Array<{
 			category: string;
 			description: string;
 		}>;
 
 		const options = this.getNodeParameter('options', 0, {}) as {
+			multiClass: boolean;
+			fallback: boolean;
 			systemPromptTemplate?: string;
 		};
-		const multiClass = this.getNodeParameter('multiClass', 0) as boolean;
-		const fallback = this.getNodeParameter('fallback', 0) as boolean;
+		const multiClass = options?.multiClass ?? false;
+		const fallback = options?.fallback ?? false;
 
 		const schemaEntries = categories.map((cat) => [
 			cat.category,
