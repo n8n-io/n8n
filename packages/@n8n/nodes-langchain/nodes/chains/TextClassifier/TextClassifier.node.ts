@@ -177,11 +177,10 @@ export class TextClassifier implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const categories = (
-			this.getNodeParameter('categories', 0) as {
-				categories: [{ category: string; description: string }];
-			}
-		)?.categories;
+const categories = this.getNodeParameter('categories.categories', 0) as Array<{
+			category: string;
+			description: string;
+		}>;
 
 		const options = this.getNodeParameter('options', 0, {}) as {
 			systemPromptTemplate?: string;
