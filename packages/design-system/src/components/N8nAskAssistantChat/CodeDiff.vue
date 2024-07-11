@@ -80,14 +80,16 @@ const diffs = computed(() => {
 	min-width: 18px;
 	max-width: 18px;
 	text-align: center;
-	background-color: var(--color-foreground-light);
 	border-right: var(--border-base);
 }
 
 .diffSection {
-	overflow-x: scroll;
+	overflow: scroll;
 	border-top: var(--border-base);
 	border-bottom: var(--border-base);
+	max-height: 218px; // 12 lines
+	min-height: 74px; // 4 lines
+	background-color: var(--color-foreground-light);
 }
 
 .diff {
@@ -110,6 +112,10 @@ const diffs = computed(() => {
 .del {
 	color: var(--color-danger);
 	background-color: var(--color-danger-tint-2);
+}
+
+.normal {
+	background-color: var(--color-foreground-xlight);
 }
 
 .actions {

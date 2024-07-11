@@ -84,6 +84,17 @@ const messages: AssistantMessage[] = [
 		content:
 			'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code',
 	},
+	{
+		type: 'code-diff',
+		role: 'assistant',
+		description: 'Short solution with min height',
+		// codeDiff:
+		// '--- original.js\n+++ modified.js\n- cons a = 1\n+ const a = 1\n\n+for (const item of items) {\n+  item.json.myNewField = 1;\n+}\n\n+return items;',
+		codeDiff: `@@ -1,7 +1,6 @@
+-The Way that can be told of is not the eternal Way;
+-The name that can be named is not the eternal name.
++The door of all subtleties!`,
+	},
 ];
 export const Chat = Template.bind({});
 Chat.args = {
