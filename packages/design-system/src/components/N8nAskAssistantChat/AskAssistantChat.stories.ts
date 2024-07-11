@@ -57,11 +57,7 @@ const messages: AssistantMessage[] = [
 +They both may be called deep and profound.
 +Deeper and more profound,
 +The door of all subtleties!`,
-	},
-	{
-		type: 'quick-replies',
-		role: 'assistant',
-		options: [
+		quickReplies: [
 			{
 				type: 'new-suggestion',
 				label: 'Give me another solution',
@@ -94,6 +90,16 @@ const messages: AssistantMessage[] = [
 -The Way that can be told of is not the eternal Way;
 -The name that can be named is not the eternal name.
 +The door of all subtleties!`,
+		quickReplies: [
+			{
+				type: 'new-suggestion',
+				label: 'Give me another solution',
+			},
+			{
+				type: 'resolved',
+				label: 'All good',
+			},
+		],
 	},
 ];
 export const Chat = Template.bind({});

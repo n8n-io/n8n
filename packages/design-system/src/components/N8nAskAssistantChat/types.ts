@@ -12,13 +12,9 @@ interface CodeDiffMessage {
 	codeDiff: string;
 }
 
-interface QuickRepliesMessage {
-	role: 'assistant';
-	type: 'quick-replies';
-	options: Array<{
+export type AssistantMessage = (TextMessage | CodeDiffMessage) & {
+	quickReplies?: Array<{
 		type: string;
 		label: string;
 	}>;
-}
-
-export type AssistantMessage = TextMessage | CodeDiffMessage | QuickRepliesMessage;
+};

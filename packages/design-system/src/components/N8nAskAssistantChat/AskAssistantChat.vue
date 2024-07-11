@@ -35,10 +35,10 @@ const props = defineProps<Props>();
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="messages?.length" :class="$style.messages">
+			<div v-if="props.messages?.length" :class="$style.messages">
 				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
 					<div
-						v-if="i === 0 || message.role !== messages[i - 1].role"
+						v-if="i === 0 || message.role !== props.messages[i - 1].role"
 						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
 					>
 						<AssistantAvatar v-if="message.role === 'assistant'" />
@@ -66,9 +66,13 @@ const props = defineProps<Props>();
 					<div v-else-if="message.type === 'code-diff'">
 						<CodeDiff :title="message.description" :content="message.codeDiff" />
 					</div>
-					<div v-else-if="message.type === 'quick-replies'" :class="$style.quickReplies">
+
+					<div
+						v-if="message.quickReplies && i === props.messages?.length - 1"
+						:class="$style.quickReplies"
+					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
-						<div v-for="opt in message.options" :key="opt.type">
+						<div v-for="opt in message.quickReplies" :key="opt.type">
 							<n8n-button type="secondary" size="mini">
 								{{ opt.label }}
 							</n8n-button>
