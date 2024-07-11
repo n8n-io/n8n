@@ -66,7 +66,7 @@ export interface CanvasElementData {
 	};
 	render: {
 		type: 'default';
-		options: Record<string, unknown>;
+		options: Partial<{ configurable: boolean; configuration: boolean; trigger: boolean }>;
 	};
 }
 
