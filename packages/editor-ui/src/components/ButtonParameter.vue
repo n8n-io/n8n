@@ -5,22 +5,21 @@ import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { randomInt } from 'n8n-workflow';
-import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, NodePropertyAction } from 'n8n-workflow';
 
-import type { INodeUi, Schema } from '@/Interface';
-import { generateCodeForPrompt } from '@/api/ai';
-import { useDataSchema } from '@/composables/useDataSchema';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
+
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables/useToast';
-import { useRootStore } from '@/stores/root.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+
 import { ASK_AI_LOADING_DURATION_MS } from '@/constants';
 
 const emit = defineEmits<{
 	submit: [code: string];
-	replaceCode: [code: string];
+	valueChanged: [value: IUpdateInformation];
 	startedLoading: [];
 	finishedLoading: [];
 }>();
@@ -31,7 +30,8 @@ const props = defineProps<{
 	path: string;
 }>();
 
-const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+const nodeTypesStore = useNodeTypesStore();
+
 const i18n = useI18n();
 
 const loadingPhraseIndex = ref(0);
@@ -70,28 +70,6 @@ function getParentNodes() {
 		.filter((n) => n !== null) as INodeUi[];
 }
 
-function getSchemas() {
-	const parentNodesNames = parentNodes.value.map((node) => node?.name);
-	const parentNodesSchemas: Array<{ nodeName: string; schema: Schema }> = parentNodes.value
-		.map((node) => {
-			const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
-
-			return {
-				nodeName: node?.name || '',
-				schema: getSchemaForExecutionData(executionDataToJson(inputData), true),
-			};
-		})
-		.filter((node) => node.schema?.value.length > 0);
-
-	const inputSchema = parentNodesSchemas.shift();
-
-	return {
-		parentNodesNames,
-		inputSchema,
-		parentNodesSchemas,
-	};
-}
-
 function startLoading() {
 	emit('startedLoading');
 	loaderProgress.value = 0;
@@ -110,38 +88,62 @@ function stopLoading() {
 }
 
 async function onSubmit() {
-	const { restApiContext } = useRootStore();
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
-	if (!activeNode) return;
-	const schemas = getSchemas();
+	const action: string | NodePropertyAction | undefined = props.parameter.typeOptions?.action;
+
+	if (!action || !activeNode) return;
+
+	if (typeof action === 'string') {
+		switch (action) {
+			default:
+				return;
+		}
+	}
+
+	emit('valueChanged', {
+		name: ((props.path ? `${props.path}.` : '') + props.parameter.name) as string,
+		value: prompt.value,
+	});
+
+	const { type, handler, target } = action;
 
 	startLoading();
 
-	const rootStore = useRootStore();
-
 	try {
-		const version = rootStore.versionCli;
-		const model = 'gpt-3.5-turbo-16k';
-
-		const { code } = await generateCodeForPrompt(restApiContext, {
-			question: prompt.value,
-			context: {
-				schema: schemas.parentNodesSchemas,
-				inputSchema: schemas.inputSchema!,
-				ndvPushRef: useNDVStore().pushRef,
-				pushRef: rootStore.pushRef,
+		const currentNodeParameters = activeNode.parameters;
+		const actionResult = await nodeTypesStore.getNodeParameterActionResult({
+			nodeTypeAndVersion: {
+				name: activeNode.type,
+				version: activeNode.typeVersion,
 			},
-			model,
-			n8nVersion: version,
+			path: props.path,
+			currentNodeParameters,
+			credentials: activeNode.credentials,
+			handler,
+			payload: prompt.value,
 		});
 
-		stopLoading();
-		emit('replaceCode', code);
+		if (actionResult === undefined) return;
+
+		switch (type) {
+			case 'updateProperty':
+				//TODO: code editor does not displays updated value, needs to be closed and reopened
+				emit('valueChanged', {
+					name: ((props.path ? `${props.path}.` : '') + target) as string,
+					value: actionResult,
+				});
+				break;
+			default:
+				return;
+		}
+
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
+
+		stopLoading();
 	} catch (error) {
 		showMessage({
 			type: 'error',
@@ -224,12 +226,14 @@ onMounted(() => {
 			/>
 		</div>
 		<div :class="$style.controls">
-			<div v-if="isLoading" :class="$style.loader">
-				<n8n-circle-loader :radius="8" :progress="loaderProgress" :stroke-width="3" />
-			</div>
-			<N8nTooltip v-else :disabled="isSubmitEnabled">
+			<N8nTooltip :disabled="isSubmitEnabled">
 				<div>
-					<N8nButton :disabled="!isSubmitEnabled" size="small" @click="onSubmit">
+					<N8nButton
+						:disabled="!isSubmitEnabled"
+						size="small"
+						@click="onSubmit"
+						:loading="isLoading"
+					>
 						{{ parameter.typeOptions?.buttonLabel ?? parameter.displayName }}
 					</N8nButton>
 				</div>

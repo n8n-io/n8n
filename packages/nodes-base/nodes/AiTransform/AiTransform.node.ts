@@ -29,17 +29,17 @@ export class AiTransform implements INodeType {
 		outputs: ['main'],
 		parameterPane: 'wide',
 		properties: [
-			{
-				displayName: 'Instructions',
-				name: 'instructions',
-				type: 'string',
-				noDataExpression: true,
-				default: '',
-				placeholder: 'Describe how you want to transform your data and click Generate',
-				typeOptions: {
-					rows: 5,
-				},
-			},
+			// {
+			// 	displayName: 'Instructions',
+			// 	name: 'instructions',
+			// 	type: 'string',
+			// 	noDataExpression: true,
+			// 	default: '',
+			// 	placeholder: 'Describe how you want to transform your data and click Generate',
+			// 	typeOptions: {
+			// 		rows: 5,
+			// 	},
+			// },
 			{
 				displayName: 'Instructions',
 				name: 'generate',
@@ -57,38 +57,37 @@ export class AiTransform implements INodeType {
 					},
 				},
 			},
-			// {
-			// 	displayName: 'Code',
-			// 	name: 'jsCode',
-			// 	type: 'string',
-			// 	default: '',
-			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-			// 	typeOptions: {
-			// 		rows: 5,
-			// 	},
-			// },
 			{
 				displayName: 'Code',
 				name: 'jsCode',
 				type: 'string',
-				typeOptions: {
-					// editor: 'codeNodeEditor',
-					// editorLanguage: 'javaScript',
-					editor: 'jsEditor',
-					editorIsReadOnly: true,
-				},
 				default: '',
-				noDataExpression: true,
 				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+				typeOptions: {
+					rows: 5,
+				},
 			},
+			// {
+			// 	displayName: 'Code',
+			// 	name: 'jsCode',
+			// 	type: 'string',
+			// 	typeOptions: {
+			// 		// editor: 'codeNodeEditor',
+			// 		// editorLanguage: 'javaScript',
+			// 		editor: 'jsEditor',
+			// 		editorIsReadOnly: true,
+			// 	},
+			// 	default: '',
+			// 	noDataExpression: true,
+			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+			// },
 		],
 	};
 
 	methods = {
 		actionHandler: {
-			async generateCodeUsingAiService(this: ILoadOptionsFunctions) {
-				const instructions = this.getNodeParameter('instructions') as string;
-				return instructions;
+			async generateCodeUsingAiService(this: ILoadOptionsFunctions, payload?: string) {
+				return payload + ' AI TRANSFORMED';
 			},
 		},
 	};

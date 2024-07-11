@@ -424,7 +424,7 @@ export declare namespace DynamicNodeParametersRequest {
 	/** POST /dynamic-node-parameters/action-result */
 	type ActionResult = BaseRequest<{
 		handler: string;
-		target?: string;
+		payload: string;
 	}>;
 }
 

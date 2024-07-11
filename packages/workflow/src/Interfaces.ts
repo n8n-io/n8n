@@ -1524,7 +1524,10 @@ export interface INodeType {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 		};
 		actionHandler?: {
-			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<NodeParameterValueType>;
+			[functionName: string]: (
+				this: ILoadOptionsFunctions,
+				payload?: string,
+			) => Promise<NodeParameterValueType>;
 		};
 	};
 	webhookMethods?: {

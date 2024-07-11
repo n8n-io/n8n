@@ -1567,7 +1567,7 @@ export declare namespace DynamicNodeParameters {
 
 	interface ActionResultRequest extends BaseRequest {
 		handler: string;
-		target?: string;
+		payload: string;
 	}
 }
 

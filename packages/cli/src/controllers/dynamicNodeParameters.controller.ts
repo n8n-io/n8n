@@ -97,7 +97,8 @@ export class DynamicNodeParametersController {
 	async getActionResult(
 		req: DynamicNodeParametersRequest.ActionResult,
 	): Promise<NodeParameterValueType> {
-		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, handler } = req.body;
+		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, handler, payload } =
+			req.body;
 
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
 
@@ -109,6 +110,7 @@ export class DynamicNodeParametersController {
 				nodeTypeAndVersion,
 				currentNodeParameters,
 				credentials,
+				payload,
 			);
 		}
 
