@@ -15,6 +15,11 @@ import {
 import { MANUAL_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import {
+	createCanvasConnectionHandleString,
+	createCanvasConnectionId,
+} from '@/utils/canvasUtilsV2';
+import { CanvasConnectionMode } from '@/types';
 
 beforeEach(() => {
 	const pinia = createPinia();
@@ -243,6 +248,25 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
+			const source = manualTriggerNode.id;
+			const sourceHandle = createCanvasConnectionHandleString({
+				type: NodeConnectionType.Main,
+				index: 0,
+				mode: CanvasConnectionMode.Output,
+			});
+			const target = setNode.id;
+			const targetHandle = createCanvasConnectionHandleString({
+				type: NodeConnectionType.Main,
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+			const connectionId = createCanvasConnectionId({
+				source,
+				sourceHandle,
+				target,
+				targetHandle,
+			});
+
 			expect(mappedConnections.value).toEqual([
 				{
 					data: {
@@ -257,12 +281,12 @@ describe('useCanvasMapping', () => {
 							type: NodeConnectionType.Main,
 						},
 					},
-					id: `[${manualTriggerNode.id}/${NodeConnectionType.Main}/0][${setNode.id}/${NodeConnectionType.Main}/0]`,
+					id: connectionId,
 					label: '',
-					source: manualTriggerNode.id,
-					sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
-					target: setNode.id,
-					targetHandle: `inputs/${NodeConnectionType.Main}/0`,
+					source,
+					sourceHandle,
+					target,
+					targetHandle,
 					type: 'canvas-edge',
 					animated: false,
 				},
@@ -293,6 +317,44 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
+			const sourceA = manualTriggerNode.id;
+			const sourceHandleA = createCanvasConnectionHandleString({
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				mode: CanvasConnectionMode.Output,
+			});
+			const targetA = setNode.id;
+			const targetHandleA = createCanvasConnectionHandleString({
+				type: NodeConnectionType.AiTool,
+				index: 0,
+				mode: CanvasConnectionMode.Input,
+			});
+			const connectionIdA = createCanvasConnectionId({
+				source: sourceA,
+				sourceHandle: sourceHandleA,
+				target: targetA,
+				targetHandle: targetHandleA,
+			});
+
+			const sourceB = manualTriggerNode.id;
+			const sourceHandleB = createCanvasConnectionHandleString({
+				type: NodeConnectionType.AiDocument,
+				index: 0,
+				mode: CanvasConnectionMode.Output,
+			});
+			const targetB = setNode.id;
+			const targetHandleB = createCanvasConnectionHandleString({
+				type: NodeConnectionType.AiDocument,
+				index: 1,
+				mode: CanvasConnectionMode.Input,
+			});
+			const connectionIdB = createCanvasConnectionId({
+				source: sourceB,
+				sourceHandle: sourceHandleB,
+				target: targetB,
+				targetHandle: targetHandleB,
+			});
+
 			expect(mappedConnections.value).toEqual([
 				{
 					data: {
@@ -307,12 +369,12 @@ describe('useCanvasMapping', () => {
 							type: NodeConnectionType.AiTool,
 						},
 					},
-					id: `[${manualTriggerNode.id}/${NodeConnectionType.AiTool}/0][${setNode.id}/${NodeConnectionType.AiTool}/0]`,
+					id: connectionIdA,
 					label: '',
-					source: manualTriggerNode.id,
-					sourceHandle: `outputs/${NodeConnectionType.AiTool}/0`,
-					target: setNode.id,
-					targetHandle: `inputs/${NodeConnectionType.AiTool}/0`,
+					source: sourceA,
+					sourceHandle: sourceHandleA,
+					target: targetA,
+					targetHandle: targetHandleA,
 					type: 'canvas-edge',
 					animated: false,
 				},
@@ -329,12 +391,12 @@ describe('useCanvasMapping', () => {
 							type: NodeConnectionType.AiDocument,
 						},
 					},
-					id: `[${manualTriggerNode.id}/${NodeConnectionType.AiDocument}/0][${setNode.id}/${NodeConnectionType.AiDocument}/1]`,
+					id: connectionIdB,
 					label: '',
-					source: manualTriggerNode.id,
-					sourceHandle: `outputs/${NodeConnectionType.AiDocument}/0`,
-					target: setNode.id,
-					targetHandle: `inputs/${NodeConnectionType.AiDocument}/1`,
+					source: sourceB,
+					sourceHandle: sourceHandleB,
+					target: targetB,
+					targetHandle: targetHandleB,
 					type: 'canvas-edge',
 					animated: false,
 				},
