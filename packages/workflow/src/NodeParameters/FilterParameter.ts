@@ -137,6 +137,18 @@ function parseRegexPattern(pattern: string): RegExp {
 	return regex;
 }
 
+export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
+	if (ignoreCase && typeof value === 'string') {
+		return array.some((item) => {
+			if (typeof item !== 'string') {
+				return false;
+			}
+			return item.toString().toLocaleLowerCase() === value.toLocaleLowerCase();
+		});
+	}
+	return array.includes(value);
+}
+
 // eslint-disable-next-line complexity
 export function executeFilterCondition(
 	condition: FilterConditionValue,
@@ -284,15 +296,9 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return left.includes(rightValue);
+					return arrayContainsValue(left, rightValue, ignoreCase);
 				case 'notContains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return !left.includes(rightValue);
+					return !arrayContainsValue(left, rightValue, ignoreCase);
 				case 'lengthEquals':
 					return left.length === rightNumber;
 				case 'lengthNotEquals':
