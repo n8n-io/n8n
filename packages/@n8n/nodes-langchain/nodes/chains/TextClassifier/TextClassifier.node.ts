@@ -203,7 +203,7 @@ ${fallbackPrompt}`,
 			const inputPrompt = new HumanMessage(input);
 			const messages = [
 				await systemPromptTemplate.format({
-					categories: JSON.stringify(categories),
+					categories: categories.map((cat) => cat.category).join(', '),
 					format_instructions: parser.getFormatInstructions(),
 				}),
 				inputPrompt,
