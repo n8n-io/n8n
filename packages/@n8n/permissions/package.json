@@ -1,10 +1,6 @@
 {
   "name": "@n8n/permissions",
-  "version": "0.10.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
+  "version": "0.11.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

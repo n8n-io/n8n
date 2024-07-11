@@ -1,5 +1,6 @@
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { inject, ref } from 'vue';
+import type { CanvasNodeInjectionData } from '../types';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -27,38 +28,46 @@ describe('useCanvasNode', () => {
 		expect(result.hasIssues.value).toBe(false);
 		expect(result.executionStatus.value).toBeUndefined();
 		expect(result.executionWaiting.value).toBeUndefined();
+		expect(result.executionRunning.value).toBe(false);
+		expect(result.renderOptions.value).toEqual({});
 	});
 
 	it('should return node data when node is provided', () => {
 		const node = {
-			data: {
-				value: {
-					id: 'node1',
-					type: 'nodeType1',
-					typeVersion: 1,
-					disabled: true,
-					inputs: ['input1'],
-					outputs: ['output1'],
-					connections: { input: { '0': ['node2'] }, output: {} },
-					issues: { items: ['issue1'], visible: true },
-					execution: { status: 'running', waiting: false },
-					runData: { count: 1, visible: true },
-					pinnedData: { count: 1, visible: true },
-					renderType: 'default',
+			data: ref({
+				id: 'node1',
+				type: 'nodeType1',
+				typeVersion: 1,
+				disabled: true,
+				inputs: [{ type: 'main', index: 0 }],
+				outputs: [{ type: 'main', index: 0 }],
+				connections: { input: { '0': [] }, output: {} },
+				issues: { items: ['issue1'], visible: true },
+				execution: { status: 'running', waiting: 'waiting', running: true },
+				runData: { count: 1, visible: true },
+				pinnedData: { count: 1, visible: true },
+				render: {
+					type: 'default',
+					options: {
+						configurable: false,
+						configuration: false,
+						trigger: false,
+					},
 				},
-			},
+			}),
+			id: ref('1'),
 			label: ref('Node 1'),
 			selected: ref(true),
-		};
+		} satisfies Partial<CanvasNodeInjectionData>;
 
 		vi.mocked(inject).mockReturnValue(node);
 
 		const result = useCanvasNode();
 
 		expect(result.label.value).toBe('Node 1');
-		expect(result.inputs.value).toEqual(['input1']);
-		expect(result.outputs.value).toEqual(['output1']);
-		expect(result.connections.value).toEqual({ input: { '0': ['node2'] }, output: {} });
+		expect(result.inputs.value).toEqual([{ type: 'main', index: 0 }]);
+		expect(result.outputs.value).toEqual([{ type: 'main', index: 0 }]);
+		expect(result.connections.value).toEqual({ input: { '0': [] }, output: {} });
 		expect(result.isDisabled.value).toBe(true);
 		expect(result.isSelected.value).toBe(true);
 		expect(result.pinnedDataCount.value).toBe(1);
@@ -68,6 +77,8 @@ describe('useCanvasNode', () => {
 		expect(result.issues.value).toEqual(['issue1']);
 		expect(result.hasIssues.value).toBe(true);
 		expect(result.executionStatus.value).toBe('running');
-		expect(result.executionWaiting.value).toBe(false);
+		expect(result.executionWaiting.value).toBe('waiting');
+		expect(result.executionRunning.value).toBe(true);
+		expect(result.renderOptions.value).toBe(node.data.value.render.options);
 	});
 });
