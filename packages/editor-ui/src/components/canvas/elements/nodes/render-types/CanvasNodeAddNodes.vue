@@ -52,25 +52,6 @@ function onClick() {
 	</div>
 </template>
 
-<!--<script setup lang="ts">-->
-<!--import { computed } from 'vue';-->
-<!--import type { XYPosition } from '@/Interface';-->
-<!--import { useNodeCreatorStore } from '@/stores/nodeCreator.store';-->
-
-<!--export interface Props {-->
-<!--	showTooltip: boolean;-->
-<!--	position: XYPosition;-->
-<!--}-->
-
-<!--const props = defineProps<Props>();-->
-
-<!--const nodeCreatorStore = useNodeCreatorStore();-->
-<!--const containerCssVars = computed(() => ({-->
-<!--	'&#45;&#45;trigger-placeholder-left-position': `${props.position[0]}px`,-->
-<!--	'&#45;&#45;trigger-placeholder-top-position': `${props.position[1]}px`,-->
-<!--}));-->
-<!--</script>-->
-
 <style lang="scss" module>
 .addNodes {
 	display: flex;
