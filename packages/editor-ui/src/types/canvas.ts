@@ -65,7 +65,10 @@ export interface CanvasElementData {
 		count: number;
 		visible: boolean;
 	};
-	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
+	render: {
+		type: 'default';
+		options: Partial<{ configurable: boolean; configuration: boolean; trigger: boolean }>;
+	};
 }
 
 export type CanvasElement = Node<CanvasElementData>;

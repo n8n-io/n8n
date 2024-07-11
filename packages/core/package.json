@@ -1,17 +1,7 @@
 {
   "name": "n8n-core",
-  "version": "1.49.0",
+  "version": "1.50.0",
   "description": "Core functionality of n8n",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://n8n.io",
-  "author": {
-    "name": "Jan Oberhauser",
-    "email": "jan@n8n.io"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {

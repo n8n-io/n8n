@@ -1,10 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "0.18.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
+  "version": "0.19.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
