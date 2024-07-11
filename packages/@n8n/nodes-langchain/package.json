@@ -45,6 +45,7 @@
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
       "dist/nodes/chains/ChainLLM/ChainLlm.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.js",
+      "dist/nodes/chains/TextClassifier/TextClassifier.node.js",
       "dist/nodes/code/Code.node.js",
       "dist/nodes/document_loaders/DocumentDefaultDataLoader/DocumentDefaultDataLoader.node.js",
       "dist/nodes/document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node.js",
