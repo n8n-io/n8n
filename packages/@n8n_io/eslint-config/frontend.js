@@ -56,6 +56,16 @@ module.exports = {
 		'vue/attribute-hyphenation': ['error', 'always'],
 		'import/no-extraneous-dependencies': 'warn',
 		'vue/define-emits-declaration': ['error', 'type-literal'],
+		'vue/require-macro-variable-name': [
+			'error',
+			{
+				defineProps: 'props',
+				defineEmits: 'emit',
+				defineSlots: 'slots',
+				useSlots: 'slots',
+				useAttrs: 'attrs',
+			},
+		],
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',

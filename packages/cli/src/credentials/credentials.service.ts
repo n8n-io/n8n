@@ -63,11 +63,10 @@ export class CredentialsService {
 		user: User,
 		options: {
 			listQueryOptions?: ListQuery.Options;
-			onlyOwn?: boolean;
 			includeScopes?: string;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
+		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;

@@ -25,9 +25,4 @@ module.exports = defineConfig({
 		screenshotsFolder: 'screenshots',
 		videosFolder: 'videos',
 	},
-	env: {
-		MAX_PINNED_DATA_SIZE: process.env.VUE_APP_MAX_PINNED_DATA_SIZE
-			? parseInt(process.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
-			: 16 * 1024,
-	},
 });

@@ -1,17 +1,7 @@
 {
   "name": "n8n-node-dev",
-  "version": "1.49.0",
+  "version": "1.50.0",
   "description": "CLI to simplify n8n credentials/node development",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://n8n.io",
-  "author": {
-    "name": "Jan Oberhauser",
-    "email": "jan@n8n.io"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
   "main": "dist/src/index",
   "types": "dist/src/index.d.ts",
   "oclif": {
