@@ -19,18 +19,9 @@ abstract class IndexOperation extends LazyPromise<void> {
 		protected tablePrefix: string,
 		queryRunner: QueryRunner,
 		protected customIndexName?: string,
-		protected skipIfMissing = false,
 	) {
-		super((resolve, reject) => {
-			void this.execute(queryRunner)
-				.then(resolve)
-				.catch((error) => {
-					if (error instanceof Error && error.message.includes('not found') && this.skipIfMissing) {
-						resolve();
-					} else {
-						reject(error);
-					}
-				});
+		super((resolve) => {
+			void this.execute(queryRunner).then(resolve);
 		});
 	}
 }
@@ -57,10 +48,25 @@ export class CreateIndex extends IndexOperation {
 }
 
 export class DropIndex extends IndexOperation {
+	constructor(
+		tableName: string,
+		columnNames: string[],
+		tablePrefix: string,
+		queryRunner: QueryRunner,
+		customIndexName?: string,
+		protected skipIfMissing = false,
+	) {
+		super(tableName, columnNames, tablePrefix, queryRunner, customIndexName);
+	}
+
 	async execute(queryRunner: QueryRunner) {
-		return await queryRunner.dropIndex(
-			this.fullTableName,
-			this.customIndexName ?? this.fullIndexName,
-		);
+		return await queryRunner
+			.dropIndex(this.fullTableName, this.customIndexName ?? this.fullIndexName)
+			.catch((error) => {
+				if (error instanceof Error && error.message.includes('not found') && this.skipIfMissing) {
+					return;
+				}
+				throw error;
+			});
 	}
 }
