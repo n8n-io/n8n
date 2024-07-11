@@ -285,12 +285,18 @@ export function executeFilterCondition(
 			switch (condition.operator.operation) {
 				case 'contains':
 					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
+						const leftLower = left.map((i: unknown) =>
+							typeof i === 'string' ? i.toLocaleLowerCase() : i,
+						);
+						return leftLower.includes(rightValue.toLocaleLowerCase());
 					}
 					return left.includes(rightValue);
 				case 'notContains':
 					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
+						const leftLower = left.map((i: unknown) =>
+							typeof i === 'string' ? i.toLocaleLowerCase() : i,
+						);
+						return !leftLower.includes(rightValue.toLocaleLowerCase());
 					}
 					return !left.includes(rightValue);
 				case 'lengthEquals':
