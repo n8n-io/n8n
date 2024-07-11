@@ -37,7 +37,10 @@ const props = defineProps<Props>();
 		<div :class="$style.body">
 			<div v-if="messages?.length" :class="$style.messages">
 				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
-					<div v-if="i === 0 || message.role !== messages[i - 1].role" :class="$style.roleName">
+					<div
+						v-if="i === 0 || message.role !== messages[i - 1].role"
+						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
+					>
 						<AssistantAvatar v-if="message.role === 'assistant'" />
 						<n8n-avatar
 							v-else
@@ -50,10 +53,12 @@ const props = defineProps<Props>();
 						<span v-else>You</span>
 					</div>
 					<div v-if="message.type === 'text' && message.title">
-						<div>{{ message.title }}</div>
-						<div>{{ message.content }}</div>
+						<div :class="$style.block">
+							<div :class="$style.blockTitle">{{ message.title }}</div>
+							<div :class="$style.blockBody" v-html="md.render(message.content)"></div>
+						</div>
 					</div>
-					<div v-else-if="message.type === 'text'">
+					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
 						<span v-if="message.role === 'user'">{{ message.content }}</span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span v-else v-html="md.render(message.content)"></span>
@@ -61,12 +66,12 @@ const props = defineProps<Props>();
 					<div v-else-if="message.type === 'code-diff'">
 						<CodeDiff :title="message.description" :content="message.codeDiff" />
 					</div>
-					<div v-else-if="message.type === 'quick-replies'">
-						<div>Quick reply 👇</div>
+					<div v-else-if="message.type === 'quick-replies'" :class="$style.quickReplies">
+						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
 						<div v-for="opt in message.options" :key="opt.type">
-							<button>
+							<n8n-button type="secondary" size="mini">
 								{{ opt.label }}
-							</button>
+							</n8n-button>
 						</div>
 					</div>
 				</div>
@@ -156,6 +161,10 @@ const props = defineProps<Props>();
 	}
 }
 
+.userSection {
+	margin-top: 28px;
+}
+
 .chatTitle > * {
 	margin-right: var(--spacing-xs);
 }
@@ -174,5 +183,39 @@ const props = defineProps<Props>();
 
 .back:hover {
 	cursor: pointer;
+}
+
+.quickReplies > * {
+	margin-bottom: 8px;
+}
+
+.quickRepliesTitle {
+	font-size: var(--font-size-3xs);
+	color: var(--color-text-base);
+}
+
+.textMessage {
+	font-size: var(--font-size-2xs);
+}
+
+.block {
+	font-size: var(--font-size-2xs);
+	background-color: var(--color-foreground-xlight);
+	border: var(--border-base);
+	border-radius: 4px;
+
+	li {
+		margin-left: 12px;
+	}
+}
+
+.blockTitle {
+	border-bottom: var(--border-base);
+	padding: 8px 8px 12px 8px;
+	font-weight: 600;
+}
+
+.blockBody {
+	padding: 12px;
 }
 </style>
