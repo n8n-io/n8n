@@ -254,7 +254,8 @@ export class TelegramTrigger implements INodeType {
 
 			if (
 				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
-				bodyData[key]?.document
+				bodyData[key]?.document ||
+				bodyData[key]?.video
 			) {
 				if (additionalFields.imageSize) {
 					imageSize = additionalFields.imageSize as string;
@@ -276,6 +277,8 @@ export class TelegramTrigger implements INodeType {
 					}
 
 					fileId = image.file_id;
+				} else if (bodyData[key]?.video) {
+					fileId = bodyData[key]?.video?.file_id;
 				} else {
 					fileId = bodyData[key]?.document?.file_id;
 				}
