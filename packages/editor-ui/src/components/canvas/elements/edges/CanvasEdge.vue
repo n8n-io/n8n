@@ -19,7 +19,7 @@ const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
 
-const connectionType = computed(() => props.data.type);
+const connectionType = computed(() => props.data.source.type);
 
 const isFocused = computed(() => props.selected || props.hovered);
 

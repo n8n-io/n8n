@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import {
+import type {
 	ConnectionTypes,
 	ExecutionStatus,
 	INodeConnections,
 	INodeTypeDescription,
-	NodeConnectionType,
 } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
@@ -76,7 +75,6 @@ export type CanvasElement = Node<CanvasElementData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
-	type: NodeConnectionType;
 	fromNodeName?: string;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 }

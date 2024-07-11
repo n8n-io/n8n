@@ -19,19 +19,17 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
 } from '@/utils/canvasUtilsV2';
-import {
+import { NodeHelpers } from 'n8n-workflow';
+import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	INodeExecutionData,
 	ITaskData,
-	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 export function useCanvasMapping({
 	workflow,
@@ -288,13 +286,8 @@ export function useCanvasMapping({
 			}
 		}
 
-		const type = isValidNodeConnectionType(connection.data?.source.type)
-			? connection.data?.source.type
-			: NodeConnectionType.Main;
-
 		return {
 			...(connection.data as CanvasConnectionData),
-			type,
 			status,
 		};
 	}

@@ -57,7 +57,6 @@ export function mapLegacyConnectionsToCanvasConnections(
 							targetHandle,
 							data: {
 								fromNodeName,
-								type: fromConnectionType,
 								source: {
 									index: fromIndex,
 									type: fromConnectionType,

@@ -253,7 +253,6 @@ describe('useCanvasMapping', () => {
 			expect(connections.value).toEqual([
 				{
 					data: {
-						type: NodeConnectionType.Main,
 						fromNodeName: manualTriggerNode.name,
 						source: {
 							index: 0,
@@ -340,7 +339,6 @@ describe('useCanvasMapping', () => {
 			expect(connections.value).toEqual([
 				{
 					data: {
-						type: NodeConnectionType.AiTool,
 						fromNodeName: manualTriggerNode.name,
 						source: {
 							index: 0,
@@ -363,7 +361,6 @@ describe('useCanvasMapping', () => {
 				},
 				{
 					data: {
-						type: NodeConnectionType.AiDocument,
 						fromNodeName: manualTriggerNode.name,
 						source: {
 							index: 0,
