@@ -3,9 +3,10 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 /**
  * Add new indices:
  *
- * - `status, startedAt` for default query at `ExecutionRepository.findManyByRangeQuery`
- * - `workflowId, status, startedAt` for filtered query at `ExecutionRepository.findManyByRangeQuery`
- * - `waitTill, status` for regular queries at `ExecutionRepository.getWaitingExecutions`
+ * - `status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (default query)
+ * - `workflowId, status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (filter query)
+ * - `waitTill, status` for `ExecutionRepository.getWaitingExecutions`
+ * - `stoppedAt, deletedAt, status` for `ExecutionRepository.softDeletePrunableExecutions`
  *
  * Remove unused indices in sqlite:
  *
@@ -13,15 +14,18 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
  * - `waitTill`
  * - `status, workflowId`
  *
- * Remove unused indices in MySql:
+ * Remove unused indices in MySQL:
  *
  * - `status`
  *
  * Remove unused indices in all DBs:
  *
- * - `stopped_at`
  * - `waitTill, id`
  * - `workflowId, id`
+ *
+ * Remove incomplete index in all DBs:
+ *
+ * - `stopped_at` (replaced with composite index)
  *
  * Keep index as is:
  *
@@ -32,6 +36,7 @@ export class RefactorExecutionIndices1717498465932 implements ReversibleMigratio
 		await schemaBuilder.createIndex('execution_entity', ['status', 'startedAt']);
 		await schemaBuilder.createIndex('execution_entity', ['workflowId', 'status', 'startedAt']);
 		await schemaBuilder.createIndex('execution_entity', ['waitTill', 'status']);
+		await schemaBuilder.createIndex('execution_entity', ['stoppedAt', 'deletedAt', 'status']);
 
 		if (isSqlite) {
 			await schemaBuilder.dropIndex('execution_entity', ['stoppedAt'], {
@@ -79,6 +84,7 @@ export class RefactorExecutionIndices1717498465932 implements ReversibleMigratio
 		await schemaBuilder.dropIndex('execution_entity', ['status', 'startedAt']);
 		await schemaBuilder.dropIndex('execution_entity', ['workflowId', 'status', 'startedAt']);
 		await schemaBuilder.dropIndex('execution_entity', ['waitTill', 'status']);
+		await schemaBuilder.dropIndex('execution_entity', ['stoppedAt', 'deletedAt', 'status']);
 
 		await schemaBuilder.createIndex('execution_entity', ['waitTill', 'id']);
 		await schemaBuilder.createIndex('execution_entity', ['stoppedAt']);
