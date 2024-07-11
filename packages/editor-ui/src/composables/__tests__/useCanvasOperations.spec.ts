@@ -3,7 +3,7 @@ import type { Connection } from '@vue-flow/core';
 import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import type { CanvasElement } from '@/types';
+import type { CanvasNode } from '@/types';
 import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -76,7 +76,7 @@ describe('useCanvasOperations', () => {
 				.spyOn(workflowsStore, 'setNodePositionById')
 				.mockImplementation(() => {});
 			const id = 'node1';
-			const position: CanvasElement['position'] = { x: 10, y: 20 };
+			const position: CanvasNode['position'] = { x: 10, y: 20 };
 			const node = createTestNode({
 				id,
 				type: 'node',

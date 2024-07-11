@@ -4,6 +4,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeDefault);
 
@@ -140,7 +141,7 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								render: {
-									type: 'default',
+									type: CanvasNodeRenderType.Default,
 									options: { configurable: true },
 								},
 							},
@@ -166,7 +167,7 @@ describe('CanvasNodeDefault', () => {
 										{ type: NodeConnectionType.AiMemory, index: 0, required: true },
 									],
 									render: {
-										type: 'default',
+										type: CanvasNodeRenderType.Default,
 										options: {
 											configurable: true,
 										},
@@ -191,7 +192,7 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								render: {
-									type: 'default',
+									type: CanvasNodeRenderType.Default,
 									options: { configuration: true },
 								},
 							},
@@ -210,7 +211,7 @@ describe('CanvasNodeDefault', () => {
 						...createCanvasNodeProvide({
 							data: {
 								render: {
-									type: 'default',
+									type: CanvasNodeRenderType.Default,
 									options: { configurable: true, configuration: true },
 								},
 							},
@@ -220,6 +221,27 @@ describe('CanvasNodeDefault', () => {
 			});
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
+		});
+	});
+
+	describe('trigger', () => {
+		it('should render trigger node correctly', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { trigger: true },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('canvas-trigger-node')).toMatchSnapshot();
 		});
 	});
 });

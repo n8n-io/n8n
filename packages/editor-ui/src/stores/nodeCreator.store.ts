@@ -211,6 +211,17 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 	}
 
+	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+		ndvStore.activeNodeName = null;
+		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
+		setShowScrim(true);
+		openNodeCreator({
+			source,
+			createNodeActive: true,
+			nodeCreatorView: TRIGGER_NODE_CREATOR_VIEW,
+		});
+	}
+
 	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 		let filter;
 		const workflow = workflowsStore.getCurrentWorkflow();
@@ -252,6 +263,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		openNodeCreator,
 		openSelectiveNodeCreator,
 		openNodeCreatorForConnectingNode,
+		openNodeCreatorForTriggerNodes,
 		allNodeCreatorNodes,
 	};
 });
