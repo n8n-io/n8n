@@ -1,6 +1,6 @@
 <template>
 	<RunData
-		ref="runData"
+		ref="runDataRef"
 		:node="node"
 		:workflow="workflow"
 		:run-index="runIndex"
@@ -20,9 +20,9 @@
 		@run-change="onRunIndexChange"
 		@link-run="onLinkRun"
 		@unlink-run="onUnlinkRun"
-		@table-mounted="$emit('tableMounted', $event)"
-		@item-hover="$emit('itemHover', $event)"
-		@search="$emit('search', $event)"
+		@table-mounted="emit('tableMounted', $event)"
+		@item-hover="emit('itemHover', $event)"
+		@search="emit('search', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -100,19 +100,12 @@
 	</RunData>
 </template>
 
-<script lang="ts">
-import { type PropType, defineComponent } from 'vue';
-import type { IExecutionResponse, INodeUi } from '@/Interface';
-import type {
-	INodeTypeDescription,
-	IRunData,
-	IRunExecutionData,
-	ITaskData,
-	Workflow,
-} from 'n8n-workflow';
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import type { IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { mapStores, storeToRefs } from 'pinia';
+import { storeToRefs } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -121,8 +114,12 @@ import RunDataAi from './RunDataAi/RunDataAi.vue';
 import { ndvEventBus } from '@/event-bus';
 import { useNodeType } from '@/composables/useNodeType';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useI18n } from '@/composables/useI18n';
 
-type RunDataRef = InstanceType<typeof RunData>;
+// Types
+
+type RunDataRef = InstanceType<typeof RunData> | null;
 
 const OUTPUT_TYPE = {
 	REGULAR: 'regular',
@@ -130,228 +127,233 @@ const OUTPUT_TYPE = {
 } as const;
 
 type OutputTypeKey = keyof typeof OUTPUT_TYPE;
+
 type OutputType = (typeof OUTPUT_TYPE)[OutputTypeKey];
 
-export default defineComponent({
-	name: 'OutputPanel',
-	components: { RunData, RunInfo, RunDataAi },
-	props: {
-		workflow: {
-			type: Object as PropType<Workflow>,
-			required: true,
-		},
-		runIndex: {
-			type: Number,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-		},
-		linkedRuns: {
-			type: Boolean,
-		},
-		canLinkRuns: {
-			type: Boolean,
-		},
-		pushRef: {
-			type: String,
-		},
-		blockUI: {
-			type: Boolean,
-			default: false,
-		},
-		isProductionExecutionPreview: {
-			type: Boolean,
-			default: false,
-		},
-		isPaneActive: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	setup(props) {
-		const ndvStore = useNDVStore();
-		const { activeNode } = storeToRefs(ndvStore);
-		const { isSubNodeType } = useNodeType({
-			node: activeNode,
-		});
-		const pinnedData = usePinnedData(activeNode, {
-			runIndex: props.runIndex,
-			displayMode: ndvStore.getPanelDisplayMode('output'),
-		});
+type Props = {
+	workflow: Workflow;
+	runIndex: number;
+	isReadOnly?: boolean;
+	linkedRuns?: boolean;
+	canLinkRuns?: boolean;
+	pushRef?: string;
+	blockUI?: boolean;
+	isProductionExecutionPreview?: boolean;
+	isPaneActive?: boolean;
+};
 
-		return {
-			pinnedData,
-			isSubNodeType,
-		};
-	},
-	data() {
-		return {
-			outputMode: 'regular',
-			outputTypes: [
-				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
-				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
-			],
-		};
-	},
-	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
-		node(): INodeUi | undefined {
-			return this.ndvStore.activeNode ?? undefined;
-		},
-		nodeType(): INodeTypeDescription | null {
-			if (this.node) {
-				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-			}
-			return null;
-		},
-		isTriggerNode(): boolean {
-			return !!this.node && this.nodeTypesStore.isTriggerNode(this.node.type);
-		},
-		hasAiMetadata(): boolean {
-			if (this.node) {
-				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
+// Props and emits
 
-				if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
-					return false;
-				}
-
-				return !!resultData[resultData.length - 1].metadata;
-			}
-			return false;
-		},
-		isPollingTypeNode(): boolean {
-			return !!this.nodeType?.polling;
-		},
-		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
-		},
-		isNodeRunning(): boolean {
-			return !!this.node && this.workflowsStore.isNodeExecuting(this.node.name);
-		},
-		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
-		},
-		workflowExecution(): IExecutionResponse | null {
-			return this.workflowsStore.getWorkflowExecution;
-		},
-		workflowRunData(): IRunData | null {
-			if (this.workflowExecution === null) {
-				return null;
-			}
-			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (!executionData?.resultData?.runData) {
-				return null;
-			}
-			return executionData.resultData.runData;
-		},
-		hasNodeRun(): boolean {
-			if (this.workflowsStore.subWorkflowExecutionError) return true;
-
-			return Boolean(
-				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
-			);
-		},
-		runTaskData(): ITaskData | null {
-			if (!this.node || this.workflowExecution === null) {
-				return null;
-			}
-
-			const runData = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return null;
-			}
-
-			if (runData[this.node.name].length <= this.runIndex) {
-				return null;
-			}
-
-			return runData[this.node.name][this.runIndex];
-		},
-		runsCount(): number {
-			if (this.node === null) {
-				return 0;
-			}
-
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || (this.node && !runData.hasOwnProperty(this.node.name))) {
-				return 0;
-			}
-
-			if (this.node && runData[this.node.name].length) {
-				return runData[this.node.name].length;
-			}
-
-			return 0;
-		},
-		staleData(): boolean {
-			if (!this.node) {
-				return false;
-			}
-			const updatedAt = this.workflowsStore.getParametersLastUpdate(this.node.name);
-			if (!updatedAt || !this.runTaskData) {
-				return false;
-			}
-			const runAt = this.runTaskData.startTime;
-			return updatedAt > runAt;
-		},
-		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.ndvStore.outputPanelEditMode;
-		},
-		canPinData(): boolean {
-			return this.pinnedData.isValidNodeType.value && !this.isReadOnly;
-		},
-	},
-	methods: {
-		insertTestData() {
-			const runDataRef = this.$refs.runData as RunDataRef | undefined;
-			if (runDataRef) {
-				runDataRef.enterEditMode({
-					origin: 'insertTestDataLink',
-				});
-
-				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.workflowsStore.workflowId,
-					push_ref: this.pushRef,
-					node_type: this.node?.type,
-					pane: 'output',
-					type: 'insert-test-data',
-				});
-			}
-		},
-		onLinkRun() {
-			this.$emit('linkRun');
-		},
-		onUnlinkRun() {
-			this.$emit('unlinkRun');
-		},
-		openSettings() {
-			this.$emit('openSettings');
-			this.$telemetry.track('User clicked ndv link', {
-				node_type: this.node?.type,
-				workflow_id: this.workflowsStore.workflowId,
-				push_ref: this.pushRef,
-				pane: 'output',
-				type: 'settings',
-			});
-		},
-		onRunIndexChange(run: number) {
-			this.$emit('runChange', run);
-		},
-		onUpdateOutputMode(outputMode: OutputType) {
-			if (outputMode === OUTPUT_TYPE.LOGS) {
-				ndvEventBus.emit('setPositionByName', 'minLeft');
-			} else {
-				ndvEventBus.emit('setPositionByName', 'initial');
-			}
-		},
-		activatePane() {
-			this.$emit('activatePane');
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	blockUI: false,
+	isProductionExecutionPreview: false,
+	isPaneActive: false,
 });
+
+const emit = defineEmits<{
+	linkRun: [];
+	unlinkRun: [];
+	runChange: [number];
+	activatePane: [];
+	tableMounted: [{ avgRowHeight: number }];
+	itemHover: [{ itemIndex: number; outputIndex: number }];
+	search: [string];
+	openSettings: [];
+}>();
+
+// Stores
+
+const ndvStore = useNDVStore();
+const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const telemetry = useTelemetry();
+const i18n = useI18n();
+const { activeNode } = storeToRefs(ndvStore);
+
+// Composables
+
+const { isSubNodeType } = useNodeType({
+	node: activeNode,
+});
+const pinnedData = usePinnedData(activeNode, {
+	runIndex: props.runIndex,
+	displayMode: ndvStore.getPanelDisplayMode('output'),
+});
+
+// Data
+
+const outputMode = ref<OutputType>('regular');
+const outputTypes = ref([
+	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
+]);
+const runDataRef = ref<RunDataRef>(null);
+
+// Computed
+
+const node = computed(() => {
+	return ndvStore.activeNode ?? undefined;
+});
+
+const isTriggerNode = computed(() => {
+	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
+});
+
+const hasAiMetadata = computed(() => {
+	if (node.value) {
+		const resultData = workflowsStore.getWorkflowResultDataByNodeName(node.value.name);
+
+		if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
+			return false;
+		}
+
+		return !!resultData[resultData.length - 1].metadata;
+	}
+	return false;
+});
+
+const isNodeRunning = computed(() => {
+	return !!node.value && workflowsStore.isNodeExecuting(node.value.name);
+});
+
+const workflowRunning = computed(() => {
+	return uiStore.isActionActive['workflowRunning'];
+});
+
+const workflowExecution = computed(() => {
+	return workflowsStore.getWorkflowExecution;
+});
+
+const workflowRunData = computed(() => {
+	if (workflowExecution.value === null) {
+		return null;
+	}
+	const executionData: IRunExecutionData | undefined = workflowExecution.value.data;
+	if (!executionData?.resultData?.runData) {
+		return null;
+	}
+	return executionData.resultData.runData;
+});
+
+const hasNodeRun = computed(() => {
+	if (workflowsStore.subWorkflowExecutionError) return true;
+
+	return Boolean(
+		node.value && workflowRunData.value && workflowRunData.value.hasOwnProperty(node.value.name),
+	);
+});
+
+const runTaskData = computed(() => {
+	if (!node.value || workflowExecution.value === null) {
+		return null;
+	}
+
+	const runData = workflowRunData.value;
+
+	if (runData === null || !runData.hasOwnProperty(node.value.name)) {
+		return null;
+	}
+
+	if (runData[node.value.name].length <= props.runIndex) {
+		return null;
+	}
+
+	return runData[node.value.name][props.runIndex];
+});
+
+const runsCount = computed(() => {
+	if (node.value === null) {
+		return 0;
+	}
+
+	const runData: IRunData | null = workflowRunData.value;
+
+	if (runData === null || (node.value && !runData.hasOwnProperty(node.value.name))) {
+		return 0;
+	}
+
+	if (node.value && runData[node.value.name].length) {
+		return runData[node.value.name].length;
+	}
+
+	return 0;
+});
+
+const staleData = computed(() => {
+	if (!node.value) {
+		return false;
+	}
+	const updatedAt = workflowsStore.getParametersLastUpdate(node.value.name);
+	if (!updatedAt || !runTaskData.value) {
+		return false;
+	}
+	const runAt = runTaskData.value.startTime;
+	return updatedAt > runAt;
+});
+
+const outputPanelEditMode = computed(() => {
+	return ndvStore.outputPanelEditMode;
+});
+
+const canPinData = computed(() => {
+	return pinnedData.isValidNodeType.value && !props.isReadOnly;
+});
+
+// Methods
+
+const insertTestData = () => {
+	if (!runDataRef.value) return;
+
+	// We should be able to fix this when we migrate RunData.vue to composition API
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+	runDataRef.value.enterEditMode({
+		origin: 'insertTestDataLink',
+	});
+
+	telemetry.track('User clicked ndv link', {
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		node_type: node.value?.type,
+		pane: 'output',
+		type: 'insert-test-data',
+	});
+};
+
+const onLinkRun = () => {
+	emit('linkRun');
+};
+
+const onUnlinkRun = () => {
+	emit('unlinkRun');
+};
+
+const openSettings = () => {
+	emit('openSettings');
+	telemetry.track('User clicked ndv link', {
+		node_type: node.value?.type,
+		workflow_id: workflowsStore.workflowId,
+		push_ref: props.pushRef,
+		pane: 'output',
+		type: 'settings',
+	});
+};
+
+const onRunIndexChange = (run: number) => {
+	emit('runChange', run);
+};
+
+const onUpdateOutputMode = (outputMode: OutputType) => {
+	if (outputMode === OUTPUT_TYPE.LOGS) {
+		ndvEventBus.emit('setPositionByName', 'minLeft');
+	} else {
+		ndvEventBus.emit('setPositionByName', 'initial');
+	}
+};
+
+const activatePane = () => {
+	emit('activatePane');
+};
 </script>
 
 <style lang="scss" module>

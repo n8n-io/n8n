@@ -73,4 +73,26 @@ describe('OnShutdown', () => {
 			new TestClass();
 		}).toThrow('TestClass.onShutdown() must be a method on TestClass to use "OnShutdown"');
 	});
+
+	it('should throw if the priority is invalid', () => {
+		expect(() => {
+			@Service()
+			class TestClass {
+				@OnShutdown(201)
+				async onShutdown() {}
+			}
+
+			new TestClass();
+		}).toThrow('Invalid shutdown priority. Please set it between 0 and 200.');
+
+		expect(() => {
+			@Service()
+			class TestClass {
+				@OnShutdown(-1)
+				async onShutdown() {}
+			}
+
+			new TestClass();
+		}).toThrow('Invalid shutdown priority. Please set it between 0 and 200.');
+	});
 });

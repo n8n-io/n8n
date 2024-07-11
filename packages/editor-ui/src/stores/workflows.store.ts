@@ -31,7 +31,6 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
-	ITag,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -74,7 +73,6 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTagsStore } from '@/stores/tags.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -337,6 +335,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
+	function updateCachedWorkflow() {
+		const nodeTypes = getNodeTypes();
+		const nodes = getNodes();
+		const connections = allConnections.value;
+
+		cachedWorkflow = new Workflow({
+			id: workflowId.value,
+			name: workflowName.value,
+			nodes,
+			connections,
+			active: false,
+			nodeTypes,
+			settings: workflowSettings.value,
+			pinData: pinnedWorkflowData.value,
+		});
+	}
+
 	function getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
 		const nodeTypes = getNodeTypes();
 		let cachedWorkflowId: string | undefined = workflowId.value;
@@ -362,7 +377,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function getCurrentWorkflow(copyData?: boolean): Workflow {
 		const nodes = getNodes();
 		const connections = allConnections.value;
-		const cacheKey = JSON.stringify({ nodes, connections, pinData: pinnedWorkflowData.value });
+		const cacheKey = JSON.stringify({ nodes, connections });
 		if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
 			return cachedWorkflow;
 		}
@@ -641,6 +656,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...workflow.value,
 			pinData: pinData || {},
 		};
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', pinData || {});
 	}
@@ -711,6 +727,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		uiStore.stateIsDirty = true;
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
@@ -727,6 +744,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 
 		uiStore.stateIsDirty = true;
+		updateCachedWorkflow();
 
 		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
 	}
@@ -1504,31 +1522,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearNodeExecutionData(node.name);
 	}
 
-	function initializeEditableWorkflow(id: string) {
-		const targetWorkflow = workflowsById.value[id];
-		const tags = (targetWorkflow?.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-
-		addWorkflow(targetWorkflow);
-		setWorkflow(targetWorkflow);
-		setActive(targetWorkflow.active || false);
-		setWorkflowId(targetWorkflow.id);
-		setWorkflowName({ newName: targetWorkflow.name, setStateDirty: false });
-		setWorkflowSettings(targetWorkflow.settings ?? {});
-		setWorkflowPinData(targetWorkflow.pinData ?? {});
-		setWorkflowVersionId(targetWorkflow.versionId);
-		setWorkflowMetadata(targetWorkflow.meta);
-		if (targetWorkflow.usedCredentials) {
-			setUsedCredentials(targetWorkflow.usedCredentials);
-		}
-		setWorkflowTagIds(tagIds || []);
-
-		if (tags.length > 0) {
-			const tagsStore = useTagsStore();
-			tagsStore.upsertTags(tags);
-		}
-	}
-
 	//
 	// End Canvas V2 Functions
 	//
@@ -1669,6 +1662,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
-		initializeEditableWorkflow,
 	};
 });

@@ -89,6 +89,7 @@
 				</div>
 			</div>
 			<NodeDetailsView
+				:workflow-object="currentWorkflowObject"
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
@@ -118,9 +119,6 @@
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
-			</Suspense>
-			<Suspense>
-				<NextStepPopup v-show="isNextStepPopupVisible" @option-selected="onNextStepSelected" />
 			</Suspense>
 			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
 				<span
@@ -224,12 +222,9 @@ import {
 import type { NotificationHandle } from 'element-plus';
 
 import {
-	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CONFIRM,
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	ONBOARDING_PROMPT_TIMEBOX,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
@@ -245,8 +240,6 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
-	TIME,
-	AI_ASSISTANT_LOCAL_STORAGE_KEY,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 } from '@/constants';
 
@@ -268,7 +261,6 @@ import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import NextStepPopup from '@/components/AIAssistantChat/NextStepPopup.vue';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -314,14 +306,12 @@ import type {
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
 	IPushDataExecutionFinished,
-	AIAssistantConnectionInfo,
 	NodeFilterType,
 } from '@/Interface';
 
 import { type RouteLocation, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -331,7 +321,6 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useRootStore } from '@/stores/root.store';
-import { useSegment } from '@/stores/segment.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -340,7 +329,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge } from '@/utils/userUtils';
 import { getConnectionInfo, getNodeViewTab } from '@/utils/canvasUtils';
 import {
 	AddConnectionCommand,
@@ -391,8 +379,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useAIStore } from '@/stores/ai.store';
-import { useStorage } from '@/composables/useStorage';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
@@ -426,7 +412,6 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
-		NextStepPopup,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
@@ -471,18 +456,15 @@ export default defineComponent({
 
 					await this.$router.push(to);
 				} else {
-					this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 					next();
 				}
 			} else if (confirmModal === MODAL_CANCEL) {
-				this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 				next();
 			}
 		} else {
-			this.collaborationStore.notifyWorkflowClosed(this.currentWorkflow);
 			next();
 		}
 	},
@@ -588,12 +570,10 @@ export default defineComponent({
 			useWorkflowsEEStore,
 			useHistoryStore,
 			useExternalSecretsStore,
-			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
 			useExecutionsStore,
 			useProjectsStore,
-			useAIStore,
 			useNpsSurveyStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
@@ -684,7 +664,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -757,16 +737,6 @@ export default defineComponent({
 		},
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
-		},
-		isNextStepPopupVisible(): boolean {
-			return this.aiStore.nextStepPopupConfig.open;
-		},
-		shouldShowNextStepDialog(): boolean {
-			const userHasSeenAIAssistantExperiment =
-				useStorage(AI_ASSISTANT_LOCAL_STORAGE_KEY).value === 'true';
-			const experimentEnabled = this.aiStore.isAssistantExperimentEnabled;
-			const isCloudDeployment = this.settingsStore.isCloudDeployment;
-			return isCloudDeployment && experimentEnabled && !userHasSeenAIAssistantExperiment;
 		},
 		isProductionExecutionPreview(): boolean {
 			return this.nodeHelpers.isProductionExecutionPreview.value;
@@ -917,38 +887,6 @@ export default defineComponent({
 		// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
 		void this.externalHooks.run('nodeView.mount').catch(() => {});
 
-		if (
-			this.currentUser?.personalizationAnswers !== null &&
-			this.settingsStore.onboardingCallPromptEnabled &&
-			this.currentUser &&
-			getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
-		) {
-			const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
-			const promptTimeout =
-				onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
-
-			if (onboardingResponse?.title && onboardingResponse?.description) {
-				setTimeout(async () => {
-					this.showToast({
-						type: 'info',
-						title: onboardingResponse.title,
-						message: onboardingResponse.description,
-						duration: 0,
-						customClass: 'clickable',
-						closeOnClick: true,
-						onClick: () => {
-							this.$telemetry.track('user clicked onboarding toast', {
-								seq_num: onboardingResponse.toast_sequence_number,
-								title: onboardingResponse.title,
-								description: onboardingResponse.description,
-							});
-							this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-						},
-					});
-				}, promptTimeout);
-			}
-		}
-
 		sourceControlEventBus.on('pull', this.onSourceControlPull);
 
 		this.registerCustomAction({
@@ -1035,7 +973,6 @@ export default defineComponent({
 		if (!this.isDemo) {
 			this.pushStore.pushConnect();
 		}
-		this.collaborationStore.initialize();
 	},
 	beforeUnmount() {
 		// Make sure the event listeners get removed again else we
@@ -1049,7 +986,6 @@ export default defineComponent({
 		if (!this.isDemo) {
 			this.pushStore.pushDisconnect();
 		}
-		this.collaborationStore.terminate();
 
 		this.resetWorkspace();
 		this.instance.unbind();
@@ -1255,32 +1191,8 @@ export default defineComponent({
 				}
 			}
 		},
-		async onCanvasAddButtonCLick(event: PointerEvent) {
-			if (event) {
-				if (this.shouldShowNextStepDialog) {
-					const newNodeButton = (event.target as HTMLElement).closest('button');
-					if (newNodeButton) {
-						this.aiStore.latestConnectionInfo = null;
-						this.aiStore.openNextStepPopup(
-							this.$locale.baseText('nextStepPopup.title.firstStep'),
-							newNodeButton,
-						);
-					}
-					return;
-				}
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-				return;
-			}
-		},
-		onNextStepSelected(action: string) {
-			if (action === 'choose') {
-				const lastConnectionInfo = this.aiStore.latestConnectionInfo as NewConnectionInfo;
-				if (lastConnectionInfo === null) {
-					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
-				} else {
-					this.insertNodeAfterSelected(lastConnectionInfo);
-				}
-			}
+		async onCanvasAddButtonCLick() {
+			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
@@ -1506,7 +1418,6 @@ export default defineComponent({
 				this.executionsStore.activeExecution = selectedExecution;
 			}
 			this.canvasStore.stopLoading();
-			this.collaborationStore.notifyWorkflowOpened(workflow.id);
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
 			if (this.deviceSupport.isTouchDevice) {
@@ -1517,7 +1428,6 @@ export default defineComponent({
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 			if (e instanceof MouseEvent && e.button === 1) {
-				this.aiStore.closeNextStepPopup();
 				this.moveCanvasKeyPressed = true;
 			}
 
@@ -1544,7 +1454,6 @@ export default defineComponent({
 		},
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
-			this.aiStore.closeNextStepPopup();
 
 			const ctrlModifier = this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
@@ -2696,7 +2605,6 @@ export default defineComponent({
 				});
 			} else {
 				void this.externalHooks.run('nodeView.addNodeButton', { nodeTypeName });
-				useSegment().trackAddedTrigger(nodeTypeName);
 				const trackProperties: ITelemetryTrackProperties = {
 					node_type: nodeTypeName,
 					node_version: newNodeData.typeVersion,
@@ -2914,7 +2822,7 @@ export default defineComponent({
 
 			return filter;
 		},
-		insertNodeAfterSelected(info: AIAssistantConnectionInfo) {
+		insertNodeAfterSelected(info: NewConnectionInfo) {
 			const type = info.outputType ?? NodeConnectionType.Main;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
@@ -2992,59 +2900,12 @@ export default defineComponent({
 					}
 					return;
 				}
-				// When connection is aborted, we want to show the 'Next step' popup
-				const endpointId = `${connection.parameters.nodeId}-output${connection.parameters.index}`;
-				const endpoint = connection.instance.getEndpoint(endpointId);
-				// First, show node creator if endpoint is not a plus endpoint
-				// or if the AI Assistant experiment doesn't need to be shown to user
-				if (!endpoint?.endpoint?.canvas || !this.shouldShowNextStepDialog) {
-					this.insertNodeAfterSelected({
-						sourceId: connection.parameters.nodeId,
-						index: connection.parameters.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-						connection,
-						outputType: connection.parameters.type,
-					});
-					return;
-				}
-				// Else render the popup
-				const endpointElement: HTMLElement = endpoint.endpoint.canvas;
-				// Use observer to trigger the popup once the endpoint is rendered back again
-				// after connection drag is aborted (so we can get it's position and dimensions)
-				const observer = new MutationObserver((mutations) => {
-					// Find the mutation in which the current endpoint becomes visible again
-					const endpointMutation = mutations.find((mutation) => {
-						const target = mutation.target;
-
-						return (
-							isJSPlumbEndpointElement(target) &&
-							target.jtk?.endpoint?.uuid === endpoint.uuid &&
-							target.style.display === 'block'
-						);
-					});
-					if (endpointMutation) {
-						// When found, display the popup
-						const newConnectionInfo: AIAssistantConnectionInfo = {
-							sourceId: connection.parameters.nodeId,
-							index: connection.parameters.index,
-							eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-							outputType: connection.parameters.type,
-							endpointUuid: endpoint.uuid,
-							stepName: endpoint.__meta.nodeName,
-						};
-						this.aiStore.latestConnectionInfo = newConnectionInfo;
-						this.aiStore.openNextStepPopup(
-							this.$locale.baseText('nextStepPopup.title.nextStep'),
-							endpointElement,
-						);
-						observer.disconnect();
-						return;
-					}
-				});
-				observer.observe(this.$refs.nodeViewRef as HTMLElement, {
-					attributes: true,
-					attributeFilter: ['style'],
-					subtree: true,
+				this.insertNodeAfterSelected({
+					sourceId: connection.parameters.nodeId,
+					index: connection.parameters.index,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+					connection,
+					outputType: connection.parameters.type,
 				});
 			} catch (e) {
 				console.error(e);
@@ -3572,32 +3433,13 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
-			if (this.shouldShowNextStepDialog) {
-				if (endpoint?.__meta) {
-					this.aiStore.latestConnectionInfo = {
-						sourceId: endpoint.__meta.nodeId,
-						index: endpoint.__meta.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: getEndpointScope(endpoint.scope),
-						endpointUuid: endpoint.uuid,
-						stepName: endpoint.__meta.nodeName,
-					};
-					const endpointElement = endpoint.endpoint.canvas;
-					this.aiStore.openNextStepPopup(
-						this.$locale.baseText('nextStepPopup.title.nextStep'),
-						endpointElement,
-					);
-				}
-			} else {
-				this.insertNodeAfterSelected({
-					sourceId: endpoint.__meta.nodeId,
-					index: endpoint.__meta.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: getEndpointScope(endpoint.scope),
-					endpointUuid: endpoint.uuid,
-					stepName: endpoint.__meta.nodeName,
-				});
-			}
+			this.insertNodeAfterSelected({
+				sourceId: endpoint.__meta.nodeId,
+				index: endpoint.__meta.index,
+				eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+				outputType: getEndpointScope(endpoint.scope),
+				endpointUuid: endpoint.uuid,
+			});
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {
 			if (endpoint?.__meta) {
@@ -3682,18 +3524,10 @@ export default defineComponent({
 			if (this.isDemo || window.preventNodeViewBeforeUnload) {
 				return;
 			} else if (this.uiStore.stateIsDirty) {
-				// A bit hacky solution to detecting users leaving the page after prompt:
-				// 1. Notify that workflow is closed straight away
-				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
-				// 2. If user decided to stay on the page we notify that the workflow is opened again
-				this.unloadTimeout = setTimeout(() => {
-					this.collaborationStore.notifyWorkflowOpened(this.workflowsStore.workflowId);
-				}, 5 * TIME.SECOND);
 				e.returnValue = true; //Gecko + IE
 				return true; //Gecko + Webkit, Safari, Chrome etc.
 			} else {
 				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
-				this.collaborationStore.notifyWorkflowClosed(this.workflowsStore.workflowId);
 				return;
 			}
 		},
@@ -4471,6 +4305,13 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentialsForWorkflow(): Promise<void> {
+			// In preview mode, we don't have to load the credentials. We actually
+			// can't load them because they depend on the project the workflow is in,
+			// but in preview mode there is no project.
+			if (this.settingsStore.isPreviewMode) {
+				return;
+			}
+
 			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflow);
 			const workflowId = workflow?.id ?? this.$route.params.name;
 			let options: { workflowId: string } | { projectId: string };

@@ -54,7 +54,10 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 	currentUserId: '',
 });
 
-const $emit = defineEmits(['blur', 'focus']);
+const emit = defineEmits<{
+	blur: [];
+	focus: [];
+}>();
 
 const { t } = useI18n();
 
@@ -102,8 +105,8 @@ const setFilter = (value: string) => {
 	filter.value = value;
 };
 
-const onBlur = () => $emit('blur');
-const onFocus = () => $emit('focus');
+const onBlur = () => emit('blur');
+const onFocus = () => emit('focus');
 
 const getLabel = (user: IUser) =>
 	!user.fullName ? user.email : `${user.fullName} (${user.email})`;

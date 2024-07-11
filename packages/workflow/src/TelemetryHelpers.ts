@@ -15,12 +15,15 @@ import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	MERGE_NODE_TYPE,
 	OPENAI_LANGCHAIN_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './Constants';
 
 export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): INode | undefined {
@@ -206,6 +209,8 @@ export function generateNodesGraph(
 
 		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
+		} else if (node.type === MERGE_NODE_TYPE) {
+			nodeItem.operation = node.parameters.mode as string;
 		} else if (node.type === HTTP_REQUEST_NODE_TYPE && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;
@@ -311,6 +316,13 @@ export function generateNodesGraph(
 			}
 		} else if (node.type === WEBHOOK_NODE_TYPE) {
 			webhookNodeNames.push(node.name);
+		} else if (
+			node.type === EXECUTE_WORKFLOW_NODE_TYPE ||
+			node.type === WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE
+		) {
+			if (node.parameters?.workflowId) {
+				nodeItem.workflow_id = node.parameters?.workflowId as string;
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -397,6 +409,10 @@ export function generateNodesGraph(
 			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
 				nodeItem.prompts =
 					(((node.parameters?.messages as IDataObject) ?? {}).messageValues as IDataObject[]) ?? [];
+			}
+
+			if (node.type === MERGE_NODE_TYPE && node.parameters?.operation === 'combineBySql') {
+				nodeItem.sql = node.parameters?.query as string;
 			}
 		}
 

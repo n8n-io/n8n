@@ -6,6 +6,7 @@ import { useI18n } from '@/composables/useI18n';
 const emit = defineEmits<{
 	delete: [];
 	toggle: [];
+	run: [];
 }>();
 
 const $style = useCssModule();
@@ -20,8 +21,9 @@ const workflowRunning = false;
 // @TODO
 const nodeDisabledTitle = 'Test';
 
-// @TODO
-function executeNode() {}
+function executeNode() {
+	emit('run');
+}
 
 function onToggleNode() {
 	emit('toggle');
@@ -81,12 +83,17 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 
 <style lang="scss" module>
 .canvasNodeToolbar {
-	padding-bottom: var(--spacing-3xs);
+	padding-bottom: var(--spacing-2xs);
 }
 
 .canvasNodeToolbarItems {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	background-color: var(--color-canvas-background);
+
+	:global(.button) {
+		--button-font-color: var(--color-text-light);
+	}
 }
 </style>

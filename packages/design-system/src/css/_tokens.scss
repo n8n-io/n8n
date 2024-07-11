@@ -68,7 +68,6 @@
 	// LangChain
 	--color-lm-chat-messages-background: var(--color-background-base);
 	--color-lm-chat-bot-background: var(--prim-gray-0);
-	--color-lm-chat-bot-color: var(--color-text-dark);
 	--color-lm-chat-user-background: var(--prim-color-alt-a);
 	--color-lm-chat-user-color: var(--color-text-xlight);
 
@@ -86,6 +85,7 @@
 	--color-node-executing-background: var(--color-primary-tint-3);
 	--color-node-executing-other-background: var(--color-primary-tint-3);
 	--color-node-pinned-border: var(--color-secondary);
+	--color-node-running-border: var(--color-primary);
 	--node-type-main-color: var(--prim-gray-490);
 
 	// Sticky

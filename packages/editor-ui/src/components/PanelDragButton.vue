@@ -44,6 +44,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import Draggable from './Draggable.vue';
+import type { XYPosition } from '@/Interface';
 
 export default defineComponent({
 	components: {
@@ -58,7 +59,7 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onDrag(e: { x: number; y: number }) {
+		onDrag(e: XYPosition) {
 			this.$emit('drag', e);
 		},
 		onDragStart() {

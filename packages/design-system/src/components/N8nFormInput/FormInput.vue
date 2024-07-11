@@ -157,12 +157,12 @@ const props = withDefaults(defineProps<Props>(), {
 	tagSize: 'small',
 });
 
-const $emit = defineEmits<{
-	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'update:modelValue', value: unknown): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'enter'): void;
+const emit = defineEmits<{
+	validate: [shouldValidate: boolean];
+	'update:modelValue': [value: Validatable];
+	focus: [];
+	blur: [];
+	enter: [];
 }>();
 
 const state = reactive({
@@ -217,22 +217,22 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 function onBlur() {
 	state.hasBlurred = true;
 	state.isTyping = false;
-	$emit('blur');
+	emit('blur');
 }
 
 function onUpdateModelValue(value: Validatable) {
 	state.isTyping = true;
-	$emit('update:modelValue', value);
+	emit('update:modelValue', value);
 }
 
 function onFocus() {
-	$emit('focus');
+	emit('focus');
 }
 
 function onEnter(event: Event) {
 	event.stopPropagation();
 	event.preventDefault();
-	$emit('enter');
+	emit('enter');
 }
 
 const validationError = computed<string | null>(() => {
@@ -258,14 +258,14 @@ const showErrors = computed(
 );
 
 onMounted(() => {
-	$emit('validate', !validationError.value);
+	emit('validate', !validationError.value);
 
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
 watch(
 	() => validationError.value,
-	(error) => $emit('validate', !error),
+	(error) => emit('validate', !error),
 );
 
 defineExpose({ inputRef });

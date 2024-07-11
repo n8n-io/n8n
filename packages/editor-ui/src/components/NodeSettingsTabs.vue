@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
 	pushRef: '',
 });
 const emit = defineEmits<{
-	(event: 'update:model-value', tab: Tab): void;
+	'update:model-value': [tab: Tab];
 }>();
 
 const externalHooks = useExternalHooks();

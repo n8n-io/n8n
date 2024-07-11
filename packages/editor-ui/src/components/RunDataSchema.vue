@@ -66,7 +66,9 @@ const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { getNodeInputData } = useNodeHelpers();
 const { debounce } = useDebounce();
 
-const emit = defineEmits<{ (event: 'clear:search'): void }>();
+const emit = defineEmits<{
+	'clear:search': [];
+}>();
 
 const nodeSchema = computed(() =>
 	filterSchema(getSchemaForExecutionData(props.data ?? []), props.search),
@@ -418,6 +420,7 @@ watch(
 
 .schema {
 	display: grid;
+	padding-right: var(--spacing-s);
 	grid-template-rows: 1fr;
 
 	&.animated {

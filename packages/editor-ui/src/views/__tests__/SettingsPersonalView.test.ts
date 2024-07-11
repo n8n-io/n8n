@@ -41,7 +41,7 @@ describe('SettingsPersonalView', () => {
 		usersStore = useUsersStore(pinia);
 		uiStore = useUIStore(pinia);
 
-		usersStore.users[currentUser.id] = currentUser;
+		usersStore.usersById[currentUser.id] = currentUser;
 		usersStore.currentUserId = currentUser.id;
 
 		await settingsStore.getSettings();

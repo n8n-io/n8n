@@ -1,6 +1,6 @@
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
@@ -100,4 +100,12 @@ export type QueueRecoverySettings = {
 	 * Time (in milliseconds) to wait before the next cycle.
 	 */
 	waitMs: number;
+};
+
+export type StopResult = {
+	mode: WorkflowExecuteMode;
+	startedAt: Date;
+	stoppedAt?: Date;
+	finished: boolean;
+	status: ExecutionStatus;
 };

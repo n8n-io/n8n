@@ -1,12 +1,12 @@
 <template>
-	<div v-if="uiStore.isModalOpen(name) || keepAlive">
+	<div v-if="uiStore.modalsById[name].open || keepAlive">
 		<slot
 			:modal-name="name"
-			:active="uiStore.isModalActive(name)"
-			:open="uiStore.isModalOpen(name)"
-			:active-id="uiStore.getModalActiveId(name)"
-			:mode="uiStore.getModalMode(name)"
-			:data="uiStore.getModalData(name)"
+			:active="uiStore.isModalActiveById[name]"
+			:open="uiStore.modalsById[name].open"
+			:active-id="uiStore.modalsById[name].activeId"
+			:mode="uiStore.modalsById[name].mode"
+			:data="uiStore.modalsById[name].data"
 		></slot>
 	</div>
 </template>

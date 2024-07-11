@@ -1,5 +1,10 @@
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type {
+	EventNamesAiNodesType,
+	IDataObject,
+	IExecuteFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -10,12 +15,24 @@ export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
-	const metadata = ctx.getNodeParameter('options.metadata.metadataValues', itemIndex, []) as Array<{
-		name: string;
-		value: string;
-	}>;
-	if (metadata.length > 0) {
-		return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+	const options = ctx.getNodeParameter('options', itemIndex);
+
+	if (options.metadata) {
+		const { metadataValues: metadata } = options.metadata as {
+			metadataValues: Array<{
+				name: string;
+				value: string;
+			}>;
+		};
+		if (metadata.length > 0) {
+			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+		}
+	}
+
+	if (options.searchFilterJson) {
+		return ctx.getNodeParameter('options.searchFilterJson', itemIndex, '', {
+			ensureType: 'object',
+		}) as Record<string, never>;
 	}
 
 	return undefined;
@@ -69,7 +86,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -79,7 +96,15 @@ export function getSessionId(
 	const selectorType = ctx.getNodeParameter(selectorKey, itemIndex) as string;
 
 	if (selectorType === autoSelect) {
-		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		// If memory node is used in webhook like node(like chat trigger node), it doesn't have access to evaluateExpression
+		// so we try to extract sessionId from the bodyData
+		if ('getBodyData' in ctx) {
+			const bodyData = ctx.getBodyData() ?? {};
+			sessionId = bodyData.sessionId as string;
+		} else {
+			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		}
+
 		if (sessionId === '' || sessionId === undefined) {
 			throw new NodeOperationError(ctx.getNode(), 'No session ID found', {
 				description:
