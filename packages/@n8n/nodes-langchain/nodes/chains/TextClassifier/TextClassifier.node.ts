@@ -95,6 +95,7 @@ export class TextClassifier implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'Category to add',
+								required: true,
 							},
 							{
 								displayName: 'Description',
