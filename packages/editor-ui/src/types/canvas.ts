@@ -36,6 +36,7 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 
 export const enum CanvasNodeRenderType {
 	Default = 'default',
+	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
@@ -50,6 +51,11 @@ export type CanvasNodeDefaultRender = {
 
 export type CanvasNodeAddNodesRender = {
 	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeStickyNoteRender = {
+	type: CanvasNodeRenderType.StickyNote;
 	options: Record<string, never>;
 };
 
@@ -81,7 +87,7 @@ export interface CanvasNodeData {
 		count: number;
 		visible: boolean;
 	};
-	render: CanvasNodeDefaultRender | CanvasNodeAddNodesRender;
+	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

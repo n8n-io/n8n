@@ -49,8 +49,13 @@ export function useCanvasMapping({
 	const renderTypeByNodeType = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
-				// @TODO Add support for sticky notes here
 				switch (node.type) {
+					case `${CanvasNodeRenderType.StickyNote}`:
+						acc[node.type] = {
+							type: CanvasNodeRenderType.StickyNote,
+							options: {},
+						};
+						break;
 					case `${CanvasNodeRenderType.AddNodes}`:
 						acc[node.type] = {
 							type: CanvasNodeRenderType.AddNodes,
