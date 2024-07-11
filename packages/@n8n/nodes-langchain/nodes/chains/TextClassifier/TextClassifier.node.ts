@@ -65,11 +65,11 @@ export class TextClassifier implements INodeType {
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		properties: [
 			{
-				displayName: 'Input Prompt',
-				name: 'inputPrompt',
+				displayName: 'Text to Classify',
+				name: 'inputText',
 				type: 'string',
 				required: true,
-				default: '={{ $json.text }}',
+				default: '',
 				description: 'Use an expression to reference data in previous nodes or enter static text',
 				typeOptions: {
 					rows: 2,
@@ -200,7 +200,7 @@ ${fallbackPrompt}`,
 			(_) => [],
 		);
 		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
-			const input = this.getNodeParameter('inputPrompt', itemIdx) as string;
+			const input = this.getNodeParameter('inputText', itemIdx) as string;
 			const inputPrompt = new HumanMessage(input);
 			const messages = [
 				await systemPromptTemplate.format({
