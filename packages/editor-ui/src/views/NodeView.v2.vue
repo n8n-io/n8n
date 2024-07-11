@@ -83,6 +83,7 @@ import { getNodeViewTab } from '@/utils/canvasUtils';
 import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
 
 const NodeCreation = defineAsyncComponent(
@@ -614,6 +615,16 @@ const isStopExecutionButtonVisible = computed(
 const isStopWaitingForWebhookButtonVisible = computed(
 	() => isWorkflowRunning.value && isExecutionWaitingForWebhook.value,
 );
+const isClearExecutionButtonVisible = computed(
+	() =>
+		!isReadOnlyRoute.value &&
+		!isReadOnlyEnvironment.value &&
+		!isWorkflowRunning.value &&
+		!allTriggerNodesDisabled.value &&
+		workflowExecutionData.value,
+);
+
+const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 
 async function onRunWorkflow() {
 	trackRunWorkflow();
@@ -670,6 +681,11 @@ async function onStopExecution() {
 
 async function onStopWaitingForWebhook() {
 	await stopWaitingForWebhook();
+}
+
+async function onClearExecutionData() {
+	workflowsStore.workflowExecutionData = null;
+	nodeHelpers.updateNodesExecutionIssues();
 }
 
 function onRunWorkflowButtonMouseEnter() {
@@ -1082,6 +1098,10 @@ onBeforeUnmount(() => {
 			<CanvasStopWaitingForWebhookButton
 				v-if="isStopWaitingForWebhookButtonVisible"
 				@click="onStopWaitingForWebhook"
+			/>
+			<CanvasClearExecutionDataButton
+				v-if="isClearExecutionButtonVisible"
+				@click="onClearExecutionData"
 			/>
 		</div>
 		<Suspense>
