@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
@@ -31,7 +32,7 @@ describe('CanvasNodeRenderer', () => {
 					...createCanvasNodeProvide({
 						data: {
 							render: {
-								type: 'default',
+								type: CanvasNodeRenderType.Default,
 								options: { configuration: true },
 							},
 						},
@@ -50,7 +51,7 @@ describe('CanvasNodeRenderer', () => {
 					...createCanvasNodeProvide({
 						data: {
 							render: {
-								type: 'default',
+								type: CanvasNodeRenderType.Default,
 								options: { configurable: true },
 							},
 						},
