@@ -5,6 +5,8 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { computed, useCssModule } from 'vue';
 import type { CanvasConnectionData } from '@/types';
+import { NodeConnectionType } from 'n8n-workflow';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -19,7 +21,11 @@ const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
 
-const connectionType = computed(() => props.data.source.type);
+const connectionType = computed(() =>
+	isValidNodeConnectionType(props.data.source.type)
+		? props.data.source.type
+		: NodeConnectionType.Main,
+);
 
 const isFocused = computed(() => props.selected || props.hovered);
 
