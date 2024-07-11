@@ -107,6 +107,8 @@ provide(CanvasNodeKey, {
 	nodeType,
 });
 
+const nodeIconSize = computed(() => (data.value.render.options.configuration ? 30 : 40));
+
 function onDelete() {
 	emit('delete', props.id);
 }
@@ -160,7 +162,7 @@ function onActivate() {
 		/>
 
 		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
-			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="isDisabled" />
+			<NodeIcon :node-type="nodeType" :size="nodeIconSize" :shrink="false" :disabled="isDisabled" />
 			<!--			:color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
 	</div>
