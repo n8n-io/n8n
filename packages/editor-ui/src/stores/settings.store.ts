@@ -189,6 +189,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			document.write(INSECURE_CONNECTION_WARNING);
 			return;
 		}
+
+		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');
+		if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+			useUIStore().pushBannerToStack('V1');
+		}
 	};
 
 	const setAllowedModules = (allowedModules: IN8nUISettings['allowedModules']) => {
@@ -350,6 +355,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
 	};
 
+	const reset = () => {
+		settings.value = {} as IN8nUISettings;
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -406,6 +415,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataSuccessExecution,
 		saveManualExecutions,
 		saveDataProgressExecution,
+		reset,
 		testLdapConnection,
 		getLdapConfig,
 		getLdapSynchronizations,
