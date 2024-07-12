@@ -99,12 +99,17 @@ const props = defineProps<Props>();
 				</div>
 			</div>
 		</div>
+		<div v-if="props.messages?.length" :class="$style.inputWrapper">
+			<input placeholder="Enter your response..." />
+			<n8n-icon :class="$style.sendButton" icon="paper-plane" size="large" />
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .container {
 	height: 100%;
+	position: relative;
 }
 
 .header {
@@ -130,6 +135,9 @@ const props = defineProps<Props>();
 	border: var(--border-base);
 	border-top: 0; // todo
 	height: 100%;
+	overflow: scroll;
+	padding-bottom: 250px; // make scrollable at the end
+	position: relative;
 }
 
 .placeholder {
@@ -227,5 +235,32 @@ const props = defineProps<Props>();
 
 .blockBody {
 	padding: 12px;
+}
+
+.inputWrapper {
+	position: absolute;
+	bottom: 0;
+	height: 48px;
+	background-color: var(--color-foreground-xlight);
+	border: var(--border-base);
+	width: 100%;
+
+	display: flex;
+	align-items: center;
+	padding: 12px;
+
+	input {
+		border: none;
+		background-color: transparent;
+		width: 100%;
+		font-size: 12px;
+		outline: none;
+	}
+}
+
+.sendButton {
+	// todo
+	color: #d9dee8;
+	cursor: pointer;
 }
 </style>

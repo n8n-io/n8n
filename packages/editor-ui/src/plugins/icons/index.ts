@@ -158,6 +158,7 @@ import {
 	faProjectDiagram,
 	faStream,
 	faPowerOff,
+	faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark, faVault } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -329,6 +330,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faXmark);
 		addIcon(faDownload);
 		addIcon(faPowerOff);
+		addIcon(faPaperPlane);
 
 		app.component('FontAwesomeIcon', FontAwesomeIcon);
 	},
