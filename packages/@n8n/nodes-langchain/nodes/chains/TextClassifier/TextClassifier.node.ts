@@ -210,7 +210,7 @@ ${fallbackPrompt}`,
 		);
 
 		const returnData: INodeExecutionData[][] = Array.from(
-			{ length: categories.length + (fallback ? 1 : 0) },
+			{ length: categories.length + (fallback === 'other' ? 1 : 0) },
 			(_) => [],
 		);
 		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
@@ -230,7 +230,7 @@ ${fallbackPrompt}`,
 			categories.forEach((cat, idx) => {
 				if (output[cat.category]) returnData[idx].push(items[itemIdx]);
 			});
-			if (fallback && output.fallback) returnData[returnData.length - 1].push(items[itemIdx]);
+			if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(items[itemIdx]);
 		}
 		return returnData;
 	}
