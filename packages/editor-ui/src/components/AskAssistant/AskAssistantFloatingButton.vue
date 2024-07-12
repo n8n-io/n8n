@@ -18,8 +18,7 @@ const shouldShow = computed(() => {
 <style lang="scss" module>
 .container {
 	position: absolute;
-	// todo
-	bottom: 8px;
-	right: 8px;
+	bottom: var(--spacing-s);
+	right: var(--spacing-s);
 }
 </style>
