@@ -10,6 +10,7 @@ import type {
 	INodeUi,
 	ITag,
 	IWorkflowDataUpdate,
+	IWorkflowDb,
 	XYPosition,
 } from '@/Interface';
 import {
@@ -71,6 +72,8 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useRootStore } from '@/stores/root.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -100,6 +103,8 @@ export function useCanvasOperations({
 	const canvasStore = useCanvasStore();
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
+	const nodeCreatorStore = useNodeCreatorStore();
+	const executionsStore = useExecutionsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -971,6 +976,47 @@ export function useCanvasOperations({
 	}
 
 	/**
+	 * Workspace operations
+	 */
+
+	function resetWorkspace() {
+		// Reset node creator
+		nodeCreatorStore.openNodeCreator({ createNodeActive: false });
+		nodeCreatorStore.setShowScrim(false);
+
+		// Make sure that if there is a waiting test-webhook, it gets removed
+		if (workflowsStore.executionWaitingForWebhook) {
+			try {
+				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			} catch (error) {}
+		}
+
+		// Reset editable workflow state
+		workflowsStore.resetWorkflow();
+		workflowsStore.resetState();
+		workflowsStore.currentWorkflowExecutions = [];
+
+		// Reset actions
+		uiStore.removeActiveAction('workflowRunning');
+		uiStore.stateIsDirty = false;
+
+		// Reset executions
+		executionsStore.activeExecution = null;
+
+		// Reset credentials updates
+		nodeHelpers.credentialsUpdated.value = false;
+	}
+
+	async function initializeWorkspace(data: IWorkflowDb) {
+		// Set workflow data
+		await workflowHelpers.initState(data);
+
+		// Add nodes and connections
+		await addNodes(data.nodes);
+		workflowsStore.setConnections(data.connections);
+	}
+
+	/**
 	 * Import operations
 	 */
 
@@ -1323,5 +1369,7 @@ export function useCanvasOperations({
 		isConnectionAllowed,
 		importWorkflowData,
 		fetchWorkflowDataFromUrl,
+		resetWorkspace,
+		initializeWorkspace,
 	};
 }
