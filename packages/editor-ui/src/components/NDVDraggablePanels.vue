@@ -18,6 +18,7 @@ const SIDE_PANELS_MARGIN = 80;
 const MIN_PANEL_WIDTH = 280;
 const PANEL_WIDTH = 320;
 const PANEL_WIDTH_LARGE = 420;
+const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 
 const initialMainPanelWidth: { [key: string]: number } = {
 	regular: MAIN_NODE_PANEL_WIDTH,
@@ -86,6 +87,34 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
 
+watch(windowWidth, (width) => {
+	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
+	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
+
+	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
+	if (isBelowMinWidthMainPanel) {
+		setMainPanelWidth(minRelativeWidth);
+	}
+
+	const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
+	const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
+
+	// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
+	if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
+		setMainPanelWidth(minRelativeWidth);
+		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
+	}
+
+	setPositions(mainPanelDimensions.value.relativeLeft);
+});
+
+const currentNodePaneType = computed((): string => {
+	if (!hasInputSlot.value) return 'inputless';
+	if (!isDraggable) return 'dragless';
+	if (nodeType === null) return 'unknown';
+	return get(this, 'nodeType.parameterPane') || 'regular';
+});
+
 const mainPanelDimensions = computed(
 	(): {
 		relativeWidth: number;
@@ -96,6 +125,29 @@ const mainPanelDimensions = computed(
 	},
 );
 
+const calculatedPositions = computed(
+	(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } => {
+		const hasInput = slots.input !== undefined;
+		const outputPanelRelativeLeft =
+			mainPanelDimensions.value.relativeLeft + mainPanelDimensions.value.relativeWidth;
+
+		const inputPanelRelativeRight = hasInput
+			? 1 - outputPanelRelativeLeft + mainPanelDimensions.value.relativeWidth
+			: 1 - pxToRelativeWidth(SIDE_MARGIN);
+
+		return {
+			inputPanelRelativeRight,
+			outputPanelRelativeLeft,
+		};
+	},
+);
+
+const outputPanelRelativeTranslate = computed((): number => {
+	const panelMinLeft = 1 - pxToRelativeWidth(MIN_PANEL_WIDTH + SIDE_MARGIN);
+	const currentRelativeLeftDelta = calculatedPositions.value.outputPanelRelativeLeft - panelMinLeft;
+	return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
+});
+
 const supportedResizeDirections = computed((): string[] => {
 	const supportedDirections = ['right'];
 
@@ -103,34 +155,21 @@ const supportedResizeDirections = computed((): string[] => {
 	return supportedDirections;
 });
 
-const currentNodePaneType = computed((): string => {
-	if (!hasInputSlot.value) return 'inputless';
-	if (!isDraggable) return 'dragless';
-	if (nodeType === null) return 'unknown';
-	return get(this, 'nodeType.parameterPane') || 'regular';
-});
-
 const hasInputSlot = computed((): boolean => {
 	return slots.input !== undefined;
 });
 
-const inputPanelMargin = computed((): number => {
-	return pxToRelativeWidth(SIDE_PANELS_MARGIN);
-});
-
-const minWindowWidth = computed((): number => {
-	return 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
-});
+const inputPanelMargin = computed(() => pxToRelativeWidth(SIDE_PANELS_MARGIN));
 
 const minimumLeftPosition = computed((): number => {
-	if (windowWidth.value < minWindowWidth.value) return pxToRelativeWidth(1);
+	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	if (!hasInputSlot.value) return pxToRelativeWidth(SIDE_MARGIN);
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
 
 const maximumRightPosition = computed((): number => {
-	if (windowWidth.value < minWindowWidth.value) return pxToRelativeWidth(1);
+	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
@@ -163,28 +202,6 @@ const outputPanelStyles = computed((): { left: string; transform: string } => {
 	};
 });
 
-const calculatedPositions = computed(
-	(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } => {
-		const hasInput = slots.input !== undefined;
-		const outputPanelRelativeLeft =
-			mainPanelDimensions.value.relativeLeft + mainPanelDimensions.value.relativeWidth;
-
-		const inputPanelRelativeRight = hasInput
-			? 1 - outputPanelRelativeLeft + mainPanelDimensions.value.relativeWidth
-			: 1 - pxToRelativeWidth(SIDE_MARGIN);
-
-		return {
-			inputPanelRelativeRight,
-			outputPanelRelativeLeft,
-		};
-	},
-);
-const outputPanelRelativeTranslate = computed((): number => {
-	const panelMinLeft = 1 - pxToRelativeWidth(MIN_PANEL_WIDTH + SIDE_MARGIN);
-	const currentRelativeLeftDelta = calculatedPositions.value.outputPanelRelativeLeft - panelMinLeft;
-	return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
-});
-
 const hasDoubleWidth = computed((): boolean => {
 	return get(this, 'nodeType.parameterPane') === 'wide';
 });
@@ -201,14 +218,14 @@ const fixedPanelWidth = computed((): number => {
 
 const onSwitchSelectedNode = (node: string) => emit('switchSelectedNode', node);
 
-const getInitialLeftPosition = (width: number): number => {
+function getInitialLeftPosition(width: number): number {
 	if (currentNodePaneType.value === 'dragless')
 		return pxToRelativeWidth(SIDE_MARGIN + 1 + fixedPanelWidth.value);
 
 	return hasInputSlot.value ? 0.5 - width / 2 : minimumLeftPosition.value;
-};
+}
 
-const setMainPanelWidth = (relativeWidth?: number): void => {
+function setMainPanelWidth(relativeWidth?: number): void {
 	const mainPanelRelativeWidth =
 		relativeWidth || pxToRelativeWidth(initialMainPanelWidth[currentNodePaneType.value]);
 
@@ -218,9 +235,9 @@ const setMainPanelWidth = (relativeWidth?: number): void => {
 			relativeWidth: mainPanelRelativeWidth,
 		},
 	});
-};
+}
 
-const setPositions = (relativeLeft: number): void => {
+function setPositions(relativeLeft: number): void {
 	const mainPanelRelativeLeft =
 		relativeLeft || 1 - calculatedPositions.value.inputPanelRelativeRight;
 	const mainPanelRelativeRight =
@@ -259,9 +276,9 @@ const setPositions = (relativeLeft: number): void => {
 			relativeRight: mainPanelRelativeRight,
 		},
 	});
-};
+}
 
-const setPositionByName = (position: 'minLeft' | 'maxRight' | 'initial') => {
+function setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
 	const positionByName: Record<string, number> = {
 		minLeft: minimumLeftPosition.value,
 		maxRight: maximumRightPosition.value,
@@ -269,31 +286,31 @@ const setPositionByName = (position: 'minLeft' | 'maxRight' | 'initial') => {
 	};
 
 	setPositions(positionByName[position]);
-};
+}
 
-const pxToRelativeWidth = (px: number): number => {
+function pxToRelativeWidth(px: number): number {
 	return px / windowWidth.value;
-};
+}
 
-const relativeWidthToPx = (relativeWidth: number) => {
+function relativeWidthToPx(relativeWidth: number) {
 	return relativeWidth * windowWidth.value;
-};
+}
 
-const onResizeStart = () => {
+function onResizeStart() {
 	setTotalWidth();
-};
+}
 
-const onResizeEnd = () => {
+function onResizeEnd() {
 	storePositionData();
-};
+}
 
-const onResizeDebounced = (data: { direction: string; x: number; width: number }) => {
+function onResizeDebounced(data: { direction: string; x: number; width: number }) {
 	if (initialized.value) {
 		void callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 	}
-};
+}
 
-const onResize = ({ direction, x, width }: { direction: string; x: number; width: number }) => {
+function onResize({ direction, x, width }: { direction: string; x: number; width: number }) {
 	const relativeDistance = pxToRelativeWidth(x);
 	const relativeWidth = pxToRelativeWidth(width);
 
@@ -303,9 +320,9 @@ const onResize = ({ direction, x, width }: { direction: string; x: number; width
 
 	setMainPanelWidth(relativeWidth);
 	setPositions(direction === 'left' ? relativeDistance : mainPanelDimensions.value.relativeLeft);
-};
+}
 
-const restorePositionData = () => {
+function restorePositionData() {
 	const storedPanelWidthData = useStorage(
 		`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${currentNodePaneType.value}`,
 	).value;
@@ -319,25 +336,25 @@ const restorePositionData = () => {
 		return true;
 	}
 	return false;
-};
+}
 
-const storePositionData = () => {
+function storePositionData() {
 	useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${currentNodePaneType.value}`).value =
 		mainPanelDimensions.value.relativeWidth.toString();
-};
+}
 
-const onDragStart = () => {
+function onDragStart() {
 	isDragging.value = true;
 	emit('dragstart', { position: mainPanelDimensions.value.relativeLeft });
-};
+}
 
-const onDrag = (position: XYPosition) => {
+function onDrag(position: XYPosition) {
 	const relativeLeft = pxToRelativeWidth(position[0]) - mainPanelDimensions.value.relativeWidth / 2;
 
 	setPositions(relativeLeft);
-};
+}
 
-const onDragEnd = () => {
+function onDragEnd() {
 	setTimeout(() => {
 		isDragging.value = false;
 		emit('dragend', {
@@ -346,32 +363,11 @@ const onDragEnd = () => {
 		});
 	}, 0);
 	storePositionData();
-};
+}
 
-const setTotalWidth = () => {
+function setTotalWidth() {
 	windowWidth.value = window.innerWidth;
-};
-
-watch(windowWidth, (width) => {
-	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
-	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
-
-	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
-	if (isBelowMinWidthMainPanel) {
-		setMainPanelWidth(minRelativeWidth);
-	}
-
-	const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
-	const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
-
-	// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
-	if (width > minWindowWidth.value && isBelowMinLeft && isMaxRight) {
-		setMainPanelWidth(minRelativeWidth);
-		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
-	}
-
-	setPositions(mainPanelDimensions.value.relativeLeft);
-});
+}
 </script>
 
 <template>
