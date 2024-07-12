@@ -555,7 +555,7 @@ function onRevertDeleteConnection({ connection }: { connection: [IConnection, IC
  * Import / Export
  */
 
-async function importWorkflowExact(workflowData: IWorkflowDataUpdate) {
+async function importWorkflowExact({ workflow: workflowData }: { workflow: IWorkflowDataUpdate }) {
 	if (!workflowData.nodes || !workflowData.connections) {
 		throw new Error('Invalid workflow object');
 	}
@@ -843,7 +843,7 @@ async function onPostMessageReceived(message: MessageEvent) {
 		const json = JSON.parse(message.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
-				await importWorkflowExact(json.data);
+				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
