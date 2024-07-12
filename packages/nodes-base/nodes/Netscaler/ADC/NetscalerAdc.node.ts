@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -16,6 +17,7 @@ import { certificateDescription } from './CertificateDescription';
 export class NetscalerAdc implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Netscaler ADC',
+		// This prevents a breaking change
 		name: 'citrixAdc',
 		icon: { light: 'file:netscaler.svg', dark: 'file:netscaler.dark.svg' },
 		group: ['output'],
