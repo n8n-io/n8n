@@ -10,6 +10,7 @@ import type {
 } from '../Interfaces';
 import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
+import { ApplicationError } from '../errors/application.error';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -18,7 +19,7 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends Error {
+export class FilterError extends ApplicationError {
 	constructor(
 		message: string,
 		readonly description: string,
