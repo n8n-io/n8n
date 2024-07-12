@@ -230,7 +230,8 @@ ${fallbackPrompt}`,
 			categories.forEach((cat, idx) => {
 				if (output[cat.category]) returnData[idx].push(items[itemIdx]);
 			});
-			if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(items[itemIdx]);
+			if (fallback === 'other' && output.fallback)
+				returnData[returnData.length - 1].push(items[itemIdx]);
 		}
 		return returnData;
 	}
