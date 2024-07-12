@@ -571,6 +571,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 	}
 
 	resetWorkspace();
+	initializeWorkspace(workflowData);
 
 	workflowData.nodes = NodeViewUtils.getFixedNodesList(workflowData.nodes);
 	await addNodes(workflowData.nodes as INodeUi[], workflowData.connections);
