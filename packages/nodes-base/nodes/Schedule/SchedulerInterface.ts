@@ -1,4 +1,4 @@
-export interface IRecurencyRule {
+export interface IRecurrenceRule {
 	activated: boolean;
 	index?: number;
 	intervalSize?: number;

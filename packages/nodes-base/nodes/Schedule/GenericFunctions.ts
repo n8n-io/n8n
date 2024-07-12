@@ -1,22 +1,22 @@
 import type { IDataObject } from 'n8n-workflow';
 import moment from 'moment-timezone';
-import type { IRecurencyRule } from './SchedulerInterface';
+import type { IRecurrenceRule } from './SchedulerInterface';
 
-export function recurencyCheck(
-	recurrency: IRecurencyRule,
-	recurrencyRules: number[],
+export function recurrenceCheck(
+	recurrence: IRecurrenceRule,
+	recurrenceRules: number[],
 	timezone: string,
 ): boolean {
-	const recurrencyRuleIndex = recurrency.index;
-	const intervalSize = recurrency.intervalSize;
-	const typeInterval = recurrency.typeInterval;
+	const recurrenceRuleIndex = recurrence.index;
+	const intervalSize = recurrence.intervalSize;
+	const typeInterval = recurrence.typeInterval;
 
 	const lastExecution =
-		recurrencyRuleIndex !== undefined ? recurrencyRules[recurrencyRuleIndex] : undefined;
+		recurrenceRuleIndex !== undefined ? recurrenceRules[recurrenceRuleIndex] : undefined;
 
 	if (
 		intervalSize &&
-		recurrencyRuleIndex !== undefined &&
+		recurrenceRuleIndex !== undefined &&
 		(typeInterval === 'weeks' || typeInterval === 'undefined')
 	) {
 		if (
@@ -24,31 +24,31 @@ export function recurencyCheck(
 			moment.tz(timezone).week() === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
 			moment.tz(timezone).week() === lastExecution // Trigger on multiple days in the same week
 		) {
-			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
+			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).week();
 			return true;
 		}
-	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
+	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'days') {
 		if (
 			lastExecution === undefined ||
 			moment.tz(timezone).dayOfYear() === (intervalSize + lastExecution) % 365
 		) {
-			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).dayOfYear();
+			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).dayOfYear();
 			return true;
 		}
-	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
+	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'hours') {
 		if (
 			lastExecution === undefined ||
 			moment.tz(timezone).hour() === (intervalSize + lastExecution) % 24
 		) {
-			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
+			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).hour();
 			return true;
 		}
-	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'months') {
+	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'months') {
 		if (
 			lastExecution === undefined ||
 			moment.tz(timezone).month() === (intervalSize + lastExecution) % 12
 		) {
-			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).month();
+			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).month();
 			return true;
 		}
 	} else {
