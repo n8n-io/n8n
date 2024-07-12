@@ -24,3 +24,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Button = Template.bind({});
+
+export const Notifications = Template.bind({});
+Notifications.args = {
+	unreadCount: 1,
+};

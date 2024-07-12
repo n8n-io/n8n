@@ -5,6 +5,8 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 
 const hovering = ref(false);
 
+const props = defineProps<{ unreadCount?: number }>();
+
 const emit = defineEmits<{
 	click: [e: MouseEvent];
 }>();
@@ -27,7 +29,10 @@ function onMouseLeave() {
 		@mouseleave="onMouseLeave"
 		@click="onClick"
 	>
-		<AssistantIcon :size="18" :style="hovering ? 'blank' : 'default'" />
+		<div :class="$style.num" v-if="props.unreadCount">
+			{{ props.unreadCount }}
+		</div>
+		<AssistantIcon v-else :size="18" :style="hovering ? 'blank' : 'default'" />
 		<div v-show="hovering" :class="$style.text">
 			<div>
 				<AssistantText text="Ask Assistant" />
@@ -60,7 +65,28 @@ function onMouseLeave() {
 			rgba(170, 123, 236) 50.5%,
 			rgba(91, 96, 232) 100%
 		);
+
+		> div {
+			background: transparent;
+		}
 	}
+}
+
+.num {
+	color: #fff;
+	background: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142) 0%,
+		rgba(170, 123, 236) 50.5%,
+		rgba(91, 96, 232) 100%
+	);
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
 }
 
 .text {
