@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 
@@ -12,13 +12,17 @@ const emit = defineEmits<{
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { renderOptions } = useCanvasNode();
+const { render } = useCanvasNode();
 
 // @TODO
 const workflowRunning = false;
 
 // @TODO
 const nodeDisabledTitle = 'Test';
+
+const isExecuteNodeVisible = computed(() => {
+	return 'configuration' in render.value.options && !render.value.options.configuration;
+});
 
 function executeNode() {
 	emit('run');
@@ -40,7 +44,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 	<div :class="$style.canvasNodeToolbar">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
-				v-if="!renderOptions.configuration"
+				v-if="isExecuteNodeVisible"
 				data-test-id="execute-node-button"
 				type="tertiary"
 				text

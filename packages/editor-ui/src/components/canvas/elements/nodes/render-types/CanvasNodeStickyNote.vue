@@ -12,11 +12,9 @@ const emit = defineEmits<{
 	move: [position: XYPosition];
 }>();
 
-const { id, renderOptions: unresolvedRenderOptions } = useCanvasNode();
+const { id, render } = useCanvasNode();
 
-const renderOptions = computed(
-	() => unresolvedRenderOptions.value as CanvasNodeStickyNoteRender['options'],
-);
+const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
 /**
  * Resizing

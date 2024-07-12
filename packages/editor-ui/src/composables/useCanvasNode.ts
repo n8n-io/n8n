@@ -59,7 +59,7 @@ export function useCanvasNode() {
 	const runDataCount = computed(() => data.value.runData.count);
 	const hasRunData = computed(() => data.value.runData.visible);
 
-	const renderOptions = computed(() => data.value.render.options);
+	const render = computed(() => data.value.render);
 
 	return {
 		node,
@@ -80,6 +80,6 @@ export function useCanvasNode() {
 		executionStatus,
 		executionWaiting,
 		executionRunning,
-		renderOptions,
+		render,
 	};
 }

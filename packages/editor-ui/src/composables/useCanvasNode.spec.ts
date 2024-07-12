@@ -30,13 +30,14 @@ describe('useCanvasNode', () => {
 		expect(result.executionStatus.value).toBeUndefined();
 		expect(result.executionWaiting.value).toBeUndefined();
 		expect(result.executionRunning.value).toBe(false);
-		expect(result.renderOptions.value).toEqual({});
+		expect(result.render.value).toEqual({ type: CanvasNodeRenderType.Default, options: {} });
 	});
 
 	it('should return node data when node is provided', () => {
 		const node = {
 			data: ref({
 				id: 'node1',
+				name: 'Node 1',
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,
@@ -66,6 +67,7 @@ describe('useCanvasNode', () => {
 		const result = useCanvasNode();
 
 		expect(result.label.value).toBe('Node 1');
+		expect(result.name.value).toBe('Node 1');
 		expect(result.inputs.value).toEqual([{ type: 'main', index: 0 }]);
 		expect(result.outputs.value).toEqual([{ type: 'main', index: 0 }]);
 		expect(result.connections.value).toEqual({ input: { '0': [] }, output: {} });
@@ -80,6 +82,6 @@ describe('useCanvasNode', () => {
 		expect(result.executionStatus.value).toBe('running');
 		expect(result.executionWaiting.value).toBe('waiting');
 		expect(result.executionRunning.value).toBe(true);
-		expect(result.renderOptions.value).toBe(node.data.value.render.options);
+		expect(result.render.value).toBe(node.data.value.render);
 	});
 });
