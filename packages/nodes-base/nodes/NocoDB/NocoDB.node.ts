@@ -238,6 +238,9 @@ export class NocoDB implements INodeType {
 						new Error(`Error while fetching ${version === 3 ? 'bases' : 'projects'}!`, {
 							cause: e,
 						}),
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -258,12 +261,18 @@ export class NocoDB implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							new Error('Error while fetching tables!', { cause: e }),
+							{
+								level: 'warning',
+							},
 						);
 					}
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
 						`No  ${version === 3 ? 'base' : 'project'} selected!`,
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
