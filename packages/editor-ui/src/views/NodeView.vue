@@ -2622,7 +2622,7 @@ export default defineComponent({
 
 			// Automatically deselect all nodes and select the current one and also active
 			// current node. But only if it's added manually by the user (not by undo/redo mechanism)
-			if (trackHistory) {
+			if (trackHistory && !isAutoAdd) {
 				this.deselectAllNodes();
 				setTimeout(() => {
 					this.nodeSelectedByName(
