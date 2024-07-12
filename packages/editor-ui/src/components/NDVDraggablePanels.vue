@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { get } from 'lodash-es';
 import { useStorage } from '@/composables/useStorage';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
