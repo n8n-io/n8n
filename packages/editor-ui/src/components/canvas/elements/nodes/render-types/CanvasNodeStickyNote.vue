@@ -74,7 +74,5 @@ function onEdit(edit: boolean) {
 <style lang="scss" module>
 .sticky {
 	position: relative;
-	width: 100%;
-	height: 100%;
 }
 </style>
