@@ -1,54 +1,47 @@
-import type { IDataObject } from 'n8n-workflow';
 import moment from 'moment-timezone';
-import type { IRecurrenceRule } from './SchedulerInterface';
+import { type CronExpression, randomInt } from 'n8n-workflow';
+import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
 
 export function recurrenceCheck(
-	recurrence: IRecurrenceRule,
+	recurrence: IRecurrenceRule & { activated: true },
 	recurrenceRules: number[],
 	timezone: string,
 ): boolean {
+	const momentTz = moment.tz(timezone);
 	const recurrenceRuleIndex = recurrence.index;
 	const intervalSize = recurrence.intervalSize;
 	const typeInterval = recurrence.typeInterval;
+	if (!intervalSize) return false;
 
 	const lastExecution =
 		recurrenceRuleIndex !== undefined ? recurrenceRules[recurrenceRuleIndex] : undefined;
 
-	if (
-		intervalSize &&
-		recurrenceRuleIndex !== undefined &&
-		(typeInterval === 'weeks' || typeInterval === 'undefined')
-	) {
+	if (recurrenceRuleIndex !== undefined && typeInterval === 'weeks') {
+		const week = momentTz.week();
 		if (
 			lastExecution === undefined || // First time executing this rule
-			moment.tz(timezone).week() === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
-			moment.tz(timezone).week() === lastExecution // Trigger on multiple days in the same week
+			week === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
+			week === lastExecution // Trigger on multiple days in the same week
 		) {
-			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).week();
+			recurrenceRules[recurrenceRuleIndex] = week;
 			return true;
 		}
-	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'days') {
-		if (
-			lastExecution === undefined ||
-			moment.tz(timezone).dayOfYear() === (intervalSize + lastExecution) % 365
-		) {
-			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).dayOfYear();
+	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'days') {
+		const dayOfYear = momentTz.dayOfYear();
+		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
+			recurrenceRules[recurrenceRuleIndex] = dayOfYear;
 			return true;
 		}
-	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'hours') {
-		if (
-			lastExecution === undefined ||
-			moment.tz(timezone).hour() === (intervalSize + lastExecution) % 24
-		) {
-			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).hour();
+	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'hours') {
+		const hour = momentTz.hour();
+		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
+			recurrenceRules[recurrenceRuleIndex] = hour;
 			return true;
 		}
-	} else if (intervalSize && recurrenceRuleIndex !== undefined && typeInterval === 'months') {
-		if (
-			lastExecution === undefined ||
-			moment.tz(timezone).month() === (intervalSize + lastExecution) % 12
-		) {
-			recurrenceRules[recurrenceRuleIndex] = moment.tz(timezone).month();
+	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'months') {
+		const month = momentTz.month();
+		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
+			recurrenceRules[recurrenceRuleIndex] = month;
 			return true;
 		}
 	} else {
@@ -57,37 +50,23 @@ export function recurrenceCheck(
 	return false;
 }
 
-export function convertMonthToUnix(expression: string): string {
-	if (!isNaN(parseInt(expression)) || expression.includes('-') || expression.includes(',')) {
-		let matches = expression.match(/([0-9])+/g) as string[];
-		if (matches) {
-			matches = matches.map((match) =>
-				parseInt(match) !== 0 ? String(parseInt(match) - 1) : match,
-			);
-		}
-		expression = matches?.join(expression.includes('-') ? '-' : ',') || '';
-	}
-	return expression;
-}
+export const toCronExpression = (interval: ScheduleInterval): CronExpression => {
+	if (interval.field === 'cronExpression') return interval.expression;
+	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
+	if (interval.field === 'minutes') return `* */${interval.minutesInterval} * * * *`;
 
-export function convertToUnixFormat(interval: IDataObject) {
-	const expression = (interval.expression as string).split(' ');
-	if (expression.length === 5) {
-		expression[3] = convertMonthToUnix(expression[3]);
-		expression[4] = expression[4].replace('7', '0');
-	} else if (expression.length === 6) {
-		expression[4] = convertMonthToUnix(expression[4]);
-		expression[5] = expression[5].replace('7', '0');
-	}
-	interval.expression = expression.join(' ');
-}
+	const minute = interval.triggerAtMinute ?? randomInt(0, 60);
+	if (interval.field === 'hours') return `* ${minute} */${interval.hoursInterval} * * *`;
 
-export const addFallbackValue = <T>(enabled: boolean, fallback: T) => {
-	if (enabled) {
-		return (value: T) => {
-			if (!value) return fallback;
-			return value;
-		};
+	// Since Cron does not support `*/` for days or weeks, all following expressions trigger more often, but are then filtered by `recurrenceCheck`
+	const hour = interval.triggerAtHour ?? randomInt(0, 24);
+	if (interval.field === 'days') return `* ${minute} ${hour} * * *`;
+	if (interval.field === 'weeks') {
+		const days = interval.triggerAtDay;
+		const daysOfWeek = days.length === 0 ? '*' : days.join(',');
+		return `* ${minute} ${hour} * * ${daysOfWeek}`;
 	}
-	return (value: T) => value;
+
+	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
+	return `* ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };

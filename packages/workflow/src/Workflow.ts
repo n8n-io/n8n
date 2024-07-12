@@ -58,6 +58,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import { getGlobalState } from './GlobalState';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -153,6 +154,10 @@ export class Workflow {
 		this.settings = parameters.settings || {};
 
 		this.expression = new Expression(this);
+	}
+
+	get timezone() {
+		return this.settings.timezone ?? getGlobalState().defaultTimezone;
 	}
 
 	/**

@@ -1,10 +1,10 @@
+import type { CronExpression } from './Interfaces';
 import { randomInt } from './utils';
 
 interface BaseTriggerTime<T extends string> {
 	mode: T;
 }
 
-type CronExpression = string;
 interface CustomTrigger extends BaseTriggerTime<'custom'> {
 	cronExpression: CronExpression;
 }
@@ -66,5 +66,5 @@ export const toCronExpression = (item: TriggerTime): CronExpression => {
 	if (item.mode === 'everyMonth')
 		return `${randomSecond()} ${item.minute} ${item.hour} ${item.dayOfMonth} * *`;
 
-	return item.cronExpression.trim();
+	return item.cronExpression.trim() as CronExpression;
 };
