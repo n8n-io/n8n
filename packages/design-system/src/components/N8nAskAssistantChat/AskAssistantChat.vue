@@ -203,8 +203,11 @@ const props = defineProps<Props>();
 	cursor: pointer;
 }
 
-.quickReplies > * {
-	margin-bottom: 8px;
+.quickReplies {
+	margin-top: 16px;
+	> * {
+		margin-bottom: 8px;
+	}
 }
 
 .quickRepliesTitle {
