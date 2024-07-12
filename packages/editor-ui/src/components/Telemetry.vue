@@ -4,10 +4,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { ITelemetrySettings } from 'n8n-workflow';
 import { useProjectsStore } from '@/stores/projects.store';
-import { computed } from 'vue';
-import { onMounted } from 'vue';
-import { watch } from 'vue';
-import { ref } from 'vue';
+import { computed, onMounted, watch, ref } from 'vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 

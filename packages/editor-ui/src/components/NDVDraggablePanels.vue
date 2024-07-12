@@ -37,7 +37,7 @@ interface Props {
 const { callDebounced } = useDebounce();
 const ndvStore = useNDVStore();
 
-const { isDraggable, hideInputAndOutput, nodeType } = defineProps<Props>();
+const props = defineProps<Props>();
 
 const windowWidth = ref<number>(1);
 const isDragging = ref<boolean>(false);
@@ -110,9 +110,9 @@ watch(windowWidth, (width) => {
 
 const currentNodePaneType = computed((): string => {
 	if (!hasInputSlot.value) return 'inputless';
-	if (!isDraggable) return 'dragless';
-	if (nodeType === null) return 'unknown';
-	return get(this, 'nodeType.parameterPane') || 'regular';
+	if (!props.isDraggable) return 'dragless';
+	if (props.nodeType === null) return 'unknown';
+	return props.nodeType.parameterPane ?? 'regular';
 });
 
 const mainPanelDimensions = computed(
@@ -151,7 +151,7 @@ const outputPanelRelativeTranslate = computed((): number => {
 const supportedResizeDirections = computed((): string[] => {
 	const supportedDirections = ['right'];
 
-	if (isDraggable) supportedDirections.push('left');
+	if (props.isDraggable) supportedDirections.push('left');
 	return supportedDirections;
 });
 
@@ -203,7 +203,7 @@ const outputPanelStyles = computed((): { left: string; transform: string } => {
 });
 
 const hasDoubleWidth = computed((): boolean => {
-	return get(this, 'nodeType.parameterPane') === 'wide';
+	return props.nodeType?.parameterPane === 'wide';
 });
 
 const fixedPanelWidth = computed((): number => {
