@@ -281,7 +281,7 @@ export class AmqpTrigger implements INodeType {
 							'Aborted because no message received within 15 seconds',
 							{
 								description:
-									'This 15 seconds timeout is only set for manually triggered execution using "Test Step", active workflows will listen indefinitely',
+									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
 							},
 						),
 					);
