@@ -158,6 +158,7 @@ import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
 import { SSHClientsManager } from './SSHClientsManager';
+import { binaryToBuffer } from './BinaryData/utils';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -764,6 +765,15 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
+async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
+	const buffer = await binaryToBuffer(body);
+	if (!encoding && body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+	return buffer.toString(encoding);
+}
+
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -837,9 +847,7 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await Container.get(BinaryDataService)
-						.toBuffer(responseData)
-						.then((buffer) => buffer.toString('utf-8'));
+					responseData = await binaryToString(responseData);
 				}
 
 				if (configObject.simple === false) {
@@ -3091,17 +3099,14 @@ const getRequestHelperFunctions = (
 				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
 
 				if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
-					const data = await this.helpers
-						.binaryToBuffer(newResponse.body as Buffer | Readable)
-						.then((body) => body.toString());
 					// Keep the original string version that we can use it to hash if needed
-					contentBody = data;
+					contentBody = await binaryToString(newResponse.body as Buffer | Readable);
 
 					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 					if (responseContentType.includes('application/json')) {
-						newResponse.body = jsonParse(data, { fallbackValue: {} });
+						newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
 					} else {
-						newResponse.body = data;
+						newResponse.body = contentBody;
 					}
 					tempResponseData.__bodyResolved = true;
 					tempResponseData.body = newResponse.body;
@@ -3187,9 +3192,7 @@ const getRequestHelperFunctions = (
 						// now an error manually if the response code is not a success one.
 						let data = tempResponseData.body;
 						if (data instanceof Readable && paginationOptions.binaryResult !== true) {
-							data = await this.helpers
-								.binaryToBuffer(tempResponseData.body as Buffer | Readable)
-								.then((body) => body.toString());
+							data = await binaryToString(data as Buffer | Readable);
 						} else if (typeof data === 'object') {
 							data = JSON.stringify(data);
 						}
@@ -3400,8 +3403,8 @@ const getBinaryHelperFunctions = (
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer: async (body: Buffer | Readable) =>
-		await Container.get(BinaryDataService).toBuffer(body),
+	binaryToBuffer,
+	binaryToString,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -3743,8 +3746,6 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			binaryToBuffer: async (body: Buffer | Readable) =>
-				await Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {

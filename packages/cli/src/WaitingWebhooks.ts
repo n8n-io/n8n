@@ -57,6 +57,10 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
+		if (execution.status === 'running') {
+			throw new ConflictError(`The execution "${executionId} is running already.`);
+		}
+
 		if (execution.finished || execution.data.resultData.error) {
 			throw new ConflictError(`The execution "${executionId} has finished already.`);
 		}

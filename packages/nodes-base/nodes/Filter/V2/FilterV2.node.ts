@@ -6,6 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 
 export class FilterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -79,12 +80,8 @@ export class FilterV2 implements INodeType {
 						extractValue: true,
 					}) as boolean;
 				} catch (error) {
-					if (!options.looseTypeValidation) {
-						set(
-							error,
-							'description',
-							"Try changing the type of comparison. Alternatively you can enable 'Less Strict Type Validation' in the options.",
-						);
+					if (!options.looseTypeValidation && !error.description) {
+						set(error, 'description', ENABLE_LESS_STRICT_TYPE_VALIDATION);
 					}
 					set(error, 'context.itemIndex', itemIndex);
 					set(error, 'node', this.getNode());

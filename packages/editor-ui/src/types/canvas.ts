@@ -10,8 +10,6 @@ import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 
-export type CanvasElementType = 'node' | 'note';
-
 export type CanvasConnectionPortType = ConnectionTypes;
 
 export const enum CanvasConnectionMode {
@@ -36,7 +34,26 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 	offset?: { top?: string; left?: string };
 }
 
-export interface CanvasElementData {
+export const enum CanvasNodeRenderType {
+	Default = 'default',
+	AddNodes = 'n8n-nodes-internal.addNodes',
+}
+
+export type CanvasNodeDefaultRender = {
+	type: CanvasNodeRenderType.Default;
+	options: Partial<{
+		configurable: boolean;
+		configuration: boolean;
+		trigger: boolean;
+	}>;
+};
+
+export type CanvasNodeAddNodesRender = {
+	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
+export interface CanvasNodeData {
 	id: INodeUi['id'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
@@ -64,13 +81,10 @@ export interface CanvasElementData {
 		count: number;
 		visible: boolean;
 	};
-	render: {
-		type: 'default';
-		options: Record<string, unknown>;
-	};
+	render: CanvasNodeDefaultRender | CanvasNodeAddNodesRender;
 }
 
-export type CanvasElement = Node<CanvasElementData>;
+export type CanvasNode = Node<CanvasNodeData>;
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
@@ -91,7 +105,7 @@ export interface CanvasPlugin {
 
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
-	data: Ref<CanvasElementData>;
+	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
 	nodeType: ComputedRef<INodeTypeDescription | null>;

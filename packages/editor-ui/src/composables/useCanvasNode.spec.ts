@@ -1,6 +1,7 @@
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { inject, ref } from 'vue';
 import type { CanvasNodeInjectionData } from '../types';
+import { CanvasNodeRenderType } from '../types';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -47,7 +48,7 @@ describe('useCanvasNode', () => {
 				runData: { count: 1, visible: true },
 				pinnedData: { count: 1, visible: true },
 				render: {
-					type: 'default',
+					type: CanvasNodeRenderType.Default,
 					options: {
 						configurable: false,
 						configuration: false,
