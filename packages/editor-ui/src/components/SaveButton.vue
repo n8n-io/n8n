@@ -8,23 +8,25 @@ const props = withDefaults(
 		saved: boolean;
 		isSaving: boolean;
 		disabled: boolean;
-		saveLabel: boolean;
-		savingLabel: string;
-		savedLabel: string;
 		type: string;
 		withShortcut: boolean;
-		shortcutTooltip: string;
+		shortcutTooltip?: string;
+		savingLabel?: string;
 	}>(),
 	{
-		default: 'primary',
+		isSaving: false,
+		type: 'primary',
 		withShortcut: false,
+		disabled: false,
 	},
 );
 
 const i18n = useI18n();
 
 const saveButtonLabel = computed(() => {
-	return props.isSaving ? i18n.baseText('saveButton.saving') : i18n.baseText('saveButton.save');
+	return props.isSaving
+		? props.savingLabel ?? i18n.baseText('saveButton.saving')
+		: i18n.baseText('saveButton.save');
 });
 
 const shortcutTooltipLabel = computed(() => {
