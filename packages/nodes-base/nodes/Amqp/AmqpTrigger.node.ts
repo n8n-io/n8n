@@ -278,7 +278,7 @@ export class AmqpTrigger implements INodeType {
 					reject(
 						new NodeOperationError(
 							this.getNode(),
-							'Stopped because no message was received within 15 seconds',
+							'Aborted because no message received within 15 seconds',
 							{
 								description:
 									'This 15 seconds timeout is only set for manually triggered execution using "Test Step", active workflows will listen indefinitely',
