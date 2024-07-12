@@ -9,6 +9,15 @@ import { pineconeIndexSearch } from '../shared/methods/listSearch';
 
 const sharedFields: INodeProperties[] = [pineconeIndexRLC];
 
+const pineconeNamespaceField: INodeProperties = {
+	displayName: 'Pinecone Namespace',
+	name: 'pineconeNamespace',
+	type: 'string',
+	description:
+		'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+	default: '',
+};
+
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -16,17 +25,7 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [
-			{
-				displayName: 'Pinecone Namespace',
-				name: 'pineconeNamespace',
-				type: 'string',
-				description:
-					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
-				default: '',
-			},
-			metadataFilterField,
-		],
+		options: [pineconeNamespaceField, metadataFilterField],
 	},
 ];
 
@@ -45,17 +44,22 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear the namespace before inserting new data',
 			},
-			{
-				displayName: 'Pinecone Namespace',
-				name: 'pineconeNamespace',
-				type: 'string',
-				description:
-					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
-				default: '',
-			},
+			pineconeNamespaceField,
 		],
 	},
 ];
+
+const updateFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [pineconeNamespaceField, metadataFilterField],
+	},
+];
+
 export const VectorStorePinecone = createVectorStoreNode({
 	meta: {
 		displayName: 'Pinecone Vector Store',
@@ -75,6 +79,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
+	updateFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
@@ -138,4 +143,50 @@ export const VectorStorePinecone = createVectorStoreNode({
 			pineconeIndex,
 		});
 	},
+	async updateVectorStore() {
+		return;
+	},
+	// async updateVectorStore(context, embeddings, document, itemIndex) {
+	// 	const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
+	// 		extractValue: true,
+	// 	}) as string;
+	//
+	// 	const documentId = context.getNodeParameter('id', itemIndex, '', {
+	// 		extractValue: true,
+	// 	}) as string;
+	//
+	// 	if (!documentId) {
+	// 		throw new NodeOperationError(context.getNode(), 'ID is required');
+	// 	}
+	//
+	// 	const credentials = await context.getCredentials('pineconeApi');
+	//
+	// 	const client = new Pinecone({
+	// 		apiKey: credentials.apiKey as string,
+	// 	});
+	//
+	// 	const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
+	//
+	// 	if (!indexes.includes(index)) {
+	// 		throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
+	// 			itemIndex,
+	// 			description: 'Please check that the index exists in your vector store',
+	// 		});
+	// 	}
+	//
+	// 	const pineconeIndex = client.Index(index);
+	//
+	// 	const text = document.pageContent;
+	//
+	// 	console.log('UPDATE WILL HAPPEN HERE');
+	//
+	// 	const config: PineconeStoreParams = {
+	// 		pineconeIndex,
+	// 	};
+	// 	const vectorStore = await PineconeStore.fromExistingIndex(embeddings, config);
+	//
+	// 	await vectorStore.addVectors(await embeddings.embedDocuments([text]), [document], {
+	// 		ids: [documentId],
+	// 	});
+	// },
 });
