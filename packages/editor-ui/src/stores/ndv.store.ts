@@ -151,12 +151,25 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			const parentNodes = workflow.getParentNodes(this.activeNode.name, NodeConnectionType.Main, 1);
 			return parentNodes.includes(inputNodeName);
 		},
-		hoveringItemNumber(): number {
-			return (this.hoveringItem?.itemIndex ?? 0) + 1;
-		},
 		getHoveringItem(): TargetItem | null {
 			if (this.isInputParentOfActiveNode) {
 				return this.hoveringItem;
+			}
+
+			return null;
+		},
+		expressionTargetItem(): TargetItem | null {
+			if (this.getHoveringItem) {
+				return this.getHoveringItem;
+			}
+
+			if (this.expressionOutputItemIndex && this.ndvInputNodeName) {
+				return {
+					nodeName: this.ndvInputNodeName,
+					runIndex: this.ndvInputRunIndex ?? 0,
+					outputIndex: this.ndvInputBranchIndex ?? 0,
+					itemIndex: this.expressionOutputItemIndex,
+				};
 			}
 
 			return null;

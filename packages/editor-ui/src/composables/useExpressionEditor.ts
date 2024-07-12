@@ -330,22 +330,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => {
-		if (ndvStore.hoveringItem) {
-			return ndvStore.hoveringItem;
-		}
-
-		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
-			return {
-				nodeName: ndvStore.ndvInputNodeName,
-				runIndex: ndvStore.ndvInputRunIndex ?? 0,
-				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
-				itemIndex: ndvStore.expressionOutputItemIndex,
-			};
-		}
-
-		return null;
-	});
+	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');
