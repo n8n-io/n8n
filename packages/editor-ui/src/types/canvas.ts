@@ -56,11 +56,17 @@ export type CanvasNodeAddNodesRender = {
 
 export type CanvasNodeStickyNoteRender = {
 	type: CanvasNodeRenderType.StickyNote;
-	options: Record<string, never>;
+	options: Partial<{
+		width: number;
+		height: number;
+		color: number;
+		content: string;
+	}>;
 };
 
 export interface CanvasNodeData {
 	id: INodeUi['id'];
+	name: INodeUi['name'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];

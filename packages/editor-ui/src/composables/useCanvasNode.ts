@@ -14,6 +14,7 @@ export function useCanvasNode() {
 		() =>
 			node?.data.value ?? {
 				id: '',
+				name: '',
 				type: '',
 				typeVersion: 1,
 				disabled: false,
@@ -33,8 +34,10 @@ export function useCanvasNode() {
 			},
 	);
 
+	const id = computed(() => node?.id.value ?? '');
 	const label = computed(() => node?.label.value ?? '');
 
+	const name = computed(() => data.value.name);
 	const inputs = computed(() => data.value.inputs);
 	const outputs = computed(() => data.value.outputs);
 	const connections = computed(() => data.value.connections);
@@ -60,6 +63,8 @@ export function useCanvasNode() {
 
 	return {
 		node,
+		id,
+		name,
 		label,
 		inputs,
 		outputs,

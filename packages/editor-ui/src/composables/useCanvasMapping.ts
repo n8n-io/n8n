@@ -13,7 +13,10 @@ import type {
 	CanvasConnectionData,
 	CanvasConnectionPort,
 	CanvasNode,
+	CanvasNodeAddNodesRender,
 	CanvasNodeData,
+	CanvasNodeDefaultRender,
+	CanvasNodeStickyNoteRender,
 } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
@@ -46,35 +49,49 @@ export function useCanvasMapping({
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
+	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
+		console.log(node);
+		return {
+			type: CanvasNodeRenderType.StickyNote,
+			options: {
+				width: node.parameters.width as number,
+				height: node.parameters.height as number,
+				color: node.parameters.color as number,
+				content: node.parameters.content as string,
+			},
+		};
+	}
+
+	function createAddNodesRenderType(): CanvasNodeAddNodesRender {
+		return {
+			type: CanvasNodeRenderType.AddNodes,
+			options: {},
+		};
+	}
+
+	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		return {
+			type: CanvasNodeRenderType.Default,
+			options: {
+				trigger: nodeTypesStore.isTriggerNode(node.type),
+				configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
+				configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+			},
+		};
+	}
+
 	const renderTypeByNodeType = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
 				switch (node.type) {
 					case `${CanvasNodeRenderType.StickyNote}`:
-						acc[node.type] = {
-							type: CanvasNodeRenderType.StickyNote,
-							options: {},
-						};
+						acc[node.type] = createStickyNoteRenderType(node);
 						break;
 					case `${CanvasNodeRenderType.AddNodes}`:
-						acc[node.type] = {
-							type: CanvasNodeRenderType.AddNodes,
-							options: {},
-						};
+						acc[node.type] = createAddNodesRenderType();
 						break;
 					default:
-						acc[node.type] = {
-							type: CanvasNodeRenderType.Default,
-							options: {
-								trigger: nodeTypesStore.isTriggerNode(node.type),
-								configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
-								configurable: nodeTypesStore.isConfigurableNode(
-									workflowObject.value,
-									node,
-									node.type,
-								),
-							},
-						};
+						acc[node.type] = createDefaultNodeRenderType(node);
 				}
 
 				return acc;
@@ -226,6 +243,7 @@ export function useCanvasMapping({
 
 			const data: CanvasNodeData = {
 				id: node.id,
+				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: !!node.disabled,

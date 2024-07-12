@@ -17,6 +17,7 @@ const emit = defineEmits<{
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
+	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
@@ -58,8 +59,12 @@ onUnmounted(() => {
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
-		emit('update:node:position', node.id, node.position);
+		onUpdateNodePosition(node.id, node.position);
 	});
+}
+
+function onUpdateNodePosition(id: string, position: XYPosition) {
+	emit('update:node:position', id, position);
 }
 
 function onSelectionDragStop(e: NodeDragEvent) {
@@ -127,6 +132,11 @@ function onRunNode(id: string) {
 	emit('run:node', id);
 }
 
+function onUpdateNode(id: string, parameters: Record<string, unknown>) {
+	console.log('update node', id, parameters);
+	emit('update:node:parameters', id, parameters);
+}
+
 function onKeyDown(e: KeyboardEvent) {
 	if (e.key === 'Delete') {
 		getSelectedEdges.value.forEach(onDeleteConnection);
@@ -183,6 +193,8 @@ function onClickPane(event: MouseEvent) {
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
+				@update="onUpdateNode"
+				@move="onUpdateNodePosition"
 			/>
 		</template>
 

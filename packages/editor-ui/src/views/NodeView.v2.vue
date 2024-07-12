@@ -137,6 +137,7 @@ const {
 	setNodeActive,
 	setNodeSelected,
 	toggleNodeDisabled,
+	setNodeParameters,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -478,7 +479,6 @@ function onSetNodeSelected(id?: string) {
 }
 
 function onRenameNode(parameterData: IUpdateInformation) {
-	// The name changed. Do not forget to change the connections as well
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
 	}
@@ -492,6 +492,11 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	console.log('onUpdateNodeParameters', id, parameters);
+	setNodeParameters(id, parameters);
 }
 
 /**
@@ -1058,6 +1063,7 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@update:node:parameters="onUpdateNodeParameters"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
