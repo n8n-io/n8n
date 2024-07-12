@@ -4,6 +4,7 @@ import { enterpriseMiddleware } from '@/utils/rbac/middleware/enterprise';
 import { type RouteLocationNormalized } from 'vue-router';
 import type { EnterprisePermissionOptions } from '@/types/rbac';
 import { createPinia, setActivePinia } from 'pinia';
+import { defaultSettings } from '@/__tests__/defaults';
 
 describe('Middleware', () => {
 	beforeEach(() => {
@@ -12,10 +13,10 @@ describe('Middleware', () => {
 
 	describe('enterprise', () => {
 		it('should redirect to homepage if none of the required features are enabled in allOf mode', async () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
-				[EnterpriseEditionFeature.Saml]: false,
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: false,
+				[EnterpriseEditionFeature.Saml]: false,
 			};
 
 			const nextMock = vi.fn();
@@ -35,10 +36,10 @@ describe('Middleware', () => {
 		});
 
 		it('should allow navigation if all of the required features are enabled in allOf mode', async () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
-				[EnterpriseEditionFeature.Saml]: true,
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: true,
+				[EnterpriseEditionFeature.Saml]: true,
 			};
 
 			const nextMock = vi.fn();
@@ -58,8 +59,8 @@ describe('Middleware', () => {
 		});
 
 		it('should redirect to homepage if none of the required features are enabled in oneOf mode', async () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Saml]: false,
 			};
 
@@ -80,10 +81,10 @@ describe('Middleware', () => {
 		});
 
 		it('should allow navigation if at least one of the required features is enabled in oneOf mode', async () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
-				[EnterpriseEditionFeature.Saml]: false,
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: true,
+				[EnterpriseEditionFeature.Saml]: false,
 			};
 
 			const nextMock = vi.fn();

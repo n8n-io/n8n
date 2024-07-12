@@ -23,7 +23,7 @@ export const defaultSettings: IN8nUISettings = {
 		logStreaming: false,
 		debugInEditor: false,
 		advancedExecutionFilters: false,
-		variables: true,
+		variables: false,
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,

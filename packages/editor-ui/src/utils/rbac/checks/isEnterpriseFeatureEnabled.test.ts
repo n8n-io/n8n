@@ -2,6 +2,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { isEnterpriseFeatureEnabled } from '@/utils/rbac/checks/isEnterpriseFeatureEnabled';
 import { EnterpriseEditionFeature } from '@/constants';
 import { createPinia, setActivePinia } from 'pinia';
+import { defaultSettings } from '@/__tests__/defaults';
 
 describe('Checks', () => {
 	beforeEach(() => {
@@ -14,8 +15,8 @@ describe('Checks', () => {
 		});
 
 		it('should return true if feature is enabled', () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Saml]: true,
 			};
 
@@ -27,8 +28,8 @@ describe('Checks', () => {
 		});
 
 		it('should return true if all features are enabled in allOf mode', () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: true,
 				[EnterpriseEditionFeature.Saml]: true,
 			};
@@ -42,8 +43,8 @@ describe('Checks', () => {
 		});
 
 		it('should return false if any feature is not enabled in allOf mode', () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: true,
 				[EnterpriseEditionFeature.Saml]: false,
 			};
@@ -57,8 +58,8 @@ describe('Checks', () => {
 		});
 
 		it('should return true if any feature is enabled in oneOf mode', () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: true,
 				[EnterpriseEditionFeature.Saml]: false,
 			};
@@ -72,8 +73,8 @@ describe('Checks', () => {
 		});
 
 		it('should return false if no features are enabled in anyOf mode', () => {
-			//@ts-expect-error
 			useSettingsStore().settings.enterprise = {
+				...defaultSettings.enterprise,
 				[EnterpriseEditionFeature.Ldap]: false,
 				[EnterpriseEditionFeature.Saml]: false,
 			};

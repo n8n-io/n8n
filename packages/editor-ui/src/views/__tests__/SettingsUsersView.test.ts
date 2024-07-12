@@ -14,6 +14,7 @@ import { useRBACStore } from '@/stores/rbac.store';
 import { DELETE_USER_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import * as usersApi from '@/api/users';
 import { useSettingsStore } from '@/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 const wrapperComponentWithModal = {
 	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
@@ -48,9 +49,9 @@ describe('SettingsUsersView', () => {
 		usersStore = useUsersStore();
 		rbacStore = useRBACStore();
 
-		//@ts-expect-error
 		useSettingsStore().settings.enterprise = {
-			[EnterpriseEditionFeature.AdvancedPermissions]: true,
+			...defaultSettings.enterprise,
+			[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
 		};
 
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
