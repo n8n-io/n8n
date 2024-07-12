@@ -217,7 +217,7 @@ const WorkflowsView = defineComponent({
 			return this.workflowsStore.allWorkflows;
 		},
 		isShareable(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [

@@ -3,17 +3,20 @@ import { VIEWS, EnterpriseEditionFeature } from '@/constants';
 import { enterpriseMiddleware } from '@/utils/rbac/middleware/enterprise';
 import { type RouteLocationNormalized } from 'vue-router';
 import type { EnterprisePermissionOptions } from '@/types/rbac';
-
-vi.mock('@/stores/settings.store', () => ({
-	useSettingsStore: vi.fn(),
-}));
+import { createPinia, setActivePinia } from 'pinia';
 
 describe('Middleware', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	describe('enterprise', () => {
 		it('should redirect to homepage if none of the required features are enabled in allOf mode', async () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: (_) => false,
-			} as ReturnType<typeof useSettingsStore>);
+			//@ts-expect-error
+			useSettingsStore().settings.enterprise = {
+				[EnterpriseEditionFeature.Saml]: false,
+				[EnterpriseEditionFeature.Ldap]: false,
+			};
 
 			const nextMock = vi.fn();
 			const options: EnterprisePermissionOptions = {
@@ -32,10 +35,11 @@ describe('Middleware', () => {
 		});
 
 		it('should allow navigation if all of the required features are enabled in allOf mode', async () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: (feature) =>
-					[EnterpriseEditionFeature.Saml, EnterpriseEditionFeature.Ldap].includes(feature),
-			} as ReturnType<typeof useSettingsStore>);
+			//@ts-expect-error
+			useSettingsStore().settings.enterprise = {
+				[EnterpriseEditionFeature.Saml]: true,
+				[EnterpriseEditionFeature.Ldap]: true,
+			};
 
 			const nextMock = vi.fn();
 			const options: EnterprisePermissionOptions = {
@@ -54,9 +58,10 @@ describe('Middleware', () => {
 		});
 
 		it('should redirect to homepage if none of the required features are enabled in oneOf mode', async () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: (_) => false,
-			} as ReturnType<typeof useSettingsStore>);
+			//@ts-expect-error
+			useSettingsStore().settings.enterprise = {
+				[EnterpriseEditionFeature.Saml]: false,
+			};
 
 			const nextMock = vi.fn();
 			const options: EnterprisePermissionOptions = {
@@ -75,9 +80,11 @@ describe('Middleware', () => {
 		});
 
 		it('should allow navigation if at least one of the required features is enabled in oneOf mode', async () => {
-			vi.mocked(useSettingsStore).mockReturnValue({
-				isEnterpriseFeatureEnabled: (feature) => feature === EnterpriseEditionFeature.Saml,
-			} as ReturnType<typeof useSettingsStore>);
+			//@ts-expect-error
+			useSettingsStore().settings.enterprise = {
+				[EnterpriseEditionFeature.Saml]: false,
+				[EnterpriseEditionFeature.Ldap]: true,
+			};
 
 			const nextMock = vi.fn();
 			const options: EnterprisePermissionOptions = {

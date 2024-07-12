@@ -161,9 +161,8 @@ export default defineComponent({
 			});
 		},
 		async initialize() {
-			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.Variables,
-			);
+			const isVarsEnabled =
+				useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(

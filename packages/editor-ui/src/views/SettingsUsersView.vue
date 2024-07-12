@@ -108,7 +108,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useUsageStore, useSSOStore),
 		isSharingEnabled() {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		showUMSetupWarning() {
 			return hasPermission(['defaultUser']);
@@ -160,9 +160,9 @@ export default defineComponent({
 			];
 		},
 		isAdvancedPermissionsEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.AdvancedPermissions,
-			);
+			return this.settingsStore.isEnterpriseFeatureEnabled[
+				EnterpriseEditionFeature.AdvancedPermissions
+			];
 		},
 		userRoles(): Array<{ value: IRole; label: string; disabled?: boolean }> {
 			return [

@@ -833,10 +833,10 @@ export default defineComponent({
 		const loadPromises = (() => {
 			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
 			const promises = [this.loadActiveWorkflows(), this.loadCredentialTypes()];
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 				promises.push(this.loadVariables());
 			}
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 				promises.push(this.loadSecrets());
 			}
 			return promises;
@@ -4208,7 +4208,7 @@ export default defineComponent({
 
 				if (
 					nodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+					this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					nodeData.credentials = Object.fromEntries(
