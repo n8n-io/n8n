@@ -5,14 +5,13 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import AssignmentCollection from '../AssignmentCollection.vue';
-import { defaultSettings } from '@/__tests__/defaults';
 import { STORES } from '@/constants';
-import { merge } from 'lodash-es';
 import { createPinia, setActivePinia } from 'pinia';
+import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
-		initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
+		initialState: { [STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE },
 	}),
 	props: {
 		path: 'parameters.fields',
