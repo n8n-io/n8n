@@ -13,7 +13,6 @@ import { createProjectListItem } from '@/__tests__/data/projects';
 import { useRBACStore } from '@/stores/rbac.store';
 import { DELETE_USER_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import * as usersApi from '@/api/users';
-import { before } from 'lodash-es';
 import { useSettingsStore } from '@/stores/settings.store';
 
 const wrapperComponentWithModal = {
