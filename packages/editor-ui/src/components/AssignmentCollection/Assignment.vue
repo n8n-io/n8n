@@ -88,7 +88,7 @@ const hint = computed(() => {
 			undefined,
 			ndvStore.isInputParentOfActiveNode
 				? {
-						targetItem: ndvStore.hoveringItem ?? undefined,
+						targetItem: ndvStore.expressionTargetItem ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
@@ -104,9 +104,7 @@ const hint = computed(() => {
 	return stringifyExpressionResult(result);
 });
 
-const highlightHint = computed(() =>
-	Boolean(hint.value && ndvStore.hoveringItem && ndvStore.isInputParentOfActiveNode),
-);
+const highlightHint = computed(() => Boolean(hint.value && ndvStore.getHoveringItem));
 
 const valueIsExpression = computed(() => {
 	const { value } = assignment.value;
