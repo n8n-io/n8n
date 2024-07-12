@@ -1,4 +1,3 @@
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n } from '@/plugins/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -48,6 +47,7 @@ import {
 	isSplitInBatchesAbsent,
 	longestCommonPrefix,
 	prefixMatch,
+	resolveAutocompleteExpression,
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
@@ -83,7 +83,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		let resolved: Resolved;
 
 		try {
-			resolved = resolveParameter(`={{ ${base} }}`);
+			resolved = resolveAutocompleteExpression(`={{ ${base} }}`);
 		} catch (error) {
 			return null;
 		}
@@ -98,7 +98,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	}
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
+		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
 	let from = word.to - tail.length;
@@ -126,7 +126,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 function explicitDataTypeOptions(expression: string): Completion[] {
 	try {
-		const resolved = resolveParameter(`={{ ${expression} }}`);
+		const resolved = resolveAutocompleteExpression(`={{ ${expression} }}`);
 		return datatypeOptions({
 			resolved,
 			base: expression,

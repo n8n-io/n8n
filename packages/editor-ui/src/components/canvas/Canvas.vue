@@ -8,6 +8,8 @@ import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
 import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 const $style = useCssModule();
 
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 	'create:connection': [connection: Connection];
 	'create:connection:end': [connection: Connection];
 	'create:connection:cancelled': [handle: ConnectStartEvent];
+	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 }>();
 
@@ -34,28 +37,24 @@ const props = withDefaults(
 		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
+		eventBus?: EventBus;
 	}>(),
 	{
 		id: 'canvas',
 		nodes: () => [],
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
+		eventBus: () => createEventBus(),
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
+const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project } = useVueFlow({
 	id: props.id,
 });
 
-const hoveredEdges = ref<Record<string, boolean>>({});
-
-onMounted(() => {
-	document.addEventListener('keydown', onKeyDown);
-});
-
-onUnmounted(() => {
-	document.removeEventListener('keydown', onKeyDown);
-});
+/**
+ * Nodes
+ */
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
@@ -86,6 +85,10 @@ function onToggleNodeEnabled(id: string) {
 
 function onDeleteNode(id: string) {
 	emit('delete:node', id);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	emit('update:node:parameters', id, parameters);
 }
 
 /**
@@ -128,21 +131,15 @@ function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
 
-function onRunNode(id: string) {
-	emit('run:node', id);
+function onClickConnectionAdd(connection: Connection) {
+	emit('click:connection:add', connection);
 }
 
-function onUpdateNode(id: string, parameters: Record<string, unknown>) {
-	console.log('update node', id, parameters);
-	emit('update:node:parameters', id, parameters);
-}
+/**
+ * Connection hover
+ */
 
-function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'Delete') {
-		getSelectedEdges.value.forEach(onDeleteConnection);
-		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
-	}
-}
+const hoveredEdges = ref<Record<string, boolean>>({});
 
 function onMouseEnterEdge(event: EdgeMouseEvent) {
 	hoveredEdges.value[event.edge.id] = true;
@@ -151,6 +148,29 @@ function onMouseEnterEdge(event: EdgeMouseEvent) {
 function onMouseLeaveEdge(event: EdgeMouseEvent) {
 	hoveredEdges.value[event.edge.id] = false;
 }
+
+/**
+ * Executions
+ */
+
+function onRunNode(id: string) {
+	emit('run:node', id);
+}
+
+/**
+ * Keyboard events
+ */
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Delete') {
+		getSelectedEdges.value.forEach(onDeleteConnection);
+		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
+	}
+}
+
+/**
+ * View
+ */
 
 function onClickPane(event: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -161,6 +181,24 @@ function onClickPane(event: MouseEvent) {
 
 	emit('click:pane', position);
 }
+
+async function onFitView() {
+	await fitView();
+}
+
+/**
+ * Lifecycle
+ */
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+	props.eventBus.on('fitView', onFitView);
+});
+
+onUnmounted(() => {
+	props.eventBus.off('fitView', onFitView);
+	document.removeEventListener('keydown', onKeyDown);
+});
 </script>
 
 <template>
@@ -193,7 +231,7 @@ function onClickPane(event: MouseEvent) {
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
-				@update="onUpdateNode"
+				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
 			/>
 		</template>
@@ -202,6 +240,7 @@ function onClickPane(event: MouseEvent) {
 			<Edge
 				v-bind="canvasEdgeProps"
 				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
 		</template>

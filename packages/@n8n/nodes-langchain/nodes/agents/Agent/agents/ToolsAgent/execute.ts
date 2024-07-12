@@ -226,7 +226,10 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 		} catch (error) {
 			if (this.continueOnFail(error)) {
-				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 

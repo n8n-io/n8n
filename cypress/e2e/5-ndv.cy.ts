@@ -781,4 +781,33 @@ describe('NDV', () => {
 		ndv.actions.expressionSelectItem(1);
 		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
 	});
+
+	it('should show data from the correct output in schema view', () => {
+		cy.createFixtureWorkflow('Test_workflow_multiple_outputs.json');
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Only Item 1');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem1');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 2');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem2');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 3');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem3');
+	});
 });

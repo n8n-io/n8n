@@ -59,7 +59,7 @@ export function longestCommonPrefix(...strings: string[]) {
 }
 
 export const prefixMatch = (first: string, second: string) =>
-	first.startsWith(second) && first !== second;
+	first.toLocaleLowerCase().startsWith(second.toLocaleLowerCase()) && first !== second;
 
 export const isPseudoParam = (candidate: string) => {
 	const PSEUDO_PARAMS = ['notice']; // user input disallowed
@@ -82,7 +82,7 @@ export const isAllowedInDotNotation = (str: string) => {
 
 export function receivesNoBinaryData() {
 	try {
-		return resolveParameter('={{ $binary }}')?.data === undefined;
+		return resolveAutocompleteExpression('={{ $binary }}')?.data === undefined;
 	} catch {
 		return true;
 	}
@@ -92,7 +92,7 @@ export function hasNoParams(toResolve: string) {
 	let params;
 
 	try {
-		params = resolveParameter(`={{ ${toResolve}.params }}`);
+		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`);
 	} catch {
 		return true;
 	}
@@ -102,6 +102,21 @@ export function hasNoParams(toResolve: string) {
 	const paramKeys = Object.keys(params);
 
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
+}
+
+export function resolveAutocompleteExpression(expression: string) {
+	const ndvStore = useNDVStore();
+	return resolveParameter(
+		expression,
+		ndvStore.isInputParentOfActiveNode
+			? {
+					targetItem: ndvStore.expressionTargetItem ?? undefined,
+					inputNodeName: ndvStore.ndvInputNodeName,
+					inputRunIndex: ndvStore.ndvInputRunIndex,
+					inputBranchIndex: ndvStore.ndvInputBranchIndex,
+				}
+			: {},
+	);
 }
 
 // ----------------------------------
