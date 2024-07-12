@@ -4,7 +4,6 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
 import CodeDiff from './CodeDiff.vue';
 import type { AssistantMessage } from './types';
-import { defineEmits } from 'vue';
 
 import Markdown from 'markdown-it';
 
