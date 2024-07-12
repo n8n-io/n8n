@@ -28,7 +28,8 @@
 		"ICS",
 		"iCal",
 		"RTF",
-		"64"
+		"64",
+		"Base64"
 	],
 	"subcategories": {
 		"Core Nodes": ["Files", "Data Transformation"]
