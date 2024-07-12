@@ -45,7 +45,7 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { type IDataObject, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
 	ExecutionSummary,
@@ -84,6 +84,7 @@ import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -145,6 +146,8 @@ const {
 	revertDeleteConnection,
 	setNodeActiveByName,
 	addConnections,
+	importWorkflowData,
+	fetchWorkflowDataFromUrl,
 	editableWorkflow,
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
@@ -552,8 +555,42 @@ function onRevertDeleteConnection({ connection }: { connection: [IConnection, IC
  * Import / Export
  */
 
-async function importWorkflowExact(_workflow: IWorkflowDataUpdate) {
-	// @TODO
+async function importWorkflowExact(workflowData: IWorkflowDataUpdate) {
+	if (!workflowData.nodes || !workflowData.connections) {
+		throw new Error('Invalid workflow object');
+	}
+
+	resetWorkspace();
+
+	workflowData.nodes = NodeViewUtils.getFixedNodesList(workflowData.nodes);
+
+	await addNodes(workflowData.nodes as INodeUi[], workflowData.connections);
+	if (workflowData.pinData) {
+		workflowsStore.setWorkflowPinData(workflowData.pinData);
+	}
+
+	// canvasEventBus.emit('fitView');
+}
+
+async function onImportWorkflowDataEvent(data: IDataObject) {
+	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+}
+
+async function onImportWorkflowUrlEvent(data: IDataObject) {
+	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
+	if (workflowData !== undefined) {
+		await importWorkflowData(workflowData, 'url');
+	}
+}
+
+function addImportEventBindings() {
+	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
+	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
+}
+
+function removeImportEventBindings() {
+	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
+	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 }
 
 /**
@@ -1036,15 +1073,17 @@ onMounted(async () => {
 	addPostMessageEventBindings();
 	addKeyboardEventBindings();
 	addSourceControlEventBindings();
+	addImportEventBindings();
 
 	registerCustomActions();
 });
 
 onBeforeUnmount(() => {
-	removeKeyboardEventBindings();
-	removePostMessageEventBindings();
 	removeUndoRedoEventBindings();
+	removePostMessageEventBindings();
+	removeKeyboardEventBindings();
 	removeSourceControlEventBindings();
+	removeImportEventBindings();
 });
 </script>
 

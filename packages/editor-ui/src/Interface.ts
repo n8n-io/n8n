@@ -1805,9 +1805,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
-	name?: string;
-	position?: XYPosition;
-};
+} & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
 	from: { nodeIndex: number; outputIndex?: number };

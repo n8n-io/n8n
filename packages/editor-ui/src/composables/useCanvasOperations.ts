@@ -9,12 +9,15 @@ import type {
 	AddedNodesAndConnections,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	ITag,
+	IWorkflowDataUpdate,
 	XYPosition,
 } from '@/Interface';
 import {
 	FORM_TRIGGER_NODE_TYPE,
 	QUICKSTART_NOTE_NAME,
 	STICKY_NODE_TYPE,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -38,13 +41,18 @@ import {
 import type {
 	ConnectionTypes,
 	IConnection,
+	IConnections,
+	INodeConnections,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetryTrackProperties,
+	IWorkflowBase,
+	Workflow,
+	INode,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useI18n } from '@/composables/useI18n';
@@ -58,6 +66,10 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useRootStore } from '@/stores/root.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -77,6 +89,7 @@ export function useCanvasOperations({
 	router: ReturnType<typeof useRouter>;
 	lastClickPosition: Ref<XYPosition>;
 }) {
+	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
@@ -84,6 +97,8 @@ export function useCanvasOperations({
 	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
+	const settingsStore = useSettingsStore();
+	const tagsStore = useTagsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -716,6 +731,9 @@ export function useCanvasOperations({
 		return newNodeData;
 	}
 
+	/**
+	 * Moves all downstream nodes of a node
+	 */
 	function pushDownstreamNodes(
 		sourceNodeName: string,
 		margin: number,
@@ -939,6 +957,337 @@ export function useCanvasOperations({
 		}
 	}
 
+	/**
+	 * Import operations
+	 */
+
+	function removeUnknownCredentials(workflow: IWorkflowDataUpdate) {
+		if (!workflow?.nodes) return;
+
+		for (const node of workflow.nodes) {
+			if (!node.credentials) continue;
+
+			for (const [name, credential] of Object.entries(node.credentials)) {
+				if (typeof credential === 'string' || credential.id === null) continue;
+
+				if (!credentialsStore.getCredentialById(credential.id)) {
+					delete node.credentials[name];
+				}
+			}
+		}
+	}
+
+	async function addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
+		// Because nodes with the same name maybe already exist, it could
+		// be needed that they have to be renamed. Also could it be possible
+		// that nodes are not allowed to be created because they have a create
+		// limit set. So we would then link the new nodes with the already existing ones.
+		// In this object all that nodes get saved in the format:
+		//   old-name -> new-name
+		const nodeNameTable: {
+			[key: string]: string;
+		} = {};
+		const newNodeNames = new Set<string>();
+
+		if (!data.nodes) {
+			// No nodes to add
+			throw new Error(i18n.baseText('nodeView.noNodesGivenToAdd'));
+		}
+
+		// Get how many of the nodes of the types which have
+		// a max limit set already exist
+		const nodeTypesCount = workflowHelpers.getNodeTypesMaxCount();
+
+		let oldName: string;
+		let newName: string;
+		const createNodes: INode[] = [];
+
+		await nodeHelpers.loadNodesProperties(
+			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
+		);
+
+		data.nodes.forEach((node) => {
+			if (nodeTypesCount[node.type] !== undefined) {
+				if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
+					// Node is not allowed to be created so
+					// do not add it to the create list but
+					// add the name of the existing node
+					// that this one gets linked up instead.
+					nodeNameTable[node.name] = nodeTypesCount[node.type].nodeNames[0];
+					return;
+				} else {
+					// Node can be created but increment the
+					// counter in case multiple ones are
+					// supposed to be created
+					nodeTypesCount[node.type].exist += 1;
+				}
+			}
+
+			oldName = node.name;
+
+			const localized = i18n.localizeNodeName(node.name, node.type);
+
+			newName = getUniqueNodeName(localized, newNodeNames);
+
+			newNodeNames.add(newName);
+			nodeNameTable[oldName] = newName;
+
+			createNodes.push(node);
+		});
+
+		// Get only the connections of the nodes that get created
+		const newConnections: IConnections = {};
+		const currentConnections = data.connections!;
+		const createNodeNames = createNodes.map((node) => node.name);
+		let sourceNode, type, sourceIndex, connectionIndex, connectionData;
+		for (sourceNode of Object.keys(currentConnections)) {
+			if (!createNodeNames.includes(sourceNode)) {
+				// Node does not get created so skip output connections
+				continue;
+			}
+
+			const connection: INodeConnections = {};
+
+			for (type of Object.keys(currentConnections[sourceNode])) {
+				connection[type] = [];
+				for (
+					sourceIndex = 0;
+					sourceIndex < currentConnections[sourceNode][type].length;
+					sourceIndex++
+				) {
+					const nodeSourceConnections = [];
+					if (currentConnections[sourceNode][type][sourceIndex]) {
+						for (
+							connectionIndex = 0;
+							connectionIndex < currentConnections[sourceNode][type][sourceIndex].length;
+							connectionIndex++
+						) {
+							connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+							if (!createNodeNames.includes(connectionData.node)) {
+								// Node does not get created so skip input connection
+								continue;
+							}
+
+							nodeSourceConnections.push(connectionData);
+							// Add connection
+						}
+					}
+					connection[type].push(nodeSourceConnections);
+				}
+			}
+
+			newConnections[sourceNode] = connection;
+		}
+
+		// Create a workflow with the new nodes and connections that we can use
+		// the rename method
+		const tempWorkflow: Workflow = workflowHelpers.getWorkflow(createNodes, newConnections);
+
+		// Rename all the nodes of which the name changed
+		for (oldName in nodeNameTable) {
+			if (oldName === nodeNameTable[oldName]) {
+				// Name did not change so skip
+				continue;
+			}
+			tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+		}
+
+		if (data.pinData) {
+			let pinDataSuccess = true;
+			for (const nodeName of Object.keys(data.pinData)) {
+				// Pin data limit reached
+				if (!pinDataSuccess) {
+					toast.showError(
+						new Error(i18n.baseText('ndv.pinData.error.tooLarge.description')),
+						i18n.baseText('ndv.pinData.error.tooLarge.title'),
+					);
+					continue;
+				}
+
+				const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
+				try {
+					const pinnedDataForNode = usePinnedData(node);
+					pinnedDataForNode.setData(data.pinData[nodeName], 'add-nodes');
+					pinDataSuccess = true;
+				} catch (error) {
+					pinDataSuccess = false;
+					console.error(error);
+				}
+			}
+		}
+
+		// Add the nodes with the changed node names, expressions and connections
+		historyStore.startRecordingUndo();
+
+		await addNodes(Object.values(tempWorkflow.nodes));
+		workflowsStore.setConnections(tempWorkflow.connectionsBySourceNode);
+
+		historyStore.stopRecordingUndo();
+		uiStore.stateIsDirty = true;
+
+		return {
+			nodes: Object.values(tempWorkflow.nodes),
+			connections: tempWorkflow.connectionsBySourceNode,
+		};
+	}
+
+	async function importWorkflowData(
+		workflowData: IWorkflowDataUpdate,
+		source: string,
+		importTags = true,
+	): Promise<void> {
+		// If it is JSON check if it looks on the first look like data we can use
+		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
+			return;
+		}
+
+		try {
+			const nodeIdMap: { [prev: string]: string } = {};
+			if (workflowData.nodes) {
+				const nodeNames = new Set(workflowData.nodes.map((node) => node.name));
+				workflowData.nodes.forEach((node: INode) => {
+					// Provide a new name for nodes that don't have one
+					if (!node.name) {
+						const nodeType = nodeTypesStore.getNodeType(node.type);
+						const newName = getUniqueNodeName(nodeType?.displayName ?? node.type, nodeNames);
+						node.name = newName;
+						nodeNames.add(newName);
+					}
+
+					// Generate new webhookId if workflow already contains a node with the same webhookId
+					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
+						const isDuplicate = Object.values(workflowHelpers.getCurrentWorkflow().nodes).some(
+							(n) => n.webhookId === node.webhookId,
+						);
+						if (isDuplicate) {
+							node.webhookId = uuid();
+						}
+					}
+
+					// set all new ids when pasting/importing workflows
+					if (node.id) {
+						const newId = uuid();
+						nodeIdMap[newId] = node.id;
+						node.id = newId;
+					} else {
+						node.id = uuid();
+					}
+				});
+			}
+
+			removeUnknownCredentials(workflowData);
+
+			const nodeGraph = JSON.stringify(
+				TelemetryHelpers.generateNodesGraph(
+					workflowData as IWorkflowBase,
+					workflowHelpers.getNodeTypes(),
+					{
+						nodeIdMap,
+						sourceInstanceId:
+							workflowData.meta && workflowData.meta.instanceId !== rootStore.instanceId
+								? workflowData.meta.instanceId
+								: '',
+						isCloudDeployment: settingsStore.isCloudDeployment,
+					},
+				).nodeGraph,
+			);
+
+			if (source === 'paste') {
+				telemetry.track('User pasted nodes', {
+					workflow_id: workflowsStore.workflowId,
+					node_graph_string: nodeGraph,
+				});
+			} else if (source === 'duplicate') {
+				telemetry.track('User duplicated nodes', {
+					workflow_id: workflowsStore.workflowId,
+					node_graph_string: nodeGraph,
+				});
+			} else {
+				telemetry.track('User imported workflow', {
+					source,
+					workflow_id: workflowsStore.workflowId,
+					node_graph_string: nodeGraph,
+				});
+			}
+
+			// By default we automatically deselect all the currently
+			// selected nodes and select the new ones
+			// this.deselectAllNodes();
+
+			// Fix the node position as it could be totally offscreen
+			// and the pasted nodes would so not be directly visible to
+			// the user
+			workflowHelpers.updateNodePositions(
+				workflowData,
+				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value),
+			);
+
+			await addNodesToWorkflow(workflowData);
+
+			// setTimeout(() => {
+			// 	(data?.nodes ?? []).forEach((node: INodeUi) => {
+			// 		this.nodeSelectedByName(node.name);
+			// 	});
+			// });
+
+			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
+				await importWorkflowTags(workflowData);
+			}
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
+		}
+	}
+
+	async function importWorkflowTags(workflowData: IWorkflowDataUpdate) {
+		const allTags = await tagsStore.fetchAll();
+		const tagNames = new Set(allTags.map((tag) => tag.name));
+
+		const workflowTags = workflowData.tags as ITag[];
+		const notFound = workflowTags.filter((tag) => !tagNames.has(tag.name));
+
+		const creatingTagPromises: Array<Promise<ITag>> = [];
+		for (const tag of notFound) {
+			const creationPromise = tagsStore.create(tag.name).then((tag: ITag) => {
+				allTags.push(tag);
+				return tag;
+			});
+
+			creatingTagPromises.push(creationPromise);
+		}
+
+		await Promise.all(creatingTagPromises);
+
+		const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
+			const tag = allTags.find((tag) => tag.name === imported.name);
+			if (tag) {
+				accu.push(tag.id);
+			}
+
+			return accu;
+		}, []);
+
+		workflowsStore.addWorkflowTagIds(tagIds);
+		setTimeout(() => {
+			nodeHelpers.addPinDataConnections(workflowsStore.pinnedWorkflowData);
+		});
+	}
+
+	async function fetchWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
+		let workflowData: IWorkflowDataUpdate;
+
+		canvasStore.startLoading();
+		try {
+			workflowData = await workflowsStore.getWorkflowFromUrl(url);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'));
+			return;
+		} finally {
+			canvasStore.stopLoading();
+		}
+
+		return workflowData;
+	}
+
 	return {
 		editableWorkflow,
 		editableWorkflowObject,
@@ -959,5 +1308,7 @@ export function useCanvasOperations({
 		deleteConnection,
 		revertDeleteConnection,
 		isConnectionAllowed,
+		importWorkflowData,
+		fetchWorkflowDataFromUrl,
 	};
 }
