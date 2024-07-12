@@ -1,85 +1,66 @@
+<script lang="ts" setup>
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@/composables/useI18n';
+import { computed } from 'vue';
+
+const props = withDefaults(
+	defineProps<{
+		saved: boolean;
+		isSaving: boolean;
+		disabled: boolean;
+		saveLabel: boolean;
+		savingLabel: string;
+		savedLabel: string;
+		type: string;
+		withShortcut: boolean;
+		shortcutTooltip: string;
+	}>(),
+	{
+		default: 'primary',
+		withShortcut: false,
+	},
+);
+
+const i18n = useI18n();
+
+const saveButtonLabel = computed(() => {
+	return props.isSaving ? i18n.baseText('saveButton.saving') : i18n.baseText('saveButton.save');
+});
+
+const shortcutTooltipLabel = computed(() => {
+	return props.shortcutTooltip ?? i18n.baseText('saveButton.save');
+});
+</script>
+
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
+		<span v-if="props.saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
 		<template v-else>
 			<KeyboardShortcutTooltip
-				v-if="withShortcut"
+				v-if="props.withShortcut"
 				:label="shortcutTooltipLabel"
 				:shortcut="{ keys: ['s'], metaKey: true }"
 				placement="bottom"
 			>
 				<n8n-button
 					:label="saveButtonLabel"
-					:loading="isSaving"
-					:disabled="disabled"
+					:loading="props.isSaving"
+					:disabled="props.disabled"
 					:class="$style.button"
-					:type="type"
+					:type="props.type"
 				/>
 			</KeyboardShortcutTooltip>
 			<n8n-button
 				v-else
 				:label="saveButtonLabel"
-				:loading="isSaving"
-				:disabled="disabled"
+				:loading="props.isSaving"
+				:disabled="props.disabled"
 				:class="$style.button"
-				:type="type"
+				:type="props.type"
 			/>
 		</template>
 	</span>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-
-export default defineComponent({
-	name: 'SaveButton',
-	components: {
-		KeyboardShortcutTooltip,
-	},
-	props: {
-		saved: {
-			type: Boolean,
-		},
-		isSaving: {
-			type: Boolean,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		saveLabel: {
-			type: String,
-		},
-		savingLabel: {
-			type: String,
-		},
-		savedLabel: {
-			type: String,
-		},
-		type: {
-			type: String,
-			default: 'primary',
-		},
-		withShortcut: {
-			type: Boolean,
-			default: false,
-		},
-		shortcutTooltip: {
-			type: String,
-		},
-	},
-	computed: {
-		saveButtonLabel() {
-			return this.isSaving
-				? this.$locale.baseText('saveButton.saving')
-				: this.$locale.baseText('saveButton.save');
-		},
-		shortcutTooltipLabel() {
-			return this.shortcutTooltip ?? this.$locale.baseText('saveButton.save');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {
