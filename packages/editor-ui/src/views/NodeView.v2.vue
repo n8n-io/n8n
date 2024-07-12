@@ -311,6 +311,7 @@ async function initializeView() {
 	nodeHelpers.updateNodesParameterIssues();
 
 	await loadCredentials();
+	canvasEventBus.emit('fitView');
 
 	uiStore.nodeViewInitialized = true;
 
@@ -570,7 +571,6 @@ async function onRevertRenameNode({
 }
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
-	console.log('onUpdateNodeParameters', id, parameters);
 	setNodeParameters(id, parameters);
 }
 

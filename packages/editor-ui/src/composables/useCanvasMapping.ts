@@ -50,7 +50,6 @@ export function useCanvasMapping({
 	const nodeTypesStore = useNodeTypesStore();
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
-		console.log(node);
 		return {
 			type: CanvasNodeRenderType.StickyNote,
 			options: {
