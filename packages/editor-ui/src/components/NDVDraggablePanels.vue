@@ -1,8 +1,379 @@
+<script lang="ts" setup>
+import { useStorage } from '@/composables/useStorage';
+
+import type { INodeTypeDescription } from 'n8n-workflow';
+import PanelDragButton from './PanelDragButton.vue';
+
+import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
+import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import type { XYPosition } from '@/Interface';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+
+const SIDE_MARGIN = 24;
+const SIDE_PANELS_MARGIN = 80;
+const MIN_PANEL_WIDTH = 280;
+const PANEL_WIDTH = 320;
+const PANEL_WIDTH_LARGE = 420;
+const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
+
+const initialMainPanelWidth: { [key: string]: number } = {
+	regular: MAIN_NODE_PANEL_WIDTH,
+	dragless: MAIN_NODE_PANEL_WIDTH,
+	unknown: MAIN_NODE_PANEL_WIDTH,
+	inputless: MAIN_NODE_PANEL_WIDTH,
+	wide: MAIN_NODE_PANEL_WIDTH * 2,
+};
+
+interface Props {
+	isDraggable: boolean;
+	hideInputAndOutput: boolean;
+	nodeType: INodeTypeDescription | null;
+}
+
+const { callDebounced } = useDebounce();
+const ndvStore = useNDVStore();
+
+const props = defineProps<Props>();
+
+const windowWidth = ref<number>(1);
+const isDragging = ref<boolean>(false);
+const initialized = ref<boolean>(false);
+
+const emit = defineEmits<{
+	init: [{ position: number }];
+	dragstart: [{ position: number }];
+	dragend: [{ position: number; windowWidth: number }];
+	switchSelectedNode: [string];
+	close: [];
+}>();
+
+const slots = defineSlots<{
+	input: unknown;
+	output: unknown;
+	main: unknown;
+}>();
+
+onMounted(() => {
+	setTotalWidth();
+
+	/*
+		Only set(or restore) initial position if `mainPanelDimensions`
+		is at the default state({relativeLeft:1, relativeRight: 1, relativeWidth: 1}) to make sure we use store values if they are set
+	*/
+	if (
+		mainPanelDimensions.value.relativeLeft === 1 &&
+		mainPanelDimensions.value.relativeRight === 1
+	) {
+		setMainPanelWidth();
+		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
+		restorePositionData();
+	}
+
+	window.addEventListener('resize', setTotalWidth);
+	emit('init', { position: mainPanelDimensions.value.relativeLeft });
+	setTimeout(() => {
+		initialized.value = true;
+	}, 0);
+
+	ndvEventBus.on('setPositionByName', setPositionByName);
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', setTotalWidth);
+	ndvEventBus.off('setPositionByName', setPositionByName);
+});
+
+watch(windowWidth, (width) => {
+	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
+	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
+
+	// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
+	if (isBelowMinWidthMainPanel) {
+		setMainPanelWidth(minRelativeWidth);
+	}
+
+	const isBelowMinLeft = minimumLeftPosition.value > mainPanelDimensions.value.relativeLeft;
+	const isMaxRight = maximumRightPosition.value > mainPanelDimensions.value.relativeRight;
+
+	// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
+	if (width > MIN_WINDOW_WIDTH && isBelowMinLeft && isMaxRight) {
+		setMainPanelWidth(minRelativeWidth);
+		setPositions(getInitialLeftPosition(mainPanelDimensions.value.relativeWidth));
+	}
+
+	setPositions(mainPanelDimensions.value.relativeLeft);
+});
+
+const currentNodePaneType = computed((): string => {
+	if (!hasInputSlot.value) return 'inputless';
+	if (!props.isDraggable) return 'dragless';
+	if (props.nodeType === null) return 'unknown';
+	return props.nodeType.parameterPane ?? 'regular';
+});
+
+const mainPanelDimensions = computed(
+	(): {
+		relativeWidth: number;
+		relativeLeft: number;
+		relativeRight: number;
+	} => {
+		return ndvStore.getMainPanelDimensions(currentNodePaneType.value);
+	},
+);
+
+const calculatedPositions = computed(
+	(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } => {
+		const hasInput = slots.input !== undefined;
+		const outputPanelRelativeLeft =
+			mainPanelDimensions.value.relativeLeft + mainPanelDimensions.value.relativeWidth;
+
+		const inputPanelRelativeRight = hasInput
+			? 1 - outputPanelRelativeLeft + mainPanelDimensions.value.relativeWidth
+			: 1 - pxToRelativeWidth(SIDE_MARGIN);
+
+		return {
+			inputPanelRelativeRight,
+			outputPanelRelativeLeft,
+		};
+	},
+);
+
+const outputPanelRelativeTranslate = computed((): number => {
+	const panelMinLeft = 1 - pxToRelativeWidth(MIN_PANEL_WIDTH + SIDE_MARGIN);
+	const currentRelativeLeftDelta = calculatedPositions.value.outputPanelRelativeLeft - panelMinLeft;
+	return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
+});
+
+const supportedResizeDirections = computed((): string[] => {
+	const supportedDirections = ['right'];
+
+	if (props.isDraggable) supportedDirections.push('left');
+	return supportedDirections;
+});
+
+const hasInputSlot = computed((): boolean => {
+	return slots.input !== undefined;
+});
+
+const inputPanelMargin = computed(() => pxToRelativeWidth(SIDE_PANELS_MARGIN));
+
+const minimumLeftPosition = computed((): number => {
+	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+
+	if (!hasInputSlot.value) return pxToRelativeWidth(SIDE_MARGIN);
+	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
+});
+
+const maximumRightPosition = computed((): number => {
+	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+
+	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
+});
+
+const canMoveLeft = computed((): boolean => {
+	return mainPanelDimensions.value.relativeLeft > minimumLeftPosition.value;
+});
+
+const canMoveRight = computed((): boolean => {
+	return mainPanelDimensions.value.relativeRight > maximumRightPosition.value;
+});
+
+const mainPanelStyles = computed((): { left: string; right: string } => {
+	return {
+		left: `${relativeWidthToPx(mainPanelDimensions.value.relativeLeft)}px`,
+		right: `${relativeWidthToPx(mainPanelDimensions.value.relativeRight)}px`,
+	};
+});
+
+const inputPanelStyles = computed((): { right: string } => {
+	return {
+		right: `${relativeWidthToPx(calculatedPositions.value.inputPanelRelativeRight)}px`,
+	};
+});
+
+const outputPanelStyles = computed((): { left: string; transform: string } => {
+	return {
+		left: `${relativeWidthToPx(calculatedPositions.value.outputPanelRelativeLeft)}px`,
+		transform: `translateX(-${relativeWidthToPx(outputPanelRelativeTranslate.value)}px)`,
+	};
+});
+
+const hasDoubleWidth = computed((): boolean => {
+	return props.nodeType?.parameterPane === 'wide';
+});
+
+const fixedPanelWidth = computed((): number => {
+	const multiplier = hasDoubleWidth.value ? 2 : 1;
+
+	if (windowWidth.value > 1700) {
+		return PANEL_WIDTH_LARGE * multiplier;
+	}
+
+	return PANEL_WIDTH * multiplier;
+});
+
+const onSwitchSelectedNode = (node: string) => emit('switchSelectedNode', node);
+
+function getInitialLeftPosition(width: number): number {
+	if (currentNodePaneType.value === 'dragless')
+		return pxToRelativeWidth(SIDE_MARGIN + 1 + fixedPanelWidth.value);
+
+	return hasInputSlot.value ? 0.5 - width / 2 : minimumLeftPosition.value;
+}
+
+function setMainPanelWidth(relativeWidth?: number): void {
+	const mainPanelRelativeWidth =
+		relativeWidth || pxToRelativeWidth(initialMainPanelWidth[currentNodePaneType.value]);
+
+	ndvStore.setMainPanelDimensions({
+		panelType: currentNodePaneType.value,
+		dimensions: {
+			relativeWidth: mainPanelRelativeWidth,
+		},
+	});
+}
+
+function setPositions(relativeLeft: number): void {
+	const mainPanelRelativeLeft =
+		relativeLeft || 1 - calculatedPositions.value.inputPanelRelativeRight;
+	const mainPanelRelativeRight =
+		1 - mainPanelRelativeLeft - mainPanelDimensions.value.relativeWidth;
+
+	const isMaxRight = maximumRightPosition.value > mainPanelRelativeRight;
+	const isMinLeft = minimumLeftPosition.value > mainPanelRelativeLeft;
+	const isInputless = currentNodePaneType.value === 'inputless';
+
+	if (isMinLeft) {
+		ndvStore.setMainPanelDimensions({
+			panelType: currentNodePaneType.value,
+			dimensions: {
+				relativeLeft: minimumLeftPosition.value,
+				relativeRight: 1 - mainPanelDimensions.value.relativeWidth - minimumLeftPosition.value,
+			},
+		});
+		return;
+	}
+
+	if (isMaxRight) {
+		ndvStore.setMainPanelDimensions({
+			panelType: currentNodePaneType.value,
+			dimensions: {
+				relativeLeft: 1 - mainPanelDimensions.value.relativeWidth - maximumRightPosition.value,
+				relativeRight: maximumRightPosition.value,
+			},
+		});
+		return;
+	}
+
+	ndvStore.setMainPanelDimensions({
+		panelType: currentNodePaneType.value,
+		dimensions: {
+			relativeLeft: isInputless ? minimumLeftPosition.value : mainPanelRelativeLeft,
+			relativeRight: mainPanelRelativeRight,
+		},
+	});
+}
+
+function setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
+	const positionByName: Record<string, number> = {
+		minLeft: minimumLeftPosition.value,
+		maxRight: maximumRightPosition.value,
+		initial: getInitialLeftPosition(mainPanelDimensions.value.relativeWidth),
+	};
+
+	setPositions(positionByName[position]);
+}
+
+function pxToRelativeWidth(px: number): number {
+	return px / windowWidth.value;
+}
+
+function relativeWidthToPx(relativeWidth: number) {
+	return relativeWidth * windowWidth.value;
+}
+
+function onResizeStart() {
+	setTotalWidth();
+}
+
+function onResizeEnd() {
+	storePositionData();
+}
+
+function onResizeDebounced(data: { direction: string; x: number; width: number }) {
+	if (initialized.value) {
+		void callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
+	}
+}
+
+function onResize({ direction, x, width }: { direction: string; x: number; width: number }) {
+	const relativeDistance = pxToRelativeWidth(x);
+	const relativeWidth = pxToRelativeWidth(width);
+
+	if (direction === 'left' && relativeDistance <= minimumLeftPosition.value) return;
+	if (direction === 'right' && 1 - relativeDistance <= maximumRightPosition.value) return;
+	if (width <= MIN_PANEL_WIDTH) return;
+
+	setMainPanelWidth(relativeWidth);
+	setPositions(direction === 'left' ? relativeDistance : mainPanelDimensions.value.relativeLeft);
+}
+
+function restorePositionData() {
+	const storedPanelWidthData = useStorage(
+		`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${currentNodePaneType.value}`,
+	).value;
+
+	if (storedPanelWidthData) {
+		const parsedWidth = parseFloat(storedPanelWidthData);
+		setMainPanelWidth(parsedWidth);
+		const initialPosition = getInitialLeftPosition(parsedWidth);
+
+		setPositions(initialPosition);
+		return true;
+	}
+	return false;
+}
+
+function storePositionData() {
+	useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${currentNodePaneType.value}`).value =
+		mainPanelDimensions.value.relativeWidth.toString();
+}
+
+function onDragStart() {
+	isDragging.value = true;
+	emit('dragstart', { position: mainPanelDimensions.value.relativeLeft });
+}
+
+function onDrag(position: XYPosition) {
+	const relativeLeft = pxToRelativeWidth(position[0]) - mainPanelDimensions.value.relativeWidth / 2;
+
+	setPositions(relativeLeft);
+}
+
+function onDragEnd() {
+	setTimeout(() => {
+		isDragging.value = false;
+		emit('dragend', {
+			windowWidth: windowWidth.value,
+			position: mainPanelDimensions.value.relativeLeft,
+		});
+	}, 0);
+	storePositionData();
+}
+
+function setTotalWidth() {
+	windowWidth.value = window.innerWidth;
+}
+</script>
+
 <template>
 	<div>
 		<NDVFloatingNodes
-			v-if="activeNode"
-			:root-node="activeNode"
+			v-if="ndvStore.activeNode"
+			:root-node="ndvStore.activeNode"
 			@switch-selected-node="onSwitchSelectedNode"
 		/>
 		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
@@ -40,377 +411,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import { get } from 'lodash-es';
-import { useStorage } from '@/composables/useStorage';
-
-import type { INodeTypeDescription } from 'n8n-workflow';
-import PanelDragButton from './PanelDragButton.vue';
-
-import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import { useNDVStore } from '@/stores/ndv.store';
-import { ndvEventBus } from '@/event-bus';
-import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import { useDebounce } from '@/composables/useDebounce';
-import type { XYPosition } from '@/Interface';
-
-const SIDE_MARGIN = 24;
-const SIDE_PANELS_MARGIN = 80;
-const MIN_PANEL_WIDTH = 280;
-const PANEL_WIDTH = 320;
-const PANEL_WIDTH_LARGE = 420;
-
-const initialMainPanelWidth: { [key: string]: number } = {
-	regular: MAIN_NODE_PANEL_WIDTH,
-	dragless: MAIN_NODE_PANEL_WIDTH,
-	unknown: MAIN_NODE_PANEL_WIDTH,
-	inputless: MAIN_NODE_PANEL_WIDTH,
-	wide: MAIN_NODE_PANEL_WIDTH * 2,
-};
-
-export default defineComponent({
-	name: 'NDVDraggablePanels',
-	components: {
-		PanelDragButton,
-		NDVFloatingNodes,
-	},
-	props: {
-		isDraggable: {
-			type: Boolean,
-		},
-		hideInputAndOutput: {
-			type: Boolean,
-		},
-		position: {
-			type: Number,
-		},
-		nodeType: {
-			type: Object as PropType<INodeTypeDescription | null>,
-			default: () => ({}),
-		},
-	},
-	setup() {
-		const { callDebounced } = useDebounce();
-
-		return { callDebounced };
-	},
-	data(): {
-		windowWidth: number;
-		isDragging: boolean;
-		MIN_PANEL_WIDTH: number;
-		initialized: boolean;
-	} {
-		return {
-			windowWidth: 1,
-			isDragging: false,
-			MIN_PANEL_WIDTH,
-			initialized: false,
-		};
-	},
-	mounted() {
-		this.setTotalWidth();
-
-		/*
-			Only set(or restore) initial position if `mainPanelDimensions`
-			is at the default state({relativeLeft:1, relativeRight: 1, relativeWidth: 1}) to make sure we use store values if they are set
-		*/
-		if (
-			this.mainPanelDimensions.relativeLeft === 1 &&
-			this.mainPanelDimensions.relativeRight === 1
-		) {
-			this.setMainPanelWidth();
-			this.setPositions(this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth));
-			this.restorePositionData();
-		}
-
-		window.addEventListener('resize', this.setTotalWidth);
-		this.$emit('init', { position: this.mainPanelDimensions.relativeLeft });
-		setTimeout(() => {
-			this.initialized = true;
-		}, 0);
-
-		ndvEventBus.on('setPositionByName', this.setPositionByName);
-	},
-	beforeUnmount() {
-		window.removeEventListener('resize', this.setTotalWidth);
-		ndvEventBus.off('setPositionByName', this.setPositionByName);
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		mainPanelDimensions(): {
-			relativeWidth: number;
-			relativeLeft: number;
-			relativeRight: number;
-		} {
-			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType);
-		},
-		activeNode() {
-			return this.ndvStore.activeNode;
-		},
-		supportedResizeDirections(): string[] {
-			const supportedDirections = ['right'];
-
-			if (this.isDraggable) supportedDirections.push('left');
-			return supportedDirections;
-		},
-		currentNodePaneType(): string {
-			if (!this.hasInputSlot) return 'inputless';
-			if (!this.isDraggable) return 'dragless';
-			if (this.nodeType === null) return 'unknown';
-			return get(this, 'nodeType.parameterPane') || 'regular';
-		},
-		hasInputSlot(): boolean {
-			return this.$slots.input !== undefined;
-		},
-		inputPanelMargin(): number {
-			return this.pxToRelativeWidth(SIDE_PANELS_MARGIN);
-		},
-		minWindowWidth(): number {
-			return 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
-		},
-		minimumLeftPosition(): number {
-			if (this.windowWidth < this.minWindowWidth) return this.pxToRelativeWidth(1);
-
-			if (!this.hasInputSlot) return this.pxToRelativeWidth(SIDE_MARGIN);
-			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
-		},
-		maximumRightPosition(): number {
-			if (this.windowWidth < this.minWindowWidth) return this.pxToRelativeWidth(1);
-
-			return this.pxToRelativeWidth(SIDE_MARGIN + 20) + this.inputPanelMargin;
-		},
-		canMoveLeft(): boolean {
-			return this.mainPanelDimensions.relativeLeft > this.minimumLeftPosition;
-		},
-		canMoveRight(): boolean {
-			return this.mainPanelDimensions.relativeRight > this.maximumRightPosition;
-		},
-		mainPanelStyles(): { left: string; right: string } {
-			return {
-				left: `${this.relativeWidthToPx(this.mainPanelDimensions.relativeLeft)}px`,
-				right: `${this.relativeWidthToPx(this.mainPanelDimensions.relativeRight)}px`,
-			};
-		},
-		inputPanelStyles(): { right: string } {
-			return {
-				right: `${this.relativeWidthToPx(this.calculatedPositions.inputPanelRelativeRight)}px`,
-			};
-		},
-		outputPanelStyles(): { left: string; transform: string } {
-			return {
-				left: `${this.relativeWidthToPx(this.calculatedPositions.outputPanelRelativeLeft)}px`,
-				transform: `translateX(-${this.relativeWidthToPx(this.outputPanelRelativeTranslate)}px)`,
-			};
-		},
-		calculatedPositions(): { inputPanelRelativeRight: number; outputPanelRelativeLeft: number } {
-			const hasInput = this.$slots.input !== undefined;
-			const outputPanelRelativeLeft =
-				this.mainPanelDimensions.relativeLeft + this.mainPanelDimensions.relativeWidth;
-
-			const inputPanelRelativeRight = hasInput
-				? 1 - outputPanelRelativeLeft + this.mainPanelDimensions.relativeWidth
-				: 1 - this.pxToRelativeWidth(SIDE_MARGIN);
-
-			return {
-				inputPanelRelativeRight,
-				outputPanelRelativeLeft,
-			};
-		},
-		outputPanelRelativeTranslate(): number {
-			const panelMinLeft = 1 - this.pxToRelativeWidth(MIN_PANEL_WIDTH + SIDE_MARGIN);
-			const currentRelativeLeftDelta =
-				this.calculatedPositions.outputPanelRelativeLeft - panelMinLeft;
-			return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
-		},
-		hasDoubleWidth(): boolean {
-			return get(this, 'nodeType.parameterPane') === 'wide';
-		},
-		fixedPanelWidth(): number {
-			const multiplier = this.hasDoubleWidth ? 2 : 1;
-
-			if (this.windowWidth > 1700) {
-				return PANEL_WIDTH_LARGE * multiplier;
-			}
-
-			return PANEL_WIDTH * multiplier;
-		},
-		isBelowMinWidthMainPanel(): boolean {
-			const minRelativeWidth = this.pxToRelativeWidth(MIN_PANEL_WIDTH);
-			return this.mainPanelDimensions.relativeWidth < minRelativeWidth;
-		},
-	},
-	watch: {
-		windowWidth(windowWidth) {
-			const minRelativeWidth = this.pxToRelativeWidth(MIN_PANEL_WIDTH);
-			// Prevent the panel resizing below MIN_PANEL_WIDTH whhile maintaing position
-			if (this.isBelowMinWidthMainPanel) {
-				this.setMainPanelWidth(minRelativeWidth);
-			}
-
-			const isBelowMinLeft = this.minimumLeftPosition > this.mainPanelDimensions.relativeLeft;
-			const isMaxRight = this.maximumRightPosition > this.mainPanelDimensions.relativeRight;
-
-			// When user is resizing from non-supported view(sub ~488px) we need to refit the panels
-			if (windowWidth > this.minWindowWidth && isBelowMinLeft && isMaxRight) {
-				this.setMainPanelWidth(minRelativeWidth);
-				this.setPositions(this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth));
-			}
-
-			this.setPositions(this.mainPanelDimensions.relativeLeft);
-		},
-	},
-	methods: {
-		onSwitchSelectedNode(node: string) {
-			this.$emit('switchSelectedNode', node);
-		},
-		getInitialLeftPosition(width: number) {
-			if (this.currentNodePaneType === 'dragless')
-				return this.pxToRelativeWidth(SIDE_MARGIN + 1 + this.fixedPanelWidth);
-
-			return this.hasInputSlot ? 0.5 - width / 2 : this.minimumLeftPosition;
-		},
-		setMainPanelWidth(relativeWidth?: number) {
-			const mainPanelRelativeWidth =
-				relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
-
-			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType,
-				dimensions: {
-					relativeWidth: mainPanelRelativeWidth,
-				},
-			});
-		},
-		setPositions(relativeLeft: number) {
-			const mainPanelRelativeLeft =
-				relativeLeft || 1 - this.calculatedPositions.inputPanelRelativeRight;
-			const mainPanelRelativeRight =
-				1 - mainPanelRelativeLeft - this.mainPanelDimensions.relativeWidth;
-
-			const isMaxRight = this.maximumRightPosition > mainPanelRelativeRight;
-			const isMinLeft = this.minimumLeftPosition > mainPanelRelativeLeft;
-			const isInputless = this.currentNodePaneType === 'inputless';
-
-			if (isMinLeft) {
-				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType,
-					dimensions: {
-						relativeLeft: this.minimumLeftPosition,
-						relativeRight: 1 - this.mainPanelDimensions.relativeWidth - this.minimumLeftPosition,
-					},
-				});
-				return;
-			}
-
-			if (isMaxRight) {
-				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType,
-					dimensions: {
-						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition,
-					},
-				});
-				return;
-			}
-
-			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType,
-				dimensions: {
-					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
-					relativeRight: mainPanelRelativeRight,
-				},
-			});
-		},
-		setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
-			const positionByName: Record<string, number> = {
-				minLeft: this.minimumLeftPosition,
-				maxRight: this.maximumRightPosition,
-				initial: this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth),
-			};
-
-			this.setPositions(positionByName[position]);
-		},
-		pxToRelativeWidth(px: number) {
-			return px / this.windowWidth;
-		},
-		relativeWidthToPx(relativeWidth: number) {
-			return relativeWidth * this.windowWidth;
-		},
-		onResizeStart() {
-			this.setTotalWidth();
-		},
-		onResizeEnd() {
-			this.storePositionData();
-		},
-		onResizeDebounced(data: { direction: string; x: number; width: number }) {
-			if (this.initialized) {
-				void this.callDebounced(this.onResize, { debounceTime: 10, trailing: true }, data);
-			}
-		},
-		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {
-			const relativeDistance = this.pxToRelativeWidth(x);
-			const relativeWidth = this.pxToRelativeWidth(width);
-
-			if (direction === 'left' && relativeDistance <= this.minimumLeftPosition) return;
-			if (direction === 'right' && 1 - relativeDistance <= this.maximumRightPosition) return;
-			if (width <= MIN_PANEL_WIDTH) return;
-
-			this.setMainPanelWidth(relativeWidth);
-			this.setPositions(
-				direction === 'left' ? relativeDistance : this.mainPanelDimensions.relativeLeft,
-			);
-		},
-		restorePositionData() {
-			const storedPanelWidthData = useStorage(
-				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-			).value;
-
-			if (storedPanelWidthData) {
-				const parsedWidth = parseFloat(storedPanelWidthData);
-				this.setMainPanelWidth(parsedWidth);
-				const initialPosition = this.getInitialLeftPosition(parsedWidth);
-
-				this.setPositions(initialPosition);
-				return true;
-			}
-			return false;
-		},
-		storePositionData() {
-			useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`).value =
-				this.mainPanelDimensions.relativeWidth.toString();
-		},
-		onDragStart() {
-			this.isDragging = true;
-			this.$emit('dragstart', { position: this.mainPanelDimensions.relativeLeft });
-		},
-		onDrag(position: XYPosition) {
-			const relativeLeft =
-				this.pxToRelativeWidth(position[0]) - this.mainPanelDimensions.relativeWidth / 2;
-
-			this.setPositions(relativeLeft);
-		},
-		onDragEnd() {
-			setTimeout(() => {
-				this.isDragging = false;
-				this.$emit('dragend', {
-					windowWidth: this.windowWidth,
-					position: this.mainPanelDimensions.relativeLeft,
-				});
-			}, 0);
-			this.storePositionData();
-		},
-		setTotalWidth() {
-			this.windowWidth = window.innerWidth;
-		},
-		close() {
-			this.$emit('close');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .dataPanel {
