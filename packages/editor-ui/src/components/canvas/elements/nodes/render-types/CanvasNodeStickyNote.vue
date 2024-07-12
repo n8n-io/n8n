@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable vue/no-multiple-template-root */
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
 import { ref, computed } from 'vue';
@@ -68,26 +69,6 @@ function onEdit(edit: boolean) {
 		@edit="onEdit"
 		@update:model-value="onInputChange"
 	/>
-	<!--
-
-		@resizestart="onResizeStart"
-		@resize="onResize"
-		@resizeend="onResizeEnd"
-
-
-		:scale="nodeViewScale"
-		:background-color="node.parameters.color"
-		:read-only="isReadOnly"
-		:default-text="defaultText"
-		:edit-mode="isActive && !isReadOnly"
-		:grid-size="gridSize"
-		@edit="onEdit"
-		@resizestart="onResizeStart"
-		@resize="onResize"
-		@resizeend="onResizeEnd"
-		@markdown-click="onMarkdownClick"
-		@update:model-value="onInputChange"
-	-->
 </template>
 
 <style lang="scss" module>
