@@ -7,7 +7,6 @@ describe('InlineExpressionEditorOutput.vue', () => {
 		const { getByTestId } = renderComponent(InlineExpressionEditorOutput, {
 			pinia: createTestingPinia(),
 			props: {
-				hoveringItemNumber: 0,
 				visible: true,
 				segments: [
 					{
@@ -56,7 +55,6 @@ describe('InlineExpressionEditorOutput.vue', () => {
 		const { getByTestId } = renderComponent(InlineExpressionEditorOutput, {
 			pinia: createTestingPinia(),
 			props: {
-				hoveringItemNumber: 0,
 				visible: true,
 				segments: [
 					{

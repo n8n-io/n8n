@@ -149,7 +149,7 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.hoveringItem);
+const targetItem = computed(() => ndvStore.expressionTargetItem);
 
 const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
 
