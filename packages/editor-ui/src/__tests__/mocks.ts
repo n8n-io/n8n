@@ -93,8 +93,8 @@ export const mockNodes = [
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
-	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 
 export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
