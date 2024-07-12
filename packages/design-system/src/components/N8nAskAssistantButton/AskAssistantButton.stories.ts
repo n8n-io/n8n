@@ -23,3 +23,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Button = Template.bind({});
+
+export const AskedButton = Template.bind({});
+AskedButton.args = {
+	asked: true,
+};

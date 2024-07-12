@@ -5,11 +5,13 @@ import AssistantText from './AssistantText.vue';
 interface Props {
 	size: 'small' | 'medium';
 	static: boolean;
+	asked: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	static: false,
+	asked: false,
 });
 
 const sizes = {
@@ -34,15 +36,18 @@ const sizes = {
 
 <template>
 	<button
-		:class="[$style.button, props.static ? '' : $style.hoverable]"
-		:style="{ height: sizes[props.size].height }"
+		:class="{ [$style.button]: true, [$style.hoverable]: !static && !asked, [$style.asked]: asked }"
+		:style="{ height: sizes[size].height }"
+		:disabled="asked"
 	>
 		<div>
-			<div :style="{ padding: sizes[props.size].padding }">
-				<AssistantIcon :size="sizes[props.size].iconSize" :class="$style.icon" />
+			<div :style="{ padding: sizes[size].padding }">
+				<AssistantIcon :size="sizes[size].iconSize" :class="$style.icon" />
+				<span v-if="asked">Asked</span>
 				<AssistantText
-					:font-size="sizes[props.size].fontSize"
-					:line-height="sizes[props.size].lineHeight"
+					v-else
+					:font-size="sizes[size].fontSize"
+					:line-height="sizes[size].lineHeight"
 					text="Ask Assistant"
 				/>
 			</div>
@@ -81,6 +86,7 @@ const sizes = {
 .hoverable {
 	&:hover {
 		cursor: pointer;
+		background: linear-gradient(105deg, #ec7b8e 0%, #aa7bec 50%, #5b60e8 100%);
 
 		> div > div {
 			background: linear-gradient(
@@ -93,6 +99,7 @@ const sizes = {
 	}
 
 	&:active {
+		background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
 		> div > div {
 			background: linear-gradient(
 				108.82deg,
@@ -102,6 +109,11 @@ const sizes = {
 			);
 		}
 	}
+}
+
+.asked {
+	cursor: not-allowed;
+	background: var(--color-foreground-base);
 }
 
 .icon {

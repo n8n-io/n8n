@@ -29,7 +29,7 @@ function onMouseLeave() {
 		@mouseleave="onMouseLeave"
 		@click="onClick"
 	>
-		<div :class="$style.num" v-if="props.unreadCount">
+		<div v-if="props.unreadCount" :class="$style.num">
 			{{ props.unreadCount }}
 		</div>
 		<AssistantIcon v-else :size="18" :style="hovering ? 'blank' : 'default'" />
