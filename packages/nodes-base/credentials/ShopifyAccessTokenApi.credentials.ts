@@ -38,6 +38,12 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			default: '',
 			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
 		},
+		{
+			displayName: 'API Version',
+			name: 'apiVersion',
+			type: 'hidden',
+			default: '2024-07',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -51,7 +57,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/2019-10',
+			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/{{$credentials?.apiVersion}}',
 			url: '/products.json',
 		},
 	};
