@@ -83,16 +83,23 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		}
 
 		if (stack.search && searchBaseItems.value) {
-			const searchBase =
-				searchBaseItems.value.length > 0
-					? searchBaseItems.value
-					: flattenCreateElements(stack.baselineItems ?? []);
-
+			let searchBase: INodeCreateElement[] = searchBaseItems.value;
 			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
-			const filteredNodes =
-				isAiRootView(stack) || canvasHasAINodes ? searchBase : filterOutAiNodes(searchBase);
 
-			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', filteredNodes));
+			if (searchBaseItems.value.length === 0) {
+				searchBase = flattenCreateElements(stack.baselineItems ?? []);
+			}
+
+			if (
+				// Filter-out AI sub-nodes if canvas has no AI nodes and the root view is not AI
+				!(isAiRootView(stack) || canvasHasAINodes) ||
+				// or if the source is a plus endpoint or a node connection drop
+				['plus_endpoint', 'node_connection_drop'].includes(nodeCreatorStore.openSource)
+			) {
+				searchBase = filterOutAiNodes(searchBase);
+			}
+
+			const searchResults = extendItemsWithUUID(searchNodes(stack.search || '', searchBase));
 
 			const groupedNodes = groupIfAiNodes(searchResults, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
@@ -183,12 +190,26 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.rootView === AI_NODE_CREATOR_VIEW;
 	}
 
+	function filterAiRootNodes(items: NodeCreateElement[]) {
+		return items.filter((node) => {
+			if (node.type !== 'node') return false;
+
+			return node.properties.codex?.subcategories?.[AI_SUBCATEGORY].includes(
+				AI_CATEGORY_ROOT_NODES,
+			);
+		});
+	}
+
 	function groupIfAiNodes(items: INodeCreateElement[], sortAlphabetically = true) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
+		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
 
-		if (aiNodes.length > 0) {
+		if (aiNodes.length > 0 && (canvasHasAINodes || isAiRootView(getLastActiveStack()))) {
 			const sectionsMap = new Map<string, NodeViewItemSection>();
-			aiNodes.forEach((node) => {
+			const aiRootNodes = filterAiRootNodes(aiNodes);
+			const aiSubNodes = difference(aiNodes, aiRootNodes);
+
+			aiSubNodes.forEach((node) => {
 				const section = node.properties.codex?.subcategories?.[AI_SUBCATEGORY]?.[0];
 
 				if (section) {
@@ -209,34 +230,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			});
 
 			const nonAiNodes = difference(items, aiNodes);
-			const nonAiTriggerNodes = nonAiNodes.filter(
-				(item) => item.type === 'node' && useNodeTypesStore().isTriggerNode(item.properties.name),
-			);
-
-			const nonAiRegularNodes = difference(nonAiNodes, nonAiTriggerNodes);
-
-			if (nonAiNodes.length > 0) {
-				let sectionKey = '';
-				if (nonAiRegularNodes.length && nonAiTriggerNodes.length) {
-					sectionKey = i18n.baseText('nodeCreator.actionsCategory.regularAndTriggers');
-				} else {
-					sectionKey = nonAiRegularNodes.length
-						? i18n.baseText('nodeCreator.actionsCategory.regularNodes')
-						: i18n.baseText('nodeCreator.actionsCategory.triggerNodes');
-				}
-
-				const nodesKeys = nonAiNodes.map((node) => node.key);
-
-				sectionsMap.set(sectionKey, {
-					key: sectionKey,
-					title: sectionKey,
-					items: [...nodesKeys],
-				});
-			}
 			// Convert sectionsMap to array of sections
 			const sections = Array.from(sectionsMap.values());
 
-			return groupItemsInSections(items, sections, sortAlphabetically);
+			return [
+				...nonAiNodes,
+				...aiRootNodes,
+				...groupItemsInSections(aiSubNodes, sections, sortAlphabetically),
+			];
 		}
 
 		return items;

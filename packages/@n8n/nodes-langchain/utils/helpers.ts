@@ -44,6 +44,12 @@ export function isChatInstance(model: unknown): model is BaseChatModel {
 	return namespace.includes('chat_models');
 }
 
+export function isToolsInstance(model: unknown): model is Tool {
+	const namespace = (model as Tool)?.lc_namespace ?? [];
+
+	return namespace.includes('tools');
+}
+
 export async function getOptionalOutputParsers(
 	ctx: IExecuteFunctions,
 ): Promise<Array<BaseOutputParser<unknown>>> {

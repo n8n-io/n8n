@@ -5,12 +5,14 @@ import {
 	mapCanvasConnectionToLegacyConnection,
 	parseCanvasConnectionHandleString,
 	createCanvasConnectionHandleString,
+	createCanvasConnectionId,
 } from '@/utils/canvasUtilsV2';
 import { NodeConnectionType, type IConnections, type INodeTypeDescription } from 'n8n-workflow';
 import type { CanvasConnection } from '@/types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
+import { CanvasConnectionMode } from '@/types';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -47,15 +49,34 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			nodes,
 		);
 
+		const source = nodes[0].id;
+		const sourceHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const target = nodes[1].id;
+		const targetHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const id = createCanvasConnectionId({
+			source,
+			target,
+			sourceHandle,
+			targetHandle,
+		});
+
 		expect(result).toEqual([
 			{
-				id: '[1/main/0][2/main/0]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/0',
-				targetHandle: 'inputs/main/0',
+				id,
+				source,
+				target,
+				sourceHandle,
+				targetHandle,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.Main,
@@ -147,15 +168,53 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			nodes,
 		);
 
+		const sourceA = nodes[0].id;
+		const sourceHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const targetA = nodes[1].id;
+		const targetHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const connectionIdA = createCanvasConnectionId({
+			source: sourceA,
+			target: targetA,
+			sourceHandle: sourceHandleA,
+			targetHandle: targetHandleA,
+		});
+
+		const sourceB = nodes[0].id;
+		const sourceHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 1,
+		});
+		const targetB = nodes[1].id;
+		const targetHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 1,
+		});
+		const connectionIdB = createCanvasConnectionId({
+			source: sourceB,
+			target: targetB,
+			sourceHandle: sourceHandleB,
+			targetHandle: targetHandleB,
+		});
+
 		expect(result).toEqual([
 			{
-				id: '[1/main/0][2/main/0]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/0',
-				targetHandle: 'inputs/main/0',
+				id: connectionIdA,
+				source: sourceA,
+				target: targetA,
+				sourceHandle: sourceHandleA,
+				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.Main,
@@ -167,13 +226,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 			{
-				id: '[1/main/1][2/main/1]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/1',
-				targetHandle: 'inputs/main/1',
+				id: connectionIdB,
+				source: sourceA,
+				target: targetB,
+				sourceHandle: sourceHandleB,
+				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 1,
 						type: NodeConnectionType.Main,
@@ -228,15 +287,53 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			nodes,
 		);
 
+		const sourceA = nodes[0].id;
+		const sourceHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const targetA = nodes[1].id;
+		const targetHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const connectionIdA = createCanvasConnectionId({
+			source: sourceA,
+			target: targetA,
+			sourceHandle: sourceHandleA,
+			targetHandle: targetHandleA,
+		});
+
+		const sourceB = nodes[0].id;
+		const sourceHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 1,
+		});
+		const targetB = nodes[2].id;
+		const targetHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const connectionIdB = createCanvasConnectionId({
+			source: sourceB,
+			target: targetB,
+			sourceHandle: sourceHandleB,
+			targetHandle: targetHandleB,
+		});
+
 		expect(result).toEqual([
 			{
-				id: '[1/main/0][2/main/0]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/0',
-				targetHandle: 'inputs/main/0',
+				id: connectionIdA,
+				source: sourceA,
+				target: targetA,
+				sourceHandle: sourceHandleA,
+				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.Main,
@@ -248,13 +345,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 			{
-				id: '[1/main/1][3/main/0]',
-				source: '1',
-				target: '3',
-				sourceHandle: 'outputs/main/1',
-				targetHandle: 'inputs/main/0',
+				id: connectionIdB,
+				source: sourceB,
+				target: targetB,
+				sourceHandle: sourceHandleB,
+				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 1,
 						type: NodeConnectionType.Main,
@@ -312,15 +409,72 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			nodes,
 		);
 
+		const sourceA = nodes[0].id;
+		const sourceHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const targetA = nodes[1].id;
+		const targetHandleA = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const connectionIdA = createCanvasConnectionId({
+			source: sourceA,
+			target: targetA,
+			sourceHandle: sourceHandleA,
+			targetHandle: targetHandleA,
+		});
+
+		const sourceB = nodes[0].id;
+		const sourceHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.AiMemory,
+			index: 0,
+		});
+		const targetB = nodes[2].id;
+		const targetHandleB = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.AiMemory,
+			index: 1,
+		});
+		const connectionIdB = createCanvasConnectionId({
+			source: sourceB,
+			target: targetB,
+			sourceHandle: sourceHandleB,
+			targetHandle: targetHandleB,
+		});
+
+		const sourceC = nodes[1].id;
+		const sourceHandleC = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const targetC = nodes[2].id;
+		const targetHandleC = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+		const connectionIdC = createCanvasConnectionId({
+			source: sourceC,
+			target: targetC,
+			sourceHandle: sourceHandleC,
+			targetHandle: targetHandleC,
+		});
+
 		expect(result).toEqual([
 			{
-				id: '[1/main/0][2/main/0]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/0',
-				targetHandle: 'inputs/main/0',
+				id: connectionIdA,
+				source: sourceA,
+				target: targetA,
+				sourceHandle: sourceHandleA,
+				targetHandle: targetHandleA,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.Main,
@@ -332,13 +486,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 			{
-				id: `[1/${NodeConnectionType.AiMemory}/0][3/${NodeConnectionType.AiMemory}/1]`,
-				source: '1',
-				target: '3',
-				sourceHandle: `outputs/${NodeConnectionType.AiMemory}/0`,
-				targetHandle: `inputs/${NodeConnectionType.AiMemory}/1`,
+				id: connectionIdB,
+				source: sourceB,
+				target: targetB,
+				sourceHandle: sourceHandleB,
+				targetHandle: targetHandleB,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.AiMemory,
@@ -350,13 +504,13 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 				},
 			},
 			{
-				id: '[2/main/0][3/main/0]',
-				source: '2',
-				target: '3',
-				sourceHandle: 'outputs/main/0',
-				targetHandle: 'inputs/main/0',
+				id: connectionIdC,
+				source: sourceC,
+				target: targetC,
+				sourceHandle: sourceHandleC,
+				targetHandle: targetHandleC,
 				data: {
-					fromNodeName: 'Node B',
+					fromNodeName: nodes[1].name,
 					source: {
 						index: 0,
 						type: NodeConnectionType.Main,
@@ -403,15 +557,36 @@ describe('mapLegacyConnectionsToCanvasConnections', () => {
 			nodes,
 		);
 
+		const source = nodes[0].id;
+		const sourceHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Output,
+			type: NodeConnectionType.Main,
+			index: 1,
+		});
+
+		const target = nodes[1].id;
+		const targetHandle = createCanvasConnectionHandleString({
+			mode: CanvasConnectionMode.Input,
+			type: NodeConnectionType.Main,
+			index: 0,
+		});
+
+		const id = createCanvasConnectionId({
+			source,
+			target,
+			sourceHandle,
+			targetHandle,
+		});
+
 		expect(result).toEqual([
 			{
-				id: '[1/main/1][2/main/0]',
-				source: '1',
-				target: '2',
-				sourceHandle: 'outputs/main/1',
-				targetHandle: 'inputs/main/0',
+				id,
+				source,
+				target,
+				sourceHandle,
+				targetHandle,
 				data: {
-					fromNodeName: 'Node A',
+					fromNodeName: nodes[0].name,
 					source: {
 						index: 1,
 						type: NodeConnectionType.Main,
