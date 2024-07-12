@@ -18,7 +18,7 @@ const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
 const formBus = ref(createEventBus());
 const readyToSubmit = ref(false);
-const currentSelectedTheme = computed(() => useUIStore().theme);
+const currentSelectedTheme = ref(useUIStore().theme);
 const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
 	{
 		name: 'system',
