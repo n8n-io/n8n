@@ -1,4 +1,4 @@
-import type { Connection, ContainerOptions, Dictionary, EventContext } from 'rhea';
+import type { Connection, ContainerOptions, Dictionary, EventContext, Sender } from 'rhea';
 import { create_container } from 'rhea';
 
 import type {
@@ -146,6 +146,10 @@ export class Amqp implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const container = create_container();
+		let connection: Connection | undefined = undefined;
+		let sender: Sender | undefined = undefined;
+
 		try {
 			const credentials = await this.getCredentials('amqp');
 
@@ -155,8 +159,6 @@ export class Amqp implements INodeType {
 				| object;
 			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
-			const containerReconnect = (options.reconnect as boolean) || true;
-			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -169,8 +171,6 @@ export class Amqp implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
 			}
 
-			const container = create_container();
-
 			/*
 				Values are documentet here: https://github.com/amqp/rhea#container
 			*/
@@ -178,21 +178,47 @@ export class Amqp implements INodeType {
 				host: credentials.hostname,
 				hostname: credentials.hostname,
 				port: credentials.port,
-				reconnect: containerReconnect,
-				reconnect_limit: containerReconnectLimit,
 				username: credentials.username ? credentials.username : undefined,
 				password: credentials.password ? credentials.password : undefined,
 				transport: credentials.transportType ? credentials.transportType : undefined,
 				container_id: containerId ? containerId : undefined,
 				id: containerId ? containerId : undefined,
 			};
-			const conn = container.connect(connectOptions);
 
-			const sender = conn.open_sender(sink);
+			if (options.reconnect) {
+				connectOptions.reconnect = true;
+				connectOptions.reconnect_limit = (options.reconnectLimit as number) || 50;
+			} else {
+				connectOptions.reconnect = false;
+			}
 
-			const responseData: IDataObject[] = await new Promise((resolve) => {
+			const node = this.getNode();
+
+			const responseData: INodeExecutionData[] = await new Promise((resolve, reject) => {
+				connection = container.connect(connectOptions);
+				sender = connection.open_sender(sink);
+				let limit = (options.reconnectLimit as number) || 0;
+
+				container.on('disconnected', function (context: EventContext) {
+					//handling this manualy as container, despite reconnect_limit, does reconnect on disconnect
+					if (limit <= 0) {
+						const error = new NodeOperationError(
+							node,
+							((context.error as Error) ?? {}).message ?? 'Dissconnected',
+							{
+								description: `Check your credentials${options.reconect ? '' : ', and consider enabling reconnect in the options'}`,
+								itemIndex: 0,
+							},
+						);
+
+						reject(error);
+					}
+
+					limit--;
+				});
+
 				container.once('sendable', (context: EventContext) => {
-					const returnData = [];
+					const returnData: INodeExecutionData[] = [];
 
 					const items = this.getInputData();
 					for (let i = 0; i < items.length; i++) {
@@ -214,23 +240,24 @@ export class Amqp implements INodeType {
 							body,
 						});
 
-						returnData.push({ id: result?.id });
+						returnData.push({ json: { id: result?.id }, pairedItems: { item: i } });
 					}
 
 					resolve(returnData);
 				});
 			});
 
-			sender.close();
-			conn.close();
-
-			return [this.helpers.returnJsonArray(responseData)];
+			return [responseData];
 		} catch (error) {
 			if (this.continueOnFail(error)) {
-				return [this.helpers.returnJsonArray({ error: error.message })];
+				return [[{ json: { error: error.message }, pairedItems: { item: 0 } }]];
 			} else {
 				throw error;
 			}
+		} finally {
+			container.removeAllListeners();
+			if (sender) (sender as Sender).close();
+			if (connection) (connection as Connection).close();
 		}
 	}
 }
