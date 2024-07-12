@@ -52,6 +52,7 @@ function onMouseLeave() {
 	position: relative;
 
 	&:hover {
+		border: 0;
 		cursor: pointer;
 		background: linear-gradient(
 			108.82deg,
