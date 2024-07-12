@@ -98,7 +98,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	}
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
+		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
 	let from = word.to - tail.length;
