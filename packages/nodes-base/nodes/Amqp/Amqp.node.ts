@@ -173,6 +173,8 @@ export class Amqp implements INodeType {
 				| object;
 			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
+			const containerReconnect = (options.reconnect as boolean) || true;
+			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -197,19 +199,16 @@ export class Amqp implements INodeType {
 				transport: credentials.transportType ? credentials.transportType : undefined,
 				container_id: containerId ? containerId : undefined,
 				id: containerId ? containerId : undefined,
-				reconnect: options.reconnect ? true : undefined,
+				reconnect: containerReconnect,
+				reconnect_limit: containerReconnectLimit,
 			};
-
-			if (options.reconnect) {
-				connectOptions.reconnect_limit = (options.reconnectLimit as number) || 50;
-			}
 
 			const node = this.getNode();
 
 			const responseData: INodeExecutionData[] = await new Promise((resolve, reject) => {
 				connection = container.connect(connectOptions);
 				sender = connection.open_sender(sink);
-				let limit = (options.reconnectLimit as number) || 5;
+				let limit = containerReconnectLimit;
 
 				container.on('disconnected', function (context: EventContext) {
 					//handling this manually as container, despite reconnect_limit, does reconnect on disconnect
