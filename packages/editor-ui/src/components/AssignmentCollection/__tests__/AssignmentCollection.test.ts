@@ -101,7 +101,7 @@ describe('AssignmentCollection.vue', () => {
 		);
 	});
 
-	it.only('can add assignments by drag and drop (and infer type)', async () => {
+	it('can add assignments by drag and drop (and infer type)', async () => {
 		const { getByTestId, findAllByTestId } = renderComponent();
 		const dropArea = getByTestId('drop-area');
 
