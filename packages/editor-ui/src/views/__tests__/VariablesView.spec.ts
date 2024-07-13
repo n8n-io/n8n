@@ -7,7 +7,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useRBACStore } from '@/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { CHAT_EMBED_MODAL_KEY, EnterpriseEditionFeature, STORES } from '@/constants';
+import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
