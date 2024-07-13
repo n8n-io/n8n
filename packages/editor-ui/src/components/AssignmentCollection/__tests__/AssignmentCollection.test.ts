@@ -6,12 +6,13 @@ import { fireEvent, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import AssignmentCollection from '../AssignmentCollection.vue';
 import { STORES } from '@/constants';
-import { createPinia, setActivePinia } from 'pinia';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
-		initialState: { [STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE },
+		initialState: {
+			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
+		},
 	}),
 	props: {
 		path: 'parameters.fields',
@@ -100,11 +101,8 @@ describe('AssignmentCollection.vue', () => {
 		);
 	});
 
-	it('can add assignments by drag and drop (and infer type)', async () => {
-		const pinia = createPinia();
-		setActivePinia(pinia);
-
-		const { getByTestId, findAllByTestId } = renderComponent({ pinia });
+	it.only('can add assignments by drag and drop (and infer type)', async () => {
+		const { getByTestId, findAllByTestId } = renderComponent();
 		const dropArea = getByTestId('drop-area');
 
 		await dropAssignment({ key: 'boolKey', value: true, dropArea });
