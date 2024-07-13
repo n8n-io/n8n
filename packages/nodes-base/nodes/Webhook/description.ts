@@ -237,7 +237,7 @@ export const optionsProperty: INodeProperties = {
 				'If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it',
 		},
 		{
-			displayName: 'Binary Property',
+			displayName: 'Field Name for Binary Data',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -247,7 +247,7 @@ export const optionsProperty: INodeProperties = {
 				},
 			},
 			description:
-				'Name of the binary property to write the data of the received file to, only relevant if binary data is received',
+				'The name of the output field to put any binary file data in. Only relevant if binary data is received.',
 		},
 		{
 			displayName: 'Ignore Bots',
