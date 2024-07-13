@@ -177,6 +177,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (settings.value.enterprise?.showNonProdBanner) {
 			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
 		}
+
 		if (settings.value.versionCli) {
 			useRootStore().setVersionCli(settings.value.versionCli);
 		}
@@ -191,7 +192,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		}
 
 		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');
-		if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+		if (!isV1BannerDismissedPermanently && settings.value.versionCli.startsWith('1.')) {
 			useUIStore().pushBannerToStack('V1');
 		}
 	};
@@ -237,7 +238,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setTimezone(fetchedSettings.timezone);
 		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
-		rootStore.setVersionCli(fetchedSettings.versionCli);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
