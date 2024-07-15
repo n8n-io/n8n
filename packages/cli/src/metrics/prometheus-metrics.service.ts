@@ -53,7 +53,7 @@ export class PrometheusMetricsService {
 	 * Set up metric for n8n version: `n8n_version_info`
 	 */
 	private setupN8nVersionMetric() {
-		const n8nVersion = semverParse(N8N_VERSION ?? '0.0.0');
+		const n8nVersion = semverParse(N8N_VERSION);
 
 		if (!n8nVersion) return;
 
