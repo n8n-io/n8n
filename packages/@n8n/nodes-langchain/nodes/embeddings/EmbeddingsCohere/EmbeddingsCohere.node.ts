@@ -14,7 +14,7 @@ export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Cohere',
 		name: 'embeddingsCohere',
-		icon: 'file:cohere.svg',
+		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Use Cohere Embeddings',

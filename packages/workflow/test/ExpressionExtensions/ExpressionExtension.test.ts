@@ -4,9 +4,10 @@
 
 /* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
 
-import { extendTransform } from '@/Extensions';
+import { extendTransform, extend } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
 import { evaluate } from './Helpers';
+import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
@@ -240,6 +241,33 @@ describe('tmpl Expression Parser', () => {
 			expect(evaluate('={{ $ifEmpty({}, "default") }}')).toEqual('default');
 			expect(evaluate('={{ $ifEmpty([1], "default") }}')).toEqual([1]);
 			expect(evaluate('={{ $ifEmpty({a: 1}, "default") }}')).toEqual({ a: 1 });
+		});
+	});
+
+	describe('Test extend with undefined', () => {
+		test('input is undefined', () => {
+			try {
+				extend(undefined, 'toDateTime', []);
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionExtensionError);
+				expect(error).toHaveProperty(
+					'message',
+					'toDateTime() could not be called on "undefined" type',
+				);
+			}
+		});
+		test('input is null', () => {
+			try {
+				extend(null, 'startsWith', []);
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionExtensionError);
+				expect(error).toHaveProperty('message', 'startsWith() could not be called on "null" type');
+			}
+		});
+		test('input should be converted to upper case', () => {
+			const result = extend('TEST', 'toUpperCase', []);
+
+			expect(result).toEqual('TEST');
 		});
 	});
 });

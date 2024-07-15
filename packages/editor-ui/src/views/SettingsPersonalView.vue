@@ -1,3 +1,174 @@
+<script lang="ts" setup>
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { ref } from 'vue';
+import { computed } from 'vue';
+import { onMounted } from 'vue';
+
+const i18n = useI18n();
+const { showToast, showError } = useToast();
+
+const hasAnyBasicInfoChanges = ref<boolean>(false);
+const formInputs = ref<null | IFormInputs>(null);
+const formBus = ref(createEventBus());
+const readyToSubmit = ref(false);
+const currentSelectedTheme = ref(useUIStore().theme);
+const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
+	{
+		name: 'system',
+		label: 'settings.personal.theme.systemDefault',
+	},
+	{
+		name: 'light',
+		label: 'settings.personal.theme.light',
+	},
+	{
+		name: 'dark',
+		label: 'settings.personal.theme.dark',
+	},
+]);
+
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+const currentUser = computed((): IUser | null => {
+	return usersStore.currentUser;
+});
+const isExternalAuthEnabled = computed((): boolean => {
+	const isLdapEnabled =
+		settingsStore.settings.enterprise.ldap && currentUser.value?.signInType === 'ldap';
+	const isSamlEnabled =
+		settingsStore.isSamlLoginEnabled && settingsStore.isDefaultAuthenticationSaml;
+	return isLdapEnabled || isSamlEnabled;
+});
+const isPersonalSecurityEnabled = computed((): boolean => {
+	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
+});
+const mfaDisabled = computed((): boolean => {
+	return !usersStore.mfaEnabled;
+});
+const isMfaFeatureEnabled = computed((): boolean => {
+	return settingsStore.isMfaFeatureEnabled;
+});
+const hasAnyPersonalisationChanges = computed((): boolean => {
+	return currentSelectedTheme.value !== uiStore.theme;
+});
+const hasAnyChanges = computed(() => {
+	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
+});
+
+onMounted(() => {
+	formInputs.value = [
+		{
+			name: 'firstName',
+			initialValue: currentUser.value?.firstName,
+			properties: {
+				label: i18n.baseText('auth.firstName'),
+				maxlength: 32,
+				required: true,
+				autocomplete: 'given-name',
+				capitalize: true,
+				disabled: isExternalAuthEnabled.value,
+			},
+		},
+		{
+			name: 'lastName',
+			initialValue: currentUser.value?.lastName,
+			properties: {
+				label: i18n.baseText('auth.lastName'),
+				maxlength: 32,
+				required: true,
+				autocomplete: 'family-name',
+				capitalize: true,
+				disabled: isExternalAuthEnabled.value,
+			},
+		},
+		{
+			name: 'email',
+			initialValue: currentUser.value?.email,
+			properties: {
+				label: i18n.baseText('auth.email'),
+				type: 'email',
+				required: true,
+				validationRules: [{ name: 'VALID_EMAIL' }],
+				autocomplete: 'email',
+				capitalize: true,
+				disabled: !isPersonalSecurityEnabled.value,
+			},
+		},
+	];
+});
+
+function onInput() {
+	hasAnyBasicInfoChanges.value = true;
+}
+function onReadyToSubmit(ready: boolean) {
+	readyToSubmit.value = ready;
+}
+async function onSubmit(form: { firstName: string; lastName: string; email: string }) {
+	try {
+		await Promise.all([updateUserBasicInfo(form), updatePersonalisationSettings()]);
+
+		showToast({
+			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
+			message: '',
+			type: 'success',
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
+	}
+}
+async function updateUserBasicInfo(form: { firstName: string; lastName: string; email: string }) {
+	if (!hasAnyBasicInfoChanges.value || !usersStore.currentUserId) {
+		return;
+	}
+
+	await usersStore.updateUser({
+		id: usersStore.currentUserId,
+		firstName: form.firstName,
+		lastName: form.lastName,
+		email: form.email,
+	});
+	hasAnyBasicInfoChanges.value = false;
+}
+async function updatePersonalisationSettings() {
+	if (!hasAnyPersonalisationChanges.value) {
+		return;
+	}
+
+	uiStore.setTheme(currentSelectedTheme.value);
+}
+function onSaveClick() {
+	formBus.value.emit('submit');
+}
+function openPasswordModal() {
+	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
+}
+function onMfaEnableClick() {
+	uiStore.openModal(MFA_SETUP_MODAL_KEY);
+}
+async function onMfaDisableClick() {
+	try {
+		await usersStore.disabledMfa();
+		showToast({
+			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+			type: 'success',
+			duration: 0,
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
+	}
+}
+</script>
+
 <template>
 	<div :class="$style.container" data-test-id="personal-settings-container">
 		<div :class="$style.header">
@@ -45,15 +216,15 @@
 			</div>
 			<div v-if="isMfaFeatureEnabled" data-test-id="mfa-section">
 				<div class="mb-xs">
-					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
+					<n8n-input-label :label="i18n.baseText('settings.personal.mfa.section.title')" />
 					<n8n-text :bold="false" :class="$style.infoText">
 						{{
 							mfaDisabled
-								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
-								: $locale.baseText('settings.personal.mfa.button.enabled.infobox')
+								? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
+								: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
 						}}
-						<n8n-link :to="mfaDocsUrl" size="small" :bold="true">
-							{{ $locale.baseText('generic.learnMore') }}
+						<n8n-link :to="MFA_DOCS_URL" size="small" :bold="true">
+							{{ i18n.baseText('generic.learnMore') }}
 						</n8n-link>
 					</n8n-text>
 				</div>
@@ -61,7 +232,7 @@
 					v-if="mfaDisabled"
 					:class="$style.button"
 					type="tertiary"
-					:label="$locale.baseText('settings.personal.mfa.button.enabled')"
+					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
@@ -69,7 +240,7 @@
 					v-else
 					:class="$style.disableMfaButton"
 					type="tertiary"
-					:label="$locale.baseText('settings.personal.mfa.button.disabled')"
+					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"
 				/>
@@ -113,190 +284,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
-import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import { createEventBus } from 'n8n-design-system/utils';
-
-export default defineComponent({
-	name: 'SettingsPersonalView',
-	setup() {
-		const i18n = useI18n();
-
-		return {
-			i18n,
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			hasAnyBasicInfoChanges: false,
-			formInputs: null as null | IFormInputs,
-			formBus: createEventBus(),
-			readyToSubmit: false,
-			mfaDocsUrl: MFA_DOCS_URL,
-			currentSelectedTheme: useUIStore().theme,
-			themeOptions: [
-				{
-					name: 'system',
-					label: 'settings.personal.theme.systemDefault',
-				},
-				{
-					name: 'light',
-					label: 'settings.personal.theme.light',
-				},
-				{
-					name: 'dark',
-					label: 'settings.personal.theme.dark',
-				},
-			] as Array<{ name: ThemeOption; label: string }>,
-		};
-	},
-	computed: {
-		...mapStores(useUIStore, useUsersStore, useSettingsStore),
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
-		isExternalAuthEnabled(): boolean {
-			const isLdapEnabled =
-				this.settingsStore.settings.enterprise.ldap && this.currentUser?.signInType === 'ldap';
-			const isSamlEnabled =
-				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml;
-			return isLdapEnabled || isSamlEnabled;
-		},
-		isPersonalSecurityEnabled(): boolean {
-			return this.usersStore.isInstanceOwner || !this.isExternalAuthEnabled;
-		},
-		mfaDisabled(): boolean {
-			return !this.usersStore.mfaEnabled;
-		},
-		isMfaFeatureEnabled(): boolean {
-			return this.settingsStore.isMfaFeatureEnabled;
-		},
-		hasAnyPersonalisationChanges(): boolean {
-			return this.currentSelectedTheme !== this.uiStore.theme;
-		},
-		hasAnyChanges() {
-			return this.hasAnyBasicInfoChanges || this.hasAnyPersonalisationChanges;
-		},
-	},
-	mounted() {
-		this.formInputs = [
-			{
-				name: 'firstName',
-				initialValue: this.currentUser?.firstName,
-				properties: {
-					label: this.i18n.baseText('auth.firstName'),
-					maxlength: 32,
-					required: true,
-					autocomplete: 'given-name',
-					capitalize: true,
-					disabled: this.isExternalAuthEnabled,
-				},
-			},
-			{
-				name: 'lastName',
-				initialValue: this.currentUser?.lastName,
-				properties: {
-					label: this.i18n.baseText('auth.lastName'),
-					maxlength: 32,
-					required: true,
-					autocomplete: 'family-name',
-					capitalize: true,
-					disabled: this.isExternalAuthEnabled,
-				},
-			},
-			{
-				name: 'email',
-				initialValue: this.currentUser?.email,
-				properties: {
-					label: this.i18n.baseText('auth.email'),
-					type: 'email',
-					required: true,
-					validationRules: [{ name: 'VALID_EMAIL' }],
-					autocomplete: 'email',
-					capitalize: true,
-					disabled: !this.isPersonalSecurityEnabled,
-				},
-			},
-		];
-	},
-	methods: {
-		onInput() {
-			this.hasAnyBasicInfoChanges = true;
-		},
-		onReadyToSubmit(ready: boolean) {
-			this.readyToSubmit = ready;
-		},
-		async onSubmit(form: { firstName: string; lastName: string; email: string }) {
-			try {
-				await Promise.all([this.updateUserBasicInfo(form), this.updatePersonalisationSettings()]);
-
-				this.showToast({
-					title: this.i18n.baseText('settings.personal.personalSettingsUpdated'),
-					message: '',
-					type: 'success',
-				});
-			} catch (e) {
-				this.showError(e, this.i18n.baseText('settings.personal.personalSettingsUpdatedError'));
-			}
-		},
-		async updateUserBasicInfo(form: { firstName: string; lastName: string; email: string }) {
-			if (!this.hasAnyBasicInfoChanges || !this.usersStore.currentUserId) {
-				return;
-			}
-
-			await this.usersStore.updateUser({
-				id: this.usersStore.currentUserId,
-				firstName: form.firstName,
-				lastName: form.lastName,
-				email: form.email,
-			});
-			this.hasAnyBasicInfoChanges = false;
-		},
-		async updatePersonalisationSettings() {
-			if (!this.hasAnyPersonalisationChanges) {
-				return;
-			}
-
-			this.uiStore.setTheme(this.currentSelectedTheme);
-		},
-		onSaveClick() {
-			this.formBus.emit('submit');
-		},
-		openPasswordModal() {
-			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
-		},
-		onMfaEnableClick() {
-			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
-		},
-		async onMfaDisableClick() {
-			try {
-				await this.usersStore.disabledMfa();
-				this.showToast({
-					title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.title'),
-					message: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.message'),
-					type: 'success',
-					duration: 0,
-				});
-			} catch (e) {
-				this.showError(
-					e,
-					this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.error.message'),
-				);
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

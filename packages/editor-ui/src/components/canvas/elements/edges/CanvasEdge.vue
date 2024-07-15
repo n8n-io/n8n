@@ -4,18 +4,28 @@ import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { computed, useCssModule } from 'vue';
+import type { CanvasConnectionData } from '@/types';
+import { NodeConnectionType } from 'n8n-workflow';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 const emit = defineEmits<{
+	add: [connection: Connection];
 	delete: [connection: Connection];
 }>();
 
-const props = defineProps<
-	EdgeProps & {
-		hovered?: boolean;
-	}
->();
+export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	hovered?: boolean;
+};
+
+const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
+
+const connectionType = computed(() =>
+	isValidNodeConnectionType(props.data.source.type)
+		? props.data.source.type
+		: NodeConnectionType.Main,
+);
 
 const isFocused = computed(() => props.selected || props.hovered);
 
@@ -27,6 +37,8 @@ const statusColor = computed(() => {
 		return 'var(--color-success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color-secondary)';
+	} else if (status.value === 'running') {
+		return 'var(--color-primary)';
 	} else {
 		return 'var(--color-foreground-xdark)';
 	}
@@ -83,6 +95,10 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
+function onAdd() {
+	emit('add', connection.value);
+}
+
 function onDelete() {
 	emit('delete', connection.value);
 }
@@ -102,7 +118,13 @@ function onDelete() {
 		:label-show-bg="false"
 	/>
 	<EdgeLabelRenderer>
-		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
+		<CanvasEdgeToolbar
+			:type="connectionType"
+			:class="edgeToolbarClasses"
+			:style="edgeToolbarStyle"
+			@add="onAdd"
+			@delete="onDelete"
+		/>
 	</EdgeLabelRenderer>
 </template>
 

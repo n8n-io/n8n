@@ -5,11 +5,12 @@
 
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
-import type { CanvasElementData } from '@/types';
+import type { CanvasNodeData } from '@/types';
+import { CanvasNodeRenderType } from '@/types';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
-	const data = computed<CanvasElementData>(
+	const data = computed<CanvasNodeData>(
 		() =>
 			node?.data.value ?? {
 				id: '',
@@ -21,9 +22,14 @@ export function useCanvasNode() {
 				connections: { input: {}, output: {} },
 				issues: { items: [], visible: false },
 				pinnedData: { count: 0, visible: false },
-				execution: {},
+				execution: {
+					running: false,
+				},
 				runData: { count: 0, visible: false },
-				renderType: 'default',
+				render: {
+					type: CanvasNodeRenderType.Default,
+					options: {},
+				},
 			},
 	);
 
@@ -45,9 +51,12 @@ export function useCanvasNode() {
 
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
+	const executionRunning = computed(() => data.value.execution.running);
 
 	const runDataCount = computed(() => data.value.runData.count);
 	const hasRunData = computed(() => data.value.runData.visible);
+
+	const renderOptions = computed(() => data.value.render.options);
 
 	return {
 		node,
@@ -65,5 +74,7 @@ export function useCanvasNode() {
 		hasIssues,
 		executionStatus,
 		executionWaiting,
+		executionRunning,
+		renderOptions,
 	};
 }

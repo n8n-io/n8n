@@ -19,8 +19,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from './cache/cache.service';
 import { License } from '@/License';
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
+import { ApplicationError } from 'n8n-workflow';
 
-export class TeamProjectOverQuotaError extends Error {
+export class TeamProjectOverQuotaError extends ApplicationError {
 	constructor(limit: number) {
 		super(
 			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
@@ -28,7 +29,7 @@ export class TeamProjectOverQuotaError extends Error {
 	}
 }
 
-export class UnlicensedProjectRoleError extends Error {
+export class UnlicensedProjectRoleError extends ApplicationError {
 	constructor(role: ProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}

@@ -1945,9 +1945,7 @@ export class HttpRequestV3 implements INodeType {
 								false,
 							) as boolean;
 
-							const data = await this.helpers
-								.binaryToBuffer(response.body as Buffer | Readable)
-								.then((body) => body.toString());
+							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
 							response.body = jsonParse(data, {
 								...(neverError
 									? { fallbackValue: {} }
@@ -1959,9 +1957,7 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						responseFormat = 'text';
 						if (!response.__bodyResolved) {
-							const data = await this.helpers
-								.binaryToBuffer(response.body as Buffer | Readable)
-								.then((body) => body.toString());
+							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
 							response.body = !data ? undefined : data;
 						}
 					}
