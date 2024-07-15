@@ -18,6 +18,7 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 type Props = {
 	error: NodeError | NodeApiError | NodeOperationError;
@@ -31,6 +32,7 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -359,6 +361,19 @@ function copySuccess() {
 		type: 'info',
 	});
 }
+
+async function onClick() {
+	const { message, node, lineNumber, description } = props.error;
+	await assistantStore.initErrorHelper({
+		error: {
+			message,
+			node,
+			lineNumber,
+			description: description ?? '',
+			type: 'type' in props.error ? props.error.type : undefined,
+		},
+	});
+}
 </script>
 
 <template>
@@ -376,7 +391,7 @@ function copySuccess() {
 				v-html="getErrorDescription()"
 			></div>
 			<div class="node-error-view__assistant-button">
-				<n8n-ask-assistant-button />
+				<n8n-ask-assistant-button @click="onClick" />
 			</div>
 		</div>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import AssistantIcon from './AssistantIcon.vue';
 import AssistantText from './AssistantText.vue';
 
@@ -8,11 +9,15 @@ interface Props {
 	asked: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	static: false,
 	asked: false,
 });
+
+const emit = defineEmits<{
+	click: [];
+}>();
 
 const sizes = {
 	medium: {
@@ -30,15 +35,23 @@ const sizes = {
 		height: '18px',
 	},
 };
-// todo if static, disable click
+
+const hoverable = computed(() => !props.static && !props.asked);
+
+const onClick = () => {
+	if (hoverable.value) {
+		emit('click');
+	}
+};
 // todo hoverable class not clean below
 </script>
 
 <template>
 	<button
-		:class="{ [$style.button]: true, [$style.hoverable]: !static && !asked, [$style.asked]: asked }"
+		:class="{ [$style.button]: true, [$style.hoverable]: hoverable, [$style.asked]: asked }"
 		:style="{ height: sizes[size].height }"
 		:disabled="asked"
+		@click="onClick"
 	>
 		<div>
 			<div :style="{ padding: sizes[size].padding }">
