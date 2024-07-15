@@ -16,8 +16,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const rootStore = useRootStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
-	const chatSessionNodeName = ref<string | undefined>();
 	const usersStore = useUsersStore();
+
+	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 
 	function closeChat() {
 		chatWindowOpen.value = false;
@@ -60,8 +61,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
 	}
 
+	function isNodeErrorActive(error: ChatRequest.ErrorContext['error']) {
+		const targetNode = error.node.name;
+		const errorMessage = error.message;
+
+		return (
+			targetNode === chatSessionError.value?.error.node.name &&
+			errorMessage === chatSessionError.value?.error.message
+		);
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
-		chatSessionNodeName.value = context.error.node.name;
+		if (isNodeErrorActive(context.error)) {
+			return;
+		}
+		chatSessionError.value = context;
 
 		openChat();
 
@@ -102,6 +116,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		closeChat,
 		openChat,
 		updateWindowWidth,
+		isNodeErrorActive,
 		initErrorHelper,
 		sendMessage,
 	};

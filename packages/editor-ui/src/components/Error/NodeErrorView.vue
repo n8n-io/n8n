@@ -105,6 +105,13 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
+const assistantAlreadyAsked = computed(() =>
+	assistantStore.isNodeErrorActive({
+		message: props.error.message,
+		node: props.error.node,
+	}),
+);
+
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
 		return i18n.baseText('nodeSettings.deprecated');
@@ -391,7 +398,7 @@ async function onClick() {
 				v-html="getErrorDescription()"
 			></div>
 			<div class="node-error-view__assistant-button">
-				<n8n-ask-assistant-button @click="onClick" />
+				<n8n-ask-assistant-button :asked="assistantAlreadyAsked" @click="onClick" />
 			</div>
 		</div>
 
