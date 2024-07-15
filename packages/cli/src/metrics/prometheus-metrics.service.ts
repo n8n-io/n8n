@@ -166,17 +166,19 @@ export class PrometheusMetricsService {
 	}
 
 	private toLabels(event: EventMessageTypes): Record<string, string> {
-		switch (event.__type) {
+		const { __type, eventName, payload } = event;
+
+		switch (__type) {
 			case EventMessageTypeNames.audit:
-				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
+				if (eventName.startsWith('n8n.audit.user.credentials')) {
 					return this.includes.labels.credentialsType
 						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
 						: {};
 				}
 
-				if (event.eventName.startsWith('n8n.audit.workflow')) {
+				if (eventName.startsWith('n8n.audit.workflow')) {
 					return this.includes.labels.workflowId
-						? { workflow_id: event.payload.workflowId ?? 'unknown' }
+						? { workflow_id: payload.workflowId ?? 'unknown' }
 						: {};
 				}
 				break;
@@ -184,7 +186,7 @@ export class PrometheusMetricsService {
 			case EventMessageTypeNames.node:
 				return this.includes.labels.nodeType
 					? {
-							node_type: (event.payload.nodeType ?? 'unknown')
+							node_type: (payload.nodeType ?? 'unknown')
 								.replace('n8n-nodes-', '')
 								.replace(/\./g, '_'),
 						}
@@ -192,7 +194,7 @@ export class PrometheusMetricsService {
 
 			case EventMessageTypeNames.workflow:
 				return this.includes.labels.workflowId
-					? { workflow_id: event.payload.workflowId ?? 'unknown' }
+					? { workflow_id: payload.workflowId ?? 'unknown' }
 					: {};
 		}
 
