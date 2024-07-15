@@ -1,5 +1,6 @@
-import { recurrenceCheck, toCronExpression } from '../GenericFunctions';
 import * as n8nWorkflow from 'n8n-workflow';
+import { recurrenceCheck, toCronExpression } from '../GenericFunctions';
+import type { IRecurrenceRule } from '../SchedulerInterface';
 
 describe('toCronExpression', () => {
 	Object.defineProperty(n8nWorkflow, 'randomInt', {
@@ -113,5 +114,19 @@ describe.only('recurrenceCheck', () => {
 			'UTC',
 		);
 		expect(result).toBe(false);
+	});
+
+	it('should return true only once for a day cron', () => {
+		const recurrence: IRecurrenceRule = {
+			activated: true,
+			index: 0,
+			intervalSize: 2,
+			typeInterval: 'days',
+		};
+		const recurrenceRules: number[] = [];
+		const result1 = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
+		expect(result1).toBe(true);
+		const result2 = recurrenceCheck(recurrence, recurrenceRules, 'UTC');
+		expect(result2).toBe(false);
 	});
 });

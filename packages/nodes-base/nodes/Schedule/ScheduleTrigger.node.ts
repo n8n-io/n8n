@@ -448,48 +448,48 @@ export class ScheduleTrigger implements INodeType {
 				let recurrence: IRecurrenceRule = { activated: false };
 
 				if (interval.field === 'hours') {
-					const hour = interval.hoursInterval;
-					if (hour !== 1) {
+					const { hoursInterval } = interval;
+					if (hoursInterval !== 1) {
 						recurrence = {
 							activated: true,
 							index: i,
-							intervalSize: hour,
+							intervalSize: hoursInterval,
 							typeInterval: 'hours',
 						};
 					}
 				}
 
 				if (interval.field === 'days') {
-					const day = interval.daysInterval;
-					if (day !== 1) {
+					const { daysInterval } = interval;
+					if (daysInterval !== 1) {
 						recurrence = {
 							activated: true,
 							index: i,
-							intervalSize: day,
+							intervalSize: daysInterval,
 							typeInterval: 'days',
 						};
 					}
 				}
 
 				if (interval.field === 'weeks') {
-					const week = interval.weeksInterval;
-					if (week !== 1) {
+					const { weeksInterval } = interval;
+					if (weeksInterval !== 1) {
 						recurrence = {
 							activated: true,
 							index: i,
-							intervalSize: week,
+							intervalSize: weeksInterval,
 							typeInterval: 'weeks',
 						};
 					}
 				}
 
 				if (interval.field === 'months') {
-					const month = interval.monthsInterval;
-					if (month !== 1) {
+					const { monthsInterval } = interval;
+					if (monthsInterval !== 1) {
 						recurrence = {
 							activated: true,
 							index: i,
-							intervalSize: month,
+							intervalSize: monthsInterval,
 							typeInterval: 'months',
 						};
 					}

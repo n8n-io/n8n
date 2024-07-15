@@ -12,39 +12,37 @@ export function recurrenceCheck(
 	const intervalSize = recurrence.intervalSize;
 	if (!intervalSize) return false;
 
-	const recurrenceRuleIndex = recurrence.index;
+	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
-
-	const lastExecution =
-		recurrenceRuleIndex !== undefined ? recurrenceRules[recurrenceRuleIndex] : undefined;
+	const lastExecution = recurrenceRules[index];
 
 	const momentTz = moment.tz(timezone);
-	if (recurrenceRuleIndex !== undefined && typeInterval === 'weeks') {
+	if (typeInterval === 'weeks') {
 		const week = momentTz.week();
 		if (
 			lastExecution === undefined || // First time executing this rule
 			week === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
 			week === lastExecution // Trigger on multiple days in the same week
 		) {
-			recurrenceRules[recurrenceRuleIndex] = week;
+			recurrenceRules[index] = week;
 			return true;
 		}
-	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'days') {
+	} else if (typeInterval === 'days') {
 		const dayOfYear = momentTz.dayOfYear();
 		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
-			recurrenceRules[recurrenceRuleIndex] = dayOfYear;
+			recurrenceRules[index] = dayOfYear;
 			return true;
 		}
-	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'hours') {
+	} else if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
 		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
-			recurrenceRules[recurrenceRuleIndex] = hour;
+			recurrenceRules[index] = hour;
 			return true;
 		}
-	} else if (recurrenceRuleIndex !== undefined && typeInterval === 'months') {
+	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
 		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
-			recurrenceRules[recurrenceRuleIndex] = month;
+			recurrenceRules[index] = month;
 			return true;
 		}
 	} else {
