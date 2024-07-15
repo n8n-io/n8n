@@ -1,3 +1,4 @@
+import config from '@/config';
 import promClient from 'prom-client';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -15,6 +16,10 @@ jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
 describe('PrometheusMetricsService', () => {
+	beforeEach(() => {
+		config.load(config.default);
+	});
+
 	describe('configureMetrics', () => {
 		it('should set up `n8n_version_info`', async () => {
 			const service = new PrometheusMetricsService(mock(), mock(), mock());
@@ -37,6 +42,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_hits_total`', async () => {
+			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock(), mock());
 
 			await service.configureMetrics(mock<express.Application>());
@@ -50,6 +56,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_misses_total`', async () => {
+			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock(), mock());
 
 			await service.configureMetrics(mock<express.Application>());
@@ -63,6 +70,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
+			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock(), mock());
 
 			await service.configureMetrics(mock<express.Application>());
@@ -76,6 +84,10 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up API metrics with `express-prom-bundle`', async () => {
+			config.set('endpoints.metrics.includeApiEndpoints', true);
+			config.set('endpoints.metrics.includeApiPathLabel', true);
+			config.set('endpoints.metrics.includeApiMethodLabel', true);
+			config.set('endpoints.metrics.includeApiStatusCodeLabel', true);
 			const service = new PrometheusMetricsService(mock(), mock(), mock());
 
 			const app = mock<express.Application>();
