@@ -19,7 +19,7 @@ import type {
 import type PCancelable from 'p-cancelable';
 
 @Service()
-export class Consumer {
+export class Processor {
 	private readonly runningJobs: { [jobId: JobId]: RunningJobProps } = {};
 
 	constructor(
@@ -38,7 +38,7 @@ export class Consumer {
 		});
 
 		if (!execution) {
-			this.logger.error('[Consumer] Failed to find execution data', { executionId });
+			this.logger.error('[Processor] Failed to find execution data', { executionId });
 			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
 				extra: { executionId },
 			});
@@ -46,7 +46,7 @@ export class Consumer {
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`[Consumer] Starting job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[Processor] Starting job ${job.id} (execution ${executionId})`);
 
 		await this.executionRepository.updateStatus(executionId, 'running');
 
@@ -59,7 +59,7 @@ export class Consumer {
 			});
 
 			if (workflowData === null) {
-				this.logger.error('[Consumer] Failed to find workflow', { workflowId, executionId });
+				this.logger.error('[Processor] Failed to find workflow', { workflowId, executionId });
 				throw new ApplicationError('Failed to find workflow', { extra: { workflowId } });
 			}
 
@@ -118,7 +118,7 @@ export class Consumer {
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
-				`[Consumer] Queued worker execution status for ${executionId} is "${status}"`,
+				`[Processor] Queued worker execution status for ${executionId} is "${status}"`,
 			);
 		};
 
@@ -151,7 +151,7 @@ export class Consumer {
 
 		delete this.runningJobs[job.id];
 
-		this.logger.debug('[Consumer] Job finished running', { jobId: job.id });
+		this.logger.debug('[Processor] Job finished running', { jobId: job.id });
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.

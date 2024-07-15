@@ -21,7 +21,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
 import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
-import { Consumer } from '@/scaling/consumer';
+import { Processor } from '@/scaling/processor';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -46,7 +46,7 @@ export class Worker extends BaseCommand {
 
 	scalingService: ScalingService;
 
-	consumer: Consumer;
+	processor: Processor;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -65,12 +65,12 @@ export class Worker extends BaseCommand {
 
 			// Wait for active workflow executions to finish
 			let count = 0;
-			while (Object.keys(this.consumer.getRunningJobIds()).length !== 0) {
+			while (Object.keys(this.processor.getRunningJobIds()).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
-							Object.keys(this.consumer.getRunningJobIds()).length
+							Object.keys(this.processor.getRunningJobIds()).length
 						} active executions to finish... (max wait ${waitLeft} more seconds)`,
 					);
 				}
@@ -156,8 +156,8 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.consumer.getRunningJobIds() as string[],
-			getRunningJobsSummary: () => this.consumer.getRunningJobsSummary(),
+			getRunningJobIds: () => this.processor.getRunningJobIds() as string[],
+			getRunningJobsSummary: () => this.processor.getRunningJobsSummary(),
 		});
 	}
 
@@ -176,7 +176,7 @@ export class Worker extends BaseCommand {
 
 		this.scalingService.setupWorker(this.concurrency);
 
-		this.consumer = Container.get(Consumer);
+		this.processor = Container.get(Processor);
 	}
 
 	async setupHealthMonitor() {
