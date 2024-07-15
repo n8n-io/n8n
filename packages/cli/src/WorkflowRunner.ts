@@ -18,7 +18,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionCancelledError,
 	Workflow,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import PCancelable from 'p-cancelable';
