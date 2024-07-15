@@ -1,46 +1,45 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, defineProps } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+
+const props = defineProps<{
+	startTime: Date;
+}>();
+
+const i18n = useI18n();
+
+const nowTime = ref(-1);
+const intervalTimer = ref<NodeJS.Timeout | null>(null);
+
+const time = computed(() => {
+	if (!props.startTime) {
+		return '...';
+	}
+	const msPassed = nowTime.value - new Date(props.startTime).getTime();
+	return i18n.displayTimer(msPassed); // Note: Adjust for $locale usage in setup
+});
+
+onMounted(() => {
+	setNow();
+	intervalTimer.value = setInterval(() => {
+		setNow();
+	}, 1000);
+});
+
+onBeforeUnmount(() => {
+	// Make sure that the timer gets destroyed once no longer needed
+	if (intervalTimer.value !== null) {
+		clearInterval(intervalTimer.value);
+	}
+});
+
+function setNow() {
+	nowTime.value = new Date().getTime();
+}
+</script>
+
 <template>
 	<span>
 		{{ time }}
 	</span>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'ExecutionsTime',
-	props: ['startTime'],
-	data() {
-		return {
-			nowTime: -1,
-			intervalTimer: null as null | NodeJS.Timeout,
-		};
-	},
-	computed: {
-		time(): string {
-			if (!this.startTime) {
-				return '...';
-			}
-			const msPassed = this.nowTime - new Date(this.startTime).getTime();
-			return this.$locale.displayTimer(msPassed);
-		},
-	},
-	mounted() {
-		this.setNow();
-		this.intervalTimer = setInterval(() => {
-			this.setNow();
-		}, 1000);
-	},
-	beforeUnmount() {
-		// Make sure that the timer gets destroyed once no longer needed
-		if (this.intervalTimer !== null) {
-			clearInterval(this.intervalTimer);
-		}
-	},
-	methods: {
-		setNow() {
-			this.nowTime = new Date().getTime();
-		},
-	},
-});
-</script>

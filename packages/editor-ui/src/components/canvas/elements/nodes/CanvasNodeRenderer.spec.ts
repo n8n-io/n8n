@@ -1,8 +1,16 @@
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
+
+beforeEach(() => {
+	const pinia = createTestingPinia();
+	setActivePinia(pinia);
+});
 
 describe('CanvasNodeRenderer', () => {
 	it('should render default node correctly', async () => {
@@ -14,7 +22,7 @@ describe('CanvasNodeRenderer', () => {
 			},
 		});
 
-		expect(getByTestId('canvas-node-default')).toBeInTheDocument();
+		expect(getByTestId('canvas-default-node')).toBeInTheDocument();
 	});
 
 	it('should render configuration node correctly', async () => {
@@ -23,14 +31,17 @@ describe('CanvasNodeRenderer', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: true },
+							},
 						},
 					}),
 				},
 			},
 		});
 
-		expect(getByTestId('canvas-node-configuration')).toBeInTheDocument();
+		expect(getByTestId('canvas-configuration-node')).toBeInTheDocument();
 	});
 
 	it('should render configurable node correctly', async () => {
@@ -39,13 +50,16 @@ describe('CanvasNodeRenderer', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configurable',
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configurable: true },
+							},
 						},
 					}),
 				},
 			},
 		});
 
-		expect(getByTestId('canvas-node-configurable')).toBeInTheDocument();
+		expect(getByTestId('canvas-configurable-node')).toBeInTheDocument();
 	});
 });

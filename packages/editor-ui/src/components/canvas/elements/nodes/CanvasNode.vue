@@ -1,11 +1,7 @@
 <script lang="ts" setup>
 import { Position } from '@vue-flow/core';
 import { computed, provide, toRef, watch } from 'vue';
-import type {
-	CanvasElementData,
-	CanvasConnectionPort,
-	CanvasElementPortWithPosition,
-} from '@/types';
+import type { CanvasNodeData, CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
@@ -17,11 +13,12 @@ import type { NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
+	run: [id: string];
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
 }>();
-const props = defineProps<NodeProps<CanvasElementData>>();
+const props = defineProps<NodeProps<CanvasNodeData>>();
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -106,8 +103,14 @@ provide(CanvasNodeKey, {
 	nodeType,
 });
 
+const nodeIconSize = computed(() => (data.value.render.options.configuration ? 30 : 40));
+
 function onDelete() {
 	emit('delete', props.id);
+}
+
+function onRun() {
+	emit('run', props.id);
 }
 
 function onDisabledToggle() {
@@ -151,11 +154,18 @@ function onActivate() {
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
+			@run="onRun"
 		/>
 
-		<CanvasNodeRenderer v-if="nodeType" @dblclick="onActivate">
-			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" :disabled="isDisabled" />
-			<!--			:color-default="iconColorDefault"-->
+		<CanvasNodeRenderer @dblclick="onActivate">
+			<NodeIcon
+				v-if="nodeType"
+				:node-type="nodeType"
+				:size="nodeIconSize"
+				:shrink="false"
+				:disabled="isDisabled"
+			/>
+			<!-- @TODO :color-default="iconColorDefault"-->
 		</CanvasNodeRenderer>
 	</div>
 </template>
@@ -164,19 +174,21 @@ function onActivate() {
 .canvasNode {
 	&:hover {
 		.canvasNodeToolbar {
-			display: flex;
 			opacity: 1;
 		}
 	}
 }
 
 .canvasNodeToolbar {
-	display: none;
+	transition: opacity 0.1s ease-in;
 	position: absolute;
 	top: 0;
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
-	transition: opacity 0.3s ease;
+}
+
+.canvasNodeToolbar:focus-within {
+	opacity: 1;
 }
 </style>

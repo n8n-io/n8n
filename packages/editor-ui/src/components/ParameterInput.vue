@@ -119,7 +119,7 @@
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
-					:model-value="modelValue"
+					:model-value="`${modelValue}`"
 					:parameter="parameter"
 					:path="path"
 					:is-read-only="isReadOnly"

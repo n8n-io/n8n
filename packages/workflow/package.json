@@ -1,17 +1,7 @@
 {
   "name": "n8n-workflow",
-  "version": "1.48.0",
+  "version": "1.49.0",
   "description": "Workflow base code of n8n",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://n8n.io",
-  "author": {
-    "name": "Jan Oberhauser",
-    "email": "jan@n8n.io"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",

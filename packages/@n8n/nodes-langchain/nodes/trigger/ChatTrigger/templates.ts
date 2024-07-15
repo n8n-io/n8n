@@ -8,6 +8,8 @@ export function createPage({
 	i18n: { en },
 	initialMessages,
 	authentication,
+	allowFileUploads,
+	allowedFilesMimeTypes,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -19,6 +21,8 @@ export function createPage({
 	initialMessages: string[];
 	mode: 'test' | 'production';
 	authentication: AuthenticationChatOption;
+	allowFileUploads?: boolean;
+	allowedFilesMimeTypes?: string;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -35,6 +39,8 @@ export function createPage({
 		? authentication
 		: 'none';
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
+	const sanitizedAllowFileUploads = !!allowFileUploads;
+	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
 	)
@@ -48,7 +54,7 @@ export function createPage({
 			<meta name="viewport" content="width=device-width, initial-scale=1">
 			<title>Chat</title>
 			<link href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css" rel="stylesheet" />
-			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
+			<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 			<style>
 				html,
 				body,
@@ -60,7 +66,7 @@ export function createPage({
 		</head>
 		<body>
 			<script type="module">
-				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat@latest/chat.bundle.es.js';
+				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 
 				(async function () {
 					const authentication = '${sanitizedAuthentication}';
@@ -103,6 +109,8 @@ export function createPage({
 								'X-Instance-Id': '${instanceId}',
 							}
 						},
+						allowFileUploads: ${sanitizedAllowFileUploads},
+						allowedFilesMimeTypes: '${sanitizedAllowedFilesMimeTypes}',
 						i18n: {
 							${en ? `en: ${JSON.stringify(en)},` : ''}
 						},

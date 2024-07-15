@@ -246,15 +246,15 @@ export async function execute(
 
 	const locationDefineOption = (options.locationDefine as IDataObject)?.values as IDataObject;
 
-	let headerRow = 0;
-	let firstDataRow = 1;
+	let keyRowIndex = 0;
+	let dataStartRowIndex = 1;
 
 	if (locationDefineOption) {
 		if (locationDefineOption.headerRow) {
-			headerRow = parseInt(locationDefineOption.headerRow as string, 10) - 1;
+			keyRowIndex = parseInt(locationDefineOption.headerRow as string, 10) - 1;
 		}
 		if (locationDefineOption.firstDataRow) {
-			firstDataRow = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
+			dataStartRowIndex = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
 		}
 	}
 
@@ -267,14 +267,14 @@ export async function execute(
 
 	const sheetData = (await sheet.getData(sheetName, 'FORMATTED_VALUE')) ?? [];
 
-	if (!sheetData[headerRow] && dataMode !== 'autoMapInputData') {
+	if (!sheetData[keyRowIndex] && dataMode !== 'autoMapInputData') {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Could not retrieve the column names from row ${headerRow + 1}`,
+			`Could not retrieve the column names from row ${keyRowIndex + 1}`,
 		);
 	}
 
-	columnNames = sheetData[headerRow] ?? [];
+	columnNames = sheetData[keyRowIndex] ?? [];
 
 	if (nodeVersion >= 4.4) {
 		const schema = this.getNodeParameter('columns.schema', 0) as ResourceMapperField[];
@@ -291,13 +291,13 @@ export async function execute(
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
-	const columnValues = await sheet.getColumnValues(
+	const columnValuesList = await sheet.getColumnValues({
 		range,
 		keyIndex,
-		firstDataRow,
+		dataStartRowIndex,
 		valueRenderMode,
 		sheetData,
-	);
+	});
 
 	const updateData: ISheetUpdateData[] = [];
 	const appendData: IDataObject[] = [];
@@ -321,20 +321,20 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
-		const data: IDataObject[] = [];
+		const inputData: IDataObject[] = [];
 
 		if (dataMode === 'autoMapInputData') {
 			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
 			if (handlingExtraDataOption === 'ignoreIt') {
-				data.push(items[i].json);
+				inputData.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => errorOnUnexpectedColumn(key, i));
-				data.push(items[i].json);
+				inputData.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach(addNewColumn);
-				data.push(items[i].json);
+				inputData.push(items[i].json);
 			}
 		} else {
 			const valueToMatchOn =
@@ -364,7 +364,7 @@ export async function execute(
 					return acc;
 				}, {} as IDataObject);
 				fields[columnsToMatchOn[0]] = valueToMatchOn;
-				data.push(fields);
+				inputData.push(fields);
 			} else {
 				const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
 				if (Object.keys(mappingValues).length === 0) {
@@ -379,7 +379,7 @@ export async function execute(
 						mappingValues[key] = '';
 					}
 				});
-				data.push(mappingValues);
+				inputData.push(mappingValues);
 				mappedValues.push(mappingValues);
 			}
 		}
@@ -390,56 +390,60 @@ export async function execute(
 				sheetName,
 				[newColumnNames],
 				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
-				headerRow + 1,
+				keyRowIndex + 1,
 			);
 			columnNames = newColumnNames;
-			sheetData[headerRow] = newColumnNames;
+			sheetData[keyRowIndex] = newColumnNames;
 			newColumns.clear();
 		}
 
-		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
-			data,
-			columnsToMatchOn[0],
+		const indexKey = columnsToMatchOn[0];
+
+		const preparedData = await sheet.prepareDataForUpdateOrUpsert({
+			inputData,
+			indexKey,
 			range,
-			headerRow,
-			firstDataRow,
+			keyRowIndex,
+			dataStartRowIndex,
 			valueRenderMode,
-			true,
-			[columnNames.concat([...newColumns])],
-			columnValues,
-		);
+			upsert: true,
+			columnNamesList: [columnNames.concat([...newColumns])],
+			columnValuesList,
+		});
 
 		updateData.push(...preparedData.updateData);
 		appendData.push(...preparedData.appendData);
 	}
+
+	const columnNamesList = [columnNames.concat([...newColumns])];
 
 	if (updateData.length) {
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
 		const lastRow = sheetData.length + 1;
+		const useAppend = options.useAppend as boolean;
+
 		if (options.useAppend) {
-			await sheet.appendSheetData(
-				appendData,
+			await sheet.appendSheetData({
+				inputData: appendData,
 				range,
-				headerRow + 1,
+				keyRowIndex: keyRowIndex + 1,
 				valueInputMode,
-				false,
-				[columnNames.concat([...newColumns])],
+				columnNamesList,
 				lastRow,
-				options.useAppend as boolean,
-			);
+				useAppend,
+			});
 		} else {
 			await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
-			await sheet.appendSheetData(
-				appendData,
+			await sheet.appendSheetData({
+				inputData: appendData,
 				range,
-				headerRow + 1,
+				keyRowIndex: keyRowIndex + 1,
 				valueInputMode,
-				false,
-				[columnNames.concat([...newColumns])],
+				columnNamesList,
 				lastRow,
-			);
+			});
 		}
 	}
 
