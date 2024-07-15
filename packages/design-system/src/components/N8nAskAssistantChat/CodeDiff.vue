@@ -7,11 +7,13 @@ interface Props {
 	content: string;
 	replacing: boolean;
 	replaced: boolean;
+	error: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	replacing: false,
 	replaced: false,
+	error: true,
 });
 
 const diffs = computed(() => {
@@ -45,7 +47,9 @@ const diffs = computed(() => {
 		<div :class="$style.diffSection">
 			<div v-for="(diff, i) in diffs" :key="i" :class="$style.diff">
 				<div :class="$style.lineNumber">
-					{{ diff.type === 'normal' ? diff.ln1 : diff.ln }}
+					<!-- ln1 is line number in original text -->
+					<!-- ln2 is line number in updated text -->
+					{{ diff.type === 'normal' ? diff.ln2 : diff.type === 'add' ? diff.ln : '' }}
 				</div>
 				<div :class="[$style[diff.type], $style.diffContent]">
 					<span v-if="diff.type === 'add'">&nbsp;+&nbsp;</span>
@@ -56,8 +60,25 @@ const diffs = computed(() => {
 			</div>
 		</div>
 		<div :class="$style.actions">
-			<n8n-button type="primary" size="mini">Replace my code</n8n-button>
-			<!-- <button>Undo</button> -->
+			<div v-if="error">
+				<n8n-icon icon="exclamation-triangle" color="danger" :class="$style.infoIcon" />
+				<span :class="$style.infoText">Could not replace code</span>
+			</div>
+			<div v-else-if="replaced">
+				<n8n-button type="secondary" size="mini" icon="undo" :class="$style.undoButton"
+					>Undo</n8n-button
+				>
+				<n8n-icon icon="check" color="success" :class="$style.infoIcon" />
+				<span :class="$style.infoText">Code replaced</span>
+			</div>
+			<n8n-button
+				v-else
+				:type="replacing ? 'secondary' : 'primary'"
+				size="mini"
+				icon="refresh"
+				:loading="replacing"
+				>{{ replacing ? 'Replacing...' : 'Replace my code' }}</n8n-button
+			>
 		</div>
 	</div>
 </template>
@@ -120,5 +141,18 @@ const diffs = computed(() => {
 
 .actions {
 	padding: 8px;
+}
+
+.infoText {
+	color: var(--color-text-light);
+}
+
+.undoButton {
+	// todo
+	margin-right: 8px !important;
+}
+
+.infoIcon {
+	margin-right: 2px;
 }
 </style>

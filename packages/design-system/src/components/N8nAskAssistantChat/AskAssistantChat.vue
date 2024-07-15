@@ -70,7 +70,13 @@ const props = defineProps<Props>();
 						<span v-else v-html="md.render(message.content)"></span>
 					</div>
 					<div v-else-if="message.type === 'code-diff'">
-						<CodeDiff :title="message.description" :content="message.codeDiff" />
+						<CodeDiff
+							:title="message.description"
+							:content="message.codeDiff"
+							:replacing="message.replacing"
+							:replaced="message.replaced"
+							:error="message.error"
+						/>
 					</div>
 
 					<div
@@ -161,7 +167,7 @@ const props = defineProps<Props>();
 	font-size: 10px;
 	font-weight: 600;
 	line-height: 10px; /* 100% */
-	background-color: var(--color-foreground-light);
+	background-color: var(--color-secondary-tint-3);
 	padding: 1px 4px 2px 4px;
 	border-radius: 16px;
 }

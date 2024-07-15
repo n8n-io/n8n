@@ -10,6 +10,9 @@ interface CodeDiffMessage {
 	type: 'code-diff';
 	description: string;
 	codeDiff: string;
+	replacing?: boolean;
+	replaced?: boolean;
+	error?: boolean;
 }
 
 export type AssistantMessage = (TextMessage | CodeDiffMessage) & {

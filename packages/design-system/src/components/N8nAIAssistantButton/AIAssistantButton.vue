@@ -107,7 +107,7 @@ function onMouseLeave() {
 	font-size: 10px;
 	font-weight: 600;
 	line-height: 10px; /* 100% */
-	background-color: var(--color-foreground-light);
+	background-color: var(--color-secondary-tint-3);
 	padding: 1px 4px 2px 4px;
 	border-radius: 16px;
 }
