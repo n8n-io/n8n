@@ -58,6 +58,7 @@ export const VectorStoreSupabase = createVectorStoreNode({
 				required: true,
 			},
 		],
+		operationModes: ['load', 'insert', 'retrieve', 'update'],
 	},
 	methods: {
 		listSearch: { supabaseTableNameSearch },
