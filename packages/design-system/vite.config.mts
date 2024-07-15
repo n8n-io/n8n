@@ -40,7 +40,8 @@ export default mergeConfig(
 				autoInstall: true,
 			}),
 			components({
-				dts: './src/components.d.ts',
+				dirs: [],
+				dts: false,
 				resolvers: [
 					iconsResolver({
 						prefix: 'icon'
