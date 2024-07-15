@@ -13,6 +13,7 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -44,6 +45,7 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
 
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
@@ -62,7 +64,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move) {
+	if (credentialPermissions.value.move && settingsStore.planName.toLowerCase() !== 'community') {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
