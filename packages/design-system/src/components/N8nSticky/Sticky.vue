@@ -75,7 +75,7 @@ const resWidth = computed((): number => {
 	return props.width < props.minWidth ? props.minWidth : props.width;
 });
 
-const inputName = computed((): string => (props.id ? `${props.id}-input` : undefined));
+const inputName = computed(() => (props.id ? `${props.id}-input` : undefined));
 
 const styles = computed((): { height: string; width: string } => ({
 	height: `${resHeight.value}px`,
