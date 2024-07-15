@@ -1223,12 +1223,12 @@ export const messageFields: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
-				placeholder: 'Select a channel...',
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',
 				},
 			},
 		],
 		default: {},
+		placeholder: 'Add options',
 	},
 ];
