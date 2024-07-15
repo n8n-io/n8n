@@ -248,15 +248,22 @@ export class NodeApiError extends NodeError {
 			this.description = undefined;
 		}
 
+		let code: string | null =
+			this.httpCode ??
+			(errorResponse?.code as string) ??
+			((errorResponse?.reason as JsonObject)?.code as string) ??
+			undefined;
+
+		if (typeof code !== 'string') {
+			console.warn('invalid error code', code);
+			code = null;
+		}
+
 		// if message contain common error code set descriptive message and update description
 		[this.message, this.messages] = this.setDescriptiveErrorMessage(
 			this.message,
 			this.messages,
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			this.httpCode ||
-				(errorResponse?.code as string) ||
-				((errorResponse?.reason as JsonObject)?.code as string) ||
-				undefined,
+			code,
 			messageMapping,
 		);
 
