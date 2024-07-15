@@ -151,7 +151,7 @@ export class Processor {
 
 		delete this.runningJobs[job.id];
 
-		this.logger.debug('[Processor] Job finished running', { jobId: job.id });
+		this.logger.debug('[Processor] Job finished running', { jobId: job.id, executionId });
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.
