@@ -49,16 +49,16 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-const updateFields: INodeProperties[] = [
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [pineconeNamespaceField, metadataFilterField],
-	},
-];
+// const updateFields: INodeProperties[] = [
+// 	{
+// 		displayName: 'Options',
+// 		name: 'options',
+// 		type: 'collection',
+// 		placeholder: 'Add Option',
+// 		default: {},
+// 		options: [pineconeNamespaceField, metadataFilterField],
+// 	},
+// ];
 
 export const VectorStorePinecone = createVectorStoreNode({
 	meta: {
@@ -74,12 +74,13 @@ export const VectorStorePinecone = createVectorStoreNode({
 				required: true,
 			},
 		],
+		operationModes: ['load', 'insert', 'retrieve', 'update'],
 	},
 	methods: { listSearch: { pineconeIndexSearch } },
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
-	updateFields,
+	// updateFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
@@ -143,50 +144,4 @@ export const VectorStorePinecone = createVectorStoreNode({
 			pineconeIndex,
 		});
 	},
-	async updateVectorStore() {
-		return;
-	},
-	// async updateVectorStore(context, embeddings, document, itemIndex) {
-	// 	const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
-	// 		extractValue: true,
-	// 	}) as string;
-	//
-	// 	const documentId = context.getNodeParameter('id', itemIndex, '', {
-	// 		extractValue: true,
-	// 	}) as string;
-	//
-	// 	if (!documentId) {
-	// 		throw new NodeOperationError(context.getNode(), 'ID is required');
-	// 	}
-	//
-	// 	const credentials = await context.getCredentials('pineconeApi');
-	//
-	// 	const client = new Pinecone({
-	// 		apiKey: credentials.apiKey as string,
-	// 	});
-	//
-	// 	const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
-	//
-	// 	if (!indexes.includes(index)) {
-	// 		throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
-	// 			itemIndex,
-	// 			description: 'Please check that the index exists in your vector store',
-	// 		});
-	// 	}
-	//
-	// 	const pineconeIndex = client.Index(index);
-	//
-	// 	const text = document.pageContent;
-	//
-	// 	console.log('UPDATE WILL HAPPEN HERE');
-	//
-	// 	const config: PineconeStoreParams = {
-	// 		pineconeIndex,
-	// 	};
-	// 	const vectorStore = await PineconeStore.fromExistingIndex(embeddings, config);
-	//
-	// 	await vectorStore.addVectors(await embeddings.embedDocuments([text]), [document], {
-	// 		ids: [documentId],
-	// 	});
-	// },
 });

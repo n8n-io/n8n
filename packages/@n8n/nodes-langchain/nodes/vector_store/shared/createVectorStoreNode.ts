@@ -24,6 +24,10 @@ import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
 
+type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
+
+const DEFAULT_OPERATION_MODES: NodeOperationMode[] = ['load', 'insert', 'retrieve'];
+
 interface NodeMeta {
 	displayName: string;
 	name: string;
@@ -31,7 +35,9 @@ interface NodeMeta {
 	docsUrl: string;
 	icon: Icon;
 	credentials?: INodeCredentialDescription[];
+	operationModes?: NodeOperationMode[];
 }
+
 interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
 	methods?: {
@@ -48,7 +54,6 @@ interface VectorStoreNodeConstructorArgs {
 	insertFields?: INodeProperties[];
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
-	updateFields?: INodeProperties[];
 	populateVectorStore: (
 		context: IExecuteFunctions,
 		embeddings: Embeddings,
@@ -61,41 +66,23 @@ interface VectorStoreNodeConstructorArgs {
 		embeddings: Embeddings,
 		itemIndex: number,
 	) => Promise<VectorStore>;
-	updateVectorStore?: (
-		context: IExecuteFunctions,
-		embeddings: Embeddings,
-		document: Document<Record<string, unknown>>,
-		itemIndex: number,
-	) => Promise<void>;
 }
 
-interface VectorStoreNodeUpdatableConstructorArgs extends VectorStoreNodeConstructorArgs {
-	updateVectorStore: (
-		context: IExecuteFunctions,
-		embeddings: Embeddings,
-		document: Document<Record<string, unknown>>,
-		itemIndex: number,
-	) => Promise<void>;
-}
-
-function transformDescriptionForOperationMode(
-	fields: INodeProperties[],
-	mode: 'insert' | 'load' | 'retrieve' | 'update',
-) {
+function transformDescriptionForOperationMode(fields: INodeProperties[], mode: NodeOperationMode) {
 	return fields.map((field) => ({
 		...field,
 		displayOptions: { show: { mode: [mode] } },
 	}));
 }
 
-function isUpdateImplemented(
-	args: VectorStoreNodeConstructorArgs,
-): args is VectorStoreNodeUpdatableConstructorArgs {
-	return Boolean((args as VectorStoreNodeUpdatableConstructorArgs).updateVectorStore);
+function isUpdateSupported(args: VectorStoreNodeConstructorArgs): boolean {
+	return args.meta.operationModes?.includes('update') ?? false;
 }
 
-function getOperationModes(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
-	const commonOperationModes = [
+function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
+	const enabledOperationModes = args.meta.operationModes ?? DEFAULT_OPERATION_MODES;
+
+	const allOptions = [
 		{
 			name: 'Get Many',
 			value: 'load',
@@ -114,23 +101,17 @@ function getOperationModes(args: VectorStoreNodeConstructorArgs): INodePropertyO
 			description: 'Retrieve documents from vector store to be used with AI nodes',
 			action: 'Retrieve documents from vector store to be used with AI nodes',
 		},
+		{
+			name: 'Update Documents',
+			value: 'update',
+			description: 'Update documents in vector store by ID',
+			action: 'Update documents in vector store by ID',
+		},
 	];
 
-	// The update operation mode needs to be implemented for each specific vector store separately
-	// Enable this mode only if the implementation was provided in args
-	if (isUpdateImplemented(args)) {
-		return [
-			...commonOperationModes,
-			{
-				name: 'Update Documents',
-				value: 'update',
-				description: 'Update documents in vector store by ID',
-				action: 'Update documents in vector store by ID',
-			},
-		];
-	}
-
-	return commonOperationModes;
+	return allOptions.filter(({ value }) =>
+		enabledOperationModes.includes(value as NodeOperationMode),
+	);
 }
 
 export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
@@ -191,7 +172,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					type: 'options',
 					noDataExpression: true,
 					default: 'retrieve',
-					options: getOperationModes(args),
+					options: getOperationModeOptions(args),
 				},
 				{
 					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
@@ -246,7 +227,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				},
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
-				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
 			],
 		};
 
@@ -335,7 +315,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			}
 
 			if (mode === 'update') {
-				if (!isUpdateImplemented(args)) {
+				if (!isUpdateSupported(args)) {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Update operation is not implemented for this Vector Store',
@@ -344,12 +324,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 				const items = this.getInputData();
 
-				// const documentInput = (await this.getInputConnectionData(
-				// 	NodeConnectionType.AiDocument,
-				// 	0,
-				// )) as N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>;
-
-				const loader = new N8nJsonLoader(this, 'options.');
+				const loader = new N8nJsonLoader(this);
 
 				const resultData = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -359,18 +334,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						extractValue: true,
 					}) as string;
 
-					const { processedDocuments, serializedDocuments } = await processDocument(
-						loader,
-						itemData,
-						itemIndex,
-					);
-
-					if (processedDocuments?.length !== 1) {
-						throw new NodeOperationError(this.getNode(), 'Single document expected per item');
-					}
-
-					resultData.push(...serializedDocuments);
-
 					const vectorStore = await args.getVectorStoreClient(
 						this,
 						undefined,
@@ -378,11 +341,23 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						itemIndex,
 					);
 
+					const { processedDocuments, serializedDocuments } = await processDocument(
+						loader,
+						itemData,
+						itemIndex,
+					);
+
+					if (processedDocuments?.length !== 1) {
+						throw new NodeOperationError(this.getNode(), 'Single document per item expected');
+					}
+
+					resultData.push(...serializedDocuments);
+
 					try {
+						// Use ids option to upsert instead of insert
 						await vectorStore.addDocuments(processedDocuments, {
 							ids: [documentId],
 						});
-						// await args.updateVectorStore(this, embeddings, processedDocuments[0], itemIndex);
 
 						void logAiEvent(this, 'n8n.ai.vector.store.updated');
 					} catch (error) {
