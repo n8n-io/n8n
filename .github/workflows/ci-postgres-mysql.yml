@@ -26,6 +26,9 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
       - name: Build Backend
         run: pnpm build:backend
 
@@ -52,6 +55,9 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
         with:
@@ -60,7 +66,7 @@ jobs:
 
       - name: Test SQLite Pooled
         working-directory: packages/cli
-        run: pnpm jest --coverage
+        run: pnpm jest
 
   mysql:
     name: MySQL
@@ -77,6 +83,9 @@ jobs:
           node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0
@@ -111,6 +120,9 @@ jobs:
           node-version: 20.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
 
       - name: Restore cached build artifacts
         uses: actions/cache/restore@v4.0.0

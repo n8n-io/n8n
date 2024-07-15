@@ -6,6 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
 	type EntityManager,
@@ -62,11 +63,10 @@ export class CredentialsService {
 		user: User,
 		options: {
 			listQueryOptions?: ListQuery.Options;
-			onlyOwn?: boolean;
 			includeScopes?: string;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
+		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;

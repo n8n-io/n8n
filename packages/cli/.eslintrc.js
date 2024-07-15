@@ -20,6 +20,7 @@ module.exports = {
 
 	rules: {
 		'n8n-local-rules/no-dynamic-import-template': 'error',
+		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
 		complexity: 'error',
 
 		// TODO: Remove this
@@ -37,6 +38,12 @@ module.exports = {
 	},
 
 	overrides: [
+		{
+			files: ['./src/databases/**/*.ts', './test/**/*.ts'],
+			rules: {
+				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
+			},
+		},
 		{
 			files: ['./src/decorators/**/*.ts'],
 			rules: {

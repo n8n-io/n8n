@@ -12,8 +12,13 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
+	const maxPinnedDataSize = 16384;
+
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.window().then((win) => {
+			win.maxPinnedDataSize = maxPinnedDataSize;
+		});
 	});
 
 	it('Should be able to pin node output', () => {
@@ -109,6 +114,8 @@ describe('Data pinning', () => {
 			.parent()
 			.should('have.class', 'is-disabled');
 
+		cy.get('body').type('{esc}');
+
 		// Unpin using context menu
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
 		ndv.actions.setPinnedData([{ test: 1 }]);
@@ -137,7 +144,7 @@ describe('Data pinning', () => {
 
 		ndv.actions.pastePinnedData([
 			{
-				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE') as number),
+				test: '1'.repeat(maxPinnedDataSize),
 			},
 		]);
 		errorToast().should('contain', 'Workflow has reached the maximum allowed pinned data size');
@@ -165,7 +172,7 @@ describe('Data pinning', () => {
 		ndv.actions.close();
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';

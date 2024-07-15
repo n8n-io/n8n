@@ -4,9 +4,11 @@ import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import Container, { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,8 +19,9 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from './cache/cache.service';
 import { License } from '@/License';
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
+import { ApplicationError } from 'n8n-workflow';
 
-export class TeamProjectOverQuotaError extends Error {
+export class TeamProjectOverQuotaError extends ApplicationError {
 	constructor(limit: number) {
 		super(
 			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
@@ -26,7 +29,7 @@ export class TeamProjectOverQuotaError extends Error {
 	}
 }
 
-export class UnlicensedProjectRoleError extends Error {
+export class UnlicensedProjectRoleError extends ApplicationError {
 	constructor(role: ProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}

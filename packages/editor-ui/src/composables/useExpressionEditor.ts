@@ -185,10 +185,7 @@ export const useExpressionEditor = ({
 			doc: toValue(editorValue),
 			extensions: [
 				customExtensions.value.of(toValue(extensions)),
-				readOnlyExtensions.value.of([
-					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
-				]),
+				readOnlyExtensions.value.of([EditorState.readOnly.of(toValue(isReadOnly))]),
 				telemetryExtensions.value.of([]),
 				EditorView.updateListener.of(onEditorUpdate),
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
@@ -229,7 +226,6 @@ export const useExpressionEditor = ({
 			editor.value.dispatch({
 				effects: readOnlyExtensions.value.reconfigure([
 					EditorState.readOnly.of(toValue(isReadOnly)),
-					EditorView.editable.of(!toValue(isReadOnly)),
 				]),
 			});
 		}
@@ -334,22 +330,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => {
-		if (ndvStore.hoveringItem) {
-			return ndvStore.hoveringItem;
-		}
-
-		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
-			return {
-				nodeName: ndvStore.ndvInputNodeName,
-				runIndex: ndvStore.ndvInputRunIndex ?? 0,
-				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
-				itemIndex: ndvStore.expressionOutputItemIndex,
-			};
-		}
-
-		return null;
-	});
+	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');

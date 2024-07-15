@@ -16,8 +16,7 @@ export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Trigger',
 		name: 'amqpTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:amqp.png',
+		icon: 'file:amqp.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to AMQP 1.0 Messages',
@@ -277,11 +276,16 @@ export class AmqpTrigger implements INodeType {
 					connection.close();
 
 					reject(
-						new Error(
-							'Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+						new NodeOperationError(
+							this.getNode(),
+							'Aborted because no message received within 15 seconds',
+							{
+								description:
+									'This 15sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+							},
 						),
 					);
-				}, 30000);
+				}, 15000);
 				container.on('message', (context: EventContext) => {
 					// Check if the only property present in the message is body
 					// in which case we only emit the content of the body property

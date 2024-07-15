@@ -17,6 +17,7 @@ import type { ExpressionChunk, ExpressionCode } from './ExpressionParser';
 import { joinExpression, splitExpression } from './ExpressionParser';
 import { booleanExtensions } from './BooleanExtensions';
 import type { ExtensionMap } from './Extensions';
+import { checkIfValueDefinedOrThrow } from './utils';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -514,6 +515,7 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	// any types have a function with that name. Then throw an error
 	// letting the user know the available types.
 	if (!foundFunction) {
+		checkIfValueDefinedOrThrow(input, functionName);
 		const haveFunction = EXTENSION_OBJECTS.filter((v) => functionName in v.functions);
 		if (!haveFunction.length) {
 			// This shouldn't really be possible but we should cover it anyway

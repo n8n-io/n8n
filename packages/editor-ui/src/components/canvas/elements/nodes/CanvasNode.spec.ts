@@ -53,11 +53,14 @@ describe('CanvasNode', () => {
 					...createCanvasNodeProps({
 						data: {
 							inputs: [
-								{ type: NodeConnectionType.Main },
-								{ type: NodeConnectionType.Main },
-								{ type: NodeConnectionType.Main },
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
 							],
-							outputs: [{ type: NodeConnectionType.Main }, { type: NodeConnectionType.Main }],
+							outputs: [
+								{ type: NodeConnectionType.Main, index: 0 },
+								{ type: NodeConnectionType.Main, index: 0 },
+							],
 						},
 					}),
 				},
@@ -78,7 +81,7 @@ describe('CanvasNode', () => {
 
 	describe('toolbar', () => {
 		it('should render toolbar when node is hovered', async () => {
-			const { getByTestId, container } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					...createCanvasNodeProps(),
 				},

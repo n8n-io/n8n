@@ -1,7 +1,7 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { Tool } from '@langchain/core/tools';
+import type { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
 import { BaseChatMessageHistory } from '@langchain/core/chat_history';
@@ -18,7 +18,7 @@ import { isObject } from 'lodash';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
-import { logAiEvent } from './helpers';
+import { logAiEvent, isToolsInstance } from './helpers';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -401,7 +401,7 @@ export function logWrapper(
 			}
 
 			// ========== Tool ==========
-			if (originalInstance instanceof Tool) {
+			if (isToolsInstance(originalInstance)) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
 						connectionType = NodeConnectionType.AiTool;

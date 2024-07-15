@@ -57,6 +57,7 @@ import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-Move
 import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -117,4 +118,5 @@ export const postgresMigrations: Migration[] = [
 	CreateProject1714133768519,
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
+	AddConstraintToExecutionMetadata1720101653148,
 ];

@@ -58,7 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: false,
 });
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 const editName = ref(false);
 const newName = ref('');

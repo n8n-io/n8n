@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/naming-convention */
 
 import { parseString } from 'xml2js';
 import type {
@@ -41,8 +39,9 @@ interface NodeApiErrorOptions extends NodeOperationErrorOptions {
 
 /**
  * Top-level properties where an error message can be found in an API response.
+ * order is important, precedence is from top to bottom
  */
-const ERROR_MESSAGE_PROPERTIES = [
+const POSSIBLE_ERROR_MESSAGE_KEYS = [
 	'cause',
 	'error',
 	'message',
@@ -62,6 +61,7 @@ const ERROR_MESSAGE_PROPERTIES = [
 	'errorDescription',
 	'error_description',
 	'error_summary',
+	'error_info',
 	'title',
 	'text',
 	'field',
@@ -70,9 +70,14 @@ const ERROR_MESSAGE_PROPERTIES = [
 ];
 
 /**
+ * Properties where a nested object can be found in an API response.
+ */
+const POSSIBLE_NESTED_ERROR_OBJECT_KEYS = ['Error', 'error', 'err', 'response', 'body', 'data'];
+
+/**
  * Top-level properties where an HTTP error code can be found in an API response.
  */
-const ERROR_STATUS_PROPERTIES = [
+const POSSIBLE_ERROR_STATUS_KEYS = [
 	'statusCode',
 	'status',
 	'code',
@@ -80,11 +85,6 @@ const ERROR_STATUS_PROPERTIES = [
 	'errorCode',
 	'error_code',
 ];
-
-/**
- * Properties where a nested object can be found in an API response.
- */
-const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
 /**
  * Descriptive messages for common HTTP status codes
@@ -149,7 +149,7 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if not description provided, try to find it in the error object
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		if (
 			!description &&
 			(errorResponse.description || (errorResponse?.reason as IDataObject)?.description)
@@ -160,7 +160,7 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if not message provided, try to find it in the error object or set description as message
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
 		if (
 			!message &&
 			(errorResponse.message || (errorResponse?.reason as IDataObject)?.message || description)
@@ -189,7 +189,11 @@ export class NodeApiError extends NodeError {
 			this.httpCode = errorResponse.httpCode as string;
 		} else {
 			this.httpCode =
-				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
+				this.findProperty(
+					errorResponse,
+					POSSIBLE_ERROR_STATUS_KEYS,
+					POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
+				) ?? null;
 		}
 
 		this.level = level ?? 'warning';
@@ -224,8 +228,8 @@ export class NodeApiError extends NodeError {
 			} else {
 				this.description = this.findProperty(
 					errorResponse,
-					ERROR_MESSAGE_PROPERTIES,
-					ERROR_NESTING_PROPERTIES,
+					POSSIBLE_ERROR_MESSAGE_KEYS,
+					POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
 				);
 			}
 		}
@@ -265,13 +269,11 @@ export class NodeApiError extends NodeError {
 		parseString(xml, { explicitArray: false }, (_, result) => {
 			if (!result) return;
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const topLevelKey = Object.keys(result)[0];
 			this.description = this.findProperty(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 				result[topLevelKey],
-				ERROR_MESSAGE_PROPERTIES,
-				['Error'].concat(ERROR_NESTING_PROPERTIES),
+				POSSIBLE_ERROR_MESSAGE_KEYS,
+				POSSIBLE_NESTED_ERROR_OBJECT_KEYS,
 			);
 		});
 	}

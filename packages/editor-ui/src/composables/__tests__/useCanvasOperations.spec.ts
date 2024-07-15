@@ -1,26 +1,51 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { Connection } from '@vue-flow/core';
-import type { IConnection } from 'n8n-workflow';
+import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import type { CanvasElement } from '@/types';
-import type { INodeUi } from '@/Interface';
+import type { CanvasNode } from '@/types';
+import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { createTestNode, createTestWorkflowObject } from '@/__tests__/mocks';
+import { ref } from 'vue';
+import {
+	createTestNode,
+	createTestWorkflowObject,
+	mockNode,
+	mockNodeTypeDescription,
+} from '@/__tests__/mocks';
+import { useRouter } from 'vue-router';
+import { mock } from 'vitest-mock-extended';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+
+vi.mock('vue-router', async () => {
+	const actual = await import('vue-router');
+
+	return {
+		...actual,
+		useRouter: () => ({}),
+	};
+});
 
 describe('useCanvasOperations', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let ndvStore: ReturnType<typeof useNDVStore>;
 	let historyStore: ReturnType<typeof useHistoryStore>;
+	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
+	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
+	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
-	beforeEach(() => {
+	const lastClickPosition = ref<XYPosition>([450, 450]);
+	const router = useRouter();
+
+	beforeEach(async () => {
 		const pinia = createPinia();
 		setActivePinia(pinia);
 
@@ -28,7 +53,21 @@ describe('useCanvasOperations', () => {
 		uiStore = useUIStore();
 		ndvStore = useNDVStore();
 		historyStore = useHistoryStore();
-		canvasOperations = useCanvasOperations();
+		nodeTypesStore = useNodeTypesStore();
+		credentialsStore = useCredentialsStore();
+		workflowHelpers = useWorkflowHelpers({ router });
+
+		const workflowId = 'test';
+		const workflow = mock<IWorkflowDb>({
+			id: workflowId,
+			nodes: [],
+			tags: [],
+			usedCredentials: [],
+		});
+		workflowsStore.workflowsById[workflowId] = workflow;
+		await workflowHelpers.initState(workflow);
+
+		canvasOperations = useCanvasOperations({ router, lastClickPosition });
 	});
 
 	describe('updateNodePosition', () => {
@@ -37,7 +76,7 @@ describe('useCanvasOperations', () => {
 				.spyOn(workflowsStore, 'setNodePositionById')
 				.mockImplementation(() => {});
 			const id = 'node1';
-			const position: CanvasElement['position'] = { x: 10, y: 20 };
+			const position: CanvasNode['position'] = { x: 10, y: 20 };
 			const node = createTestNode({
 				id,
 				type: 'node',
@@ -50,6 +89,225 @@ describe('useCanvasOperations', () => {
 			canvasOperations.updateNodePosition(id, position);
 
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(id, [position.x, position.y]);
+		});
+	});
+
+	describe('setNodeSelected', () => {
+		it('should set last selected node when node id is provided and node exists', () => {
+			const nodeId = 'node1';
+			const nodeName = 'Node 1';
+			workflowsStore.getNodeById = vi.fn().mockReturnValue({ name: nodeName });
+			uiStore.lastSelectedNode = '';
+
+			canvasOperations.setNodeSelected(nodeId);
+
+			expect(uiStore.lastSelectedNode).toBe(nodeName);
+		});
+
+		it('should not change last selected node when node id is provided but node does not exist', () => {
+			const nodeId = 'node1';
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(undefined);
+			uiStore.lastSelectedNode = 'Existing Node';
+
+			canvasOperations.setNodeSelected(nodeId);
+
+			expect(uiStore.lastSelectedNode).toBe('Existing Node');
+		});
+
+		it('should clear last selected node when node id is not provided', () => {
+			uiStore.lastSelectedNode = 'Existing Node';
+
+			canvasOperations.setNodeSelected();
+
+			expect(uiStore.lastSelectedNode).toBe('');
+		});
+	});
+
+	describe('initializeNodeDataWithDefaultCredentials', () => {
+		it('should throw error when node type does not exist', async () => {
+			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+
+			await expect(
+				canvasOperations.initializeNodeDataWithDefaultCredentials({ type: 'nonexistent' }),
+			).rejects.toThrow();
+		});
+
+		it('should create node with default version when version is undefined', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				name: 'example',
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(1);
+		});
+
+		it('should create node with last version when version is an array', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(2);
+		});
+
+		it('should create node with default position when position is not provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				type: 'type',
+			});
+
+			expect(result.position).toEqual([0, 0]);
+		});
+
+		it('should create node with provided position when position is provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				type: 'type',
+				position: [10, 20],
+			});
+
+			expect(result.position).toEqual([10, 20]);
+		});
+
+		it('should create node with default credentials when only one credential is available', async () => {
+			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
+			]);
+
+			credentialsStore.addCredentials([credential]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credential,
+			]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				type: nodeTypeName,
+			});
+
+			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
+		});
+
+		it('should not assign credentials when multiple credentials are available', async () => {
+			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
+			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
+				}),
+			]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credentialA,
+				credentialB,
+			]);
+
+			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
+				type: 'type',
+			});
+			expect(result.credentials).toBeUndefined();
+		});
+	});
+
+	describe('addNodes', () => {
+		it('should add nodes at specified positions', async () => {
+			const nodeTypeName = 'type';
+			const nodes = [
+				mockNode({ name: 'Node 1', type: nodeTypeName, position: [30, 40] }),
+				mockNode({ name: 'Node 2', type: nodeTypeName, position: [100, 240] }),
+			];
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+				}),
+			]);
+
+			await canvasOperations.addNodes(nodes, {});
+
+			expect(workflowsStore.workflow.nodes).toHaveLength(2);
+			expect(workflowsStore.workflow.nodes[0]).toHaveProperty('name', nodes[0].name);
+			expect(workflowsStore.workflow.nodes[0]).toHaveProperty('parameters', {});
+			expect(workflowsStore.workflow.nodes[0]).toHaveProperty('type', nodeTypeName);
+			expect(workflowsStore.workflow.nodes[0]).toHaveProperty('typeVersion', 1);
+			expect(workflowsStore.workflow.nodes[0]).toHaveProperty('position');
+		});
+
+		it('should add nodes at current position when position is not specified', async () => {
+			const nodeTypeName = 'type';
+			const nodes = [
+				mockNode({ name: 'Node 1', type: nodeTypeName, position: [120, 120] }),
+				mockNode({ name: 'Node 2', type: nodeTypeName, position: [180, 320] }),
+			];
+			const workflowStoreAddNodeSpy = vi.spyOn(workflowsStore, 'addNode');
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+				}),
+			]);
+
+			await canvasOperations.addNodes(nodes, { position: [50, 60] });
+
+			expect(workflowStoreAddNodeSpy).toHaveBeenCalledTimes(2);
+			expect(workflowStoreAddNodeSpy.mock.calls[0][0].position).toEqual(
+				expect.arrayContaining(nodes[0].position),
+			);
+			expect(workflowStoreAddNodeSpy.mock.calls[1][0].position).toEqual(
+				expect.arrayContaining(nodes[1].position),
+			);
+		});
+
+		it('should adjust the position of nodes with multiple inputs', async () => {
+			const nodeTypeName = 'type';
+			const nodes = [
+				mockNode({ id: 'a', name: 'Node A', type: nodeTypeName, position: [40, 40] }),
+				mockNode({ id: 'b', name: 'Node B', type: nodeTypeName, position: [40, 40] }),
+				mockNode({ id: 'c', name: 'Node C', type: nodeTypeName, position: [100, 240] }),
+			];
+
+			const setNodePositionByIdSpy = vi.spyOn(workflowsStore, 'setNodePositionById');
+			vi.spyOn(workflowsStore, 'getNodeByName')
+				.mockReturnValueOnce(nodes[1])
+				.mockReturnValueOnce(nodes[2]);
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(nodes[1])
+				.mockReturnValueOnce(nodes[2]);
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+				}),
+			]);
+
+			vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockImplementation(() =>
+				mock<Workflow>({
+					getParentNodesByDepth: () =>
+						nodes.map((node) => ({
+							name: node.name,
+							depth: 0,
+							indicies: [],
+						})),
+				}),
+			);
+
+			await canvasOperations.addNodes(nodes, {});
+
+			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[1].id, expect.any(Object));
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[2].id, expect.any(Object));
 		});
 	});
 
@@ -225,6 +483,53 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('addConnections', () => {
+		it('should create connections between nodes', async () => {
+			const nodeTypeName = 'type';
+			const nodes = [
+				mockNode({ id: 'a', name: 'Node A', type: nodeTypeName, position: [40, 40] }),
+				mockNode({ id: 'b', name: 'Node B', type: nodeTypeName, position: [40, 40] }),
+			];
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+				}),
+			]);
+
+			await canvasOperations.addNodes(nodes, {});
+
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(nodes[0])
+				.mockReturnValueOnce(nodes[1]);
+
+			const connections = [
+				{ from: { nodeIndex: 0, outputIndex: 0 }, to: { nodeIndex: 1, inputIndex: 0 } },
+				{ from: { nodeIndex: 1, outputIndex: 0 }, to: { nodeIndex: 2, inputIndex: 0 } },
+			];
+			const offsetIndex = 0;
+
+			const addConnectionSpy = vi.spyOn(workflowsStore, 'addConnection');
+
+			await canvasOperations.addConnections(connections, { offsetIndex });
+
+			expect(addConnectionSpy).toHaveBeenCalledWith({
+				connection: [
+					{
+						index: 0,
+						node: 'Node A',
+						type: NodeConnectionType.Main,
+					},
+					{
+						index: 0,
+						node: 'Node B',
+						type: NodeConnectionType.Main,
+					},
+				],
+			});
+		});
+	});
+
 	describe('createConnection', () => {
 		it('should not create a connection if source node does not exist', () => {
 			const addConnectionSpy = vi
@@ -273,6 +578,8 @@ describe('useCanvasOperations', () => {
 				name: 'Node B',
 			});
 
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+
 			const connection: Connection = {
 				source: nodeA.id,
 				sourceHandle: `outputs/${NodeConnectionType.Main}/0`,
@@ -280,7 +587,14 @@ describe('useCanvasOperations', () => {
 				targetHandle: `inputs/${NodeConnectionType.Main}/0`,
 			};
 
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'node',
+				inputs: [NodeConnectionType.Main],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[nodeA.name] = nodeA;
+			canvasOperations.editableWorkflowObject.value.nodes[nodeB.name] = nodeB;
 
 			canvasOperations.createConnection(connection);
 
@@ -291,6 +605,189 @@ describe('useCanvasOperations', () => {
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe('isConnectionAllowed', () => {
+		it('should return false if source and target nodes are the same', () => {
+			const node = mockNode({ id: '1', type: 'testType', name: 'Test Node' });
+			expect(canvasOperations.isConnectionAllowed(node, node, NodeConnectionType.Main)).toBe(false);
+		});
+
+		it('should return false if target node type does not have inputs', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+			});
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+			});
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [],
+			});
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(false);
+		});
+
+		it('should return false if target node does not exist in the workflow', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+			});
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+			});
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [NodeConnectionType.Main],
+			});
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(false);
+		});
+
+		it('should return false if input type does not match connection type', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [NodeConnectionType.AiTool],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(false);
+		});
+
+		it('should return false if source node type is not allowed by target node input filter', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+						filter: {
+							nodes: ['allowedType'],
+						},
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(false);
+		});
+
+		it('should return true if all conditions including filter are met', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+						filter: {
+							nodes: ['sourceType'],
+						},
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(true);
+		});
+
+		it('should return true if all conditions are met and no filter is set', () => {
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionType.Main,
+					},
+				],
+			});
+
+			nodeTypesStore.setNodeTypes([nodeTypeDescription]);
+			canvasOperations.editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			canvasOperations.editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+
+			expect(
+				canvasOperations.isConnectionAllowed(sourceNode, targetNode, NodeConnectionType.Main),
+			).toBe(true);
 		});
 	});
 

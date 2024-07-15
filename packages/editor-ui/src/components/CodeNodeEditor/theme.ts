@@ -53,7 +53,7 @@ export const codeNodeEditorTheme = ({
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			caretColor: 'var(--color-code-caret)',
+			caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-code-caret)',

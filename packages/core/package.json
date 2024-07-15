@@ -1,17 +1,7 @@
 {
   "name": "n8n-core",
-  "version": "1.47.0",
+  "version": "1.50.0",
   "description": "Core functionality of n8n",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://n8n.io",
-  "author": {
-    "name": "Jan Oberhauser",
-    "email": "jan@n8n.io"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
@@ -62,6 +52,7 @@
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",
     "qs": "6.11.0",
+    "ssh2": "1.15.0",
     "typedi": "0.10.0",
     "uuid": "8.3.2",
     "xml2js": "0.6.2"

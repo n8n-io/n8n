@@ -197,7 +197,6 @@ export function encodeWebhookResponse(
 ): IExecuteResponsePromiseData {
 	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
 		response.body = {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
 		};
 	}

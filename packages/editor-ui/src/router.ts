@@ -15,7 +15,7 @@ import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/consta
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/types/router';
-import { initializeCore } from '@/init';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 
@@ -24,8 +24,7 @@ const ErrorView = async () => await import('./views/ErrorView.vue');
 const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
-const NodeView = async () => await import('@/views/NodeView.vue');
-const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
+const NodeView = async () => await import('@/views/NodeViewSwitcher.vue');
 const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
 	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
@@ -357,24 +356,6 @@ export const routes: RouteRecordRaw[] = [
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
-	},
-	{
-		path: '/workflow-v2/:workflowId',
-		name: VIEWS.WORKFLOW_V2,
-		components: {
-			default: NodeViewV2,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated', 'custom'],
-			middlewareOptions: {
-				custom: () => {
-					return !!localStorage.getItem('features.NodeViewV2');
-				},
-			},
-			nodeView: true,
-		},
 	},
 	{
 		path: '/signin',
@@ -777,6 +758,7 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		await initializeCore();
+		await initializeAuthenticatedFeatures();
 
 		/**
 		 * Redirect to setup page. User should be redirected to this only once

@@ -17,6 +17,7 @@ import type {
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
 import { OwnershipService } from '@/services/ownership.service';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';
@@ -79,7 +80,10 @@ export class EnterpriseWorkflowService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await this.credentialsService.getMany(currentUser, { onlyOwn: true });
+		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			currentUser,
+			{ workflowId: workflow.id },
+		);
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -140,7 +144,10 @@ export class EnterpriseWorkflowService {
 			throw new NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await this.credentialsService.getMany(user);
+		const allCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			user,
+			{ workflowId },
+		);
 
 		try {
 			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
@@ -157,7 +164,7 @@ export class EnterpriseWorkflowService {
 	validateWorkflowCredentialUsage(
 		newWorkflowVersion: WorkflowEntity,
 		previousWorkflowVersion: WorkflowEntity,
-		credentialsUserHasAccessTo: CredentialsEntity[],
+		credentialsUserHasAccessTo: Array<{ id: string }>,
 	) {
 		/**
 		 * We only need to check nodes that use credentials the current user cannot access,

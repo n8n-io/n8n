@@ -110,13 +110,13 @@ onUnmounted(() => {
 	resizeObserver?.disconnect();
 });
 
-const $emit = defineEmits<{
-	(event: 'tooltipClick', tab: string, e: MouseEvent): void;
-	(event: 'update:modelValue', tab: string): void;
+const emit = defineEmits<{
+	tooltipClick: [tab: string, e: MouseEvent];
+	'update:modelValue': [tab: string];
 }>();
 
-const handleTooltipClick = (tab: string, event: MouseEvent) => $emit('tooltipClick', tab, event);
-const handleTabClick = (tab: string) => $emit('update:modelValue', tab);
+const handleTooltipClick = (tab: string, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTabClick = (tab: string) => emit('update:modelValue', tab);
 
 const scroll = (left: number) => {
 	const container = tabs.value;

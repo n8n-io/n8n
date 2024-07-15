@@ -428,28 +428,38 @@ describe('GET /workflows/:workflowId', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
-	test('should return workflow with credentials saying owner does not have access when not shared', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+	test.each([
+		['owner', () => owner],
+		['admin', () => admin],
+	])(
+		'should return workflow with credentials saying %s does have access even when not shared',
+		async (_description, getActor) => {
+			const actor = getActor();
+			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
-		const workflowPayload = makeWorkflow({
-			withPinData: false,
-			withCredential: { id: savedCredential.id, name: savedCredential.name },
-		});
-		const workflow = await createWorkflow(workflowPayload, owner);
+			const workflowPayload = makeWorkflow({
+				withPinData: false,
+				withCredential: { id: savedCredential.id, name: savedCredential.name },
+			});
+			const workflow = await createWorkflow(workflowPayload, actor);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
-		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+			const response = await testServer
+				.authAgentFor(actor)
+				.get(`/workflows/${workflow.id}`)
+				.expect(200);
+			const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(responseWorkflow.usedCredentials).toMatchObject([
-			{
-				id: savedCredential.id,
-				name: savedCredential.name,
-				currentUserHasAccess: false, // although owner can see, they do not have access
-			},
-		]);
+			expect(responseWorkflow.usedCredentials).toMatchObject([
+				{
+					id: savedCredential.id,
+					name: savedCredential.name,
+					currentUserHasAccess: true,
+				},
+			]);
 
-		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
-	});
+			expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
+		},
+	);
 
 	test('should return workflow with credentials for all users with or without access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -829,64 +839,104 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(response.statusCode).toBe(200);
 		});
 
-		it('Should prevent member from adding node containing credential inaccessible to member', async () => {
-			const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		it.each([
+			[
+				'the owner and shared with the member',
+				'the owner',
+				async function creteWorkflow() {
+					const workflow = await createWorkflow({}, owner);
+					await shareWorkflowWithUsers(workflow, [member]);
+					return workflow;
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: owner });
+				},
+			],
+			[
+				'team 1',
+				'the member',
+				async function creteWorkflow() {
+					const team = await createTeamProject('Team 1', member);
+					return await createWorkflow({}, team);
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: member });
+				},
+			],
+			[
+				'team 1',
+				'team 2',
+				async function creteWorkflow() {
+					const team1 = await createTeamProject('Team 1', member);
+					return await createWorkflow({}, team1);
+				},
+				async function createCredential() {
+					const team2 = await createTeamProject('Team 2', member);
+					return await saveCredential(randomCredentialPayload(), { project: team2 });
+				},
+			],
+			[
+				'the member',
+				'the owner',
+				async function creteWorkflow() {
+					return await createWorkflow({}, member);
+				},
+				async function createCredential() {
+					return await saveCredential(randomCredentialPayload(), { user: owner });
+				},
+			],
+			[
+				'the member',
+				'team 2',
+				async function creteWorkflow() {
+					return await createWorkflow({}, member);
+				},
+				async function createCredential() {
+					const team2 = await createTeamProject('Team 2', member);
+					return await saveCredential(randomCredentialPayload(), { project: team2 });
+				},
+			],
+		])(
+			'Tamper proofing kicks in if the workflow is owned by %s, the credentials is owned by %s, and the member tries to use the credential in the workflow',
+			async (_workflowText, _credentialText, createWorkflow, createCredential) => {
+				//
+				// ARRANGE
+				//
+				const workflow = await createWorkflow();
+				const credential = await createCredential();
 
-			const workflow = {
-				name: 'test',
-				active: false,
-				connections: {},
-				nodes: [
-					{
-						id: 'uuid-1234',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {
-							default: {
-								id: savedCredential.id,
-								name: savedCredential.name,
+				//
+				// ACT
+				//
+				const response = await authMemberAgent.patch(`/workflows/${workflow.id}`).send({
+					versionId: workflow.versionId,
+					nodes: [
+						{
+							id: 'uuid-12345',
+							name: 'Start',
+							parameters: {},
+							position: [-20, 260],
+							type: 'n8n-nodes-base.start',
+							typeVersion: 1,
+							credentials: {
+								default: {
+									id: credential.id,
+									name: credential.name,
+								},
 							},
 						},
-					},
-				],
-			};
+					],
+				});
 
-			const createResponse = await authOwnerAgent.post('/workflows').send(workflow);
-			const { id, versionId } = createResponse.body.data;
-
-			const response = await authMemberAgent.patch(`/workflows/${id}`).send({
-				versionId,
-				nodes: [
-					{
-						id: 'uuid-1234',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {},
-					},
-					{
-						id: 'uuid-12345',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {
-							default: {
-								id: savedCredential.id,
-								name: savedCredential.name,
-							},
-						},
-					},
-				],
-			});
-			expect(response.statusCode).toBe(403);
-		});
+				//
+				// ASSERT
+				//
+				expect(response.statusCode).toBe(400);
+				expect(response.body.message).toBe(
+					"You don't have access to the credentials in the 'Start' node. Ask the owner to share them with you.",
+				);
+			},
+		);
 
 		it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 			const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });

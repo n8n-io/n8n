@@ -23,6 +23,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
       - name: Build
         run: pnpm build
 
@@ -43,7 +46,9 @@ jobs:
       ref: ${{ inputs.branch }}
       nodeVersion: ${{ matrix.node-version }}
       cacheKey: ${{ github.sha }}-base:build
-      collectCoverage: true
+      collectCoverage: ${{ matrix.node-version == '20.x' }}
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Lint

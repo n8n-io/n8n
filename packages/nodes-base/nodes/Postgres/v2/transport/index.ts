@@ -1,72 +1,26 @@
-import type { Server } from 'net';
-import { createServer } from 'net';
-import { Client } from 'ssh2';
-import type { ConnectConfig } from 'ssh2';
-
-import type { IDataObject } from 'n8n-workflow';
-
+import { createServer, type AddressInfo } from 'node:net';
 import pgPromise from 'pg-promise';
 import type {
-	PgpDatabase,
+	IExecuteFunctions,
+	ICredentialTestFunctions,
+	ILoadOptionsFunctions,
+	ITriggerFunctions,
+} from 'n8n-workflow';
+
+import { formatPrivateKey } from '@utils/utilities';
+import type {
+	ConnectionsData,
+	PgpConnectionParameters,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 } from '../helpers/interfaces';
-import { formatPrivateKey } from '@utils/utilities';
+import { LOCALHOST } from '@utils/constants';
 
-async function createSshConnectConfig(credentials: PostgresNodeCredentials) {
-	if (credentials.sshAuthenticateWith === 'password') {
-		return {
-			host: credentials.sshHost as string,
-			port: credentials.sshPort as number,
-			username: credentials.sshUser as string,
-			password: credentials.sshPassword as string,
-		} as ConnectConfig;
-	} else {
-		const options: ConnectConfig = {
-			host: credentials.sshHost as string,
-			username: credentials.sshUser as string,
-			port: credentials.sshPort as number,
-			privateKey: formatPrivateKey(credentials.privateKey as string),
-		};
-
-		if (credentials.passphrase) {
-			options.passphrase = credentials.passphrase;
-		}
-
-		return options;
-	}
-}
-
-export async function configurePostgres(
+const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
-	createdSshClient?: Client,
-) {
-	const pgp = pgPromise({
-		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
-		// duplicate connections created when auto loading parameters, they are closed imidiatly after, but several could be open at the same time
-		noWarnings: true,
-	});
-
-	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
-		// Always return dates as ISO strings
-		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
-			pgp.pg.types.setTypeParser(type, (value: string) => {
-				return new Date(value).toISOString();
-			});
-		});
-	}
-
-	if (options.largeNumbersOutput === 'numbers') {
-		pgp.pg.types.setTypeParser(20, (value: string) => {
-			return parseInt(value, 10);
-		});
-		pgp.pg.types.setTypeParser(1700, (value: string) => {
-			return parseFloat(value);
-		});
-	}
-
-	const dbConfig: IDataObject = {
+) => {
+	const dbConfig: PgpConnectionParameters = {
 		host: credentials.host,
 		port: credentials.port,
 		database: credentials.database,
@@ -89,70 +43,91 @@ export async function configurePostgres(
 		};
 	} else {
 		dbConfig.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+		// @ts-ignore these typings need to be updated
 		dbConfig.sslmode = credentials.ssl || 'disable';
 	}
+
+	return dbConfig;
+};
+
+export async function configurePostgres(
+	this: IExecuteFunctions | ICredentialTestFunctions | ILoadOptionsFunctions | ITriggerFunctions,
+	credentials: PostgresNodeCredentials,
+	options: PostgresNodeOptions = {},
+): Promise<ConnectionsData> {
+	const pgp = pgPromise({
+		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
+		// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
+		noWarnings: true,
+	});
+
+	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
+		// Always return dates as ISO strings
+		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
+			pgp.pg.types.setTypeParser(type, (value: string) => {
+				return new Date(value).toISOString();
+			});
+		});
+	}
+
+	if (options.largeNumbersOutput === 'numbers') {
+		pgp.pg.types.setTypeParser(20, (value: string) => {
+			return parseInt(value, 10);
+		});
+		pgp.pg.types.setTypeParser(1700, (value: string) => {
+			return parseFloat(value);
+		});
+	}
+
+	const dbConfig = getPostgresConfig(credentials, options);
 
 	if (!credentials.sshTunnel) {
 		const db = pgp(dbConfig);
 		return { db, pgp };
 	} else {
-		const sshClient = createdSshClient || new Client();
+		if (credentials.sshAuthenticateWith === 'privateKey' && credentials.privateKey) {
+			credentials.privateKey = formatPrivateKey(credentials.privateKey);
+		}
+		const sshClient = await this.helpers.getSSHClient(credentials);
 
-		const tunnelConfig = await createSshConnectConfig(credentials);
+		// Create a TCP proxy listening on a random available port
+		const proxy = createServer();
+		const proxyPort = await new Promise<number>((resolve) => {
+			proxy.listen(0, LOCALHOST, () => {
+				resolve((proxy.address() as AddressInfo).port);
+			});
+		});
 
-		const localHost = '127.0.0.1';
-		const localPort = credentials.sshPostgresPort as number;
+		const close = () => {
+			proxy.close();
+			sshClient.off('end', close);
+			sshClient.off('error', close);
+		};
+		sshClient.on('end', close);
+		sshClient.on('error', close);
 
-		let proxy: Server | undefined;
-
-		const db = await new Promise<PgpDatabase>((resolve, reject) => {
-			let sshClientReady = false;
-
-			proxy = createServer((socket) => {
-				if (!sshClientReady) return socket.destroy();
-
+		await new Promise<void>((resolve, reject) => {
+			proxy.on('error', (err) => reject(err));
+			proxy.on('connection', (localSocket) => {
 				sshClient.forwardOut(
-					socket.remoteAddress as string,
-					socket.remotePort as number,
+					LOCALHOST,
+					localSocket.remotePort!,
 					credentials.host,
 					credentials.port,
-					(err, stream) => {
-						if (err) reject(err);
-
-						socket.pipe(stream);
-						stream.pipe(socket);
+					(err, clientChannel) => {
+						if (err) {
+							proxy.close();
+							localSocket.destroy();
+						} else {
+							localSocket.pipe(clientChannel);
+							clientChannel.pipe(localSocket);
+						}
 					},
 				);
-			}).listen(localPort, localHost);
-
-			proxy.on('error', (err) => {
-				reject(err);
 			});
-
-			sshClient.connect(tunnelConfig);
-
-			sshClient.on('ready', () => {
-				sshClientReady = true;
-
-				const updatedDbConfig = {
-					...dbConfig,
-					port: localPort,
-					host: localHost,
-				};
-				const dbConnection = pgp(updatedDbConfig);
-				resolve(dbConnection);
-			});
-
-			sshClient.on('error', (err) => {
-				reject(err);
-			});
-
-			sshClient.on('end', async () => {
-				if (proxy) proxy.close();
-			});
+			resolve();
 		}).catch((err) => {
-			if (proxy) proxy.close();
-			if (sshClient) sshClient.end();
+			proxy.close();
 
 			let message = err.message;
 			let description = err.description;
@@ -183,6 +158,11 @@ export async function configurePostgres(
 			throw err;
 		});
 
-		return { db, pgp, sshClient };
+		const db = pgp({
+			...dbConfig,
+			port: proxyPort,
+			host: LOCALHOST,
+		});
+		return { db, pgp };
 	}
 }

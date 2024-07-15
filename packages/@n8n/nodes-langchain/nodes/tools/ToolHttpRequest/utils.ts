@@ -10,15 +10,6 @@ import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow'
 
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 
-import type {
-	ParameterInputType,
-	ParametersValues,
-	PlaceholderDefinition,
-	ParametersValues as RawParametersValues,
-	SendIn,
-	ToolParameter,
-} from './interfaces';
-
 import set from 'lodash/set';
 import get from 'lodash/get';
 import unset from 'lodash/unset';
@@ -28,6 +19,14 @@ import { convert } from 'html-to-text';
 
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
+import type {
+	ParameterInputType,
+	ParametersValues,
+	PlaceholderDefinition,
+	ParametersValues as RawParametersValues,
+	SendIn,
+	ToolParameter,
+} from './interfaces';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -50,7 +49,8 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			options.headers![headerAuth.name as string] = headerAuth.value;
+			if (!options.headers) options.headers = {};
+			options.headers[headerAuth.name as string] = headerAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
 	}
@@ -59,9 +59,7 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			if (!options.qs) {
-				options.qs = {};
-			}
+			if (!options.qs) options.qs = {};
 			options.qs[queryAuth.name as string] = queryAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
@@ -356,7 +354,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 };
 
 const extractPlaceholders = (text: string): string[] => {
-	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
+	const placeholder = /(\{[a-zA-Z0-9_-]+\})/g;
 	const returnData: string[] = [];
 
 	const matches = text.matchAll(placeholder);

@@ -40,13 +40,8 @@ class RedisServiceBase {
 		}
 		this.redisClient = this.redisClientService.createClient({ type });
 
-		this.redisClient.on('close', () => {
-			this.logger.warn('Redis unavailable - trying to reconnect...');
-		});
-
 		this.redisClient.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				this.logger.warn('Error with Redis: ', error);
 			}
 		});

@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
@@ -12,6 +10,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 
+import { NodeConnectionType } from './Interfaces';
 import type {
 	FieldType,
 	IContextObject,
@@ -353,8 +352,31 @@ const declarativeNodeOptionParameters: INodeProperties = {
 	],
 };
 
+/**
+ * Determines if the provided node type has any output types other than the main connection type.
+ * @param typeDescription The node's type description to check.
+ */
+export function isSubNodeType(
+	typeDescription: Pick<INodeTypeDescription, 'outputs'> | null,
+): boolean {
+	if (!typeDescription || !typeDescription.outputs || typeof typeDescription.outputs === 'string') {
+		return false;
+	}
+	const outputTypes = getConnectionTypes(typeDescription.outputs);
+	return outputTypes
+		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		: false;
+}
+
+/** Augments additional `Request Options` property on declarative node-type */
 export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
-	if (nodeType.execute || nodeType.trigger || nodeType.webhook || nodeType.description.polling) {
+	if (
+		nodeType.execute ||
+		nodeType.trigger ||
+		nodeType.webhook ||
+		nodeType.description.polling ||
+		isSubNodeType(nodeType.description)
+	) {
 		return;
 	}
 
@@ -379,8 +401,10 @@ export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void 
 			],
 		};
 
-		if (parameters[existingRequestOptionsIndex]?.options) {
-			parameters[existingRequestOptionsIndex].options!.sort((a, b) => {
+		const options = parameters[existingRequestOptionsIndex]?.options;
+
+		if (options) {
+			options.sort((a, b) => {
 				if ('displayName' in a && 'displayName' in b) {
 					if (a.displayName < b.displayName) {
 						return -1;

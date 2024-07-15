@@ -2,6 +2,7 @@ import { fireEvent } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -24,7 +25,10 @@ describe('CanvasNodeToolbar', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: true },
+							},
 						},
 					}),
 				},
@@ -53,39 +57,39 @@ describe('CanvasNodeToolbar', () => {
 	});
 
 	it('should call toggleDisableNode function when disable node button is clicked', async () => {
-		const toggleDisableNode = vi.fn();
+		const onToggleNode = vi.fn();
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
 				mocks: {
-					toggleDisableNode,
+					onToggleNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('disable-node-button'));
 
-		expect(toggleDisableNode).toHaveBeenCalled();
+		expect(onToggleNode).toHaveBeenCalled();
 	});
 
 	it('should call deleteNode function when delete node button is clicked', async () => {
-		const deleteNode = vi.fn();
+		const onDeleteNode = vi.fn();
 		const { getByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
 				},
 				mocks: {
-					deleteNode,
+					onDeleteNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('delete-node-button'));
 
-		expect(deleteNode).toHaveBeenCalled();
+		expect(onDeleteNode).toHaveBeenCalled();
 	});
 
 	it('should call openContextMenu function when overflow node button is clicked', async () => {

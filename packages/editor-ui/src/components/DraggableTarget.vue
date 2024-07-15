@@ -1,125 +1,86 @@
 <template>
-	<div ref="target">
+	<div ref="targetRef" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @mouseup="onMouseUp">
 		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import type { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { v4 as uuid } from 'uuid';
-import type { XYPosition } from '@/Interface';
+import { computed, ref, watch } from 'vue';
 
-export default defineComponent({
-	props: {
-		type: {
-			type: String,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		sticky: {
-			type: Boolean,
-		},
-		stickyOffset: {
-			type: Array as PropType<number[]>,
-			default: () => [0, 0],
-		},
-		stickyOrigin: {
-			type: String as PropType<'top-left' | 'center'>,
-			default: 'top-left',
-		},
-	},
-	data() {
-		return {
-			hovering: false,
-			dimensions: null as DOMRect | null,
-			id: uuid(),
-		};
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		isDragging(): boolean {
-			return this.ndvStore.isDraggableDragging;
-		},
-		draggableType(): string {
-			return this.ndvStore.draggableType;
-		},
-		draggableDimensions(): DOMRect | null {
-			return this.ndvStore.draggable.dimensions;
-		},
-		droppable(): boolean {
-			return !this.disabled && this.isDragging && this.draggableType === this.type;
-		},
-		activeDrop(): boolean {
-			return this.droppable && this.hovering;
-		},
-		stickyPosition(): XYPosition | null {
-			if (this.disabled || !this.sticky || !this.hovering || !this.dimensions) {
-				return null;
-			}
+type Props = {
+	type: string;
+	disabled?: boolean;
+	sticky?: boolean;
+	stickyOffset?: XYPosition;
+	stickyOrigin?: 'top-left' | 'center';
+};
 
-			if (this.stickyOrigin === 'center') {
-				return [
-					this.dimensions.left +
-						this.stickyOffset[0] +
-						this.dimensions.width / 2 -
-						(this.draggableDimensions?.width ?? 0) / 2,
-					this.dimensions.top +
-						this.stickyOffset[1] +
-						this.dimensions.height / 2 -
-						(this.draggableDimensions?.height ?? 0) / 2,
-				];
-			}
-
-			return [
-				this.dimensions.left + this.stickyOffset[0],
-				this.dimensions.top + this.stickyOffset[1],
-			];
-		},
-	},
-	watch: {
-		activeDrop(active) {
-			if (active) {
-				this.ndvStore.setDraggableTarget({ id: this.id, stickyPosition: this.stickyPosition });
-			} else if (this.ndvStore.draggable.activeTarget?.id === this.id) {
-				// Only clear active target if it is this one
-				this.ndvStore.setDraggableTarget(null);
-			}
-		},
-	},
-	mounted() {
-		window.addEventListener('mousemove', this.onMouseMove);
-		window.addEventListener('mouseup', this.onMouseUp);
-	},
-
-	beforeUnmount() {
-		window.removeEventListener('mousemove', this.onMouseMove);
-		window.removeEventListener('mouseup', this.onMouseUp);
-	},
-	methods: {
-		onMouseMove(e: MouseEvent) {
-			const targetRef = this.$refs.target as HTMLElement | undefined;
-
-			if (targetRef && this.isDragging) {
-				const dim = targetRef.getBoundingClientRect();
-
-				this.dimensions = dim;
-				this.hovering =
-					e.clientX >= dim.left &&
-					e.clientX <= dim.right &&
-					e.clientY >= dim.top &&
-					e.clientY <= dim.bottom;
-			}
-		},
-		onMouseUp() {
-			if (this.activeDrop) {
-				const data = this.ndvStore.draggableData;
-				this.$emit('drop', data);
-			}
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
+	sticky: false,
+	stickyOffset: () => [0, 0],
+	stickyOrigin: 'top-left',
 });
+
+const emit = defineEmits<{
+	drop: [value: string];
+}>();
+
+const hovering = ref(false);
+const targetRef = ref<HTMLElement>();
+const id = ref(uuid());
+
+const ndvStore = useNDVStore();
+const isDragging = computed(() => ndvStore.isDraggableDragging);
+const draggableType = computed(() => ndvStore.draggableType);
+const draggableDimensions = computed(() => ndvStore.draggable.dimensions);
+const droppable = computed(
+	() => !props.disabled && isDragging.value && draggableType.value === props.type,
+);
+const activeDrop = computed(() => droppable.value && hovering.value);
+
+watch(activeDrop, (active) => {
+	if (active) {
+		const stickyPosition = getStickyPosition();
+		ndvStore.setDraggableTarget({ id: id.value, stickyPosition });
+	} else if (ndvStore.draggable.activeTarget?.id === id.value) {
+		// Only clear active target if it is this one
+		ndvStore.setDraggableTarget(null);
+	}
+});
+
+function onMouseEnter() {
+	hovering.value = true;
+}
+
+function onMouseLeave() {
+	hovering.value = false;
+}
+
+function onMouseUp() {
+	if (activeDrop.value) {
+		const data = ndvStore.draggableData;
+		emit('drop', data);
+	}
+}
+
+function getStickyPosition(): XYPosition | null {
+	if (props.disabled || !props.sticky || !hovering.value || !targetRef.value) {
+		return null;
+	}
+
+	const { left, top, width, height } = targetRef.value.getBoundingClientRect();
+
+	if (props.stickyOrigin === 'center') {
+		return [
+			left + props.stickyOffset[0] + width / 2 - (draggableDimensions.value?.width ?? 0) / 2,
+			top + props.stickyOffset[1] + height / 2 - (draggableDimensions.value?.height ?? 0) / 2,
+		];
+	}
+
+	return [left + props.stickyOffset[0], top + props.stickyOffset[1]];
+}
 </script>

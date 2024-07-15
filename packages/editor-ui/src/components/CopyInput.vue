@@ -48,7 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	toastTitle: useI18n().baseText('generic.copiedToClipboard'),
 });
 const emit = defineEmits<{
-	(event: 'copy'): void;
+	copy: [];
 }>();
 
 const clipboard = useClipboard();

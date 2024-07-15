@@ -24,7 +24,7 @@
 				@click.left="mouseLeftClick"
 				@contextmenu="onContextMenu"
 			>
-				<n8n-sticky
+				<N8nResizeableSticky
 					v-if="node"
 					:id="node.id"
 					:model-value="node.parameters.content"
@@ -288,7 +288,7 @@ export default defineComponent({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 	},
 	mounted() {

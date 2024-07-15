@@ -9,6 +9,8 @@ import {
 } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
+import { OnShutdown } from './decorators/OnShutdown';
+import { HIGHEST_SHUTDOWN_PRIORITY } from './constants';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -58,6 +60,12 @@ export class Queue {
 		});
 	}
 
+	async findRunningJobBy({ executionId }: { executionId: string }) {
+		const activeOrWaitingJobs = await this.getJobs(['active', 'waiting']);
+
+		return activeOrWaitingJobs.find(({ data }) => data.executionId === executionId) ?? null;
+	}
+
 	decodeWebhookResponse(response: IExecuteResponsePromiseData): IExecuteResponsePromiseData {
 		if (
 			typeof response === 'object' &&
@@ -102,11 +110,10 @@ export class Queue {
 		return await this.jobQueue.client.ping();
 	}
 
-	async pause({
-		isLocal,
-		doNotWaitActive,
-	}: { isLocal?: boolean; doNotWaitActive?: boolean } = {}): Promise<void> {
-		return await this.jobQueue.pause(isLocal, doNotWaitActive);
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
+	// Stop accepting new jobs, `doNotWaitActive` allows reporting progress
+	async pause(): Promise<void> {
+		return await this.jobQueue?.pause(true, true);
 	}
 
 	getBullObjectInstance(): JobQueue {
