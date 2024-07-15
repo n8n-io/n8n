@@ -52,6 +52,7 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache hits.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
 			expect(service.counters.cacheHitsTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
@@ -66,6 +67,7 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache misses.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
 			expect(service.counters.cacheMissesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
@@ -80,6 +82,7 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache updates.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
 			expect(service.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 

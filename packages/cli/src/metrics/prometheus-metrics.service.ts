@@ -20,7 +20,7 @@ export class PrometheusMetricsService {
 		private readonly eventBus: MessageEventBus,
 	) {}
 
-	counters: Record<string, Counter<string> | null> = {};
+	private readonly counters: Record<string, Counter<string> | null> = {};
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
@@ -166,7 +166,7 @@ export class PrometheusMetricsService {
 		});
 	}
 
-	getLabelsForEvent(event: EventMessageTypes): Record<string, string> {
+	private getLabelsForEvent(event: EventMessageTypes): Record<string, string> {
 		switch (event.__type) {
 			case EventMessageTypeNames.audit:
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
@@ -200,11 +200,11 @@ export class PrometheusMetricsService {
 		return {};
 	}
 
-	getLabelValueForNode(nodeType: string) {
+	private getLabelValueForNode(nodeType: string) {
 		return nodeType.replace('n8n-nodes-', '').replace(/\./g, '_');
 	}
 
-	getLabelValueForCredential(credentialType: string) {
+	private getLabelValueForCredential(credentialType: string) {
 		return credentialType.replace(/\./g, '_');
 	}
 
