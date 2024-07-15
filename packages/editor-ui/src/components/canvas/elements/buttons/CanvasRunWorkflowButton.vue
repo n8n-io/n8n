@@ -10,8 +10,8 @@ defineEmits<{
 }>();
 
 const props = defineProps<{
-	waitingForWebhook: boolean;
-	executing: boolean;
+	waitingForWebhook?: boolean;
+	executing?: boolean;
 	disabled?: boolean;
 }>();
 

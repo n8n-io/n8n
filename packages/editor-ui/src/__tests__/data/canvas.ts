@@ -5,6 +5,7 @@ import { CanvasNodeRenderType } from '@/types';
 
 export function createCanvasNodeData({
 	id = 'node',
+	name = 'Test Node',
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
@@ -21,13 +22,14 @@ export function createCanvasNodeData({
 	},
 }: Partial<CanvasNodeData> = {}): CanvasNodeData {
 	return {
+		id,
+		name,
+		type,
+		typeVersion,
 		execution,
 		issues,
 		pinnedData,
 		runData,
-		id,
-		type,
-		typeVersion,
 		disabled,
 		inputs,
 		outputs,
