@@ -1,12 +1,12 @@
 import { mock } from 'jest-mock-extended';
-import { UsageMetricsService } from '@/services/usageMetrics.service';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { UsageMetricsRepository } from '@/databases/repositories/usageMetrics.repository';
+import type { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 
-describe('UsageMetricsService', () => {
+describe('LicenseMetricsService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
-	const usageMetricsService = new UsageMetricsService(
-		mock<UsageMetricsRepository>(),
+	const licenseMetricsService = new LicenseMetricsService(
+		mock<LicenseMetricsRepository>(),
 		workflowRepository,
 	);
 
@@ -21,7 +21,7 @@ describe('UsageMetricsService', () => {
 			/**
 			 * Act
 			 */
-			const result = await usageMetricsService.collectPassthroughData();
+			const result = await licenseMetricsService.collectPassthroughData();
 
 			/**
 			 * Assert
