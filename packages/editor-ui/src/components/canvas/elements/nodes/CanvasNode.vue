@@ -10,8 +10,6 @@ import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import { Position } from '@vue-flow/core';
 import type { XYPosition, NodeProps } from '@vue-flow/core';
-import type { Connection } from '@vue-flow/core/dist/types/connection';
-import { parseCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 const emit = defineEmits<{
 	delete: [id: string];
@@ -29,11 +27,12 @@ const nodeTypesStore = useNodeTypesStore();
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const isDisabled = computed(() => props.data.disabled);
 
@@ -117,25 +116,6 @@ function onUpdate(parameters: Record<string, unknown>) {
 
 function onMove(position: XYPosition) {
 	emit('move', props.id, position);
-}
-
-/**
- * Connection validation
- */
-
-function isValidConnection(connection: Connection) {
-	const { type: sourceType, mode: sourceMode } = parseCanvasConnectionHandleString(
-		connection.sourceHandle,
-	);
-	const { type: targetType, mode: targetMode } = parseCanvasConnectionHandleString(
-		connection.targetHandle,
-	);
-
-	const isSameNode = connection.source === connection.target;
-	const isSameMode = sourceMode === targetMode;
-	const isSameType = sourceType === targetType;
-
-	return !isSameNode && !isSameMode && isSameType;
 }
 
 /**
