@@ -363,6 +363,8 @@ async function openWorkflow(data: IWorkflowDb) {
 	// } else {
 	// 	executionsStore.activeExecution = selectedExecution;
 	// }
+
+	canvasEventBus.emit('fitView');
 }
 
 function trackOpenWorkflowFromOnboardingTemplate() {
@@ -422,7 +424,6 @@ async function openWorkflowTemplate(templateId: string) {
 
 	uiStore.stateIsDirty = true;
 
-	canvasEventBus.emit('fitView');
 	canvasStore.stopLoading();
 
 	void externalHooks.run('template.open', {
@@ -430,6 +431,8 @@ async function openWorkflowTemplate(templateId: string) {
 		templateName: data.name,
 		workflow: data.workflow,
 	});
+
+	canvasEventBus.emit('fitView');
 }
 
 function trackOpenWorkflowTemplate(templateId: string) {
@@ -571,26 +574,30 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 	}
 
 	resetWorkspace();
-	initializeWorkspace(workflowData);
 
-	workflowData.nodes = NodeViewUtils.getFixedNodesList(workflowData.nodes);
-	await addNodes(workflowData.nodes as INodeUi[], workflowData.connections);
-	if (workflowData.pinData) {
-		workflowsStore.setWorkflowPinData(workflowData.pinData);
-	}
+	await initializeWorkspace({
+		...workflowData,
+		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
+	} as IWorkflowDb);
 
 	canvasEventBus.emit('fitView');
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+
+	canvasEventBus.emit('fitView');
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
 	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
-	if (workflowData !== undefined) {
-		await importWorkflowData(workflowData, 'url');
+	if (!workflowData) {
+		return;
 	}
+
+	await importWorkflowData(workflowData, 'url');
+
+	canvasEventBus.emit('fitView');
 }
 
 function addImportEventBindings() {

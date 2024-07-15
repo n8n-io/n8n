@@ -553,7 +553,9 @@ export function useCanvasOperations({
 			return;
 		}
 
+		console.log({ node });
 		const newNodeData = await initializeNodeDataWithDefaultCredentials(node);
+		console.log({ newNodeData });
 
 		// When pulling new connection from node or injecting into a connection
 		const lastSelectedNode = uiStore.getLastSelectedNode;
