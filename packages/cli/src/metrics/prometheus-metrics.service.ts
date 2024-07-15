@@ -171,9 +171,7 @@ export class PrometheusMetricsService {
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
 					return config.getEnv('endpoints.metrics.includeCredentialTypeLabel')
 						? {
-								credential_type: this.getLabelValueForCredential(
-									event.payload.credentialType ?? 'unknown',
-								),
+								credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
 							}
 						: {};
 				}
@@ -187,7 +185,11 @@ export class PrometheusMetricsService {
 
 			case EventMessageTypeNames.node:
 				return config.getEnv('endpoints.metrics.includeNodeTypeLabel')
-					? { node_type: this.getLabelValueForNode(event.payload.nodeType ?? 'unknown') }
+					? {
+							node_type: (event.payload.nodeType ?? 'unknown')
+								.replace('n8n-nodes-', '')
+								.replace(/\./g, '_'),
+						}
 					: {};
 
 			case EventMessageTypeNames.workflow:
@@ -197,14 +199,6 @@ export class PrometheusMetricsService {
 		}
 
 		return {};
-	}
-
-	private getLabelValueForNode(nodeType: string) {
-		return nodeType.replace('n8n-nodes-', '').replace(/\./g, '_');
-	}
-
-	private getLabelValueForCredential(credentialType: string) {
-		return credentialType.replace(/\./g, '_');
 	}
 
 	private toMetricName(rawName: string) {
