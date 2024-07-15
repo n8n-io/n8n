@@ -235,7 +235,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		methods = args.methods;
 
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve' | 'update';
+			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
