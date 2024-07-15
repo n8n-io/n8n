@@ -65,7 +65,8 @@ export class PrometheusMetricsService {
 
 		const { version, major, minor, patch } = n8nVersion;
 
-		versionGauge.set({ version: 'v' + version, major, minor, patch }, 1);
+		versionGauge.labels({ version: 'v' + version, major, minor, patch });
+		versionGauge.set(1);
 	}
 
 	/**
