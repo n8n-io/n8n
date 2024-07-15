@@ -54,6 +54,7 @@ interface VectorStoreNodeConstructorArgs {
 	insertFields?: INodeProperties[];
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
+	updateFields?: INodeProperties[];
 	populateVectorStore: (
 		context: IExecuteFunctions,
 		embeddings: Embeddings,
@@ -227,6 +228,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				},
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
+				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
 			],
 		};
 
