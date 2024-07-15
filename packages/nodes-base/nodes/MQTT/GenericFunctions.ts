@@ -1,5 +1,5 @@
-import { connectAsync, type IClientOptions, type MqttClient } from 'mqtt';
-import { randomString } from 'n8n-workflow';
+import { connect, type IClientOptions, type MqttClient } from 'mqtt';
+import { ApplicationError, randomString } from 'n8n-workflow';
 import { formatPrivateKey } from '@utils/utilities';
 
 interface BaseMqttCredential {
@@ -49,5 +49,15 @@ export const createClient = async (credentials: MqttCredential): Promise<MqttCli
 		clientOptions.rejectUnauthorized = credentials.rejectUnauthorized;
 	}
 
-	return await connectAsync(clientOptions);
+	return await new Promise((resolve, reject) => {
+		const client = connect(clientOptions);
+
+		client.on('connect', () => {
+			resolve(client);
+		});
+
+		client.on('error', (error) => {
+			reject(new ApplicationError(error.message));
+		});
+	});
 };
