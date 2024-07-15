@@ -9,13 +9,11 @@ import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
 import { type EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { Logger } from '@/Logger';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
 @Service()
 export class PrometheusMetricsService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
 	) {}
@@ -142,7 +140,6 @@ export class PrometheusMetricsService {
 				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
-				this.logger.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
 				this.counters[event.eventName] = null;
 				return null;
 			}
