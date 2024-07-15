@@ -3,15 +3,15 @@ import { GlobalConfig } from '@n8n/config';
 import { DataSource, Repository, Entity } from '@n8n/typeorm';
 
 @Entity()
-export class UsageMetrics {}
+export class LicenseMetrics {}
 
 @Service()
-export class UsageMetricsRepository extends Repository<UsageMetrics> {
+export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		super(UsageMetrics, dataSource.manager);
+		super(LicenseMetrics, dataSource.manager);
 	}
 
 	toTableName(name: string) {
