@@ -168,8 +168,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).configureMetrics(this.app);
 		}
 
 		const { frontendService } = this;
