@@ -106,7 +106,7 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(app.use).toHaveBeenCalledWith(
-				['/rest/', '/webhook/', 'webhook-test/', '/api/'],
+				['/rest/', '/webhook/', '/webhook-test/', '/api/'],
 				expect.any(Function),
 			);
 		});
