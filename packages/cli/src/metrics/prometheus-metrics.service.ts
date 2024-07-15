@@ -27,6 +27,8 @@ export class PrometheusMetricsService {
 		api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
 		cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
 		logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+		credentialsTypeLabel: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
+		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
 	};
 
 	async configureMetrics(app: express.Application) {
@@ -169,15 +171,13 @@ export class PrometheusMetricsService {
 		switch (event.__type) {
 			case EventMessageTypeNames.audit:
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
-					return config.getEnv('endpoints.metrics.includeCredentialTypeLabel')
-						? {
-								credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_'),
-							}
+					return this.isIncluded.credentialsTypeLabel
+						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
 						: {};
 				}
 
 				if (event.eventName.startsWith('n8n.audit.workflow')) {
-					return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
+					return this.isIncluded.workflowIdLabel
 						? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 						: {};
 				}
@@ -193,7 +193,7 @@ export class PrometheusMetricsService {
 					: {};
 
 			case EventMessageTypeNames.workflow:
-				return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
+				return this.isIncluded.workflowIdLabel
 					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 					: {};
 		}
