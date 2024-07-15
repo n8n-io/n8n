@@ -18,7 +18,7 @@ export class PrometheusMetricsService {
 		private readonly eventBus: MessageEventBus,
 	) {}
 
-	private readonly counters: Record<string, Counter<string> | null> = {};
+	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
@@ -105,35 +105,23 @@ export class PrometheusMetricsService {
 	private setupCacheMetrics() {
 		if (!this.includes.cacheMetrics) return;
 
-		this.counters.cacheHitsTotal = new promClient.Counter({
-			name: this.prefix + 'cache_hits_total',
-			help: 'Total number of cache hits.',
+		const [hitsConfig, missesConfig, updatesConfig] = ['hits', 'misses', 'updates'].map((kind) => ({
+			name: this.prefix + 'cache_' + kind + '_total',
+			help: `Total number of cache ${kind}.`,
 			labelNames: ['cache'],
-		});
+		}));
+
+		this.counters.cacheHitsTotal = new promClient.Counter(hitsConfig);
 		this.counters.cacheHitsTotal.inc(0);
-		this.cacheService.on('metrics.cache.hit', (amount: number = 1) => {
-			this.counters.cacheHitsTotal?.inc(amount);
-		});
+		this.cacheService.on('metrics.cache.hit', () => this.counters.cacheHitsTotal?.inc(1));
 
-		this.counters.cacheMissesTotal = new promClient.Counter({
-			name: this.prefix + 'cache_misses_total',
-			help: 'Total number of cache misses.',
-			labelNames: ['cache'],
-		});
+		this.counters.cacheMissesTotal = new promClient.Counter(missesConfig);
 		this.counters.cacheMissesTotal.inc(0);
-		this.cacheService.on('metrics.cache.miss', (amount: number = 1) => {
-			this.counters.cacheMissesTotal?.inc(amount);
-		});
+		this.cacheService.on('metrics.cache.miss', () => this.counters.cacheMissesTotal?.inc(1));
 
-		this.counters.cacheUpdatesTotal = new promClient.Counter({
-			name: this.prefix + 'cache_updates_total',
-			help: 'Total number of cache updates.',
-			labelNames: ['cache'],
-		});
+		this.counters.cacheUpdatesTotal = new promClient.Counter(updatesConfig);
 		this.counters.cacheUpdatesTotal.inc(0);
-		this.cacheService.on('metrics.cache.update', (amount: number = 1) => {
-			this.counters.cacheUpdatesTotal?.inc(amount);
-		});
+		this.cacheService.on('metrics.cache.update', () => this.counters.cacheUpdatesTotal?.inc(1));
 	}
 
 	private toCounter(event: EventMessageTypes) {
