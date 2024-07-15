@@ -22,11 +22,11 @@ export class PrometheusMetricsService {
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
-	private readonly isIncluded = {
-		default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
-		api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
-		cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
-		logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+	private readonly includes = {
+		defaultMetrics: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
+		apiMetrics: config.getEnv('endpoints.metrics.includeApiEndpoints'),
+		cacheMetrics: config.getEnv('endpoints.metrics.includeCacheMetrics'),
+		logsMetrics: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
 		credentialsTypeLabel: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
 		nodeTypeLabel: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
 		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
@@ -65,7 +65,7 @@ export class PrometheusMetricsService {
 	 * Set up default metrics collection with `prom-client`
 	 */
 	private setupDefaultMetrics() {
-		if (!this.isIncluded.default) return;
+		if (!this.includes.defaultMetrics) return;
 
 		promClient.collectDefaultMetrics();
 	}
@@ -74,7 +74,7 @@ export class PrometheusMetricsService {
 	 * Set up metrics for API endpoints with `express-prom-bundle`
 	 */
 	private setupApiMetrics(app: express.Application) {
-		if (!this.isIncluded.api) return;
+		if (!this.includes.apiMetrics) return;
 
 		const metricsMiddleware = promBundle({
 			autoregister: false,
@@ -103,7 +103,7 @@ export class PrometheusMetricsService {
 	 * - `n8n_cache_updates_total`
 	 */
 	private setupCacheMetrics() {
-		if (!this.isIncluded.cache) return;
+		if (!this.includes.cacheMetrics) return;
 
 		this.counters.cacheHitsTotal = new promClient.Counter({
 			name: this.prefix + 'cache_hits_total',
@@ -159,7 +159,7 @@ export class PrometheusMetricsService {
 	}
 
 	private setupMessageEventBusMetrics() {
-		if (!this.isIncluded.logs) return;
+		if (!this.includes.logsMetrics) return;
 
 		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
 			const counter = this.getCounterForEvent(event);
@@ -172,20 +172,20 @@ export class PrometheusMetricsService {
 		switch (event.__type) {
 			case EventMessageTypeNames.audit:
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
-					return this.isIncluded.credentialsTypeLabel
+					return this.includes.credentialsTypeLabel
 						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
 						: {};
 				}
 
 				if (event.eventName.startsWith('n8n.audit.workflow')) {
-					return this.isIncluded.workflowIdLabel
+					return this.includes.workflowIdLabel
 						? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 						: {};
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				return this.isIncluded.nodeTypeLabel
+				return this.includes.nodeTypeLabel
 					? {
 							node_type: (event.payload.nodeType ?? 'unknown')
 								.replace('n8n-nodes-', '')
@@ -194,7 +194,7 @@ export class PrometheusMetricsService {
 					: {};
 
 			case EventMessageTypeNames.workflow:
-				return this.isIncluded.workflowIdLabel
+				return this.includes.workflowIdLabel
 					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 					: {};
 		}
