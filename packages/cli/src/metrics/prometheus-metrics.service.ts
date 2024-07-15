@@ -158,7 +158,7 @@ export class PrometheusMetricsService {
 	private initEventBusMetrics() {
 		if (!this.includes.metrics.logs) return;
 
-		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
+		this.eventBus.on('metrics.eventBus.event', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
 			if (!counter) return;
 			counter.inc(1);

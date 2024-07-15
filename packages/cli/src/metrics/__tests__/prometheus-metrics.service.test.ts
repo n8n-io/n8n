@@ -117,10 +117,7 @@ describe('PrometheusMetricsService', () => {
 
 			await service.init(mock<express.Application>());
 
-			expect(eventBus.on).toHaveBeenCalledWith(
-				'metrics.messageEventBus.Event',
-				expect.any(Function),
-			);
+			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
 		});
 	});
 });
