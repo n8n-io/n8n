@@ -6,7 +6,12 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, sleep } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createDeferredPromise,
+	ExecutionCancelledError,
+	sleep,
+} from 'n8n-workflow';
 
 import type {
 	ExecutionPayload,
@@ -20,7 +25,6 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
-import { ExecutionCancelledError } from '@/errors/execution-cancelled.error';
 
 @Service()
 export class ActiveExecutions {

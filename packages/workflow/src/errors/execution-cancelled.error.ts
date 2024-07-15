@@ -1,6 +1,6 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ExecutionBaseError } from './abstract/execution-base.error';
 
-export class ExecutionCancelledError extends ApplicationError {
+export class ExecutionCancelledError extends ExecutionBaseError {
 	constructor(executionId: string) {
 		super('The execution was cancelled', {
 			level: 'warning',
