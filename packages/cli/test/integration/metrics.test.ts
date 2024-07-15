@@ -42,7 +42,7 @@ describe('Metrics', () => {
 
 	it('should return cache metrics when enabled', async () => {
 		config.set('endpoints.metrics.includeCacheMetrics', true);
-		await Container.get(PrometheusMetricsService).configureMetrics(testServer.app);
+		await Container.get(PrometheusMetricsService).init(testServer.app);
 		const lines = await getMetricsResponseAsLines();
 		expect(lines).toContain('n8n_test_cache_hits_total 0');
 		expect(lines).toContain('n8n_test_cache_misses_total 0');
@@ -67,7 +67,7 @@ describe('Metrics', () => {
 
 	it('should return default metrics', async () => {
 		config.set('endpoints.metrics.includeDefaultMetrics', true);
-		await Container.get(PrometheusMetricsService).configureMetrics(testServer.app);
+		await Container.get(PrometheusMetricsService).init(testServer.app);
 		const lines = await getMetricsResponseAsLines();
 		expect(lines).toContain('nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 		config.set('endpoints.metrics.includeDefaultMetrics', false);
@@ -75,7 +75,7 @@ describe('Metrics', () => {
 
 	it('should not return default metrics only when disabled', async () => {
 		config.set('endpoints.metrics.includeDefaultMetrics', false);
-		await Container.get(PrometheusMetricsService).configureMetrics(testServer.app);
+		await Container.get(PrometheusMetricsService).init(testServer.app);
 		const lines = await getMetricsResponseAsLines();
 		expect(lines).not.toContain('nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 		config.set('endpoints.metrics.includeDefaultMetrics', true);

@@ -32,7 +32,7 @@ export class PrometheusMetricsService {
 		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
 	};
 
-	async configureMetrics(app: express.Application) {
+	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.setupDefaultMetrics();
 		this.setupN8nVersionMetric();

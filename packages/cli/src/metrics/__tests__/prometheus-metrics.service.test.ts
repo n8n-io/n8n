@@ -20,11 +20,11 @@ describe('PrometheusMetricsService', () => {
 		config.load(config.default);
 	});
 
-	describe('configureMetrics', () => {
+	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
 			const service = new PrometheusMetricsService(mock(), mock());
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(promClient.Gauge).toHaveBeenCalledWith({
 				name: 'n8n_version_info',
@@ -36,7 +36,7 @@ describe('PrometheusMetricsService', () => {
 		it('should set up default metrics collection with `prom-client`', async () => {
 			const service = new PrometheusMetricsService(mock(), mock());
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
 		});
@@ -45,7 +45,7 @@ describe('PrometheusMetricsService', () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock());
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_hits_total',
@@ -60,7 +60,7 @@ describe('PrometheusMetricsService', () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock());
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_misses_total',
@@ -75,7 +75,7 @@ describe('PrometheusMetricsService', () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock());
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_updates_total',
@@ -95,7 +95,7 @@ describe('PrometheusMetricsService', () => {
 
 			const app = mock<express.Application>();
 
-			await service.configureMetrics(app);
+			await service.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
 				autoregister: false,
@@ -115,7 +115,7 @@ describe('PrometheusMetricsService', () => {
 			const eventBus = mock<MessageEventBus>();
 			const service = new PrometheusMetricsService(mock(), eventBus);
 
-			await service.configureMetrics(mock<express.Application>());
+			await service.init(mock<express.Application>());
 
 			expect(eventBus.on).toHaveBeenCalledWith(
 				'metrics.messageEventBus.Event',
