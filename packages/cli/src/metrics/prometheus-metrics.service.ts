@@ -27,9 +27,13 @@ export class PrometheusMetricsService {
 		apiMetrics: config.getEnv('endpoints.metrics.includeApiEndpoints'),
 		cacheMetrics: config.getEnv('endpoints.metrics.includeCacheMetrics'),
 		logsMetrics: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+
 		credentialsTypeLabel: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
 		nodeTypeLabel: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
 		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
+		apiPathLabel: config.getEnv('endpoints.metrics.includeApiPathLabel'),
+		apiMethodLabel: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
+		apiStatusCodeLabel: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
 	};
 
 	async init(app: express.Application) {
@@ -79,9 +83,9 @@ export class PrometheusMetricsService {
 		const metricsMiddleware = promBundle({
 			autoregister: false,
 			includeUp: false,
-			includePath: config.getEnv('endpoints.metrics.includeApiPathLabel'),
-			includeMethod: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
-			includeStatusCode: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
+			includePath: this.includes.apiPathLabel,
+			includeMethod: this.includes.apiMethodLabel,
+			includeStatusCode: this.includes.apiStatusCodeLabel,
 		});
 
 		app.use(['/rest/', '/webhook/', '/webhook-test/', '/api/'], metricsMiddleware);
