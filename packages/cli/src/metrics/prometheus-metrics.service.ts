@@ -136,7 +136,7 @@ export class PrometheusMetricsService {
 		});
 	}
 
-	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
+	private toCounter(event: EventMessageTypes) {
 		if (!this.counters[event.eventName]) {
 			const metricName =
 				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
@@ -164,7 +164,7 @@ export class PrometheusMetricsService {
 		if (!this.includes.logsMetrics) return;
 
 		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
-			const counter = this.getCounterForEvent(event);
+			const counter = this.toCounter(event);
 			if (!counter) return;
 			counter.inc(1);
 		});
