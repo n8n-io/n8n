@@ -34,6 +34,9 @@ export class PrometheusMetricsService {
 		this.mountMetricsEndpoint(app);
 	}
 
+	/**
+	 * Set up metric for n8n version: `n8n_version_info`
+	 */
 	private setupN8nVersionMetric() {
 		const n8nVersion = semverParse(N8N_VERSION || '0.0.0');
 
@@ -56,12 +59,18 @@ export class PrometheusMetricsService {
 		}
 	}
 
+	/**
+	 * Set up default metrics collection with `prom-client`
+	 */
 	private setupDefaultMetrics() {
 		if (config.getEnv('endpoints.metrics.includeDefaultMetrics')) {
 			promClient.collectDefaultMetrics();
 		}
 	}
 
+	/**
+	 * Set up metrics for API endpoints with `express-prom-bundle` @TODO
+	 */
 	private setupApiMetrics(app: express.Application) {
 		if (config.getEnv('endpoints.metrics.includeApiEndpoints')) {
 			const metricsMiddleware = promBundle({
@@ -84,6 +93,9 @@ export class PrometheusMetricsService {
 		});
 	}
 
+	/**
+	 * Set up cache metrics: `n8n_cache_hits_total`, `n8n_cache_misses_total`, `n8n_cache_updates_total`
+	 */
 	private setupCacheMetrics() {
 		if (!config.getEnv('endpoints.metrics.includeCacheMetrics')) {
 			return;
