@@ -52,12 +52,20 @@ export const createClient = async (credentials: MqttCredential): Promise<MqttCli
 	return await new Promise((resolve, reject) => {
 		const client = connect(clientOptions);
 
-		client.on('connect', () => {
+		const onConnect = () => {
+			client.removeListener('connect', onConnect);
+			// eslint-disable-next-line @typescript-eslint/no-use-before-define
+			client.removeListener('error', onError);
 			resolve(client);
-		});
+		};
 
-		client.on('error', (error) => {
+		const onError = (error: Error) => {
+			client.removeListener('connect', onConnect);
+			client.removeListener('error', onError);
 			reject(new ApplicationError(error.message));
-		});
+		};
+
+		client.once('connect', onConnect);
+		client.once('error', onError);
 	});
 };
