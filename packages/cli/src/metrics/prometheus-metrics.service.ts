@@ -131,12 +131,13 @@ export class PrometheusMetricsService {
 	}
 
 	private toCounter(event: EventMessageTypes) {
-		if (!this.counters[event.eventName]) {
-			const metricName =
-				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
+		const { eventName } = event;
+
+		if (!this.counters[eventName]) {
+			const metricName = this.prefix + eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
-				this.counters[event.eventName] = null;
+				this.counters[eventName] = null;
 				return null;
 			}
 
@@ -144,14 +145,14 @@ export class PrometheusMetricsService {
 
 			const counter = new promClient.Counter({
 				name: metricName,
-				help: `Total number of ${event.eventName} events.`,
+				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
 			counter.labels(labels).inc(0);
-			this.counters[event.eventName] = counter;
+			this.counters[eventName] = counter;
 		}
 
-		return this.counters[event.eventName];
+		return this.counters[eventName];
 	}
 
 	private initEventBusMetrics() {
