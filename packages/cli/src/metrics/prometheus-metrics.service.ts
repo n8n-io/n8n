@@ -28,6 +28,7 @@ export class PrometheusMetricsService {
 		cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
 		logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
 		credentialsTypeLabel: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
+		nodeTypeLabel: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
 		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
 	};
 
@@ -184,7 +185,7 @@ export class PrometheusMetricsService {
 				break;
 
 			case EventMessageTypeNames.node:
-				return config.getEnv('endpoints.metrics.includeNodeTypeLabel')
+				return this.isIncluded.nodeTypeLabel
 					? {
 							node_type: (event.payload.nodeType ?? 'unknown')
 								.replace('n8n-nodes-', '')
