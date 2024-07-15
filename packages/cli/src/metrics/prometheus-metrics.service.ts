@@ -175,7 +175,7 @@ export class PrometheusMetricsService {
 
 				if (event.eventName.startsWith('n8n.audit.workflow')) {
 					return this.includes.labels.workflowId
-						? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
+						? { workflow_id: event.payload.workflowId ?? 'unknown' }
 						: {};
 				}
 				break;
@@ -191,7 +191,7 @@ export class PrometheusMetricsService {
 
 			case EventMessageTypeNames.workflow:
 				return this.includes.labels.workflowId
-					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
+					? { workflow_id: event.payload.workflowId ?? 'unknown' }
 					: {};
 		}
 
