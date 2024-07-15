@@ -49,17 +49,6 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
-// const updateFields: INodeProperties[] = [
-// 	{
-// 		displayName: 'Options',
-// 		name: 'options',
-// 		type: 'collection',
-// 		placeholder: 'Add Option',
-// 		default: {},
-// 		options: [pineconeNamespaceField, metadataFilterField],
-// 	},
-// ];
-
 export const VectorStorePinecone = createVectorStoreNode({
 	meta: {
 		displayName: 'Pinecone Vector Store',
@@ -80,7 +69,6 @@ export const VectorStorePinecone = createVectorStoreNode({
 	retrieveFields,
 	loadFields: retrieveFields,
 	insertFields,
-	// updateFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const index = context.getNodeParameter('pineconeIndex', itemIndex, '', {
