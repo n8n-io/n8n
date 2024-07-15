@@ -441,68 +441,70 @@ export class ScheduleTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
-		for (let i = 0; i < intervals.length; i++) {
-			const interval = intervals[i];
-			const cronExpression = toCronExpression(interval);
-			let recurrence: IRecurrenceRule = { activated: false };
+		if (this.getMode() !== 'manual') {
+			for (let i = 0; i < intervals.length; i++) {
+				const interval = intervals[i];
+				const cronExpression = toCronExpression(interval);
+				let recurrence: IRecurrenceRule = { activated: false };
 
-			if (interval.field === 'hours') {
-				const hour = interval.hoursInterval;
-				if (hour !== 1) {
-					recurrence = {
-						activated: true,
-						index: i,
-						intervalSize: hour,
-						typeInterval: 'hours',
-					};
+				if (interval.field === 'hours') {
+					const hour = interval.hoursInterval;
+					if (hour !== 1) {
+						recurrence = {
+							activated: true,
+							index: i,
+							intervalSize: hour,
+							typeInterval: 'hours',
+						};
+					}
 				}
-			}
 
-			if (interval.field === 'days') {
-				const day = interval.daysInterval;
-				if (day !== 1) {
-					recurrence = {
-						activated: true,
-						index: i,
-						intervalSize: day,
-						typeInterval: 'days',
-					};
+				if (interval.field === 'days') {
+					const day = interval.daysInterval;
+					if (day !== 1) {
+						recurrence = {
+							activated: true,
+							index: i,
+							intervalSize: day,
+							typeInterval: 'days',
+						};
+					}
 				}
-			}
 
-			if (interval.field === 'weeks') {
-				const week = interval.weeksInterval;
-				if (week !== 1) {
-					recurrence = {
-						activated: true,
-						index: i,
-						intervalSize: week,
-						typeInterval: 'weeks',
-					};
+				if (interval.field === 'weeks') {
+					const week = interval.weeksInterval;
+					if (week !== 1) {
+						recurrence = {
+							activated: true,
+							index: i,
+							intervalSize: week,
+							typeInterval: 'weeks',
+						};
+					}
 				}
-			}
 
-			if (interval.field === 'months') {
-				const month = interval.monthsInterval;
-				if (month !== 1) {
-					recurrence = {
-						activated: true,
-						index: i,
-						intervalSize: month,
-						typeInterval: 'months',
-					};
+				if (interval.field === 'months') {
+					const month = interval.monthsInterval;
+					if (month !== 1) {
+						recurrence = {
+							activated: true,
+							index: i,
+							intervalSize: month,
+							typeInterval: 'months',
+						};
+					}
 				}
-			}
 
-			try {
-				this.helpers.registerCron(cronExpression, async () => await executeTrigger(recurrence));
-			} catch (error) {
-				if (interval.field === 'cronExpression') {
-					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-						description: 'More information on how to build them at https://crontab.guru/',
-					});
-				} else {
-					throw error;
+				try {
+					this.helpers.registerCron(cronExpression, async () => await executeTrigger(recurrence));
+				} catch (error) {
+					if (interval.field === 'cronExpression') {
+						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
+							description: 'More information on how to build them at https://crontab.guru/',
+						});
+					} else {
+						throw error;
+					}
 				}
 			}
 		}
