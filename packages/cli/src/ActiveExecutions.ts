@@ -143,10 +143,7 @@ export class ActiveExecutions {
 			promise.resolve(fullRunData);
 		}
 
-		// Remove from the list of active executions
-		delete this.activeExecutions[executionId];
-
-		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
+		this.postExecuteCleanup(executionId);
 	}
 
 	/**
@@ -166,6 +163,20 @@ export class ActiveExecutions {
 		for (const promise of execution.postExecutePromises) {
 			promise.reject(reason);
 		}
+
+		this.postExecuteCleanup(executionId);
+	}
+
+	private postExecuteCleanup(executionId: string) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
+			return;
+		}
+
+		// Remove from the list of active executions
+		delete this.activeExecutions[executionId];
+
+		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
 	}
 
 	/**
