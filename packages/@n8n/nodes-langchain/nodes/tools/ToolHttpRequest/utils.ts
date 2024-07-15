@@ -355,7 +355,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 };
 
 const extractPlaceholders = (text: string): string[] => {
-	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
+	const placeholder = /(\{[a-zA-Z0-9_-]+\})/g;
 	const returnData: string[] = [];
 
 	const matches = text.matchAll(placeholder);
