@@ -420,6 +420,9 @@ export class ScheduleTrigger implements INodeType {
 		}
 
 		const executeTrigger = async (recurrence: IRecurrenceRule) => {
+			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
+			if (!shouldTrigger) return;
+
 			const momentTz = moment.tz(timezone);
 			const resultData = {
 				timestamp: momentTz.toISOString(true),
@@ -435,13 +438,7 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: momentTz.format('z Z'),
 			};
 
-			if (!recurrence.activated) {
-				this.emit([this.helpers.returnJsonArray([resultData])]);
-			} else {
-				if (recurrenceCheck(recurrence, staticData.recurrenceRules, timezone)) {
-					this.emit([this.helpers.returnJsonArray([resultData])]);
-				}
-			}
+			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
 		for (let i = 0; i < intervals.length; i++) {

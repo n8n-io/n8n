@@ -3,19 +3,22 @@ import { type CronExpression, randomInt } from 'n8n-workflow';
 import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
 
 export function recurrenceCheck(
-	recurrence: IRecurrenceRule & { activated: true },
+	recurrence: IRecurrenceRule,
 	recurrenceRules: number[],
 	timezone: string,
 ): boolean {
-	const momentTz = moment.tz(timezone);
-	const recurrenceRuleIndex = recurrence.index;
+	if (!recurrence.activated) return true;
+
 	const intervalSize = recurrence.intervalSize;
-	const typeInterval = recurrence.typeInterval;
 	if (!intervalSize) return false;
+
+	const recurrenceRuleIndex = recurrence.index;
+	const typeInterval = recurrence.typeInterval;
 
 	const lastExecution =
 		recurrenceRuleIndex !== undefined ? recurrenceRules[recurrenceRuleIndex] : undefined;
 
+	const momentTz = moment.tz(timezone);
 	if (recurrenceRuleIndex !== undefined && typeInterval === 'weeks') {
 		const week = momentTz.week();
 		if (

@@ -1,4 +1,4 @@
-import { toCronExpression } from '../GenericFunctions';
+import { recurrenceCheck, toCronExpression } from '../GenericFunctions';
 import * as n8nWorkflow from 'n8n-workflow';
 
 describe('toCronExpression', () => {
@@ -92,5 +92,26 @@ describe('toCronExpression', () => {
 			monthsInterval: 3,
 		});
 		expect(result1).toEqual('30 30 12 15 */3 *');
+	});
+});
+
+describe.only('recurrenceCheck', () => {
+	it('should return true if activated=false', () => {
+		const result = recurrenceCheck({ activated: false }, [], 'UTC');
+		expect(result).toBe(true);
+	});
+
+	it('should return false if intervalSize is falsey', () => {
+		const result = recurrenceCheck(
+			{
+				activated: true,
+				index: 0,
+				intervalSize: 0,
+				typeInterval: 'days',
+			},
+			[],
+			'UTC',
+		);
+		expect(result).toBe(false);
 	});
 });
