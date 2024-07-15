@@ -27,24 +27,18 @@ const nodeTypesStore = useNodeTypesStore();
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const isDisabled = computed(() => props.data.disabled);
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
-
-watch(
-	() => props.selected,
-	(selected) => {
-		emit('select', props.id, selected);
-	},
-);
 
 /**
  * Inputs
@@ -69,6 +63,14 @@ const outputsWithPosition = computed(() => {
 });
 
 /**
+ * Node icon
+ */
+
+const nodeIconSize = computed(() =>
+	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
+);
+
+/**
  * Endpoints
  */
 
@@ -89,25 +91,8 @@ const mapEndpointWithPosition =
 	};
 
 /**
- * Provide
+ * Events
  */
-
-const id = toRef(props, 'id');
-const data = toRef(props, 'data');
-const label = toRef(props, 'label');
-const selected = toRef(props, 'selected');
-
-provide(CanvasNodeKey, {
-	id,
-	data,
-	label,
-	selected,
-	nodeType,
-});
-
-const nodeIconSize = computed(() =>
-	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
-);
 
 function onDelete() {
 	emit('delete', props.id);
@@ -132,6 +117,34 @@ function onUpdate(parameters: Record<string, unknown>) {
 function onMove(position: XYPosition) {
 	emit('move', props.id, position);
 }
+
+/**
+ * Provide
+ */
+
+const id = toRef(props, 'id');
+const data = toRef(props, 'data');
+const label = toRef(props, 'label');
+const selected = toRef(props, 'selected');
+
+provide(CanvasNodeKey, {
+	id,
+	data,
+	label,
+	selected,
+	nodeType,
+});
+
+/**
+ * Lifecycle
+ */
+
+watch(
+	() => props.selected,
+	(selected) => {
+		emit('select', props.id, selected);
+	},
+);
 </script>
 
 <template>
@@ -145,6 +158,7 @@ function onMove(position: XYPosition) {
 				:index="source.index"
 				:position="source.position"
 				:offset="source.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
@@ -157,6 +171,7 @@ function onMove(position: XYPosition) {
 				:index="target.index"
 				:position="target.position"
 				:offset="target.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
