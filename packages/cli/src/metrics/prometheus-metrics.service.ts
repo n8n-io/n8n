@@ -50,7 +50,7 @@ export class PrometheusMetricsService {
 		if (!n8nVersion) return;
 
 		const versionGauge = new promClient.Gauge({
-			name: this.toMetricName('version_info'),
+			name: this.prefix + 'version_info',
 			help: 'n8n version info.',
 			labelNames: ['version', 'major', 'minor', 'patch'],
 		});
@@ -105,7 +105,7 @@ export class PrometheusMetricsService {
 		if (!this.isIncluded.cache) return;
 
 		this.counters.cacheHitsTotal = new promClient.Counter({
-			name: this.toMetricName('cache_hits_total'),
+			name: this.prefix + 'cache_hits_total',
 			help: 'Total number of cache hits.',
 			labelNames: ['cache'],
 		});
@@ -115,7 +115,7 @@ export class PrometheusMetricsService {
 		});
 
 		this.counters.cacheMissesTotal = new promClient.Counter({
-			name: this.toMetricName('cache_misses_total'),
+			name: this.prefix + 'cache_misses_total',
 			help: 'Total number of cache misses.',
 			labelNames: ['cache'],
 		});
@@ -125,7 +125,7 @@ export class PrometheusMetricsService {
 		});
 
 		this.counters.cacheUpdatesTotal = new promClient.Counter({
-			name: this.toMetricName('cache_updates_total'),
+			name: this.prefix + 'cache_updates_total',
 			help: 'Total number of cache updates.',
 			labelNames: ['cache'],
 		});
@@ -199,9 +199,5 @@ export class PrometheusMetricsService {
 		}
 
 		return {};
-	}
-
-	private toMetricName(rawName: string) {
-		return this.prefix + rawName;
 	}
 }
