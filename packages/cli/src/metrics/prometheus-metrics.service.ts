@@ -146,12 +146,14 @@ export class PrometheusMetricsService {
 				return null;
 			}
 
+			const labels = this.toLabels(event);
+
 			const counter = new promClient.Counter({
 				name: metricName,
 				help: `Total number of ${event.eventName} events.`,
-				labelNames: Object.keys(this.getLabelsForEvent(event)),
+				labelNames: Object.keys(labels),
 			});
-			counter.inc(0);
+			counter.labels(labels).inc(0);
 			this.counters[event.eventName] = counter;
 		}
 
@@ -168,7 +170,7 @@ export class PrometheusMetricsService {
 		});
 	}
 
-	private getLabelsForEvent(event: EventMessageTypes): Record<string, string> {
+	private toLabels(event: EventMessageTypes): Record<string, string> {
 		switch (event.__type) {
 			case EventMessageTypeNames.audit:
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
