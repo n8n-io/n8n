@@ -38,25 +38,19 @@ export class PrometheusMetricsService {
 	 * Set up metric for n8n version: `n8n_version_info`
 	 */
 	private setupN8nVersionMetric() {
-		const n8nVersion = semverParse(N8N_VERSION || '0.0.0');
+		const n8nVersion = semverParse(N8N_VERSION ?? '0.0.0');
 
-		if (n8nVersion) {
-			const versionGauge = new promClient.Gauge({
-				name: this.toMetricName('version_info'),
-				help: 'n8n version info.',
-				labelNames: ['version', 'major', 'minor', 'patch'],
-			});
+		if (!n8nVersion) return;
 
-			versionGauge.set(
-				{
-					version: 'v' + n8nVersion.version,
-					major: n8nVersion.major,
-					minor: n8nVersion.minor,
-					patch: n8nVersion.patch,
-				},
-				1,
-			);
-		}
+		const versionGauge = new promClient.Gauge({
+			name: this.toMetricName('version_info'),
+			help: 'n8n version info.',
+			labelNames: ['version', 'major', 'minor', 'patch'],
+		});
+
+		const { version, major, minor, patch } = n8nVersion;
+
+		versionGauge.set({ version: 'v' + version, major, minor, patch }, 1);
 	}
 
 	/**
@@ -85,7 +79,7 @@ export class PrometheusMetricsService {
 		}
 	}
 
-	mountMetricsEndpoint(app: express.Application) {
+	private mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
