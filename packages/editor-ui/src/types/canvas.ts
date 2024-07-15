@@ -36,6 +36,7 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 
 export const enum CanvasNodeRenderType {
 	Default = 'default',
+	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
@@ -53,8 +54,19 @@ export type CanvasNodeAddNodesRender = {
 	options: Record<string, never>;
 };
 
+export type CanvasNodeStickyNoteRender = {
+	type: CanvasNodeRenderType.StickyNote;
+	options: Partial<{
+		width: number;
+		height: number;
+		color: number;
+		content: string;
+	}>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
+	name: INodeUi['name'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
@@ -81,7 +93,7 @@ export interface CanvasNodeData {
 		count: number;
 		visible: boolean;
 	};
-	render: CanvasNodeDefaultRender | CanvasNodeAddNodesRender;
+	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
