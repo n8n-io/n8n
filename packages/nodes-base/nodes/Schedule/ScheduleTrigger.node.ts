@@ -435,7 +435,7 @@ export class ScheduleTrigger implements INodeType {
 				Hour: momentTz.format('HH'),
 				Minute: momentTz.format('mm'),
 				Second: momentTz.format('ss'),
-				Timezone: momentTz.format('z (UTC Z)'),
+				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
 			this.emit([this.helpers.returnJsonArray([resultData])]);
