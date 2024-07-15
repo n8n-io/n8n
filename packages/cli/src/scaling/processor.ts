@@ -12,7 +12,7 @@ import type {
 	Job,
 	JobId,
 	JobResult,
-	RunningJobProps,
+	RunningJob,
 	RunningJobSummary,
 	WebhookResponseReport,
 } from './types';
@@ -20,7 +20,7 @@ import type PCancelable from 'p-cancelable';
 
 @Service()
 export class Processor {
-	private readonly runningJobs: { [jobId: JobId]: RunningJobProps } = {};
+	private readonly runningJobs: { [jobId: JobId]: RunningJob } = {};
 
 	constructor(
 		private readonly logger: Logger,
@@ -134,7 +134,7 @@ export class Processor {
 			workflowRun = workflowExecute.run(workflow);
 		}
 
-		const props: RunningJobProps = {
+		const runningJob: RunningJob = {
 			run: workflowRun,
 			executionId,
 			workflowId: execution.workflowId,
@@ -145,7 +145,7 @@ export class Processor {
 			status: execution.status,
 		};
 
-		this.runningJobs[job.id] = props;
+		this.runningJobs[job.id] = runningJob;
 
 		await workflowRun;
 
@@ -171,7 +171,7 @@ export class Processor {
 	}
 
 	getRunningJobsSummary(): RunningJobSummary[] {
-		return Object.values(this.runningJobs).map(({ run, ...props }) => props);
+		return Object.values(this.runningJobs).map(({ run, ...summary }) => summary);
 	}
 
 	private encodeWebhookResponse(

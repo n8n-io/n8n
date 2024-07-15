@@ -36,7 +36,7 @@ export type WebhookResponseReport = {
 	response: IExecuteResponsePromiseData;
 };
 
-export type RunningJobProps = {
+export type RunningJob = {
 	executionId: string;
 	workflowId: string;
 	workflowName: string;
@@ -47,4 +47,4 @@ export type RunningJobProps = {
 	run: PCancelable<IRun>;
 };
 
-export type RunningJobSummary = Omit<RunningJobProps, 'run'>;
+export type RunningJobSummary = Omit<RunningJob, 'run'>;
