@@ -53,20 +53,23 @@ export function recurrenceCheck(
 export const toCronExpression = (interval: ScheduleInterval): CronExpression => {
 	if (interval.field === 'cronExpression') return interval.expression;
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
-	if (interval.field === 'minutes') return `* */${interval.minutesInterval} * * * *`;
+
+	const randomSecond = randomInt(0, 60);
+	if (interval.field === 'minutes') return `${randomSecond} */${interval.minutesInterval} * * * *`;
 
 	const minute = interval.triggerAtMinute ?? randomInt(0, 60);
-	if (interval.field === 'hours') return `* ${minute} */${interval.hoursInterval} * * *`;
+	if (interval.field === 'hours')
+		return `${randomSecond} ${minute} */${interval.hoursInterval} * * *`;
 
 	// Since Cron does not support `*/` for days or weeks, all following expressions trigger more often, but are then filtered by `recurrenceCheck`
 	const hour = interval.triggerAtHour ?? randomInt(0, 24);
-	if (interval.field === 'days') return `* ${minute} ${hour} * * *`;
+	if (interval.field === 'days') return `${randomSecond} ${minute} ${hour} * * *`;
 	if (interval.field === 'weeks') {
 		const days = interval.triggerAtDay;
 		const daysOfWeek = days.length === 0 ? '*' : days.join(',');
-		return `* ${minute} ${hour} * * ${daysOfWeek}`;
+		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}`;
 	}
 
 	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
-	return `* ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
+	return `${randomSecond} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
