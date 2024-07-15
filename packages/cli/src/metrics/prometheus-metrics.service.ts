@@ -23,17 +23,20 @@ export class PrometheusMetricsService {
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
 	private readonly includes = {
-		defaultMetrics: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
-		apiMetrics: config.getEnv('endpoints.metrics.includeApiEndpoints'),
-		cacheMetrics: config.getEnv('endpoints.metrics.includeCacheMetrics'),
-		logsMetrics: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
-
-		credentialsTypeLabel: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
-		nodeTypeLabel: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
-		workflowIdLabel: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
-		apiPathLabel: config.getEnv('endpoints.metrics.includeApiPathLabel'),
-		apiMethodLabel: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
-		apiStatusCodeLabel: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
+		metrics: {
+			default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
+			api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
+			cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
+			logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+		},
+		labels: {
+			credentialsType: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
+			nodeType: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
+			workflowId: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
+			apiPath: config.getEnv('endpoints.metrics.includeApiPathLabel'),
+			apiMethod: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
+			apiStatusCode: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
+		},
 	};
 
 	async init(app: express.Application) {
@@ -69,7 +72,7 @@ export class PrometheusMetricsService {
 	 * Set up default metrics collection with `prom-client`
 	 */
 	private setupDefaultMetrics() {
-		if (!this.includes.defaultMetrics) return;
+		if (!this.includes.metrics.default) return;
 
 		promClient.collectDefaultMetrics();
 	}
@@ -78,14 +81,14 @@ export class PrometheusMetricsService {
 	 * Set up metrics for API endpoints with `express-prom-bundle`
 	 */
 	private setupApiMetrics(app: express.Application) {
-		if (!this.includes.apiMetrics) return;
+		if (!this.includes.metrics.api) return;
 
 		const metricsMiddleware = promBundle({
 			autoregister: false,
 			includeUp: false,
-			includePath: this.includes.apiPathLabel,
-			includeMethod: this.includes.apiMethodLabel,
-			includeStatusCode: this.includes.apiStatusCodeLabel,
+			includePath: this.includes.labels.apiPath,
+			includeMethod: this.includes.labels.apiMethod,
+			includeStatusCode: this.includes.labels.apiStatusCode,
 		});
 
 		app.use(['/rest/', '/webhook/', '/webhook-test/', '/api/'], metricsMiddleware);
@@ -107,7 +110,7 @@ export class PrometheusMetricsService {
 	 * - `n8n_cache_updates_total`
 	 */
 	private setupCacheMetrics() {
-		if (!this.includes.cacheMetrics) return;
+		if (!this.includes.metrics.cache) return;
 
 		const [hitsConfig, missesConfig, updatesConfig] = ['hits', 'misses', 'updates'].map((kind) => ({
 			name: this.prefix + 'cache_' + kind + '_total',
@@ -153,7 +156,7 @@ export class PrometheusMetricsService {
 	}
 
 	private setupMessageEventBusMetrics() {
-		if (!this.includes.logsMetrics) return;
+		if (!this.includes.metrics.logs) return;
 
 		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
 			const counter = this.toCounter(event);
@@ -166,20 +169,20 @@ export class PrometheusMetricsService {
 		switch (event.__type) {
 			case EventMessageTypeNames.audit:
 				if (event.eventName.startsWith('n8n.audit.user.credentials')) {
-					return this.includes.credentialsTypeLabel
+					return this.includes.labels.credentialsType
 						? { credential_type: (event.payload.credentialType ?? 'unknown').replace(/\./g, '_') }
 						: {};
 				}
 
 				if (event.eventName.startsWith('n8n.audit.workflow')) {
-					return this.includes.workflowIdLabel
+					return this.includes.labels.workflowId
 						? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 						: {};
 				}
 				break;
 
 			case EventMessageTypeNames.node:
-				return this.includes.nodeTypeLabel
+				return this.includes.labels.nodeType
 					? {
 							node_type: (event.payload.nodeType ?? 'unknown')
 								.replace('n8n-nodes-', '')
@@ -188,7 +191,7 @@ export class PrometheusMetricsService {
 					: {};
 
 			case EventMessageTypeNames.workflow:
-				return this.includes.workflowIdLabel
+				return this.includes.labels.workflowId
 					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 					: {};
 		}
