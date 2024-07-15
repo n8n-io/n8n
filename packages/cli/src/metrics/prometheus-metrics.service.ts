@@ -148,7 +148,8 @@ export class PrometheusMetricsService {
 				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
-			counter.labels(labels).inc(0);
+			counter.labels(labels);
+			counter.inc(0);
 			this.counters[eventName] = counter;
 		}
 
