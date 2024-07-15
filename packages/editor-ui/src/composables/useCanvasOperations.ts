@@ -899,7 +899,13 @@ export function useCanvasOperations({
 		targetNode: INodeUi,
 		connectionType: NodeConnectionType,
 	): boolean {
+		const blocklist = [STICKY_NODE_TYPE];
+
 		if (sourceNode.id === targetNode.id) {
+			return false;
+		}
+
+		if (blocklist.includes(sourceNode.type) || blocklist.includes(targetNode.type)) {
 			return false;
 		}
 

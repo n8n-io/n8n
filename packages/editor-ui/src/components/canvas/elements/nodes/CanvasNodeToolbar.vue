@@ -2,6 +2,7 @@
 import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { CanvasNodeRenderType } from '@/types';
 
 const emit = defineEmits<{
 	delete: [];
@@ -21,7 +22,15 @@ const workflowRunning = false;
 const nodeDisabledTitle = 'Test';
 
 const isExecuteNodeVisible = computed(() => {
-	return 'configuration' in render.value.options && !render.value.options.configuration;
+	return (
+		render.value.type === CanvasNodeRenderType.Default &&
+		'configuration' in render.value.options &&
+		!render.value.options.configuration
+	);
+});
+
+const isDisableNodeVisible = computed(() => {
+	return render.value.type === CanvasNodeRenderType.Default;
 });
 
 function executeNode() {
@@ -55,6 +64,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				@click="executeNode"
 			/>
 			<N8nIconButton
+				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
 				type="tertiary"
 				text

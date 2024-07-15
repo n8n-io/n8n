@@ -33,7 +33,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { STICKY_NODE_TYPE, WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export function useCanvasMapping({
@@ -79,18 +79,18 @@ export function useCanvasMapping({
 		};
 	}
 
-	const renderTypeByNodeType = computed(
+	const renderTypeByNodeId = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
 				switch (node.type) {
 					case `${CanvasNodeRenderType.StickyNote}`:
-						acc[node.type] = createStickyNoteRenderType(node);
+						acc[node.id] = createStickyNoteRenderType(node);
 						break;
 					case `${CanvasNodeRenderType.AddNodes}`:
-						acc[node.type] = createAddNodesRenderType();
+						acc[node.id] = createAddNodesRenderType();
 						break;
 					default:
-						acc[node.type] = createDefaultNodeRenderType(node);
+						acc[node.id] = createDefaultNodeRenderType(node);
 				}
 
 				return acc;
@@ -235,6 +235,20 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const additionalNodePropertiesById = computed(() => {
+		return nodes.value.reduce<Record<string, Partial<CanvasNode>>>((acc, node) => {
+			if (node.type === STICKY_NODE_TYPE) {
+				acc[node.id] = {
+					style: {
+						zIndex: -1,
+					},
+				};
+			}
+
+			return acc;
+		}, {});
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => [
 		...nodes.value.map<CanvasNode>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
@@ -269,7 +283,7 @@ export function useCanvasMapping({
 					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
 					visible: !!nodeExecutionRunDataById.value[node.id],
 				},
-				render: renderTypeByNodeType.value[node.type] ?? { type: 'default', options: {} },
+				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 			};
 
 			return {
@@ -278,6 +292,7 @@ export function useCanvasMapping({
 				type: 'canvas-node',
 				position: { x: node.position[0], y: node.position[1] },
 				data,
+				...additionalNodePropertiesById.value[node.id],
 			};
 		}),
 	]);

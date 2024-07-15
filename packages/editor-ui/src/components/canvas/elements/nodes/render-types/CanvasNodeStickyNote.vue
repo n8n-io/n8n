@@ -10,6 +10,7 @@ import type { XYPosition } from '@vue-flow/core';
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
 	move: [position: XYPosition];
+	dblclick: [event: MouseEvent];
 }>();
 
 const { id, render } = useCanvasNode();
@@ -47,6 +48,10 @@ function onInputChange(value: string) {
 function onEdit(edit: boolean) {
 	isActive.value = edit;
 }
+
+function onDoubleClick(event: MouseEvent) {
+	emit('dblclick', event);
+}
 </script>
 <template>
 	<NodeResizer
@@ -58,6 +63,7 @@ function onEdit(edit: boolean) {
 	/>
 	<N8nSticky
 		:id="id"
+		data-test-id="canvas-sticky-note-node"
 		:height="renderOptions.height"
 		:width="renderOptions.width"
 		:class="$style.sticky"
@@ -65,6 +71,7 @@ function onEdit(edit: boolean) {
 		:background="renderOptions.color"
 		:edit-mode="isActive"
 		@edit="onEdit"
+		@dblclick="onDoubleClick"
 		@update:model-value="onInputChange"
 	/>
 </template>

@@ -30,6 +30,7 @@
 			<N8nInput
 				ref="input"
 				:model-value="modelValue"
+				:name="inputName"
 				type="textarea"
 				:rows="5"
 				@blur="onInputBlur"
@@ -73,6 +74,8 @@ const resHeight = computed((): number => {
 const resWidth = computed((): number => {
 	return props.width < props.minWidth ? props.minWidth : props.width;
 });
+
+const inputName = computed((): string => (props.id ? `${props.id}-input` : undefined));
 
 const styles = computed((): { height: string; width: string } => ({
 	height: `${resHeight.value}px`,
