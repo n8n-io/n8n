@@ -154,7 +154,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Icon Emoji',

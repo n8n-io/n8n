@@ -154,7 +154,7 @@ export class GooglePerspective implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Language Name or ID',

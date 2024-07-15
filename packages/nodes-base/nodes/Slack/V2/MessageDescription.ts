@@ -555,7 +555,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',
@@ -944,7 +944,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1229,6 +1229,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: {},
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 	},
 ];

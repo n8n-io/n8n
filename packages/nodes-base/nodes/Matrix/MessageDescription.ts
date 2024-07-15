@@ -201,7 +201,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Filter',
