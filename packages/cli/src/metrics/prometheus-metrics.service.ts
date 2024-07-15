@@ -22,6 +22,8 @@ export class PrometheusMetricsService {
 
 	counters: Record<string, Counter<string> | null> = {};
 
+	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
+
 	async configureMetrics(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.setupDefaultMetrics();
@@ -37,7 +39,7 @@ export class PrometheusMetricsService {
 
 		if (n8nVersion) {
 			const versionGauge = new promClient.Gauge({
-				name: config.getEnv('endpoints.metrics.prefix') + 'version_info',
+				name: this.toMetricName('version_info'),
 				help: 'n8n version info.',
 				labelNames: ['version', 'major', 'minor', 'patch'],
 			});
@@ -87,7 +89,7 @@ export class PrometheusMetricsService {
 			return;
 		}
 		this.counters.cacheHitsTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_hits_total',
+			name: this.toMetricName('cache_hits_total'),
 			help: 'Total number of cache hits.',
 			labelNames: ['cache'],
 		});
@@ -97,7 +99,7 @@ export class PrometheusMetricsService {
 		});
 
 		this.counters.cacheMissesTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_misses_total',
+			name: this.toMetricName('cache_misses_total'),
 			help: 'Total number of cache misses.',
 			labelNames: ['cache'],
 		});
@@ -107,7 +109,7 @@ export class PrometheusMetricsService {
 		});
 
 		this.counters.cacheUpdatesTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_updates_total',
+			name: this.toMetricName('cache_updates_total'),
 			help: 'Total number of cache updates.',
 			labelNames: ['cache'],
 		});
@@ -120,9 +122,8 @@ export class PrometheusMetricsService {
 	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
 		if (!promClient) return null;
 		if (!this.counters[event.eventName]) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
 			const metricName =
-				prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
+				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
 				this.logger.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
@@ -193,5 +194,9 @@ export class PrometheusMetricsService {
 
 	getLabelValueForCredential(credentialType: string) {
 		return credentialType.replace(/\./g, '_');
+	}
+
+	private toMetricName(rawName: string) {
+		return this.prefix + rawName;
 	}
 }
