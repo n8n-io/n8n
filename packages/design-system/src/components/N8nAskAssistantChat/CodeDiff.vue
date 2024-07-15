@@ -2,6 +2,8 @@
 import parseDiff from 'parse-diff';
 import { computed } from 'vue';
 
+const MIN_LINES = 4;
+
 interface Props {
 	title: string;
 	content: string;
@@ -10,10 +12,17 @@ interface Props {
 	error: boolean;
 }
 
+type Line =
+	| parseDiff.Change
+	| {
+			type: 'line';
+			content: string;
+	  };
+
 const props = withDefaults(defineProps<Props>(), {
 	replacing: false,
 	replaced: false,
-	error: true,
+	error: false,
 });
 
 const diffs = computed(() => {
@@ -21,21 +30,40 @@ const diffs = computed(() => {
 
 	const file = parsed[0];
 
-	return file.chunks.reduce((accu: parseDiff.Change[], chunk) => {
-		const changes = chunk.changes.map((change) => {
+	const lines: Line[] = file.chunks.reduce((accu: Line[], chunk, i) => {
+		const changes: Line[] = chunk.changes.map((change) => {
 			let content = change.content;
 			if (change.type === 'add' && content.startsWith('+')) {
 				content = content.replace('+', '');
 			} else if (change.type === 'del' && content.startsWith('-')) {
 				content = content.replace('-', '');
 			}
+
 			return {
 				...change,
 				content,
 			};
 		});
+
+		if (i !== file.chunks.length - 1) {
+			changes.push({
+				type: 'line',
+				content: '...',
+			});
+		}
 		return [...accu, ...changes];
 	}, []);
+
+	if (lines.length <= MIN_LINES) {
+		for (let i = 0; i < MIN_LINES - lines.length; i++) {
+			lines.push({
+				type: 'line',
+				content: '',
+			});
+		}
+	}
+
+	return lines;
 });
 </script>
 
@@ -109,7 +137,6 @@ const diffs = computed(() => {
 	border-top: var(--border-base);
 	border-bottom: var(--border-base);
 	max-height: 218px; // 12 lines
-	min-height: 74px; // 4 lines
 	background-color: var(--color-foreground-light);
 }
 
