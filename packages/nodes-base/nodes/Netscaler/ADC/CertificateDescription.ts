@@ -214,7 +214,7 @@ export const certificateDescription: INodeProperties[] = [
 			},
 		},
 		description:
-			'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Citrix ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
+			'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 	},
 	{
 		displayName: 'CA Serial File Number',
@@ -281,7 +281,7 @@ export const certificateDescription: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Citrix ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
+					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 			},
 			{
 				displayName: 'PEM Passphrase (For Encrypted CA Key)',
@@ -294,7 +294,7 @@ export const certificateDescription: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Citrix ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
+					'Name for and, optionally, path to the private key. You can either use an existing RSA or DSA key that you own or create a new private key on the Netscaler ADC. This file is required only when creating a self-signed Root-CA certificate. The key file is stored in the /nsconfig/ssl directory by default.',
 			},
 			{
 				displayName: 'Subject Alternative Name',
