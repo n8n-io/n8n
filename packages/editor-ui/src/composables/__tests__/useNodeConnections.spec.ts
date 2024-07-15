@@ -1,7 +1,8 @@
 import { ref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useNodeConnections } from '@/composables/useNodeConnections';
-import { CanvasConnectionMode, CanvasNodeData } from '@/types';
+import type { CanvasNodeData } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 describe('useNodeConnections', () => {
