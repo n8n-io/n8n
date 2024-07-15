@@ -14,7 +14,7 @@ import { Logger } from '@/Logger';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
 @Service()
-export class MetricsService extends EventEmitter {
+export class PrometheusMetricsService extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cacheService: CacheService,
