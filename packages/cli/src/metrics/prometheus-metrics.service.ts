@@ -24,6 +24,13 @@ export class PrometheusMetricsService {
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
+	private readonly isIncluded = {
+		default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
+		api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
+		cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
+		logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+	};
+
 	async configureMetrics(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.setupDefaultMetrics();
@@ -57,26 +64,26 @@ export class PrometheusMetricsService {
 	 * Set up default metrics collection with `prom-client`
 	 */
 	private setupDefaultMetrics() {
-		if (config.getEnv('endpoints.metrics.includeDefaultMetrics')) {
-			promClient.collectDefaultMetrics();
-		}
+		if (!this.isIncluded.default) return;
+
+		promClient.collectDefaultMetrics();
 	}
 
 	/**
-	 * Set up metrics for API endpoints with `express-prom-bundle` @TODO
+	 * Set up metrics for API endpoints with `express-prom-bundle`
 	 */
 	private setupApiMetrics(app: express.Application) {
-		if (config.getEnv('endpoints.metrics.includeApiEndpoints')) {
-			const metricsMiddleware = promBundle({
-				autoregister: false,
-				includeUp: false,
-				includePath: config.getEnv('endpoints.metrics.includeApiPathLabel'),
-				includeMethod: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
-				includeStatusCode: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
-			});
+		if (!this.isIncluded.api) return;
 
-			app.use(['/rest/', '/webhook/', 'webhook-test/', '/api/'], metricsMiddleware);
-		}
+		const metricsMiddleware = promBundle({
+			autoregister: false,
+			includeUp: false,
+			includePath: config.getEnv('endpoints.metrics.includeApiPathLabel'),
+			includeMethod: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
+			includeStatusCode: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
+		});
+
+		app.use(['/rest/', '/webhook/', 'webhook-test/', '/api/'], metricsMiddleware);
 	}
 
 	private mountMetricsEndpoint(app: express.Application) {
@@ -88,12 +95,15 @@ export class PrometheusMetricsService {
 	}
 
 	/**
-	 * Set up cache metrics: `n8n_cache_hits_total`, `n8n_cache_misses_total`, `n8n_cache_updates_total`
+	 * Set up cache metrics:
+	 *
+	 * - `n8n_cache_hits_total`
+	 * - `n8n_cache_misses_total`
+	 * - `n8n_cache_updates_total`
 	 */
 	private setupCacheMetrics() {
-		if (!config.getEnv('endpoints.metrics.includeCacheMetrics')) {
-			return;
-		}
+		if (!this.isIncluded.cache) return;
+
 		this.counters.cacheHitsTotal = new promClient.Counter({
 			name: this.toMetricName('cache_hits_total'),
 			help: 'Total number of cache hits.',
@@ -150,9 +160,8 @@ export class PrometheusMetricsService {
 	}
 
 	private setupMessageEventBusMetrics() {
-		if (!config.getEnv('endpoints.metrics.includeMessageEventBusMetrics')) {
-			return;
-		}
+		if (!this.isIncluded.logs) return;
+
 		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
 			const counter = this.getCounterForEvent(event);
 			if (!counter) return;
