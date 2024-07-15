@@ -5,7 +5,6 @@ import promBundle from 'express-prom-bundle';
 import promClient, { type Counter } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
-import EventEmitter from 'events';
 
 import { CacheService } from '@/services/cache/cache.service';
 import { type EventMessageTypes } from '@/eventbus';
@@ -14,14 +13,12 @@ import { Logger } from '@/Logger';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
 @Service()
-export class PrometheusMetricsService extends EventEmitter {
+export class PrometheusMetricsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
-	) {
-		super();
-	}
+	) {}
 
 	counters: Record<string, Counter<string> | null> = {};
 
