@@ -64,7 +64,7 @@ export class Shopify implements INodeType {
 		],
 		properties: [
 			{
-				displayName: '2024-07',
+				displayName: 'Shopify API Version: 2024-07',
 				type: 'notice',
 				name: 'apiVersion',
 				default: '',
