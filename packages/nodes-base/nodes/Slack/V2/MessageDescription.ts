@@ -555,7 +555,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',
@@ -1229,6 +1229,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		],
 		default: {},
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 	},
 ];

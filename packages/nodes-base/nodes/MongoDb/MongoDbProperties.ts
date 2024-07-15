@@ -118,7 +118,7 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		description: 'Add query options',
 		options: [
 			{

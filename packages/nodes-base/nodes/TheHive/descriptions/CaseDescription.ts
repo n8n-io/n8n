@@ -255,7 +255,7 @@ export const caseFields: INodeProperties[] = [
 		displayName: 'Options',
 		type: 'collection',
 		name: 'options',
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		displayOptions: {
 			show: {
 				resource: ['case'],

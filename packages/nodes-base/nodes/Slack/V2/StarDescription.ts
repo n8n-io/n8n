@@ -166,7 +166,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		options: [
 			{
 				displayName: 'File Comment',
@@ -193,7 +193,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		options: [
 			{
 				displayName: 'Channel Name or ID',

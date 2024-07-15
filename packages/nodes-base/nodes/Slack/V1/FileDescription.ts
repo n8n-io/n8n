@@ -95,7 +95,7 @@ export const fileFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add Options',
 		options: [
 			{
 				displayName: 'Channel Names or IDs',
