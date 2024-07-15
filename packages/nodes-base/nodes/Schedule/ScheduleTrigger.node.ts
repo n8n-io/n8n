@@ -3,11 +3,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	CronExpression,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
 import moment from 'moment-timezone';
+import { sendAt } from 'cron';
+
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
 
@@ -401,7 +401,7 @@ export class ScheduleTrigger implements INodeType {
 										field: ['cronExpression'],
 									},
 								},
-								hint: 'Format: [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								hint: 'Format: [Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
@@ -464,9 +464,19 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		async function manualTriggerFunction() {
-			executeTrigger(rules[0].recurrence);
-		}
+		const manualTriggerFunction = async () => {
+			const { interval, cronExpression, recurrence } = rules[0];
+			if (interval.field === 'cronExpression') {
+				try {
+					sendAt(cronExpression);
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
+						description: 'More information on how to build them at https://crontab.guru/',
+					});
+				}
+			}
+			executeTrigger(recurrence);
+		};
 
 		return {
 			manualTriggerFunction,
