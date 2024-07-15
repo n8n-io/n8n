@@ -17,7 +17,19 @@ export function recurrenceCheck(
 	const lastExecution = recurrenceRules[index];
 
 	const momentTz = moment.tz(timezone);
-	if (typeInterval === 'weeks') {
+	if (typeInterval === 'hours') {
+		const hour = momentTz.hour();
+		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
+			recurrenceRules[index] = hour;
+			return true;
+		}
+	} else if (typeInterval === 'days') {
+		const dayOfYear = momentTz.dayOfYear();
+		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
+			recurrenceRules[index] = dayOfYear;
+			return true;
+		}
+	} else if (typeInterval === 'weeks') {
 		const week = momentTz.week();
 		if (
 			lastExecution === undefined || // First time executing this rule
@@ -27,26 +39,12 @@ export function recurrenceCheck(
 			recurrenceRules[index] = week;
 			return true;
 		}
-	} else if (typeInterval === 'days') {
-		const dayOfYear = momentTz.dayOfYear();
-		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
-			recurrenceRules[index] = dayOfYear;
-			return true;
-		}
-	} else if (typeInterval === 'hours') {
-		const hour = momentTz.hour();
-		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
-			recurrenceRules[index] = hour;
-			return true;
-		}
 	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
 		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
 			recurrenceRules[index] = month;
 			return true;
 		}
-	} else {
-		return true;
 	}
 	return false;
 }
@@ -74,3 +72,57 @@ export const toCronExpression = (interval: ScheduleInterval): CronExpression => 
 	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
 	return `${randomSecond} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
+
+export function intervalToRecurrence(interval: ScheduleInterval, index: number) {
+	let recurrence: IRecurrenceRule = { activated: false };
+
+	if (interval.field === 'hours') {
+		const { hoursInterval } = interval;
+		if (hoursInterval !== 1) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: hoursInterval,
+				typeInterval: 'hours',
+			};
+		}
+	}
+
+	if (interval.field === 'days') {
+		const { daysInterval } = interval;
+		if (daysInterval !== 1) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: daysInterval,
+				typeInterval: 'days',
+			};
+		}
+	}
+
+	if (interval.field === 'weeks') {
+		const { weeksInterval } = interval;
+		if (weeksInterval !== 1) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: weeksInterval,
+				typeInterval: 'weeks',
+			};
+		}
+	}
+
+	if (interval.field === 'months') {
+		const { monthsInterval } = interval;
+		if (monthsInterval !== 1) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: monthsInterval,
+				typeInterval: 'months',
+			};
+		}
+	}
+
+	return recurrence;
+}

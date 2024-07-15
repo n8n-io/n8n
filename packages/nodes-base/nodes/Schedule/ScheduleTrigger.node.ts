@@ -3,12 +3,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	CronExpression,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
-import { recurrenceCheck, toCronExpression } from './GenericFunctions';
+import { intervalToRecurrence, recurrenceCheck, toCronExpression } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -419,7 +420,7 @@ export class ScheduleTrigger implements INodeType {
 			staticData.recurrenceRules = [];
 		}
 
-		const executeTrigger = async (recurrence: IRecurrenceRule) => {
+		const executeTrigger = (recurrence: IRecurrenceRule) => {
 			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
 			if (!shouldTrigger) return;
 
@@ -441,62 +442,16 @@ export class ScheduleTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([resultData])]);
 		};
 
+		const rules = intervals.map((interval, i) => ({
+			interval,
+			cronExpression: toCronExpression(interval),
+			recurrence: intervalToRecurrence(interval, i),
+		}));
+
 		if (this.getMode() !== 'manual') {
-			for (let i = 0; i < intervals.length; i++) {
-				const interval = intervals[i];
-				const cronExpression = toCronExpression(interval);
-				let recurrence: IRecurrenceRule = { activated: false };
-
-				if (interval.field === 'hours') {
-					const { hoursInterval } = interval;
-					if (hoursInterval !== 1) {
-						recurrence = {
-							activated: true,
-							index: i,
-							intervalSize: hoursInterval,
-							typeInterval: 'hours',
-						};
-					}
-				}
-
-				if (interval.field === 'days') {
-					const { daysInterval } = interval;
-					if (daysInterval !== 1) {
-						recurrence = {
-							activated: true,
-							index: i,
-							intervalSize: daysInterval,
-							typeInterval: 'days',
-						};
-					}
-				}
-
-				if (interval.field === 'weeks') {
-					const { weeksInterval } = interval;
-					if (weeksInterval !== 1) {
-						recurrence = {
-							activated: true,
-							index: i,
-							intervalSize: weeksInterval,
-							typeInterval: 'weeks',
-						};
-					}
-				}
-
-				if (interval.field === 'months') {
-					const { monthsInterval } = interval;
-					if (monthsInterval !== 1) {
-						recurrence = {
-							activated: true,
-							index: i,
-							intervalSize: monthsInterval,
-							typeInterval: 'months',
-						};
-					}
-				}
-
+			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
-					this.helpers.registerCron(cronExpression, async () => await executeTrigger(recurrence));
+					this.helpers.registerCron(cronExpression, () => executeTrigger(recurrence));
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
@@ -510,7 +465,7 @@ export class ScheduleTrigger implements INodeType {
 		}
 
 		async function manualTriggerFunction() {
-			void executeTrigger({ activated: false });
+			executeTrigger(rules[0].recurrence);
 		}
 
 		return {
