@@ -134,7 +134,6 @@ export class PrometheusMetricsService {
 	}
 
 	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
-		if (!promClient) return null;
 		if (!this.counters[event.eventName]) {
 			const metricName =
 				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
