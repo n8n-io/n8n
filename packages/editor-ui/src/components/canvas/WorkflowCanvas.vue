@@ -1,32 +1,56 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { toRef, useCssModule } from 'vue';
+import { computed, toRef, useCssModule } from 'vue';
 import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
+import type { EventBus } from 'n8n-design-system';
 
 defineOptions({
 	inheritAttrs: false,
 });
 
-const props = defineProps<{
-	id?: string;
-	workflow: IWorkflowDb;
-	workflowObject: Workflow;
-}>();
+const props = withDefaults(
+	defineProps<{
+		id?: string;
+		workflow: IWorkflowDb;
+		workflowObject: Workflow;
+		fallbackNodes?: IWorkflowDb['nodes'];
+		eventBus?: EventBus;
+	}>(),
+	{
+		id: 'canvas',
+		fallbackNodes: () => [],
+	},
+);
 
 const $style = useCssModule();
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
 
-const { elements, connections } = useCanvasMapping({ workflow, workflowObject });
+const nodes = computed(() =>
+	props.workflow.nodes.length > 0 ? props.workflow.nodes : props.fallbackNodes,
+);
+const connections = computed(() => props.workflow.connections);
+
+const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+	nodes,
+	connections,
+	workflowObject,
+});
 </script>
 
 <template>
 	<div :class="$style.wrapper">
 		<div :class="$style.canvas">
-			<Canvas v-if="workflow" :elements="elements" :connections="connections" v-bind="$attrs" />
+			<Canvas
+				v-if="workflow"
+				:nodes="mappedNodes"
+				:connections="mappedConnections"
+				:event-bus="eventBus"
+				v-bind="$attrs"
+			/>
 		</div>
 		<slot />
 	</div>
@@ -46,31 +70,5 @@ const { elements, connections } = useCanvasMapping({ workflow, workflowObject })
 	height: 100%;
 	position: relative;
 	display: block;
-}
-
-.executionButtons {
-	position: absolute;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	left: 50%;
-	transform: translateX(-50%);
-	bottom: var(--spacing-l);
-	width: auto;
-
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 150px;
-	}
-
-	button {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		margin-left: 0.625rem;
-
-		&:first-child {
-			margin: 0;
-		}
-	}
 }
 </style>

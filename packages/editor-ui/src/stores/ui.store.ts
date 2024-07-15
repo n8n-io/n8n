@@ -69,6 +69,7 @@ import {
 	updateTheme,
 } from './ui.utils';
 import { computed, ref } from 'vue';
+import type { Connection } from '@vue-flow/core';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -177,6 +178,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastSelectedNode = ref<string | null>(null);
 	const lastSelectedNodeOutputIndex = ref<number | null>(null);
 	const lastSelectedNodeEndpointUuid = ref<string | null>(null);
+	const lastSelectedNodeConnection = ref<Connection | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewMoveInProgress = ref<boolean>(false);
 	const selectedNodes = ref<INodeUi[]>([]);
@@ -619,6 +621,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		selectedNodes,
 		bannersHeight,
 		lastSelectedNodeEndpointUuid,
+		lastSelectedNodeConnection,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
 		nodeViewInitialized,

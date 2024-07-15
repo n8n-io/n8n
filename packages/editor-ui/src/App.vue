@@ -20,7 +20,7 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
 						<component :is="Component" />
 					</keep-alive>
 					<component :is="Component" v-else />

@@ -1,5 +1,10 @@
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
-import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type {
+	EventNamesAiNodesType,
+	IDataObject,
+	IExecuteFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -37,6 +42,12 @@ export function isChatInstance(model: unknown): model is BaseChatModel {
 	const namespace = (model as BaseLLM | BaseChatModel)?.lc_namespace ?? [];
 
 	return namespace.includes('chat_models');
+}
+
+export function isToolsInstance(model: unknown): model is Tool {
+	const namespace = (model as Tool)?.lc_namespace ?? [];
+
+	return namespace.includes('tools');
 }
 
 export async function getOptionalOutputParsers(
@@ -81,7 +92,7 @@ export function getPromptInputByType(options: {
 }
 
 export function getSessionId(
-	ctx: IExecuteFunctions,
+	ctx: IExecuteFunctions | IWebhookFunctions,
 	itemIndex: number,
 	selectorKey = 'sessionIdType',
 	autoSelect = 'fromInput',
@@ -91,7 +102,15 @@ export function getSessionId(
 	const selectorType = ctx.getNodeParameter(selectorKey, itemIndex) as string;
 
 	if (selectorType === autoSelect) {
-		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		// If memory node is used in webhook like node(like chat trigger node), it doesn't have access to evaluateExpression
+		// so we try to extract sessionId from the bodyData
+		if ('getBodyData' in ctx) {
+			const bodyData = ctx.getBodyData() ?? {};
+			sessionId = bodyData.sessionId as string;
+		} else {
+			sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		}
+
 		if (sessionId === '' || sessionId === undefined) {
 			throw new NodeOperationError(ctx.getNode(), 'No session ID found', {
 				description:

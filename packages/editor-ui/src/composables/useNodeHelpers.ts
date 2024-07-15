@@ -229,22 +229,27 @@ export function useNodeHelpers() {
 		};
 	}
 
+	function updateNodeInputIssues(node: INodeUi): void {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType) {
+			return;
+		}
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+
+		workflowsStore.setNodeIssue({
+			node: node.name,
+			type: 'input',
+			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
+		});
+	}
+
 	function updateNodesInputIssues() {
 		const nodes = workflowsStore.allNodes;
-		const workflow = workflowsStore.getCurrentWorkflow();
 
 		for (const node of nodes) {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType) {
-				return;
-			}
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-
-			workflowsStore.setNodeIssue({
-				node: node.name,
-				type: 'input',
-				value: nodeInputIssues?.input ? nodeInputIssues.input : null,
-			});
+			updateNodeInputIssues(node);
 		}
 	}
 
@@ -257,6 +262,14 @@ export function useNodeHelpers() {
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
 			});
+		}
+	}
+
+	function updateNodesParameterIssues() {
+		const nodes = workflowsStore.allNodes;
+
+		for (const node of nodes) {
+			updateNodeParameterIssues(node);
 		}
 	}
 
@@ -1228,6 +1241,8 @@ export function useNodeHelpers() {
 		getNodeIssues,
 		updateNodesInputIssues,
 		updateNodesExecutionIssues,
+		updateNodesParameterIssues,
+		updateNodeInputIssues,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,
@@ -1238,6 +1253,7 @@ export function useNodeHelpers() {
 		updateNodesCredentialsIssues,
 		getNodeInputData,
 		setSuccessOutput,
+		matchCredentials,
 		isInsertingNodes,
 		credentialsUpdated,
 		isProductionExecutionPreview,

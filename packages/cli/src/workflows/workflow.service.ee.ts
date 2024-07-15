@@ -80,7 +80,10 @@ export class EnterpriseWorkflowService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await this.credentialsService.getMany(currentUser, { onlyOwn: true });
+		const userCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
+			currentUser,
+			{ workflowId: workflow.id },
+		);
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {

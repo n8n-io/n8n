@@ -47,7 +47,7 @@ import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import TagsManager from '@/components/TagsManager/TagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
-import WorkflowLMChat from '@/components/WorkflowLMChat.vue';
+import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import ActivationModal from '@/components/ActivationModal.vue';
