@@ -41,18 +41,18 @@ export class PrometheusMetricsService {
 
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
-		this.setupDefaultMetrics();
-		this.setupN8nVersionMetric();
-		this.setupCacheMetrics();
-		this.setupMessageEventBusMetrics();
-		this.setupApiMetrics(app);
+		this.initDefaultMetrics();
+		this.initN8nVersionMetric();
+		this.initCacheMetrics();
+		this.initEventBusMetrics();
+		this.initApiMetrics(app);
 		this.mountMetricsEndpoint(app);
 	}
 
 	/**
 	 * Set up metric for n8n version: `n8n_version_info`
 	 */
-	private setupN8nVersionMetric() {
+	private initN8nVersionMetric() {
 		const n8nVersion = semverParse(N8N_VERSION);
 
 		if (!n8nVersion) return;
@@ -70,9 +70,10 @@ export class PrometheusMetricsService {
 	}
 
 	/**
-	 * Set up default metrics collection with `prom-client`
+	 * Set up default metrics collection with `prom-client`, e.g.
+	 * `process_cpu_seconds_total`, `process_resident_memory_bytes`, etc.
 	 */
-	private setupDefaultMetrics() {
+	private initDefaultMetrics() {
 		if (!this.includes.metrics.default) return;
 
 		promClient.collectDefaultMetrics();
@@ -81,7 +82,7 @@ export class PrometheusMetricsService {
 	/**
 	 * Set up metrics for API endpoints with `express-prom-bundle`
 	 */
-	private setupApiMetrics(app: express.Application) {
+	private initApiMetrics(app: express.Application) {
 		if (!this.includes.metrics.api) return;
 
 		const metricsMiddleware = promBundle({
@@ -104,13 +105,10 @@ export class PrometheusMetricsService {
 	}
 
 	/**
-	 * Set up cache metrics:
-	 *
-	 * - `n8n_cache_hits_total`
-	 * - `n8n_cache_misses_total`
-	 * - `n8n_cache_updates_total`
+	 * Set up cache metrics: `n8n_cache_hits_total`, `n8n_cache_misses_total`, and
+	 * `n8n_cache_updates_total`
 	 */
-	private setupCacheMetrics() {
+	private initCacheMetrics() {
 		if (!this.includes.metrics.cache) return;
 
 		const [hitsConfig, missesConfig, updatesConfig] = ['hits', 'misses', 'updates'].map((kind) => ({
@@ -156,7 +154,7 @@ export class PrometheusMetricsService {
 		return this.counters[event.eventName];
 	}
 
-	private setupMessageEventBusMetrics() {
+	private initEventBusMetrics() {
 		if (!this.includes.metrics.logs) return;
 
 		this.eventBus.on('metrics.messageEventBus.Event', (event: EventMessageTypes) => {
