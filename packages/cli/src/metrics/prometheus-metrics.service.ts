@@ -7,9 +7,9 @@ import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { type EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
+import type { EventMessageTypes } from '@/eventbus';
 
 @Service()
 export class PrometheusMetricsService {
