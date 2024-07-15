@@ -330,19 +330,19 @@ watch(
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
 							<div
-								v-if="isDataEmpty(currentNode.schema)"
-								:class="$style.notice"
-								data-test-id="run-data-schema-empty"
-							>
-								{{ i18n.baseText('dataMapping.schemaView.emptyData') }}
-							</div>
-
-							<div
 								v-if="currentNode.node.disabled"
 								:class="$style.notice"
 								data-test-id="run-data-schema-disabled"
 							>
 								{{ i18n.baseText('dataMapping.schemaView.disabled') }}
+							</div>
+
+							<div
+								v-else-if="isDataEmpty(currentNode.schema)"
+								:class="$style.notice"
+								data-test-id="run-data-schema-empty"
+							>
+								{{ i18n.baseText('dataMapping.schemaView.emptyData') }}
 							</div>
 
 							<RunDataSchemaItem
