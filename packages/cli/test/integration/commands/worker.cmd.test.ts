@@ -10,7 +10,7 @@ import { OrchestrationHandlerWorkerService } from '@/services/orchestration/work
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
-import { ScalingService } from '@/scaling-mode/scaling-mode';
+import { ScalingService } from '@/scaling/scaling.service';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
