@@ -19,6 +19,7 @@ const emit = defineEmits<{
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
+	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
@@ -57,8 +58,12 @@ const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project } = us
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
-		emit('update:node:position', node.id, node.position);
+		onUpdateNodePosition(node.id, node.position);
 	});
+}
+
+function onUpdateNodePosition(id: string, position: XYPosition) {
+	emit('update:node:position', id, position);
 }
 
 function onSelectionDragStop(e: NodeDragEvent) {
@@ -80,6 +85,10 @@ function onToggleNodeEnabled(id: string) {
 
 function onDeleteNode(id: string) {
 	emit('delete:node', id);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	emit('update:node:parameters', id, parameters);
 }
 
 /**
@@ -222,6 +231,8 @@ onUnmounted(() => {
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
+				@update="onUpdateNodeParameters"
+				@move="onUpdateNodePosition"
 			/>
 		</template>
 

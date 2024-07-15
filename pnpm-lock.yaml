@@ -1147,6 +1147,9 @@ importers:
       '@vue-flow/minimap':
         specifier: ^1.4.0
         version: 1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.5.2)))(vue@3.4.21(typescript@5.5.2))
+      '@vue-flow/node-resizer':
+        specifier: ^1.4.0
+        version: 1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.5.2)))(vue@3.4.21(typescript@5.5.2))
       '@vueuse/components':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.21(typescript@5.5.2))
@@ -5692,6 +5695,12 @@ packages:
 
   '@vue-flow/minimap@1.4.0':
     resolution: {integrity: sha512-GetmN8uOQxIx4ja85VDnIwpZO5SnGIOfYSqUw8MRMbc8CdACun2M2e3FRaMZRaWapclU2ssXms4xHMWrA3YWpw==}
+    peerDependencies:
+      '@vue-flow/core': ^1.23.0
+      vue: ^3.3.0
+
+  '@vue-flow/node-resizer@1.4.0':
+    resolution: {integrity: sha512-S52MRcSpd6asza8Cl0bKM2sHGrbq7vBydKHDuPdoTD+cvjNX6XF4LSiPZOuzExePI6b+O6dg2EZ1378oOLGFpA==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
@@ -19069,6 +19078,13 @@ snapshots:
       d3-zoom: 3.0.0
       vue: 3.4.21(typescript@5.5.2)
 
+  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.33.5(vue@3.4.21(typescript@5.5.2)))(vue@3.4.21(typescript@5.5.2))':
+    dependencies:
+      '@vue-flow/core': 1.33.5(vue@3.4.21(typescript@5.5.2))
+      d3-drag: 3.0.0
+      d3-selection: 3.0.0
+      vue: 3.4.21(typescript@5.5.2)
+
   '@vue/compiler-core@3.4.21':
     dependencies:
       '@babel/parser': 7.24.0
@@ -21201,7 +21217,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21226,7 +21242,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21246,7 +21262,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21776,7 +21792,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22117,7 +22133,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -24882,7 +24898,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25764,7 +25780,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26138,7 +26154,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7

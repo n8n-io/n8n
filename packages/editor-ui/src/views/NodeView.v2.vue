@@ -72,7 +72,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import { usePostHog } from '@/stores/posthog.store';
-import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -144,6 +143,7 @@ const {
 	setNodeActive,
 	setNodeSelected,
 	toggleNodeDisabled,
+	setNodeParameters,
 	deleteNode,
 	revertDeleteNode,
 	addNodes,
@@ -495,7 +495,6 @@ function onSetNodeSelected(id?: string) {
 }
 
 function onRenameNode(parameterData: IUpdateInformation) {
-	// The name changed. Do not forget to change the connections as well
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
 	}
@@ -509,6 +508,10 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	setNodeParameters(id, parameters);
 }
 
 /**
@@ -1154,6 +1157,7 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@update:node:parameters="onUpdateNodeParameters"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
