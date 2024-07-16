@@ -13,17 +13,14 @@ import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 
-function hasMethod<T>(obj: unknown, methodName: string | symbol): obj is T {
-	return (
-		typeof obj === 'object' &&
-		obj !== null &&
-		methodName in obj &&
-		typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function'
-	);
-}
-
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
-	return methodNames.every((methodName) => hasMethod<T>(obj, methodName));
+	return methodNames.every(
+		(methodName) =>
+			typeof obj === 'object' &&
+			obj !== null &&
+			methodName in obj &&
+			typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function',
+	);
 }
 
 export function getMetadataFiltersValues(
