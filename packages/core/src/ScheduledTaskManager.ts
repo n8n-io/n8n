@@ -7,15 +7,13 @@ export class ScheduledTaskManager {
 	readonly cronJobs = new Map<string, CronJob[]>();
 
 	registerCron(workflow: Workflow, cronExpression: CronExpression, onTick: () => void) {
-		const cronJob = new CronJob(
-			cronExpression as string,
-			onTick,
-			undefined,
-			true,
-			workflow.timezone,
-		);
-		if (!this.cronJobs.has(workflow.id)) this.cronJobs.set(workflow.id, []);
-		this.cronJobs.get(workflow.id)!.push(cronJob);
+		const cronJob = new CronJob(cronExpression, onTick, undefined, true, workflow.timezone);
+		const cronJobsForWorkflow = this.cronJobs.get(workflow.id);
+		if (cronJobsForWorkflow) {
+			cronJobsForWorkflow.push(cronJob);
+		} else {
+			this.cronJobs.set(workflow.id, [cronJob]);
+		}
 	}
 
 	deregisterCrons(workflowId: string) {
