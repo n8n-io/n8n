@@ -64,7 +64,10 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && settingsStore.planName.toLowerCase() !== 'community') {
+	if (
+		credentialPermissions.value.move &&
+		String(settingsStore.planName).toLowerCase() !== 'community'
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,

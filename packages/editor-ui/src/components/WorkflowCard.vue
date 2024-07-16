@@ -93,7 +93,10 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.move && settingsStore.planName.toLowerCase() !== 'community') {
+	if (
+		workflowPermissions.value.move &&
+		String(settingsStore.planName).toLowerCase() !== 'community'
+	) {
 		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
