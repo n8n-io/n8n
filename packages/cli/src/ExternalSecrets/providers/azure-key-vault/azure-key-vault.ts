@@ -2,7 +2,7 @@ import { ClientSecretCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import type { INodeProperties } from 'n8n-workflow';
-import { AzureKeyVaultContext, AzureKeyVaultSecret } from './types';
+import type { AzureKeyVaultContext, AzureKeyVaultSecret } from './types';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 
 export class AzureKeyVault implements SecretsProvider {
@@ -81,12 +81,14 @@ export class AzureKeyVault implements SecretsProvider {
 		try {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
-		} catch (error) {
-			return [false, error.message];
+		} catch (error: unknown) {
+			return [false, error instanceof Error ? error.message : 'unknown error'];
 		}
 	}
 
-	async disconnect() {}
+	async disconnect() {
+		// unused
+	}
 
 	async update() {
 		const secretNames: string[] = [];

@@ -1,7 +1,8 @@
-import { KeyVaultSecret, SecretClient } from '@azure/keyvault-secrets';
+import { SecretClient } from '@azure/keyvault-secrets';
+import type { KeyVaultSecret } from '@azure/keyvault-secrets';
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import { mock } from 'jest-mock-extended';
-import { AzureKeyVaultContext } from '../azure-key-vault/types';
+import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
 jest.mock('@azure/identity');
 jest.mock('@azure/keyvault-secrets');
@@ -17,7 +18,7 @@ describe('AzureKeyVault', () => {
 		/**
 		 * Arrange
 		 */
-		azureKeyVault.init(
+		await azureKeyVault.init(
 			mock<AzureKeyVaultContext>({
 				settings: {
 					vaultName: 'my-vault',
@@ -32,7 +33,7 @@ describe('AzureKeyVault', () => {
 			.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets')
 			// @ts-expect-error Partial mock
 			.mockImplementation(() => ({
-				[Symbol.asyncIterator]: async function* () {
+				async *[Symbol.asyncIterator]() {
 					yield { name: 'secret1' };
 					yield { name: 'secret2' };
 					yield { name: '#@&' };
@@ -41,10 +42,8 @@ describe('AzureKeyVault', () => {
 
 		const getSpy = jest
 			.spyOn(SecretClient.prototype, 'getSecret')
-			.mockImplementation((name: string) => {
-				return Promise.resolve(
-					mock<KeyVaultSecret>({ value: { secret1: 'value1', secret2: 'value2' }[name] }),
-				);
+			.mockImplementation(async (name: string) => {
+				return mock<KeyVaultSecret>({ value: { secret1: 'value1', secret2: 'value2' }[name] });
 			});
 
 		/**
