@@ -253,7 +253,7 @@
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun && !isInputSchemaView" :class="$style.center">
+			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
