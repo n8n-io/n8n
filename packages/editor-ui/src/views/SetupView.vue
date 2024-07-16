@@ -138,6 +138,6 @@ export default defineComponent({
 
 <style lang="scss" module>
 .self-install-iframe {
-	display: none;
+	// display: none; // @TODO: Restore
 }
 </style>
