@@ -95,6 +95,8 @@ export class Workflow {
 
 	settings: IWorkflowSettings;
 
+	readonly timezone: string;
+
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
 	staticData: IDataObject;
@@ -152,12 +154,9 @@ export class Workflow {
 		});
 
 		this.settings = parameters.settings || {};
+		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
-	}
-
-	get timezone() {
-		return this.settings.timezone ?? getGlobalState().defaultTimezone;
 	}
 
 	/**
