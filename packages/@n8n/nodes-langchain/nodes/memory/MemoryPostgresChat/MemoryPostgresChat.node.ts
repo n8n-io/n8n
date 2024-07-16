@@ -82,11 +82,10 @@ export class MemoryPostgresChat implements INodeType {
 			sessionId,
 			tableName,
 		});
-		const chatHistory = logWrapper(pgChatHistory, this) as PostgresChatMessageHistory;
 
 		const memory = new BufferMemory({
 			memoryKey: 'chat_history',
-			chatHistory,
+			chatHistory: pgChatHistory,
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',

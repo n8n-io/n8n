@@ -4,10 +4,7 @@ import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n
 import type { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
-import type {
-	BaseChatMessageHistory,
-	BaseListChatMessageHistory,
-} from '@langchain/core/chat_history';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
 
 import { Embeddings } from '@langchain/core/embeddings';
@@ -112,7 +109,6 @@ export function logWrapper(
 		| Tool
 		| BaseChatMemory
 		| BaseChatMessageHistory
-		| BaseListChatMessageHistory
 		| BaseOutputParser
 		| BaseRetriever
 		| Embeddings
