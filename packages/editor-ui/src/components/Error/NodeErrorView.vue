@@ -108,6 +108,7 @@ const prepareRawMessages = computed(() => {
 const assistantAlreadyAsked = computed(() => {
 	console.log(props.error);
 	try {
+		// todo node can be undefined
 		return assistantStore.isNodeErrorActive({
 			message: props.error.message,
 			node: props.error.node,
