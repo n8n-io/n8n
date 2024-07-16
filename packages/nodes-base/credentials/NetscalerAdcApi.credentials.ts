@@ -5,12 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class CitrixAdcApi implements ICredentialType {
+export class NetscalerAdcApi implements ICredentialType {
 	name = 'citrixAdcApi';
 
-	displayName = 'Citrix ADC API';
+	displayName = 'Netscaler ADC API';
 
-	documentationUrl = 'citrixadc';
+	documentationUrl = 'netscaleradc';
 
 	properties: INodeProperties[] = [
 		{

@@ -40,6 +40,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetryTrackProperties,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -227,6 +228,21 @@ export function useCanvasOperations({
 
 	function setNodeActiveByName(name: string) {
 		ndvStore.activeNodeName = name;
+	}
+
+	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
+		const node = workflowsStore.getNodeById(id);
+		if (!node) {
+			return;
+		}
+
+		workflowsStore.setNodeParameters(
+			{
+				name: node.name,
+				value: parameters as NodeParameterValueType,
+			},
+			true,
+		);
 	}
 
 	function setNodeSelected(id?: string) {
@@ -443,7 +459,7 @@ export function useCanvasOperations({
 		const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType?.properties ?? [],
-			{},
+			node.parameters ?? {},
 			true,
 			false,
 			newNodeData,
@@ -883,7 +899,13 @@ export function useCanvasOperations({
 		targetNode: INodeUi,
 		connectionType: NodeConnectionType,
 	): boolean {
+		const blocklist = [STICKY_NODE_TYPE];
+
 		if (sourceNode.id === targetNode.id) {
+			return false;
+		}
+
+		if (blocklist.includes(sourceNode.type) || blocklist.includes(targetNode.type)) {
 			return false;
 		}
 
@@ -958,6 +980,7 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
+		setNodeParameters,
 		toggleNodeDisabled,
 		renameNode,
 		revertRenameNode,

@@ -30,6 +30,7 @@ export class Automizy implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		hidden: true,
 		credentials: [
 			{
 				name: 'automizyApi',
@@ -37,6 +38,13 @@ export class Automizy implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'This service may no longer exist and will be removed from n8n in a future release.',
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
