@@ -19,6 +19,7 @@ import type { Workflow } from './Workflow';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { ExecutionCancelledError } from './errors';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
@@ -80,6 +81,7 @@ export type ExecutionError =
 	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
+	| ExecutionCancelledError
 	| NodeOperationError
 	| NodeApiError;
 
