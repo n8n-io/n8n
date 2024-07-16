@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import set from 'lodash/set';
 
@@ -86,8 +86,26 @@ export class AiTransform implements INodeType {
 
 	methods = {
 		actionHandler: {
-			async generateCodeUsingAiService(this: ILoadOptionsFunctions, payload?: string) {
-				return payload + ' AI TRANSFORMED';
+			async generateCodeUsingAiService(
+				this: ILoadOptionsFunctions,
+				payload: string,
+				inputData: INodeExecutionData[],
+			) {
+				const { output } = (await this.helpers.httpRequest({
+					method: 'POST',
+					url: 'http://localhost:5678/webhook/ai-service',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: {
+						prompt: payload,
+						input: inputData,
+					},
+				})) as {
+					output: string;
+				};
+
+				return output;
 			},
 		},
 	};

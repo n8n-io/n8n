@@ -1568,6 +1568,7 @@ export declare namespace DynamicNodeParameters {
 	interface ActionResultRequest extends BaseRequest {
 		handler: string;
 		payload: string;
+		inputData: INodeExecutionData[];
 	}
 }
 

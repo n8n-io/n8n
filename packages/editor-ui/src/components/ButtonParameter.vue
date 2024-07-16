@@ -122,6 +122,7 @@ async function onSubmit() {
 			credentials: activeNode.credentials,
 			handler,
 			payload: prompt.value,
+			inputData: useNDVStore().ndvInputData,
 		});
 
 		if (actionResult === undefined) return;
