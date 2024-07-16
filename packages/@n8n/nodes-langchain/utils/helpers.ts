@@ -53,11 +53,11 @@ export function getMetadataFiltersValues(
 	return undefined;
 }
 
-export function isBaseChatMemory(obj: unknown): obj is BaseChatMemory {
+export function isBaseChatMemory(obj: unknown) {
 	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
 }
 
-export function isBaseChatMessageHistory(obj: unknown): obj is BaseChatMessageHistory {
+export function isBaseChatMessageHistory(obj: unknown) {
 	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
 }
 
