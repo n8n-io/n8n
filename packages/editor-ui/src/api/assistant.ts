@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function chatWithAssistant(
@@ -11,7 +11,7 @@ export async function chatWithAssistant(
 
 export async function replaceCode(
 	ctx: IRestApiContext,
-	payload: ChatRequest.RequestPayload,
-): Promise<ChatRequest.ResponsePayload> {
+	payload: ReplaceCodeRequest.RequestPayload,
+): Promise<ReplaceCodeRequest.ResponsePayload> {
 	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/apply-code-diff', payload);
 }

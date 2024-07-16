@@ -25,6 +25,11 @@ const props = withDefaults(defineProps<Props>(), {
 	error: false,
 });
 
+const emit = defineEmits<{
+	replace: [];
+	undo: [];
+}>();
+
 const diffs = computed(() => {
 	const parsed = parseDiff(props.content);
 
@@ -93,7 +98,12 @@ const diffs = computed(() => {
 				<span :class="$style.infoText">Could not replace code</span>
 			</div>
 			<div v-else-if="replaced">
-				<n8n-button type="secondary" size="mini" icon="undo" :class="$style.undoButton"
+				<n8n-button
+					type="secondary"
+					size="mini"
+					icon="undo"
+					:class="$style.undoButton"
+					@undo="() => emit('undo')"
 					>Undo</n8n-button
 				>
 				<n8n-icon icon="check" color="success" :class="$style.infoIcon" />
@@ -105,6 +115,7 @@ const diffs = computed(() => {
 				size="mini"
 				icon="refresh"
 				:loading="replacing"
+				@click="() => emit('replace')"
 				>{{ replacing ? 'Replacing...' : 'Replace my code' }}</n8n-button
 			>
 		</div>

@@ -15,9 +15,11 @@ interface CodeDiffMessage {
 	error?: boolean;
 }
 
+export interface QuickReply {
+	type: string;
+	label: string;
+}
+
 export type AssistantMessage = (TextMessage | CodeDiffMessage) & {
-	quickReplies?: Array<{
-		type: string;
-		label: string;
-	}>;
+	quickReplies?: QuickReply[];
 };

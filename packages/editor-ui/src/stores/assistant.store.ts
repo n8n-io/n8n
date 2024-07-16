@@ -1,4 +1,4 @@
-import { chatWithAssistant } from '@/api/assistant';
+import { chatWithAssistant, replaceCode } from '@/api/assistant';
 import type { VIEWS } from '@/constants';
 import { EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
 import type { ChatRequest, ChatUI } from '@/types/assistant.types';
@@ -22,6 +22,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const route = useRoute();
 
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
+	const currentSessionId = ref<string | undefined>();
 
 	const canShowAssistant = computed(() => {
 		return chatEnabled.value && route.name && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS);
@@ -50,19 +51,25 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	// function addCodeDiffMessage({
-	// 	codeDiff,
-	// 	description,
-	// 	quickReplies,
-	// }: Pick<ChatUI.CodeDiffMessage, 'codeDiff' | 'description' | 'quickReplies'>) {
-	// 	chatMessages.value.push({
-	// 		role: 'assistant',
-	// 		type: 'code-diff',
-	// 		description,
-	// 		codeDiff,
-	// 		quickReplies,
-	// 	});
-	// }
+	function addAssistantMessage(assistantMessage: ChatRequest.MessageResponse) {
+		if (assistantMessage.type === 'assistant-message') {
+			addTextMessage({
+				role: 'assistant',
+				content: assistantMessage.content,
+				title: assistantMessage.title,
+			});
+		} else if (assistantMessage.type === 'code-diff') {
+			chatMessages.value.push({
+				role: 'assistant',
+				type: 'code-diff',
+				description: assistantMessage.description,
+				codeDiff: assistantMessage.codeDiff,
+				suggestionId: assistantMessage.suggestionId,
+			});
+		}
+		// todo
+		// quickReplies: assistantMessage.quickReplies,
+	}
 
 	function updateWindowWidth(width: number) {
 		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
@@ -86,14 +93,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		openChat();
 
-		await chatWithAssistant(rootStore.restApiContext, {
-			type: 'init-error-help',
-			user: {
-				firstName: usersStore.currentUser?.firstName || '',
-			},
-			error: context.error,
-			// executionSchema todo
-		});
+		try {
+			const response = await chatWithAssistant(rootStore.restApiContext, {
+				type: 'init-error-help',
+				user: {
+					firstName: usersStore.currentUser?.firstName || '',
+				},
+				error: context.error,
+				// executionSchema todo
+			});
+			currentSessionId.value = response.sessionId;
+			response.messages.forEach(addAssistantMessage);
+		} catch (e) {
+			// todo
+		}
 	}
 
 	// async function sendEvent(eventName: ChatRequest.InteractionEventName) {
@@ -108,11 +121,42 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	) {
 		addTextMessage({ content: message.content, role: 'user' });
 
-		await chatWithAssistant(rootStore.restApiContext, {
-			type: 'user-message',
-			content: message.content,
-			quickReplyType: message.quickReplyType,
-		});
+		try {
+			await chatWithAssistant(rootStore.restApiContext, {
+				type: 'user-message',
+				content: message.content,
+				quickReplyType: message.quickReplyType,
+			});
+		} catch (e) {
+			// todo
+		}
+	}
+
+	async function applyCodeDiff(index: number) {
+		const codeDiffMessage = chatMessages.value[index];
+		if (codeDiffMessage.type !== 'code-diff') {
+			throw new Error('No code diff to apply');
+		}
+		if (!currentSessionId.value) {
+			throw new Error('No valid current session id');
+		}
+
+		codeDiffMessage.replacing = true;
+		try {
+			const result = await replaceCode(rootStore.restApiContext, {
+				suggestionId: codeDiffMessage.suggestionId,
+				sessionId: currentSessionId.value,
+			});
+			// todo update node
+			codeDiffMessage.replaced = true;
+		} catch (e) {
+			codeDiffMessage.error = false;
+		}
+		codeDiffMessage.replacing = false;
+	}
+
+	async function undoCodeDiff(index: number) {
+		// todo
 	}
 
 	return {
@@ -127,5 +171,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isNodeErrorActive,
 		initErrorHelper,
 		sendMessage,
+		applyCodeDiff,
+		undoCodeDiff,
 	};
 });

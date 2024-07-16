@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
 import CodeDiff from './CodeDiff.vue';
-import type { AssistantMessage } from './types';
+import type { AssistantMessage, QuickReply } from './types';
 
 import Markdown from 'markdown-it';
 
@@ -21,11 +22,27 @@ interface Props {
 
 const emit = defineEmits<{
 	close: [];
+	message: [string, string | undefined];
+	codeReplace: [number];
+	codeUndo: [number];
 }>();
 
 const onClose = () => emit('close');
 
 const props = defineProps<Props>();
+
+const textInputValue = ref<string>('');
+
+function onQuickReply(opt: QuickReply) {
+	emit('message', opt.label, opt.type);
+}
+
+function onSendMessage() {
+	if (textInputValue.value) {
+		emit('message', textInputValue.value, undefined);
+		textInputValue.value = '';
+	}
+}
 </script>
 
 <template>
@@ -76,6 +93,8 @@ const props = defineProps<Props>();
 							:replacing="message.replacing"
 							:replaced="message.replaced"
 							:error="message.error"
+							@replace="() => emit('codeReplace', i)"
+							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
 
@@ -85,7 +104,7 @@ const props = defineProps<Props>();
 					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
 						<div v-for="opt in message.quickReplies" :key="opt.type">
-							<n8n-button type="secondary" size="mini">
+							<n8n-button type="secondary" size="mini" @click="() => onQuickReply(opt)">
 								{{ opt.label }}
 							</n8n-button>
 						</div>
@@ -106,8 +125,12 @@ const props = defineProps<Props>();
 			</div>
 		</div>
 		<div v-if="props.messages?.length" :class="$style.inputWrapper">
-			<input placeholder="Enter your response..." />
-			<n8n-icon :class="$style.sendButton" icon="paper-plane" size="large" />
+			<input
+				v-model="textInputValue"
+				placeholder="Enter your response..."
+				@keydown.enter="onSendMessage"
+			/>
+			<n8n-icon :class="$style.sendButton" icon="paper-plane" size="large" @click="onSendMessage" />
 		</div>
 	</div>
 </template>

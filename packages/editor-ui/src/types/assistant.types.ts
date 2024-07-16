@@ -1,8 +1,6 @@
 import type { Schema } from '@/Interface';
 import type { INode } from 'n8n-workflow';
 
-type QuickReplyType = 'new-suggestion' | 'not-resolved' | 'resolved';
-
 export namespace ChatUI {
 	interface WithQuickReplies {
 		quickReplies?: Array<{
@@ -23,11 +21,13 @@ export namespace ChatUI {
 		type: 'code-diff';
 		description: string;
 		codeDiff: string;
+		suggestionId: string;
 		replacing?: boolean;
 		replaced?: boolean;
 		error?: boolean;
 	}
 
+	// todo add quick replies here
 	export type AssistantMessage = TextMessage | CodeDiffMessage;
 }
 
@@ -70,7 +70,7 @@ export namespace ChatRequest {
 	export interface UserChatMessage {
 		type: 'user-message';
 		content: string;
-		quickReplyType?: QuickReplyType;
+		quickReplyType?: string;
 	}
 
 	export type RequestPayload = EventRequestPayload | ErrorRequestPayload | UserChatMessage;
@@ -84,9 +84,8 @@ export namespace ChatRequest {
 	}
 
 	interface QuickReplyOption {
-		action: 'quick-reply';
 		message: string;
-		type: QuickReplyType;
+		type: string;
 		isFeedback?: boolean;
 	}
 
@@ -101,7 +100,7 @@ export namespace ChatRequest {
 		type: 'end-session';
 	}
 
-	type MessageResponse = (AssistantChatMessage | CodeDiffMessage | EndSessionMessage) & {
+	export type MessageResponse = (AssistantChatMessage | CodeDiffMessage | EndSessionMessage) & {
 		quickReplies?: QuickReplyOption[];
 	};
 
@@ -114,7 +113,6 @@ export namespace ChatRequest {
 export namespace ReplaceCodeRequest {
 	export interface RequestPayload {
 		sessionId: string;
-		userId: string; // added in the backend
 		suggestionId: string;
 	}
 

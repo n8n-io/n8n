@@ -12,13 +12,25 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
-const onResize = (data: { direction: string; x: number; width: number }) => {
+function onResize(data: { direction: string; x: number; width: number }) {
 	assistantStore.updateWindowWidth(data.width);
-};
+}
 
-const onResizeDebounced = (data: { direction: string; x: number; width: number }) => {
+function onResizeDebounced(data: { direction: string; x: number; width: number }) {
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
-};
+}
+
+async function onUserMessage(content: string, quickReplyType?: string) {
+	await assistantStore.sendMessage({ content, quickReplyType });
+}
+
+async function onCodeReplace(index: number) {
+	await assistantStore.applyCodeDiff(index);
+}
+
+async function applyCodeDiff(index: number) {
+	await assistantStore.undoCodeDiff(index);
+}
 </script>
 
 <template>
@@ -38,6 +50,9 @@ const onResizeDebounced = (data: { direction: string; x: number; width: number }
 				:user="user"
 				:messages="assistantStore.chatMessages"
 				@close="() => assistantStore.closeChat()"
+				@message="onUserMessage"
+				@codeReplace="onCodeReplace"
+				@codeUndo="onCodeUndo"
 			/>
 		</div>
 	</n8n-resize-wrapper>
