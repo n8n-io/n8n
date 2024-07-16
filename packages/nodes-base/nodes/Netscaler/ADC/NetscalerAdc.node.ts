@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,23 +8,24 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { citrixADCApiRequest } from './GenericFunctions';
+import { netscalerADCApiRequest } from './GenericFunctions';
 
 import { fileDescription } from './FileDescription';
 
 import { certificateDescription } from './CertificateDescription';
 
-export class CitrixAdc implements INodeType {
+export class NetscalerAdc implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Citrix ADC',
+		displayName: 'Netscaler ADC',
+		// This prevents a breaking change
 		name: 'citrixAdc',
-		icon: { light: 'file:citrix.svg', dark: 'file:citrix.dark.svg' },
+		icon: { light: 'file:netscaler.svg', dark: 'file:netscaler.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Citrix ADC API',
+		description: 'Consume Netscaler ADC API',
 		defaults: {
-			name: 'Citrix ADC',
+			name: 'Netscaler ADC',
 		},
 		credentials: [
 			{
@@ -88,7 +90,7 @@ export class CitrixAdc implements INodeType {
 							body.systemfile.filename = options.fileName as string;
 						}
 
-						await citrixADCApiRequest.call(this, 'POST', endpoint, body);
+						await netscalerADCApiRequest.call(this, 'POST', endpoint, body);
 						responseData = { success: true };
 					}
 					if (operation === 'delete') {
@@ -99,7 +101,7 @@ export class CitrixAdc implements INodeType {
 							fileLocation,
 						)}`;
 
-						await citrixADCApiRequest.call(this, 'DELETE', endpoint);
+						await netscalerADCApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					}
 					if (operation === 'download') {
@@ -111,7 +113,7 @@ export class CitrixAdc implements INodeType {
 							fileLocation,
 						)}`;
 
-						const { systemfile } = await citrixADCApiRequest.call(this, 'GET', endpoint);
+						const { systemfile } = await netscalerADCApiRequest.call(this, 'GET', endpoint);
 
 						const file = systemfile[0];
 
@@ -185,7 +187,7 @@ export class CitrixAdc implements INodeType {
 
 						const endpoint = '/config/sslcert?action=create';
 
-						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
+						await netscalerADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
 
 						responseData = { success: true };
 					}
@@ -225,7 +227,7 @@ export class CitrixAdc implements INodeType {
 
 						const endpoint = '/config/sslcertkey';
 
-						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcertkey: body });
+						await netscalerADCApiRequest.call(this, 'POST', endpoint, { sslcertkey: body });
 
 						responseData = { success: true };
 					}

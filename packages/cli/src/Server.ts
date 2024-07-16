@@ -168,8 +168,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).configureMetrics(this.app);
 		}
 
 		const { frontendService } = this;
@@ -334,6 +334,7 @@ export class Server extends AbstractServer {
 
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
+				'favicon.ico',
 				'assets',
 				'static',
 				'types',

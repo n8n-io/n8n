@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeMount, onMounted } from 'vue';
+import { ref, computed, watch, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRouter, useRoute } from 'vue-router';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
@@ -55,6 +55,10 @@ watch(route, (to, from) => {
 
 onBeforeMount(() => {
 	pushConnection.initialize();
+});
+
+onBeforeUnmount(() => {
+	pushConnection.terminate();
 });
 
 onMounted(async () => {

@@ -1,10 +1,10 @@
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
-import N8nSticky from './Sticky.vue';
+import N8nResizeableSticky from './ResizeableSticky.vue';
 
 export default {
-	title: 'Atoms/Sticky',
-	component: N8nSticky,
+	title: 'Atoms/ResizeableSticky',
+	component: N8nResizeableSticky,
 	argTypes: {
 		content: {
 			control: {
@@ -50,15 +50,15 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		N8nSticky,
+		N8nResizeableSticky,
 	},
 	template:
-		'<n8n-sticky v-bind="args"  @resize="onResize" @resizeend="onResizeEnd" @resizeStart="onResizeStart" @input="onInput"></n8n-sticky>',
+		'<n8n-resizeable-sticky v-bind="args"  @resize="onResize" @resizeend="onResizeEnd" @resizeStart="onResizeStart" @input="onInput"></n8n-resizeable-sticky>',
 	methods,
 });
 
-export const Sticky = Template.bind({});
-Sticky.args = {
+export const ResizeableSticky = Template.bind({});
+ResizeableSticky.args = {
 	height: 160,
 	width: 150,
 	modelValue:
