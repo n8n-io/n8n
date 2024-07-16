@@ -105,12 +105,17 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
-const assistantAlreadyAsked = computed(() =>
-	assistantStore.isNodeErrorActive({
-		message: props.error.message,
-		node: props.error.node,
-	}),
-);
+const assistantAlreadyAsked = computed(() => {
+	console.log(props.error);
+	try {
+		return assistantStore.isNodeErrorActive({
+			message: props.error.message,
+			node: props.error.node,
+		});
+	} catch (e) {
+		return false;
+	}
+});
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
