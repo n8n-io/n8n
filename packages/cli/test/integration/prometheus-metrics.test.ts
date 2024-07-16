@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { parse as semverParse } from 'semver';
-import request, { Response } from 'supertest';
+import request, { type Response } from 'supertest';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
