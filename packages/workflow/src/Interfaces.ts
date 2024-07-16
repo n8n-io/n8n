@@ -842,6 +842,14 @@ export interface SSHTunnelFunctions {
 	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
 }
 
+type CronUnit = number | '*' | `*/${number}`;
+export type CronExpression =
+	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
+
+export interface SchedulingFunctions {
+	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+}
+
 export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
@@ -994,6 +1002,7 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1014,6 +1023,7 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1436,14 +1446,10 @@ export type IParameterLabel = {
 	size?: 'small' | 'medium';
 };
 
-export interface IPollResponse {
-	closeFunction?: CloseFunction;
-}
-
 export interface ITriggerResponse {
 	closeFunction?: CloseFunction;
 	// To manually trigger the run
-	manualTriggerFunction?: CloseFunction;
+	manualTriggerFunction?: () => Promise<void>;
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
