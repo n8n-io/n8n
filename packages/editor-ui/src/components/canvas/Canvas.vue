@@ -1,22 +1,25 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasElement, ConnectStartEvent } from '@/types';
+import type { CanvasConnection, CanvasNode, ConnectStartEvent } from '@/types';
 import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
-import CanvasNode from './elements/nodes/CanvasNode.vue';
-import CanvasEdge from './elements/edges/CanvasEdge.vue';
+import Node from './elements/nodes/CanvasNode.vue';
+import Edge from './elements/edges/CanvasEdge.vue';
 import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
-	'update:modelValue': [elements: CanvasElement[]];
+	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
+	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
@@ -24,42 +27,43 @@ const emit = defineEmits<{
 	'create:connection': [connection: Connection];
 	'create:connection:end': [connection: Connection];
 	'create:connection:cancelled': [handle: ConnectStartEvent];
+	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 }>();
 
 const props = withDefaults(
 	defineProps<{
 		id?: string;
-		elements: CanvasElement[];
+		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
+		eventBus?: EventBus;
 	}>(),
 	{
 		id: 'canvas',
-		elements: () => [],
+		nodes: () => [],
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
+		eventBus: () => createEventBus(),
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, project } = useVueFlow({
+const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project } = useVueFlow({
 	id: props.id,
 });
 
-const hoveredEdges = ref<Record<string, boolean>>({});
-
-onMounted(() => {
-	document.addEventListener('keydown', onKeyDown);
-});
-
-onUnmounted(() => {
-	document.removeEventListener('keydown', onKeyDown);
-});
+/**
+ * Nodes
+ */
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
-		emit('update:node:position', node.id, node.position);
+		onUpdateNodePosition(node.id, node.position);
 	});
+}
+
+function onUpdateNodePosition(id: string, position: XYPosition) {
+	emit('update:node:position', id, position);
 }
 
 function onSelectionDragStop(e: NodeDragEvent) {
@@ -81,6 +85,10 @@ function onToggleNodeEnabled(id: string) {
 
 function onDeleteNode(id: string) {
 	emit('delete:node', id);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	emit('update:node:parameters', id, parameters);
 }
 
 /**
@@ -123,16 +131,15 @@ function onDeleteConnection(connection: Connection) {
 	emit('delete:connection', connection);
 }
 
-function onRunNode(id: string) {
-	emit('run:node', id);
+function onClickConnectionAdd(connection: Connection) {
+	emit('click:connection:add', connection);
 }
 
-function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'Delete') {
-		getSelectedEdges.value.forEach(onDeleteConnection);
-		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
-	}
-}
+/**
+ * Connection hover
+ */
+
+const hoveredEdges = ref<Record<string, boolean>>({});
 
 function onMouseEnterEdge(event: EdgeMouseEvent) {
 	hoveredEdges.value[event.edge.id] = true;
@@ -141,6 +148,29 @@ function onMouseEnterEdge(event: EdgeMouseEvent) {
 function onMouseLeaveEdge(event: EdgeMouseEvent) {
 	hoveredEdges.value[event.edge.id] = false;
 }
+
+/**
+ * Executions
+ */
+
+function onRunNode(id: string) {
+	emit('run:node', id);
+}
+
+/**
+ * Keyboard events
+ */
+
+function onKeyDown(e: KeyboardEvent) {
+	if (e.key === 'Delete') {
+		getSelectedEdges.value.forEach(onDeleteConnection);
+		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
+	}
+}
+
+/**
+ * View
+ */
 
 function onClickPane(event: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -151,12 +181,30 @@ function onClickPane(event: MouseEvent) {
 
 	emit('click:pane', position);
 }
+
+async function onFitView() {
+	await fitView();
+}
+
+/**
+ * Lifecycle
+ */
+
+onMounted(() => {
+	document.addEventListener('keydown', onKeyDown);
+	props.eventBus.on('fitView', onFitView);
+});
+
+onUnmounted(() => {
+	props.eventBus.off('fitView', onFitView);
+	document.removeEventListener('keydown', onKeyDown);
+});
 </script>
 
 <template>
 	<VueFlow
 		:id="id"
-		:nodes="elements"
+		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
 		fit-view-on-init
@@ -176,20 +224,23 @@ function onClickPane(event: MouseEvent) {
 		@pane-click="onClickPane"
 	>
 		<template #node-canvas-node="canvasNodeProps">
-			<CanvasNode
+			<Node
 				v-bind="canvasNodeProps"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
+				@update="onUpdateNodeParameters"
+				@move="onUpdateNodePosition"
 			/>
 		</template>
 
 		<template #edge-canvas-edge="canvasEdgeProps">
-			<CanvasEdge
+			<Edge
 				v-bind="canvasEdgeProps"
 				:hovered="hoveredEdges[canvasEdgeProps.id]"
+				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
 			/>
 		</template>

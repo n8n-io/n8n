@@ -9,7 +9,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
-import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
+import {
+	getFileSha,
+	githubApiRequest,
+	githubApiRequestAllItems,
+	isBase64,
+} from './GenericFunctions';
 
 import { getRepositories, getUsers } from './SearchFunctions';
 
@@ -1981,11 +1986,12 @@ export class Github implements INodeType {
 							// TODO: Does this work with filesystem mode
 							body.content = binaryData.data;
 						} else {
-							// Is text file
-							// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
-							body.content = Buffer.from(
-								this.getNodeParameter('fileContent', i) as string,
-							).toString('base64');
+							const fileContent = this.getNodeParameter('fileContent', i) as string;
+							if (isBase64(fileContent)) {
+								body.content = fileContent;
+							} else {
+								body.content = Buffer.from(fileContent).toString('base64');
+							}
 						}
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;

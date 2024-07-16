@@ -121,7 +121,15 @@ const loadNodeData = async (node: INodeUi) => {
 	const pinData = workflowsStore.pinDataByNodeName(node.name);
 	const data =
 		pinData ??
-		executionDataToJson(getNodeInputData(node, 0, 0, props.paneType, props.connectionType) ?? []);
+		executionDataToJson(
+			getNodeInputData(
+				node,
+				props.runIndex,
+				props.outputIndex,
+				props.paneType,
+				props.connectionType,
+			) ?? [],
+		);
 
 	nodesData.value[node.name] = {
 		schema: getSchemaForExecutionData(data),

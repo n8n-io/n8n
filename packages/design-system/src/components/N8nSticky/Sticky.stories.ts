@@ -61,9 +61,7 @@ export const Sticky = Template.bind({});
 Sticky.args = {
 	height: 160,
 	width: 150,
-	content:
-		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
-	defaultText:
+	modelValue:
 		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
 	minHeight: 80,
 	minWidth: 150,

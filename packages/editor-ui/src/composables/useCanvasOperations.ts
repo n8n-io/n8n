@@ -3,14 +3,9 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import type { CanvasElement } from '@/types';
+import type { CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
-import type {
-	AddedNodesAndConnections,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	XYPosition,
-} from '@/Interface';
+import type { AddedNodesAndConnections, INodeUi, XYPosition } from '@/Interface';
 import {
 	FORM_TRIGGER_NODE_TYPE,
 	QUICKSTART_NOTE_NAME,
@@ -31,7 +26,9 @@ import {
 } from '@/models/history';
 import type { Connection } from '@vue-flow/core';
 import {
+	createCanvasConnectionHandleString,
 	getUniqueNodeName,
+	getVueFlowConnectorLengths,
 	mapCanvasConnectionToLegacyConnection,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
@@ -43,6 +40,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetryTrackProperties,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -105,7 +103,7 @@ export function useCanvasOperations({
 
 	function updateNodePosition(
 		id: string,
-		position: CanvasElement['position'],
+		position: CanvasNode['position'],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
 		const node = workflowsStore.getNodeById(id);
@@ -232,6 +230,21 @@ export function useCanvasOperations({
 		ndvStore.activeNodeName = name;
 	}
 
+	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
+		const node = workflowsStore.getNodeById(id);
+		if (!node) {
+			return;
+		}
+
+		workflowsStore.setNodeParameters(
+			{
+				name: node.name,
+				value: parameters as NodeParameterValueType,
+			},
+			true,
+		);
+	}
+
 	function setNodeSelected(id?: string) {
 		if (!id) {
 			uiStore.lastSelectedNode = '';
@@ -334,6 +347,7 @@ export function useCanvasOperations({
 		nodeHelpers.matchCredentials(newNodeData);
 
 		const lastSelectedNode = uiStore.getLastSelectedNode;
+		const lastSelectedNodeConnection = uiStore.lastSelectedNodeConnection;
 		const lastSelectedNodeOutputIndex = uiStore.lastSelectedNodeOutputIndex;
 		const lastSelectedNodeEndpointUuid = uiStore.lastSelectedNodeEndpointUuid;
 
@@ -378,10 +392,36 @@ export function useCanvasOperations({
 				// Connect active node to the newly created one
 				createConnection({
 					source: lastSelectedNode.id,
-					sourceHandle: `outputs/${NodeConnectionType.Main}/${outputIndex}`,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: NodeConnectionType.Main,
+						index: outputIndex,
+					}),
 					target: newNodeData.id,
-					targetHandle: `inputs/${NodeConnectionType.Main}/0`,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: NodeConnectionType.Main,
+						index: 0,
+					}),
 				});
+			}
+
+			if (lastSelectedNodeConnection) {
+				deleteConnection(lastSelectedNodeConnection, { trackHistory: options.trackHistory });
+
+				const targetNode = workflowsStore.getNodeById(lastSelectedNodeConnection.target);
+				if (targetNode) {
+					createConnection({
+						source: newNodeData.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: NodeConnectionType.Main,
+							index: 0,
+						}),
+						target: lastSelectedNodeConnection.target,
+						targetHandle: lastSelectedNodeConnection.targetHandle,
+					});
+				}
 			}
 		}
 
@@ -419,7 +459,7 @@ export function useCanvasOperations({
 		const nodeType = nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType?.properties ?? [],
-			{},
+			node.parameters ?? {},
 			true,
 			false,
 			newNodeData,
@@ -516,11 +556,10 @@ export function useCanvasOperations({
 				node.position,
 			);
 		} else if (lastSelectedNode) {
-			// @TODO Implement settings lastSelectedConnection for new canvas
-			const lastSelectedConnection = canvasStore.lastSelectedConnection;
-			if (lastSelectedConnection) {
+			if (uiStore.lastSelectedNodeConnection) {
 				// set when injecting into a connection
-				const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
+				const [diffX] = getVueFlowConnectorLengths(uiStore.lastSelectedNodeConnection);
+
 				if (diffX <= NodeViewUtils.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
 					pushDownstreamNodes(lastSelectedNode.name, NodeViewUtils.PUSH_NODES_OFFSET, {
 						trackHistory: options.trackHistory,
@@ -537,7 +576,7 @@ export function useCanvasOperations({
 				canvasStore.newNodeInsertPosition = null;
 			} else {
 				let yOffset = 0;
-				if (lastSelectedConnection) {
+				if (uiStore.lastSelectedNodeConnection) {
 					const sourceNodeType = nodeTypesStore.getNodeType(
 						lastSelectedNode.type,
 						lastSelectedNode.typeVersion,
@@ -556,16 +595,15 @@ export function useCanvasOperations({
 							sourceNodeType,
 						);
 						const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
-
 						const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
 							(output) => output === NodeConnectionType.Main,
 						);
 
 						if (sourceNodeOutputMainOutputs.length > 1) {
+							const { index: sourceOutputIndex } = parseCanvasConnectionHandleString(
+								uiStore.lastSelectedNodeConnection.sourceHandle,
+							);
 							const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
-							const sourceOutputIndex = lastSelectedConnection.__meta
-								? lastSelectedConnection.__meta.sourceOutputIndex
-								: 0;
 							yOffset = offset[sourceOutputIndex];
 						}
 					}
@@ -729,31 +767,18 @@ export function useCanvasOperations({
 		);
 		for (const nodeName of checkNodes) {
 			const node = workflowsStore.nodesByName[nodeName];
-			const oldPosition = node.position;
-
 			if (node.position[0] < sourceNode.position[0]) {
 				continue;
 			}
 
-			const updateInformation: INodeUpdatePropertiesInformation = {
-				name: nodeName,
-				properties: {
-					position: [node.position[0] + margin, node.position[1]],
+			updateNodePosition(
+				node.id,
+				{
+					x: node.position[0] + margin,
+					y: node.position[1],
 				},
-			};
-
-			workflowsStore.updateNodeProperties(updateInformation);
-			updateNodePosition(node.id, { x: node.position[0], y: node.position[1] });
-
-			if (
-				(trackHistory && oldPosition[0] !== updateInformation.properties.position[0]) ||
-				oldPosition[1] !== updateInformation.properties.position[1]
-			) {
-				historyStore.pushCommandToUndo(
-					new MoveNodeCommand(nodeName, oldPosition, updateInformation.properties.position),
-					trackHistory,
-				);
-			}
+				{ trackHistory },
+			);
 		}
 	}
 
@@ -874,7 +899,13 @@ export function useCanvasOperations({
 		targetNode: INodeUi,
 		connectionType: NodeConnectionType,
 	): boolean {
+		const blocklist = [STICKY_NODE_TYPE];
+
 		if (sourceNode.id === targetNode.id) {
+			return false;
+		}
+
+		if (blocklist.includes(sourceNode.type) || blocklist.includes(targetNode.type)) {
 			return false;
 		}
 
@@ -949,6 +980,7 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
+		setNodeParameters,
 		toggleNodeDisabled,
 		renameNode,
 		revertRenameNode,
