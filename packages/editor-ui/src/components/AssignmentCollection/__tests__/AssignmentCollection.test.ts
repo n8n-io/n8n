@@ -13,6 +13,7 @@ const DEFAULT_SETUP = {
 		initialState: {
 			[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 		},
+		stubActions: false,
 	}),
 	props: {
 		path: 'parameters.fields',
