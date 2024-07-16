@@ -108,7 +108,10 @@ export class PrometheusMetricsService {
 			includeStatusCode: this.includes.labels.apiStatusCode,
 		});
 
-		app.use(['/rest/', '/webhook/', '/webhook-test/', '/api/'], metricsMiddleware);
+		app.use(
+			['/rest/', '/webhook/', '/webhook-waiting/', '/form-waiting/', '/webhook-test/', '/api/'],
+			metricsMiddleware,
+		);
 	}
 
 	private mountMetricsEndpoint(app: express.Application) {
