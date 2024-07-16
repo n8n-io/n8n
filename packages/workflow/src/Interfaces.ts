@@ -840,7 +840,7 @@ export interface SSHTunnelFunctions {
 	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
 }
 
-type CronUnit = number | '' | '*' | `*/${number}` | string;
+type CronUnit = number | '*' | `*/${number}`;
 export type CronExpression =
 	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
 

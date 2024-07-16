@@ -66,7 +66,7 @@ export const toCronExpression = (interval: ScheduleInterval): CronExpression => 
 	if (interval.field === 'weeks') {
 		const days = interval.triggerAtDay;
 		const daysOfWeek = days.length === 0 ? '*' : days.join(',');
-		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}`;
+		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
 	}
 
 	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(0, 31);
