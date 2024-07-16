@@ -903,8 +903,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       cron:
-        specifier: 1.7.2
-        version: 1.7.2
+        specifier: 3.1.7
+        version: 3.1.7
       fast-glob:
         specifier: 3.2.12
         version: 3.2.12
@@ -957,9 +957,6 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
-      '@types/cron':
-        specifier: ~1.7.1
-        version: 1.7.3
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -1357,8 +1354,8 @@ importers:
         specifier: 3.5.2
         version: 3.5.2
       cron:
-        specifier: 1.7.2
-        version: 1.7.2
+        specifier: 3.1.7
+        version: 3.1.7
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -1528,9 +1525,6 @@ importers:
       '@types/cheerio':
         specifier: ^0.22.15
         version: 0.22.31
-      '@types/cron':
-        specifier: ~1.7.1
-        version: 1.7.3
       '@types/eventsource':
         specifier: ^1.1.2
         version: 1.1.9
@@ -5168,9 +5162,6 @@ packages:
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
-  '@types/cron@1.7.3':
-    resolution: {integrity: sha512-iPmUXyIJG1Js+ldPYhOQcYU3kCAQ2FWrSkm1FJPoii2eYSn6wEW6onPukNTT0bfiflexNSRPl6KWmAIqS+36YA==}
-
   '@types/cross-spawn@6.0.2':
     resolution: {integrity: sha512-KuwNhp3eza+Rhu8IFI5HUXRP0LIhqH5cAjubUvGXXthh4YYBuP2ntwEX+Cz8GJoZUHlKo247wPWOfA9LYEq4cw==}
 
@@ -5305,6 +5296,9 @@ packages:
 
   '@types/luxon@3.2.0':
     resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
+
+  '@types/luxon@3.4.2':
+    resolution: {integrity: sha512-TifLZlFudklWlMBfhubvgqTXRzLDI5pCbGa4P8a3wPyUQSW+1xQ5eDsreP9DWHX3tjq1ke96uYG/nwundroWcA==}
 
   '@types/mailparser@3.4.4':
     resolution: {integrity: sha512-C6Znp2QVS25JqtuPyxj38Qh+QoFcLycdxsvcc6IZCGekhaMBzbdTXzwGzhGoYb3TfKu8IRCNV0sV1o3Od97cEQ==}
@@ -6807,8 +6801,8 @@ packages:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
 
-  cron@1.7.2:
-    resolution: {integrity: sha512-+SaJ2OfeRvfQqwXQ2kgr0Y5pzBR/lijf5OpnnaruwWnmI799JfWr2jN2ItOV9s3A/+TFOt6mxvKzQq5F0Jp6VQ==}
+  cron@3.1.7:
+    resolution: {integrity: sha512-tlBg7ARsAMQLzgwqVxy8AZl/qlTc5nibqYwtNGoCrd+cV+ugI+tvZC1oT/8dFH8W455YrywGykx/KMmAqOr7Jw==}
 
   cross-env@7.0.3:
     resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
@@ -18434,11 +18428,6 @@ snapshots:
 
   '@types/cookiejar@2.1.5': {}
 
-  '@types/cron@1.7.3':
-    dependencies:
-      '@types/node': 18.16.16
-      moment: 2.29.4
-
   '@types/cross-spawn@6.0.2':
     dependencies:
       '@types/node': 18.16.16
@@ -18580,6 +18569,8 @@ snapshots:
   '@types/lossless-json@1.0.1': {}
 
   '@types/luxon@3.2.0': {}
+
+  '@types/luxon@3.4.2': {}
 
   '@types/mailparser@3.4.4':
     dependencies:
@@ -20373,9 +20364,10 @@ snapshots:
     dependencies:
       luxon: 3.4.4
 
-  cron@1.7.2:
+  cron@3.1.7:
     dependencies:
-      moment-timezone: 0.5.37
+      '@types/luxon': 3.4.2
+      luxon: 3.4.4
 
   cross-env@7.0.3:
     dependencies:
