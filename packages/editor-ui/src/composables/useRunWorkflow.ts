@@ -279,9 +279,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				if (node.name === options.destinationNode || !node.disabled) {
 					let testUrl = '';
 
-					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					if (nodeType?.webhooks?.length) {
-						testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+					if (node.type === FORM_TRIGGER_NODE_TYPE) {
+						const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+						if (nodeType?.webhooks?.length) {
+							testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+						}
 					}
 
 					if (
@@ -433,10 +435,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
+	async function stopWaitingForWebhook() {
+		try {
+			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
+			return;
+		}
+	}
+
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
 		runWorkflowApi,
 		stopCurrentExecution,
+		stopWaitingForWebhook,
 	};
 }

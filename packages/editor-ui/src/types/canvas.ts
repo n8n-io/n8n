@@ -10,8 +10,6 @@ import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
 
-export type CanvasElementType = 'node' | 'note';
-
 export type CanvasConnectionPortType = ConnectionTypes;
 
 export const enum CanvasConnectionMode {
@@ -36,8 +34,39 @@ export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 	offset?: { top?: string; left?: string };
 }
 
-export interface CanvasElementData {
+export const enum CanvasNodeRenderType {
+	Default = 'default',
+	StickyNote = 'n8n-nodes-base.stickyNote',
+	AddNodes = 'n8n-nodes-internal.addNodes',
+}
+
+export type CanvasNodeDefaultRender = {
+	type: CanvasNodeRenderType.Default;
+	options: Partial<{
+		configurable: boolean;
+		configuration: boolean;
+		trigger: boolean;
+	}>;
+};
+
+export type CanvasNodeAddNodesRender = {
+	type: CanvasNodeRenderType.AddNodes;
+	options: Record<string, never>;
+};
+
+export type CanvasNodeStickyNoteRender = {
+	type: CanvasNodeRenderType.StickyNote;
+	options: Partial<{
+		width: number;
+		height: number;
+		color: number;
+		content: string;
+	}>;
+};
+
+export interface CanvasNodeData {
 	id: INodeUi['id'];
+	name: INodeUi['name'];
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
@@ -58,21 +87,22 @@ export interface CanvasElementData {
 	execution: {
 		status?: ExecutionStatus;
 		waiting?: string;
+		running: boolean;
 	};
 	runData: {
 		count: number;
 		visible: boolean;
 	};
-	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
+	render: CanvasNodeDefaultRender | CanvasNodeStickyNoteRender | CanvasNodeAddNodesRender;
 }
 
-export type CanvasElement = Node<CanvasElementData>;
+export type CanvasNode = Node<CanvasNodeData>;
 
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	fromNodeName?: string;
-	status?: 'success' | 'error' | 'pinned';
+	status?: 'success' | 'error' | 'pinned' | 'running';
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -87,7 +117,7 @@ export interface CanvasPlugin {
 
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
-	data: Ref<CanvasElementData>;
+	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
 	nodeType: ComputedRef<INodeTypeDescription | null>;
@@ -96,3 +126,5 @@ export interface CanvasNodeInjectionData {
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 }
+
+export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };

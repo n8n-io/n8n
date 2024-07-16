@@ -2,6 +2,7 @@ import { fireEvent } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -24,7 +25,10 @@ describe('CanvasNodeToolbar', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: true },
+							},
 						},
 					}),
 				},

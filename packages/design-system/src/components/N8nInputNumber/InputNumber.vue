@@ -14,7 +14,7 @@ type InputNumberProps = {
 const props = withDefaults(defineProps<InputNumberProps>(), {
 	size: undefined,
 	step: 1,
-	precision: 0,
+	precision: undefined,
 	min: -Infinity,
 	max: Infinity,
 });

@@ -168,8 +168,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).configureMetrics(this.app);
 		}
 
 		const { frontendService } = this;
@@ -334,7 +334,9 @@ export class Server extends AbstractServer {
 
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
+				'favicon.ico',
 				'assets',
+				'static',
 				'types',
 				'healthz',
 				'metrics',
@@ -364,12 +366,20 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
