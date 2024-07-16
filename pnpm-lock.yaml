@@ -643,9 +643,6 @@ importers:
       formidable:
         specifier: 3.5.1
         version: 3.5.1
-      google-timezones-json:
-        specifier: 1.1.0
-        version: 1.1.0
       handlebars:
         specifier: 4.7.8
         version: 4.7.8
@@ -875,6 +872,9 @@ importers:
       '@types/yamljs':
         specifier: ^0.2.31
         version: 0.2.31
+      '@vvo/tzdb':
+        specifier: ^6.141.0
+        version: 6.141.0
       chokidar:
         specifier: 3.5.2
         version: 3.5.2
@@ -5803,6 +5803,9 @@ packages:
   '@vueuse/shared@9.13.0':
     resolution: {integrity: sha512-UrnhU+Cnufu4S6JLCPZnkWh0WwZGUp72ktOF2DFptMlOs3TOdVv8xJN53zhHGARmVOsz5KqOls09+J1NR6sBKw==}
 
+  '@vvo/tzdb@6.141.0':
+    resolution: {integrity: sha512-vpuv8Eo75WwW6oHygfSSJ8J2AIADlqoHu9HmKxD8Ey/hmRhxt0+/nEGbzBy/Y/Q1qsdgDj3kP3NRLr2082VzgA==}
+
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
     peerDependencies:
@@ -8201,9 +8204,6 @@ packages:
     resolution: {integrity: sha512-WPkN4yGtz05WZ5EhtlxNDWPhC4JIic6G8ePitwUWy4l+XPVYec+a0j0Ts47PDtW59y3RwAhUd9/h9ZZ63px6RQ==}
     engines: {node: '>=12.0.0'}
     hasBin: true
-
-  google-timezones-json@1.1.0:
-    resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
 
   gopd@1.0.1:
     resolution: {integrity: sha512-d65bNlIadxvpb/A2abVdlqKqV563juRnZ1Wtk6s1sIR8uNsXR70xqIzVqxVf1eTqDunwT2MkczEeaezCKTZhwA==}
@@ -19244,6 +19244,8 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
+  '@vvo/tzdb@6.141.0': {}
+
   '@xata.io/client@0.28.4(typescript@5.5.2)':
     dependencies:
       typescript: 5.5.2
@@ -21217,7 +21219,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21242,7 +21244,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21262,7 +21264,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21792,7 +21794,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22133,7 +22135,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -22185,8 +22187,6 @@ snapshots:
   google-p12-pem@4.0.1:
     dependencies:
       node-forge: 1.3.1
-
-  google-timezones-json@1.1.0: {}
 
   gopd@1.0.1:
     dependencies:
@@ -24898,7 +24898,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25780,7 +25780,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -26154,7 +26154,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7
