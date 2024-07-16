@@ -11,6 +11,8 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 
+type MetricCategory = 'default' | 'api' | 'cache' | 'logs';
+
 @Service()
 export class PrometheusMetricsService {
 	constructor(
@@ -47,6 +49,20 @@ export class PrometheusMetricsService {
 		this.initEventBusMetrics();
 		this.initApiMetrics(app);
 		this.mountMetricsEndpoint(app);
+	}
+
+	enableMetric(metric: MetricCategory) {
+		this.includes.metrics[metric] = true;
+	}
+
+	disableMetric(metric: MetricCategory) {
+		this.includes.metrics[metric] = false;
+	}
+
+	disableAllMetrics() {
+		for (const metric of Object.keys(this.includes.metrics) as MetricCategory[]) {
+			this.includes.metrics[metric] = false;
+		}
 	}
 
 	/**
