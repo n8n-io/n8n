@@ -488,13 +488,9 @@ const checkConditions = (
 
 			return actualValues.every((propertyValue) => {
 				if (key === 'eq') {
-					if (targetValue === null) return isEqual(propertyValue, undefined);
-
 					return isEqual(propertyValue, targetValue);
 				}
 				if (key === 'not') {
-					if (targetValue === null) return !isEqual(propertyValue, undefined);
-
 					return !isEqual(propertyValue, targetValue);
 				}
 				if (key === 'gte') {
@@ -524,6 +520,9 @@ const checkConditions = (
 				}
 				if (key === 'regex') {
 					return new RegExp(targetValue as string).test(propertyValue as string);
+				}
+				if (key === 'exists') {
+					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
 				}
 				return false;
 			});
