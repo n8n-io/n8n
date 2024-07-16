@@ -1,3 +1,13 @@
+## [1.50.1](https://github.com/n8n-io/n8n/compare/n8n@1.50.0...n8n@1.50.1) (2024-07-16)
+
+
+### Bug Fixes
+
+* **editor:** Ensure all static assets are accessible from the server ([#10062](https://github.com/n8n-io/n8n/issues/10062)) ([c673209](https://github.com/n8n-io/n8n/commit/c6732096efa8230576d7cd809404a053c5cd16f7))
+* **editor:** Remove push event listeners when migrating away from the canvas ([#10063](https://github.com/n8n-io/n8n/issues/10063)) ([45afe78](https://github.com/n8n-io/n8n/commit/45afe78a85c8215bec7f51971ba49974e6341e6b))
+
+
+
 # [1.50.0](https://github.com/n8n-io/n8n/compare/n8n@1.49.0...n8n@1.50.0) (2024-07-10)
 
 
