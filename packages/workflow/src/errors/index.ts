@@ -1,6 +1,7 @@
 export { ApplicationError } from './application.error';
 export { ExpressionError } from './expression.error';
 export { CredentialAccessError } from './credential-access-error';
+export { ExecutionCancelledError } from './execution-cancelled.error';
 export { NodeApiError } from './node-api.error';
 export { NodeOperationError } from './node-operation.error';
 export { NodeSslError } from './node-ssl.error';

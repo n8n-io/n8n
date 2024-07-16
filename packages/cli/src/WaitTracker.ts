@@ -86,7 +86,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string) {
+	stopExecution(executionId: string) {
 		if (!this.waitingExecutions[executionId]) return;
 
 		clearTimeout(this.waitingExecutions[executionId].timer);
