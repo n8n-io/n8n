@@ -5,7 +5,7 @@ import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import { Logger } from '@/Logger';
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
-import { preferGet } from '../externalSecretsHelper.ee';
+import config from '@/config';
 import { Container } from 'typedi';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
@@ -239,6 +239,8 @@ export class VaultProvider extends SecretsProvider {
 
 	private refreshAbort = new AbortController();
 
+	private readonly preferGet = config.getEnv('externalSecrets.preferGet');
+
 	constructor(readonly logger = Container.get(Logger)) {
 		super();
 	}
@@ -250,16 +252,16 @@ export class VaultProvider extends SecretsProvider {
 
 		this.#http = axios.create({ baseURL: baseURL.toString() });
 		if (this.settings.namespace) {
-			this.#http.interceptors.request.use((config) => {
-				config.headers['X-Vault-Namespace'] = this.settings.namespace;
-				return config;
+			this.#http.interceptors.request.use((axiosConfig) => {
+				axiosConfig.headers['X-Vault-Namespace'] = this.settings.namespace;
+				return axiosConfig;
 			});
 		}
-		this.#http.interceptors.request.use((config) => {
+		this.#http.interceptors.request.use((axiosConfig) => {
 			if (this.#currentToken) {
-				config.headers['X-Vault-Token'] = this.#currentToken;
+				axiosConfig.headers['X-Vault-Token'] = this.#currentToken;
 			}
-			return config;
+			return axiosConfig;
 		});
 	}
 
@@ -419,10 +421,9 @@ export class VaultProvider extends SecretsProvider {
 		listPath += path;
 		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
 		try {
-			const shouldPreferGet = preferGet();
-			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
+			const url = `${listPath}${this.preferGet ? '?list=true' : ''}`;
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
+			const method = this.preferGet ? 'GET' : ('LIST' as any);
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
 				url,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
