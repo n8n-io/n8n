@@ -13,6 +13,7 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
+import { ResourceType } from '@/utils/projects.utils';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -45,9 +46,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
-const resourceType = computed(
-	() => locale.baseText('generic.credential').toLocaleLowerCase() as 'credential',
-);
+const resourceTypeText = computed(() => locale.baseText('generic.credential'));
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
@@ -124,7 +123,8 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: resourceType.value,
+			resourceType: ResourceType.Credential,
+			resourceTypeText: resourceTypeText.value,
 		},
 	});
 }
@@ -155,7 +155,8 @@ function moveResource() {
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
 					:resource="data"
-					:resource-type="resourceType"
+					:resource-type="ResourceType.Credential"
+					:resource-type-text="resourceTypeText"
 					:personal-project="projectsStore.personalProject"
 				/>
 				<n8n-action-toggle

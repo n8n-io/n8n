@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import type { Project } from '@/types/projects.types';
@@ -8,7 +9,8 @@ import { ProjectTypes } from '@/types/projects.types';
 
 type Props = {
 	resource: IWorkflowDb | ICredentialsResponse;
-	resourceType: 'workflow' | 'credential';
+	resourceType: ResourceType;
+	resourceTypeText: string;
 	personalProject: Project | null;
 };
 
@@ -73,27 +75,27 @@ const badgeTooltip = computed(() => {
 		case ProjectState.SharedOwned:
 			return i18n.baseText('projects.badge.tooltip.sharedOwned', {
 				interpolate: {
-					resourceType: props.resourceType,
+					resourceType: props.resourceTypeText,
 				},
 			});
 		case ProjectState.SharedPersonal:
 			return i18n.baseText('projects.badge.tooltip.sharedPersonal', {
 				interpolate: {
-					resourceType: props.resourceType,
+					resourceType: props.resourceTypeText,
 					name: badgeText.value,
 				},
 			});
 		case ProjectState.Personal:
 			return i18n.baseText('projects.badge.tooltip.personal', {
 				interpolate: {
-					resourceType: props.resourceType,
+					resourceType: props.resourceTypeText,
 					name: badgeText.value,
 				},
 			});
 		case ProjectState.Team:
 			return i18n.baseText('projects.badge.tooltip.team', {
 				interpolate: {
-					resourceType: props.resourceType,
+					resourceType: props.resourceTypeText,
 					name: badgeText.value,
 				},
 			});

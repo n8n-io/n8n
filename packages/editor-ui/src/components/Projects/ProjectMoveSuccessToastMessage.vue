@@ -4,14 +4,14 @@ import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 const props = defineProps<{
 	routeName: string;
 	resource: IWorkflowDb | ICredentialsResponse;
-	resourceType: 'workflow' | 'credential';
+	resourceTypeText: string;
 	projectId: string;
 	projectName: string;
 }>();
 </script>
 <template>
 	<i18n-t keypath="projects.move.resource.success.message">
-		<template #resourceType>{{ props.resourceType }}</template>
+		<template #resourceType>{{ props.resourceTypeText }}</template>
 		<template #resourceName>{{ props.resource.name }}</template>
 		<template #targetProjectName>{{ props.projectName }}</template>
 		<template #link>

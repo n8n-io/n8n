@@ -10,12 +10,14 @@ import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { VIEWS } from '@/constants';
 import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
+import { ResourceType } from '@/utils/projects.utils';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: 'workflow' | 'credential';
+		resourceType: ResourceType;
+		resourceTypeText: string;
 		projectId: string;
 		projectName: string;
 	};
@@ -31,7 +33,7 @@ const checks = ref([false, false]);
 const allChecked = computed(() => checks.value.every(Boolean));
 
 const moveResourceLabel = computed(() =>
-	props.data.resourceType === 'workflow'
+	props.data.resourceType === ResourceType.Workflow
 		? i18n.baseText('projects.move.workflow.confirm.modal.label')
 		: i18n.baseText('projects.move.credential.confirm.modal.label'),
 );
@@ -55,13 +57,13 @@ const confirm = async () => {
 		toast.showToast({
 			title: i18n.baseText('projects.move.resource.success.title', {
 				interpolate: {
-					resourceType: props.data.resourceType,
+					resourceType: props.data.resourceTypeText,
 				},
 			}),
 			message: h(ProjectMoveSuccessToastMessage, {
 				routeName: VIEWS.PROJECTS_WORKFLOWS,
 				resource: props.data.resource,
-				resourceType: props.data.resourceType,
+				resourceTypeText: props.data.resourceTypeText,
 				projectId: props.data.projectId,
 				projectName: props.data.projectName,
 			}),
@@ -72,7 +74,7 @@ const confirm = async () => {
 			error.message,
 			i18n.baseText('projects.move.resource.error.title', {
 				interpolate: {
-					resourceType: props.data.resourceType,
+					resourceType: props.data.resourceTypeText,
 					resourceName: props.data.resource.name,
 				},
 			}),
@@ -92,7 +94,7 @@ const confirm = async () => {
 			<N8nCheckbox v-model="checks[1]">
 				<N8nText>
 					<i18n-t keypath="projects.move.resource.confirm.modal.label">
-						<template #resourceType>{{ props.data.resourceType }}</template>
+						<template #resourceType>{{ props.data.resourceTypeText }}</template>
 						<template #numberOfUsers>{{
 							i18n.baseText('projects.move.resource.confirm.modal.numberOfUsers', {
 								interpolate: {

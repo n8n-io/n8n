@@ -24,6 +24,7 @@ import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { ResourceType } from '@/utils/projects.utils';
 
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -72,9 +73,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 
-const resourceType = computed(
-	() => locale.baseText('generic.workflow').toLocaleLowerCase() as 'workflow',
-);
+const resourceTypeText = computed(() => locale.baseText('generic.workflow'));
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
 const actions = computed(() => {
@@ -225,7 +224,8 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: resourceType.value,
+			resourceType: ResourceType.Workflow,
+			resourceTypeText: resourceTypeText.value,
 		},
 	});
 }
@@ -266,7 +266,8 @@ function moveResource() {
 			<div :class="$style.cardActions" @click.stop>
 				<ProjectCardBadge
 					:resource="data"
-					:resource-type="resourceType"
+					:resource-type="ResourceType.Workflow"
+					:resource-type-text="resourceTypeText"
 					:personal-project="projectsStore.personalProject"
 				/>
 				<WorkflowActivator
