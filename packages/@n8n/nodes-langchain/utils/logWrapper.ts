@@ -4,21 +4,24 @@ import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n
 import type { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
-import { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type {
+	BaseChatMessageHistory,
+	BaseListChatMessageHistory,
+} from '@langchain/core/chat_history';
 import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
 
 import { Embeddings } from '@langchain/core/embeddings';
 import { VectorStore } from '@langchain/core/vectorstores';
 import type { Document } from '@langchain/core/documents';
 import { TextSplitter } from '@langchain/textsplitters';
-import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import { isObject } from 'lodash';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
-import { logAiEvent, isToolsInstance } from './helpers';
+import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -109,6 +112,7 @@ export function logWrapper(
 		| Tool
 		| BaseChatMemory
 		| BaseChatMessageHistory
+		| BaseListChatMessageHistory
 		| BaseOutputParser
 		| BaseRetriever
 		| Embeddings
@@ -125,7 +129,7 @@ export function logWrapper(
 		get: (target, prop) => {
 			let connectionType: ConnectionTypes | undefined;
 			// ========== BaseChatMemory ==========
-			if (originalInstance instanceof BaseChatMemory) {
+			if (isBaseChatMemory(originalInstance)) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
 						connectionType = NodeConnectionType.AiMemory;
@@ -177,7 +181,7 @@ export function logWrapper(
 			}
 
 			// ========== BaseChatMessageHistory ==========
-			if (originalInstance instanceof BaseChatMessageHistory) {
+			if (isBaseChatMessageHistory(originalInstance)) {
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
 						connectionType = NodeConnectionType.AiMemory;

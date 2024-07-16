@@ -10,6 +10,21 @@ import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicTool, type Tool } from '@langchain/core/tools';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+
+function hasMethod<T>(obj: unknown, methodName: string | symbol): obj is T {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		methodName in obj &&
+		typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function'
+	);
+}
+
+function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
+	return methodNames.every((methodName) => hasMethod<T>(obj, methodName));
+}
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -36,6 +51,14 @@ export function getMetadataFiltersValues(
 	}
 
 	return undefined;
+}
+
+export function isBaseChatMemory(obj: unknown): obj is BaseChatMemory {
+	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
+}
+
+export function isBaseChatMessageHistory(obj: unknown): obj is BaseChatMessageHistory {
+	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
 }
 
 export function isChatInstance(model: unknown): model is BaseChatModel {
