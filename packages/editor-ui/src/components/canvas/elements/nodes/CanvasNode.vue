@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Position } from '@vue-flow/core';
 import { computed, provide, toRef, watch } from 'vue';
 import type { CanvasNodeData, CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -9,7 +8,8 @@ import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRen
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
-import type { NodeProps } from '@vue-flow/core';
+import { Position } from '@vue-flow/core';
+import type { XYPosition, NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
@@ -17,6 +17,8 @@ const emit = defineEmits<{
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
+	update: [id: string, parameters: Record<string, unknown>];
+	move: [id: string, position: XYPosition];
 }>();
 const props = defineProps<NodeProps<CanvasNodeData>>();
 
@@ -25,24 +27,18 @@ const nodeTypesStore = useNodeTypesStore();
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const isDisabled = computed(() => props.data.disabled);
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
-
-watch(
-	() => props.selected,
-	(selected) => {
-		emit('select', props.id, selected);
-	},
-);
 
 /**
  * Inputs
@@ -67,6 +63,14 @@ const outputsWithPosition = computed(() => {
 });
 
 /**
+ * Node icon
+ */
+
+const nodeIconSize = computed(() =>
+	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
+);
+
+/**
  * Endpoints
  */
 
@@ -87,23 +91,8 @@ const mapEndpointWithPosition =
 	};
 
 /**
- * Provide
+ * Events
  */
-
-const id = toRef(props, 'id');
-const data = toRef(props, 'data');
-const label = toRef(props, 'label');
-const selected = toRef(props, 'selected');
-
-provide(CanvasNodeKey, {
-	id,
-	data,
-	label,
-	selected,
-	nodeType,
-});
-
-const nodeIconSize = computed(() => (data.value.render.options.configuration ? 30 : 40));
 
 function onDelete() {
 	emit('delete', props.id);
@@ -120,6 +109,42 @@ function onDisabledToggle() {
 function onActivate() {
 	emit('activate', props.id);
 }
+
+function onUpdate(parameters: Record<string, unknown>) {
+	emit('update', props.id, parameters);
+}
+
+function onMove(position: XYPosition) {
+	emit('move', props.id, position);
+}
+
+/**
+ * Provide
+ */
+
+const id = toRef(props, 'id');
+const data = toRef(props, 'data');
+const label = toRef(props, 'label');
+const selected = toRef(props, 'selected');
+
+provide(CanvasNodeKey, {
+	id,
+	data,
+	label,
+	selected,
+	nodeType,
+});
+
+/**
+ * Lifecycle
+ */
+
+watch(
+	() => props.selected,
+	(selected) => {
+		emit('select', props.id, selected);
+	},
+);
 </script>
 
 <template>
@@ -133,6 +158,7 @@ function onActivate() {
 				:index="source.index"
 				:position="source.position"
 				:offset="source.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
@@ -145,6 +171,7 @@ function onActivate() {
 				:index="target.index"
 				:position="target.position"
 				:offset="target.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
@@ -157,7 +184,7 @@ function onActivate() {
 			@run="onRun"
 		/>
 
-		<CanvasNodeRenderer @dblclick="onActivate">
+		<CanvasNodeRenderer @dblclick="onActivate" @move="onMove" @update="onUpdate">
 			<NodeIcon
 				v-if="nodeType"
 				:node-type="nodeType"

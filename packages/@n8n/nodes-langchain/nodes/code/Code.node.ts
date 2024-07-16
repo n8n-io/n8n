@@ -40,12 +40,18 @@ const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/
 
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
+
+// If you are allowing more than one language model input connection (-1 or
+// anything greater than 1), getInputConnectionData returns an array, so you
+// will have to change the code below it to deal with that. For example, use
+// llm[0] in the chain definition
+
 const llm = await this.getInputConnectionData('ai_languageModel', 0);
 let chain = prompt.pipe(llm);
 const output = await chain.invoke();
 return [ {json: { output } } ];`;
 
-const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
+const defaultCodeSupplyData = `const { WikipediaQueryRun } = require( '@langchain/community/tools/wikipedia_query_run');
 return new WikipediaQueryRun();`;
 
 const langchainModules = ['langchain', '@langchain/*'];

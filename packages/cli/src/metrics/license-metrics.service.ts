@@ -1,11 +1,11 @@
-import { UsageMetricsRepository } from '@/databases/repositories/usageMetrics.repository';
+import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { Service } from 'typedi';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
-export class UsageMetricsService {
+export class LicenseMetricsService {
 	constructor(
-		private readonly usageMetricsRepository: UsageMetricsRepository,
+		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
@@ -18,7 +18,7 @@ export class UsageMetricsService {
 			totalCredentials,
 			productionExecutions,
 			manualExecutions,
-		} = await this.usageMetricsRepository.getLicenseRenewalMetrics();
+		} = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
 
 		return [
 			{ name: 'activeWorkflows', value: activeWorkflows },

@@ -1,4 +1,4 @@
-import { UsageMetricsRepository } from '@/databases/repositories/usageMetrics.repository';
+import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
 import * as testDb from './shared/testDb';
 import Container from 'typedi';
@@ -7,14 +7,14 @@ import { createManyCredentials } from './shared/db/credentials';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflowStatistics.repository';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 
-describe('UsageMetricsRepository', () => {
-	let usageMetricsRepository: UsageMetricsRepository;
+describe('LicenseMetricsRepository', () => {
+	let licenseMetricsRepository: LicenseMetricsRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		usageMetricsRepository = Container.get(UsageMetricsRepository);
+		licenseMetricsRepository = Container.get(LicenseMetricsRepository);
 
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 	});
@@ -27,7 +27,7 @@ describe('UsageMetricsRepository', () => {
 		await testDb.terminate();
 	});
 
-	describe('getLicenseRenewalMetrics()', () => {
+	describe('getLicenseRenewalMetrics', () => {
 		test('should return license renewal metrics', async () => {
 			const [firstWorkflow, secondWorkflow] = await createManyWorkflows(2, { active: false });
 
@@ -60,7 +60,7 @@ describe('UsageMetricsRepository', () => {
 				),
 			]);
 
-			const metrics = await usageMetricsRepository.getLicenseRenewalMetrics();
+			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
 
 			expect(metrics).toStrictEqual({
 				enabledUsers: 4,
@@ -76,7 +76,7 @@ describe('UsageMetricsRepository', () => {
 		test('should handle zero execution statistics correctly', async () => {
 			await Promise.all([createOwner(), createManyWorkflows(3, { active: true })]);
 
-			const metrics = await usageMetricsRepository.getLicenseRenewalMetrics();
+			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
 
 			expect(metrics).toStrictEqual({
 				enabledUsers: 1,
