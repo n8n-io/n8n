@@ -1,5 +1,6 @@
 import { Container, Service } from 'typedi';
 import { exec as callbackExec } from 'child_process';
+import { resolve } from 'path';
 import { access as fsAccess } from 'fs/promises';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -9,12 +10,10 @@ import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
-// @ts-expect-error missing types
-import timezones from 'google-timezones-json';
-
 import config from '@/config';
 
 import {
+	CLI_DIR,
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
 	inE2ETests,
@@ -229,11 +228,8 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// Returns all the available timezones
-		this.app.get(
-			`/${this.restEndpoint}/options/timezones`,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			ResponseHelper.send(async () => timezones),
-		);
+		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
 
 		// ----------------------------------------
 		// Settings
