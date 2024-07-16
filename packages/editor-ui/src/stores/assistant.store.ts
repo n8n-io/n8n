@@ -1,10 +1,12 @@
 import { chatWithAssistant } from '@/api/assistant';
-import { STORES } from '@/constants';
+import type { VIEWS } from '@/constants';
+import { EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
 import type { ChatRequest, ChatUI } from '@/types/assistant.types';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
+import { useRoute } from 'vue-router';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -17,8 +19,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
+	const route = useRoute();
 
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
+
+	const canShowAssistant = computed(() => {
+		return chatEnabled.value && route.name && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS);
+	});
 
 	function closeChat() {
 		chatWindowOpen.value = false;
@@ -113,6 +120,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWidth,
 		chatMessages,
 		chatWindowOpen,
+		canShowAssistant,
 		closeChat,
 		openChat,
 		updateWindowWidth,

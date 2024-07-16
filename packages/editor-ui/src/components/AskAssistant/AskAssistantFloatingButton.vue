@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import type { VIEWS } from '@/constants';
-import { EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useAssistantStore } from '@/stores/assistant.store';
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
 
 const assistantStore = useAssistantStore();
-const route = useRoute();
 
 const shouldShow = computed(() => {
-	return (
-		route.name &&
-		EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) &&
-		assistantStore.chatEnabled &&
-		!assistantStore.chatWindowOpen
-	);
+	return assistantStore.canShowAssistant && !assistantStore.chatWindowOpen;
 });
 </script>
 
