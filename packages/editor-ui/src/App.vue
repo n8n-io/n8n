@@ -133,7 +133,7 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners banners'
+		'banners banners rightsidebar'
 		'sidebar header rightsidebar'
 		'sidebar content rightsidebar';
 	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
