@@ -57,7 +57,9 @@ export const toCronExpression = (item: TriggerTime): CronExpression => {
 
 	if (item.mode === 'everyX') {
 		if (item.unit === 'minutes') return `${randomSecond} */${item.value} * * * *`;
-		if (item.unit === 'hours') return `${randomSecond} 0 */${item.value} * * *`;
+
+		const randomMinute = randomInt(60);
+		if (item.unit === 'hours') return `${randomSecond} ${randomMinute} */${item.value} * * *`;
 	}
 	if (item.mode === 'everyDay') return `${randomSecond} ${item.minute} ${item.hour} * * *`;
 	if (item.mode === 'everyWeek')
