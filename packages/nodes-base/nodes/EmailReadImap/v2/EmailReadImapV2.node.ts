@@ -634,8 +634,6 @@ export class EmailReadImapV2 implements INodeType {
 					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					await closeFunction();
 					this.emitError(error as Error);
 				});
 				return conn;

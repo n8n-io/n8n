@@ -2,6 +2,8 @@ import { ref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import type { CanvasNodeData } from '@/types';
+import { CanvasConnectionMode } from '@/types';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 describe('useNodeConnections', () => {
 	const defaultConnections = { input: {}, output: {} };
@@ -156,6 +158,89 @@ describe('useNodeConnections', () => {
 			expect(mainOutputConnections.value).toEqual(
 				connections.value.output[NodeConnectionType.Main],
 			);
+		});
+	});
+
+	describe('isValidConnection', () => {
+		const inputs = ref<CanvasNodeData['inputs']>([]);
+		const outputs = ref<CanvasNodeData['outputs']>([]);
+
+		const { isValidConnection } = useNodeConnections({
+			inputs,
+			outputs,
+			connections: defaultConnections,
+		});
+
+		it('returns false if source and target nodes are the same', () => {
+			const connection = {
+				source: 'node1',
+				target: 'node1',
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+			};
+			expect(isValidConnection(connection)).toBe(false);
+		});
+
+		it('returns false if source and target handles are of the same mode', () => {
+			const connection = {
+				source: 'node1',
+				target: 'node2',
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+			};
+			expect(isValidConnection(connection)).toBe(false);
+		});
+
+		it('returns false if source and target handles are of different types', () => {
+			const connection = {
+				source: 'node1',
+				target: 'node2',
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: NodeConnectionType.AiMemory,
+					index: 0,
+				}),
+			};
+			expect(isValidConnection(connection)).toBe(false);
+		});
+
+		it('returns true if source and target nodes are different, modes are different, and types are the same', () => {
+			const connection = {
+				source: 'node1',
+				target: 'node2',
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: NodeConnectionType.Main,
+					index: 0,
+				}),
+			};
+			expect(isValidConnection(connection)).toBe(true);
 		});
 	});
 });
