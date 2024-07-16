@@ -56,6 +56,18 @@ export class LmChatOpenAi implements INodeType {
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName:
+					'When using non OpenAI models, not all models might be chat-compatible or support other features, like tools calling or JSON response format.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					hide: {
+						'/options.baseURL': [{ _cnd: { eq: undefined } }],
+					},
+				},
+			},
+			{
+				displayName:
 					'If using JSON response format, you must include word "json" in the prompt in your chain or agent. Also, make sure to select latest models released post November 2023.',
 				name: 'notice',
 				type: 'notice',
@@ -90,7 +102,11 @@ export class LmChatOpenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
+											// If the baseURL is not set or is set to api.openai.com, include only chat models
+											pass: `={{
+												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
+												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
+											}}`,
 										},
 									},
 									{

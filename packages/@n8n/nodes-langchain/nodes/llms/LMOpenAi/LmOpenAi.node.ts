@@ -198,7 +198,7 @@ export class LmOpenAi implements INodeType {
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
-					if (!model.owned_by?.startsWith('system')) continue;
+					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
 					results.push({
 						name: model.id,
 						value: model.id,
