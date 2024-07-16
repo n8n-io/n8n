@@ -462,24 +462,23 @@ export class ScheduleTrigger implements INodeType {
 					}
 				}
 			}
-		}
-
-		const manualTriggerFunction = async () => {
-			const { interval, cronExpression, recurrence } = rules[0];
-			if (interval.field === 'cronExpression') {
-				try {
-					sendAt(cronExpression);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
-						description: 'More information on how to build them at https://crontab.guru/',
-					});
+			return {};
+		} else {
+			const manualTriggerFunction = async () => {
+				const { interval, cronExpression, recurrence } = rules[0];
+				if (interval.field === 'cronExpression') {
+					try {
+						sendAt(cronExpression);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
+							description: 'More information on how to build them at https://crontab.guru/',
+						});
+					}
 				}
-			}
-			executeTrigger(recurrence);
-		};
+				executeTrigger(recurrence);
+			};
 
-		return {
-			manualTriggerFunction,
-		};
+			return { manualTriggerFunction };
+		}
 	}
 }
