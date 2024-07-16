@@ -53,7 +53,7 @@ export class PrometheusMetricsService {
 	 * Set up metric for n8n version: `n8n_version_info`
 	 */
 	private initN8nVersionMetric() {
-		const n8nVersion = semverParse(N8N_VERSION);
+		const n8nVersion = semverParse(N8N_VERSION ?? '0.0.0');
 
 		if (!n8nVersion) return;
 
@@ -65,8 +65,7 @@ export class PrometheusMetricsService {
 
 		const { version, major, minor, patch } = n8nVersion;
 
-		versionGauge.labels({ version: 'v' + version, major, minor, patch });
-		versionGauge.set(1);
+		versionGauge.labels({ version: 'v' + version, major, minor, patch }).set(1);
 	}
 
 	/**
@@ -148,8 +147,7 @@ export class PrometheusMetricsService {
 				help: `Total number of ${eventName} events.`,
 				labelNames: Object.keys(labels),
 			});
-			counter.labels(labels);
-			counter.inc(0);
+			counter.labels(labels).inc(0);
 			this.counters[eventName] = counter;
 		}
 
