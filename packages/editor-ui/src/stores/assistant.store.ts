@@ -7,15 +7,16 @@ import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
+import { useSettingsStore } from './settings.store';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
 const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatEnabled = ref<boolean>(true); // todo
 	const chatWidth = ref<number>(275);
 
+	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
@@ -26,12 +27,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionId = ref<string | undefined>();
 
 	const canShowAssistant = computed(
-		() => chatEnabled.value && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
+		() =>
+			settings.isAiAssistantEnabled && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const canShowAssistantFloatingButton = computed(
 		() =>
-			chatEnabled.value &&
+			settings.isAiAssistantEnabled &&
 			route.name &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) &&
 			!chatWindowOpen.value,
@@ -169,7 +171,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	return {
-		chatEnabled,
 		chatWidth,
 		chatMessages,
 		chatWindowOpen,
