@@ -3,6 +3,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
@@ -34,28 +35,30 @@ async function applyCodeDiff(index: number) {
 </script>
 
 <template>
-	<n8n-resize-wrapper
-		v-if="assistantStore.canShowAssistant && assistantStore.chatWindowOpen"
-		:supported-directions="['left']"
-		:width="assistantStore.chatWidth"
-		:class="$style.container"
-		@resize="onResizeDebounced"
-	>
-		<div
-			:style="{ width: `${assistantStore.chatWidth}px` }"
-			:class="$style.wrapper"
-			data-test-id="ask-assistant-chat"
+	<SlideTransition>
+		<n8n-resize-wrapper
+			v-if="assistantStore.canShowAssistant && assistantStore.chatWindowOpen"
+			:supported-directions="['left']"
+			:width="assistantStore.chatWidth"
+			:class="$style.container"
+			@resize="onResizeDebounced"
 		>
-			<n8n-ask-assistant-chat
-				:user="user"
-				:messages="assistantStore.chatMessages"
-				@close="() => assistantStore.closeChat()"
-				@message="onUserMessage"
-				@codeReplace="onCodeReplace"
-				@codeUndo="onCodeUndo"
-			/>
-		</div>
-	</n8n-resize-wrapper>
+			<div
+				:style="{ width: `${assistantStore.chatWidth}px` }"
+				:class="$style.wrapper"
+				data-test-id="ask-assistant-chat"
+			>
+				<n8n-ask-assistant-chat
+					:user="user"
+					:messages="assistantStore.chatMessages"
+					@close="() => assistantStore.closeChat()"
+					@message="onUserMessage"
+					@codeReplace="onCodeReplace"
+					@codeUndo="onCodeUndo"
+				/>
+			</div>
+		</n8n-resize-wrapper>
+	</SlideTransition>
 </template>
 
 <style module>
