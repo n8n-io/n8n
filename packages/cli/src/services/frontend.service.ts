@@ -116,9 +116,9 @@ export class FrontendService {
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
-				enabled: config.getEnv('versionNotifications.enabled'),
-				endpoint: config.getEnv('versionNotifications.endpoint'),
-				infoUrl: config.getEnv('versionNotifications.infoUrl'),
+				enabled: this.globalConfig.versionNotifications.enabled,
+				endpoint: this.globalConfig.versionNotifications.endpoint,
+				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
