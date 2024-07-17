@@ -32,6 +32,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			settings.isAiAssistantEnabled && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
+	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
+
 	const canShowAssistantButtons = computed(
 		() =>
 			settings.isAiAssistantEnabled &&
@@ -160,7 +162,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	return {
 		chatWidth,
 		chatMessages,
-		chatWindowOpen,
+		isAssistantOpen,
 		canShowAssistant,
 		canShowAssistantButtons,
 		closeChat,

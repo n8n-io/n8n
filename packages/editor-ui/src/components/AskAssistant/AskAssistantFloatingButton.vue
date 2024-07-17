@@ -6,7 +6,7 @@ const assistantStore = useAssistantStore();
 
 <template>
 	<div
-		v-if="assistantStore.canShowAssistantButtons && !assistantStore.chatWindowOpen"
+		v-if="assistantStore.canShowAssistantButtons && !assistantStore.isAssistantOpen"
 		:class="$style.container"
 	>
 		<n8n-a-i-assistant-button @click="assistantStore.openChat" />

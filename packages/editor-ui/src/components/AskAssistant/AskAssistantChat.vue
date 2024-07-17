@@ -37,7 +37,7 @@ async function applyCodeDiff(index: number) {
 <template>
 	<SlideTransition>
 		<n8n-resize-wrapper
-			v-if="assistantStore.canShowAssistant && assistantStore.chatWindowOpen"
+			v-if="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
 			:class="$style.container"
