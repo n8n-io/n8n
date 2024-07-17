@@ -4,7 +4,6 @@ import { snakeCase } from 'lodash-es';
 import { useSessionStorage } from '@vueuse/core';
 
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
-import { randomInt } from 'n8n-workflow';
 import type { INodeProperties, NodePropertyAction } from 'n8n-workflow';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -15,13 +14,11 @@ import { useToast } from '@/composables/useToast';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
-import { ASK_AI_LOADING_DURATION_MS } from '@/constants';
+const MIN_PROMPT_LENGTH = 10;
 
 const emit = defineEmits<{
-	submit: [code: string];
+	// submit: [code: string];
 	valueChanged: [value: IUpdateInformation];
-	startedLoading: [];
-	finishedLoading: [];
 }>();
 
 const props = defineProps<{
@@ -34,21 +31,16 @@ const nodeTypesStore = useNodeTypesStore();
 
 const i18n = useI18n();
 
-const loadingPhraseIndex = ref(0);
-const loaderProgress = ref(0);
-
 const isLoading = ref(false);
 const prompt = ref('');
 const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => {
 	if (!hasExecutionData.value) return false;
-	if (
-		props.parameter.typeOptions?.buttonInputFieldMaxLength &&
-		prompt.value.length > props.parameter.typeOptions.buttonInputFieldMaxLength
-	) {
-		return false;
-	}
+	if (prompt.value.length < MIN_PROMPT_LENGTH) return false;
+
+	const maxlength = props.parameter.typeOptions?.buttonInputFieldMaxLength;
+	if (maxlength && prompt.value.length > maxlength) return false;
 
 	return true;
 });
@@ -71,20 +63,17 @@ function getParentNodes() {
 }
 
 function startLoading() {
-	emit('startedLoading');
-	loaderProgress.value = 0;
 	isLoading.value = true;
-
-	triggerLoadingChange();
 }
 
 function stopLoading() {
-	loaderProgress.value = 100;
-	emit('finishedLoading');
-
 	setTimeout(() => {
 		isLoading.value = false;
 	}, 200);
+}
+
+function getPath(parameter: string) {
+	return ((props.path ? `${props.path}.` : '') + parameter) as string;
 }
 
 async function onSubmit() {
@@ -102,7 +91,7 @@ async function onSubmit() {
 	}
 
 	emit('valueChanged', {
-		name: ((props.path ? `${props.path}.` : '') + props.parameter.name) as string,
+		name: getPath(props.parameter.name),
 		value: prompt.value,
 	});
 
@@ -130,10 +119,11 @@ async function onSubmit() {
 		switch (type) {
 			case 'updateProperty':
 				//TODO: code editor does not displays updated value, needs to be closed and reopened
-				emit('valueChanged', {
-					name: ((props.path ? `${props.path}.` : '') + target) as string,
+				const updateInformation = {
+					name: getPath(target as string),
 					value: actionResult,
-				});
+				};
+				emit('valueChanged', updateInformation);
 				break;
 			default:
 				return;
@@ -154,42 +144,20 @@ async function onSubmit() {
 		stopLoading();
 	}
 }
-function triggerLoadingChange() {
-	const loadingPhraseUpdateMs = 2000;
-	const loadingPhrasesCount = 8;
-	let start: number | null = null;
-	let lastPhraseChange = 0;
-	const step = (timestamp: number) => {
-		if (!start) start = timestamp;
-
-		// Loading phrase change
-		if (!lastPhraseChange || timestamp - lastPhraseChange >= loadingPhraseUpdateMs) {
-			loadingPhraseIndex.value = randomInt(loadingPhrasesCount);
-			lastPhraseChange = timestamp;
-		}
-
-		// Loader progress change
-		const elapsed = timestamp - start;
-		loaderProgress.value = Math.min((elapsed / ASK_AI_LOADING_DURATION_MS) * 100, 100);
-
-		if (!isLoading.value) return;
-		if (loaderProgress.value < 100 || lastPhraseChange + loadingPhraseUpdateMs > timestamp) {
-			window.requestAnimationFrame(step);
-		}
-	};
-
-	window.requestAnimationFrame(step);
-}
 
 function getSessionStoragePrompt() {
 	const codeNodeName = (useNDVStore().activeNode?.name as string) ?? '';
 	const hashedCode = snakeCase(codeNodeName);
 
-	return useSessionStorage(`ask_ai_prompt__${hashedCode}`, '');
+	return useSessionStorage(`button_prompt__${hashedCode}`, '');
 }
 
 function onPromptInput(inputValue: string) {
 	getSessionStoragePrompt().value = inputValue;
+	emit('valueChanged', {
+		name: getPath(props.parameter.name),
+		value: inputValue,
+	});
 }
 
 onMounted(() => {
@@ -248,10 +216,10 @@ onMounted(() => {
 						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
 					/>
 					<span
-						v-else-if="prompt.length < 15"
+						v-else-if="prompt.length < MIN_PROMPT_LENGTH"
 						v-text="
 							i18n.baseText('codeNodeEditor.askAi.promptTooShort', {
-								interpolate: { minLength: '15' },
+								interpolate: { minLength: String(MIN_PROMPT_LENGTH) },
 							})
 						"
 					/>
@@ -260,24 +228,6 @@ onMounted(() => {
 		</div>
 	</div>
 </template>
-
-<style scoped>
-.text-fade-in-out-enter-active,
-.text-fade-in-out-leave-active {
-	transition:
-		opacity 0.5s ease-in-out,
-		transform 0.5s ease-in-out;
-}
-.text-fade-in-out-enter,
-.text-fade-in-out-leave-to {
-	opacity: 0;
-	transform: translateX(10px);
-}
-.text-fade-in-out-enter-to,
-.text-fade-in-out-leave {
-	opacity: 1;
-}
-</style>
 
 <style module lang="scss">
 .input * {
@@ -295,20 +245,8 @@ onMounted(() => {
 	color: var(--color-text-dark);
 	padding: var(--spacing-2xs) 0 0;
 }
-.loader {
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-dark);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing-2xs);
-}
 .inputContainer {
 	position: relative;
-}
-.help {
-	text-decoration: underline;
-	margin-left: auto;
-	color: #909399;
 }
 .meta {
 	display: flex;

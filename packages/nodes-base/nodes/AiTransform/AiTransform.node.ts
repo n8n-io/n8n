@@ -57,30 +57,30 @@ export class AiTransform implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Code',
-				name: 'jsCode',
-				type: 'string',
-				default: '',
-				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-				typeOptions: {
-					rows: 5,
-				},
-			},
 			// {
 			// 	displayName: 'Code',
 			// 	name: 'jsCode',
 			// 	type: 'string',
-			// 	typeOptions: {
-			// 		// editor: 'codeNodeEditor',
-			// 		// editorLanguage: 'javaScript',
-			// 		editor: 'jsEditor',
-			// 		editorIsReadOnly: true,
-			// 	},
 			// 	default: '',
-			// 	noDataExpression: true,
 			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+			// 	typeOptions: {
+			// 		rows: 5,
+			// 	},
 			// },
+			{
+				displayName: 'Code',
+				name: 'jsCode',
+				type: 'string',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+					// editor: 'jsEditor',
+					editorIsReadOnly: true,
+				},
+				default: '',
+				noDataExpression: true,
+				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+			},
 		],
 	};
 

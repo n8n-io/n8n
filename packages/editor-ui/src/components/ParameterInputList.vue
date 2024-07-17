@@ -178,6 +178,7 @@ import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCo
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
+import ButtonParameter from '@/components/ButtonParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -192,8 +193,6 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
-
-import ButtonParameter from './ButtonParameter.vue';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
