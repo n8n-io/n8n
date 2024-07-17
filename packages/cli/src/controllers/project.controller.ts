@@ -198,7 +198,7 @@ export class ProjectController {
 			this.eventRelay.emit('team-project-updated', {
 				userId: req.user.id,
 				role: req.user.role,
-				members: req.body.relations.map(({ userId, role }) => ({ userId, role })),
+				members: req.body.relations,
 				projectId: req.params.projectId,
 			});
 		}
