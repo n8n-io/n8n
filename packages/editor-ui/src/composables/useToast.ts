@@ -21,6 +21,7 @@ const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
 	position: 'bottom-right',
 	zIndex: 3000, // above NDV and chat window
+	offset: 64,
 	// todo find a way to order the
 };
 
