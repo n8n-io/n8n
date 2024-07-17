@@ -129,6 +129,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			});
 		} catch (e) {
 			// todo
+			console.log(e);
 		}
 	}
 
