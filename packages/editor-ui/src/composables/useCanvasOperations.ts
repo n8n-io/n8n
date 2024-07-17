@@ -1403,6 +1403,7 @@ export function useCanvasOperations({
 		editableWorkflowObject,
 		triggerNodes,
 		addNodes,
+		addNode,
 		updateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,

@@ -61,13 +61,112 @@ describe('useCanvasOperations', () => {
 		const workflow = mock<IWorkflowDb>({
 			id: workflowId,
 			nodes: [],
+			connections: {},
 			tags: [],
 			usedCredentials: [],
 		});
-		workflowsStore.workflowsById[workflowId] = workflow;
+
+		workflowsStore.resetWorkflow();
+		workflowsStore.resetState();
 		await workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+	});
+
+	describe('addNode', () => {
+		it('should throw error when node type does not exist', async () => {
+			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+
+			await expect(canvasOperations.addNode({ type: 'nonexistent' })).rejects.toThrow();
+		});
+
+		it('should create node with default version when version is undefined', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				name: 'example',
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(1);
+		});
+
+		it('should create node with last version when version is an array', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(2);
+		});
+
+		it('should create node with default position when position is not provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+
+			expect(result.position).toEqual([0, 0]);
+		});
+
+		it('should create node with provided position when position is provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+				position: [20, 20],
+			});
+
+			expect(result.position).toEqual([20, 20]);
+		});
+
+		it('should create node with default credentials when only one credential is available', async () => {
+			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
+			]);
+
+			credentialsStore.addCredentials([credential]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credential,
+			]);
+
+			const result = await canvasOperations.addNode({
+				type: nodeTypeName,
+			});
+
+			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
+		});
+
+		it('should not assign credentials when multiple credentials are available', async () => {
+			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
+			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
+				}),
+			]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credentialA,
+				credentialB,
+			]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+			expect(result.credentials).toBeUndefined();
+		});
 	});
 
 	describe('updateNodePosition', () => {
