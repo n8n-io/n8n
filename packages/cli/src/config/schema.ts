@@ -679,27 +679,6 @@ export const schema = {
 		},
 	},
 
-	versionNotifications: {
-		enabled: {
-			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
-		},
-		endpoint: {
-			doc: 'Endpoint to retrieve version information from.',
-			format: String,
-			default: 'https://api.n8n.io/api/versions/',
-			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
-		},
-		infoUrl: {
-			doc: "Url in New Versions Panel with more information on updating one's instance.",
-			format: String,
-			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
-			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
-		},
-	},
-
 	templates: {
 		enabled: {
 			doc: 'Whether templates feature is enabled to load workflow templates.',
