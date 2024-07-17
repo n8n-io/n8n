@@ -160,7 +160,9 @@ export class FrontendService {
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
-			aiAssistantEnabled: config.getEnv('aiAssistant.enabled'),
+			aiAssistant: {
+				enabled: config.getEnv('aiAssistant.enabled'),
+			},
 			templates: {
 				enabled: config.getEnv('templates.enabled'),
 				host: config.getEnv('templates.host'),
