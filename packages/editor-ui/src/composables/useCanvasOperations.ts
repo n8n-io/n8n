@@ -3,8 +3,8 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { CanvasConnection, CanvasConnectionMode } from '@/types';
-import type { CanvasConnectionCreateData, CanvasNode } from '@/types';
+import { CanvasConnectionMode } from '@/types';
+import type { CanvasConnectionCreateData, CanvasNode, CanvasConnection } from '@/types';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
@@ -524,7 +524,7 @@ export function useCanvasOperations({
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = resolveNodeVersion(nodeTypeDescription);
-		const position = node.position ?? resolveNodePosition(node as INodeUi, nodeTypeDescription);
+		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription);
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 

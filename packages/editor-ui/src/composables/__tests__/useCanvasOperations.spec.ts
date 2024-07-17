@@ -108,7 +108,7 @@ describe('useCanvasOperations', () => {
 				type: 'type',
 			});
 
-			expect(result.position).toEqual([0, 0]);
+			expect(result.position).toEqual([460, 460]); // Default last click position
 		});
 
 		it('should create node with provided position when position is provided', async () => {
