@@ -2,11 +2,11 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class VersionNotificationsConfig {
-	/** Whether feature is enabled to request notifications about new versions and security updates */
+	/** Whether to request notifications about new n8n versions */
 	@Env('N8N_VERSION_NOTIFICATIONS_ENABLED')
 	readonly enabled: boolean = true;
 
-	/** Endpoint to retrieve version information from */
+	/** Endpoint to retrieve n8n version information from */
 	@Env('N8N_VERSION_NOTIFICATIONS_ENDPOINT')
 	readonly endpoint: string = 'https://api.n8n.io/api/versions/';
 
