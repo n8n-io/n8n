@@ -17,7 +17,7 @@ const props = defineProps<{
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: ResourceType;
-		resourceTypeText: string;
+		resourceTypeLabel: string;
 		projectId: string;
 		projectName: string;
 	};
@@ -57,7 +57,7 @@ const confirm = async () => {
 		toast.showToast({
 			title: i18n.baseText('projects.move.resource.success.title', {
 				interpolate: {
-					resourceType: props.data.resourceTypeText,
+					resourceTypeLabel: props.data.resourceTypeLabel,
 				},
 			}),
 			message: h(ProjectMoveSuccessToastMessage, {
@@ -66,7 +66,7 @@ const confirm = async () => {
 						? VIEWS.PROJECTS_WORKFLOWS
 						: VIEWS.PROJECTS_CREDENTIALS,
 				resource: props.data.resource,
-				resourceTypeText: props.data.resourceTypeText,
+				resourceTypeLabel: props.data.resourceTypeLabel,
 				projectId: props.data.projectId,
 				projectName: props.data.projectName,
 			}),
@@ -77,7 +77,7 @@ const confirm = async () => {
 			error.message,
 			i18n.baseText('projects.move.resource.error.title', {
 				interpolate: {
-					resourceType: props.data.resourceTypeText,
+					resourceTypeLabel: props.data.resourceTypeLabel,
 					resourceName: props.data.resource.name,
 				},
 			}),
@@ -97,7 +97,7 @@ const confirm = async () => {
 			<N8nCheckbox v-model="checks[1]">
 				<N8nText>
 					<i18n-t keypath="projects.move.resource.confirm.modal.label">
-						<template #resourceType>{{ props.data.resourceTypeText }}</template>
+						<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
 						<template #numberOfUsers>{{
 							i18n.baseText('projects.move.resource.confirm.modal.numberOfUsers', {
 								interpolate: {

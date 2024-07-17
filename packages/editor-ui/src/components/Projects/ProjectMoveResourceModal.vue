@@ -15,7 +15,7 @@ const props = defineProps<{
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
 		resourceType: ResourceType;
-		resourceTypeText: string;
+		resourceTypeLabel: string;
 	};
 }>();
 
@@ -48,7 +48,7 @@ const next = () => {
 		data: {
 			resource: props.data.resource,
 			resourceType: props.data.resourceType,
-			resourceTypeText: props.data.resourceTypeText,
+			resourceTypeLabel: props.data.resourceTypeLabel,
 			projectId: projectId.value,
 			projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
 		},
@@ -68,7 +68,7 @@ onMounted(() => {
 			<N8nHeading tag="h2" size="xlarge" class="mb-m">
 				{{
 					i18n.baseText('projects.move.resource.modal.title', {
-						interpolate: { resourceType: props.data.resourceTypeText },
+						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
 					})
 				}}
 			</N8nHeading>
@@ -78,7 +78,7 @@ onMounted(() => {
 						><strong>{{ props.data.resource.name }}</strong></template
 					>
 					<template #resourceHomeProjectName>{{ processedName }}</template>
-					<template #resourceType>{{ props.data.resourceTypeText }}</template>
+					<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
 				</i18n-t>
 			</N8nText>
 		</template>

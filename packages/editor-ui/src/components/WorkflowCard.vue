@@ -73,7 +73,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 
-const resourceTypeText = computed(() => locale.baseText('generic.workflow').toLowerCase());
+const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
 const actions = computed(() => {
@@ -225,7 +225,7 @@ function moveResource() {
 		data: {
 			resource: props.data,
 			resourceType: ResourceType.Workflow,
-			resourceTypeText: resourceTypeText.value,
+			resourceTypeLabel: resourceTypeLabel.value,
 		},
 	});
 }
@@ -267,7 +267,7 @@ function moveResource() {
 				<ProjectCardBadge
 					:resource="data"
 					:resource-type="ResourceType.Workflow"
-					:resource-type-text="resourceTypeText"
+					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
 				<WorkflowActivator

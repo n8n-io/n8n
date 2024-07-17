@@ -10,7 +10,7 @@ import { ProjectTypes } from '@/types/projects.types';
 type Props = {
 	resource: IWorkflowDb | ICredentialsResponse;
 	resourceType: ResourceType;
-	resourceTypeText: string;
+	resourceTypeLabel: string;
 	personalProject: Project | null;
 };
 
@@ -75,27 +75,27 @@ const badgeTooltip = computed(() => {
 		case ProjectState.SharedOwned:
 			return i18n.baseText('projects.badge.tooltip.sharedOwned', {
 				interpolate: {
-					resourceType: props.resourceTypeText,
+					resourceTypeLabel: props.resourceTypeLabel,
 				},
 			});
 		case ProjectState.SharedPersonal:
 			return i18n.baseText('projects.badge.tooltip.sharedPersonal', {
 				interpolate: {
-					resourceType: props.resourceTypeText,
+					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
 				},
 			});
 		case ProjectState.Personal:
 			return i18n.baseText('projects.badge.tooltip.personal', {
 				interpolate: {
-					resourceType: props.resourceTypeText,
+					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
 				},
 			});
 		case ProjectState.Team:
 			return i18n.baseText('projects.badge.tooltip.team', {
 				interpolate: {
-					resourceType: props.resourceTypeText,
+					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
 				},
 			});

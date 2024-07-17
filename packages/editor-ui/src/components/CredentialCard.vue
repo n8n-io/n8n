@@ -46,7 +46,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
-const resourceTypeText = computed(() => locale.baseText('generic.credential').toLowerCase());
+const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
@@ -124,7 +124,7 @@ function moveResource() {
 		data: {
 			resource: props.data,
 			resourceType: ResourceType.Credential,
-			resourceTypeText: resourceTypeText.value,
+			resourceTypeLabel: resourceTypeLabel.value,
 		},
 	});
 }
@@ -156,7 +156,7 @@ function moveResource() {
 				<ProjectCardBadge
 					:resource="data"
 					:resource-type="ResourceType.Credential"
-					:resource-type-text="resourceTypeText"
+					:resource-type-label="resourceTypeLabel"
 					:personal-project="projectsStore.personalProject"
 				/>
 				<n8n-action-toggle
