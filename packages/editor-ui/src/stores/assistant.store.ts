@@ -1,7 +1,8 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
 import { VIEWS } from '@/constants';
 import { EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
-import type { ChatRequest, ChatUI } from '@/types/assistant.types';
+import type { ChatRequest } from '@/types/assistant.types';
+import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRootStore } from './root.store';
@@ -46,27 +47,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 	}
 
-	function addTextMessage({
-		role,
-		content,
-		title,
-		quickReplies,
-	}: Pick<ChatUI.TextMessage, 'role' | 'content' | 'title' | 'quickReplies'>) {
-		chatMessages.value.push({
-			type: 'text',
-			role,
-			content,
-			title,
-			quickReplies,
-		});
-	}
-
 	function addAssistantMessage(assistantMessage: ChatRequest.MessageResponse) {
 		if (assistantMessage.type === 'assistant-message') {
-			addTextMessage({
+			chatMessages.value.push({
+				type: 'text',
 				role: 'assistant',
 				content: assistantMessage.content,
 				title: assistantMessage.title,
+				quickReplies: assistantMessage.quickReplies,
 			});
 		} else if (assistantMessage.type === 'code-diff') {
 			chatMessages.value.push({
@@ -75,10 +63,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				description: assistantMessage.description,
 				codeDiff: assistantMessage.codeDiff,
 				suggestionId: assistantMessage.suggestionId,
+				quickReplies: assistantMessage.quickReplies,
 			});
 		}
-		// todo
-		// quickReplies: assistantMessage.quickReplies,
 	}
 
 	function updateWindowWidth(width: number) {
@@ -130,7 +117,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function sendMessage(
 		message: Pick<ChatRequest.UserChatMessage, 'content' | 'quickReplyType'>,
 	) {
-		addTextMessage({ content: message.content, role: 'user' });
+		chatMessages.value.push({ content: message.content, role: 'user', type: 'text' });
 
 		try {
 			await chatWithAssistant(rootStore.restApiContext, {

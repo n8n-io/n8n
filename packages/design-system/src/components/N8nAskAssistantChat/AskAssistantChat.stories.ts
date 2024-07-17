@@ -1,6 +1,6 @@
 import AskAssistantChat from './AskAssistantChat.vue';
 import type { StoryFn } from '@storybook/vue3';
-import type { ChatUI } from './types';
+import type { ChatUI } from '../../types/assistant';
 
 export default {
 	title: 'Atoms/AskAssistantChat',
@@ -67,6 +67,7 @@ Chat.args = {
 	+They both may be called deep and profound.
 	+Deeper and more profound,
 	+The door of all subtleties!`,
+			suggestionId: 'test',
 			quickReplies: [
 				{
 					type: 'new-suggestion',
@@ -110,6 +111,7 @@ Chat.args = {
 					label: 'All good',
 				},
 			],
+			suggestionId: 'test',
 		},
 	]),
 };

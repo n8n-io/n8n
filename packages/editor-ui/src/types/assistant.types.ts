@@ -1,35 +1,35 @@
 import type { Schema } from '@/Interface';
 import type { INode } from 'n8n-workflow';
 
-export namespace ChatUI {
-	interface WithQuickReplies {
-		quickReplies?: Array<{
-			type: string;
-			label: string;
-		}>;
-	}
+// export namespace ChatUI {
+// 	interface WithQuickReplies {
+// 		quickReplies?: Array<{
+// 			type: string;
+// 			label: string;
+// 		}>;
+// 	}
 
-	export interface TextMessage extends WithQuickReplies {
-		role: 'assistant' | 'user';
-		type: 'text';
-		title?: string;
-		content: string;
-	}
+// 	export interface TextMessage extends WithQuickReplies {
+// 		role: 'assistant' | 'user';
+// 		type: 'text';
+// 		title?: string;
+// 		content: string;
+// 	}
 
-	export interface CodeDiffMessage extends WithQuickReplies {
-		role: 'assistant';
-		type: 'code-diff';
-		description: string;
-		codeDiff: string;
-		suggestionId: string;
-		replacing?: boolean;
-		replaced?: boolean;
-		error?: boolean;
-	}
+// 	export interface CodeDiffMessage extends WithQuickReplies {
+// 		role: 'assistant';
+// 		type: 'code-diff';
+// 		description: string;
+// 		codeDiff: string;
+// 		suggestionId: string;
+// 		replacing?: boolean;
+// 		replaced?: boolean;
+// 		error?: boolean;
+// 	}
 
-	// todo add quick replies here
-	export type AssistantMessage = TextMessage | CodeDiffMessage;
-}
+// 	// todo add quick replies here
+// 	export type AssistantMessage = TextMessage | CodeDiffMessage;
+// }
 
 export namespace ChatRequest {
 	interface NodeExecutionSchema {
@@ -86,7 +86,7 @@ export namespace ChatRequest {
 	}
 
 	interface QuickReplyOption {
-		message: string;
+		label: string;
 		type: string;
 		isFeedback?: boolean;
 	}

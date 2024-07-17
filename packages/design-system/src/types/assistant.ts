@@ -1,5 +1,5 @@
 export namespace ChatUI {
-	interface TextMessage {
+	export interface TextMessage {
 		role: 'assistant' | 'user';
 		type: 'text';
 		title?: string;
@@ -16,6 +16,7 @@ export namespace ChatUI {
 		replaced?: boolean;
 		error?: boolean;
 		streaming?: boolean;
+		suggestionId: string;
 	}
 
 	interface EndSessionMessage {
