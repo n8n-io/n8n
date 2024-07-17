@@ -11,6 +11,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
+  apiTemplateIoApiRequestV2,
 	downloadImage,
 	loadResource,
 	validateJSON,
@@ -507,6 +508,7 @@ export class ApiTemplateIo implements INodeType {
 
 						const qs = {
 							template_id: this.getNodeParameter('pdfTemplateId', i),
+              cloud_storage: '0',
 						};
 
 						let data;
@@ -536,7 +538,7 @@ export class ApiTemplateIo implements INodeType {
 							}
 						}
 
-						responseData = await apiTemplateIoApiRequest.call(
+						responseData = await apiTemplateIoApiRequestV2.call(
 							this,
 							'POST',
 							'/create',

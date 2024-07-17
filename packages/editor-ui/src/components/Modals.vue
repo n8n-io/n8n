@@ -21,6 +21,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+  WORKFLOW_WITH_VERSION_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -33,6 +34,7 @@ import {
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
+import WorkflowWithVersionModalKey from '@/components/WorkflowWithVersion.vue';
 import ChatEmbedModal from '@/components/ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from '@/components/CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from '@/components/CommunityPackageInstallModal.vue';
@@ -84,6 +86,10 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 
 		<ModalRoot :name="CHAT_EMBED_MODAL_KEY">
 			<ChatEmbedModal />
+		</ModalRoot>
+
+    <ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
+			<WorkflowWithVersionModalKey />
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">

@@ -11,6 +11,7 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+  WORKFLOW_WITH_VERSION_MODAL_KEY,
 } from '@/constants';
 import type { PermissionsMap } from '@/permissions';
 import type { WorkflowScope } from '@n8n/permissions';
@@ -157,11 +158,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 				label: locale.baseText('menuActions.importFromUrl'),
 				disabled: !onWorkflowPage.value || onExecutionsTab.value,
 			},
-			{
-				id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-				label: locale.baseText('menuActions.importFromFile'),
-				disabled: !onWorkflowPage.value || onExecutionsTab.value,
-			},
 		);
 	}
 
@@ -203,6 +199,14 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 			divided: true,
 		});
 	}
+
+  if (!props.readOnly) {
+    actions.push({
+      id: WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS,
+      label: locale.baseText('menuActions.viewWorkflowVersions'),
+      disabled: !onWorkflowPage.value || onExecutionsTab.value,
+    });
+  }
 
 	return actions;
 });
@@ -574,6 +578,13 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			await router.push({ name: VIEWS.WORKFLOWS });
 			break;
 		}
+
+    case WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS: {
+      // const workflowData = await this.getWorkflowWithVersion(this.currentWorkflowId);
+      uiStore.openModal(WORKFLOW_WITH_VERSION_MODAL_KEY);
+      break;
+    }
+
 		default:
 			break;
 	}

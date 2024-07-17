@@ -52,6 +52,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	): Promise<StatisticsUpsertResult> {
 		const dbType = this.globalConfig.database.type;
 		const { tableName } = this.metadata;
+    const schemaPrefix = this.globalConfig.database.postgresdb.schema;
 		try {
 			if (dbType === 'sqlite') {
 				await this.query(
@@ -74,7 +75,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				return counter?.count === 1 ? 'insert' : 'failed';
 			} else if (dbType === 'postgresdb') {
 				const queryResult = (await this.query(
-					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
+					`INSERT INTO "${schemaPrefix}"."${tableName}" ("count", "name", "workflowId", "latestEvent")
 					VALUES (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)
 					ON CONFLICT ("name", "workflowId")
 					DO UPDATE SET "count" = "${tableName}"."count" + 1, "latestEvent" = CURRENT_TIMESTAMP

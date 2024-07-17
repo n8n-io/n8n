@@ -56,11 +56,11 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	},
 	ldap: {
 		loginLabel: '',
-		loginEnabled: false,
+		loginEnabled: true,
 	},
 	saml: {
 		loginLabel: '',
-		loginEnabled: false,
+		loginEnabled: true,
 	},
 	mfa: {
 		enabled: false,

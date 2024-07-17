@@ -15,6 +15,7 @@ import { subscribers } from './subscribers';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
+import { parsePostgresUrl } from '@/ParserHelper';
 
 const getCommonOptions = () => {
 	const { tablePrefix: entityPrefix, logging: loggingConfig } =
@@ -42,17 +43,45 @@ const getCommonOptions = () => {
 	};
 };
 
+// export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => {
+// 	const globalConfig = Container.get(GlobalConfig);
+// 	const dbConfig = globalConfig.database[dbType];
+// 	return {
+// 		database: dbConfig.database,
+// 		host: dbConfig.host,
+// 		port: dbConfig.port,
+// 		username: dbConfig.user,
+// 		password: dbConfig.password,
+// 	};
+// };
+
 export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => {
-	const globalConfig = Container.get(GlobalConfig);
-	const dbConfig = globalConfig.database[dbType];
-	return {
-		database: dbConfig.database,
-		host: dbConfig.host,
-		port: dbConfig.port,
-		username: dbConfig.user,
-		password: dbConfig.password,
-	};
-};
+  const globalConfig = Container.get(GlobalConfig);
+  const dbConfig = globalConfig.database[dbType];
+
+	let connectionDetails;
+	if (dbType == 'postgresdb') {
+		connectionDetails = parsePostgresUrl();
+	}
+	if (!connectionDetails) {
+		connectionDetails = {
+
+      database: dbConfig.database,
+			host: dbConfig.host,
+			port: dbConfig.port,
+			username: dbConfig.user,
+			password: dbConfig.password,
+
+			// database: config.getEnv(`database.${dbType}.database`),
+			// host: config.getEnv(`database.${dbType}.host`),
+			// port: config.getEnv(`database.${dbType}.port`),
+			// username: config.getEnv(`database.${dbType}.user`),
+			// password: config.getEnv(`database.${dbType}.password`),
+
+		}
+	}
+	return connectionDetails;
+}
 
 const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledConnectionOptions => {
 	const globalConfig = Container.get(GlobalConfig);
@@ -87,14 +116,16 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 	} = postgresConfig;
 
 	let ssl: TlsOptions | boolean = postgresConfig.ssl.enabled;
-	if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-		ssl = {
-			ca: sslCa || undefined,
-			cert: sslCert || undefined,
-			key: sslKey || undefined,
-			rejectUnauthorized: sslRejectUnauthorized,
-		};
-	}
+  if (!isPostgresRunningLocally()) {
+    if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+      ssl = {
+        ca: sslCa || undefined,
+        cert: sslCert || undefined,
+        key: sslKey || undefined,
+        rejectUnauthorized: sslRejectUnauthorized,
+      };
+    }
+  }
 
 	return {
 		type: 'postgres',
@@ -129,4 +160,19 @@ export function getConnectionOptions(): DataSourceOptions {
 		default:
 			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
+}
+
+function isPostgresRunningLocally(): Boolean {
+	let host: String | undefined;
+	const postgresConfig = parsePostgresUrl();
+
+  const globalConfig = Container.get(GlobalConfig);
+  const dbConfig = globalConfig.database['postgresdb'];
+
+	if (postgresConfig != null) {
+		host = postgresConfig.host;
+	} else {
+    host = dbConfig.host;
+	}
+	return host === ('localhost' || '127.0.0.1');
 }

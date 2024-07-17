@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import config from '@/config';
 import { Logger } from '@/Logger';
+import { parseRedisUrl } from '@/ParserHelper';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './RedisServiceBaseClasses';
@@ -57,7 +58,7 @@ export class RedisClientService {
 	}) {
 		const options = this.getOptions({ extraOptions });
 
-		const { host, port } = config.getEnv('queue.bull.redis');
+		const { host, port } = parseRedisUrl() || config.getEnv('queue.bull.redis');
 
 		options.host = host;
 		options.port = port;
@@ -76,6 +77,11 @@ export class RedisClientService {
 	}) {
 		const options = this.getOptions({ extraOptions });
 
+    const { host, port } = parseRedisUrl() || config.getEnv('queue.bull.redis');
+
+    options.host = host;
+		options.port = port;
+
 		const clusterNodes = this.clusterNodes();
 
 		this.logger.debug('[Redis] Initializing cluster client', { type, clusterNodes });
@@ -87,7 +93,11 @@ export class RedisClientService {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls } = config.getEnv('queue.bull.redis');
+		// const { username, password, db, tls } = config.getEnv('queue.bull.redis');
+    const { host, port, username, password, db, tls }: RedisOptions =
+		parseRedisUrl() || config.getEnv('queue.bull.redis');
+
+    this.logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -100,6 +110,8 @@ export class RedisClientService {
 		 * - https://github.com/OptimalBits/bull/pull/2185
 		 */
 		const options: RedisOptions = {
+      host,
+      port,
 			username,
 			password,
 			db,
@@ -109,7 +121,10 @@ export class RedisClientService {
 			...extraOptions,
 		};
 
-		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+    // Maybe try host !== 'localhost' || host !== '127.0.0.
+		if (tls && host !== 'localhost') {
+      options.tls = {}; // enable TLS with default Node.js settings
+    }
 
 		return options;
 	}

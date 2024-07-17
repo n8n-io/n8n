@@ -26,7 +26,7 @@ const ENFORCE_MIN_NODE_VERSION = process.env.E2E_TESTS !== 'true';
 
 if (
 	(ENFORCE_MIN_NODE_VERSION && !gte(nodeVersion, MINIMUM_SUPPORTED_NODE_VERSION)) ||
-	![18, 20, 22].includes(major(nodeVersion))
+	![16, 18, 19, 20, 22].includes(major(nodeVersion))
 ) {
 	console.log(`
 	Your Node.js version ${nodeVersion} is currently not supported by n8n.

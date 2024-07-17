@@ -424,6 +424,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow;
 	}
 
+  async function fetchWorkflowWithVersion(id: string): Promise<IWorkflowDb[]> {
+    const rootStore = useRootStore();
+    const workflows = await workflowsApi.getWorkflowWithVersion(rootStore.restApiContext, id);
+    return workflows;
+  }
+
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 		let workflowData = {
 			name: '',
@@ -1588,6 +1594,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		fetchAllWorkflows,
 		fetchWorkflow,
+    fetchWorkflowWithVersion,
 		getNewWorkflowData,
 		resetWorkflow,
 		resetState,

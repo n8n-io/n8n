@@ -13,6 +13,8 @@ LABEL org.opencontainers.image.version=${N8N_VERSION}
 ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=stable
+ENV NODE_FUNCTION_ALLOW_EXTERNAL=*
+ENV NODE_FUNCTION_ALLOW_BUILTIN=*
 RUN set -eux; \
 	npm install -g --omit=dev n8n@${N8N_VERSION} --ignore-scripts && \
 	npm rebuild --prefix=/usr/local/lib/node_modules/n8n sqlite3 && \

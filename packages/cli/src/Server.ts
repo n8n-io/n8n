@@ -12,6 +12,8 @@ import type { IN8nUISettings } from 'n8n-workflow';
 
 import config from '@/config';
 
+import { WorkflowsWithVersionController } from './workflowsWithVersion/workflowsWithVersion.controller';
+
 import {
 	CLI_DIR,
 	EDITOR_UI_DIST_DIR,
@@ -135,6 +137,11 @@ export class Server extends AbstractServer {
 		if (!config.getEnv('endpoints.disableUi')) {
 			await import('@/controllers/cta.controller');
 		}
+
+    // ----------------------------------------
+		// Workflow with versions
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/workflows-with-versions`, WorkflowsWithVersionController);
 
 		// ----------------------------------------
 		// SAML

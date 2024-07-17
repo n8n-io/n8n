@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
+    "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=12288\" vite build",
     "typecheck": "vue-tsc --noEmit",
     "dev": "pnpm serve",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
@@ -69,6 +69,7 @@
     "vue-agile": "^2.0.0",
     "vue-chartjs": "^5.2.0",
     "vue-i18n": "^9.2.2",
+    "vue-json-compare": "^3.0.0",
     "vue-json-pretty": "2.2.4",
     "vue-markdown-render": "^2.0.1",
     "vue-router": "^4.2.2",

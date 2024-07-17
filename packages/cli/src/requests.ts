@@ -481,6 +481,15 @@ export declare namespace VariablesRequest {
 	type Delete = Get;
 }
 
+// ----------------------------------
+//           /variables
+// ----------------------------------
+//
+export declare namespace WorkflowWithVersionRequest {
+	type GetAll = AuthenticatedRequest;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { versionId?: string }>;
+}
+
 export declare namespace ExternalSecretsRequest {
 	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
 		icon: string;

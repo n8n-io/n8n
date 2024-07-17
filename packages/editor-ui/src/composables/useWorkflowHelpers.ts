@@ -1031,6 +1031,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		});
 	}
 
+  async function getWorkflowWithVersion(id: string) {
+    const data: IWorkflowDb = await workflowsStore.fetchWorkflowWithVersion(id);
+  }
+
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsStore.workflowsById[workflowId];
 
@@ -1092,5 +1096,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
 		initState,
+    getWorkflowWithVersion,
 	};
 }
