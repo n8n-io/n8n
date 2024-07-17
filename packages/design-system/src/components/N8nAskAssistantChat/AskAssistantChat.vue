@@ -4,7 +4,7 @@ import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
 import CodeDiff from './CodeDiff.vue';
-import type { AssistantMessage, QuickReply } from './types';
+import type { ChatUI } from './types';
 
 import Markdown from 'markdown-it';
 
@@ -17,7 +17,7 @@ interface Props {
 		firstName: string;
 		lastName: string;
 	};
-	messages?: AssistantMessage[];
+	messages?: ChatUI.AssistantMessage[];
 }
 
 const emit = defineEmits<{
@@ -33,7 +33,7 @@ const props = defineProps<Props>();
 
 const textInputValue = ref<string>('');
 
-function onQuickReply(opt: QuickReply) {
+function onQuickReply(opt: ChatUI.QuickReply) {
 	emit('message', opt.label, opt.type);
 }
 
@@ -84,7 +84,11 @@ function onSendMessage() {
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
 						<span v-if="message.role === 'user'">{{ message.content }}</span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span v-else v-html="md.render(message.content)"></span>
+						<span v-else :class="$style.assistantText" v-html="md.render(message.content)"></span>
+						<span v-if="message.streaming" class="blinking-cursor"></span>
+					</div>
+					<div v-else-if="message.type === 'error'" :class="$style.error">
+						<span>⚠️ {{ message.content }}</span>
 					</div>
 					<div v-else-if="message.type === 'code-diff'">
 						<CodeDiff
@@ -99,7 +103,7 @@ function onSendMessage() {
 					</div>
 
 					<div
-						v-if="message.quickReplies && i === props.messages?.length - 1"
+						v-if="'quickReplies' in message && i === props.messages?.length - 1"
 						:class="$style.quickReplies"
 					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
@@ -295,4 +299,88 @@ function onSendMessage() {
 	color: #d9dee8;
 	cursor: pointer;
 }
+
+.error {
+	color: var(--color-danger);
+}
+
+.assistantText {
+	display: inline;
+
+	p {
+		display: inline;
+	}
+}
+</style>
+
+<style lang="scss">
+.blinking-cursor {
+	display: inline-block;
+	height: 16px;
+	width: 6px;
+	background-color: #7e8186;
+	border-radius: 2px;
+	margin-left: 4px;
+
+	-webkit-animation: 1s blink step-end infinite;
+	// -moz-animation: 1s blink step-end infinite;
+	// -ms-animation: 1s blink step-end infinite;
+	// -o-animation: 1s blink step-end infinite;
+	animation: 1s blink step-end infinite;
+}
+
+.blinking-animation {
+	-webkit-animation: 1s blink step-end infinite;
+	// -moz-animation: 1s blink step-end infinite;
+	// -ms-animation: 1s blink step-end infinite;
+	// -o-animation: 1s blink step-end infinite;
+	animation: 1s blink step-end infinite;
+}
+
+@keyframes blink {
+	from,
+	to {
+		background-color: transparent;
+	}
+	50% {
+		background-color: #7e8186;
+	}
+}
+
+// @-moz-keyframes blink {
+//   from, to {
+//     background-color: transparent;
+//   }
+//   50% {
+//     background-color: #7E8186;
+//   }
+// }
+
+@-webkit-keyframes blink {
+	from,
+	to {
+		background-color: transparent;
+	}
+	50% {
+		background-color: #7e8186;
+	}
+}
+
+// @-ms-keyframes "blink" {
+//   from, to {
+//     background-color: transparent;
+//   }
+//   50% {
+//     background-color: #7E8186;
+//   }
+// }
+
+// @-o-keyframes "blink" {
+//   from, to {
+//     background-color: transparent;
+//   }
+//   50% {
+//     background-color: #7E8186;
+//   }
+// }
 </style>

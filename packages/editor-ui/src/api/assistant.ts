@@ -6,6 +6,12 @@ export async function chatWithAssistant(
 	ctx: IRestApiContext,
 	payload: ChatRequest.RequestPayload,
 ): Promise<ChatRequest.ResponsePayload> {
+	// return {
+	// 	sessionId: '1234',
+	// 	messages: [{
+
+	// 	}],
+	// };
 	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/v1/chat', payload);
 }
 
