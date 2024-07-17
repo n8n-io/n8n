@@ -39,6 +39,9 @@ import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { AuditEventRelay } from './eventbus/audit-event-relay.service';
+import { License } from './License';
+import { AuthService } from './auth/auth.service';
+import { getAiServiceProxyMiddleware } from '@n8n_io/ai-assistant-sdk';
 
 import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
@@ -383,6 +386,24 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+	}
+
+	async configureProxyEndpoints(): Promise<void> {
+		const licenseService = Container.get(License);
+		const licenseCert = await licenseService.loadCertStr();
+		const authService = Container.get(AuthService);
+		const consumerId = licenseService.getConsumerId();
+		const apiRestPath = config.getEnv('endpoints.rest');
+		const aiAssistantEnabled = config.get('aiAssistant.enabled');
+
+		if (!aiAssistantEnabled) return;
+
+		this.app.use(
+			`/${apiRestPath}/ai-proxy`,
+			cookieParser(),
+			authService.authMiddleware,
+			getAiServiceProxyMiddleware({ licenseCert, consumerId, n8nVersion: N8N_VERSION }),
+		);
 	}
 
 	protected setupPushServer(): void {

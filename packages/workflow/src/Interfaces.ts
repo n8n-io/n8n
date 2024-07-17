@@ -2657,6 +2657,7 @@ export interface IN8nUISettings {
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	aiAssistantEnabled: boolean;
 	deployment: {
 		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};
@@ -2704,9 +2705,6 @@ export interface IN8nUISettings {
 	};
 	banners: {
 		dismissed: string[];
-	};
-	ai: {
-		enabled: boolean;
 	};
 	workflowHistory: {
 		pruneTime: number;
