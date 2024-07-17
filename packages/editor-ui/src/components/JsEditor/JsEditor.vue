@@ -21,7 +21,7 @@ import {
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import {
 	autocompleteKeyMap,
@@ -45,11 +45,33 @@ const emit = defineEmits<{
 }>();
 
 onMounted(() => {
+	createEditor();
+});
+
+watch(
+	() => props.modelValue,
+	(newValue: string) => {
+		const editorValue = editor.value?.state?.doc.toString();
+
+		// If model value changes from outside the component
+		if (editorValue && editorValue.length !== newValue.length && editorValue !== newValue) {
+			destroyEditor();
+			createEditor();
+		}
+	},
+);
+
+function createEditor() {
 	const state = EditorState.create({ doc: props.modelValue, extensions: extensions.value });
 	const parent = jsEditorRef.value;
+
 	editor.value = new EditorView({ parent, state });
 	editorState.value = editor.value.state;
-});
+}
+
+function destroyEditor() {
+	editor.value?.destroy();
+}
 
 const jsEditorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);

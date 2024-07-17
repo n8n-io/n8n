@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
+	NodeOperationError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
@@ -29,17 +30,6 @@ export class AiTransform implements INodeType {
 		outputs: ['main'],
 		parameterPane: 'wide',
 		properties: [
-			// {
-			// 	displayName: 'Instructions',
-			// 	name: 'instructions',
-			// 	type: 'string',
-			// 	noDataExpression: true,
-			// 	default: '',
-			// 	placeholder: 'Describe how you want to transform your data and click Generate',
-			// 	typeOptions: {
-			// 		rows: 5,
-			// 	},
-			// },
 			{
 				displayName: 'Instructions',
 				name: 'generate',
@@ -57,29 +47,43 @@ export class AiTransform implements INodeType {
 					},
 				},
 			},
-			// {
-			// 	displayName: 'Code',
-			// 	name: 'jsCode',
-			// 	type: 'string',
-			// 	default: '',
-			// 	hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-			// 	typeOptions: {
-			// 		rows: 5,
-			// 	},
-			// },
 			{
 				displayName: 'Code',
 				name: 'jsCode',
 				type: 'string',
 				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
-					// editor: 'jsEditor',
+					// editor: 'codeNodeEditor',
+					// editorLanguage: 'javaScript',
+					editor: 'jsEditor',
 					editorIsReadOnly: true,
 				},
-				default: '',
+				default:
+					"// Enter some text to 'Instructions' and click 'Generate Code' button\n\nreturn [];",
 				noDataExpression: true,
 				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+				displayOptions: {
+					hide: {
+						generate: [{ _cnd: { eq: '' } }],
+					},
+				},
+			},
+			{
+				displayName: "Enter some text to 'Instructions' and click 'Generate Code' button",
+				name: 'hint',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						generate: [{ _cnd: { eq: '' } }],
+					},
+				},
+			},
+			{
+				displayName: 'AI Service URL',
+				name: 'url',
+				type: 'string',
+				default: 'http://localhost:5678/webhook/ai-service',
+				isNodeSetting: true,
 			},
 		],
 	};
@@ -91,9 +95,10 @@ export class AiTransform implements INodeType {
 				payload: string,
 				inputData: INodeExecutionData[],
 			) {
+				const url = this.getNodeParameter('url') as string;
 				const { output } = (await this.helpers.httpRequest({
 					method: 'POST',
-					url: 'http://localhost:5678/webhook/ai-service',
+					url,
 					headers: {
 						'Content-Type': 'application/json',
 					},
@@ -118,7 +123,15 @@ export class AiTransform implements INodeType {
 		const codeParameterName = 'jsCode';
 
 		const getSandbox = (index = 0) => {
-			const code = this.getNodeParameter(codeParameterName, index) as string;
+			let code = '';
+			try {
+				code = this.getNodeParameter(codeParameterName, index) as string;
+			} catch (error) {
+				throw new NodeOperationError(node, 'No code provided', {
+					description: "Enter some text to 'Instructions' and click 'Generate Code' button",
+				});
+			}
+
 			const context = getSandboxContext.call(this, index);
 
 			context.items = context.$input.all();
