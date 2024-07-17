@@ -191,27 +191,28 @@ export type Event = {
 
 	'execution-started-during-bootup': {
 		executionId: string;
-		'team-project-updated': {
-			userId: string;
-			role: GlobalRole;
-			members: Array<{
-				userId: string;
-				role: ProjectRole;
-			}>;
-			projectId: string;
-		};
+	};
 
-		'team-project-deleted': {
+	'team-project-updated': {
+		userId: string;
+		role: GlobalRole;
+		members: Array<{
 			userId: string;
-			role: GlobalRole;
-			projectId: string;
-			removalType: 'transfer' | 'delete';
-			targetProjectId?: string;
-		};
+			role: ProjectRole;
+		}>;
+		projectId: string;
+	};
 
-		'team-project-created': {
-			userId: string;
-			role: GlobalRole;
-		};
+	'team-project-deleted': {
+		userId: string;
+		role: GlobalRole;
+		projectId: string;
+		removalType: 'transfer' | 'delete';
+		targetProjectId?: string;
+	};
+
+	'team-project-created': {
+		userId: string;
+		role: GlobalRole;
 	};
 };
