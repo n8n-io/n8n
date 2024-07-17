@@ -139,7 +139,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.saml.loginLabel;
 		},
 		isAiAssistantEnabled(): boolean {
-			return this.settings.aiAssistantEnabled;
+			return this.settings.aiAssistant.enabled;
 		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
@@ -275,8 +275,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
-
-			this.settings.aiAssistantEnabled = settings.aiAssistantEnabled;
 
 			if (settings.enterprise?.showNonProdBanner) {
 				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
