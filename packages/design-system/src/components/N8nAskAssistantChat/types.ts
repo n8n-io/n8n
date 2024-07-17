@@ -18,6 +18,11 @@ export namespace ChatUI {
 		streaming?: boolean;
 	}
 
+	interface EndSessionMessage {
+		role: 'assistant';
+		type: 'end-session';
+	}
+
 	export interface QuickReply {
 		type: string;
 		label: string;
@@ -33,5 +38,6 @@ export namespace ChatUI {
 		| ((TextMessage | CodeDiffMessage) & {
 				quickReplies?: QuickReply[];
 		  })
-		| ErrorMessage;
+		| ErrorMessage
+		| EndSessionMessage;
 }

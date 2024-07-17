@@ -160,3 +160,22 @@ StreamingChat.args = {
 		},
 	]),
 };
+
+export const EndOfSessionChat = Template.bind({});
+EndOfSessionChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			type: 'text',
+			role: 'assistant',
+			content: "Great, glad I could help! I'm here whenever you need more help.",
+		},
+		{
+			role: 'assistant',
+			type: 'end-session',
+		},
+	]),
+};

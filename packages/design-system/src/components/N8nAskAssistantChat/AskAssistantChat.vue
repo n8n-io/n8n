@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
@@ -33,12 +33,20 @@ const props = defineProps<Props>();
 
 const textInputValue = ref<string>('');
 
+const sessionEnded = computed(() => {
+	return Boolean(props.messages?.[props.messages.length - 1].type === 'end-session');
+});
+
+const isStreaming = computed(() => {
+	return Boolean(props.messages?.find((message) => 'streaming' in message && message.streaming));
+});
+
 function onQuickReply(opt: ChatUI.QuickReply) {
 	emit('message', opt.label, opt.type);
 }
 
 function onSendMessage() {
-	if (textInputValue.value) {
+	if (textInputValue.value && !isStreaming.value) {
 		emit('message', textInputValue.value, undefined);
 		textInputValue.value = '';
 	}
@@ -61,7 +69,10 @@ function onSendMessage() {
 			<div v-if="props.messages?.length" :class="$style.messages">
 				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
 					<div
-						v-if="i === 0 || message.role !== props.messages[i - 1].role"
+						v-if="
+							message.type !== 'end-session' &&
+							(i === 0 || message.role !== props.messages[i - 1].role)
+						"
 						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
 					>
 						<AssistantAvatar v-if="message.role === 'assistant'" />
@@ -101,6 +112,13 @@ function onSendMessage() {
 							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
+					<div v-else-if="message.type === 'end-session'" :class="$style.endOfSessionText">
+						<span>
+							This Assistant session has ended. To start a new session with the Assistant, click an
+						</span>
+						<n8n-ask-assistant-button size="small" :static="true" />
+						<span>button in n8n</span>
+					</div>
 
 					<div
 						v-if="'quickReplies' in message && i === props.messages?.length - 1"
@@ -128,13 +146,22 @@ function onSendMessage() {
 				</div>
 			</div>
 		</div>
-		<div v-if="props.messages?.length" :class="$style.inputWrapper">
+		<div
+			v-if="props.messages?.length"
+			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+		>
 			<input
 				v-model="textInputValue"
+				:disabled="sessionEnded"
 				placeholder="Enter your response..."
 				@keydown.enter="onSendMessage"
 			/>
-			<n8n-icon :class="$style.sendButton" icon="paper-plane" size="large" @click="onSendMessage" />
+			<n8n-icon
+				:class="{ [$style.sendButton]: true, [$style.disabledInput]: isStreaming }"
+				icon="paper-plane"
+				size="large"
+				@click="onSendMessage"
+			/>
 		</div>
 	</div>
 </template>
@@ -309,6 +336,26 @@ function onSendMessage() {
 
 	p {
 		display: inline;
+	}
+}
+
+.endOfSessionText {
+	margin-top: 24px;
+	padding-top: 6px;
+	border-top: var(--border-base);
+	color: var(--color-text-base);
+
+	> button,
+	> span {
+		margin-right: 6px;
+	}
+}
+
+.disabledInput {
+	cursor: not-allowed;
+
+	* {
+		cursor: not-allowed;
 	}
 }
 </style>
