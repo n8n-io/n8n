@@ -25,6 +25,9 @@ describe('InternalHooks', () => {
 				mode: 'smtp',
 			},
 		},
+		versionNotifications: {
+			enabled: true,
+		},
 	});
 	const internalHooks = new InternalHooks(
 		globalConfig,
