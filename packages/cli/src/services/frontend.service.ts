@@ -152,9 +152,9 @@ export class FrontendService {
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,
-				path: config.getEnv('publicApi.path'),
+				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
-					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+					enabled: !Container.get(GlobalConfig).publicApi.swaggerUiDisabled,
 				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),

@@ -562,29 +562,6 @@ export const schema = {
 		},
 	},
 
-	publicApi: {
-		disabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_PUBLIC_API_DISABLED',
-			doc: 'Whether to disable the Public API',
-		},
-		path: {
-			format: String,
-			default: 'api',
-			env: 'N8N_PUBLIC_API_ENDPOINT',
-			doc: 'Path for the public api endpoints',
-		},
-		swaggerUi: {
-			disabled: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
-				doc: 'Whether to disable the Swagger UI for the Public API',
-			},
-		},
-	},
-
 	workflowTagsDisabled: {
 		format: Boolean,
 		default: false,
