@@ -3,7 +3,7 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { CanvasConnectionMode } from '@/types';
+import { CanvasConnection, CanvasConnectionMode } from '@/types';
 import type { CanvasConnectionCreateData, CanvasNode } from '@/types';
 import type {
 	AddedNodesAndConnections,
@@ -75,6 +75,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -995,20 +996,24 @@ export function useCanvasOperations({
 		return false;
 	}
 
-	async function addConnections(connections: CanvasConnectionCreateData[]) {
+	async function addConnections(connections: CanvasConnectionCreateData[] | CanvasConnection[]) {
 		for (const { source, target, data } of connections) {
 			createConnection({
 				source,
 				sourceHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Output,
-					type: data.source.type ?? NodeConnectionType.Main,
-					index: data.source.index ?? 0,
+					type: isValidNodeConnectionType(data?.source.type)
+						? data?.source.type
+						: NodeConnectionType.Main,
+					index: data?.source.index ?? 0,
 				}),
 				target,
 				targetHandle: createCanvasConnectionHandleString({
 					mode: CanvasConnectionMode.Input,
-					type: data.target.type ?? NodeConnectionType.Main,
-					index: data.target.index ?? 0,
+					type: isValidNodeConnectionType(data?.target.type)
+						? data?.target.type
+						: NodeConnectionType.Main,
+					index: data?.target.index ?? 0,
 				}),
 			});
 		}
@@ -1224,7 +1229,7 @@ export function useCanvasOperations({
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
-			) as CanvasConnectionCreateData[],
+			),
 		);
 
 		historyStore.stopRecordingUndo();
