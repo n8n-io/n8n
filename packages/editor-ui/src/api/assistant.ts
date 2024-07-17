@@ -6,7 +6,7 @@ export async function chatWithAssistant(
 	ctx: IRestApiContext,
 	payload: ChatRequest.RequestPayload,
 ): Promise<ChatRequest.ResponsePayload> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/chat', payload);
+	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/v1/chat', payload);
 }
 
 export async function replaceCode(

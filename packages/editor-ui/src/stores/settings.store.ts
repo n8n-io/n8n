@@ -139,7 +139,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.saml.loginLabel;
 		},
 		isAiAssistantEnabled(): boolean {
-			return this.settings.aiAssistant.enabled;
+			return this.settings.aiAssistant?.enabled;
 		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;

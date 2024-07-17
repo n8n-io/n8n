@@ -403,7 +403,7 @@ async function onClick() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
-			<div class="node-error-view__assistant-button">
+			<div class="node-error-view__assistant-button" v-if="assistantStore.canShowAssistantButtons">
 				<n8n-ask-assistant-button :asked="assistantAlreadyAsked" @click="onClick" />
 			</div>
 		</div>

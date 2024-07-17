@@ -5,7 +5,10 @@ const assistantStore = useAssistantStore();
 </script>
 
 <template>
-	<div v-if="assistantStore.canShowAssistantFloatingButton" :class="$style.container">
+	<div
+		v-if="assistantStore.canShowAssistantButtons && !assistantStore.chatWindowOpen"
+		:class="$style.container"
+	>
 		<n8n-a-i-assistant-button @click="assistantStore.openChat" />
 	</div>
 </template>

@@ -31,12 +31,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			settings.isAiAssistantEnabled && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
-	const canShowAssistantFloatingButton = computed(
+	const canShowAssistantButtons = computed(
 		() =>
 			settings.isAiAssistantEnabled &&
 			route.name &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS) &&
-			!chatWindowOpen.value,
+			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	function closeChat() {
@@ -175,7 +174,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatMessages,
 		chatWindowOpen,
 		canShowAssistant,
-		canShowAssistantFloatingButton,
+		canShowAssistantButtons,
 		closeChat,
 		openChat,
 		updateWindowWidth,
