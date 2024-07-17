@@ -94,21 +94,6 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	};
 }
 
-/**
- * Get the width and height of a connection
- *
- * @TODO See whether this is actually needed or just a legacy jsPlumb check
- */
-export function getVueFlowConnectorLengths(connection: VueFlowConnection): [number, number] {
-	const connectionId = createCanvasConnectionId(connection);
-	const edgeRef = document.getElementById(connectionId);
-	if (!edgeRef) {
-		return [PUSH_NODES_OFFSET, PUSH_NODES_OFFSET];
-	}
-
-	return [edgeRef.clientWidth, edgeRef.clientHeight];
-}
-
 export function createCanvasConnectionHandleString({
 	mode,
 	type = NodeConnectionType.Main,

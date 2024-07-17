@@ -631,7 +631,7 @@ async function onAddNodesAndConnections(
 		offsetIndex: editableWorkflow.value.nodes.length - nodes.length,
 	});
 
-	uiStore.lastSelectedNodeConnection = null;
+	uiStore.resetLastInteractedWith();
 }
 
 async function onSwitchActiveNode(nodeName: string) {
