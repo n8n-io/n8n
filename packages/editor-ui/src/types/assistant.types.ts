@@ -81,7 +81,7 @@ export namespace ChatRequest {
 		type: 'code-diff';
 		description: string;
 		codeDiff: string;
-		suggestionId: 'string';
+		suggestionId: string;
 		solution_count: number;
 	}
 
@@ -95,7 +95,6 @@ export namespace ChatRequest {
 		type: 'assistant-message';
 		content: string;
 		title?: string;
-		solution_count: number;
 	}
 
 	interface EndSessionMessage {
