@@ -73,7 +73,7 @@ const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 
-const resourceTypeText = computed(() => locale.baseText('generic.workflow'));
+const resourceTypeText = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
 const actions = computed(() => {

@@ -61,7 +61,10 @@ const confirm = async () => {
 				},
 			}),
 			message: h(ProjectMoveSuccessToastMessage, {
-				routeName: VIEWS.PROJECTS_WORKFLOWS,
+				routeName:
+					props.data.resourceType === ResourceType.Workflow
+						? VIEWS.PROJECTS_WORKFLOWS
+						: VIEWS.PROJECTS_CREDENTIALS,
 				resource: props.data.resource,
 				resourceTypeText: props.data.resourceTypeText,
 				projectId: props.data.projectId,

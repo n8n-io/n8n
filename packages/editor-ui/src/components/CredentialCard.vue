@@ -46,7 +46,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 
-const resourceTypeText = computed(() => locale.baseText('generic.credential'));
+const resourceTypeText = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
