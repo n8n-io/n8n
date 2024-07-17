@@ -524,7 +524,7 @@ export function useCanvasOperations({
 		const name = node.name ?? (nodeTypeDescription.defaults.name as string);
 		const type = nodeTypeDescription.name;
 		const typeVersion = resolveNodeVersion(nodeTypeDescription);
-		const position = node.position ?? [0, 0];
+		const position = node.position ?? resolveNodePosition(node as INodeUi, nodeTypeDescription);
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -543,7 +543,6 @@ export function useCanvasOperations({
 
 		resolveNodeParameters(nodeData);
 		resolveNodeCredentials(nodeData, nodeTypeDescription);
-		resolveNodePosition(nodeData, nodeTypeDescription);
 		resolveNodeName(nodeData);
 		resolveNodeWebhook(nodeData, nodeTypeDescription);
 
@@ -660,11 +659,10 @@ export function useCanvasOperations({
 
 	function resolveNodePosition(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
 		if (node.position) {
-			node.position = NodeViewUtils.getNewNodePosition(
+			return NodeViewUtils.getNewNodePosition(
 				canvasStore.getNodesWithPlaceholderNode(),
 				node.position,
 			);
-			return;
 		}
 
 		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
@@ -688,11 +686,10 @@ export function useCanvasOperations({
 			const newNodeInsertPosition = canvasStore.newNodeInsertPosition;
 			if (newNodeInsertPosition) {
 				canvasStore.newNodeInsertPosition = null;
-				node.position = NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, [
+				return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, [
 					newNodeInsertPosition[0] + NodeViewUtils.GRID_SIZE,
 					newNodeInsertPosition[1] - NodeViewUtils.NODE_SIZE / 2,
 				]);
-				return;
 			} else {
 				let yOffset = 0;
 
@@ -763,7 +760,7 @@ export function useCanvasOperations({
 							.filter((input) => input !== NodeConnectionType.Main)
 							.findIndex((inputType) => outputs[0] === inputType);
 
-						node.position = NodeViewUtils.getNewNodePosition(
+						return NodeViewUtils.getNewNodePosition(
 							workflowsStore.allNodes,
 							[
 								lastInteractedWithNode.position[0] +
@@ -774,7 +771,6 @@ export function useCanvasOperations({
 							],
 							[100, 0],
 						);
-						return;
 					} else {
 						// Has only main outputs or no outputs at all
 						const inputs = NodeHelpers.getNodeInputs(
@@ -791,7 +787,7 @@ export function useCanvasOperations({
 						}
 
 						// If a node is active then add the new node directly after the current one
-						node.position = NodeViewUtils.getNewNodePosition(
+						return NodeViewUtils.getNewNodePosition(
 							workflowsStore.allNodes,
 							[
 								lastInteractedWithNode.position[0] + pushOffset,
@@ -799,7 +795,6 @@ export function useCanvasOperations({
 							],
 							[100, 0],
 						);
-						return;
 					}
 				}
 			}
@@ -813,7 +808,7 @@ export function useCanvasOperations({
 				: // If no node is active find a free spot
 					(lastClickPosition.value as XYPosition);
 
-		node.position = NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position);
+		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position);
 	}
 
 	function resolveNodeName(node: INodeUi) {
