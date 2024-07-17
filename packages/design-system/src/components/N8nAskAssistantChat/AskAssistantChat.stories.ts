@@ -48,25 +48,8 @@ Chat.args = {
 			type: 'code-diff',
 			role: 'assistant',
 			description: 'Short solution description here that can spill over to two lines',
-			// codeDiff:
-			// '--- original.js\n+++ modified.js\n- cons a = 1\n+ const a = 1\n\n+for (const item of items) {\n+  item.json.myNewField = 1;\n+}\n\n+return items;',
-			codeDiff: `@@ -1,7 +1,6 @@
-	-The Way that can be told of is not the eternal Way;
-	-The name that can be named is not the eternal name.
-	 The Nameless is the origin of Heaven and Earth;
-	-The Named is the mother of all things.
-	+The named is the mother of all things.
-	+
-	 Therefore let there always be non-being,
-		 so we may see their subtlety,
-	 And let there always be being,
-	@@ -9,3 +8,6 @@
-	 The two are the same,
-	 But after they are produced,
-		 they have different names.
-	+They both may be called deep and profound.
-	+Deeper and more profound,
-	+The door of all subtleties!`,
+			codeDiff:
+				'@@ -1,7 +1,6 @@\n-The Way that can be told of is not the eternal Way;\n-The name that can be named is not the eternal name.\nThe Nameless is the origin of Heaven and Earth;\n-The Named is the mother of all things.\n+The named is the mother of all things.\n+\nTherefore let there always be non-being,\nso we may see their subtlety,\nAnd let there always be being,\n@@ -9,3 +8,6 @@\n The two are the same,\n But after they are produced,\n they have different names.\n+They both may be called deep and profound.\n+Deeper and more profound,\n+The door of all subtleties!',
 			suggestionId: 'test',
 			quickReplies: [
 				{
@@ -97,10 +80,8 @@ Chat.args = {
 			description: 'Short solution with min height',
 			// codeDiff:
 			// '--- original.js\n+++ modified.js\n- cons a = 1\n+ const a = 1\n\n+for (const item of items) {\n+  item.json.myNewField = 1;\n+}\n\n+return items;',
-			codeDiff: `@@ -1,7 +1,6 @@
-	-The Way that can be told of is not the eternal Way;
-	-The name that can be named is not the eternal name.
-	+The door of all subtleties!`,
+			codeDiff:
+				'@@ -1,7 +1,6 @@\n-The Way that can be told of is not the eternal Way;\n-The name that can be named is not the eternal name.\n+The door of all subtleties!',
 			quickReplies: [
 				{
 					type: 'new-suggestion',
