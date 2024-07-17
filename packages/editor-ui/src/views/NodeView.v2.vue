@@ -148,6 +148,7 @@ const {
 	setNodeSelected,
 	toggleNodesDisabled,
 	toggleNodesPinned,
+	setNodeParameters,
 	deleteNode,
 	deleteNodes,
 	revertDeleteNode,
@@ -315,6 +316,7 @@ async function initializeView() {
 	nodeHelpers.updateNodesParameterIssues();
 
 	await loadCredentials();
+	canvasEventBus.emit('fitView');
 
 	uiStore.nodeViewInitialized = true;
 
@@ -594,7 +596,6 @@ async function onCreateWorkflow() {
 }
 
 function onRenameNode(parameterData: IUpdateInformation) {
-	// The name changed. Do not forget to change the connections as well
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
 	}
@@ -645,6 +646,10 @@ async function onRevertRenameNode({
 	newName: string;
 }) {
 	await revertRenameNode(currentName, newName);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	setNodeParameters(id, parameters);
 }
 
 /**
@@ -1244,6 +1249,7 @@ onBeforeUnmount(() => {
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:name="onOpenRenameNodeModal"
+		@update:node:parameters="onUpdateNodeParameters"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"

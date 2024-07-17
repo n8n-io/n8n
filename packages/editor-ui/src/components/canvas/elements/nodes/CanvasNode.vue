@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { Position } from '@vue-flow/core';
 import { computed, provide, toRef, watch } from 'vue';
 import type { CanvasNodeData, CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -9,8 +8,9 @@ import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRen
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
-import type { NodeProps } from '@vue-flow/core';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { Position } from '@vue-flow/core';
+import type { XYPosition, NodeProps } from '@vue-flow/core';
 
 const emit = defineEmits<{
 	delete: [id: string];
@@ -19,6 +19,8 @@ const emit = defineEmits<{
 	toggle: [id: string];
 	activate: [id: string];
 	'open:contextMenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
+	update: [id: string, parameters: Record<string, unknown>];
+	move: [id: string, position: XYPosition];
 }>();
 const props = defineProps<NodeProps<CanvasNodeData>>();
 
@@ -28,24 +30,18 @@ const contextMenu = useContextMenu();
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
-const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs } = useNodeConnections({
-	inputs,
-	outputs,
-	connections,
-});
+const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnection } =
+	useNodeConnections({
+		inputs,
+		outputs,
+		connections,
+	});
 
 const isDisabled = computed(() => props.data.disabled);
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
-
-watch(
-	() => props.selected,
-	(selected) => {
-		emit('select', props.id, selected);
-	},
-);
 
 /**
  * Inputs
@@ -70,6 +66,14 @@ const outputsWithPosition = computed(() => {
 });
 
 /**
+ * Node icon
+ */
+
+const nodeIconSize = computed(() =>
+	'configuration' in data.value.render.options && data.value.render.options.configuration ? 30 : 40,
+);
+
+/**
  * Endpoints
  */
 
@@ -90,28 +94,8 @@ const mapEndpointWithPosition =
 	};
 
 /**
- * Provide
+ * Events
  */
-
-const id = toRef(props, 'id');
-const data = toRef(props, 'data');
-const label = toRef(props, 'label');
-const selected = toRef(props, 'selected');
-
-provide(CanvasNodeKey, {
-	id,
-	data,
-	label,
-	selected,
-	nodeType,
-});
-
-const nodeIconSize = computed(() => (data.value.render.options.configuration ? 30 : 40));
-
-const showToolbar = computed(() => {
-	const target = contextMenu.target.value;
-	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
-});
 
 function onDelete() {
 	emit('delete', props.id);
@@ -136,6 +120,46 @@ function onOpenContextMenuFromToolbar(event: MouseEvent) {
 function onOpenContextMenuFromNode(event: MouseEvent) {
 	emit('open:contextMenu', props.id, event, 'node-right-click');
 }
+function onUpdate(parameters: Record<string, unknown>) {
+	emit('update', props.id, parameters);
+}
+
+function onMove(position: XYPosition) {
+	emit('move', props.id, position);
+}
+
+/**
+ * Provide
+ */
+
+const id = toRef(props, 'id');
+const data = toRef(props, 'data');
+const label = toRef(props, 'label');
+const selected = toRef(props, 'selected');
+
+provide(CanvasNodeKey, {
+	id,
+	data,
+	label,
+	selected,
+	nodeType,
+});
+
+const showToolbar = computed(() => {
+	const target = contextMenu.target.value;
+	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
+});
+
+/**
+ * Lifecycle
+ */
+
+watch(
+	() => props.selected,
+	(selected) => {
+		emit('select', props.id, selected);
+	},
+);
 </script>
 
 <template>
@@ -152,6 +176,7 @@ function onOpenContextMenuFromNode(event: MouseEvent) {
 				:index="source.index"
 				:position="source.position"
 				:offset="source.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
@@ -164,6 +189,7 @@ function onOpenContextMenuFromNode(event: MouseEvent) {
 				:index="target.index"
 				:position="target.position"
 				:offset="target.offset"
+				:is-valid-connection="isValidConnection"
 			/>
 		</template>
 
@@ -177,7 +203,12 @@ function onOpenContextMenuFromNode(event: MouseEvent) {
 			@open:context-menu="onOpenContextMenuFromToolbar"
 		/>
 
-		<CanvasNodeRenderer @open:context-menu="onOpenContextMenuFromNode" @dblclick="onActivate">
+		<CanvasNodeRenderer
+			@dblclick="onActivate"
+			@move="onMove"
+			@update="onUpdate"
+			@open:context-menu="onOpenContextMenuFromNode"
+		>
 			<NodeIcon
 				v-if="nodeType"
 				:node-type="nodeType"

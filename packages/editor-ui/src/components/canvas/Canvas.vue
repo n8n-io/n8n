@@ -25,6 +25,7 @@ const emit = defineEmits<{
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
+	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -136,8 +137,12 @@ const selectedNodeIds = computed(() => getSelectedNodes.value.map((node) => node
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
-		emit('update:node:position', node.id, node.position);
+		onUpdateNodePosition(node.id, node.position);
 	});
+}
+
+function onUpdateNodePosition(id: string, position: XYPosition) {
+	emit('update:node:position', id, position);
 }
 
 function onSelectionDragStop(e: NodeDragEvent) {
@@ -159,6 +164,10 @@ function onToggleNodeEnabled(id: string) {
 
 function onDeleteNode(id: string) {
 	emit('delete:node', id);
+}
+
+function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	emit('update:node:parameters', id, parameters);
 }
 
 /**
@@ -338,6 +347,8 @@ onUnmounted(() => {
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
 				@open:context-menu="onOpenNodeContextMenu"
+				@update="onUpdateNodeParameters"
+				@move="onUpdateNodePosition"
 			/>
 		</template>
 

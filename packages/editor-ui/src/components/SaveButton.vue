@@ -1,3 +1,39 @@
+<script lang="ts" setup>
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useI18n } from '@/composables/useI18n';
+import { computed } from 'vue';
+
+const props = withDefaults(
+	defineProps<{
+		saved: boolean;
+		isSaving: boolean;
+		disabled: boolean;
+		type: string;
+		withShortcut: boolean;
+		shortcutTooltip?: string;
+		savingLabel?: string;
+	}>(),
+	{
+		isSaving: false,
+		type: 'primary',
+		withShortcut: false,
+		disabled: false,
+	},
+);
+
+const i18n = useI18n();
+
+const saveButtonLabel = computed(() => {
+	return props.isSaving
+		? props.savingLabel ?? i18n.baseText('saveButton.saving')
+		: i18n.baseText('saveButton.save');
+});
+
+const shortcutTooltipLabel = computed(() => {
+	return props.shortcutTooltip ?? i18n.baseText('saveButton.save');
+});
+</script>
+
 <template>
 	<span :class="$style.container" data-test-id="save-button">
 		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
@@ -27,59 +63,6 @@
 		</template>
 	</span>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-
-export default defineComponent({
-	name: 'SaveButton',
-	components: {
-		KeyboardShortcutTooltip,
-	},
-	props: {
-		saved: {
-			type: Boolean,
-		},
-		isSaving: {
-			type: Boolean,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		saveLabel: {
-			type: String,
-		},
-		savingLabel: {
-			type: String,
-		},
-		savedLabel: {
-			type: String,
-		},
-		type: {
-			type: String,
-			default: 'primary',
-		},
-		withShortcut: {
-			type: Boolean,
-			default: false,
-		},
-		shortcutTooltip: {
-			type: String,
-		},
-	},
-	computed: {
-		saveButtonLabel() {
-			return this.isSaving
-				? this.$locale.baseText('saveButton.saving')
-				: this.$locale.baseText('saveButton.save');
-		},
-		shortcutTooltipLabel() {
-			return this.shortcutTooltip ?? this.$locale.baseText('saveButton.save');
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {
