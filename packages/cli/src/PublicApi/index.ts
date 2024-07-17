@@ -17,6 +17,7 @@ import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
+import { GlobalConfig } from '@n8n/config';
 
 async function createApiRouter(
 	version: string,
@@ -35,7 +36,7 @@ async function createApiRouter(
 	];
 	const apiController = express.Router();
 
-	if (!config.getEnv('publicApi.swaggerUi.disabled')) {
+	if (!Container.get(GlobalConfig).publicApi.swaggerUiDisabled) {
 		const { serveFiles, setup } = await import('swagger-ui-express');
 		const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 		const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
@@ -153,5 +154,5 @@ export const loadPublicApiVersions = async (
 };
 
 export function isApiEnabled(): boolean {
-	return !config.get('publicApi.disabled') && !Container.get(License).isAPIDisabled();
+	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
 }

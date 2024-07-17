@@ -3,7 +3,6 @@ import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 import { randomString } from 'n8n-workflow';
 
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
@@ -14,12 +13,14 @@ import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import { mockInstance } from '@test/mocking';
+import { GlobalConfig } from '@n8n/config';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	config.set('publicApi.disabled', false);
+	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
 describe('When public API is disabled', () => {
@@ -30,7 +31,7 @@ describe('When public API is disabled', () => {
 		owner = await createOwner();
 		await addApiKey(owner);
 		authAgent = testServer.authAgentFor(owner);
-		config.set('publicApi.disabled', true);
+		mockInstance(GlobalConfig, { publicApi: { disabled: true } });
 	});
 
 	test('POST /me/api-key should 404', async () => {
