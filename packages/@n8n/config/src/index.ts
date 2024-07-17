@@ -2,6 +2,7 @@ import { Config, Nested } from './decorators';
 import { CredentialsConfig } from './configs/credentials';
 import { DatabaseConfig } from './configs/database';
 import { EmailConfig } from './configs/email';
+import { VersionNotificationsConfig } from './configs/version-notifications';
 import { PublicApiConfig } from './configs/public-api';
 
 @Config
@@ -20,6 +21,9 @@ export class GlobalConfig {
 
 	@Nested
 	userManagement: UserManagementConfig;
+
+	@Nested
+	versionNotifications: VersionNotificationsConfig;
 
 	@Nested
 	publicApi: PublicApiConfig;
