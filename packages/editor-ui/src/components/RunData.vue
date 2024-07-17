@@ -258,7 +258,7 @@
 			</div>
 
 			<div
-				v-else-if="paneType === 'input' && node?.disabled && !isInputSchemaView"
+				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
 				:class="$style.center"
 			>
 				<n8n-text>
