@@ -28,7 +28,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
+import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
@@ -46,9 +46,8 @@ import {
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { TelemetryHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -200,9 +199,6 @@ const fallbackNodes = computed<INodeUi[]>(() =>
  */
 
 async function initializeData() {
-	canvasStore.startLoading();
-	isLoading.value = true;
-
 	const loadPromises = (() => {
 		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
@@ -236,9 +232,6 @@ async function initializeData() {
 			i18n.baseText('nodeView.showError.mounted1.message') + ':',
 		);
 		return;
-	} finally {
-		isLoading.value = false;
-		canvasStore.stopLoading();
 	}
 }
 
@@ -286,9 +279,9 @@ async function initializeWorkspaceForNewWorkflow() {
 	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
 	workflowsStore.makeNewWorkflowShareable();
 
-	uiStore.nodeViewInitialized = true;
+	// await runAutoAddManualTriggerExperiment();
 
-	await runAutoAddManualTriggerExperiment();
+	uiStore.nodeViewInitialized = true;
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -1130,15 +1123,21 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
+	canvasStore.startLoading();
 	titleReset();
 	resetWorkspace();
 
 	void initializeData().then(() => {
-		void initializeRoute().then(() => {
-			// Once view is initialized, pick up all toast notifications
-			// waiting in the store and display them
-			toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
-		});
+		void initializeRoute()
+			.then(() => {
+				// Once view is initialized, pick up all toast notifications
+				// waiting in the store and display them
+				toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+			})
+			.finally(() => {
+				isLoading.value = false;
+				canvasStore.stopLoading();
+			});
 
 		void usersStore.showPersonalizationSurvey();
 
@@ -1171,7 +1170,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<WorkflowCanvas
-		v-if="editableWorkflow && editableWorkflowObject"
+		v-if="editableWorkflow && editableWorkflowObject && !isLoading"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"

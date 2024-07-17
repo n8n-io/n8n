@@ -9,7 +9,7 @@ import type {
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
-import { PartialBy } from '@/utils/typeHelpers';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 export type CanvasConnectionPortType = ConnectionTypes;
 
