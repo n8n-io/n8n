@@ -174,6 +174,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			saml.value.loginEnabled = settings.value.sso.saml.loginEnabled;
 			saml.value.loginLabel = settings.value.sso.saml.loginLabel;
 		}
+
+		mfa.value.enabled = settings.value.mfa?.enabled;
+
 		if (settings.value.enterprise?.showNonProdBanner) {
 			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
 		}
