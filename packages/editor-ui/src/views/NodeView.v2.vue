@@ -24,6 +24,7 @@ import type {
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowTemplate,
+	NodeCreatorOpenSource,
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
@@ -41,6 +42,7 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -88,6 +90,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
+import type { PinDataSource } from '@/composables/usePinnedData';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -143,8 +146,10 @@ const {
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
-	toggleNodeDisabled,
+	toggleNodesDisabled,
+	toggleNodesPinned,
 	deleteNode,
+	deleteNodes,
 	revertDeleteNode,
 	addNodes,
 	createConnection,
@@ -532,6 +537,10 @@ function onDeleteNode(id: string) {
 	deleteNode(id, { trackHistory: true });
 }
 
+function onDeleteNodes(ids: string[]) {
+	deleteNodes(ids);
+}
+
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
 }
@@ -541,7 +550,15 @@ function onToggleNodeDisabled(id: string) {
 		return;
 	}
 
-	toggleNodeDisabled(id);
+	toggleNodesDisabled([id]);
+}
+
+function onToggleNodesDisabled(ids: string[]) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodesDisabled(ids);
 }
 
 function onSetNodeActive(id: string) {
@@ -552,11 +569,72 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
+function onCopyNodes(ids: string[]) {
+	// @TODO: implement this
+}
+
+function onCutNodes(ids: string[]) {
+	// @TODO: implement this
+}
+
+function onPinNodes(ids: string[], source: PinDataSource) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodesPinned(ids, source);
+}
+
+async function onSaveWorkflow() {
+	await workflowHelpers.saveCurrentWorkflow();
+}
+
+async function onCreateWorkflow() {
+	await router.push({ name: VIEWS.NEW_WORKFLOW });
+}
+
 function onRenameNode(parameterData: IUpdateInformation) {
 	// The name changed. Do not forget to change the connections as well
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
 	}
+}
+
+async function onOpenRenameNodeModal(id: string) {
+	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+	try {
+		const promptResponsePromise = message.prompt(
+			i18n.baseText('nodeView.prompt.newName') + ':',
+			i18n.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
+			{
+				customClass: 'rename-prompt',
+				confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+				cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
+				inputValue: currentName,
+				inputValidator: (value: string) => {
+					if (!value.trim()) {
+						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					return true;
+				},
+			},
+		);
+
+		// Wait till input is displayed
+		await nextTick();
+
+		// Focus and select input content
+		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
+		nameInput?.focus();
+		nameInput?.select();
+
+		const promptResponse = await promptResponsePromise;
+
+		if (promptResponse.action === MODAL_CONFIRM) {
+			await renameNode(currentName, promptResponse.value, { trackHistory: true });
+		}
+	} catch (e) {}
 }
 
 async function onRevertRenameNode({
@@ -659,8 +737,16 @@ async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConn
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
+function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
+	onOpenNodeCreator({ createNodeActive: true, source });
+}
+
 function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.openNodeCreator(options);
+}
+
+function onCreateSticky() {
+	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -1157,6 +1243,7 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@update:node:name="onOpenRenameNodeModal"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
@@ -1164,6 +1251,16 @@ onBeforeUnmount(() => {
 		@delete:connection="onDeleteConnection"
 		@click:connection:add="onClickConnectionAdd"
 		@click:pane="onClickPane"
+		@create:node="onOpenNodeCreatorFromCanvas"
+		@create:sticky="onCreateSticky"
+		@delete:nodes="onDeleteNodes"
+		@update:nodes:enabled="onToggleNodesDisabled"
+		@update:nodes:pin="onPinNodes"
+		@copy:nodes="onCopyNodes"
+		@cut:nodes="onCutNodes"
+		@run:workflow="onRunWorkflow"
+		@save:workflow="onSaveWorkflow"
+		@create:workflow="onCreateWorkflow"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasRunWorkflowButton

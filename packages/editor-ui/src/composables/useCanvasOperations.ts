@@ -55,6 +55,9 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { isPresent } from '@/utils/typesUtils';
+import { usePinnedData, type PinDataSource } from '@/composables/usePinnedData';
+import { useDataSchema } from '@/composables/useDataSchema';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -192,6 +195,12 @@ export function useCanvasOperations({
 		trackDeleteNode(id);
 	}
 
+	function deleteNodes(ids: string[]) {
+		historyStore.startRecordingUndo();
+		ids.forEach((id) => deleteNode(id, { trackHistory: true, trackBulk: false }));
+		historyStore.stopRecordingUndo();
+	}
+
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
 	}
@@ -243,16 +252,33 @@ export function useCanvasOperations({
 		uiStore.lastSelectedNode = node.name;
 	}
 
-	function toggleNodeDisabled(
-		id: string,
+	function toggleNodesDisabled(
+		ids: string[],
 		{ trackHistory = true }: { trackHistory?: boolean } = {},
 	) {
-		const node = workflowsStore.getNodeById(id);
-		if (!node) {
-			return;
+		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		nodeHelpers.disableNodes(nodes, trackHistory);
+	}
+
+	function toggleNodesPinned(ids: string[], source: PinDataSource) {
+		historyStore.startRecordingUndo();
+
+		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
+
+		for (const node of nodes) {
+			const pinnedDataForNode = usePinnedData(node);
+			if (nextStatePinned) {
+				const dataToPin = useDataSchema().getInputDataWithPinned(node);
+				if (dataToPin.length !== 0) {
+					pinnedDataForNode.setData(dataToPin, source);
+				}
+			} else {
+				pinnedDataForNode.unsetData(source);
+			}
 		}
 
-		nodeHelpers.disableNodes([node], trackHistory);
+		historyStore.stopRecordingUndo();
 	}
 
 	async function addNodes(
@@ -958,10 +984,12 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
-		toggleNodeDisabled,
+		toggleNodesDisabled,
+		toggleNodesPinned,
 		renameNode,
 		revertRenameNode,
 		deleteNode,
+		deleteNodes,
 		revertDeleteNode,
 		addConnections,
 		createConnection,

@@ -7,6 +7,7 @@ const emit = defineEmits<{
 	delete: [];
 	toggle: [];
 	run: [];
+	'open:contextMenu': [event: MouseEvent];
 }>();
 
 const $style = useCssModule();
@@ -32,8 +33,9 @@ function onDeleteNode() {
 	emit('delete');
 }
 
-// @TODO
-function openContextMenu(_e: MouseEvent, _type: string) {}
+function onOpenContextMenu(event: MouseEvent) {
+	emit('open:contextMenu', event);
+}
 </script>
 
 <template>
@@ -74,7 +76,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				text
 				icon="ellipsis-h"
-				@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				@click="onOpenContextMenu"
 			/>
 		</div>
 	</div>

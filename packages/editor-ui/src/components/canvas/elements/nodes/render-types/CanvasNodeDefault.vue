@@ -11,6 +11,10 @@ import { N8nTooltip } from 'n8n-design-system';
 const $style = useCssModule();
 const i18n = useI18n();
 
+const emit = defineEmits<{
+	'open:contextMenu': [event: MouseEvent];
+}>();
+
 const {
 	label,
 	inputs,
@@ -76,10 +80,14 @@ const dataTestId = computed(() => {
 
 	return `canvas-${type}-node`;
 });
+
+function openContextMenu(event: MouseEvent) {
+	emit('open:contextMenu', event);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId">
+	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>
