@@ -571,11 +571,15 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-function onCopyNodes(ids: string[]) {
+function onCopyNodes(_ids: string[]) {
 	// @TODO: implement this
 }
 
-function onCutNodes(ids: string[]) {
+function onCutNodes(_ids: string[]) {
+	// @TODO: implement this
+}
+
+function onDuplicateNodes(_ids: string[]) {
 	// @TODO: implement this
 }
 
@@ -1262,6 +1266,7 @@ onBeforeUnmount(() => {
 		@delete:nodes="onDeleteNodes"
 		@update:nodes:enabled="onToggleNodesDisabled"
 		@update:nodes:pin="onPinNodes"
+		@duplicate:nodes="onDuplicateNodes"
 		@copy:nodes="onCopyNodes"
 		@cut:nodes="onCutNodes"
 		@run:workflow="onRunWorkflow"
