@@ -19,8 +19,10 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
+import type { ChatRequest } from '@/types/assistant.types';
 
 type Props = {
+	// todo .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
 };
 
@@ -106,17 +108,33 @@ const prepareRawMessages = computed(() => {
 });
 
 const assistantAlreadyAsked = computed(() => {
-	console.log(props.error);
-	try {
-		// todo node can be undefined
-		return assistantStore.isNodeErrorActive({
-			message: props.error.message,
-			node: props.error.node,
-		});
-	} catch (e) {
-		return false;
-	}
+	return assistantStore.isNodeErrorActive({
+		error: simplifyErrorForAssistant(props.error),
+		node: props.error.node || ndvStore.activeNode,
+	});
 });
+
+function simplifyErrorForAssistant(
+	error: NodeError | NodeApiError | NodeOperationError,
+): ChatRequest.ErrorContext['error'] {
+	const simple: ChatRequest.ErrorContext['error'] = {
+		name: error.name,
+		message: error.message,
+	};
+	if ('type' in error) {
+		simple.type = error.type;
+	}
+	if ('description' in error && error.description) {
+		simple.description = error.description;
+	}
+	if (error.stack) {
+		simple.stack = error.stack;
+	}
+	if ('lineNumber' in error) {
+		error.lineNumber = error.lineNumber;
+	}
+	return simple;
+}
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
@@ -376,15 +394,15 @@ function copySuccess() {
 }
 
 async function onClick() {
-	const { message, node, lineNumber, description } = props.error;
+	const { message, lineNumber, description } = props.error;
 	await assistantStore.initErrorHelper({
 		error: {
 			message,
-			node,
 			lineNumber,
 			description: description ?? '',
 			type: 'type' in props.error ? props.error.type : undefined,
 		},
+		node: props.error.node || ndvStore.activeNode,
 	});
 }
 </script>

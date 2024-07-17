@@ -85,18 +85,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWidth.value = Math.min(Math.max(width, MIN_CHAT_WIDTH), MAX_CHAT_WIDTH);
 	}
 
-	function isNodeErrorActive(error: ChatRequest.ErrorContext['error']) {
-		const targetNode = error.node.name;
-		const errorMessage = error.message;
+	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
+		const targetNode = context.node.name;
+		const errorMessage = context.error.message;
 
 		return (
-			targetNode === chatSessionError.value?.error.node.name &&
+			targetNode === chatSessionError.value?.node.name &&
 			errorMessage === chatSessionError.value?.error.message
 		);
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
-		if (isNodeErrorActive(context.error)) {
+		if (isNodeErrorActive(context)) {
 			return;
 		}
 		chatSessionError.value = context;
@@ -110,6 +110,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					firstName: usersStore.currentUser?.firstName || '',
 				},
 				error: context.error,
+				node: context.node,
 				// executionSchema todo
 			});
 			currentSessionId.value = response.sessionId;

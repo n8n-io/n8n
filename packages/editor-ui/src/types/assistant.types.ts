@@ -43,12 +43,14 @@ export namespace ChatRequest {
 
 	export interface ErrorContext {
 		error: {
+			name: string;
 			message: string;
-			node: INode;
 			type?: string;
 			description?: string;
 			lineNumber?: number;
+			stack?: string;
 		};
+		node: INode;
 	}
 
 	export interface ErrorRequestPayload extends ErrorContext, WorkflowContext {

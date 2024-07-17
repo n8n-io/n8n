@@ -196,7 +196,10 @@ const aiEnabled = computed(() => {
 	);
 
 	return (
-		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
+		isAiExperimentEnabled &&
+		// todo
+		settingsStore.settings.aiAssistant.enabled &&
+		props.language === 'javaScript'
 	);
 });
 
