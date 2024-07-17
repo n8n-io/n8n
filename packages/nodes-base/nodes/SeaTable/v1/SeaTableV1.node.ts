@@ -47,7 +47,7 @@ export class SeaTableV1 implements INodeType {
 					this,
 					{},
 					'GET',
-					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata/',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -65,7 +65,7 @@ export class SeaTableV1 implements INodeType {
 					this,
 					{},
 					'GET',
-					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata/',
 				);
 				for (const table of tables) {
 					returnData.push({

@@ -66,7 +66,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
 
 	return endpoint.replace(
-		/({{ *(access_token|dtable_uuid|server) *}})/g,
+		/{{ *(access_token|dtable_uuid|server) *}}/g,
 		(match: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
