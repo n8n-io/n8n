@@ -80,7 +80,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.license?.planName ?? 'Community';
 		},
 		isCommunityPlan(): boolean {
-			return this.planName.toLowerCase?.() === 'community';
+			return this.planName.toLowerCase() === 'community';
 		},
 		consumerId(): string {
 			return this.settings.license?.consumerId ?? 'unknown';
