@@ -3,8 +3,8 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import type { CanvasNode } from '@/types';
 import { CanvasConnectionMode } from '@/types';
+import type { CanvasConnectionCreateData, CanvasNode } from '@/types';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
@@ -36,8 +36,8 @@ import type { Connection } from '@vue-flow/core';
 import {
 	createCanvasConnectionHandleString,
 	getUniqueNodeName,
-	getVueFlowConnectorLengths,
 	mapCanvasConnectionToLegacyConnection,
+	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import type {
@@ -995,19 +995,21 @@ export function useCanvasOperations({
 		return false;
 	}
 
-	async function addConnections(
-		connections: AddedNodesAndConnections['connections'],
-		{ offsetIndex }: { offsetIndex: number },
-	) {
-		for (const { from, to } of connections) {
-			const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
-			const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
-
+	async function addConnections(connections: CanvasConnectionCreateData[]) {
+		for (const { source, target, data } of connections) {
 			createConnection({
-				source: fromNode.id,
-				sourceHandle: `outputs/${NodeConnectionType.Main}/${from.outputIndex ?? 0}`,
-				target: toNode.id,
-				targetHandle: `inputs/${NodeConnectionType.Main}/${to.inputIndex ?? 0}`,
+				source,
+				sourceHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Output,
+					type: data.source.type ?? NodeConnectionType.Main,
+					index: data.source.index ?? 0,
+				}),
+				target,
+				targetHandle: createCanvasConnectionHandleString({
+					mode: CanvasConnectionMode.Input,
+					type: data.target.type ?? NodeConnectionType.Main,
+					index: data.target.index ?? 0,
+				}),
 			});
 		}
 	}
@@ -1073,7 +1075,9 @@ export function useCanvasOperations({
 		}
 	}
 
-	async function addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
+	async function addImportedNodesToWorkflow(
+		data: IWorkflowDataUpdate,
+	): Promise<IWorkflowDataUpdate> {
 		// Because nodes with the same name maybe already exist, it could
 		// be needed that they have to be renamed. Also could it be possible
 		// that nodes are not allowed to be created because they have a create
@@ -1216,7 +1220,12 @@ export function useCanvasOperations({
 		historyStore.startRecordingUndo();
 
 		await addNodes(Object.values(tempWorkflow.nodes));
-		workflowsStore.setConnections(tempWorkflow.connectionsBySourceNode);
+		await addConnections(
+			mapLegacyConnectionsToCanvasConnections(
+				tempWorkflow.connectionsBySourceNode,
+				Object.values(tempWorkflow.nodes),
+			) as CanvasConnectionCreateData[],
+		);
 
 		historyStore.stopRecordingUndo();
 		uiStore.stateIsDirty = true;
@@ -1318,7 +1327,7 @@ export function useCanvasOperations({
 				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value),
 			);
 
-			await addNodesToWorkflow(workflowData);
+			await addImportedNodesToWorkflow(workflowData);
 
 			// setTimeout(() => {
 			// 	(data?.nodes ?? []).forEach((node: INodeUi) => {
@@ -1388,7 +1397,6 @@ export function useCanvasOperations({
 		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
-		initializeNodeDataWithDefaults,
 		addNodes,
 		updateNodePosition,
 		setNodeActive,

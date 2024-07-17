@@ -28,7 +28,7 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasNode, ConnectStartEvent } from '@/types';
+import { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
@@ -47,13 +47,8 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { TelemetryHelpers } from 'n8n-workflow';
-import type {
-	IDataObject,
-	NodeConnectionType,
-	ExecutionSummary,
-	IConnection,
-	IWorkflowBase,
-} from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -364,7 +359,7 @@ async function openWorkflow(data: IWorkflowDb) {
 	// 	executionsStore.activeExecution = selectedExecution;
 	// }
 
-	canvasEventBus.emit('fitView');
+	fitView();
 }
 
 function trackOpenWorkflowFromOnboardingTemplate() {
@@ -432,7 +427,7 @@ async function openWorkflowTemplate(templateId: string) {
 		workflow: data.workflow,
 	});
 
-	canvasEventBus.emit('fitView');
+	fitView();
 }
 
 function trackOpenWorkflowTemplate(templateId: string) {
@@ -583,13 +578,13 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
 	} as IWorkflowDb);
 
-	canvasEventBus.emit('fitView');
+	fitView();
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
 	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
 
-	canvasEventBus.emit('fitView');
+	fitView();
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -600,7 +595,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 
 	await importWorkflowData(workflowData, 'url');
 
-	canvasEventBus.emit('fitView');
+	fitView();
 }
 
 function addImportEventBindings() {
@@ -627,9 +622,29 @@ async function onAddNodesAndConnections(
 	}
 
 	await addNodes(nodes, { dragAndDrop, position });
-	await addConnections(connections, {
-		offsetIndex: editableWorkflow.value.nodes.length - nodes.length,
+
+	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
+	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
+		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
+		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+
+		return {
+			source: fromNode.id,
+			target: toNode.id,
+			data: {
+				source: {
+					index: from.outputIndex ?? 0,
+					type: NodeConnectionType.Main,
+				},
+				target: {
+					index: to.inputIndex ?? 0,
+					type: NodeConnectionType.Main,
+				},
+			},
+		};
 	});
+
+	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
 }
@@ -995,6 +1010,14 @@ async function initializeDebugMode() {
 			workflowsStore.isInDebugMode = true;
 		}
 	}
+}
+
+/**
+ * Canvas
+ */
+
+function fitView() {
+	setTimeout(() => canvasEventBus.emit('fitView'));
 }
 
 /**

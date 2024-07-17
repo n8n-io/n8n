@@ -6,8 +6,6 @@ import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { Connection as VueFlowConnection } from '@vue-flow/core/dist/types/connection';
-import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 
 export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,
