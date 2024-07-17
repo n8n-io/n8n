@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { snakeCase } from 'lodash-es';
-import { useSessionStorage } from '@vueuse/core';
-
-import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import type { INodeProperties, NodePropertyAction } from 'n8n-workflow';
-
 import type { INodeUi, IUpdateInformation } from '@/Interface';
-
+import { ref, computed, onMounted } from 'vue';
+import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
-import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables/useToast';
+import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getSchemas } from './CodeNodeEditor/utils';
 
 const MIN_PROMPT_LENGTH = 10;
 
@@ -32,7 +28,7 @@ const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
 const isLoading = ref(false);
-const prompt = ref('');
+const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => {
@@ -101,6 +97,7 @@ async function onSubmit() {
 
 	try {
 		const currentNodeParameters = activeNode.parameters;
+		console.log(getSchemas());
 		const actionResult = await nodeTypesStore.getNodeParameterActionResult({
 			nodeTypeAndVersion: {
 				name: activeNode.type,
@@ -145,15 +142,8 @@ async function onSubmit() {
 	}
 }
 
-function getSessionStoragePrompt() {
-	const codeNodeName = (useNDVStore().activeNode?.name as string) ?? '';
-	const hashedCode = snakeCase(codeNodeName);
-
-	return useSessionStorage(`button_prompt__${hashedCode}`, '');
-}
-
 function onPromptInput(inputValue: string) {
-	getSessionStoragePrompt().value = inputValue;
+	prompt.value = inputValue;
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),
 		value: inputValue,
@@ -161,8 +151,6 @@ function onPromptInput(inputValue: string) {
 }
 
 onMounted(() => {
-	// Restore prompt from session storage(with empty string fallback)
-	prompt.value = getSessionStoragePrompt().value;
 	parentNodes.value = getParentNodes();
 });
 </script>
