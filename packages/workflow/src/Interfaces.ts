@@ -1306,7 +1306,8 @@ export type DisplayCondition =
 	| { _cnd: { startsWith: string } }
 	| { _cnd: { endsWith: string } }
 	| { _cnd: { includes: string } }
-	| { _cnd: { regex: string } };
+	| { _cnd: { regex: string } }
+	| { _cnd: { exists: true } };
 
 export interface IDisplayOptions {
 	hide?: {
