@@ -1,5 +1,5 @@
 import { setActivePinia } from 'pinia';
-import { waitFor, within } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -83,9 +83,6 @@ describe('CredentialCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await waitFor(() => {
-			expect(actions).toBeInTheDocument();
-		});
 		expect(actions).toHaveTextContent('Move');
 	});
 });

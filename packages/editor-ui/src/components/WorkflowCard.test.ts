@@ -101,9 +101,6 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await waitFor(() => {
-			expect(actions).toBeInTheDocument();
-		});
 		await userEvent.click(actions.querySelectorAll('li')[0]);
 		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
@@ -167,9 +164,6 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await waitFor(() => {
-			expect(actions).toBeInTheDocument();
-		});
 		expect(actions).toHaveTextContent('Move');
 	});
 });
