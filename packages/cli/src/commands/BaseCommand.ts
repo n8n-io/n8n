@@ -112,7 +112,7 @@ export abstract class BaseCommand extends Command {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();
-		Container.get(TelemetryEventRelay).init();
+		await Container.get(TelemetryEventRelay).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
