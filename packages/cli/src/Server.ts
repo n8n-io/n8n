@@ -395,6 +395,7 @@ export class Server extends AbstractServer {
 		const consumerId = licenseService.getConsumerId();
 		const apiRestPath = config.getEnv('endpoints.rest');
 		const aiAssistantEnabled = config.get('aiAssistant.enabled');
+		const aiServiceApiBase = config.get('aiAssistant.baseUrl');
 
 		if (!aiAssistantEnabled) return;
 
@@ -402,7 +403,12 @@ export class Server extends AbstractServer {
 			`/${apiRestPath}/ai-proxy`,
 			cookieParser(),
 			authService.authMiddleware,
-			getAiServiceProxyMiddleware({ licenseCert, consumerId, n8nVersion: N8N_VERSION }),
+			getAiServiceProxyMiddleware({
+				licenseCert,
+				consumerId,
+				n8nVersion: N8N_VERSION,
+				options: { aiServiceApiBase },
+			}),
 		);
 	}
 
