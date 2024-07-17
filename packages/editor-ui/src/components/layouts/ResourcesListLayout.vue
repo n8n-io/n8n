@@ -559,6 +559,16 @@ export default defineComponent({
 		height: 100%;
 		width: 100%;
 		overflow: hidden;
+
+		> div {
+			> div:first-child {
+				.el-skeleton__item {
+					height: 42px;
+					margin: 0;
+				}
+			}
+		}
+
 		.el-skeleton__item {
 			height: 69px;
 		}
