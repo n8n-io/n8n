@@ -144,7 +144,7 @@ describe('WorkflowCard', () => {
 	});
 
 	it('should show Move action only if there is resource permission and not on community plan', async () => {
-		vi.spyOn(settingsStore, 'planName', 'get').mockReturnValue('Enterprise');
+		vi.spyOn(settingsStore, 'isCommunityPlan', 'get').mockReturnValue(false);
 
 		const data = createWorkflow({
 			scopes: ['workflow:move'],

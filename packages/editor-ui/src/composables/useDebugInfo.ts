@@ -58,12 +58,11 @@ export function useDebugInfo() {
 						: store.databaseType,
 			executionMode: store.isQueueModeEnabled ? 'scaling' : 'regular',
 			concurrency: store.settings.concurrency,
-			license:
-				store.planName === 'Community'
-					? (store.planName.toLowerCase() as 'community')
-					: store.settings.license.environment === 'production'
-						? 'enterprise (production)'
-						: 'enterprise (sandbox)',
+			license: store.isCommunityPlan
+				? 'community'
+				: store.settings.license.environment === 'production'
+					? 'enterprise (production)'
+					: 'enterprise (sandbox)',
 			consumerId: store.consumerId,
 		} as const;
 	};

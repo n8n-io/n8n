@@ -64,10 +64,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (
-		credentialPermissions.value.move &&
-		String(settingsStore.planName).toLowerCase() !== 'community'
-	) {
+	if (credentialPermissions.value.move && !settingsStore.isCommunityPlan) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
