@@ -36,7 +36,8 @@ describe('AzureKeyVault', () => {
 				async *[Symbol.asyncIterator]() {
 					yield { name: 'secret1' };
 					yield { name: 'secret2' };
-					yield { name: '#@&' };
+					yield { name: 'secret3' }; // no value
+					yield { name: '#@&' }; // invalid name
 				},
 			}));
 
@@ -58,10 +59,12 @@ describe('AzureKeyVault', () => {
 		expect(listSpy).toHaveBeenCalled();
 		expect(getSpy).toHaveBeenCalledWith('secret1');
 		expect(getSpy).toHaveBeenCalledWith('secret2');
+		expect(getSpy).toHaveBeenCalledWith('secret3');
 		expect(getSpy).not.toHaveBeenCalledWith('#@&');
 
 		expect(azureKeyVault.getSecret('secret1')).toBe('value1');
 		expect(azureKeyVault.getSecret('secret2')).toBe('value2');
-		expect(azureKeyVault.getSecret('#@&')).toBeUndefined();
+		expect(azureKeyVault.getSecret('secret3')).toBeUndefined(); // no value
+		expect(azureKeyVault.getSecret('#@&')).toBeUndefined(); // invalid
 	});
 });
