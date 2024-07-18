@@ -6,8 +6,3 @@ export type AzureKeyVaultContext = SecretsProviderSettings<{
 	clientId: string;
 	clientSecret: string;
 }>;
-
-export type AzureKeyVaultSecret = {
-	name: string;
-	value: string;
-};

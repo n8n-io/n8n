@@ -2,7 +2,7 @@ import { ClientSecretCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import type { INodeProperties } from 'n8n-workflow';
-import type { AzureKeyVaultContext, AzureKeyVaultSecret } from './types';
+import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 
 export class AzureKeyVault implements SecretsProvider {
@@ -109,11 +109,11 @@ export class AzureKeyVault implements SecretsProvider {
 
 		const secrets = await Promise.all(promises);
 
-		secrets
-			.filter((secret): secret is AzureKeyVaultSecret => secret.value !== undefined)
-			.forEach(({ name, value }) => {
-				this.cachedSecrets[name] = value;
-			});
+		this.cachedSecrets = secrets.reduce<Record<string, string>>((acc, cur) => {
+			if (cur.value === undefined) return acc;
+			acc[cur.name] = cur.value;
+			return acc;
+		}, {});
 	}
 
 	getSecret(name: string) {
