@@ -1570,7 +1570,6 @@ export interface EnvironmentVariable {
 	id: string;
 	key: string;
 	value: string;
-	type: string;
 }
 
 export type ExecutionFilterMetadata = {
