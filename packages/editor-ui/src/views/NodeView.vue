@@ -17,7 +17,7 @@
 				@touchmove="canvasPanning.onMouseMove"
 				@mousedown="mouseDown"
 				@mouseup="mouseUp"
-				@contextmenu="contextMenu.open"
+				@contextmenu="onContextMenu"
 				@wheel="canvasStore.wheelScroll"
 			>
 				<div
@@ -374,7 +374,7 @@ import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
-import { tryToParseNumber } from '@/utils/typesUtils';
+import { isPresent, tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/stores/projects.store';
@@ -4583,7 +4583,16 @@ export default defineComponent({
 				}
 			}
 		},
-		onContextMenuAction(action: ContextMenuAction, nodes: INode[]): void {
+		onContextMenu(event: MouseEvent) {
+			this.contextMenu.open(event, {
+				source: 'canvas',
+				nodeIds: this.uiStore.selectedNodes.map((node) => node.id),
+			});
+		},
+		onContextMenuAction(action: ContextMenuAction, nodeIds: string[]): void {
+			const nodes = nodeIds
+				.map((nodeId) => this.workflowsStore.getNodeById(nodeId))
+				.filter(isPresent);
 			switch (action) {
 				case 'copy':
 					this.copyNodes(nodes);
