@@ -1,4 +1,6 @@
 import {
+	type INodeExecutionData,
+	type MultiPartFormData,
 	NodeOperationError,
 	jsonParse,
 	type IDataObject,
@@ -173,13 +175,64 @@ export async function formWebhook(context: IWebhookFunctions) {
 	}
 
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
+	const files = (context.getBodyData().files as IDataObject) ?? {};
 
-	const returnData: IDataObject = {};
+	const returnItem: INodeExecutionData = {
+		json: {},
+	};
+	if (files && Object.keys(files).length) {
+		returnItem.binary = {};
+	}
+
+	let count = 0;
+
+	for (const key of Object.keys(files)) {
+		const processFiles: MultiPartFormData.File[] = [];
+		let multiFile = false;
+		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
+
+		if (Array.isArray(filesInput)) {
+			bodyData[key] = filesInput.map((file) => ({
+				filename: file.originalFilename,
+				mimetype: file.mimetype,
+				size: file.size,
+			}));
+			processFiles.push(...filesInput);
+			multiFile = true;
+		} else {
+			bodyData[key] = {
+				filename: filesInput.originalFilename,
+				mimetype: filesInput.mimetype,
+				size: filesInput.size,
+			};
+			processFiles.push(filesInput);
+		}
+
+		let fileCount = 0;
+		for (const file of processFiles) {
+			let binaryPropertyName = key;
+			if (binaryPropertyName.endsWith('[]')) {
+				binaryPropertyName = binaryPropertyName.slice(0, -2);
+			}
+			if (multiFile) {
+				binaryPropertyName += fileCount++;
+			}
+
+			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+				file.filepath,
+				file.originalFilename ?? file.newFilename,
+				file.mimetype,
+			);
+
+			count += 1;
+		}
+	}
+
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
 		let value = bodyData[key] ?? null;
 
-		if (value === null) returnData[field.fieldLabel] = null;
+		if (value === null) returnItem.json[field.fieldLabel] = null;
 
 		if (field.fieldType === 'number') {
 			value = Number(value);
@@ -191,16 +244,16 @@ export async function formWebhook(context: IWebhookFunctions) {
 			value = jsonParse(value);
 		}
 
-		returnData[field.fieldLabel] = value;
+		returnItem.json[field.fieldLabel] = value;
 	}
 	const timezone = context.getTimezone();
-	returnData.submittedAt = DateTime.now().setZone(timezone).toISO();
-	returnData.formMode = mode;
+	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+	returnItem.json.formMode = mode;
 
 	const webhookResponse: IDataObject = { status: 200 };
 
 	return {
 		webhookResponse,
-		workflowData: [context.helpers.returnJsonArray(returnData)],
+		workflowData: [[returnItem]],
 	};
 }

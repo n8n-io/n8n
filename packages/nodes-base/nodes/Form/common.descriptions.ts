@@ -74,6 +74,10 @@ export const formFields: INodeProperties = {
 							value: 'email',
 						},
 						{
+							name: 'File',
+							value: 'file',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},
