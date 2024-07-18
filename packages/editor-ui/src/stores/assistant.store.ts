@@ -151,7 +151,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			// todo update node
 			codeDiffMessage.replaced = true;
 		} catch (e) {
-			codeDiffMessage.error = false;
+			codeDiffMessage.error = true;
 		}
 		codeDiffMessage.replacing = false;
 	}

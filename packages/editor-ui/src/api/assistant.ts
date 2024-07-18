@@ -6,7 +6,7 @@ export async function chatWithAssistant(
 	ctx: IRestApiContext,
 	payload: ChatRequest.RequestPayload,
 ): Promise<ChatRequest.ResponsePayload> {
-	if (payload.type === 'init-error-help') {
+	if (payload.action === 'init-error-help') {
 		return {
 			sessionId: '1234',
 			messages: [

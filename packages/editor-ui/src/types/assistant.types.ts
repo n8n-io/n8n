@@ -54,7 +54,7 @@ export namespace ChatRequest {
 	}
 
 	export interface ErrorRequestPayload extends ErrorContext, WorkflowContext {
-		type: 'init-error-help';
+		action: 'init-error-help';
 		user: {
 			firstName: string;
 		};
@@ -65,12 +65,12 @@ export namespace ChatRequest {
 		| 'errored-node-errored-again';
 
 	interface EventRequestPayload {
-		type: 'event';
+		action: 'event';
 		event: InteractionEventName;
 	}
 
 	export interface UserChatMessage {
-		type: 'user-message';
+		action: 'user-message';
 		content: string;
 		quickReplyType?: string;
 	}
