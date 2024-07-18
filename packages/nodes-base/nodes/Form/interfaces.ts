@@ -6,6 +6,7 @@ export type FormField = {
 	multiselect?: boolean;
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
+	formatDate?: string;
 };
 
 export type FormTriggerInput = {

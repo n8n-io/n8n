@@ -172,6 +172,21 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Format Date As',
+					name: 'formatDate',
+					type: 'string',
+					default: '',
+					description:
+						'Returns a string representation of this field formatted according to the specified format string. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
+					placeholder: 'e.g. dd/mm/yyyy',
+					hint: 'Leave empty to use the default format',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
 					displayName: 'Required Field',
 					name: 'requiredField',
 					type: 'boolean',

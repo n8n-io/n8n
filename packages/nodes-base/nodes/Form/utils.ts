@@ -248,6 +248,9 @@ export async function formWebhook(context: IWebhookFunctions) {
 		if (field.multiselect && typeof value === 'string') {
 			value = jsonParse(value);
 		}
+		if (field.fieldType === 'date' && value && field.formatDate !== '') {
+			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		}
 
 		returnItem.json[field.fieldLabel] = value;
 	}
