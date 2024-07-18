@@ -31,7 +31,6 @@ import type { Connection } from '@vue-flow/core';
 import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
-	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
@@ -65,7 +64,6 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { usePostHog } from '@/stores/posthog.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useUsersStore } from '@/stores/users.store';
@@ -102,7 +100,6 @@ const message = useMessage();
 const { titleReset, titleSet } = useTitleChange();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
-const posthog = usePostHog();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -279,8 +276,6 @@ async function initializeWorkspaceForNewWorkflow() {
 	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
 	workflowsStore.makeNewWorkflowShareable();
 
-	// await runAutoAddManualTriggerExperiment();
-
 	uiStore.nodeViewInitialized = true;
 }
 
@@ -306,25 +301,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		});
 	} finally {
 		uiStore.nodeViewInitialized = true;
-	}
-}
-
-/**
- * Pre-populate the canvas with the manual trigger node
- * if the experiment is enabled and the user is in the variant group
- */
-async function runAutoAddManualTriggerExperiment() {
-	if (
-		posthog.getVariant(CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name) !==
-		CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.variant
-	) {
-		return;
-	}
-
-	const manualTriggerNode = canvasStore.getAutoAddManualTriggerNode();
-	if (manualTriggerNode) {
-		await addNodes([manualTriggerNode]);
-		uiStore.lastSelectedNode = manualTriggerNode.name;
 	}
 }
 
