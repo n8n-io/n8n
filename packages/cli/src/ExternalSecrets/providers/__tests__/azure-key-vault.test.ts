@@ -65,6 +65,6 @@ describe('AzureKeyVault', () => {
 		expect(azureKeyVault.getSecret('secret1')).toBe('value1');
 		expect(azureKeyVault.getSecret('secret2')).toBe('value2');
 		expect(azureKeyVault.getSecret('secret3')).toBeUndefined(); // no value
-		expect(azureKeyVault.getSecret('#@&')).toBeUndefined(); // invalid
+		expect(azureKeyVault.getSecret('#@&')).toBeUndefined(); // invalid name
 	});
 });
