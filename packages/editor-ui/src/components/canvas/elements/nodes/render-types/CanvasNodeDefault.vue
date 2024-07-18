@@ -13,7 +13,7 @@ const $style = useCssModule();
 const i18n = useI18n();
 
 const emit = defineEmits<{
-	'open:contextMenu': [event: MouseEvent];
+	'open:contextmenu': [event: MouseEvent];
 }>();
 
 const {
@@ -85,7 +85,7 @@ const dataTestId = computed(() => {
 });
 
 function openContextMenu(event: MouseEvent) {
-	emit('open:contextMenu', event);
+	emit('open:contextmenu', event);
 }
 </script>
 

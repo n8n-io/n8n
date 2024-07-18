@@ -66,7 +66,7 @@ const props = withDefaults(
 );
 
 const {
-	getSelectedNodes,
+	getSelectedNodes: selectedNodes,
 	addSelectedNodes,
 	removeSelectedNodes,
 	viewportRef,
@@ -125,11 +125,11 @@ useKeybindings({
 
 const contextMenu = useContextMenu();
 
-const lastSelectedNode = computed(() => getSelectedNodes.value[getSelectedNodes.value.length - 1]);
+const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 
-const hasSelection = computed(() => getSelectedNodes.value.length > 0);
+const hasSelection = computed(() => selectedNodes.value.length > 0);
 
-const selectedNodeIds = computed(() => getSelectedNodes.value.map((node) => node.id));
+const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 /**
  * Nodes
@@ -266,7 +266,7 @@ function onOpenNodeContextMenu(
 	event: MouseEvent,
 	source: 'node-button' | 'node-right-click',
 ) {
-	if (getSelectedNodes.value.some((node) => node.id === id)) {
+	if (selectedNodeIds.value.includes(id)) {
 		onOpenContextMenu(event);
 	}
 
@@ -286,7 +286,7 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'select_all':
 			return addSelectedNodes(graphNodes.value);
 		case 'deselect_all':
-			return removeSelectedNodes(getSelectedNodes.value);
+			return removeSelectedNodes(selectedNodes.value);
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
 		case 'toggle_pin':
@@ -346,7 +346,7 @@ onUnmounted(() => {
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
-				@open:context-menu="onOpenNodeContextMenu"
+				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
 			/>

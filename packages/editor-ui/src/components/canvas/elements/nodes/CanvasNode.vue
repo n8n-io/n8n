@@ -18,7 +18,7 @@ const emit = defineEmits<{
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
-	'open:contextMenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
+	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
 	move: [id: string, position: XYPosition];
 }>();
@@ -114,11 +114,11 @@ function onActivate() {
 }
 
 function onOpenContextMenuFromToolbar(event: MouseEvent) {
-	emit('open:contextMenu', props.id, event, 'node-button');
+	emit('open:contextmenu', props.id, event, 'node-button');
 }
 
 function onOpenContextMenuFromNode(event: MouseEvent) {
-	emit('open:contextMenu', props.id, event, 'node-right-click');
+	emit('open:contextmenu', props.id, event, 'node-right-click');
 }
 function onUpdate(parameters: Record<string, unknown>) {
 	emit('update', props.id, parameters);
@@ -200,14 +200,14 @@ watch(
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
-			@open:context-menu="onOpenContextMenuFromToolbar"
+			@open:contextmenu="onOpenContextMenuFromToolbar"
 		/>
 
 		<CanvasNodeRenderer
 			@dblclick="onActivate"
 			@move="onMove"
 			@update="onUpdate"
-			@open:context-menu="onOpenContextMenuFromNode"
+			@open:contextmenu="onOpenContextMenuFromNode"
 		>
 			<NodeIcon
 				v-if="nodeType"

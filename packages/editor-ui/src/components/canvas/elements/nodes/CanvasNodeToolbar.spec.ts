@@ -80,7 +80,7 @@ describe('CanvasNodeToolbar', () => {
 		expect(emitted('delete')[0]).toEqual([]);
 	});
 
-	it('should emit "open:contextMenu" when overflow node button is clicked', async () => {
+	it('should emit "open:contextmenu" when overflow node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
@@ -91,6 +91,6 @@ describe('CanvasNodeToolbar', () => {
 
 		await fireEvent.click(getByTestId('overflow-node-button'));
 
-		expect(emitted('open:contextMenu')[0]).toEqual([expect.any(MouseEvent)]);
+		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
 	});
 });

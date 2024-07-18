@@ -8,7 +8,7 @@ const emit = defineEmits<{
 	delete: [];
 	toggle: [];
 	run: [];
-	'open:contextMenu': [event: MouseEvent];
+	'open:contextmenu': [event: MouseEvent];
 }>();
 
 const $style = useCssModule();
@@ -47,7 +47,7 @@ function onDeleteNode() {
 }
 
 function onOpenContextMenu(event: MouseEvent) {
-	emit('open:contextMenu', event);
+	emit('open:contextmenu', event);
 }
 </script>
 
