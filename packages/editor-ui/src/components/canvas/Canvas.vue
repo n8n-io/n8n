@@ -20,6 +20,7 @@ const emit = defineEmits<{
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id?: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'delete:connection': [connection: Connection];
@@ -55,6 +56,10 @@ const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project } = us
 /**
  * Nodes
  */
+
+function onClickNodeAdd(id: string, handle: string) {
+	emit('click:node:add', id, handle);
+}
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
@@ -233,6 +238,7 @@ onUnmounted(() => {
 				@activate="onSetNodeActive"
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
+				@add="onClickNodeAdd"
 			/>
 		</template>
 

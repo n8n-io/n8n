@@ -8,9 +8,10 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
-import type {
+import {
 	CanvasConnection,
 	CanvasConnectionData,
+	CanvasConnectionMode,
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
@@ -263,8 +264,8 @@ export function useCanvasMapping({
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
 				connections: {
-					input: inputConnections,
-					output: outputConnections,
+					[CanvasConnectionMode.Input]: inputConnections,
+					[CanvasConnectionMode.Output]: outputConnections,
 				},
 				issues: {
 					items: nodeIssuesById.value[node.id],

@@ -574,6 +574,16 @@ function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>)
 	setNodeParameters(id, parameters);
 }
 
+function onClickNodeAdd(source: string, sourceHandle: string) {
+	nodeCreatorStore.openNodeCreatorForConnectingNode({
+		connection: {
+			source,
+			sourceHandle,
+		},
+		eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+	});
+}
+
 /**
  * Credentials
  */
@@ -1163,6 +1173,7 @@ onBeforeUnmount(() => {
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
 		@update:node:parameters="onUpdateNodeParameters"
+		@click:node:add="onClickNodeAdd"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
 		@create:connection="onCreateConnection"
