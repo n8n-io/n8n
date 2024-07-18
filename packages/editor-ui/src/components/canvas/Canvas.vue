@@ -26,6 +26,7 @@ const emit = defineEmits<{
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -107,6 +108,10 @@ const paneReady = ref(false);
 /**
  * Nodes
  */
+
+function onClickNodeAdd(id: string, handle: string) {
+	emit('click:node:add', id, handle);
+}
 
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
@@ -351,6 +356,7 @@ onPaneReady(async () => {
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
+				@add="onClickNodeAdd"
 			/>
 		</template>
 
