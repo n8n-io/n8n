@@ -4,12 +4,15 @@ export type FormField = {
 	requiredField: boolean;
 	fieldOptions?: { values: Array<{ option: string }> };
 	multiselect?: boolean;
+	multipleFiles?: boolean;
+	acceptFileTypes?: string;
 };
 
 export type FormTriggerInput = {
 	isSelect?: boolean;
 	isMultiSelect?: boolean;
 	isTextarea?: boolean;
+	isFileInput?: boolean;
 	isInput?: boolean;
 	labbel: string;
 	id: string;
@@ -18,6 +21,8 @@ export type FormTriggerInput = {
 	inputRequired: 'form-required' | '';
 	selectOptions?: string[];
 	multiSelectOptions?: Array<{ id: string; label: string }>;
+	acceptFileTypes?: string;
+	multipleFiles?: 'multiple' | '';
 };
 
 export type FormTriggerData = {

@@ -28,6 +28,9 @@ export const formDescription: INodeProperties = {
 	placeholder: "e.g. We'll get back to you soon",
 	description:
 		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
+	typeOptions: {
+		rows: 2,
+	},
 };
 
 export const formFields: INodeProperties = {
@@ -138,6 +141,33 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
+						},
+					},
+				},
+				{
+					displayName: 'Multiple Files',
+					name: 'multipleFiles',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to allow the user to select multiple files from the file input or just one',
+					displayOptions: {
+						show: {
+							fieldType: ['file'],
+						},
+					},
+				},
+				{
+					displayName: 'Accept File Types',
+					name: 'acceptFileTypes',
+					type: 'string',
+					default: '',
+					description: 'List of file types that can be uploaded, separated by commas',
+					hint: 'Leave empty to allow all file types',
+					placeholder: 'e.g. .jpg, .png',
+					displayOptions: {
+						show: {
+							fieldType: ['file'],
 						},
 					},
 				},

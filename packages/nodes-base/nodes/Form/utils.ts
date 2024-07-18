@@ -68,6 +68,10 @@ export const prepareFormData = (
 					id: `option${i}`,
 					label: e.option,
 				})) ?? [];
+		} else if (fieldType === 'file') {
+			input.isFileInput = true;
+			input.acceptFileTypes = field.acceptFileTypes;
+			input.multipleFiles = field.multipleFiles ? 'multiple' : '';
 		} else if (fieldType === 'dropdown') {
 			input.isSelect = true;
 			const fieldOptions = field.fieldOptions?.values ?? [];
@@ -208,14 +212,15 @@ export async function formWebhook(context: IWebhookFunctions) {
 			processFiles.push(filesInput);
 		}
 
+		const entryIndex = Number(key.replace(/field-/g, ''));
+		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = key;
-			if (binaryPropertyName.endsWith('[]')) {
-				binaryPropertyName = binaryPropertyName.slice(0, -2);
-			}
+			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
 			if (multiFile) {
-				binaryPropertyName += fileCount++;
+				binaryPropertyName += `_${fileCount++}`;
 			}
 
 			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(

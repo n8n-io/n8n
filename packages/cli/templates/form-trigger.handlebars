@@ -305,6 +305,23 @@
 									</div>
 								{{/if}}
 
+								{{#if isFileInput}}
+									<div class='form-group'>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
+										<input
+											class='form-input {{inputRequired}}'
+											type='file'
+											id='{{id}}'
+											name='{{id}}'
+											accept='{{acceptFileTypes}}'
+											{{multipleFiles}}
+										/>
+										<p class='{{errorId}} error-hidden'>
+											This field is required
+										</p>
+									</div>
+								{{/if}}
+
 								{{#if isInput}}
 									<div class='form-group'>
 										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
