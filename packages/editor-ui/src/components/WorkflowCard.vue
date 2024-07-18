@@ -95,7 +95,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.move) {
+	if (workflowPermissions.value.move && !settingsStore.isCommunityPlan) {
 		items.push({
 			label: locale.baseText('workflows.item.move'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE,
