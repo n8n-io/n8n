@@ -73,6 +73,7 @@ const {
 	fitView,
 	project,
 	nodes: graphNodes,
+	onPaneReady,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 useKeybindings({
@@ -100,6 +101,8 @@ const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
+
+const paneReady = ref(false);
 
 /**
  * Nodes
@@ -241,7 +244,7 @@ function onClickPane(event: MouseEvent) {
 }
 
 async function onFitView() {
-	await fitView();
+	await fitView({ maxZoom: 1.2, padding: 0.1 });
 }
 
 /**
@@ -307,6 +310,11 @@ onMounted(() => {
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
 });
+
+onPaneReady(async () => {
+	await onFitView();
+	paneReady.value = true;
+});
 </script>
 
 <template>
@@ -315,12 +323,12 @@ onUnmounted(() => {
 		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
-		fit-view-on-init
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[16, 16]"
 		:min-zoom="0.2"
-		:max-zoom="2"
+		:max-zoom="4"
+		:class="[$style.canvas, { [$style.visible]: paneReady }]"
 		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
 		@selection-drag-stop="onSelectionDragStop"
@@ -363,6 +371,7 @@ onUnmounted(() => {
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
+			@fit-view="onFitView"
 		></Controls>
 
 		<Suspense>
@@ -370,6 +379,16 @@ onUnmounted(() => {
 		</Suspense>
 	</VueFlow>
 </template>
+
+<style lang="scss" module>
+.canvas {
+	opacity: 0;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+</style>
 
 <style lang="scss">
 .vue-flow__controls {
