@@ -8,6 +8,7 @@ import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRen
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { Position } from '@vue-flow/core';
 import type { XYPosition, NodeProps } from '@vue-flow/core';
 
@@ -17,12 +18,14 @@ const emit = defineEmits<{
 	select: [id: string, selected: boolean];
 	toggle: [id: string];
 	activate: [id: string];
+	'open:contextmenu': [id: string, event: MouseEvent, source: 'node-button' | 'node-right-click'];
 	update: [id: string, parameters: Record<string, unknown>];
 	move: [id: string, position: XYPosition];
 }>();
 const props = defineProps<NodeProps<CanvasNodeData>>();
 
 const nodeTypesStore = useNodeTypesStore();
+const contextMenu = useContextMenu();
 
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
@@ -110,6 +113,13 @@ function onActivate() {
 	emit('activate', props.id);
 }
 
+function onOpenContextMenuFromToolbar(event: MouseEvent) {
+	emit('open:contextmenu', props.id, event, 'node-button');
+}
+
+function onOpenContextMenuFromNode(event: MouseEvent) {
+	emit('open:contextmenu', props.id, event, 'node-right-click');
+}
 function onUpdate(parameters: Record<string, unknown>) {
 	emit('update', props.id, parameters);
 }
@@ -135,6 +145,11 @@ provide(CanvasNodeKey, {
 	nodeType,
 });
 
+const showToolbar = computed(() => {
+	const target = contextMenu.target.value;
+	return contextMenu.isOpen && target?.source === 'node-button' && target.nodeId === id.value;
+});
+
 /**
  * Lifecycle
  */
@@ -148,7 +163,10 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.canvasNode" data-test-id="canvas-node">
+	<div
+		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
+		data-test-id="canvas-node"
+	>
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
@@ -182,9 +200,15 @@ watch(
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
+			@open:contextmenu="onOpenContextMenuFromToolbar"
 		/>
 
-		<CanvasNodeRenderer @dblclick="onActivate" @move="onMove" @update="onUpdate">
+		<CanvasNodeRenderer
+			@dblclick="onActivate"
+			@move="onMove"
+			@update="onUpdate"
+			@open:contextmenu="onOpenContextMenuFromNode"
+		>
 			<NodeIcon
 				v-if="nodeType"
 				:node-type="nodeType"
@@ -199,7 +223,8 @@ watch(
 
 <style lang="scss" module>
 .canvasNode {
-	&:hover {
+	&:hover,
+	&.showToolbar {
 		.canvasNodeToolbar {
 			opacity: 1;
 		}
@@ -213,9 +238,5 @@ watch(
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
-}
-
-.canvasNodeToolbar:focus-within {
-	opacity: 1;
 }
 </style>

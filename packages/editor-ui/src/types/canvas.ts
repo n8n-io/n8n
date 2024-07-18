@@ -2,13 +2,14 @@
 import type {
 	ConnectionTypes,
 	ExecutionStatus,
+	IConnection,
 	INodeConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { ComputedRef, Ref } from 'vue';
+import type { PartialBy } from '@/utils/typeHelpers';
 
 export type CanvasConnectionPortType = ConnectionTypes;
 
@@ -107,13 +108,14 @@ export interface CanvasConnectionData {
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
-export interface CanvasPluginContext {
-	instance: BrowserJsPlumbInstance;
-}
-
-export interface CanvasPlugin {
-	(ctx: CanvasPluginContext): void;
-}
+export type CanvasConnectionCreateData = {
+	source: string;
+	target: string;
+	data: {
+		source: PartialBy<IConnection, 'node'>;
+		target: PartialBy<IConnection, 'node'>;
+	};
+};
 
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;

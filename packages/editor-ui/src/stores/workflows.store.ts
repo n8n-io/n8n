@@ -73,6 +73,7 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -450,6 +451,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
 		return workflowData;
+	}
+
+	function makeNewWorkflowShareable() {
+		const { currentProject, personalProject } = useProjectsStore();
+		const homeProject = currentProject ?? personalProject ?? {};
+		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+
+		workflow.value.homeProject = homeProject as ProjectSharingData;
+		workflow.value.scopes = scopes;
 	}
 
 	function resetWorkflow() {
@@ -1589,6 +1599,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchAllWorkflows,
 		fetchWorkflow,
 		getNewWorkflowData,
+		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
 		addExecutingNode,

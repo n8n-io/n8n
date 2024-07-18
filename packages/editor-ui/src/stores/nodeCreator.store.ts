@@ -203,8 +203,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// canvasStore.newNodeInsertPosition = null;
 
 		if (isVueFlowConnection(connection)) {
-			uiStore.lastSelectedNodeConnection = connection;
+			uiStore.lastInteractedWithNodeConnection = connection;
 		}
+		uiStore.lastInteractedWithNodeHandle = connection.sourceHandle ?? null;
+		uiStore.lastInteractedWithNodeId = sourceNode.id;
 
 		openNodeCreator({
 			source: eventSource,

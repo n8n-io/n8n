@@ -81,6 +81,7 @@ export class Server extends AbstractServer {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		super('main');
 
@@ -96,8 +97,7 @@ export class Server extends AbstractServer {
 
 		this.presetCredentialsLoaded = false;
 
-		const globalConfig = Container.get(GlobalConfig);
-		this.endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
+		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -168,7 +168,7 @@ export class Server extends AbstractServer {
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
-			await Container.get(PrometheusMetricsService).configureMetrics(this.app);
+			await Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
@@ -185,7 +185,7 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
-		const publicApiEndpoint = config.getEnv('publicApi.path');
+		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// ----------------------------------------
 		// Public API
