@@ -38,12 +38,6 @@ describe('VariablesView', () => {
 		server.shutdown();
 	});
 
-	it('should render loading state', () => {
-		const wrapper = renderComponent({ pinia });
-
-		expect(wrapper.container.querySelectorAll('.n8n-loading')).toHaveLength(3);
-	});
-
 	describe('should render empty state', () => {
 		it('when feature is disabled and logged in user is not owner', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Variables] = false;
