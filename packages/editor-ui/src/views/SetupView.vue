@@ -109,7 +109,7 @@ export default defineComponent({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					await this.$router.push({ name: VIEWS.HOMEPAGE });
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
