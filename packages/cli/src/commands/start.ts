@@ -210,6 +210,8 @@ export class Start extends BaseCommand {
 		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
+		await this.initProcessedDataManager();
+		this.logger.debug('Processed data service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();

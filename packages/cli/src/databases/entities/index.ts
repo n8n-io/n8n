@@ -26,6 +26,17 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import { WorkflowStatistics } from './workflow-statistics';
+import { ExecutionMetadata } from './execution-metadata';
+import { ExecutionData } from './execution-data';
+import { WorkflowHistory } from './workflow-history';
+import { Project } from './project';
+import { ProjectRelation } from './project-relation';
+import { ProcessedData } from './ProcessedData';
+import { InvalidAuthToken } from './invalid-auth-token';
+import { AnnotationTagEntity } from './annotation-tag-entity';
+import { AnnotationTagMapping } from './annotation-tag-mapping';
+import { ExecutionAnnotation } from './execution-annotation';
 
 export const entities = {
 	AnnotationTagEntity,
@@ -56,4 +67,5 @@ export const entities = {
 	Project,
 	ProjectRelation,
 	ApiKey,
+	ProcessedData,
 };

@@ -2,6 +2,7 @@ import type { RedisOptions } from 'ioredis';
 import type { BinaryData } from 'n8n-core';
 
 import type { schema } from './schema';
+import type { IProcessedDataConfig } from 'n8n-workflow';
 
 // -----------------------------------
 //          transformers
@@ -76,6 +77,7 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 type ExceptionPaths = {
 	'queue.bull.redis': RedisOptions;
 	binaryDataManager: BinaryData.Config;
+	processedDataManager: IProcessedDataConfig;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
 };

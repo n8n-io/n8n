@@ -102,6 +102,13 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	CheckProcessedHelperFunctions,
+	ICheckProcessedOutput,
+	ICheckProcessedOutputItems,
+	ICheckProcessedOptions,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
+	ICheckProcessedContextData,
 	AiEvent,
 } from 'n8n-workflow';
 import {
@@ -147,6 +154,9 @@ import {
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
+import { extractValue } from './ExtractValue';
+import { ProcessedDataManager } from './ProcessedDataManager';
+import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 import { getNodeAsTool } from './CreateNodeAsTool';
 import {
 	getAllWorkflowExecutionMetadata,
@@ -1281,6 +1291,65 @@ async function prepareBinaryData(
 	}
 
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
+}
+
+export async function checkProcessed(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutput> {
+	return await ProcessedDataManager.getInstance().checkProcessed(
+		items,
+		context,
+		contextData,
+		options,
+	);
+}
+
+export async function checkProcessedAndRecord(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutput> {
+	return await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		items,
+		context,
+		contextData,
+		options,
+	);
+}
+
+export async function checkProcessedItemsAndRecord(
+	key: string,
+	items: IDataObject[],
+	// items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<ICheckProcessedOutputItems> {
+	return await ProcessedDataManager.getInstance().checkProcessedItemsAndRecord(
+		key,
+		items,
+		context,
+		contextData,
+		options,
+	);
+}
+
+export async function removeProcessed(
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
+	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
+): Promise<void> {
+	return await ProcessedDataManager.getInstance().removeProcessed(
+		items,
+		context,
+		contextData,
+		options,
+	);
 }
 
 function applyPaginationRequestData(
@@ -3452,6 +3521,48 @@ const getBinaryHelperFunctions = (
 	},
 });
 
+const getCheckProcessedHelperFunctions = (
+	workflow: Workflow,
+	node: INode,
+): CheckProcessedHelperFunctions => ({
+	async checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput> {
+		return await checkProcessed(items, context, { node, workflow }, options);
+	},
+	async checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput> {
+		return await checkProcessedAndRecord(items, context, { node, workflow }, options);
+	},
+	async checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		// items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutputItems> {
+		return await checkProcessedItemsAndRecord(
+			propertyName,
+			items,
+			context,
+			{ node, workflow },
+			options,
+		);
+	},
+	async removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		return await removeProcessed(items, context, { node, workflow }, options);
+	},
+});
+
 /**
  * Returns a copy of the items which only contains the json data and
  * of that only the defined properties
@@ -3884,6 +3995,7 @@ export function getExecuteFunctions(
 				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
+				...getCheckProcessedHelperFunctions(workflow, node),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>

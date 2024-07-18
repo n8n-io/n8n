@@ -45,6 +45,7 @@ import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionD
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
+import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
@@ -110,6 +111,7 @@ export const mysqlMigrations: Migration[] = [
 	SeparateExecutionData1690000000030,
 	FixExecutionDataType1690000000031,
 	RemoveSkipOwnerSetup1681134145997,
+	CreateProcessedDataTable1721319360300,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,

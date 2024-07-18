@@ -39,6 +39,9 @@ import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserAc
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
+import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './1690787606731-AddMissingPrimaryKeyOnExecutionData';
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
@@ -107,6 +110,7 @@ export const postgresMigrations: Migration[] = [
 	MigrateIntegerKeysToString1690000000000,
 	SeparateExecutionData1690000000020,
 	RemoveSkipOwnerSetup1681134145997,
+	CreateProcessedDataTable1721319360300,
 	RemoveResetPasswordColumns1690000000030,
 	AddMissingPrimaryKeyOnExecutionData1690787606731,
 	CreateWorkflowNameIndex1691088862123,
