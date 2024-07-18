@@ -1026,6 +1026,7 @@ async function checkAndInitDebugMode() {
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	canvasStore.newNodeInsertPosition = [position.x, position.y];
+	uiStore.isCreateNodeActive = false;
 }
 
 /**
