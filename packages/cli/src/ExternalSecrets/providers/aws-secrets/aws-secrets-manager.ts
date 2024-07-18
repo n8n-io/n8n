@@ -1,6 +1,6 @@
 import { AwsSecretsClient } from './aws-secrets-client';
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
-import { EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import type { INodeProperties } from 'n8n-workflow';
 import type { AwsSecretsManagerContext } from './types';
@@ -13,14 +13,7 @@ export class AwsSecretsManager implements SecretsProvider {
 	state: SecretsProviderState = 'initializing';
 
 	properties: INodeProperties[] = [
-		{
-			displayName:
-				'Need help filling out these fields? <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">Open docs</a>',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-			noDataExpression: true,
-		},
+		DOCS_HELP_NOTICE,
 		{
 			displayName: 'Region',
 			name: 'region',
