@@ -486,6 +486,14 @@
 
 			const form = document.querySelector('#n8n-form');
 
+			document.querySelectorAll("input[type=number]").forEach(function (element) {
+        element.addEventListener("wheel", function(event) {
+            if (document.activeElement === event.target) {
+                event.preventDefault();
+            }
+        });
+    });
+
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 
 			requiredInputs.forEach((input) => {
