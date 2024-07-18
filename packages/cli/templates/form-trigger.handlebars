@@ -298,7 +298,8 @@
 											class='form-input {{inputRequired}}'
 											id='{{id}}'
 											name='{{id}}'
-										></textarea>
+											placeholder="{{placeholder}}"
+										>{{defaultValue}}</textarea>
 										<p class='{{errorId}} error-hidden'>
 											This field is required
 										</p>
@@ -315,6 +316,7 @@
 											name='{{id}}'
 											accept='{{acceptFileTypes}}'
 											{{multipleFiles}}
+											placeholder="{{placeholder}}"
 										/>
 										<p class='{{errorId}} error-hidden'>
 											This field is required
@@ -330,6 +332,8 @@
 											type='{{type}}'
 											id='{{id}}'
 											name='{{id}}'
+											value="{{defaultValue}}"
+											placeholder="{{placeholder}}"
 										/>
 										<p class='{{errorId}} error-hidden'>
 											This field is required

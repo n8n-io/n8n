@@ -16,6 +16,7 @@ export const prepareFormData = (
 	redirectUrl: string | undefined,
 	formFields: FormField[],
 	testRun: boolean,
+	query: IDataObject,
 	instanceId?: string,
 	useResponseData?: boolean,
 	appendAttribution = true,
@@ -52,13 +53,15 @@ export const prepareFormData = (
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect } = field;
+		const { fieldType, requiredField, multiselect, placeholder } = field;
 
 		const input: IDataObject = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
+			defaultValue: query[field.fieldLabel] ?? '',
+			placeholder,
 		};
 
 		if (multiselect) {
@@ -159,6 +162,8 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		const useResponseData = responseMode === 'responseNode';
 
+		const query = context.getRequestObject().query as IDataObject;
+
 		const data = prepareFormData(
 			formTitle,
 			formDescription,
@@ -166,6 +171,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			redirectUrl,
 			formFields,
 			mode === 'test',
+			query,
 			instanceId,
 			useResponseData,
 			appendAttribution,

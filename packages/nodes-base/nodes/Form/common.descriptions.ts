@@ -100,6 +100,17 @@ export const formFields: INodeProperties = {
 					required: true,
 				},
 				{
+					displayName: 'Placeholder',
+					name: 'placeholder',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['dropdown', 'date'],
+						},
+					},
+				},
+				{
 					displayName: 'Field Options',
 					name: 'fieldOptions',
 					placeholder: 'Add Field Option',

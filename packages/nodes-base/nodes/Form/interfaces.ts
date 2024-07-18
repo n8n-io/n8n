@@ -7,6 +7,7 @@ export type FormField = {
 	multipleFiles?: boolean;
 	acceptFileTypes?: string;
 	formatDate?: string;
+	placeholder?: string;
 };
 
 export type FormTriggerInput = {
@@ -16,6 +17,7 @@ export type FormTriggerInput = {
 	isFileInput?: boolean;
 	isInput?: boolean;
 	labbel: string;
+	defaultValue?: string;
 	id: string;
 	errorId: string;
 	type?: 'text' | 'number' | 'date';
@@ -24,6 +26,7 @@ export type FormTriggerInput = {
 	multiSelectOptions?: Array<{ id: string; label: string }>;
 	acceptFileTypes?: string;
 	multipleFiles?: 'multiple' | '';
+	placeholder?: string;
 };
 
 export type FormTriggerData = {
