@@ -26,3 +26,8 @@ export const splitName = (
 		}
 	}
 };
+
+export const enum ResourceType {
+	Credential = 'credential',
+	Workflow = 'workflow',
+}
