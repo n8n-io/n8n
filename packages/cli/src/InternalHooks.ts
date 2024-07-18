@@ -775,55 +775,6 @@ export class InternalHooks {
 		return await this.telemetry.track('User created variable', createData);
 	}
 
-	async onSourceControlSettingsUpdated(data: {
-		branch_name: string;
-		read_only_instance: boolean;
-		repo_type: 'github' | 'gitlab' | 'other';
-		connected: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated source control settings', data);
-	}
-
-	async onSourceControlUserStartedPullUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started pull via UI', data);
-	}
-
-	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
-		return await this.telemetry.track('User finished pull via UI', {
-			workflow_updates: data.workflow_updates,
-		});
-	}
-
-	async onSourceControlUserPulledAPI(data: {
-		workflow_updates: number;
-		forced: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User pulled via API', data);
-	}
-
-	async onSourceControlUserStartedPushUI(data: {
-		workflows_eligible: number;
-		workflows_eligible_with_conflicts: number;
-		creds_eligible: number;
-		creds_eligible_with_conflicts: number;
-		variables_eligible: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started push via UI', data);
-	}
-
-	async onSourceControlUserFinishedPushUI(data: {
-		workflows_eligible: number;
-		workflows_pushed: number;
-		creds_pushed: number;
-		variables_pushed: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User finished push via UI', data);
-	}
-
 	async onExternalSecretsProviderSettingsSaved(saveData: {
 		user_id?: string | undefined;
 		vault_type: string;
