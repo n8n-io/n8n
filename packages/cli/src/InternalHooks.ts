@@ -702,6 +702,8 @@ export class InternalHooks {
 		});
 	}
 
+	// finish
+
 	async onLdapSyncFinished(data: {
 		type: string;
 		succeeded: boolean;
@@ -755,33 +757,5 @@ export class InternalHooks {
 		credential_id?: string;
 	}): Promise<void> {
 		return await this.telemetry.track('Workflow first data fetched', data);
-	}
-
-	/**
-	 * License
-	 */
-	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
-		await this.telemetry.track('Instance attempted to refresh license', data);
-	}
-
-	/**
-	 * Audit
-	 */
-	async onAuditGeneratedViaCli() {
-		return await this.telemetry.track('Instance generated security audit via CLI command');
-	}
-
-	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
-		return await this.telemetry.track('User created variable', createData);
-	}
-
-	async onExternalSecretsProviderSettingsSaved(saveData: {
-		user_id?: string | undefined;
-		vault_type: string;
-		is_valid: boolean;
-		is_new: boolean;
-		error_message?: string | undefined;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated external secrets settings', saveData);
 	}
 }
