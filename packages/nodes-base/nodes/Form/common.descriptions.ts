@@ -70,6 +70,10 @@ export const formFields: INodeProperties = {
 							value: 'dropdown',
 						},
 						{
+							name: 'Email',
+							value: 'email',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},

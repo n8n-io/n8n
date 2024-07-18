@@ -59,6 +59,9 @@
 				margin-bottom: 16px;
 			}
 
+			.n8n-link {
+				padding-bottom: 24px;
+			}
 			.n8n-link a {
 				color: #7e8186;
 				font-weight: 600;
@@ -103,11 +106,12 @@
 				border-radius: 6px;
 				width: 100%;
 				font-size: 14px;
-				color: #909399;
+				color: #71747A;
 				font-weight: 400;
 				padding: 12px;
 			}
 
+			form textarea:focus,
 			form input:focus {
 				outline: none;
 				border-color: rgb(90, 76, 194);
@@ -128,7 +132,7 @@
 				border-radius: 6px;
 				width: 100%;
 				font-size: 14px;
-				color: #909399;
+				color: #71747A;
 				font-weight: 400;
 				background-color: white;
 				padding: 12px;
@@ -225,8 +229,12 @@
 				height: 18px;
 				cursor: pointer;
 			}
-
+			/* required field ----------------------------- */
 			.form-required {
+			}
+			label.form-required::after {
+					content: ' *';
+					color: #ff6d5a;
 			}
 		</style>
 	</head>
@@ -244,14 +252,14 @@
 					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
 						<div class='form-header'>
 							<h1>{{formTitle}}</h1>
-							<p>{{formDescription}} </p>
+							<p style="white-space: pre-line">{{formDescription}} </p>
 						</div>
 
 						<div class='inputs-wrapper'>
 							{{#each formFields}}
 								{{#if isMultiSelect}}
 									<div>
-										<label class='form-label'>{{label}}</label>
+										<label class='form-label {{inputRequired}}'>{{label}}</label>
 										<div class='multiselect {{inputRequired}}' id='{{id}}'>
 											{{#each multiSelectOptions}}
 												<div class='multiselect-option'>
@@ -268,7 +276,7 @@
 
 								{{#if isSelect}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<div class='select-input'>
 											<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
 												<option value='' disabled selected>Select an option ...</option>
@@ -285,7 +293,7 @@
 
 								{{#if isTextarea}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<textarea
 											class='form-input {{inputRequired}}'
 											id='{{id}}'
@@ -299,7 +307,7 @@
 
 								{{#if isInput}}
 									<div class='form-group'>
-										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<input
 											class='form-input {{inputRequired}}'
 											type='{{type}}'
@@ -396,10 +404,23 @@
 		</div>
 		<script>
 			function validateInput(input, errorElement) {
-				if (input.type === 'number' && input.value !== '') {
-					const value = input.value.trim();
+				const value = input.value.trim();
+				const type = input.type;
 
-					if (value === '' || isNaN(value)) {
+				if (type === 'email' && value !== '') {
+					const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    			const isValidEmail = regex.test(value);
+
+					if (!isValidEmail) {
+						errorElement.textContent = 'Enter a valid email address in this field';
+						errorElement.classList.add('error-show');
+						return false;
+					} else {
+						errorElement.classList.remove('error-show');
+						return true;
+					}
+				} else if (type === 'number' && value !== '') {
+					if (isNaN(value)) {
 						errorElement.textContent = 'Enter only numbers in this field';
 						errorElement.classList.add('error-show');
 						return false;
@@ -407,7 +428,7 @@
 						errorElement.classList.remove('error-show');
 						return true;
 					}
-				} else if (input.value === '') {
+				} else if (value === '') {
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
@@ -444,7 +465,7 @@
 
 			const form = document.querySelector('#n8n-form');
 
-			const requiredInputs = document.querySelectorAll('.form-required');
+			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 
 			requiredInputs.forEach((input) => {
 				const errorSelector = `.error-${input.id}`;

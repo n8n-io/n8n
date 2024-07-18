@@ -5,6 +5,7 @@ import {
 	type IWebhookFunctions,
 } from 'n8n-workflow';
 import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import { DateTime } from 'luxon';
 
 export const prepareFormData = (
 	formTitle: string,
@@ -73,7 +74,7 @@ export const prepareFormData = (
 			input.isTextarea = true;
 		} else {
 			input.isInput = true;
-			input.type = fieldType as 'text' | 'number' | 'date';
+			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
 		}
 
 		formData.formFields.push(input as FormTriggerInput);
@@ -123,7 +124,9 @@ export async function formWebhook(context: IWebhookFunctions) {
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const formDescription = (context.getNodeParameter('formDescription', '') as string)
+			.replace(/\\n/g, '\n')
+			.replace(/<br>/g, '\n');
 		const instanceId = context.getInstanceId();
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
 		const options = context.getNodeParameter('options', {}) as IDataObject;
@@ -190,7 +193,8 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		returnData[field.fieldLabel] = value;
 	}
-	returnData.submittedAt = new Date().toISOString();
+	const timezone = context.getTimezone();
+	returnData.submittedAt = DateTime.now().setZone(timezone).toISO();
 	returnData.formMode = mode;
 
 	const webhookResponse: IDataObject = { status: 200 };
