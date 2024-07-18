@@ -1,6 +1,6 @@
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { inject, ref } from 'vue';
-import { CanvasNodeData, CanvasNodeInjectionData } from '../types';
+import type { CanvasNodeData, CanvasNodeInjectionData } from '../types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../types';
 import { NodeConnectionType } from 'n8n-workflow';
 

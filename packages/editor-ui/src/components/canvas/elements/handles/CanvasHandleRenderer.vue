@@ -1,11 +1,8 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
 import { computed, h, provide, toRef, useCssModule } from 'vue';
-import {
-	CanvasConnectionMode,
-	CanvasConnectionPort,
-	CanvasElementPortWithRenderData,
-} from '@/types';
+import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';

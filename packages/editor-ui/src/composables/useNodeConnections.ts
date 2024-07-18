@@ -1,4 +1,5 @@
-import { CanvasConnectionMode, CanvasNodeData } from '@/types';
+import type { CanvasNodeData } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
