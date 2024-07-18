@@ -1,10 +1,10 @@
-import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
+import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CanvasNodeHandleKey } from '@/constants';
 import { ref } from 'vue';
 
-const renderComponent = createComponentRenderer(HandleRenderer);
+const renderComponent = createComponentRenderer(CanvasHandleRenderer);
 
 const Handle = {
 	template: '<div><slot /></div>',

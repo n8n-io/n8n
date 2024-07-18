@@ -1,14 +1,17 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
 import { computed, h, provide, toRef, useCssModule } from 'vue';
-import type { CanvasConnectionPort, CanvasElementPortWithRenderData } from '@/types';
-import { CanvasConnectionMode } from '@/types';
+import {
+	CanvasConnectionMode,
+	CanvasConnectionPort,
+	CanvasElementPortWithRenderData,
+} from '@/types';
 
 import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
-import CanvasHandleNonMain from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMain.vue';
+import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
 import { CanvasNodeHandleKey } from '@/constants';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
@@ -66,18 +69,22 @@ const hasRenderType = computed(() => {
 	);
 });
 
-const renderTypeClasses = computed(() => [style.additionalParts, style[props.position]]);
+const renderTypeClasses = computed(() => [style.renderType, style[props.position]]);
 
 const RenderType = () => {
 	let Component;
 
-	if (props.type === NodeConnectionType.Main && props.mode === CanvasConnectionMode.Output) {
-		Component = CanvasHandleMainOutput;
+	if (props.mode === CanvasConnectionMode.Output) {
+		if (props.type === NodeConnectionType.Main) {
+			Component = CanvasHandleMainOutput;
+		}
 	} else {
-		Component = CanvasHandleNonMain;
+		if (props.type !== NodeConnectionType.Main) {
+			Component = CanvasHandleNonMainInput;
+		}
 	}
 
-	return h(Component);
+	return Component ? h(Component) : null;
 };
 
 /**
@@ -94,9 +101,13 @@ function onAdd() {
 
 const label = toRef(props, 'label');
 const connected = toRef(props, 'connected');
+const mode = toRef(props, 'mode');
+const type = toRef(props, 'type');
 
 provide(CanvasNodeHandleKey, {
 	label,
+	mode,
+	type,
 	connected,
 });
 </script>
@@ -137,9 +148,32 @@ provide(CanvasNodeHandleKey, {
 	&:hover {
 		background: var(--color-primary);
 	}
+
+	&.inputs {
+		&.main {
+			width: 8px;
+			border-radius: 0;
+		}
+
+		&:not(.main) {
+			width: 14px;
+			height: 14px;
+			transform-origin: 0 0;
+			transform: rotate(45deg) translate(2px, 2px);
+			border-radius: 0;
+			background: hsl(
+				var(--node-type-supplemental-color-h) var(--node-type-supplemental-color-s)
+					var(--node-type-supplemental-color-l)
+			);
+
+			&:hover {
+				background: var(--color-primary);
+			}
+		}
+	}
 }
 
-.additionalParts {
+.renderType {
 	position: absolute;
 	z-index: 0;
 

@@ -10,7 +10,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
-import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
+import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import { Position } from '@vue-flow/core';
@@ -196,7 +196,7 @@ watch(
 			v-for="source in mappedOutputs"
 			:key="`${CanvasConnectionMode.Output}/${source.type}/${source.index}`"
 		>
-			<HandleRenderer
+			<CanvasHandleRenderer
 				data-test-id="canvas-node-output-handle"
 				:connected="source.connected"
 				:mode="CanvasConnectionMode.Output"
@@ -214,7 +214,7 @@ watch(
 			v-for="target in mappedInputs"
 			:key="`${CanvasConnectionMode.Input}/${target.type}/${target.index}`"
 		>
-			<HandleRenderer
+			<CanvasHandleRenderer
 				data-test-id="canvas-node-input-handle"
 				:connected="!!connections[CanvasConnectionMode.Input][target.type]?.[target.index]?.length"
 				:mode="CanvasConnectionMode.Input"

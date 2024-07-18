@@ -126,6 +126,8 @@ export interface CanvasNodeInjectionData {
 
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
+	mode: Ref<CanvasConnectionMode>;
+	type: Ref<NodeConnectionType>;
 	connected: Ref<boolean | undefined>;
 }
 
