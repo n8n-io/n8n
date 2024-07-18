@@ -25,8 +25,9 @@ export class AzureKeyVault implements SecretsProvider {
 			noDataExpression: true,
 		},
 		{
-			displayName: 'Directory (Tenant) ID',
+			displayName: 'Tenant ID',
 			name: 'tenantId',
+			hint: 'In Azure, this can be called "Directory (Tenant) ID".',
 			type: 'string',
 			default: '',
 			required: true,
