@@ -48,9 +48,17 @@ const props = withDefaults(
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project } = useVueFlow({
-	id: props.id,
+const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project, onPaneReady } =
+	useVueFlow({
+		id: props.id,
+	});
+
+onPaneReady(async () => {
+	await onFitView();
+	paneReady.value = true;
 });
+
+const paneReady = ref(false);
 
 /**
  * Nodes
@@ -183,7 +191,7 @@ function onClickPane(event: MouseEvent) {
 }
 
 async function onFitView() {
-	await fitView();
+	await fitView({ maxZoom: 1.2, padding: 0.1 });
 }
 
 /**
@@ -207,12 +215,12 @@ onUnmounted(() => {
 		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
-		fit-view-on-init
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[16, 16]"
 		:min-zoom="0.2"
-		:max-zoom="2"
+		:max-zoom="4"
+		:class="[$style.canvas, { [$style.visible]: paneReady }]"
 		data-test-id="canvas"
 		@node-drag-stop="onNodeDragStop"
 		@selection-drag-stop="onSelectionDragStop"
@@ -253,9 +261,20 @@ onUnmounted(() => {
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
+			@fit-view="onFitView"
 		></Controls>
 	</VueFlow>
 </template>
+
+<style lang="scss" module>
+.canvas {
+	opacity: 0;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+</style>
 
 <style lang="scss">
 .vue-flow__controls {
