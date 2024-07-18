@@ -16,7 +16,7 @@ export class AzureKeyVault implements SecretsProvider {
 		DOCS_HELP_NOTICE,
 		{
 			displayName: 'Vault Name',
-			description: 'The name of your existing Azure Key Vault.',
+			hint: 'The name of your existing Azure Key Vault.',
 			name: 'vaultName',
 			type: 'string',
 			default: '',
@@ -34,8 +34,9 @@ export class AzureKeyVault implements SecretsProvider {
 			noDataExpression: true,
 		},
 		{
-			displayName: 'Application (Client) ID',
+			displayName: 'Client ID',
 			name: 'clientId',
+			hint: 'In Azure, this can be called "Application (Client) ID".',
 			type: 'string',
 			default: '',
 			required: true,
@@ -46,7 +47,7 @@ export class AzureKeyVault implements SecretsProvider {
 		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
-			description: 'The client secret value of your registered application.',
+			hint: 'The client secret value of your registered application.',
 			type: 'string',
 			default: '',
 			required: true,
