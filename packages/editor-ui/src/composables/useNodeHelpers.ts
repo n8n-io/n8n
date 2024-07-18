@@ -1261,6 +1261,7 @@ export function useNodeHelpers() {
 		deleteJSPlumbConnection,
 		loadNodesProperties,
 		addNodes,
+		addConnections,
 		addConnection,
 		removeConnection,
 		removeConnectionByConnectionInfo,
