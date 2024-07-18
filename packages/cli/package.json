@@ -81,6 +81,8 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
+    "@azure/identity": "^4.3.0",
+    "@azure/keyvault-secrets": "^4.8.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
