@@ -1,20 +1,21 @@
-import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
+import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHandleRenderer.vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { CanvasNodeHandleKey } from '@/constants';
 import { ref } from 'vue';
+import { CanvasConnectionMode } from '@/types';
 
-const renderComponent = createComponentRenderer(HandleRenderer);
+const renderComponent = createComponentRenderer(CanvasHandleRenderer);
 
 const Handle = {
 	template: '<div><slot /></div>',
 };
 
-describe('HandleRenderer', () => {
+describe('CanvasHandleRenderer', () => {
 	it('should render the main input handle correctly', async () => {
 		const { container } = renderComponent({
 			props: {
-				mode: 'input',
+				mode: CanvasConnectionMode.Input,
 				type: NodeConnectionType.Main,
 				index: 0,
 				position: 'left',
@@ -29,13 +30,13 @@ describe('HandleRenderer', () => {
 		});
 
 		expect(container.querySelector('.handle')).toBeInTheDocument();
-		expect(container.querySelector('.canvas-node-handle-main-input')).toBeInTheDocument();
+		expect(container.querySelector('.inputs.main')).toBeInTheDocument();
 	});
 
 	it('should render the main output handle correctly', async () => {
 		const { container } = renderComponent({
 			props: {
-				mode: 'output',
+				mode: CanvasConnectionMode.Output,
 				type: NodeConnectionType.Main,
 				index: 0,
 				position: 'right',
@@ -50,13 +51,13 @@ describe('HandleRenderer', () => {
 		});
 
 		expect(container.querySelector('.handle')).toBeInTheDocument();
-		expect(container.querySelector('.canvas-node-handle-main-output')).toBeInTheDocument();
+		expect(container.querySelector('.outputs.main')).toBeInTheDocument();
 	});
 
 	it('should render the non-main handle correctly', async () => {
 		const { container } = renderComponent({
 			props: {
-				mode: 'input',
+				mode: CanvasConnectionMode.Input,
 				type: NodeConnectionType.AiTool,
 				index: 0,
 				position: 'top',
@@ -71,7 +72,7 @@ describe('HandleRenderer', () => {
 		});
 
 		expect(container.querySelector('.handle')).toBeInTheDocument();
-		expect(container.querySelector('.canvas-node-handle-non-main')).toBeInTheDocument();
+		expect(container.querySelector('.inputs.ai_tool')).toBeInTheDocument();
 	});
 
 	it('should provide the label correctly', async () => {
