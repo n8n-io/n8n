@@ -1,7 +1,5 @@
 import CanvasHandleMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { CanvasNodeHandleKey } from '@/constants';
-import { ref } from 'vue';
 import { createCanvasHandleProvide } from '@/__tests__/data';
 
 const renderComponent = createComponentRenderer(CanvasHandleMainOutput);
