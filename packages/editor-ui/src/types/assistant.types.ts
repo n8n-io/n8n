@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 
 // export namespace ChatUI {
 // 	interface WithQuickReplies {
@@ -118,10 +118,6 @@ export namespace ReplaceCodeRequest {
 	}
 
 	export interface ResponsePayload {
-		nodeId: string;
-		nodeName: string;
-		parameters: {
-			[key: string]: string;
-		};
+		parameters: INodeParameters;
 	}
 }

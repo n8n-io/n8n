@@ -43,5 +43,10 @@ export async function replaceCode(
 	ctx: IRestApiContext,
 	payload: ReplaceCodeRequest.RequestPayload,
 ): Promise<ReplaceCodeRequest.ResponsePayload> {
-	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/apply-code-diff', payload);
+	return {
+		parameters: {
+			jsCode: '/** code **/',
+		},
+	};
+	// return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/apply-code-diff', payload);
 }

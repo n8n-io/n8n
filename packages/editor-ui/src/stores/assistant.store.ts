@@ -9,6 +9,9 @@ import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
+import { assert } from '@/utils/assert';
+import { useWorkflowsStore } from './workflows.store';
+import { INodeParameters, deepCopy } from 'n8n-workflow';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -22,8 +25,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
+	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 
+	const suggestions = ref<{
+		[suggestionId: string]: {
+			previous: INodeParameters;
+			suggested: INodeParameters;
+		};
+	}>({});
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 
@@ -49,25 +59,27 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 	}
 
-	function addAssistantMessage(assistantMessage: ChatRequest.MessageResponse) {
-		if (assistantMessage.type === 'assistant-message') {
-			chatMessages.value.push({
-				type: 'text',
-				role: 'assistant',
-				content: assistantMessage.content,
-				title: assistantMessage.title,
-				quickReplies: assistantMessage.quickReplies,
-			});
-		} else if (assistantMessage.type === 'code-diff') {
-			chatMessages.value.push({
-				role: 'assistant',
-				type: 'code-diff',
-				description: assistantMessage.description,
-				codeDiff: assistantMessage.codeDiff,
-				suggestionId: assistantMessage.suggestionId,
-				quickReplies: assistantMessage.quickReplies,
-			});
-		}
+	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[]) {
+		assistantMessages.forEach((message) => {
+			if (message.type === 'assistant-message') {
+				chatMessages.value.push({
+					type: 'text',
+					role: 'assistant',
+					content: message.content,
+					title: message.title,
+					quickReplies: message.quickReplies,
+				});
+			} else if (message.type === 'code-diff') {
+				chatMessages.value.push({
+					role: 'assistant',
+					type: 'code-diff',
+					description: message.description,
+					codeDiff: message.codeDiff,
+					suggestionId: message.suggestionId,
+					quickReplies: message.quickReplies,
+				});
+			}
+		});
 	}
 
 	function updateWindowWidth(width: number) {
@@ -84,28 +96,77 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 	}
 
+	function clearMessages() {
+		chatMessages.value = [];
+	}
+
+	function stopStreaming() {
+		chatMessages.value = chatMessages.value
+			.filter((message) => 'content' in message && !!message.content)
+			.map((message) => {
+				if ('streaming' in message && message.streaming) {
+					message.streaming = false;
+				}
+				return message;
+			});
+	}
+
+	function addAssistantError(content: string) {
+		chatMessages.value.push({
+			role: 'assistant',
+			type: 'error',
+			content,
+		});
+	}
+
+	function addAssistantLoading() {
+		chatMessages.value.push({
+			role: 'assistant',
+			type: 'text',
+			content: '',
+			streaming: true,
+		});
+	}
+
+	function addUserMessage(content: string) {
+		chatMessages.value.push({
+			role: 'user',
+			type: 'text',
+			content,
+		});
+	}
+
+	function handleServiceError(e: unknown) {
+		assert(e instanceof Error);
+		stopStreaming();
+		addAssistantError(`There was an error reaching the service: (${e.message})`);
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		if (isNodeErrorActive(context)) {
 			return;
 		}
+		clearMessages();
 		chatSessionError.value = context;
 
+		addAssistantLoading();
 		openChat();
 
 		try {
 			const response = await chatWithAssistant(rootStore.restApiContext, {
-				type: 'init-error-help',
+				action: 'init-error-help',
 				user: {
-					firstName: usersStore.currentUser?.firstName || '',
+					firstName: usersStore.currentUser?.firstName ?? '',
 				},
 				error: context.error,
 				node: context.node,
 				// executionSchema todo
 			});
 			currentSessionId.value = response.sessionId;
-			response.messages.forEach(addAssistantMessage);
-		} catch (e) {
-			// todo
+			stopStreaming();
+			addAssistantMessages(response.messages);
+		} catch (e: unknown) {
+			handleServiceError(e);
 		}
 	}
 
@@ -119,38 +180,73 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function sendMessage(
 		message: Pick<ChatRequest.UserChatMessage, 'content' | 'quickReplyType'>,
 	) {
-		chatMessages.value.push({ content: message.content, role: 'user', type: 'text' });
+		addUserMessage(message.content);
+		addAssistantLoading();
 
 		try {
-			await chatWithAssistant(rootStore.restApiContext, {
-				type: 'user-message',
+			const { messages } = await chatWithAssistant(rootStore.restApiContext, {
+				action: 'user-message',
 				content: message.content,
 				quickReplyType: message.quickReplyType,
 			});
-		} catch (e) {
-			// todo
-			console.log(e);
+
+			addAssistantMessages(messages);
+			stopStreaming();
+		} catch (e: unknown) {
+			handleServiceError(e);
 		}
+	}
+
+	function updateParameters(nodeName: string, parameters: INodeParameters) {
+		workflowsStore.setNodeParameters(
+			{
+				name: nodeName,
+				value: parameters,
+			},
+			true,
+		);
+	}
+
+	function getRelevantParameters(
+		parameters: INodeParameters,
+		keysToKeep: string[],
+	): INodeParameters {
+		return keysToKeep.reduce((accu: INodeParameters, key: string) => {
+			accu[key] = deepCopy(parameters[key]);
+			return accu;
+		}, {} as INodeParameters);
 	}
 
 	async function applyCodeDiff(index: number) {
 		const codeDiffMessage = chatMessages.value[index];
-		if (codeDiffMessage.type !== 'code-diff') {
+		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
 			throw new Error('No code diff to apply');
 		}
-		if (!currentSessionId.value) {
-			throw new Error('No valid current session id');
-		}
 
-		codeDiffMessage.replacing = true;
 		try {
-			const result = await replaceCode(rootStore.restApiContext, {
+			assert(chatSessionError.value);
+			assert(currentSessionId.value);
+
+			codeDiffMessage.replacing = true;
+			const suggestionId = codeDiffMessage.suggestionId;
+			const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 				suggestionId: codeDiffMessage.suggestionId,
 				sessionId: currentSessionId.value,
 			});
-			// todo update node
+
+			const currentWorkflow = workflowsStore.getCurrentWorkflow();
+			const activeNode = currentWorkflow.getNode(chatSessionError.value.node.name);
+			assert(activeNode);
+
+			suggestions.value[suggestionId] = {
+				previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
+				suggested,
+			};
+			updateParameters(activeNode.name, suggested);
+
 			codeDiffMessage.replaced = true;
 		} catch (e) {
+			console.error(e);
 			codeDiffMessage.error = true;
 		}
 		codeDiffMessage.replacing = false;
