@@ -8,10 +8,9 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
-import {
+import type {
 	CanvasConnection,
 	CanvasConnectionData,
-	CanvasConnectionMode,
 	CanvasConnectionPort,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
@@ -19,7 +18,7 @@ import {
 	CanvasNodeDefaultRender,
 	CanvasNodeStickyNoteRender,
 } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,

@@ -1,7 +1,6 @@
 import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { CanvasNodeHandleKey } from '@/constants';
-import { ref } from 'vue';
+import { createCanvasHandleProvide } from '@/__tests__/data';
 
 const renderComponent = createComponentRenderer(CanvasHandleNonMainInput);
 
@@ -11,7 +10,7 @@ describe('CanvasHandleNonMainInput', () => {
 		const { container, getByText } = renderComponent({
 			global: {
 				provide: {
-					[`${CanvasNodeHandleKey}`]: { label: ref(label) },
+					...createCanvasHandleProvide({ label }),
 				},
 			},
 		});

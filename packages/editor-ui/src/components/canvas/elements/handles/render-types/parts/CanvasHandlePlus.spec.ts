@@ -1,19 +1,28 @@
 import { fireEvent } from '@testing-library/vue';
 import CanvasHandlePlus from './CanvasHandlePlus.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createCanvasHandleProvide } from '@/__tests__/data';
 
-const renderComponent = createComponentRenderer(CanvasHandlePlus);
+const renderComponent = createComponentRenderer(CanvasHandlePlus, {
+	global: {
+		provide: {
+			...createCanvasHandleProvide(),
+		},
+	},
+});
 
-describe('YourComponent', () => {
-	it('renders with default props', () => {
+describe('CanvasHandlePlus', () => {
+	it('should render with default props', () => {
 		const { html } = renderComponent();
 
 		expect(html()).toMatchSnapshot();
 	});
 
 	it('emits click:plus event when plus icon is clicked', async () => {
-		const { getByRole, emitted } = renderComponent();
-		const plusIcon = getByRole('svg', { name: /plus/i });
+		const { container, emitted } = renderComponent();
+		const plusIcon = container.querySelector('svg.plus');
+
+		if (!plusIcon) throw new Error('Plus icon not found');
 
 		await fireEvent.click(plusIcon);
 
