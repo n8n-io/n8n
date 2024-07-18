@@ -14,12 +14,21 @@ const mockNode1 = createTestNode({
 	name: 'Set1',
 	type: SET_NODE_TYPE,
 	typeVersion: 1,
+	disabled: false,
 });
 
 const mockNode2 = createTestNode({
 	name: 'Set2',
 	type: SET_NODE_TYPE,
 	typeVersion: 1,
+	disabled: false,
+});
+
+const disabledNode = createTestNode({
+	name: 'Disabled Node',
+	type: SET_NODE_TYPE,
+	typeVersion: 1,
+	disabled: true,
 });
 
 async function setupStore() {
@@ -28,7 +37,7 @@ async function setupStore() {
 		name: 'Test Workflow',
 		connections: {},
 		active: true,
-		nodes: [mockNode1, mockNode2],
+		nodes: [mockNode1, mockNode2, disabledNode],
 	});
 
 	const pinia = createPinia();
@@ -160,6 +169,18 @@ describe('RunDataSchema.vue', () => {
 
 		const { getAllByTestId } = renderComponent();
 		expect(getAllByTestId('run-data-schema-empty').length).toBe(1);
+	});
+
+	it('renders disabled nodes correctly', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				nodes: [{ name: disabledNode.name, indicies: [], depth: 1 }],
+			},
+		});
+		expect(getByTestId('run-data-schema-disabled')).toBeInTheDocument();
+		expect(getByTestId('run-data-schema-node-name')).toHaveTextContent(
+			`${disabledNode.name} (Deactivated)`,
+		);
 	});
 
 	test.each([[[{ tx: false }, { tx: false }]], [[{ tx: '' }, { tx: '' }]], [[{ tx: [] }]]])(

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.50.0",
+  "version": "1.51.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -77,6 +77,7 @@
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
+      "dist/nodes/memory/MemoryPostgresChat/MemoryPostgresChat.node.js",
       "dist/nodes/memory/MemoryRedisChat/MemoryRedisChat.node.js",
       "dist/nodes/memory/MemoryManager/MemoryManager.node.js",
       "dist/nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.js",
@@ -153,6 +154,7 @@
     "@pinecone-database/pinecone": "2.2.1",
     "@qdrant/js-client-rest": "1.9.0",
     "@supabase/supabase-js": "2.43.4",
+    "@types/pg": "^8.11.3",
     "@xata.io/client": "0.28.4",
     "basic-auth": "2.0.1",
     "cheerio": "1.0.0-rc.12",

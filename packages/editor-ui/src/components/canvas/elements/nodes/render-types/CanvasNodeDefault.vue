@@ -7,9 +7,14 @@ import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-typ
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { N8nTooltip } from 'n8n-design-system';
+import type { CanvasNodeDefaultRender } from '@/types';
 
 const $style = useCssModule();
 const i18n = useI18n();
+
+const emit = defineEmits<{
+	'open:contextmenu': [event: MouseEvent];
+}>();
 
 const {
 	label,
@@ -22,13 +27,15 @@ const {
 	executionRunning,
 	hasRunData,
 	hasIssues,
-	renderOptions,
+	render,
 } = useCanvasNode();
 const { mainOutputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
 });
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const classes = computed(() => {
 	return {
@@ -76,10 +83,14 @@ const dataTestId = computed(() => {
 
 	return `canvas-${type}-node`;
 });
+
+function openContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId">
+	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>

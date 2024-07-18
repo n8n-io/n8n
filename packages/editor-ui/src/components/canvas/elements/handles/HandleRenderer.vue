@@ -2,6 +2,7 @@
 import { computed, h, provide, toRef, useCssModule } from 'vue';
 import type { CanvasConnectionPort, CanvasElementPortWithPosition } from '@/types';
 
+import type { ValidConnectionFunc } from '@vue-flow/core';
 import { Handle } from '@vue-flow/core';
 import { NodeConnectionType } from 'n8n-workflow';
 import CanvasHandleMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleMainInput.vue';
@@ -16,6 +17,7 @@ const props = defineProps<{
 	index: CanvasConnectionPort['index'];
 	position: CanvasElementPortWithPosition['position'];
 	offset: CanvasElementPortWithPosition['offset'];
+	isValidConnection: ValidConnectionFunc;
 }>();
 
 const $style = useCssModule();
@@ -66,6 +68,7 @@ provide(CanvasNodeHandleKey, {
 		:style="offset"
 		:connectable-start="isConnectableStart"
 		:connectable-end="isConnectableEnd"
+		:is-valid-connection="isValidConnection"
 	>
 		<Render :label="label" />
 	</Handle>

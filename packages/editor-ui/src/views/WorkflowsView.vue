@@ -9,11 +9,12 @@
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
+		:loading="loading"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs v-if="showProjectTabs" />
+			<ProjectTabs />
 		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
@@ -158,8 +159,6 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
 
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
-
 interface Filters {
 	search: string;
 	homeProject: string;
@@ -190,6 +189,7 @@ const WorkflowsView = defineComponent({
 				tags: [],
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -251,13 +251,6 @@ const WorkflowsView = defineComponent({
 			}
 			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
-		showProjectTabs() {
-			return (
-				!!this.$route.params.projectId ||
-				!!this.allWorkflows.length ||
-				this.projectsStore.myProjects.length > 1
-			);
-		},
 		addWorkflowButtonText() {
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('workflows.project.add')
@@ -284,9 +277,6 @@ const WorkflowsView = defineComponent({
 			handler() {
 				this.saveFiltersOnQueryString();
 			},
-		},
-		'filters.tags'() {
-			this.sendFiltersTelemetry('tags');
 		},
 		'$route.params.projectId'() {
 			void this.initialize();
@@ -333,11 +323,13 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		async initialize() {
+			this.loading = true;
 			await Promise.all([
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+			this.loading = false;
 		},
 		onClickTag(tagId: string) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -366,9 +358,6 @@ const WorkflowsView = defineComponent({
 			}
 
 			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 		saveFiltersOnQueryString() {
 			const query: { [key: string]: string } = {};

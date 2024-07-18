@@ -38,6 +38,7 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
+const loading = ref(false);
 
 const permissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
@@ -134,9 +135,11 @@ const environmentVariableToResource = (data: EnvironmentVariable): IResource => 
 
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
+	loading.value = true;
 	await environmentsStore.fetchAllVariables();
 
 	allVariables.value = [...environmentsStore.variables];
+	loading.value = false;
 }
 
 function addTemporaryVariable() {
@@ -262,6 +265,7 @@ onBeforeUnmount(() => {
 		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
+		:loading="loading"
 		@sort="resetNewVariablesList"
 		@click:add="addTemporaryVariable"
 	>

@@ -77,10 +77,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return this.settings.databaseType;
 		},
 		planName(): string {
-			return this.settings.license.planName ?? 'Community';
+			return this.settings.license?.planName ?? 'Community';
+		},
+		isCommunityPlan(): boolean {
+			return this.planName.toLowerCase() === 'community';
 		},
 		consumerId(): string {
-			return this.settings.license.consumerId;
+			return this.settings.license?.consumerId ?? 'unknown';
 		},
 		binaryDataMode(): 'default' | 'filesystem' | 's3' {
 			return this.settings.binaryDataMode;
