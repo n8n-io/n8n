@@ -3,8 +3,6 @@
  * @TODO Remove this notice when Canvas V2 is the only one in use
  */
 
-import { CanvasConnectionMode } from '@/types';
-import type { CanvasConnectionCreateData, CanvasNode, CanvasConnection } from '@/types';
 import type {
 	AddedNodesAndConnections,
 	INodeUi,
@@ -13,6 +11,14 @@ import type {
 	IWorkflowDb,
 	XYPosition,
 } from '@/Interface';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useI18n } from '@/composables/useI18n';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { usePinnedData, type PinDataSource } from '@/composables/usePinnedData';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	FORM_TRIGGER_NODE_TYPE,
 	QUICKSTART_NOTE_NAME,
@@ -20,11 +26,6 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useHistoryStore } from '@/stores/history.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import {
 	AddNodeCommand,
 	MoveNodeCommand,
@@ -32,7 +33,20 @@ import {
 	RemoveNodeCommand,
 	RenameNodeCommand,
 } from '@/models/history';
-import type { Connection } from '@vue-flow/core';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExecutionsStore } from '@/stores/executions.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@/stores/root.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { CanvasConnection, CanvasConnectionCreateData, CanvasNode } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import {
 	createCanvasConnectionHandleString,
 	getUniqueNodeName,
@@ -40,10 +54,15 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isPresent } from '@/utils/typesUtils';
+import type { Connection } from '@vue-flow/core';
 import type {
 	ConnectionTypes,
 	IConnection,
 	IConnections,
+	INode,
 	INodeConnections,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -51,31 +70,14 @@ import type {
 	INodeTypeNameVersion,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	Workflow,
-	INode,
 	NodeParameterValueType,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
-import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
 import { computed } from 'vue';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
-import { useCanvasStore } from '@/stores/canvas.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { usePinnedData } from '@/composables/usePinnedData';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useTagsStore } from '@/stores/tags.store';
-import { useRootStore } from '@/stores/root.store';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useExecutionsStore } from '@/stores/executions.store';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -218,6 +220,12 @@ export function useCanvasOperations({
 		trackDeleteNode(id);
 	}
 
+	function deleteNodes(ids: string[]) {
+		historyStore.startRecordingUndo();
+		ids.forEach((id) => deleteNode(id, { trackHistory: true, trackBulk: false }));
+		historyStore.stopRecordingUndo();
+	}
+
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
 	}
@@ -284,16 +292,33 @@ export function useCanvasOperations({
 		uiStore.lastSelectedNode = node.name;
 	}
 
-	function toggleNodeDisabled(
-		id: string,
+	function toggleNodesDisabled(
+		ids: string[],
 		{ trackHistory = true }: { trackHistory?: boolean } = {},
 	) {
-		const node = workflowsStore.getNodeById(id);
-		if (!node) {
-			return;
+		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		nodeHelpers.disableNodes(nodes, trackHistory);
+	}
+
+	function toggleNodesPinned(ids: string[], source: PinDataSource) {
+		historyStore.startRecordingUndo();
+
+		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
+
+		for (const node of nodes) {
+			const pinnedDataForNode = usePinnedData(node);
+			if (nextStatePinned) {
+				const dataToPin = useDataSchema().getInputDataWithPinned(node);
+				if (dataToPin.length !== 0) {
+					pinnedDataForNode.setData(dataToPin, source);
+				}
+			} else {
+				pinnedDataForNode.unsetData(source);
+			}
 		}
 
-		nodeHelpers.disableNodes([node], trackHistory);
+		historyStore.stopRecordingUndo();
 	}
 
 	async function addNodes(
@@ -1403,11 +1428,13 @@ export function useCanvasOperations({
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
+		toggleNodesDisabled,
+		toggleNodesPinned,
 		setNodeParameters,
-		toggleNodeDisabled,
 		renameNode,
 		revertRenameNode,
 		deleteNode,
+		deleteNodes,
 		revertDeleteNode,
 		addConnections,
 		createConnection,

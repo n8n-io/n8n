@@ -7,9 +7,14 @@ import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
+import { useKeybindings } from '@/composables/useKeybindings';
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
+import type { NodeCreatorOpenSource } from '@/Interface';
+import type { PinDataSource } from '@/composables/usePinnedData';
 
 const $style = useCssModule();
 
@@ -18,10 +23,19 @@ const emit = defineEmits<{
 	'update:node:position': [id: string, position: XYPosition];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
-	'update:node:selected': [id?: string];
+	'update:node:selected': [id: string];
+	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
 	'run:node': [id: string];
 	'delete:node': [id: string];
+	'create:node': [source: NodeCreatorOpenSource];
+	'create:sticky': [];
+	'delete:nodes': [ids: string[]];
+	'update:nodes:enabled': [ids: string[]];
+	'copy:nodes': [ids: string[]];
+	'duplicate:nodes': [ids: string[]];
+	'update:nodes:pin': [ids: string[], source: PinDataSource];
+	'cut:nodes': [ids: string[]];
 	'delete:connection': [connection: Connection];
 	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
@@ -29,6 +43,9 @@ const emit = defineEmits<{
 	'create:connection:cancelled': [handle: ConnectStartEvent];
 	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
+	'run:workflow': [];
+	'save:workflow': [];
+	'create:workflow': [];
 }>();
 
 const props = withDefaults(
@@ -48,15 +65,42 @@ const props = withDefaults(
 	},
 );
 
-const { getSelectedEdges, getSelectedNodes, viewportRef, fitView, project, onPaneReady } =
-	useVueFlow({
-		id: props.id,
-	});
+const {
+	getSelectedNodes: selectedNodes,
+	addSelectedNodes,
+	removeSelectedNodes,
+	viewportRef,
+	fitView,
+	project,
+	nodes: graphNodes,
+	onPaneReady,
+} = useVueFlow({ id: props.id, deleteKeyCode: null });
 
-onPaneReady(async () => {
-	await onFitView();
-	paneReady.value = true;
+useKeybindings({
+	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+	ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+	'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+	ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+	d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+	p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+	enter: () => emitWithLastSelectedNode((id) => emit('update:node:active', id)),
+	f2: () => emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+	tab: () => emit('create:node', 'tab'),
+	shift_s: () => emit('create:sticky'),
+	ctrl_alt_n: () => emit('create:workflow'),
+	ctrl_enter: () => emit('run:workflow'),
+	ctrl_s: () => emit('save:workflow'),
+	ctrl_a: () => addSelectedNodes(graphNodes.value),
+	// @TODO implement arrow key shortcuts to modify selection
 });
+
+const contextMenu = useContextMenu();
+
+const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
+
+const hasSelection = computed(() => selectedNodes.value.length > 0);
+
+const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 const paneReady = ref(false);
 
@@ -83,8 +127,8 @@ function onSetNodeActive(id: string) {
 }
 
 function onSelectNode() {
-	const selectedNodeId = getSelectedNodes.value[getSelectedNodes.value.length - 1]?.id;
-	emit('update:node:selected', selectedNodeId);
+	if (!lastSelectedNode.value) return;
+	emit('update:node:selected', lastSelectedNode.value.id);
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -166,14 +210,23 @@ function onRunNode(id: string) {
 }
 
 /**
- * Keyboard events
+ * Emit helpers
  */
 
-function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'Delete') {
-		getSelectedEdges.value.forEach(onDeleteConnection);
-		getSelectedNodes.value.forEach(({ id }) => onDeleteNode(id));
-	}
+function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
+	return () => {
+		if (hasSelection.value) {
+			emitFn(selectedNodeIds.value);
+		}
+	};
+}
+
+function emitWithLastSelectedNode(emitFn: (id: string) => void) {
+	return () => {
+		if (lastSelectedNode.value) {
+			emitFn(lastSelectedNode.value.id);
+		}
+	};
 }
 
 /**
@@ -195,17 +248,72 @@ async function onFitView() {
 }
 
 /**
+ * Context menu
+ */
+
+function onOpenContextMenu(event: MouseEvent) {
+	contextMenu.open(event, {
+		source: 'canvas',
+		nodeIds: selectedNodeIds.value,
+	});
+}
+
+function onOpenNodeContextMenu(
+	id: string,
+	event: MouseEvent,
+	source: 'node-button' | 'node-right-click',
+) {
+	if (selectedNodeIds.value.includes(id)) {
+		onOpenContextMenu(event);
+	}
+
+	contextMenu.open(event, { source, nodeId: id });
+}
+
+function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
+	switch (action) {
+		case 'add_node':
+			return emit('create:node', 'context_menu');
+		case 'add_sticky':
+			return emit('create:sticky');
+		case 'copy':
+			return emit('copy:nodes', nodeIds);
+		case 'delete':
+			return emit('delete:nodes', nodeIds);
+		case 'select_all':
+			return addSelectedNodes(graphNodes.value);
+		case 'deselect_all':
+			return removeSelectedNodes(selectedNodes.value);
+		case 'duplicate':
+			return emit('duplicate:nodes', nodeIds);
+		case 'toggle_pin':
+			return emit('update:nodes:pin', nodeIds, 'context-menu');
+		case 'execute':
+			return emit('run:node', nodeIds[0]);
+		case 'toggle_activation':
+			return emit('update:nodes:enabled', nodeIds);
+		case 'open':
+			return emit('update:node:active', nodeIds[0]);
+		case 'rename':
+			return emit('update:node:name', nodeIds[0]);
+	}
+}
+
+/**
  * Lifecycle
  */
 
 onMounted(() => {
-	document.addEventListener('keydown', onKeyDown);
 	props.eventBus.on('fitView', onFitView);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
-	document.removeEventListener('keydown', onKeyDown);
+});
+
+onPaneReady(async () => {
+	await onFitView();
+	paneReady.value = true;
 });
 </script>
 
@@ -230,6 +338,7 @@ onUnmounted(() => {
 		@connect="onConnect"
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
+		@contextmenu="onOpenContextMenu"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
@@ -239,6 +348,7 @@ onUnmounted(() => {
 				@select="onSelectNode"
 				@toggle="onToggleNodeEnabled"
 				@activate="onSetNodeActive"
+				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
 			/>
@@ -263,6 +373,10 @@ onUnmounted(() => {
 			:position="controlsPosition"
 			@fit-view="onFitView"
 		></Controls>
+
+		<Suspense>
+			<ContextMenu @action="onContextMenuAction" />
+		</Suspense>
 	</VueFlow>
 </template>
 
