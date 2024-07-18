@@ -702,8 +702,6 @@ export class InternalHooks {
 		});
 	}
 
-	// finish
-
 	async onLdapSyncFinished(data: {
 		type: string;
 		succeeded: boolean;
