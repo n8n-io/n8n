@@ -1,9 +1,10 @@
 import { License } from '@/License';
-import { ExternalSecretsConfig } from '@n8n/config/src/configs/external-secrets';
+import { GlobalConfig } from '@n8n/config';
 import Container from 'typedi';
 
-export const updateIntervalTime = () => Container.get(ExternalSecretsConfig).updateInterval * 1000;
-export const preferGet = () => Container.get(ExternalSecretsConfig).preferGet;
+export const updateIntervalTime = () =>
+	Container.get(GlobalConfig).externalSecrets.updateInterval * 1000;
+export const preferGet = () => Container.get(GlobalConfig).externalSecrets.preferGet;
 
 export function isExternalSecretsEnabled() {
 	const license = Container.get(License);
