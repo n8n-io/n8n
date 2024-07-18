@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from '@/components/canvas/Canvas.vue';
@@ -7,19 +6,18 @@ import { createPinia, setActivePinia } from 'pinia';
 import type { CanvasConnection, CanvasNode } from '@/types';
 import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/data';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { useDeviceSupport } from 'n8n-design-system';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 global.window = jsdom.window as unknown as Window & typeof globalThis;
 
-vi.mock('@/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
-		getNodeType: vi.fn(() => ({
-			name: 'test',
-			description: 'Test Node Description',
-		})),
-	})),
-}));
+vi.mock('n8n-design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof useDeviceSupport>();
+	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
+});
+
+vi.mock('@/composables/useDeviceSupport');
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
