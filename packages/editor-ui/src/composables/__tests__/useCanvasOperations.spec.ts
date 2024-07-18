@@ -61,13 +61,112 @@ describe('useCanvasOperations', () => {
 		const workflow = mock<IWorkflowDb>({
 			id: workflowId,
 			nodes: [],
+			connections: {},
 			tags: [],
 			usedCredentials: [],
 		});
-		workflowsStore.workflowsById[workflowId] = workflow;
+
+		workflowsStore.resetWorkflow();
+		workflowsStore.resetState();
 		await workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+	});
+
+	describe('addNode', () => {
+		it('should throw error when node type does not exist', async () => {
+			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+
+			await expect(canvasOperations.addNode({ type: 'nonexistent' })).rejects.toThrow();
+		});
+
+		it('should create node with default version when version is undefined', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				name: 'example',
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(1);
+		});
+
+		it('should create node with last version when version is an array', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+
+			expect(result.typeVersion).toBe(2);
+		});
+
+		it('should create node with default position when position is not provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+
+			expect(result.position).toEqual([460, 460]); // Default last click position
+		});
+
+		it('should create node with provided position when position is provided', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+				position: [20, 20],
+			});
+
+			expect(result.position).toEqual([20, 20]);
+		});
+
+		it('should create node with default credentials when only one credential is available', async () => {
+			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
+			]);
+
+			credentialsStore.addCredentials([credential]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credential,
+			]);
+
+			const result = await canvasOperations.addNode({
+				type: nodeTypeName,
+			});
+
+			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
+		});
+
+		it('should not assign credentials when multiple credentials are available', async () => {
+			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
+			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
+			const nodeTypeName = 'type';
+
+			nodeTypesStore.setNodeTypes([
+				mockNodeTypeDescription({
+					name: nodeTypeName,
+					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
+				}),
+			]);
+
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+				credentialA,
+				credentialB,
+			]);
+
+			const result = await canvasOperations.addNode({
+				type: 'type',
+			});
+			expect(result.credentials).toBeUndefined();
+		});
 	});
 
 	describe('updateNodePosition', () => {
@@ -120,104 +219,6 @@ describe('useCanvasOperations', () => {
 			canvasOperations.setNodeSelected();
 
 			expect(uiStore.lastSelectedNode).toBe('');
-		});
-	});
-
-	describe('initializeNodeDataWithDefaultCredentials', () => {
-		it('should throw error when node type does not exist', async () => {
-			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
-
-			await expect(
-				canvasOperations.initializeNodeDataWithDefaultCredentials({ type: 'nonexistent' }),
-			).rejects.toThrow();
-		});
-
-		it('should create node with default version when version is undefined', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				name: 'example',
-				type: 'type',
-			});
-
-			expect(result.typeVersion).toBe(1);
-		});
-
-		it('should create node with last version when version is an array', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				type: 'type',
-			});
-
-			expect(result.typeVersion).toBe(2);
-		});
-
-		it('should create node with default position when position is not provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				type: 'type',
-			});
-
-			expect(result.position).toEqual([0, 0]);
-		});
-
-		it('should create node with provided position when position is provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				type: 'type',
-				position: [10, 20],
-			});
-
-			expect(result.position).toEqual([10, 20]);
-		});
-
-		it('should create node with default credentials when only one credential is available', async () => {
-			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
-			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
-			]);
-
-			credentialsStore.addCredentials([credential]);
-
-			// @ts-expect-error Known pinia issue when spying on store getters
-			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
-				credential,
-			]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				type: nodeTypeName,
-			});
-
-			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
-		});
-
-		it('should not assign credentials when multiple credentials are available', async () => {
-			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
-			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
-			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({
-					name: nodeTypeName,
-					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
-				}),
-			]);
-
-			// @ts-expect-error Known pinia issue when spying on store getters
-			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
-				credentialA,
-				credentialB,
-			]);
-
-			const result = await canvasOperations.initializeNodeDataWithDefaultCredentials({
-				type: 'type',
-			});
-			expect(result.credentials).toBeUndefined();
 		});
 	});
 
@@ -489,6 +490,7 @@ describe('useCanvasOperations', () => {
 			const nodes = [
 				mockNode({ id: 'a', name: 'Node A', type: nodeTypeName, position: [40, 40] }),
 				mockNode({ id: 'b', name: 'Node B', type: nodeTypeName, position: [40, 40] }),
+				mockNode({ id: 'c', name: 'Node C', type: nodeTypeName, position: [40, 40] }),
 			];
 
 			nodeTypesStore.setNodeTypes([
@@ -504,14 +506,27 @@ describe('useCanvasOperations', () => {
 				.mockReturnValueOnce(nodes[1]);
 
 			const connections = [
-				{ from: { nodeIndex: 0, outputIndex: 0 }, to: { nodeIndex: 1, inputIndex: 0 } },
-				{ from: { nodeIndex: 1, outputIndex: 0 }, to: { nodeIndex: 2, inputIndex: 0 } },
+				{
+					source: nodes[0].id,
+					target: nodes[1].id,
+					data: {
+						source: { type: NodeConnectionType.Main, index: 0 },
+						target: { type: NodeConnectionType.Main, index: 0 },
+					},
+				},
+				{
+					source: nodes[1].id,
+					target: nodes[2].id,
+					data: {
+						source: { type: NodeConnectionType.Main, index: 0 },
+						target: { type: NodeConnectionType.Main, index: 0 },
+					},
+				},
 			];
-			const offsetIndex = 0;
 
 			const addConnectionSpy = vi.spyOn(workflowsStore, 'addConnection');
 
-			await canvasOperations.addConnections(connections, { offsetIndex });
+			await canvasOperations.addConnections(connections);
 
 			expect(addConnectionSpy).toHaveBeenCalledWith({
 				connection: [

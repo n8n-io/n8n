@@ -24,14 +24,14 @@ import type {
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowTemplate,
+	NodeCreatorOpenSource,
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasNode, ConnectStartEvent } from '@/types';
+import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
-	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
@@ -41,18 +41,14 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers } from 'n8n-workflow';
-import type {
-	NodeConnectionType,
-	ExecutionSummary,
-	IConnection,
-	IWorkflowBase,
-} from 'n8n-workflow';
+import { TelemetryHelpers, NodeConnectionType } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -70,11 +66,8 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
 import { useProjectsStore } from '@/stores/projects.store';
-import { usePostHog } from '@/stores/posthog.store';
-import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import type { ProjectSharingData } from '@/types/projects.types';
 import { useUsersStore } from '@/stores/users.store';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
@@ -85,9 +78,11 @@ import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/butto
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
 import { nodeViewEventBus } from '@/event-bus';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
+import type { PinDataSource } from '@/composables/usePinnedData';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -105,15 +100,13 @@ const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
-const titleChange = useTitleChange();
+const { titleReset, titleSet } = useTitleChange();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
-const posthog = usePostHog();
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowsEEStore = useWorkflowsEEStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const settingsStore = useSettingsStore();
@@ -143,9 +136,11 @@ const {
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
-	toggleNodeDisabled,
+	toggleNodesDisabled,
+	toggleNodesPinned,
 	setNodeParameters,
 	deleteNode,
+	deleteNodes,
 	revertDeleteNode,
 	addNodes,
 	createConnection,
@@ -153,6 +148,10 @@ const {
 	revertDeleteConnection,
 	setNodeActiveByName,
 	addConnections,
+	importWorkflowData,
+	fetchWorkflowDataFromUrl,
+	resetWorkspace,
+	initializeWorkspace,
 	editableWorkflow,
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
@@ -202,12 +201,6 @@ const fallbackNodes = computed<INodeUi[]>(() =>
  */
 
 async function initializeData() {
-	isLoading.value = true;
-	canvasStore.startLoading();
-
-	resetWorkspace();
-	titleChange.titleReset();
-
 	const loadPromises = (() => {
 		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
@@ -232,9 +225,6 @@ async function initializeData() {
 		return promises;
 	})();
 
-	// @TODO Implement this
-	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
-
 	try {
 		await Promise.all(loadPromises);
 	} catch (error) {
@@ -244,23 +234,10 @@ async function initializeData() {
 			i18n.baseText('nodeView.showError.mounted1.message') + ':',
 		);
 		return;
-	} finally {
-		canvasStore.stopLoading();
-		isLoading.value = false;
 	}
-
-	setTimeout(() => {
-		void usersStore.showPersonalizationSurvey();
-	}, 0);
-
-	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
-	void externalHooks.run('nodeView.mount').catch(() => {});
-
-	// @TODO maybe we can find a better way to handle this
-	canvasStore.isDemo = isDemoRoute.value;
 }
 
-async function initializeView() {
+async function initializeRoute() {
 	// In case the workflow got saved we do not have to run init
 	// as only the route changed but all the needed data is already loaded
 	if (route.params.action === 'workflowSave') {
@@ -283,27 +260,12 @@ async function initializeView() {
 		// If there is no workflow id, treat it as a new workflow
 		if (!workflowId.value || isNewWorkflowRoute.value) {
 			if (route.meta?.nodeView === true) {
-				await initializeViewForNewWorkflow();
+				await initializeWorkspaceForNewWorkflow();
 			}
 			return;
 		}
 
-		// Load workflow data
-		try {
-			await workflowsStore.fetchWorkflow(workflowId.value);
-
-			titleChange.titleSet(workflow.value.name, 'IDLE');
-			await openWorkflow(workflow.value);
-			await checkAndInitDebugMode();
-
-			trackOpenWorkflowFromOnboardingTemplate();
-		} catch (error) {
-			toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
-
-			void router.push({
-				name: VIEWS.NEW_WORKFLOW,
-			});
-		}
+		await initializeWorkspaceForExistingWorkflow(workflowId.value);
 	}
 
 	nodeHelpers.updateNodesInputIssues();
@@ -311,67 +273,40 @@ async function initializeView() {
 	nodeHelpers.updateNodesParameterIssues();
 
 	await loadCredentials();
-	canvasEventBus.emit('fitView');
-
-	uiStore.nodeViewInitialized = true;
-
-	// Once view is initialized, pick up all toast notifications
-	// waiting in the store and display them
-	toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 }
 
-async function initializeViewForNewWorkflow() {
+async function initializeWorkspaceForNewWorkflow() {
 	resetWorkspace();
 
 	await workflowsStore.getNewWorkflowData(undefined, projectsStore.currentProjectId);
+	workflowsStore.makeNewWorkflowShareable();
 
-	workflowsStore.currentWorkflowExecutions = [];
-	executionsStore.activeExecution = null;
-	uiStore.stateIsDirty = false;
 	uiStore.nodeViewInitialized = true;
-	executionsStore.activeExecution = null;
-
-	makeNewWorkflowShareable();
-	await runAutoAddManualTriggerExperiment();
 }
 
-/**
- * Pre-populate the canvas with the manual trigger node
- * if the experiment is enabled and the user is in the variant group
- */
-async function runAutoAddManualTriggerExperiment() {
-	if (
-		posthog.getVariant(CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name) !==
-		CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.variant
-	) {
-		return;
+async function initializeWorkspaceForExistingWorkflow(id: string) {
+	resetWorkspace();
+
+	try {
+		const workflowData = await workflowsStore.fetchWorkflow(id);
+
+		await openWorkflow(workflowData);
+		await initializeDebugMode();
+
+		if (workflowData.meta?.onboardingId) {
+			trackOpenWorkflowFromOnboardingTemplate();
+		}
+
+		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
+
+		void router.push({
+			name: VIEWS.NEW_WORKFLOW,
+		});
+	} finally {
+		uiStore.nodeViewInitialized = true;
 	}
-
-	const manualTriggerNode = canvasStore.getAutoAddManualTriggerNode();
-	if (manualTriggerNode) {
-		await addNodes([manualTriggerNode]);
-		uiStore.lastSelectedNode = manualTriggerNode.name;
-	}
-}
-
-function resetWorkspace() {
-	onOpenNodeCreator({ createNodeActive: false });
-	nodeCreatorStore.setShowScrim(false);
-
-	// Make sure that if there is a waiting test-webhook that it gets removed
-	if (isExecutionWaitingForWebhook.value) {
-		try {
-			void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
-		} catch (error) {}
-	}
-	workflowsStore.resetWorkflow();
-	workflowsStore.resetState();
-
-	uiStore.removeActiveAction('workflowRunning');
-	uiStore.resetSelectedNodes();
-	uiStore.nodeViewOffsetPosition = [0, 0]; // @TODO Not sure if needed
-
-	// this.credentialsUpdated = false;
 }
 
 /**
@@ -379,65 +314,38 @@ function resetWorkspace() {
  */
 
 async function openWorkflow(data: IWorkflowDb) {
-	const selectedExecution = executionsStore.activeExecution;
-
 	resetWorkspace();
+	titleSet(workflow.value.name, 'IDLE');
 
-	await workflowHelpers.initState(data);
-	await addNodes(data.nodes);
-	workflowsStore.setConnections(data.connections);
-
-	if (data.sharedWithProjects) {
-		workflowsEEStore.setWorkflowSharedWith({
-			workflowId: data.id,
-			sharedWithProjects: data.sharedWithProjects,
-		});
-	}
-
-	if (data.usedCredentials) {
-		workflowsStore.setUsedCredentials(data.usedCredentials);
-	}
-
-	if (!nodeHelpers.credentialsUpdated.value) {
-		uiStore.stateIsDirty = false;
-	}
+	await initializeWorkspace(data);
 
 	void externalHooks.run('workflow.open', {
 		workflowId: data.id,
 		workflowName: data.name,
 	});
 
-	if (selectedExecution?.workflowId !== data.id) {
-		executionsStore.activeExecution = null;
-		workflowsStore.currentWorkflowExecutions = [];
-	} else {
-		executionsStore.activeExecution = selectedExecution;
-	}
+	// @TODO Check why this is needed when working on executions
+	// const selectedExecution = executionsStore.activeExecution;
+	// if (selectedExecution?.workflowId !== data.id) {
+	// 	executionsStore.activeExecution = null;
+	// 	workflowsStore.currentWorkflowExecutions = [];
+	// } else {
+	// 	executionsStore.activeExecution = selectedExecution;
+	// }
 
-	await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
+	fitView();
 }
 
 function trackOpenWorkflowFromOnboardingTemplate() {
-	if (workflow.value.meta?.onboardingId) {
-		telemetry.track(
-			`User opened workflow from onboarding template with ID ${workflow.value.meta.onboardingId}`,
-			{
-				workflow_id: workflowId.value,
-			},
-			{
-				withPostHog: true,
-			},
-		);
-	}
-}
-
-function makeNewWorkflowShareable() {
-	const { currentProject, personalProject } = projectsStore;
-	const homeProject = currentProject ?? personalProject ?? {};
-	const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-	workflowsStore.workflow.homeProject = homeProject as ProjectSharingData;
-	workflowsStore.workflow.scopes = scopes;
+	telemetry.track(
+		`User opened workflow from onboarding template with ID ${workflow.value.meta?.onboardingId}`,
+		{
+			workflow_id: workflowId.value,
+		},
+		{
+			withPostHog: true,
+		},
+	);
 }
 
 /**
@@ -485,7 +393,6 @@ async function openWorkflowTemplate(templateId: string) {
 
 	uiStore.stateIsDirty = true;
 
-	canvasEventBus.emit('fitView');
 	canvasStore.stopLoading();
 
 	void externalHooks.run('template.open', {
@@ -493,6 +400,8 @@ async function openWorkflowTemplate(templateId: string) {
 		templateName: data.name,
 		workflow: data.workflow,
 	});
+
+	fitView();
 }
 
 function trackOpenWorkflowTemplate(templateId: string) {
@@ -534,6 +443,10 @@ function onDeleteNode(id: string) {
 	deleteNode(id, { trackHistory: true });
 }
 
+function onDeleteNodes(ids: string[]) {
+	deleteNodes(ids);
+}
+
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
 	revertDeleteNode(node);
 }
@@ -543,7 +456,15 @@ function onToggleNodeDisabled(id: string) {
 		return;
 	}
 
-	toggleNodeDisabled(id);
+	toggleNodesDisabled([id]);
+}
+
+function onToggleNodesDisabled(ids: string[]) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodesDisabled(ids);
 }
 
 function onSetNodeActive(id: string) {
@@ -554,10 +475,75 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
+function onCopyNodes(_ids: string[]) {
+	// @TODO: implement this
+}
+
+function onCutNodes(_ids: string[]) {
+	// @TODO: implement this
+}
+
+function onDuplicateNodes(_ids: string[]) {
+	// @TODO: implement this
+}
+
+function onPinNodes(ids: string[], source: PinDataSource) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	toggleNodesPinned(ids, source);
+}
+
+async function onSaveWorkflow() {
+	await workflowHelpers.saveCurrentWorkflow();
+}
+
+async function onCreateWorkflow() {
+	await router.push({ name: VIEWS.NEW_WORKFLOW });
+}
+
 function onRenameNode(parameterData: IUpdateInformation) {
 	if (parameterData.name === 'name' && parameterData.oldValue) {
 		void renameNode(parameterData.oldValue as string, parameterData.value as string);
 	}
+}
+
+async function onOpenRenameNodeModal(id: string) {
+	const currentName = workflowsStore.getNodeById(id)?.name ?? '';
+	try {
+		const promptResponsePromise = message.prompt(
+			i18n.baseText('nodeView.prompt.newName') + ':',
+			i18n.baseText('nodeView.prompt.renameNode') + `: ${currentName}`,
+			{
+				customClass: 'rename-prompt',
+				confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+				cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
+				inputValue: currentName,
+				inputValidator: (value: string) => {
+					if (!value.trim()) {
+						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					return true;
+				},
+			},
+		);
+
+		// Wait till input is displayed
+		await nextTick();
+
+		// Focus and select input content
+		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
+		nameInput?.focus();
+		nameInput?.select();
+
+		const promptResponse = await promptResponsePromise;
+
+		if (promptResponse.action === MODAL_CONFIRM) {
+			await renameNode(currentName, promptResponse.value, { trackHistory: true });
+		}
+	} catch (e) {}
 }
 
 async function onRevertRenameNode({
@@ -631,8 +617,46 @@ function onRevertDeleteConnection({ connection }: { connection: [IConnection, IC
  * Import / Export
  */
 
-async function importWorkflowExact(_workflow: IWorkflowDataUpdate) {
-	// @TODO
+async function importWorkflowExact({ workflow: workflowData }: { workflow: IWorkflowDataUpdate }) {
+	if (!workflowData.nodes || !workflowData.connections) {
+		throw new Error('Invalid workflow object');
+	}
+
+	resetWorkspace();
+
+	await initializeWorkspace({
+		...workflowData,
+		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
+	} as IWorkflowDb);
+
+	fitView();
+}
+
+async function onImportWorkflowDataEvent(data: IDataObject) {
+	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+
+	fitView();
+}
+
+async function onImportWorkflowUrlEvent(data: IDataObject) {
+	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
+	if (!workflowData) {
+		return;
+	}
+
+	await importWorkflowData(workflowData, 'url');
+
+	fitView();
+}
+
+function addImportEventBindings() {
+	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
+	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
+}
+
+function removeImportEventBindings() {
+	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
+	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 }
 
 /**
@@ -649,11 +673,31 @@ async function onAddNodesAndConnections(
 	}
 
 	await addNodes(nodes, { dragAndDrop, position });
-	await addConnections(connections, {
-		offsetIndex: editableWorkflow.value.nodes.length - nodes.length,
+
+	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
+	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
+		const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
+		const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+
+		return {
+			source: fromNode.id,
+			target: toNode.id,
+			data: {
+				source: {
+					index: from.outputIndex ?? 0,
+					type: NodeConnectionType.Main,
+				},
+				target: {
+					index: to.inputIndex ?? 0,
+					type: NodeConnectionType.Main,
+				},
+			},
+		};
 	});
 
-	uiStore.lastSelectedNodeConnection = null;
+	await addConnections(mappedConnections);
+
+	uiStore.resetLastInteractedWith();
 }
 
 async function onSwitchActiveNode(nodeName: string) {
@@ -664,8 +708,16 @@ async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConn
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
+function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
+	onOpenNodeCreator({ createNodeActive: true, source });
+}
+
 function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
 	nodeCreatorStore.openNodeCreator(options);
+}
+
+function onCreateSticky() {
+	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -865,7 +917,7 @@ async function onSourceControlPull() {
 		if (workflowId.value !== null && !uiStore.stateIsDirty) {
 			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
-				titleChange.titleSet(workflowData.name, 'IDLE');
+				titleSet(workflowData.name, 'IDLE');
 				await openWorkflow(workflowData);
 			}
 		}
@@ -909,7 +961,7 @@ async function onPostMessageReceived(message: MessageEvent) {
 		const json = JSON.parse(message.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
-				await importWorkflowExact(json.data);
+				await importWorkflowExact(json);
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
@@ -1009,14 +1061,22 @@ function checkIfRouteIsAllowed() {
  * Debug mode
  */
 
-async function checkAndInitDebugMode() {
+async function initializeDebugMode() {
 	if (route.name === VIEWS.EXECUTION_DEBUG) {
-		titleChange.titleSet(workflowsStore.workflowName, 'DEBUG');
+		titleSet(workflowsStore.workflowName, 'DEBUG');
 		if (!workflowsStore.isInDebugMode) {
 			await applyExecutionData(route.params.executionId as string);
 			workflowsStore.isInDebugMode = true;
 		}
 	}
+}
+
+/**
+ * Canvas
+ */
+
+function fitView() {
+	setTimeout(() => canvasEventBus.emit('fitView'));
 }
 
 /**
@@ -1026,6 +1086,7 @@ async function checkAndInitDebugMode() {
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
 	canvasStore.newNodeInsertPosition = [position.x, position.y];
+	uiStore.isCreateNodeActive = false;
 }
 
 /**
@@ -1129,8 +1190,23 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
+	canvasStore.startLoading();
+	titleReset();
+	resetWorkspace();
+
 	void initializeData().then(() => {
-		void initializeView();
+		void initializeRoute()
+			.then(() => {
+				// Once view is initialized, pick up all toast notifications
+				// waiting in the store and display them
+				toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+			})
+			.finally(() => {
+				isLoading.value = false;
+				canvasStore.stopLoading();
+			});
+
+		void usersStore.showPersonalizationSurvey();
 
 		checkIfRouteIsAllowed();
 	});
@@ -1139,21 +1215,29 @@ onMounted(async () => {
 	addPostMessageEventBindings();
 	addKeyboardEventBindings();
 	addSourceControlEventBindings();
+	addImportEventBindings();
 
 	registerCustomActions();
+
+	// @TODO Implement this
+	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
+
+	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
+	void externalHooks.run('nodeView.mount').catch(() => {});
 });
 
 onBeforeUnmount(() => {
-	removeKeyboardEventBindings();
-	removePostMessageEventBindings();
 	removeUndoRedoEventBindings();
+	removePostMessageEventBindings();
+	removeKeyboardEventBindings();
 	removeSourceControlEventBindings();
+	removeImportEventBindings();
 });
 </script>
 
 <template>
 	<WorkflowCanvas
-		v-if="editableWorkflow && editableWorkflowObject"
+		v-if="editableWorkflow && editableWorkflowObject && !isLoading"
 		:workflow="editableWorkflow"
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
@@ -1162,6 +1246,7 @@ onBeforeUnmount(() => {
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
 		@update:node:enabled="onToggleNodeDisabled"
+		@update:node:name="onOpenRenameNodeModal"
 		@update:node:parameters="onUpdateNodeParameters"
 		@run:node="onRunWorkflowToNode"
 		@delete:node="onDeleteNode"
@@ -1170,6 +1255,17 @@ onBeforeUnmount(() => {
 		@delete:connection="onDeleteConnection"
 		@click:connection:add="onClickConnectionAdd"
 		@click:pane="onClickPane"
+		@create:node="onOpenNodeCreatorFromCanvas"
+		@create:sticky="onCreateSticky"
+		@delete:nodes="onDeleteNodes"
+		@update:nodes:enabled="onToggleNodesDisabled"
+		@update:nodes:pin="onPinNodes"
+		@duplicate:nodes="onDuplicateNodes"
+		@copy:nodes="onCopyNodes"
+		@cut:nodes="onCutNodes"
+		@run:workflow="onRunWorkflow"
+		@save:workflow="onSaveWorkflow"
+		@create:workflow="onCreateWorkflow"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasRunWorkflowButton

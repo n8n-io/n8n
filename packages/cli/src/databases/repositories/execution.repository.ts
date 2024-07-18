@@ -20,14 +20,16 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
+import { GlobalConfig } from '@n8n/config';
 import {
 	ApplicationError,
-	WorkflowOperationError,
 	type ExecutionStatus,
 	type ExecutionSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
+import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -43,9 +45,7 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import { GlobalConfig } from '@n8n/config';
 import { separate } from '@/utils';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -641,8 +641,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+		const error = new ExecutionCancelledError(execution.id);
 
+		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,

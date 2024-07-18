@@ -1,5 +1,7 @@
 import type { AuthenticationMethod, IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { GlobalRole } from '@/databases/entities/User';
 
 export type UserLike = {
 	id: string;
@@ -10,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent by services and consumed by relays, e.g. `AuditEventRelay`.
+ * Events sent by services and consumed by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -189,5 +191,28 @@ export type Event = {
 
 	'execution-started-during-bootup': {
 		executionId: string;
+	};
+
+	'team-project-updated': {
+		userId: string;
+		role: GlobalRole;
+		members: Array<{
+			userId: string;
+			role: ProjectRole;
+		}>;
+		projectId: string;
+	};
+
+	'team-project-deleted': {
+		userId: string;
+		role: GlobalRole;
+		projectId: string;
+		removalType: 'transfer' | 'delete';
+		targetProjectId?: string;
+	};
+
+	'team-project-created': {
+		userId: string;
+		role: GlobalRole;
 	};
 };

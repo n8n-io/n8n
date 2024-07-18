@@ -16,7 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
@@ -30,7 +30,6 @@ import { EventsService } from '@/services/events.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
-import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
@@ -76,7 +75,7 @@ export class InternalHooks {
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
-			n8n_version_notifications_enabled: config.getEnv('versionNotifications.enabled'),
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
 			),
@@ -833,32 +832,5 @@ export class InternalHooks {
 		error_message?: string | undefined;
 	}): Promise<void> {
 		return await this.telemetry.track('User updated external secrets settings', saveData);
-	}
-
-	async onTeamProjectCreated(data: { user_id: string; role: GlobalRole }) {
-		return await this.telemetry.track('User created project', data);
-	}
-
-	async onTeamProjectDeleted(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		removal_type: 'delete' | 'transfer';
-		target_project_id?: string;
-	}) {
-		return await this.telemetry.track('User deleted project', data);
-	}
-
-	async onTeamProjectUpdated(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		members: Array<{ user_id: string; role: ProjectRole }>;
-	}) {
-		return await this.telemetry.track('Project settings updated', data);
-	}
-
-	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
-		await this.telemetry.track('User hit concurrency limit', { threshold });
 	}
 }

@@ -12,6 +12,10 @@ import type { CanvasNodeDefaultRender } from '@/types';
 const $style = useCssModule();
 const i18n = useI18n();
 
+const emit = defineEmits<{
+	'open:contextmenu': [event: MouseEvent];
+}>();
+
 const {
 	label,
 	inputs,
@@ -79,10 +83,14 @@ const dataTestId = computed(() => {
 
 	return `canvas-${type}-node`;
 });
+
+function openContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId">
+	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>

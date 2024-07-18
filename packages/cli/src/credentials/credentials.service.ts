@@ -407,7 +407,7 @@ export class CredentialsService {
 
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
-			if (dataKey === 'oauthTokenData') {
+			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
 				if (copiedData[dataKey].toString().length > 0) {
 					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
