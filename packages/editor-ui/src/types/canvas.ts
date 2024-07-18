@@ -1,14 +1,9 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-import type {
-	ExecutionStatus,
-	INodeConnections,
-	INodeTypeDescription,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
-import type { ComputedRef, Ref } from 'vue';
+import type { Ref } from 'vue';
 
 export type CanvasConnectionPortType = NodeConnectionType;
 
@@ -121,7 +116,6 @@ export interface CanvasNodeInjectionData {
 	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
-	nodeType: ComputedRef<INodeTypeDescription | null>;
 }
 
 export interface CanvasNodeHandleInjectionData {

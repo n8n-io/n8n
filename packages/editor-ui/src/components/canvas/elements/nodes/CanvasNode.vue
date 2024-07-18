@@ -42,7 +42,7 @@ const { mainInputs, nonMainInputs, mainOutputs, nonMainOutputs, isValidConnectio
 
 const isDisabled = computed(() => props.data.disabled);
 
-const nodeType = computed(() => {
+const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
 
@@ -175,7 +175,6 @@ provide(CanvasNodeKey, {
 	data,
 	label,
 	selected,
-	nodeType,
 });
 
 /**
@@ -229,7 +228,7 @@ watch(
 		</template>
 
 		<CanvasNodeToolbar
-			v-if="nodeType"
+			v-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
@@ -239,8 +238,8 @@ watch(
 
 		<CanvasNodeRenderer @dblclick="onActivate" @move="onMove" @update="onUpdate">
 			<NodeIcon
-				v-if="nodeType"
-				:node-type="nodeType"
+				v-if="nodeTypeDescription"
+				:node-type="nodeTypeDescription"
 				:size="nodeIconSize"
 				:shrink="false"
 				:disabled="isDisabled"
