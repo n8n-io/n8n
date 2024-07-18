@@ -1,4 +1,5 @@
 import type { CanvasNodeData } from '@/types';
+import { CanvasConnectionMode } from '@/types';
 import type { MaybeRef } from 'vue';
 import { computed, unref } from 'vue';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -31,7 +32,7 @@ export function useNodeConnections({
 	);
 
 	const mainInputConnections = computed(
-		() => unref(connections).input[NodeConnectionType.Main] ?? [],
+		() => unref(connections)[CanvasConnectionMode.Input][NodeConnectionType.Main] ?? [],
 	);
 
 	/**
@@ -47,7 +48,7 @@ export function useNodeConnections({
 	);
 
 	const mainOutputConnections = computed(
-		() => unref(connections).output[NodeConnectionType.Main] ?? [],
+		() => unref(connections)[CanvasConnectionMode.Output][NodeConnectionType.Main] ?? [],
 	);
 
 	/**

@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type {
-	ConnectionTypes,
 	ExecutionStatus,
-	IConnection,
 	INodeConnections,
-	INodeTypeDescription,
+	IConnection,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
-import type { ComputedRef, Ref } from 'vue';
+import type { Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
 
-export type CanvasConnectionPortType = ConnectionTypes;
+export type CanvasConnectionPortType = NodeConnectionType;
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -30,7 +29,8 @@ export type CanvasConnectionPort = {
 	label?: string;
 };
 
-export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
+export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
+	connected: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
 }
@@ -74,8 +74,8 @@ export interface CanvasNodeData {
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];
 	connections: {
-		input: INodeConnections;
-		output: INodeConnections;
+		[CanvasConnectionMode.Input]: INodeConnections;
+		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
 		items: string[];
@@ -122,11 +122,13 @@ export interface CanvasNodeInjectionData {
 	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
-	nodeType: ComputedRef<INodeTypeDescription | null>;
 }
 
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
+	mode: Ref<CanvasConnectionMode>;
+	type: Ref<NodeConnectionType>;
+	connected: Ref<boolean | undefined>;
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
