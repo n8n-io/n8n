@@ -76,44 +76,14 @@ const {
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 useKeybindings({
-	ctrl_c: () => {
-		if (hasSelection.value) {
-			emit('copy:nodes', selectedNodeIds.value);
-		}
-	},
-	ctrl_x: () => {
-		if (hasSelection.value) {
-			emit('cut:nodes', selectedNodeIds.value);
-		}
-	},
-	'delete|backspace': () => {
-		if (hasSelection.value) {
-			emit('delete:nodes', selectedNodeIds.value);
-		}
-	},
-	ctrl_d: () => {
-		if (hasSelection.value) {
-			emit('duplicate:nodes', selectedNodeIds.value);
-		}
-	},
-	d: () => {
-		if (hasSelection.value) {
-			emit('update:nodes:enabled', selectedNodeIds.value);
-		}
-	},
-	p: () => {
-		if (hasSelection.value) {
-			emit('update:nodes:pin', selectedNodeIds.value, 'keyboard-shortcut');
-		}
-	},
-	enter: () => {
-		if (!lastSelectedNode.value) return;
-		emit('update:node:active', lastSelectedNode.value.id);
-	},
-	f2: () => {
-		if (!lastSelectedNode.value) return;
-		emit('update:node:name', lastSelectedNode.value.id);
-	},
+	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+	ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+	'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+	ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+	d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+	p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+	enter: () => emitWithLastSelectedNode((id) => emit('update:node:active', id)),
+	f2: () => emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 	tab: () => emit('create:node', 'tab'),
 	shift_s: () => emit('create:sticky'),
 	ctrl_alt_n: () => emit('create:workflow'),
@@ -237,6 +207,26 @@ function onRunNode(id: string) {
 }
 
 /**
+ * Emit helpers
+ */
+
+function emitWithSelectedNodes(emitFn: (ids: string[]) => void) {
+	return () => {
+		if (hasSelection.value) {
+			emitFn(selectedNodeIds.value);
+		}
+	};
+}
+
+function emitWithLastSelectedNode(emitFn: (id: string) => void) {
+	return () => {
+		if (lastSelectedNode.value) {
+			emitFn(lastSelectedNode.value.id);
+		}
+	};
+}
+
+/**
  * View
  */
 
@@ -253,6 +243,10 @@ function onClickPane(event: MouseEvent) {
 async function onFitView() {
 	await fitView();
 }
+
+/**
+ * Context menu
+ */
 
 function onOpenContextMenu(event: MouseEvent) {
 	contextMenu.open(event, {
