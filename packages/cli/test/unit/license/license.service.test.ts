@@ -67,7 +67,7 @@ describe('LicenseService', () => {
 			license.renew.mockResolvedValueOnce();
 			await licenseService.renewLicense();
 
-			expect(eventRelay.emit).toHaveBeenCalledWith({ success: true });
+			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: true });
 		});
 
 		test('on failure', async () => {
@@ -76,7 +76,7 @@ describe('LicenseService', () => {
 				new BadRequestError('Activation key has expired'),
 			);
 
-			expect(eventRelay.emit).toHaveBeenCalledWith({ success: false });
+			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: false });
 		});
 	});
 });
