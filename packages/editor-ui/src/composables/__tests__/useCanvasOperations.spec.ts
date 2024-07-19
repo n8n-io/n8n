@@ -22,14 +22,20 @@ import { mock } from 'vitest-mock-extended';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { telemetry } from '@/plugins/telemetry';
+import { useClipboard } from '@/composables/useClipboard';
 
-vi.mock('vue-router', async () => {
-	const actual = await import('vue-router');
-
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal<{}>();
 	return {
 		...actual,
 		useRouter: () => ({}),
 	};
+});
+
+vi.mock('@/composables/useClipboard', async () => {
+	const copySpy = vi.fn();
+	return { useClipboard: vi.fn(() => ({ copy: copySpy })) };
 });
 
 describe('useCanvasOperations', () => {
@@ -71,6 +77,7 @@ describe('useCanvasOperations', () => {
 		await workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+		vi.clearAllMocks();
 	});
 
 	describe('addNode', () => {
@@ -904,4 +911,71 @@ describe('useCanvasOperations', () => {
 			expect(addConnectionSpy).toHaveBeenCalledWith({ connection });
 		});
 	});
+
+	describe('duplicateNodes', () => {
+		it('should duplicate nodes', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+			const telemetrySpy = vi.spyOn(telemetry, 'track');
+
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+
+			const duplicatedNodeIds = await canvasOperations.duplicateNodes(['1', '2']);
+			expect(duplicatedNodeIds.length).toBe(2);
+			expect(duplicatedNodeIds).not.toContain('1');
+			expect(duplicatedNodeIds).not.toContain('2');
+			expect(workflowsStore.workflow.nodes.length).toEqual(4);
+			expect(telemetrySpy).toHaveBeenCalledWith(
+				'User duplicated nodes',
+				expect.objectContaining({ node_graph_string: expect.any(String), workflow_id: 'test' }),
+			);
+		});
+	});
+
+	describe('copyNodes', () => {
+		it('should copy nodes', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+			const telemetrySpy = vi.spyOn(telemetry, 'track');
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+
+			await canvasOperations.copyNodes(['1', '2']);
+			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+			expect(telemetrySpy).toHaveBeenCalledWith(
+				'User copied nodes',
+				expect.objectContaining({ node_types: ['type', 'type'], workflow_id: 'test' }),
+			);
+		});
+	});
+
+	describe('cutNodes', () => {
+		it('should copy and delete nodes', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+			const telemetrySpy = vi.spyOn(telemetry, 'track');
+			const nodes = buildImportNodes();
+			workflowsStore.setNodes(nodes);
+
+			await canvasOperations.cutNodes(['1', '2']);
+			expect(useClipboard().copy).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(useClipboard().copy).mock.calls).toMatchSnapshot();
+			expect(telemetrySpy).toHaveBeenCalledWith(
+				'User copied nodes',
+				expect.objectContaining({ node_types: ['type', 'type'], workflow_id: 'test' }),
+			);
+			expect(workflowsStore.getNodes().length).toBe(0);
+		});
+	});
 });
+
+function buildImportNodes() {
+	return [
+		mockNode({ id: '1', name: 'Node 1', type: 'type' }),
+		mockNode({ id: '2', name: 'Node 2', type: 'type' }),
+	].map((node) => {
+		// Setting position in mockNode will wrap it in a Proxy
+		// This causes deepCopy to remove position -> set position after instead
+		node.position = [40, 40];
+		return node;
+	});
+}
