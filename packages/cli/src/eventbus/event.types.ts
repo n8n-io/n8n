@@ -252,4 +252,24 @@ export type Event = {
 		credsPushed: number;
 		variablesPushed: number;
 	};
+
+	'license-renewal-attempted': {
+		success: boolean;
+	};
+
+	'security-audit-generated-via-cli': {
+		// no payload
+	};
+
+	'variable-created': {
+		variableType: string;
+	};
+
+	'external-secrets-provider-settings-saved': {
+		userId?: string;
+		vaultType: string;
+		isValid: boolean;
+		isNew: boolean;
+		errorMessage?: string;
+	};
 };
