@@ -16,8 +16,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
+	ExecutionCancelledError,
 	Workflow,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import PCancelable from 'p-cancelable';
@@ -188,6 +188,7 @@ export class WorkflowRunner {
 					}
 				})
 				.catch((error) => {
+					if (error instanceof ExecutionCancelledError) return;
 					ErrorReporter.error(error);
 					this.logger.error(
 						'There was a problem running internal hook "onWorkflowPostExecute"',
@@ -426,7 +427,7 @@ export class WorkflowRunner {
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
 
-					const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+					const error = new ExecutionCancelledError(executionId);
 					await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
 
 					reject(error);

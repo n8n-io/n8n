@@ -156,6 +156,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			userManagement.value.quota > useUsersStore().allUsers.length,
 	);
 
+	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
+
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
 	const setSettings = (newSettings: IN8nUISettings) => {
@@ -418,6 +420,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataSuccessExecution,
 		saveManualExecutions,
 		saveDataProgressExecution,
+		isCommunityPlan,
 		reset,
 		testLdapConnection,
 		getLdapConfig,

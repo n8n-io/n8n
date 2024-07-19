@@ -60,12 +60,11 @@ export function useDebugInfo() {
 						: settingsStore.databaseType,
 			executionMode: settingsStore.isQueueModeEnabled ? 'scaling' : 'regular',
 			concurrency: settingsStore.settings.concurrency,
-			license:
-				settingsStore.planName === 'Community'
-					? (settingsStore.planName.toLowerCase() as 'community')
-					: settingsStore.settings.license.environment === 'production'
-						? 'enterprise (production)'
-						: 'enterprise (sandbox)',
+			license: settingsStore.isCommunityPlan
+				? 'community'
+				: settingsStore.settings.license.environment === 'production'
+					? 'enterprise (production)'
+					: 'enterprise (sandbox)',
 			consumerId: settingsStore.consumerId,
 		} as const;
 	};

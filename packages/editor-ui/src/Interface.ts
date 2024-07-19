@@ -9,45 +9,45 @@ import type {
 	ROLE,
 } from '@/constants';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
-import {
-	type GenericValue,
-	type IConnections,
-	type ICredentialsDecrypted,
-	type ICredentialsEncrypted,
-	type ICredentialType,
-	type IDataObject,
-	type INode,
-	type INodeIssues,
-	type INodeParameters,
-	type INodeTypeDescription,
-	type IPinData,
-	type IRunExecutionData,
-	type IRun,
-	type IRunData,
-	type ITaskData,
-	type IWorkflowSettings as IWorkflowSettingsWorkflow,
-	type WorkflowExecuteMode,
-	type PublicInstalledPackage,
-	type INodeTypeNameVersion,
-	type ILoadOptions,
-	type INodeCredentials,
-	type INodeListSearchItems,
-	type NodeParameterValueType,
-	type IDisplayOptions,
-	type ExecutionSummary,
-	type FeatureFlags,
-	type ExecutionStatus,
-	type ITelemetryTrackProperties,
-	type IUserManagementSettings,
-	type WorkflowSettings,
-	type IUserSettings,
-	type IN8nUISettings,
-	type BannerName,
-	type INodeExecutionData,
-	type INodeProperties,
-	type NodeConnectionType,
-	type INodeCredentialsDetails,
-	type StartNodeData,
+import type {
+	GenericValue,
+	IConnections,
+	ICredentialsDecrypted,
+	ICredentialsEncrypted,
+	ICredentialType,
+	IDataObject,
+	INode,
+	INodeIssues,
+	INodeParameters,
+	INodeTypeDescription,
+	IPinData,
+	IRunExecutionData,
+	IRun,
+	IRunData,
+	ITaskData,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	WorkflowExecuteMode,
+	PublicInstalledPackage,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
+	NodeParameterValueType,
+	IDisplayOptions,
+	ExecutionSummary,
+	FeatureFlags,
+	ExecutionStatus,
+	ITelemetryTrackProperties,
+	IUserManagementSettings,
+	WorkflowSettings,
+	IUserSettings,
+	IN8nUISettings,
+	BannerName,
+	INodeExecutionData,
+	INodeProperties,
+	NodeConnectionType,
+	INodeCredentialsDetails,
+	StartNodeData,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -1805,9 +1805,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
-	name?: string;
-	position?: XYPosition;
-};
+} & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
 	from: { nodeIndex: number; outputIndex?: number };

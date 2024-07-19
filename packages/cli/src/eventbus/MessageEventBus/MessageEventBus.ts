@@ -309,7 +309,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit('metrics.messageEventBus.Event', msg);
+		this.emit('metrics.eventBus.event', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!

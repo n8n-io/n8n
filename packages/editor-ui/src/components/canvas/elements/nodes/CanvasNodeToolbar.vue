@@ -1,24 +1,38 @@
 <script setup lang="ts">
-import { useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useCanvasNode } from '@/composables/useCanvasNode';
+import { CanvasNodeRenderType } from '@/types';
 
 const emit = defineEmits<{
 	delete: [];
 	toggle: [];
 	run: [];
+	'open:contextmenu': [event: MouseEvent];
 }>();
 
 const $style = useCssModule();
 const i18n = useI18n();
 
-const { renderOptions } = useCanvasNode();
+const { render } = useCanvasNode();
 
 // @TODO
 const workflowRunning = false;
 
 // @TODO
 const nodeDisabledTitle = 'Test';
+
+const isExecuteNodeVisible = computed(() => {
+	return (
+		render.value.type === CanvasNodeRenderType.Default &&
+		'configuration' in render.value.options &&
+		!render.value.options.configuration
+	);
+});
+
+const isDisableNodeVisible = computed(() => {
+	return render.value.type === CanvasNodeRenderType.Default;
+});
 
 function executeNode() {
 	emit('run');
@@ -32,15 +46,16 @@ function onDeleteNode() {
 	emit('delete');
 }
 
-// @TODO
-function openContextMenu(_e: MouseEvent, _type: string) {}
+function onOpenContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
 </script>
 
 <template>
 	<div :class="$style.canvasNodeToolbar">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
-				v-if="!renderOptions.configuration"
+				v-if="isExecuteNodeVisible"
 				data-test-id="execute-node-button"
 				type="tertiary"
 				text
@@ -51,6 +66,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				@click="executeNode"
 			/>
 			<N8nIconButton
+				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
 				type="tertiary"
 				text
@@ -74,7 +90,7 @@ function openContextMenu(_e: MouseEvent, _type: string) {}
 				size="small"
 				text
 				icon="ellipsis-h"
-				@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				@click="onOpenContextMenu"
 			/>
 		</div>
 	</div>

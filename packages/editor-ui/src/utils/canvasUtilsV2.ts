@@ -6,8 +6,6 @@ import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
 import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { Connection as VueFlowConnection } from '@vue-flow/core/dist/types/connection';
-import { PUSH_NODES_OFFSET } from '@/utils/nodeViewUtils';
 
 export function mapLegacyConnectionsToCanvasConnections(
 	legacyConnections: IConnections,
@@ -94,21 +92,6 @@ export function parseCanvasConnectionHandleString(handle: string | null | undefi
 	};
 }
 
-/**
- * Get the width and height of a connection
- *
- * @TODO See whether this is actually needed or just a legacy jsPlumb check
- */
-export function getVueFlowConnectorLengths(connection: VueFlowConnection): [number, number] {
-	const connectionId = createCanvasConnectionId(connection);
-	const edgeRef = document.getElementById(connectionId);
-	if (!edgeRef) {
-		return [PUSH_NODES_OFFSET, PUSH_NODES_OFFSET];
-	}
-
-	return [edgeRef.clientWidth, edgeRef.clientHeight];
-}
-
 export function createCanvasConnectionHandleString({
 	mode,
 	type = NodeConnectionType.Main,
@@ -165,7 +148,8 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	}
 
 	return endpoints.map((endpoint, endpointIndex) => {
-		const type = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
 		const label = typeof endpoint === 'string' ? undefined : endpoint.displayName;
 		const index =
 			endpoints

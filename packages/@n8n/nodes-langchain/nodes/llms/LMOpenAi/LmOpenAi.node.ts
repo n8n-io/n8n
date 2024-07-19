@@ -98,6 +98,18 @@ export class LmOpenAi implements INodeType {
 				},
 			},
 			{
+				displayName:
+					'When using non OpenAI models via Base URL override, not all models might be chat-compatible or support other features, like tools calling or JSON response format.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.baseURL': [{ _cnd: { exists: true } }],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
@@ -198,7 +210,7 @@ export class LmOpenAi implements INodeType {
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
-					if (!model.owned_by?.startsWith('system')) continue;
+					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
 					results.push({
 						name: model.id,
 						value: model.id,
