@@ -12,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent by services and consumed by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
+ * Events sent at services and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -214,5 +214,42 @@ export type Event = {
 	'team-project-created': {
 		userId: string;
 		role: GlobalRole;
+	};
+
+	'source-control-settings-updated': {
+		branchName: string;
+		readOnlyInstance: boolean;
+		repoType: 'github' | 'gitlab' | 'other';
+		connected: boolean;
+	};
+
+	'source-control-user-started-pull-ui': {
+		workflowUpdates: number;
+		workflowConflicts: number;
+		credConflicts: number;
+	};
+
+	'source-control-user-finished-pull-ui': {
+		workflowUpdates: number;
+	};
+
+	'source-control-user-pulled-api': {
+		workflowUpdates: number;
+		forced: boolean;
+	};
+
+	'source-control-user-started-push-ui': {
+		workflowsEligible: number;
+		workflowsEligibleWithConflicts: number;
+		credsEligible: number;
+		credsEligibleWithConflicts: number;
+		variablesEligible: number;
+	};
+
+	'source-control-user-finished-push-ui': {
+		workflowsEligible: number;
+		workflowsPushed: number;
+		credsPushed: number;
+		variablesPushed: number;
 	};
 };

@@ -66,7 +66,7 @@ describe('CanvasNode', () => {
 				},
 				global: {
 					stubs: {
-						HandleRenderer: true,
+						CanvasHandleRenderer: true,
 					},
 				},
 			});

@@ -218,30 +218,30 @@ describe('Source Control', () => {
 	it('should get tracking information from pre-push results', () => {
 		const trackingResult = getTrackingInformationFromPrePushResult(pushResult);
 		expect(trackingResult).toEqual({
-			workflows_eligible: 3,
-			workflows_eligible_with_conflicts: 1,
-			creds_eligible: 1,
-			creds_eligible_with_conflicts: 0,
-			variables_eligible: 1,
+			workflowsEligible: 3,
+			workflowsEligibleWithConflicts: 1,
+			credsEligible: 1,
+			credsEligibleWithConflicts: 0,
+			variablesEligible: 1,
 		});
 	});
 
 	it('should get tracking information from post-push results', () => {
 		const trackingResult = getTrackingInformationFromPostPushResult(pushResult);
 		expect(trackingResult).toEqual({
-			workflows_pushed: 2,
-			workflows_eligible: 3,
-			creds_pushed: 1,
-			variables_pushed: 1,
+			workflowsPushed: 2,
+			workflowsEligible: 3,
+			credsPushed: 1,
+			variablesPushed: 1,
 		});
 	});
 
 	it('should get tracking information from pull results', () => {
 		const trackingResult = getTrackingInformationFromPullResult(pullResult);
 		expect(trackingResult).toEqual({
-			cred_conflicts: 1,
-			workflow_conflicts: 1,
-			workflow_updates: 3,
+			credConflicts: 1,
+			workflowConflicts: 1,
+			workflowUpdates: 3,
 		});
 	});
 

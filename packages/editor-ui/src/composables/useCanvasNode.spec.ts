@@ -1,7 +1,8 @@
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { inject, ref } from 'vue';
-import type { CanvasNodeInjectionData } from '../types';
-import { CanvasNodeRenderType } from '../types';
+import type { CanvasNodeData, CanvasNodeInjectionData } from '../types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '../types';
+import { NodeConnectionType } from 'n8n-workflow';
 
 vi.mock('vue', async () => {
 	const actual = await vi.importActual('vue');
@@ -18,7 +19,10 @@ describe('useCanvasNode', () => {
 		expect(result.label.value).toBe('');
 		expect(result.inputs.value).toEqual([]);
 		expect(result.outputs.value).toEqual([]);
-		expect(result.connections.value).toEqual({ input: {}, output: {} });
+		expect(result.connections.value).toEqual({
+			[CanvasConnectionMode.Input]: {},
+			[CanvasConnectionMode.Output]: {},
+		});
 		expect(result.isDisabled.value).toBe(false);
 		expect(result.isSelected.value).toBeUndefined();
 		expect(result.pinnedDataCount.value).toBe(0);
@@ -41,9 +45,12 @@ describe('useCanvasNode', () => {
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,
-				inputs: [{ type: 'main', index: 0 }],
-				outputs: [{ type: 'main', index: 0 }],
-				connections: { input: { '0': [] }, output: {} },
+				inputs: [{ type: NodeConnectionType.Main, index: 0 }],
+				outputs: [{ type: NodeConnectionType.Main, index: 0 }],
+				connections: {
+					[CanvasConnectionMode.Input]: { '0': [] },
+					[CanvasConnectionMode.Output]: {},
+				},
 				issues: { items: ['issue1'], visible: true },
 				execution: { status: 'running', waiting: 'waiting', running: true },
 				runData: { count: 1, visible: true },
@@ -56,7 +63,7 @@ describe('useCanvasNode', () => {
 						trigger: false,
 					},
 				},
-			}),
+			} satisfies CanvasNodeData),
 			id: ref('1'),
 			label: ref('Node 1'),
 			selected: ref(true),
@@ -68,9 +75,12 @@ describe('useCanvasNode', () => {
 
 		expect(result.label.value).toBe('Node 1');
 		expect(result.name.value).toBe('Node 1');
-		expect(result.inputs.value).toEqual([{ type: 'main', index: 0 }]);
-		expect(result.outputs.value).toEqual([{ type: 'main', index: 0 }]);
-		expect(result.connections.value).toEqual({ input: { '0': [] }, output: {} });
+		expect(result.inputs.value).toEqual([{ type: NodeConnectionType.Main, index: 0 }]);
+		expect(result.outputs.value).toEqual([{ type: NodeConnectionType.Main, index: 0 }]);
+		expect(result.connections.value).toEqual({
+			[CanvasConnectionMode.Input]: { '0': [] },
+			[CanvasConnectionMode.Output]: {},
+		});
 		expect(result.isDisabled.value).toBe(true);
 		expect(result.isSelected.value).toBe(true);
 		expect(result.pinnedDataCount.value).toBe(1);

@@ -538,6 +538,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@azure/identity':
+        specifier: ^4.3.0
+        version: 4.3.0
+      '@azure/keyvault-secrets':
+        specifier: ^4.8.0
+        version: 4.8.0
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1978,13 +1984,17 @@ packages:
     resolution: {integrity: sha512-3X9wzaaGgRaBCwhLQZDtFp5uLIXCPrGbwJNWPPugvL4xbIGgScv77YzzxToKGLAKvG9amDoofMoP+9hsH1vs1w==}
     engines: {node: '>=18.0.0'}
 
-  '@azure/core-client@1.6.1':
-    resolution: {integrity: sha512-mZ1MSKhZBYoV8GAWceA+PEJFWV2VpdNSpxxcj1wjIAOi00ykRuIQChT99xlQGZWLY3/NApWhSImlFwsmCEs4vA==}
-    engines: {node: '>=12.0.0'}
+  '@azure/core-client@1.9.2':
+    resolution: {integrity: sha512-kRdry/rav3fUKHl/aDLd/pDLcB+4pOFwPPTVEExuMyaI5r+JBbMWqRbCY1pn5BniDaU3lRxO9eaQ1AmSMehl/w==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/core-http-compat@1.3.0':
     resolution: {integrity: sha512-ZN9avruqbQ5TxopzG3ih3KRy52n8OAbitX3fnZT5go4hzu0J+KVPSzkL+Wt3hpJpdG8WIfg1sBD1tWkgUdEpBA==}
     engines: {node: '>=12.0.0'}
+
+  '@azure/core-http-compat@2.1.2':
+    resolution: {integrity: sha512-5MnV1yqzZwgNLLjlizsU3QqOeQChkIXw781Fwh1xdAqJR5AA32IUaq6xv1BICJvfbHoa+JYcaij2HFkhLbNTJQ==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/core-http@2.3.2':
     resolution: {integrity: sha512-Z4dfbglV9kNZO177CNx4bo5ekFuYwwsvjLiKdZI4r84bYGv3irrbQz7JC3/rUfFH2l4T/W6OFleJaa2X0IaQqw==}
@@ -2018,9 +2028,17 @@ packages:
     resolution: {integrity: sha512-0q5DL4uyR0EZ4RXQKD8MadGH6zTIcloUoS/RVbCpNpej4pwte0xpqYxk8K97Py2RiuUvI7F4GXpoT4046VfufA==}
     engines: {node: '>=14.0.0'}
 
+  '@azure/identity@4.3.0':
+    resolution: {integrity: sha512-LHZ58/RsIpIWa4hrrE2YuJ/vzG1Jv9f774RfTTAVDZDriubvJ0/S5u4pnw4akJDlS0TiJb6VMphmVUFsWmgodQ==}
+    engines: {node: '>=18.0.0'}
+
   '@azure/keyvault-keys@4.6.0':
     resolution: {integrity: sha512-0112LegxeR03L8J4k+q6HwBVvrpd9y+oInG0FG3NaHXN7YUubVBon/eb5jFI6edGrvNigpxSR0XIsprFXdkzCQ==}
     engines: {node: '>=12.0.0'}
+
+  '@azure/keyvault-secrets@4.8.0':
+    resolution: {integrity: sha512-RGfpFk6XUXHfWuTAiokOe8t6ej5C4ijf4HVyJUmTfN6VjDBVPvTtoiOi/C5072/ENHScYZFhiYOgIjLgYjfJ/A==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/logger@1.0.3':
     resolution: {integrity: sha512-aK4s3Xxjrx3daZr3VylxejK3vG5ExXck5WOHDJ8in/k9AqlfIyFMMT1uG7u8mNjX+QRILTIn0/Xgschfh/dQ9g==}
@@ -2030,9 +2048,21 @@ packages:
     resolution: {integrity: sha512-mnmi8dCXVNZI+AGRq0jKQ3YiodlIC4W9npr6FCB9WN6NQT+6rq+cIlxgUb//BjLyzKsnYo+i4LROGeMyU+6v1A==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-browser@3.19.0':
+    resolution: {integrity: sha512-3unHlh3qWtXbqks/TLq3qGWzxfmwRfk9tXSGvVCcHHnCH5QKtcg/JiDIeP/1B2qFlqnSgtYY0JPLy9EIVoZ7Ag==}
+    engines: {node: '>=0.8.0'}
+
+  '@azure/msal-common@14.13.0':
+    resolution: {integrity: sha512-b4M/tqRzJ4jGU91BiwCsLTqChveUEyFK3qY2wGfZ0zBswIBZjAxopx5CYt5wzZFKuN15HqRDYXQbztttuIC3nA==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-common@14.7.1':
     resolution: {integrity: sha512-v96btzjM7KrAu4NSEdOkhQSTGOuNUIIsUdB8wlyB9cdgl5KqEKnTonHUZ8+khvZ6Ap542FCErbnTyDWl8lZ2rA==}
     engines: {node: '>=0.8.0'}
+
+  '@azure/msal-node@2.11.0':
+    resolution: {integrity: sha512-yNRCp4Do4CGSBe1WXq4DWhfa/vYZCUgGrweYLC5my/6eDnYMt0fYGPHuTMw0iRslQGXF3CecGAxXp7ab57V4zg==}
+    engines: {node: '>=16'}
 
   '@azure/msal-node@2.6.4':
     resolution: {integrity: sha512-nNvEPx009/80UATCToF+29NZYocn01uKrB91xtFr7bSqkqO1PuQGXRyYwryWRztUrYZ1YsSbw9A+LmwOhpVvcg==}
@@ -14146,9 +14176,9 @@ snapshots:
       '@azure/core-util': 1.7.0
       tslib: 2.6.2
 
-  '@azure/core-client@1.6.1':
+  '@azure/core-client@1.9.2':
     dependencies:
-      '@azure/abort-controller': 1.1.0
+      '@azure/abort-controller': 2.0.0
       '@azure/core-auth': 1.6.0
       '@azure/core-rest-pipeline': 1.9.2
       '@azure/core-tracing': 1.0.1
@@ -14161,7 +14191,15 @@ snapshots:
   '@azure/core-http-compat@1.3.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
+      '@azure/core-rest-pipeline': 1.9.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-http-compat@2.1.2':
+    dependencies:
+      '@azure/abort-controller': 2.0.0
+      '@azure/core-client': 1.9.2
       '@azure/core-rest-pipeline': 1.9.2
     transitivePeerDependencies:
       - supports-color
@@ -14229,7 +14267,7 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 1.1.0
       '@azure/core-auth': 1.6.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
       '@azure/core-rest-pipeline': 1.9.2
       '@azure/core-tracing': 1.0.1
       '@azure/core-util': 1.7.0
@@ -14244,12 +14282,47 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@azure/identity@4.3.0':
+    dependencies:
+      '@azure/abort-controller': 1.1.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-client': 1.9.2
+      '@azure/core-rest-pipeline': 1.9.2
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
+      '@azure/logger': 1.0.3
+      '@azure/msal-browser': 3.19.0
+      '@azure/msal-node': 2.11.0
+      events: 3.3.0
+      jws: 4.0.0
+      open: 8.4.0
+      stoppable: 1.1.0
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@azure/keyvault-keys@4.6.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
       '@azure/core-auth': 1.6.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
       '@azure/core-http-compat': 1.3.0
+      '@azure/core-lro': 2.4.0
+      '@azure/core-paging': 1.3.0
+      '@azure/core-rest-pipeline': 1.9.2
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
+      '@azure/logger': 1.0.3
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/keyvault-secrets@4.8.0':
+    dependencies:
+      '@azure/abort-controller': 1.1.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-client': 1.9.2
+      '@azure/core-http-compat': 2.1.2
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
       '@azure/core-rest-pipeline': 1.9.2
@@ -14268,7 +14341,19 @@ snapshots:
     dependencies:
       '@azure/msal-common': 14.7.1
 
+  '@azure/msal-browser@3.19.0':
+    dependencies:
+      '@azure/msal-common': 14.13.0
+
+  '@azure/msal-common@14.13.0': {}
+
   '@azure/msal-common@14.7.1': {}
+
+  '@azure/msal-node@2.11.0':
+    dependencies:
+      '@azure/msal-common': 14.13.0
+      jsonwebtoken: 9.0.2
+      uuid: 8.3.2
 
   '@azure/msal-node@2.6.4':
     dependencies:
@@ -14320,7 +14405,7 @@ snapshots:
       '@babel/traverse': 7.24.0
       '@babel/types': 7.24.0
       convert-source-map: 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.6.0
@@ -14441,7 +14526,7 @@ snapshots:
       '@babel/core': 7.24.6
       '@babel/helper-compilation-targets': 7.24.6
       '@babel/helper-plugin-utils': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -14452,7 +14537,7 @@ snapshots:
       '@babel/core': 7.24.6
       '@babel/helper-compilation-targets': 7.24.6
       '@babel/helper-plugin-utils': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -15336,7 +15421,7 @@ snapshots:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.24.0
       '@babel/types': 7.24.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -15351,7 +15436,7 @@ snapshots:
       '@babel/helper-split-export-declaration': 7.24.6
       '@babel/parser': 7.24.6
       '@babel/types': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -18923,7 +19008,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 6.7.5
       '@typescript-eslint/visitor-keys': 6.7.5
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.0
@@ -19344,7 +19429,7 @@ snapshots:
 
   agent-base@7.1.0:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -20790,7 +20875,7 @@ snapshots:
   detect-port@1.5.1:
     dependencies:
       address: 1.2.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -21168,7 +21253,7 @@ snapshots:
 
   esbuild-register@3.5.0(esbuild@0.20.2):
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       esbuild: 0.20.2
     transitivePeerDependencies:
       - supports-color
@@ -22405,7 +22490,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -22414,7 +22499,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -22823,7 +22908,7 @@ snapshots:
 
   istanbul-lib-source-maps@4.0.1:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -26241,7 +26326,7 @@ snapshots:
   socks-proxy-agent@6.2.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       socks: 2.7.1
     transitivePeerDependencies:
       - supports-color

@@ -114,6 +114,8 @@ export class E2EController {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
 			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
+
+		license.getPlanName = () => 'Enterprise';
 	}
 
 	@Post('/reset', { skipAuth: true })
