@@ -1443,7 +1443,7 @@ export function useCanvasOperations({
 
 			if (
 				nodeSaveData.credentials &&
-				settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing]
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
