@@ -15,6 +15,23 @@ export async function createManyExecutions(
 	return await Promise.all(executionsRequests);
 }
 
+export function newExecution(attributes: Partial<ExecutionEntity> = {}): ExecutionEntity {
+	const { finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
+
+	const execution = Container.get(ExecutionRepository).create({
+		finished: finished ?? true,
+		mode: mode ?? 'manual',
+		startedAt: startedAt ?? new Date(),
+		stoppedAt: stoppedAt ?? new Date(),
+		waitTill: waitTill ?? null,
+		status: status ?? 'success',
+		deletedAt,
+		...attributes,
+	});
+
+	return execution;
+}
+
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
