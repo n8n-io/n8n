@@ -1,6 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
-import { VIEWS } from '@/constants';
-import { EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -11,7 +10,8 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import { INodeParameters, deepCopy } from 'n8n-workflow';
+import type { INodeParameters } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -59,10 +59,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 	}
 
-	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[]) {
+	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], i: number) {
+		console.log('assistant', assistantMessages);
+		const messages = chatMessages.value.slice(0, i);
 		assistantMessages.forEach((message) => {
-			if (message.type === 'assistant-message') {
-				chatMessages.value.push({
+			if (message.type === 'message') {
+				messages.push({
 					type: 'text',
 					role: 'assistant',
 					content: message.content,
@@ -70,7 +72,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplies: message.quickReplies,
 				});
 			} else if (message.type === 'code-diff') {
-				chatMessages.value.push({
+				messages.push({
 					role: 'assistant',
 					type: 'code-diff',
 					description: message.description,
@@ -80,6 +82,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				});
 			}
 		});
+		chatMessages.value = messages;
 	}
 
 	function updateWindowWidth(width: number) {
@@ -101,14 +104,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function stopStreaming() {
-		chatMessages.value = chatMessages.value
-			.filter((message) => 'content' in message && !!message.content)
-			.map((message) => {
-				if ('streaming' in message && message.streaming) {
-					message.streaming = false;
-				}
-				return message;
-			});
+		// chatMessages.value = chatMessages.value
+		// 	.filter((message) => 'content' in message && !!message.content)
+		// 	.map((message) => {
+		// 		if ('streaming' in message && message.streaming) {
+		// 			message.streaming = false;
+		// 		}
+		// 		return message;
+		// 	});
 	}
 
 	function addAssistantError(content: string) {
@@ -142,6 +145,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addAssistantError(`There was an error reaching the service: (${e.message})`);
 	}
 
+	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, i: number) {
+		currentSessionId.value = response.sessionId;
+		addAssistantMessages(response.messages, i);
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		if (isNodeErrorActive(context)) {
 			return;
@@ -150,24 +158,25 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = context;
 
 		addAssistantLoading();
+		const i = chatMessages.value.length;
 		openChat();
 
-		try {
-			const response = await chatWithAssistant(rootStore.restApiContext, {
-				action: 'init-error-help',
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				role: 'user',
+				type: 'init-error-helper',
 				user: {
 					firstName: usersStore.currentUser?.firstName ?? '',
 				},
 				error: context.error,
 				node: context.node,
 				// executionSchema todo
-			});
-			currentSessionId.value = response.sessionId;
-			stopStreaming();
-			addAssistantMessages(response.messages);
-		} catch (e: unknown) {
-			handleServiceError(e);
-		}
+			},
+			(msg) => onEachStreamingMessage(msg, i),
+			stopStreaming,
+			handleServiceError,
+		);
 	}
 
 	// async function sendEvent(eventName: ChatRequest.InteractionEventName) {
@@ -182,19 +191,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	) {
 		addUserMessage(message.content);
 		addAssistantLoading();
+		const i = chatMessages.value.length;
 
-		try {
-			const { messages } = await chatWithAssistant(rootStore.restApiContext, {
-				action: 'user-message',
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				role: 'assistant',
+				type: 'message',
 				content: message.content,
 				quickReplyType: message.quickReplyType,
-			});
-
-			addAssistantMessages(messages);
-			stopStreaming();
-		} catch (e: unknown) {
-			handleServiceError(e);
-		}
+			},
+			(msg) => onEachStreamingMessage(msg, i),
+			stopStreaming,
+			handleServiceError,
+		);
 	}
 
 	function updateParameters(nodeName: string, parameters: INodeParameters) {

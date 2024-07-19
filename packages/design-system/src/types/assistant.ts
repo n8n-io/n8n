@@ -10,8 +10,8 @@ export namespace ChatUI {
 	interface CodeDiffMessage {
 		role: 'assistant';
 		type: 'code-diff';
-		description: string;
-		codeDiff: string;
+		description?: string;
+		codeDiff?: string;
 		replacing?: boolean;
 		replaced?: boolean;
 		error?: boolean;

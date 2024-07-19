@@ -1,42 +1,71 @@
 import type { IRestApiContext } from '@/Interface';
 import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
-import { makeRestApiRequest } from '@/utils/apiUtils';
+import { jsonParse } from 'n8n-workflow';
 
-export async function chatWithAssistant(
+export const streamRequest = async (
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+	onChunk?: (chunk: object) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+): Promise<void> => {
+	const headers = {
+		'Content-Type': 'application/json',
+	};
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	});
+
+	if (response.ok && response.body) {
+		// Handle the streaming response
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder('utf-8');
+
+		async function readStream() {
+			const { done, value } = await reader.read();
+			if (done) {
+				onDone?.();
+				return;
+			}
+
+			const chunk = decoder.decode(value);
+			const splitChunks = chunk.split('\n');
+
+			for (const splitChunk of splitChunks) {
+				if (splitChunk && onChunk) {
+					try {
+						onChunk(jsonParse(splitChunk, { errorMessage: 'Invalid json chunk in stream' }));
+					} catch (e: unknown) {
+						if (e instanceof Error) {
+							console.log(`${e.message}: ${splitChunk}`);
+							onError?.(e);
+						}
+					}
+				}
+			}
+			await readStream();
+		}
+
+		// Start reading the stream
+		await readStream();
+	} else if (onError) {
+		onError(new Error(response.statusText));
+	}
+};
+
+export function chatWithAssistant(
 	ctx: IRestApiContext,
 	payload: ChatRequest.RequestPayload,
-): Promise<ChatRequest.ResponsePayload> {
-	if (payload.action === 'init-error-help') {
-		return {
-			sessionId: '1234',
-			messages: [
-				{
-					type: 'assistant-message',
-					content:
-						'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
-				},
-				{
-					type: 'code-diff',
-					description: 'Short solution description here that can spill over to two lines',
-					codeDiff:
-						'@@ -1,7 +1,6 @@\n-The Way that can be told of is not the eternal Way;\n-The name that can be named is not the eternal name.\nThe Nameless is the origin of Heaven and Earth;\n-The Named is the mother of all things.\n+The named is the mother of all things.\n+\nTherefore let there always be non-being,\nso we may see their subtlety,\nAnd let there always be being,\n@@ -9,3 +8,6 @@\n The two are the same,\n But after they are produced,\n they have different names.\n+They both may be called deep and profound.\n+Deeper and more profound,\n+The door of all subtleties!',
-					suggestionId: 'test',
-					quickReplies: [
-						{
-							type: 'new-suggestion',
-							label: 'Give me another solution',
-						},
-						{
-							type: 'resolved',
-							label: 'All good',
-						},
-					],
-					solution_count: 1,
-				},
-			],
-		};
-	}
-	return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/v1/chat', payload);
+	onMessageUpdated: (data: ChatRequest.ResponsePayload) => void,
+	onDone: () => void,
+	onError: (e: Error) => void,
+): void {
+	// todo better type handling
+	void streamRequest(ctx, '/ai-proxy/v1/chat', payload, onMessageUpdated, onDone, onError);
 }
 
 export async function replaceCode(

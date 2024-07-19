@@ -20,6 +20,8 @@ type Line =
 	  };
 
 const props = withDefaults(defineProps<Props>(), {
+	title: '',
+	content: '',
 	replacing: false,
 	replaced: false,
 	error: false,
@@ -30,10 +32,13 @@ const emit = defineEmits<{
 	undo: [];
 }>();
 
+// todo add streaming
+const disabledReplace = computed(() => !props.content);
+
 const diffs = computed(() => {
 	const parsed = parseDiff(props.content);
 
-	const file = parsed[0];
+	const file = parsed[0] ?? { chunks: [] };
 
 	const lines: Line[] = file.chunks.reduce((accu: Line[], chunk, i) => {
 		const changes: Line[] = chunk.changes.map((change) => {
@@ -59,8 +64,9 @@ const diffs = computed(() => {
 		return [...accu, ...changes];
 	}, []);
 
-	if (lines.length <= MIN_LINES) {
-		for (let i = 0; i < MIN_LINES - lines.length; i++) {
+	const len = lines.length;
+	if (len <= MIN_LINES) {
+		for (let i = 0; i < MIN_LINES - len; i++) {
 			lines.push({
 				type: 'line',
 				content: '',
@@ -114,6 +120,7 @@ const diffs = computed(() => {
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
 				icon="refresh"
+				:disabled="disabledReplace"
 				:loading="replacing"
 				@click="() => emit('replace')"
 				>{{ replacing ? 'Replacing...' : 'Replace my code' }}</n8n-button

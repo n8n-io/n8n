@@ -54,7 +54,8 @@ export namespace ChatRequest {
 	}
 
 	export interface ErrorRequestPayload extends ErrorContext, WorkflowContext {
-		action: 'init-error-help';
+		role: 'user';
+		type: 'init-error-helper';
 		user: {
 			firstName: string;
 		};
@@ -65,12 +66,14 @@ export namespace ChatRequest {
 		| 'errored-node-errored-again';
 
 	interface EventRequestPayload {
-		action: 'event';
+		role: 'assistant';
+		type: 'event';
 		event: InteractionEventName;
 	}
 
 	export interface UserChatMessage {
-		action: 'user-message';
+		role: 'assistant';
+		type: 'message';
 		content: string;
 		quickReplyType?: string;
 	}
@@ -78,9 +81,10 @@ export namespace ChatRequest {
 	export type RequestPayload = EventRequestPayload | ErrorRequestPayload | UserChatMessage;
 
 	interface CodeDiffMessage {
+		role: 'assistant';
 		type: 'code-diff';
-		description: string;
-		codeDiff: string;
+		description?: string;
+		codeDiff?: string;
 		suggestionId: string;
 		solution_count: number;
 	}
@@ -92,7 +96,8 @@ export namespace ChatRequest {
 	}
 
 	interface AssistantChatMessage {
-		type: 'assistant-message';
+		role: 'assistant';
+		type: 'message';
 		content: string;
 		title?: string;
 	}

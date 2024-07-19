@@ -3,8 +3,8 @@ import { computed, ref } from 'vue';
 import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
-import CodeDiff from './CodeDiff.vue';
-import type { ChatUI } from './types';
+import CodeDiff from '../CodeDiff/CodeDiff.vue';
+import type { ChatUI } from '../../types/assistant';
 
 import Markdown from 'markdown-it';
 
