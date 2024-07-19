@@ -12,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent at services and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
+ * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -251,5 +251,21 @@ export type Event = {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
+	};
+
+	'license-renewal-attempted': {
+		success: boolean;
+	};
+
+	'variable-created': {
+		variableType: string;
+	};
+
+	'external-secrets-provider-settings-saved': {
+		userId?: string;
+		vaultType: string;
+		isValid: boolean;
+		isNew: boolean;
+		errorMessage?: string;
 	};
 };
