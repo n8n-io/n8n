@@ -208,7 +208,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory);
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {

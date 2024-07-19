@@ -2596,7 +2596,7 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
-	isDocker: boolean;
+	isDocker?: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
