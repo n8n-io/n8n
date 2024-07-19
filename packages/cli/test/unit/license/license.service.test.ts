@@ -1,6 +1,6 @@
 import { LicenseErrors, LicenseService } from '@/license/license.service';
 import type { License } from '@/License';
-import type { InternalHooks } from '@/InternalHooks';
+import type { EventRelay } from '@/eventbus/event-relay.service';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { TEntitlement } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
@@ -8,10 +8,16 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 describe('LicenseService', () => {
 	const license = mock<License>();
-	const internalHooks = mock<InternalHooks>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const entitlement = mock<TEntitlement>({ productId: '123' });
-	const licenseService = new LicenseService(mock(), license, internalHooks, workflowRepository);
+	const eventRelay = mock<EventRelay>();
+	const licenseService = new LicenseService(
+		mock(),
+		license,
+		workflowRepository,
+		mock(),
+		eventRelay,
+	);
 
 	license.getMainPlan.mockReturnValue(entitlement);
 	license.getTriggerLimit.mockReturnValue(400);
@@ -61,7 +67,7 @@ describe('LicenseService', () => {
 			license.renew.mockResolvedValueOnce();
 			await licenseService.renewLicense();
 
-			expect(internalHooks.onLicenseRenewAttempt).toHaveBeenCalledWith({ success: true });
+			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: true });
 		});
 
 		test('on failure', async () => {
@@ -70,7 +76,7 @@ describe('LicenseService', () => {
 				new BadRequestError('Activation key has expired'),
 			);
 
-			expect(internalHooks.onLicenseRenewAttempt).toHaveBeenCalledWith({ success: false });
+			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: false });
 		});
 	});
 });
