@@ -294,8 +294,8 @@ export async function formWebhook(context: IWebhookFunctions) {
 		useWorkflowTimezone = true;
 	}
 
-  const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
-  returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
+	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
 
 	returnItem.json.formMode = mode;
 
