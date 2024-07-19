@@ -167,6 +167,20 @@ describe('useCanvasOperations', () => {
 			});
 			expect(result.credentials).toBeUndefined();
 		});
+
+		it('should open NDV when specified', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			await canvasOperations.addNode(
+				{
+					type: 'type',
+					name: 'Test Name',
+				},
+				{ openNDV: true },
+			);
+
+			expect(ndvStore.activeNodeName).toBe('Test Name');
+		});
 	});
 
 	describe('updateNodePosition', () => {
