@@ -76,7 +76,7 @@ import type {
 import { NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 import type { useRouter } from 'vue-router';
 
 type AddNodeData = Partial<INodeUi> & {
@@ -428,6 +428,12 @@ export function useCanvasOperations({
 
 		workflowsStore.setNodePristine(nodeData.name, true);
 		uiStore.stateIsDirty = true;
+
+		if (options.openNDV) {
+			void nextTick(() => {
+				ndvStore.setActiveNodeName(nodeData.name);
+			});
+		}
 
 		return nodeData;
 	}
