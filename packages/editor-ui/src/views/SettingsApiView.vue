@@ -37,17 +37,25 @@
 					</n8n-link>
 				</span>
 				<div>
+					<n8n-info-tip
+						v-if="!redactedApiKey"
+						:class="$style['warning-copy']"
+						theme="warning"
+						:bold="false"
+					>
+						<i18n-t keypath="settings.api.view.copy" tag="span"> </i18n-t>
+					</n8n-info-tip>
 					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
+						:label="redactedApiKey ? $locale.baseText('settings.api.view.myKey') : ''"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
-						:redact-value="true"
+						:redact-value="false"
 						@copy="onCopy"
 					/>
 				</div>
 			</n8n-card>
-			<div :class="$style.hint">
+			<div v-if="!redactedApiKey" :class="$style.hint">
 				<n8n-text size="small">
 					{{
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
@@ -115,6 +123,7 @@ export default defineComponent({
 		return {
 			loading: false,
 			mounted: false,
+			redactedApiKey: false,
 			apiKey: '',
 			swaggerUIEnabled: false,
 			apiDocsURL: '',
@@ -167,6 +176,7 @@ export default defineComponent({
 		async getApiKey() {
 			try {
 				this.apiKey = (await this.settingsStore.getApiKey()) || '';
+				this.redactedApiKey = true;
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
@@ -183,6 +193,7 @@ export default defineComponent({
 			} finally {
 				this.loading = false;
 				this.$telemetry.track('User clicked create API key button');
+				this.redactedApiKey = false;
 			}
 		},
 		async deleteApiKey() {
@@ -225,6 +236,10 @@ export default defineComponent({
 
 .card {
 	position: relative;
+}
+
+.warning-copy {
+	margin-bottom: var(--spacing-s);
 }
 
 .delete {

@@ -25,6 +25,8 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventService } from '@/eventbus/event.service';
 
+const API_KEY_PREFIX = 'n8n_api_';
+
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
 		next();
@@ -209,7 +211,9 @@ export class MeController {
 	 */
 	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKey(req: AuthenticatedRequest) {
-		return { apiKey: req.user.apiKey };
+		console.log(req.user.apiKey);
+		const apiKey = this.redactApiKey(req.user.apiKey);
+		return { apiKey };
 	}
 
 	/**
@@ -243,5 +247,15 @@ export class MeController {
 		});
 
 		return user.settings;
+	}
+
+	private redactApiKey(apiKey: string | null) {
+		if (!apiKey) return;
+		const keepLength = 5;
+		return (
+			API_KEY_PREFIX +
+			apiKey.slice(API_KEY_PREFIX.length, API_KEY_PREFIX.length + keepLength) +
+			'*'.repeat(apiKey.length - API_KEY_PREFIX.length - keepLength)
+		);
 	}
 }
