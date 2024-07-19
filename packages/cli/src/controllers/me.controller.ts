@@ -25,7 +25,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventService } from '@/eventbus/event.service';
 
-const API_KEY_PREFIX = 'n8n_api_';
+export const API_KEY_PREFIX = 'n8n_api_';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
 	if (isApiEnabled()) {
@@ -211,7 +211,6 @@ export class MeController {
 	 */
 	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKey(req: AuthenticatedRequest) {
-		console.log(req.user.apiKey);
 		const apiKey = this.redactApiKey(req.user.apiKey);
 		return { apiKey };
 	}
