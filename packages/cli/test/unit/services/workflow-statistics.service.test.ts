@@ -14,13 +14,13 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
 import type { Project } from '@/databases/entities/Project';
 
-describe('EventsService', () => {
+describe('WorkflowStatisticsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
 	const fakeProject = mock<Project>({ id: '12345-67890', type: 'personal' });
 	const ownershipService = mockInstance(OwnershipService);
@@ -44,7 +44,7 @@ describe('EventsService', () => {
 	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
-	const eventsService = new EventsService(
+	const workflowStatisticsService = new WorkflowStatisticsService(
 		mock(),
 		new WorkflowStatisticsRepository(dataSource, globalConfig),
 		ownershipService,
@@ -52,8 +52,11 @@ describe('EventsService', () => {
 
 	const onFirstProductionWorkflowSuccess = jest.fn();
 	const onFirstWorkflowDataLoad = jest.fn();
-	eventsService.on('telemetry.onFirstProductionWorkflowSuccess', onFirstProductionWorkflowSuccess);
-	eventsService.on('telemetry.onFirstWorkflowDataLoad', onFirstWorkflowDataLoad);
+	workflowStatisticsService.on(
+		'telemetry.onFirstProductionWorkflowSuccess',
+		onFirstProductionWorkflowSuccess,
+	);
+	workflowStatisticsService.on('telemetry.onFirstWorkflowDataLoad', onFirstWorkflowDataLoad);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -91,7 +94,7 @@ describe('EventsService', () => {
 			};
 			mockDBCall();
 
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
@@ -119,7 +122,7 @@ describe('EventsService', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 
@@ -142,7 +145,7 @@ describe('EventsService', () => {
 				startedAt: new Date(),
 			};
 			mockDBCall(2);
-			await eventsService.workflowExecutionCompleted(workflow, runData);
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 	});
@@ -159,7 +162,7 @@ describe('EventsService', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
@@ -187,7 +190,7 @@ describe('EventsService', () => {
 					},
 				},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: fakeUser.id,
@@ -212,7 +215,7 @@ describe('EventsService', () => {
 				position: [0, 0] as [number, number],
 				parameters: {},
 			};
-			await eventsService.nodeFetchedData(workflowId, node);
+			await workflowStatisticsService.nodeFetchedData(workflowId, node);
 			expect(onFirstWorkflowDataLoad).toBeCalledTimes(0);
 		});
 	});

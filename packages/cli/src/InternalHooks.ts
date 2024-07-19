@@ -26,7 +26,7 @@ import type {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { License } from '@/License';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
@@ -42,18 +42,18 @@ export class InternalHooks {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		eventsService: EventsService,
+		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
 			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstWorkflowDataLoad',
 			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
