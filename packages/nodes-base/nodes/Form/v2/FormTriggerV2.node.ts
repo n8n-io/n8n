@@ -17,6 +17,8 @@ import {
 	webhookPath,
 } from '../common.descriptions';
 
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
+
 const descriptionV2: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
@@ -54,7 +56,35 @@ const descriptionV2: INodeTypeDescription = {
 	eventTriggerDescription: 'Waiting for you to submit the form',
 	activationMessage: 'You can now make calls to your production Form URL.',
 	triggerPanel: formTriggerPanel,
+	credentials: [
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+			name: 'httpBasicAuth',
+			required: true,
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['basicAuth'],
+				},
+			},
+		},
+	],
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+			type: 'options',
+			options: [
+				{
+					name: 'Basic Auth',
+					value: 'basicAuth',
+				},
+				{
+					name: 'None',
+					value: 'none',
+				},
+			],
+			default: 'none',
+		},
 		webhookPath,
 		formTitle,
 		formDescription,
@@ -93,6 +123,13 @@ const descriptionV2: INodeTypeDescription = {
 							'/responseMode': ['responseNode'],
 						},
 					},
+				},
+				{
+					displayName: 'Ignore Bots',
+					name: 'ignoreBots',
+					type: 'boolean',
+					default: false,
+					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 				},
 			],
 		},

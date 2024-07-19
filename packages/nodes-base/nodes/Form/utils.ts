@@ -6,8 +6,16 @@ import {
 	type IDataObject,
 	type IWebhookFunctions,
 } from 'n8n-workflow';
-import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import {
+	FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+	type FormField,
+	type FormTriggerData,
+	type FormTriggerInput,
+} from './interfaces';
 import { DateTime } from 'luxon';
+import isbot from 'isbot';
+import { WebhookAuthorizationError } from '../Webhook/error';
+import { validateWebhookAuthentication } from '../Webhook/utils';
 
 export const prepareFormData = (
 	formTitle: string,
@@ -124,6 +132,23 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 };
 
 export async function formWebhook(context: IWebhookFunctions) {
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const res = context.getResponseObject();
+	const req = context.getRequestObject();
+
+	try {
+		if (options.ignoreBots && isbot(req.headers['user-agent']))
+			throw new WebhookAuthorizationError(403);
+		await validateWebhookAuthentication(context, FORM_TRIGGER_AUTHENTICATION_PROPERTY);
+	} catch (error) {
+		if (error instanceof WebhookAuthorizationError) {
+			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+			res.end(error.message);
+			return { noWebhookResponse: true };
+		}
+		throw error;
+	}
+
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
 	const method = context.getRequestObject().method;
@@ -138,7 +163,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 			.replace(/<br>/g, '\n');
 		const instanceId = context.getInstanceId();
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
-		const options = context.getNodeParameter('options', {}) as IDataObject;
 
 		let formSubmittedText;
 		let redirectUrl;
@@ -177,7 +201,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 			appendAttribution,
 		);
 
-		const res = context.getResponseObject();
 		res.render('form-trigger', data);
 		return {
 			noWebhookResponse: true,
