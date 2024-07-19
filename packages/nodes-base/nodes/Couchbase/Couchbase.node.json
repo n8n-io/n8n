@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.couchbase",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/ldoguin/n8n-nodes-couchbase"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/ldoguin/n8n-nodes-couchbase"
+			}
+		]
+	}
+}
