@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import * as amqplib from 'amqplib';
+import type { Options } from 'amqplib';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -265,7 +266,8 @@ export class RabbitMQ implements INodeType {
 						displayName: 'Arguments',
 						name: 'arguments',
 						placeholder: 'Add Argument',
-						description: 'Arguments to add',
+						description:
+							'Arguments to add, See <a href="https://amqp-node.github.io/amqplib/channel_api.html#channel_publish" target="_blank">here</a> for valid options',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -451,7 +453,13 @@ export class RabbitMQ implements INodeType {
 						);
 						headers = additionalHeaders;
 					}
-					queuePromises.push(channel.sendToQueue(queue, Buffer.from(message), { headers }));
+
+					queuePromises.push(
+						channel.sendToQueue(queue, Buffer.from(message), {
+							headers,
+							...(options.arguments ? (options.arguments as Options.Publish) : {}),
+						}),
+					);
 				}
 
 				// @ts-ignore
@@ -519,7 +527,10 @@ export class RabbitMQ implements INodeType {
 					}
 
 					exchangePromises.push(
-						channel.publish(exchange, routingKey, Buffer.from(message), { headers }),
+						channel.publish(exchange, routingKey, Buffer.from(message), {
+							headers,
+							...(options.arguments ? (options.arguments as Options.Publish) : {}),
+						}),
 					);
 				}
 
