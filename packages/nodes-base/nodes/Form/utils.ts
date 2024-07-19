@@ -1,35 +1,45 @@
-import {
-	type INodeExecutionData,
-	type MultiPartFormData,
-	NodeOperationError,
-	jsonParse,
-	type IDataObject,
-	type IWebhookFunctions,
+import type {
+	INodeExecutionData,
+	MultiPartFormData,
+	IDataObject,
+	IWebhookFunctions,
 } from 'n8n-workflow';
-import {
-	FORM_TRIGGER_AUTHENTICATION_PROPERTY,
-	type FormField,
-	type FormTriggerData,
-	type FormTriggerInput,
-} from './interfaces';
-import { DateTime } from 'luxon';
-import isbot from 'isbot';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
+
+import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
+
 import { WebhookAuthorizationError } from '../Webhook/error';
 import { validateWebhookAuthentication } from '../Webhook/utils';
 
-export const prepareFormData = (
-	formTitle: string,
-	formDescription: string,
-	formSubmittedText: string | undefined,
-	redirectUrl: string | undefined,
-	formFields: FormField[],
-	testRun: boolean,
-	query: IDataObject,
-	instanceId?: string,
-	useResponseData?: boolean,
+import { DateTime } from 'luxon';
+import isbot from 'isbot';
+
+function prepareFormData({
+	formTitle,
+	formDescription,
+	formSubmittedText,
+	redirectUrl,
+	formFields,
+	testRun,
+	query,
+	instanceId,
+	useResponseData,
 	appendAttribution = true,
-	customAttribution?: string,
-) => {
+	customAttribution,
+}: {
+	formTitle: string;
+	formDescription: string;
+	formSubmittedText: string | undefined;
+	redirectUrl: string | undefined;
+	formFields: FormField[];
+	testRun: boolean;
+	query: IDataObject;
+	instanceId?: string;
+	useResponseData?: boolean;
+	appendAttribution?: boolean;
+	customAttribution?: string;
+}) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -100,7 +110,7 @@ export const prepareFormData = (
 	}
 
 	return formData;
-};
+}
 
 const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
@@ -135,7 +145,20 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 
 export async function formWebhook(context: IWebhookFunctions) {
 	const nodeVersion = context.getNode().typeVersion;
-	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const options = context.getNodeParameter('options', {}) as {
+		ignoreBots?: boolean;
+		respondWithOptions?: {
+			values: {
+				respondWith: 'text' | 'redirect';
+				formSubmittedText: string;
+				redirectUrl: string;
+			};
+		};
+		formSubmittedText?: string;
+		useWorkflowTimezone?: boolean;
+		appendAttribution?: boolean;
+		customAttribution?: string;
+	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
@@ -191,19 +214,19 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		const query = context.getRequestObject().query as IDataObject;
 
-		const data = prepareFormData(
+		const data = prepareFormData({
 			formTitle,
 			formDescription,
 			formSubmittedText,
 			redirectUrl,
 			formFields,
-			mode === 'test',
+			testRun: mode === 'test',
 			query,
 			instanceId,
 			useResponseData,
 			appendAttribution,
-			options.customAttribution as string,
-		);
+			customAttribution: options.customAttribution as string,
+		});
 
 		res.render('form-trigger', data);
 		return {
@@ -220,8 +243,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 	if (files && Object.keys(files).length) {
 		returnItem.binary = {};
 	}
-
-	let count = 0;
 
 	for (const key of Object.keys(files)) {
 		const processFiles: MultiPartFormData.File[] = [];
@@ -261,8 +282,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
-
-			count += 1;
 		}
 	}
 

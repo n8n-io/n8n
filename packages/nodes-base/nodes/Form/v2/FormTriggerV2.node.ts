@@ -17,7 +17,6 @@ import {
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
-
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 
 const useWorkflowTimezone: INodeProperties = {
