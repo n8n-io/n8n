@@ -54,7 +54,7 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';
 import {
@@ -393,7 +393,7 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const eventsService = Container.get(EventsService);
+	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	const eventRelay = Container.get(EventRelay);
 	return {
 		nodeExecuteBefore: [
@@ -524,13 +524,17 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					workflowStatisticsService.emit(
+						'workflowExecutionCompleted',
+						this.workflowData,
+						fullRunData,
+					);
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
 			},
 		],
 	};
@@ -545,7 +549,7 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const internalHooks = Container.get(InternalHooks);
-	const eventsService = Container.get(EventsService);
+	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	const eventRelay = Container.get(EventRelay);
 	return {
 		nodeExecuteBefore: [
@@ -631,7 +635,11 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					workflowStatisticsService.emit(
+						'workflowExecutionCompleted',
+						this.workflowData,
+						fullRunData,
+					);
 				}
 			},
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
@@ -667,7 +675,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
 			},
 		],
 	};
