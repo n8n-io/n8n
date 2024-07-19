@@ -679,21 +679,6 @@ export const schema = {
 		},
 	},
 
-	templates: {
-		enabled: {
-			doc: 'Whether templates feature is enabled to load workflow templates.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_TEMPLATES_ENABLED',
-		},
-		host: {
-			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
-			format: String,
-			default: 'https://api.n8n.io/api/',
-			env: 'N8N_TEMPLATES_HOST',
-		},
-	},
-
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
@@ -928,41 +913,6 @@ export const schema = {
 		default: false,
 		env: 'N8N_HIDE_USAGE_PAGE',
 		doc: 'Hide or show the usage page',
-	},
-
-	eventBus: {
-		checkUnsentInterval: {
-			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
-			format: Number,
-			default: 0,
-			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
-		},
-		logWriter: {
-			keepLogCount: {
-				doc: 'How many event log files to keep.',
-				format: Number,
-				default: 3,
-				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
-			},
-			maxFileSizeInKB: {
-				doc: 'Maximum size of an event log file before a new one is started.',
-				format: Number,
-				default: 10240, // 10MB
-				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
-			},
-			logBaseName: {
-				doc: 'Basename of the event log file.',
-				format: String,
-				default: 'n8nEventLog',
-				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
-			},
-		},
-		crashRecoveryMode: {
-			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
-			format: ['simple', 'extensive'] as const,
-			default: 'extensive',
-			env: 'N8N_EVENTBUS_RECOVERY_MODE',
-		},
 	},
 
 	redis: {
