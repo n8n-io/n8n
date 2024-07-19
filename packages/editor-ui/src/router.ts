@@ -765,6 +765,9 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		 */
 
 		const settingsStore = useSettingsStore();
+
+		console.log('HERE', settingsStore.showSetupPage);
+
 		if (settingsStore.showSetupPage) {
 			if (to.name === VIEWS.SETUP) {
 				return next();

@@ -8,6 +8,7 @@ export const defaultUserMiddleware: RouterMiddleware<DefaultUserMiddlewareOption
 	_from,
 	next,
 ) => {
+	console.log('MIDDLEWARE');
 	const valid = isDefaultUser();
 	if (!valid) {
 		return next({ name: VIEWS.HOMEPAGE });

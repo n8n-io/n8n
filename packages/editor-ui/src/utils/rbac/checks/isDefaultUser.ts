@@ -5,6 +5,8 @@ export const isDefaultUser: RBACPermissionCheck<DefaultUserMiddlewareOptions> = 
 	const usersStore = useUsersStore();
 	const currentUser = usersStore.currentUser;
 
+	console.log(currentUser);
+
 	if (currentUser) {
 		return currentUser.isDefaultUser;
 	}
