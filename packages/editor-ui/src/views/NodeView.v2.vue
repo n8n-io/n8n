@@ -496,7 +496,30 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	await workflowHelpers.saveCurrentWorkflow();
+	const saved = await workflowHelpers.saveCurrentWorkflow();
+	if (saved) {
+		canvasEventBus.emit('saved:workflow');
+	}
+}
+
+function addWorkflowSavedEventBindings() {
+	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
+}
+
+function removeWorkflowSavedEventBindings() {
+	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
+}
+
+async function onSaveFromWithinNDV() {
+	if (ndvStore.activeNodeName) {
+		toast.showMessage({
+			title: i18n.baseText('generic.workflowSaved'),
+			type: 'success',
+		});
+	}
 }
 
 async function onCreateWorkflow() {
@@ -875,20 +898,6 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 /**
- * Keyboard
- */
-
-function addKeyboardEventBindings() {
-	// document.addEventListener('keydown', this.keyDown);
-	// document.addEventListener('keyup', this.keyUp);
-}
-
-function removeKeyboardEventBindings() {
-	// document.removeEventListener('keydown', this.keyDown);
-	// document.removeEventListener('keyup', this.keyUp);
-}
-
-/**
  * History events
  */
 
@@ -1074,11 +1083,23 @@ function checkIfRouteIsAllowed() {
 async function initializeDebugMode() {
 	if (route.name === VIEWS.EXECUTION_DEBUG) {
 		titleSet(workflowsStore.workflowName, 'DEBUG');
+
 		if (!workflowsStore.isInDebugMode) {
 			await applyExecutionData(route.params.executionId as string);
 			workflowsStore.isInDebugMode = true;
 		}
+
+		canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
 	}
+}
+
+async function onSaveFromWithinExecutionDebug() {
+	if (route.name !== VIEWS.EXECUTION_DEBUG) return;
+
+	await router.replace({
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowId.value },
+	});
 }
 
 /**
@@ -1223,9 +1244,9 @@ onMounted(async () => {
 
 	addUndoRedoEventBindings();
 	addPostMessageEventBindings();
-	addKeyboardEventBindings();
 	addSourceControlEventBindings();
 	addImportEventBindings();
+	addWorkflowSavedEventBindings();
 
 	registerCustomActions();
 
@@ -1239,9 +1260,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
-	removeKeyboardEventBindings();
 	removeSourceControlEventBindings();
 	removeImportEventBindings();
+	removeWorkflowSavedEventBindings();
 });
 </script>
 
@@ -1320,10 +1341,10 @@ onBeforeUnmount(() => {
 				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenSelectiveNodeCreator"
+				@save-keyboard-shortcut="onSaveWorkflow"
 			/>
 			<!--
 				:renaming="renamingActive"
-				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			-->
 		</Suspense>
 	</WorkflowCanvas>
