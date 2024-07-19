@@ -34,7 +34,7 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @Service()
 export class WorkflowService {
@@ -54,7 +54,7 @@ export class WorkflowService {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
@@ -220,7 +220,7 @@ export class WorkflowService {
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
-		this.eventRelay.emit('workflow-saved', {
+		this.eventService.emit('workflow-saved', {
 			user,
 			workflowId: updatedWorkflow.id,
 			workflowName: updatedWorkflow.name,
@@ -283,7 +283,7 @@ export class WorkflowService {
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
-		this.eventRelay.emit('workflow-deleted', { user, workflowId });
+		this.eventService.emit('workflow-deleted', { user, workflowId });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;

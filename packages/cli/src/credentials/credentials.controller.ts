@@ -31,7 +31,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -46,7 +46,7 @@ export class CredentialsController {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -169,7 +169,7 @@ export class CredentialsController {
 			credential_id: credential.id,
 			public_api: false,
 		});
-		this.eventRelay.emit('credentials-created', {
+		this.eventService.emit('credentials-created', {
 			user: req.user,
 			credentialName: newCredential.name,
 			credentialType: credential.type,
@@ -229,7 +229,7 @@ export class CredentialsController {
 			credential_type: credential.type,
 			credential_id: credential.id,
 		});
-		this.eventRelay.emit('credentials-updated', {
+		this.eventService.emit('credentials-updated', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,
@@ -270,7 +270,7 @@ export class CredentialsController {
 			credential_type: credential.type,
 			credential_id: credential.id,
 		});
-		this.eventRelay.emit('credentials-deleted', {
+		this.eventService.emit('credentials-deleted', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,
@@ -344,7 +344,7 @@ export class CredentialsController {
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,
 		});
-		this.eventRelay.emit('credentials-shared', {
+		this.eventService.emit('credentials-shared', {
 			user: req.user,
 			credentialName: credential.name,
 			credentialType: credential.type,

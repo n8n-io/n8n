@@ -1,6 +1,6 @@
 import { LicenseErrors, LicenseService } from '@/license/license.service';
 import type { License } from '@/License';
-import type { EventRelay } from '@/eventbus/event-relay.service';
+import type { EventService } from '@/eventbus/event.service';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { TEntitlement } from '@n8n_io/license-sdk';
 import { mock } from 'jest-mock-extended';
@@ -10,13 +10,13 @@ describe('LicenseService', () => {
 	const license = mock<License>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const entitlement = mock<TEntitlement>({ productId: '123' });
-	const eventRelay = mock<EventRelay>();
+	const eventService = mock<EventService>();
 	const licenseService = new LicenseService(
 		mock(),
 		license,
 		workflowRepository,
 		mock(),
-		eventRelay,
+		eventService,
 	);
 
 	license.getMainPlan.mockReturnValue(entitlement);
@@ -67,7 +67,9 @@ describe('LicenseService', () => {
 			license.renew.mockResolvedValueOnce();
 			await licenseService.renewLicense();
 
-			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: true });
+			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
+				success: true,
+			});
 		});
 
 		test('on failure', async () => {
@@ -76,7 +78,9 @@ describe('LicenseService', () => {
 				new BadRequestError('Activation key has expired'),
 			);
 
-			expect(eventRelay.emit).toHaveBeenCalledWith('license-renewal-attempted', { success: false });
+			expect(eventService.emit).toHaveBeenCalledWith('license-renewal-attempted', {
+				success: false,
+			});
 		});
 	});
 });
