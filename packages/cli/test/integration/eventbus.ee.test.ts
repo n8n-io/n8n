@@ -27,7 +27,6 @@ import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
-import { GlobalConfig } from '@n8n/config';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -91,10 +90,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
-
-	mockInstance(GlobalConfig, {
-		eventBus: { logWriter: { logBaseName: 'n8n-test-logwriter', keepLogCount: 1 } },
-	});
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
