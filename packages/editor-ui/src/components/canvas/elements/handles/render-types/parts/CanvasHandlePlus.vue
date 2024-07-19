@@ -3,7 +3,7 @@ import { computed, useCssModule } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
-		position: 'top' | 'right' | 'bottom' | 'left';
+		position?: 'top' | 'right' | 'bottom' | 'left';
 	}>(),
 	{
 		position: 'right',

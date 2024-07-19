@@ -116,7 +116,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive['workflowSaving'];
+	return uiStore.isActionActive.workflowSaving;
 });
 
 const onWorkflowPage = computed(() => {
@@ -710,6 +710,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
+					:is-saving="isWorkflowSaving"
 					with-shortcut
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
