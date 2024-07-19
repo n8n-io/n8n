@@ -41,6 +41,18 @@ export class TelemetryEventRelay {
 		this.eventRelay.on('source-control-user-finished-push-ui', (event) =>
 			this.sourceControlUserFinishedPushUi(event),
 		);
+		this.eventRelay.on('license-renewal-attempted', (event) => {
+			this.licenseRenewalAttempted(event);
+		});
+		this.eventRelay.on('security-audit-generated-via-cli', () => {
+			this.securityAuditGeneratedViaCli();
+		});
+		this.eventRelay.on('variable-created', (event) => {
+			this.variableCreated(event);
+		});
+		this.eventRelay.on('external-secrets-provider-settings-saved', (event) => {
+			this.externalSecretsProviderSettingsSaved(event);
+		});
 	}
 
 	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
@@ -151,6 +163,38 @@ export class TelemetryEventRelay {
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
+		});
+	}
+
+	private licenseRenewalAttempted({ success }: Event['license-renewal-attempted']) {
+		void this.telemetry.track('Instance attempted to refresh license', {
+			success,
+		});
+	}
+
+	private securityAuditGeneratedViaCli() {
+		void this.telemetry.track('Instance generated security audit via CLI command');
+	}
+
+	private variableCreated({ variableType }: Event['variable-created']) {
+		void this.telemetry.track('User created variable', {
+			variable_type: variableType,
+		});
+	}
+
+	private externalSecretsProviderSettingsSaved({
+		userId,
+		vaultType,
+		isValid,
+		isNew,
+		errorMessage,
+	}: Event['external-secrets-provider-settings-saved']) {
+		void this.telemetry.track('User updated external secrets settings', {
+			user_id: userId,
+			vault_type: vaultType,
+			is_valid: isValid,
+			is_new: isNew,
+			error_message: errorMessage,
 		});
 	}
 }

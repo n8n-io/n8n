@@ -7,7 +7,7 @@ import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
 import type { Risk } from '@/security-audit/types';
 import { BaseCommand } from './BaseCommand';
-import { InternalHooks } from '@/InternalHooks';
+import { EventRelay } from '@/eventbus/event-relay.service';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -62,7 +62,7 @@ export class SecurityAudit extends BaseCommand {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
 
-		void Container.get(InternalHooks).onAuditGeneratedViaCli();
+		Container.get(EventRelay).emit('security-audit-generated-via-cli');
 	}
 
 	async catch(error: Error) {
