@@ -42,12 +42,13 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers, NodeConnectionType } from 'n8n-workflow';
+import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
 import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -83,6 +84,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
+import { useClipboard } from '@/composables/useClipboard';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -141,6 +143,9 @@ const {
 	setNodeParameters,
 	deleteNode,
 	deleteNodes,
+	copyNodes,
+	cutNodes,
+	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
 	createConnection,
@@ -156,6 +161,7 @@ const {
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
 const { applyExecutionData } = useExecutionDebugging();
+useClipboard({ onPaste: onClipboardPaste });
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -475,16 +481,76 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-function onCopyNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCopyNodes(ids: string[]) {
+	await copyNodes(ids);
+
+	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
 
-function onCutNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onClipboardPaste(plainTextData: string): Promise<void> {
+	if (getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW) {
+		return;
+	}
+
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	let workflowData: IWorkflowDataUpdate | null | undefined = null;
+
+	// Check if it is an URL which could contain workflow data
+	if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
+		const importConfirm = await message.confirm(
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
+				interpolate: { plainTextData },
+			}),
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
+				),
+				dangerouslyUseHTMLString: true,
+			},
+		);
+
+		if (importConfirm !== MODAL_CONFIRM) {
+			return;
+		}
+
+		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
+	} else {
+		// Pasted data is is possible workflow data
+		workflowData = jsonParse<IWorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
+	}
+
+	if (!workflowData) {
+		return;
+	}
+
+	const result = await importWorkflowData(workflowData, 'paste', false);
+	selectNodes(result.nodes?.map((node) => node.id) ?? []);
 }
 
-function onDuplicateNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCutNodes(ids: string[]) {
+	if (isCanvasReadOnly.value) {
+		await copyNodes(ids);
+	} else {
+		await cutNodes(ids);
+	}
+}
+
+async function onDuplicateNodes(ids: string[]) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	const newIds = await duplicateNodes(ids);
+
+	selectNodes(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -666,9 +732,11 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
-	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+	const workflowData = data.data as IWorkflowDataUpdate;
+	await importWorkflowData(workflowData, 'file');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -680,6 +748,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	await importWorkflowData(workflowData, 'url');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -972,12 +1041,16 @@ function removePostMessageEventBindings() {
 	window.removeEventListener('message', onPostMessageReceived);
 }
 
-async function onPostMessageReceived(message: MessageEvent) {
-	if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
+async function onPostMessageReceived(messageEvent: MessageEvent) {
+	if (
+		!messageEvent ||
+		typeof messageEvent.data !== 'string' ||
+		!messageEvent.data?.includes?.('"command"')
+	) {
 		return;
 	}
 	try {
-		const json = JSON.parse(message.data);
+		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
 				await importWorkflowExact(json);
@@ -1108,6 +1181,10 @@ async function onSaveFromWithinExecutionDebug() {
 
 function fitView() {
 	setTimeout(() => canvasEventBus.emit('fitView'));
+}
+
+function selectNodes(ids: string[]) {
+	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
 }
 
 /**
@@ -1249,9 +1326,6 @@ onMounted(async () => {
 	addWorkflowSavedEventBindings();
 
 	registerCustomActions();
-
-	// @TODO Implement this
-	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
 	void externalHooks.run('nodeView.mount').catch(() => {});
