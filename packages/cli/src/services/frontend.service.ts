@@ -161,8 +161,8 @@ export class FrontendService {
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			templates: {
-				enabled: config.getEnv('templates.enabled'),
-				host: config.getEnv('templates.host'),
+				enabled: this.globalConfig.templates.enabled,
+				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: config.getEnv('push.backend'),
