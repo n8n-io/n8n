@@ -21,7 +21,7 @@ import {
 	TestFailProvider,
 } from '../../shared/ExternalSecrets/utils';
 import type { SuperAgentTest } from '../shared/types';
-import type { EventRelay } from '@/eventbus/event-relay.service';
+import type { EventService } from '@/eventbus/event.service';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -50,7 +50,7 @@ async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | n
 	return await jsonParse(Container.get(Cipher).decrypt(encSettings));
 }
 
-const eventRelay = mock<EventRelay>();
+const eventService = mock<EventService>();
 
 const resetManager = async () => {
 	Container.get(ExternalSecretsManager).shutdown();
@@ -62,7 +62,7 @@ const resetManager = async () => {
 			Container.get(License),
 			mockProvidersInstance,
 			Container.get(Cipher),
-			eventRelay,
+			eventService,
 		),
 	);
 

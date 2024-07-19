@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,7 +28,7 @@ export class LicenseService {
 		private readonly license: License,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	async getLicenseData() {
@@ -79,11 +79,11 @@ export class LicenseService {
 		} catch (e) {
 			const message = this.mapErrorMessage(e as LicenseError, 'renew');
 
-			this.eventRelay.emit('license-renewal-attempted', { success: false });
+			this.eventService.emit('license-renewal-attempted', { success: false });
 			throw new BadRequestError(message);
 		}
 
-		this.eventRelay.emit('license-renewal-attempted', { success: true });
+		this.eventService.emit('license-renewal-attempted', { success: true });
 	}
 
 	private mapErrorMessage(error: LicenseError, action: 'activate' | 'renew') {

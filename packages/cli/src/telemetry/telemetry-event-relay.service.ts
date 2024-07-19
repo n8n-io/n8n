@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 import type { Event } from '@/eventbus/event.types';
 import { Telemetry } from '.';
 import config from '@/config';
@@ -7,7 +7,7 @@ import config from '@/config';
 @Service()
 export class TelemetryEventRelay {
 	constructor(
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -20,34 +20,34 @@ export class TelemetryEventRelay {
 	}
 
 	private setupHandlers() {
-		this.eventRelay.on('team-project-updated', (event) => this.teamProjectUpdated(event));
-		this.eventRelay.on('team-project-deleted', (event) => this.teamProjectDeleted(event));
-		this.eventRelay.on('team-project-created', (event) => this.teamProjectCreated(event));
-		this.eventRelay.on('source-control-settings-updated', (event) =>
+		this.eventService.on('team-project-updated', (event) => this.teamProjectUpdated(event));
+		this.eventService.on('team-project-deleted', (event) => this.teamProjectDeleted(event));
+		this.eventService.on('team-project-created', (event) => this.teamProjectCreated(event));
+		this.eventService.on('source-control-settings-updated', (event) =>
 			this.sourceControlSettingsUpdated(event),
 		);
-		this.eventRelay.on('source-control-user-started-pull-ui', (event) =>
+		this.eventService.on('source-control-user-started-pull-ui', (event) =>
 			this.sourceControlUserStartedPullUi(event),
 		);
-		this.eventRelay.on('source-control-user-finished-pull-ui', (event) =>
+		this.eventService.on('source-control-user-finished-pull-ui', (event) =>
 			this.sourceControlUserFinishedPullUi(event),
 		);
-		this.eventRelay.on('source-control-user-pulled-api', (event) =>
+		this.eventService.on('source-control-user-pulled-api', (event) =>
 			this.sourceControlUserPulledApi(event),
 		);
-		this.eventRelay.on('source-control-user-started-push-ui', (event) =>
+		this.eventService.on('source-control-user-started-push-ui', (event) =>
 			this.sourceControlUserStartedPushUi(event),
 		);
-		this.eventRelay.on('source-control-user-finished-push-ui', (event) =>
+		this.eventService.on('source-control-user-finished-push-ui', (event) =>
 			this.sourceControlUserFinishedPushUi(event),
 		);
-		this.eventRelay.on('license-renewal-attempted', (event) => {
+		this.eventService.on('license-renewal-attempted', (event) => {
 			this.licenseRenewalAttempted(event);
 		});
-		this.eventRelay.on('variable-created', (event) => {
+		this.eventService.on('variable-created', (event) => {
 			this.variableCreated(event);
 		});
-		this.eventRelay.on('external-secrets-provider-settings-saved', (event) => {
+		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
 			this.externalSecretsProviderSettingsSaved(event);
 		});
 	}
