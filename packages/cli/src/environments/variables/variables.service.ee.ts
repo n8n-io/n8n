@@ -6,14 +6,14 @@ import { CacheService } from '@/services/cache/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @Service()
 export class VariablesService {
 	constructor(
 		protected cacheService: CacheService,
 		protected variablesRepository: VariablesRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	async getAllCached(): Promise<Variables[]> {
@@ -71,7 +71,7 @@ export class VariablesService {
 		}
 		this.validateVariable(variable);
 
-		this.eventRelay.emit('variable-created', { variableType: variable.type });
+		this.eventService.emit('variable-created', { variableType: variable.type });
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,
