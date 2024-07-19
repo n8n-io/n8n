@@ -90,7 +90,7 @@ export class InstanceRiskReporter implements RiskReporter {
 		settings.features = {
 			communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
-			templatesEnabled: config.getEnv('templates.enabled'),
+			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
 		};
 
