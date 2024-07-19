@@ -12,7 +12,7 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import type { ImportResult } from './types/importResult';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,7 +22,7 @@ export class SourceControlController {
 	constructor(
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
@@ -83,7 +83,7 @@ export class SourceControlController {
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
-			this.eventRelay.emit('source-control-settings-updated', {
+			this.eventService.emit('source-control-settings-updated', {
 				branchName: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,
@@ -128,7 +128,7 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
-			this.eventRelay.emit('source-control-settings-updated', {
+			this.eventService.emit('source-control-settings-updated', {
 				branchName: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
 				readOnlyInstance: resultingPreferences.branchReadOnly,

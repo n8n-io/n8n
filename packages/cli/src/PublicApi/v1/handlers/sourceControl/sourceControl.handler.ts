@@ -10,7 +10,7 @@ import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 export = {
 	pull: [
@@ -39,7 +39,7 @@ export = {
 				});
 
 				if (result.statusCode === 200) {
-					Container.get(EventRelay).emit('source-control-user-pulled-api', {
+					Container.get(EventService).emit('source-control-user-pulled-api', {
 						...getTrackingInformationFromPullResult(result.statusResult),
 						forced: req.body.force ?? false,
 					});

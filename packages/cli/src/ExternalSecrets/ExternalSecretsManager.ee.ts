@@ -13,7 +13,7 @@ import { Logger } from '@/Logger';
 import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { License } from '@/License';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -38,7 +38,7 @@ export class ExternalSecretsManager {
 		private readonly license: License,
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	async init(): Promise<void> {
@@ -309,7 +309,7 @@ export class ExternalSecretsManager {
 		try {
 			testResult = await this.getProvider(vaultType)?.test();
 		} catch {}
-		this.eventRelay.emit('external-secrets-provider-settings-saved', {
+		this.eventService.emit('external-secrets-provider-settings-saved', {
 			userId,
 			vaultType,
 			isNew,
