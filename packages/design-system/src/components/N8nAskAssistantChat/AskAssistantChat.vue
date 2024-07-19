@@ -86,8 +86,14 @@ function onSendMessage() {
 					</div>
 					<div v-if="message.type === 'block'">
 						<div :class="$style.block">
-							<div :class="$style.blockTitle">{{ message.title }}</div>
-							<div :class="$style.blockBody" v-html="md.render(message.content)"></div>
+							<div :class="$style.blockTitle">
+								{{ message.title }}
+								<BlinkingCursor v-if="streaming && !message.content" />
+							</div>
+							<div :class="$style.blockBody">
+								<span v-html="md.render(message.content)"></span>
+								<BlinkingCursor v-if="streaming && message.title && message.content" />
+							</div>
 						</div>
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">

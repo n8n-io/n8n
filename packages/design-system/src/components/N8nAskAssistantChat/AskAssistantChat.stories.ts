@@ -40,11 +40,13 @@ Chat.args = {
 	},
 	messages: getMessages([
 		{
+			id: '1',
 			type: 'text',
 			role: 'assistant',
 			content: 'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
 		},
 		{
+			id: '1',
 			type: 'code-diff',
 			role: 'assistant',
 			description: 'Short solution description here that can spill over to two lines',
@@ -63,18 +65,21 @@ Chat.args = {
 			],
 		},
 		{
+			id: '2',
 			type: 'text',
 			role: 'user',
 			content: 'Give it to me **ignore this markdown**',
 		},
 		{
-			type: 'summary',
+			id: '2',
+			type: 'block',
 			role: 'assistant',
 			title: 'Credential doesn’t have correct permissions to send a message',
 			content:
 				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
 		},
 		{
+			id: '2',
 			type: 'code-diff',
 			role: 'assistant',
 			description: 'Short solution with min height',
@@ -97,6 +102,60 @@ Chat.args = {
 	]),
 };
 
+export const JustSummary = Template.bind({});
+JustSummary.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '123',
+			role: 'assistant',
+			type: 'block',
+			title: 'Credential doesn’t have correct permissions to send a message',
+			content:
+				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
+		},
+	]),
+};
+
+export const SummaryTitleStreaming = Template.bind({});
+SummaryTitleStreaming.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '123',
+			role: 'assistant',
+			type: 'block',
+			title: 'Credential doesn’t have',
+			content: '',
+		},
+	]),
+	streaming: true,
+};
+
+export const SummaryContentStreaming = Template.bind({});
+SummaryTitleStreaming.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '123',
+			role: 'assistant',
+			type: 'block',
+			title: 'Credential doesn’t have correct permissions to send a message',
+			content: 'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur',
+		},
+	]),
+	streaming: true,
+};
+
 export const ErrorChat = Template.bind({});
 ErrorChat.args = {
 	user: {
@@ -105,6 +164,7 @@ ErrorChat.args = {
 	},
 	messages: getMessages([
 		{
+			id: '123',
 			role: 'assistant',
 			type: 'error',
 			content: 'There was an error reaching the service',
@@ -120,6 +180,7 @@ EmptyStreamingChat.args = {
 	},
 	messages: getMessages([
 		{
+			id: '123',
 			type: 'text',
 			role: 'assistant',
 			content: '',
@@ -136,6 +197,7 @@ StreamingChat.args = {
 	},
 	messages: getMessages([
 		{
+			id: '123',
 			type: 'text',
 			role: 'assistant',
 			content: 'I am thinking through this problem',
@@ -152,11 +214,13 @@ EndOfSessionChat.args = {
 	},
 	messages: getMessages([
 		{
+			id: '123',
 			type: 'text',
 			role: 'assistant',
 			content: "Great, glad I could help! I'm here whenever you need more help.",
 		},
 		{
+			id: '123',
 			role: 'assistant',
 			type: 'end-session',
 		},
