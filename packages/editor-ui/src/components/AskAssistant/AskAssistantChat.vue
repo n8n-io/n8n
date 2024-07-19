@@ -22,7 +22,7 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 }
 
 async function onUserMessage(content: string, quickReplyType?: string) {
-	await assistantStore.sendMessage({ content, quickReplyType });
+	await assistantStore.sendMessage({ text: content, quickReplyType });
 }
 
 async function onCodeReplace(index: number) {
@@ -51,6 +51,7 @@ async function applyCodeDiff(index: number) {
 				<n8n-ask-assistant-chat
 					:user="user"
 					:messages="assistantStore.chatMessages"
+					:streaming="assistantStore.streaming"
 					@close="() => assistantStore.closeChat()"
 					@message="onUserMessage"
 					@codeReplace="onCodeReplace"

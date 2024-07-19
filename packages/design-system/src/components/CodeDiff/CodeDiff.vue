@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import parseDiff from 'parse-diff';
 import { computed } from 'vue';
+import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 
 const MIN_LINES = 4;
 
@@ -10,12 +11,13 @@ interface Props {
 	replacing: boolean;
 	replaced: boolean;
 	error: boolean;
+	streaming: boolean;
 }
 
 type Line =
 	| parseDiff.Change
 	| {
-			type: 'line';
+			type: 'filler' | 'seperator';
 			content: string;
 	  };
 
@@ -25,15 +27,13 @@ const props = withDefaults(defineProps<Props>(), {
 	replacing: false,
 	replaced: false,
 	error: false,
+	streaming: false,
 });
 
 const emit = defineEmits<{
 	replace: [];
 	undo: [];
 }>();
-
-// todo add streaming
-const disabledReplace = computed(() => !props.content);
 
 const diffs = computed(() => {
 	const parsed = parseDiff(props.content);
@@ -57,7 +57,7 @@ const diffs = computed(() => {
 
 		if (i !== file.chunks.length - 1) {
 			changes.push({
-				type: 'line',
+				type: 'seperator',
 				content: '...',
 			});
 		}
@@ -65,10 +65,11 @@ const diffs = computed(() => {
 	}, []);
 
 	const len = lines.length;
+	// why programmatic and not min height? to ensure numbers border goes all the way down.s
 	if (len <= MIN_LINES) {
 		for (let i = 0; i < MIN_LINES - len; i++) {
 			lines.push({
-				type: 'line',
+				type: 'filler',
 				content: '',
 			});
 		}
@@ -82,6 +83,7 @@ const diffs = computed(() => {
 	<div :class="$style.container">
 		<div :class="$style.title">
 			{{ props.title }}
+			<BlinkingCursor v-if="streaming && !props.content" />
 		</div>
 		<div :class="$style.diffSection">
 			<div v-for="(diff, i) in diffs" :key="i" :class="$style.diff">
@@ -94,7 +96,16 @@ const diffs = computed(() => {
 					<span v-if="diff.type === 'add'">&nbsp;+&nbsp;</span>
 					<span v-else-if="diff.type === 'del'">&nbsp;-&nbsp;</span>
 					<span v-else>&nbsp;&nbsp;&nbsp;</span>
-					<span>{{ diff.content }}</span>
+					<span>
+						{{ diff.content }}
+						<BlinkingCursor
+							v-if="
+								streaming &&
+								diff.content &&
+								(i === diffs.length - 1 || diffs[i + 1].type === 'filler')
+							"
+						/>
+					</span>
 				</div>
 			</div>
 		</div>
@@ -120,7 +131,7 @@ const diffs = computed(() => {
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
 				icon="refresh"
-				:disabled="disabledReplace"
+				:disabled="!props.content || props.streaming"
 				:loading="replacing"
 				@click="() => emit('replace')"
 				>{{ replacing ? 'Replacing...' : 'Replace my code' }}</n8n-button
@@ -140,6 +151,7 @@ const diffs = computed(() => {
 	padding: 8px;
 	font-weight: 600;
 	font-size: 12px;
+	min-height: 28px;
 }
 
 .lineNumber {
@@ -162,6 +174,8 @@ const diffs = computed(() => {
 	display: flex;
 	font-size: 10px;
 	line-height: 18px; /* 100% */
+	height: 18px;
+	max-height: 18px;
 }
 
 .diffContent {

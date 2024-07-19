@@ -123,9 +123,9 @@ EmptyStreamingChat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: '',
-			streaming: true,
 		},
 	]),
+	streaming: true,
 };
 
 export const StreamingChat = Template.bind({});
@@ -139,9 +139,9 @@ StreamingChat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: 'I am thinking through this problem',
-			streaming: true,
 		},
 	]),
+	streaming: true,
 };
 
 export const EndOfSessionChat = Template.bind({});

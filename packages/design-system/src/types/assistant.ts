@@ -15,7 +15,6 @@ export namespace ChatUI {
 		replacing?: boolean;
 		replaced?: boolean;
 		error?: boolean;
-		streaming?: boolean;
 		suggestionId: string;
 	}
 
@@ -26,7 +25,7 @@ export namespace ChatUI {
 
 	export interface QuickReply {
 		type: string;
-		label: string;
+		content: string;
 	}
 
 	export interface ErrorMessage {

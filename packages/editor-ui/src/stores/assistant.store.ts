@@ -27,6 +27,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
+	const streaming = ref<boolean>();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -90,6 +91,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
+		return false;
 		const targetNode = context.node.name;
 		const errorMessage = context.error.message;
 
@@ -104,14 +106,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function stopStreaming() {
-		// chatMessages.value = chatMessages.value
-		// 	.filter((message) => 'content' in message && !!message.content)
-		// 	.map((message) => {
-		// 		if ('streaming' in message && message.streaming) {
-		// 			message.streaming = false;
-		// 		}
-		// 		return message;
-		// 	});
+		streaming.value = false;
 	}
 
 	function addAssistantError(content: string) {
@@ -146,37 +141,44 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, i: number) {
-		currentSessionId.value = response.sessionId;
+		if (response.sessionId) {
+			currentSessionId.value = response.sessionId;
+		}
 		addAssistantMessages(response.messages, i);
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
-		if (isNodeErrorActive(context)) {
-			return;
-		}
-		clearMessages();
-		chatSessionError.value = context;
+		try {
+			if (isNodeErrorActive(context)) {
+				return;
+			}
+			clearMessages();
+			chatSessionError.value = context;
 
-		addAssistantLoading();
-		const i = chatMessages.value.length;
-		openChat();
+			addAssistantLoading();
+			const i = chatMessages.value.length;
+			openChat();
 
-		chatWithAssistant(
-			rootStore.restApiContext,
-			{
-				role: 'user',
-				type: 'init-error-helper',
-				user: {
-					firstName: usersStore.currentUser?.firstName ?? '',
+			streaming.value = true;
+			chatWithAssistant(
+				rootStore.restApiContext,
+				{
+					role: 'user',
+					type: 'init-error-helper',
+					user: {
+						firstName: usersStore.currentUser?.firstName ?? '',
+					},
+					error: context.error,
+					node: context.node,
+					// executionSchema todo
 				},
-				error: context.error,
-				node: context.node,
-				// executionSchema todo
-			},
-			(msg) => onEachStreamingMessage(msg, i),
-			stopStreaming,
-			handleServiceError,
-		);
+				(msg) => onEachStreamingMessage(msg, i),
+				stopStreaming,
+				handleServiceError,
+			);
+		} catch (e) {
+			handleServiceError(e);
+		}
 	}
 
 	// async function sendEvent(eventName: ChatRequest.InteractionEventName) {
@@ -187,24 +189,31 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// }
 
 	async function sendMessage(
-		message: Pick<ChatRequest.UserChatMessage, 'content' | 'quickReplyType'>,
+		message: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
 	) {
-		addUserMessage(message.content);
-		addAssistantLoading();
-		const i = chatMessages.value.length;
+		try {
+			addUserMessage(message.text);
+			addAssistantLoading();
+			const i = chatMessages.value.length;
 
-		chatWithAssistant(
-			rootStore.restApiContext,
-			{
-				role: 'assistant',
-				type: 'message',
-				content: message.content,
-				quickReplyType: message.quickReplyType,
-			},
-			(msg) => onEachStreamingMessage(msg, i),
-			stopStreaming,
-			handleServiceError,
-		);
+			streaming.value = true;
+			assert(currentSessionId.value);
+			chatWithAssistant(
+				rootStore.restApiContext,
+				{
+					role: 'user',
+					type: 'message',
+					text: message.text,
+					quickReplyType: message.quickReplyType,
+					sessionId: currentSessionId.value,
+				},
+				(msg) => onEachStreamingMessage(msg, i),
+				stopStreaming,
+				handleServiceError,
+			);
+		} catch (e: unknown) {
+			handleServiceError(e);
+		}
 	}
 
 	function updateParameters(nodeName: string, parameters: INodeParameters) {
@@ -269,6 +278,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	return {
 		chatWidth,
 		chatMessages,
+		streaming,
 		isAssistantOpen,
 		canShowAssistant,
 		canShowAssistantButtons,

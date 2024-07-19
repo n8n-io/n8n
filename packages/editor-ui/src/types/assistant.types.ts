@@ -53,7 +53,7 @@ export namespace ChatRequest {
 		node: INode;
 	}
 
-	export interface ErrorRequestPayload extends ErrorContext, WorkflowContext {
+	export interface InitErrorHelper extends ErrorContext, WorkflowContext {
 		role: 'user';
 		type: 'init-error-helper';
 		user: {
@@ -66,19 +66,21 @@ export namespace ChatRequest {
 		| 'errored-node-errored-again';
 
 	interface EventRequestPayload {
-		role: 'assistant';
+		role: 'user';
 		type: 'event';
 		event: InteractionEventName;
 	}
 
 	export interface UserChatMessage {
-		role: 'assistant';
+		role: 'user';
 		type: 'message';
-		content: string;
+		text: string;
 		quickReplyType?: string;
 	}
 
-	export type RequestPayload = EventRequestPayload | ErrorRequestPayload | UserChatMessage;
+	export type RequestPayload =
+		| InitErrorHelper
+		| ((EventRequestPayload | UserChatMessage) & { sessionId: string });
 
 	interface CodeDiffMessage {
 		role: 'assistant';
@@ -90,7 +92,7 @@ export namespace ChatRequest {
 	}
 
 	interface QuickReplyOption {
-		label: string;
+		content: string;
 		type: string;
 		isFeedback?: boolean;
 	}
@@ -111,7 +113,7 @@ export namespace ChatRequest {
 	};
 
 	export interface ResponsePayload {
-		sessionId: string;
+		sessionId?: string;
 		messages: MessageResponse[];
 	}
 }

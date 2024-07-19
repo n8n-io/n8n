@@ -5,6 +5,7 @@ import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
 import AssistantAvatar from './AssistantAvatar.vue';
 import CodeDiff from '../CodeDiff/CodeDiff.vue';
 import type { ChatUI } from '../../types/assistant';
+import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 
 import Markdown from 'markdown-it';
 
@@ -18,6 +19,7 @@ interface Props {
 		lastName: string;
 	};
 	messages?: ChatUI.AssistantMessage[];
+	streaming?: boolean;
 }
 
 const emit = defineEmits<{
@@ -37,16 +39,12 @@ const sessionEnded = computed(() => {
 	return Boolean(props.messages?.[props.messages.length - 1].type === 'end-session');
 });
 
-const isStreaming = computed(() => {
-	return Boolean(props.messages?.find((message) => 'streaming' in message && message.streaming));
-});
-
 function onQuickReply(opt: ChatUI.QuickReply) {
-	emit('message', opt.label, opt.type);
+	emit('message', opt.content, opt.type);
 }
 
 function onSendMessage() {
-	if (textInputValue.value && !isStreaming.value) {
+	if (textInputValue.value && !props.streaming) {
 		emit('message', textInputValue.value, undefined);
 		textInputValue.value = '';
 	}
@@ -96,7 +94,7 @@ function onSendMessage() {
 						<span v-if="message.role === 'user'">{{ message.content }}</span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span v-else :class="$style.assistantText" v-html="md.render(message.content)"></span>
-						<span v-if="message.streaming" class="blinking-cursor"></span>
+						<BlinkingCursor v-if="streaming && i === props.messages?.length - 1" />
 					</div>
 					<div v-else-if="message.type === 'error'" :class="$style.error">
 						<span>⚠️ {{ message.content }}</span>
@@ -108,6 +106,7 @@ function onSendMessage() {
 							:replacing="message.replacing"
 							:replaced="message.replaced"
 							:error="message.error"
+							:streaming="streaming && i === props.messages?.length - 1"
 							@replace="() => emit('codeReplace', i)"
 							@undo="() => emit('codeUndo', i)"
 						/>
@@ -121,13 +120,13 @@ function onSendMessage() {
 					</div>
 
 					<div
-						v-if="'quickReplies' in message && i === props.messages?.length - 1"
+						v-if="!streaming && 'quickReplies' in message && i === props.messages?.length - 1"
 						:class="$style.quickReplies"
 					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
 						<div v-for="opt in message.quickReplies" :key="opt.type">
 							<n8n-button type="secondary" size="mini" @click="() => onQuickReply(opt)">
-								{{ opt.label }}
+								{{ opt.content }}
 							</n8n-button>
 						</div>
 					</div>
@@ -157,7 +156,7 @@ function onSendMessage() {
 				@keydown.enter="onSendMessage"
 			/>
 			<n8n-icon
-				:class="{ [$style.sendButton]: true, [$style.disabledInput]: isStreaming }"
+				:class="{ [$style.sendButton]: true, [$style.disabledInput]: props.streaming }"
 				icon="paper-plane"
 				size="large"
 				@click="onSendMessage"
@@ -359,76 +358,3 @@ function onSendMessage() {
 	}
 }
 </style>
-
-<style lang="scss">
-.blinking-cursor {
-	display: inline-block;
-	height: 16px;
-	width: 6px;
-	background-color: #7e8186;
-	border-radius: 2px;
-	margin-left: 4px;
-
-	-webkit-animation: 1s blink step-end infinite;
-	// -moz-animation: 1s blink step-end infinite;
-	// -ms-animation: 1s blink step-end infinite;
-	// -o-animation: 1s blink step-end infinite;
-	animation: 1s blink step-end infinite;
-}
-
-.blinking-animation {
-	-webkit-animation: 1s blink step-end infinite;
-	// -moz-animation: 1s blink step-end infinite;
-	// -ms-animation: 1s blink step-end infinite;
-	// -o-animation: 1s blink step-end infinite;
-	animation: 1s blink step-end infinite;
-}
-
-@keyframes blink {
-	from,
-	to {
-		background-color: transparent;
-	}
-	50% {
-		background-color: #7e8186;
-	}
-}
-
-// @-moz-keyframes blink {
-//   from, to {
-//     background-color: transparent;
-//   }
-//   50% {
-//     background-color: #7E8186;
-//   }
-// }
-
-@-webkit-keyframes blink {
-	from,
-	to {
-		background-color: transparent;
-	}
-	50% {
-		background-color: #7e8186;
-	}
-}
-
-// @-ms-keyframes "blink" {
-//   from, to {
-//     background-color: transparent;
-//   }
-//   50% {
-//     background-color: #7E8186;
-//   }
-// }
-
-// @-o-keyframes "blink" {
-//   from, to {
-//     background-color: transparent;
-//   }
-//   50% {
-//     background-color: #7E8186;
-//   }
-// }
-</style>
-./assistant
