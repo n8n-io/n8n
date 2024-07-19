@@ -44,9 +44,6 @@ export class TelemetryEventRelay {
 		this.eventRelay.on('license-renewal-attempted', (event) => {
 			this.licenseRenewalAttempted(event);
 		});
-		this.eventRelay.on('security-audit-generated-via-cli', () => {
-			this.securityAuditGeneratedViaCli();
-		});
 		this.eventRelay.on('variable-created', (event) => {
 			this.variableCreated(event);
 		});
@@ -170,10 +167,6 @@ export class TelemetryEventRelay {
 		void this.telemetry.track('Instance attempted to refresh license', {
 			success,
 		});
-	}
-
-	private securityAuditGeneratedViaCli() {
-		void this.telemetry.track('Instance generated security audit via CLI command');
 	}
 
 	private variableCreated({ variableType }: Event['variable-created']) {

@@ -257,10 +257,6 @@ export type Event = {
 		success: boolean;
 	};
 
-	'security-audit-generated-via-cli': {
-		// no payload
-	};
-
 	'variable-created': {
 		variableType: string;
 	};
