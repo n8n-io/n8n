@@ -94,7 +94,9 @@ function onSendMessage() {
 						<span v-if="message.role === 'user'">{{ message.content }}</span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span v-else :class="$style.assistantText" v-html="md.render(message.content)"></span>
-						<BlinkingCursor v-if="streaming && i === props.messages?.length - 1" />
+						<BlinkingCursor
+							v-if="streaming && i === props.messages?.length - 1 && message.role === 'assistant'"
+						/>
 					</div>
 					<div v-else-if="message.type === 'error'" :class="$style.error">
 						<span>⚠️ {{ message.content }}</span>

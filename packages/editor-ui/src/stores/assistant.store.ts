@@ -124,12 +124,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function addAssistantLoading() {
+	function addEmptyAssistantMessage() {
 		chatMessages.value.push({
 			role: 'assistant',
 			type: 'text',
 			content: '',
-			streaming: true,
 		});
 	}
 
@@ -162,7 +161,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			clearMessages();
 			chatSessionError.value = context;
 
-			addAssistantLoading();
+			addEmptyAssistantMessage();
 			const i = chatMessages.value.length;
 			openChat();
 
@@ -200,7 +199,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	) {
 		try {
 			addUserMessage(message.text);
-			addAssistantLoading();
+			addEmptyAssistantMessage();
 			const i = chatMessages.value.length;
 
 			streaming.value = true;
