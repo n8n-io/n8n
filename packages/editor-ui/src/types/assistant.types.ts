@@ -1,36 +1,6 @@
 import type { Schema } from '@/Interface';
 import type { INode, INodeParameters } from 'n8n-workflow';
 
-// export namespace ChatUI {
-// 	interface WithQuickReplies {
-// 		quickReplies?: Array<{
-// 			type: string;
-// 			label: string;
-// 		}>;
-// 	}
-
-// 	export interface TextMessage extends WithQuickReplies {
-// 		role: 'assistant' | 'user';
-// 		type: 'text';
-// 		title?: string;
-// 		content: string;
-// 	}
-
-// 	export interface CodeDiffMessage extends WithQuickReplies {
-// 		role: 'assistant';
-// 		type: 'code-diff';
-// 		description: string;
-// 		codeDiff: string;
-// 		suggestionId: string;
-// 		replacing?: boolean;
-// 		replaced?: boolean;
-// 		error?: boolean;
-// 	}
-
-// 	// todo add quick replies here
-// 	export type AssistantMessage = TextMessage | CodeDiffMessage;
-// }
-
 export namespace ChatRequest {
 	interface NodeExecutionSchema {
 		node_name: string;
@@ -101,16 +71,33 @@ export namespace ChatRequest {
 		role: 'assistant';
 		type: 'message';
 		content: string;
-		title?: string;
+	}
+
+	interface AssistantSummaryMessage {
+		role: 'assistant';
+		type: 'summary';
+		title: string;
+		content: string;
 	}
 
 	interface EndSessionMessage {
 		type: 'end-session';
 	}
 
-	export type MessageResponse = (AssistantChatMessage | CodeDiffMessage | EndSessionMessage) & {
-		quickReplies?: QuickReplyOption[];
-	};
+	// export type MessageResponse = (
+	// 	| AssistantChatMessage
+	// 	| CodeDiffMessage
+	// 	| AssistantSummaryMessage
+	// 	| EndSessionMessage
+	// ) & {
+	// 	quickReplies?: QuickReplyOption[];
+	// };
+
+	export type MessageResponse =
+		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage) & {
+				quickReplies?: QuickReplyOption[];
+		  })
+		| EndSessionMessage;
 
 	export interface ResponsePayload {
 		sessionId?: string;

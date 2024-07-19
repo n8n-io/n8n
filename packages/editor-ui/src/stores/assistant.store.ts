@@ -69,7 +69,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					type: 'text',
 					role: 'assistant',
 					content: message.content,
-					title: message.title,
 					quickReplies: message.quickReplies,
 				});
 			} else if (message.type === 'code-diff') {
@@ -79,6 +78,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					description: message.description,
 					codeDiff: message.codeDiff,
 					suggestionId: message.suggestionId,
+					quickReplies: message.quickReplies,
+				});
+			} else if (message.type === 'summary') {
+				messages.push({
+					type: 'block',
+					role: 'assistant',
+					title: message.title,
+					content: message.content,
 					quickReplies: message.quickReplies,
 				});
 			}

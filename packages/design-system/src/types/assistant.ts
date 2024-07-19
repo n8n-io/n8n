@@ -7,7 +7,7 @@ export namespace ChatUI {
 
 	export interface SummaryBlock {
 		role: 'assistant';
-		type: 'summary';
+		type: 'block';
 		title: string;
 		content: string;
 	}
