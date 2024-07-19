@@ -8,7 +8,7 @@ import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
 
 @Service()
-export class EventsService extends EventEmitter {
+export class WorkflowStatisticsService extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
@@ -112,7 +112,7 @@ export class EventsService extends EventEmitter {
 	}
 }
 
-export declare interface EventsService {
+export declare interface WorkflowStatisticsService {
 	on(
 		event: 'nodeFetchedData',
 		listener: (workflowId: string | undefined | null, node: INode) => void,

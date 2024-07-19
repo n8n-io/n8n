@@ -18,7 +18,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -32,7 +32,7 @@ export class InvitationController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -172,7 +172,7 @@ export class InvitationController {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
 		});
-		this.eventRelay.emit('user-signed-up', { user: updatedUser });
+		this.eventService.emit('user-signed-up', { user: updatedUser });
 
 		const publicInvitee = await this.userService.toPublic(invitee);
 

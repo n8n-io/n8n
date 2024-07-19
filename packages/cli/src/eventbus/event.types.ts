@@ -12,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent at services and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
+ * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -255,10 +255,6 @@ export type Event = {
 
 	'license-renewal-attempted': {
 		success: boolean;
-	};
-
-	'security-audit-generated-via-cli': {
-		// no payload
 	};
 
 	'variable-created': {
