@@ -10,7 +10,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
@@ -166,6 +166,20 @@ describe('useCanvasOperations', () => {
 				type: 'type',
 			});
 			expect(result.credentials).toBeUndefined();
+		});
+
+		it('should open NDV when specified', async () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+
+			await canvasOperations.addNode(
+				{
+					type: 'type',
+					name: 'Test Name',
+				},
+				{ openNDV: true },
+			);
+
+			expect(ndvStore.activeNodeName).toBe('Test Name');
 		});
 	});
 
