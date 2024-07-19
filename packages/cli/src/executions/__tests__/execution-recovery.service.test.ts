@@ -21,7 +21,7 @@ import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 
-import type { EventRelay } from '@/eventbus/event-relay.service';
+import type { EventService } from '@/eventbus/event.service';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { Logger } from '@/Logger';
 
@@ -193,7 +193,7 @@ describe('ExecutionRecoveryService', () => {
 			push,
 			executionRepository,
 			orchestrationService,
-			mock<EventRelay>(),
+			mock<EventService>(),
 		);
 	});
 
