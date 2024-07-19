@@ -28,6 +28,7 @@ export const prepareFormData = (
 	instanceId?: string,
 	useResponseData?: boolean,
 	appendAttribution = true,
+	customAttribution?: string,
 ) => {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -47,6 +48,7 @@ export const prepareFormData = (
 		formFields: [],
 		useResponseData,
 		appendAttribution,
+		customAttribution,
 	};
 
 	if (redirectUrl) {
@@ -132,6 +134,7 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 };
 
 export async function formWebhook(context: IWebhookFunctions) {
+	const nodeVersion = context.getNode().typeVersion;
 	const options = context.getNodeParameter('options', {}) as IDataObject;
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -199,6 +202,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			instanceId,
 			useResponseData,
 			appendAttribution,
+			options.customAttribution as string,
 		);
 
 		res.render('form-trigger', data);
@@ -283,8 +287,20 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		returnItem.json[field.fieldLabel] = value;
 	}
-	const timezone = context.getTimezone();
-	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+
+	let { useWorkflowTimezone } = options;
+
+	if (useWorkflowTimezone === undefined && nodeVersion > 2) {
+		useWorkflowTimezone = true;
+	}
+
+	if (useWorkflowTimezone) {
+		const timezone = context.getTimezone();
+		returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+	} else {
+		returnItem.json.submittedAt = new Date().toISOString();
+	}
+
 	returnItem.json.formMode = mode;
 
 	const webhookResponse: IDataObject = { status: 200 };
