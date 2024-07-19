@@ -1,7 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
-// import { within } from '@testing-library/vue';
 
 describe('ParameterInputWrapper.vue', () => {
 	test('should resolve expression', async () => {
@@ -35,11 +34,6 @@ describe('ParameterInputWrapper.vue', () => {
 			},
 		});
 
-		// const parameterInput = getByTestId('parameter-input');
-		// expect(parameterInput).toBeInTheDocument();
-		// expect(within(parameterInput).getByRole('textbox')).toHaveValue('ERROR');
-
-		// expect(getByTestId('parameter-input-hint')).toHaveTextContent('[ERROR: ]');
-		expect(getByTestId('parameter-input-hint')).toHaveTextContent('topSecret');
+		expect(getByTestId('parameter-input-hint')).toHaveTextContent('[ERROR: ]');
 	});
 });
