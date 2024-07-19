@@ -88,7 +88,7 @@ const actions = computed(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -274,6 +274,7 @@ function moveResource() {
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
+					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
 				/>
 

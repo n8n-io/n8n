@@ -5,8 +5,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import type { PermissionsRecord } from '@/permissions';
 
-const props = defineProps<{ workflowActive: boolean; workflowId: string }>();
+const props = defineProps<{
+	workflowActive: boolean;
+	workflowId: string;
+	workflowPermissions: PermissionsRecord['workflow'];
+}>();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 
@@ -108,7 +113,11 @@ async function displayActivationError() {
 						? i18n.baseText('workflowActivator.deactivateWorkflow')
 						: i18n.baseText('workflowActivator.activateWorkflow')
 				"
-				:disabled="disabled || workflowActivate.updatingWorkflowActivation.value"
+				:disabled="
+					disabled ||
+					workflowActivate.updatingWorkflowActivation.value ||
+					!workflowPermissions.update
+				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				data-test-id="workflow-activate-switch"

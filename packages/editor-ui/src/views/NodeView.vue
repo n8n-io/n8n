@@ -47,7 +47,7 @@
 						v-for="nodeData in nodesToRender"
 						:key="`${nodeData.id}_node`"
 						:name="nodeData.name"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv"
+						:is-read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === nodeData.name"
 						:hide-actions="pullConnActive"
@@ -75,7 +75,7 @@
 						:key="`${stickyData.id}_sticky`"
 						:name="stickyData.name"
 						:workflow="currentWorkflowObject"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv"
+						:is-read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === stickyData.name"
 						:node-view-scale="nodeViewScale"
@@ -107,7 +107,7 @@
 			</Suspense>
 			<Suspense>
 				<NodeCreation
-					v-if="!isReadOnlyRoute && !readOnlyEnv"
+					v-if="!isReadOnlyRoute && !readOnlyEnv && workflowPermissions.update"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
 					@toggle-node-creator="onToggleNodeCreator"
@@ -120,7 +120,10 @@
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
 			</Suspense>
-			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
+			<div
+				v-if="!isReadOnlyRoute && !readOnlyEnv && workflowPermissions.update"
+				class="workflow-execute-wrapper"
+			>
 				<span
 					v-if="!isManualChatOnly"
 					@mouseenter="showTriggerMissingToltip(true)"
@@ -593,7 +596,13 @@ export default defineComponent({
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return !this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv;
+			return (
+				!this.isLoading &&
+				!this.containsTrigger &&
+				!this.isDemo &&
+				!this.readOnlyEnv &&
+				!!this.workflowPermissions.update
+			);
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -3664,6 +3673,9 @@ export default defineComponent({
 			}
 
 			this.historyStore.reset();
+			if (!this.workflowPermissions.update) {
+				this.canvasStore.setReadOnly(true);
+			}
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
@@ -4569,7 +4581,7 @@ export default defineComponent({
 		},
 		readOnlyEnvRouteCheck() {
 			if (
-				this.readOnlyEnv &&
+				(this.readOnlyEnv || !this.workflowPermissions.create) &&
 				(this.$route.name === VIEWS.NEW_WORKFLOW || this.$route.name === VIEWS.TEMPLATE_IMPORT)
 			) {
 				void this.$nextTick(async () => {

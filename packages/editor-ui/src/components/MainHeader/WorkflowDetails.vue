@@ -667,7 +667,11 @@ function showCreateWorkflowSuccessToast(id?: string) {
 
 		<PushConnectionTracker class="actions">
 			<span :class="`activator ${$style.group}`">
-				<WorkflowActivator :workflow-active="workflow.active" :workflow-id="workflow.id" />
+				<WorkflowActivator
+					:workflow-active="workflow.active"
+					:workflow-id="workflow.id"
+					:workflow-permissions="workflowPermissions"
+				/>
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
