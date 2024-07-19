@@ -6,7 +6,10 @@ import { CanvasConnectionMode } from '@/types';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 describe('useNodeConnections', () => {
-	const defaultConnections = { input: {}, output: {} };
+	const defaultConnections = {
+		[CanvasConnectionMode.Input]: {},
+		[CanvasConnectionMode.Output]: {},
+	};
 	describe('mainInputs', () => {
 		it('should return main inputs when provided with main inputs', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([
@@ -73,13 +76,13 @@ describe('useNodeConnections', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([]);
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 			const connections = ref<CanvasNodeData['connections']>({
-				input: {
+				[CanvasConnectionMode.Input]: {
 					[NodeConnectionType.Main]: [
 						[{ node: 'node1', type: NodeConnectionType.Main, index: 0 }],
 						[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }],
 					],
 				},
-				output: {},
+				[CanvasConnectionMode.Output]: {},
 			});
 
 			const { mainInputConnections } = useNodeConnections({
@@ -89,7 +92,9 @@ describe('useNodeConnections', () => {
 			});
 
 			expect(mainInputConnections.value.length).toBe(2);
-			expect(mainInputConnections.value).toEqual(connections.value.input[NodeConnectionType.Main]);
+			expect(mainInputConnections.value).toEqual(
+				connections.value[CanvasConnectionMode.Input][NodeConnectionType.Main],
+			);
 		});
 	});
 
@@ -139,8 +144,8 @@ describe('useNodeConnections', () => {
 			const inputs = ref<CanvasNodeData['inputs']>([]);
 			const outputs = ref<CanvasNodeData['outputs']>([]);
 			const connections = ref<CanvasNodeData['connections']>({
-				input: {},
-				output: {
+				[CanvasConnectionMode.Input]: {},
+				[CanvasConnectionMode.Output]: {
 					[NodeConnectionType.Main]: [
 						[{ node: 'node1', type: NodeConnectionType.Main, index: 0 }],
 						[{ node: 'node2', type: NodeConnectionType.Main, index: 0 }],
@@ -156,7 +161,7 @@ describe('useNodeConnections', () => {
 
 			expect(mainOutputConnections.value.length).toBe(2);
 			expect(mainOutputConnections.value).toEqual(
-				connections.value.output[NodeConnectionType.Main],
+				connections.value[CanvasConnectionMode.Output][NodeConnectionType.Main],
 			);
 		});
 	});

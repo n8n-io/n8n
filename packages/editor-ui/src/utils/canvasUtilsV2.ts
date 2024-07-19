@@ -148,7 +148,8 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	}
 
 	return endpoints.map((endpoint, endpointIndex) => {
-		const type = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
 		const label = typeof endpoint === 'string' ? undefined : endpoint.displayName;
 		const index =
 			endpoints
