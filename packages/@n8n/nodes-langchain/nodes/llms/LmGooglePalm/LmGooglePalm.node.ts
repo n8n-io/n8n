@@ -15,6 +15,7 @@ export class LmGooglePalm implements INodeType {
 		displayName: 'Google PaLM Language Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmGooglePalm',
+		hidden: true,
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
@@ -51,7 +52,13 @@ export class LmGooglePalm implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					"Google PaLM API is <a href='https://ai.google.dev/palm_docs/deprecation' target='_blank'>deprecated</a>. Please use Google Vertex or Google Gemini nodes instead.",
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'modelName',
