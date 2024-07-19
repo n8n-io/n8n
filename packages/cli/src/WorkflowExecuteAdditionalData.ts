@@ -71,7 +71,7 @@ import { WorkflowRepository } from './databases/repositories/workflow.repository
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { EventRelay } from './eventbus/event-relay.service';
+import { EventService } from './eventbus/event.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -394,20 +394,20 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventRelay = Container.get(EventRelay);
+	const eventService = Container.get(EventService);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-pre-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-post-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [],
@@ -550,27 +550,27 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const internalHooks = Container.get(InternalHooks);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
-	const eventRelay = Container.get(EventRelay);
+	const eventService = Container.get(EventService);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-pre-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-post-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [
 			async function (): Promise<void> {
 				const { executionId, workflowData } = this;
 
-				eventRelay.emit('workflow-pre-execute', { executionId, data: workflowData });
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
 			},
 		],
 		workflowExecuteAfter: [
@@ -646,7 +646,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				const { executionId, workflowData: workflow } = this;
 
 				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
-				eventRelay.emit('workflow-post-execute', {
+				eventService.emit('workflow-post-execute', {
 					workflowId: workflow.id,
 					workflowName: workflow.name,
 					executionId,
@@ -793,7 +793,7 @@ async function executeWorkflow(
 
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
-	const eventRelay = Container.get(EventRelay);
+	const eventService = Container.get(EventService);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -821,7 +821,7 @@ async function executeWorkflow(
 		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
 	}
 
-	Container.get(EventRelay).emit('workflow-pre-execute', { executionId, data: runData });
+	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
 	let data;
 	try {
@@ -934,7 +934,7 @@ async function executeWorkflow(
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
 	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
-	eventRelay.emit('workflow-post-execute', {
+	eventService.emit('workflow-post-execute', {
 		workflowId: workflowData.id,
 		workflowName: workflowData.name,
 		executionId,
