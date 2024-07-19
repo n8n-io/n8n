@@ -10,7 +10,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { nextTick, ref } from 'vue';
+import { ref } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
