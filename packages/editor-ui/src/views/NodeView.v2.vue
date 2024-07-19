@@ -210,11 +210,11 @@ async function initializeData() {
 			credentialsStore.fetchCredentialTypes(true),
 		];
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 			promises.push(environmentsStore.fetchAllVariables());
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 
