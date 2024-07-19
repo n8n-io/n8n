@@ -47,7 +47,7 @@ export class PrometheusMetricsService {
 		this.initN8nVersionMetric();
 		this.initCacheMetrics();
 		this.initEventBusMetrics();
-		this.initApiMetrics(app);
+		this.initRouteMetrics(app);
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -95,9 +95,9 @@ export class PrometheusMetricsService {
 	}
 
 	/**
-	 * Set up metrics for API endpoints with `express-prom-bundle`
+	 * Set up metrics for server routes with `express-prom-bundle`
 	 */
-	private initApiMetrics(app: express.Application) {
+	private initRouteMetrics(app: express.Application) {
 		if (!this.includes.metrics.api) return;
 
 		const metricsMiddleware = promBundle({
@@ -109,7 +109,16 @@ export class PrometheusMetricsService {
 		});
 
 		app.use(
-			['/rest/', '/webhook/', '/webhook-waiting/', '/form-waiting/', '/webhook-test/', '/api/'],
+			[
+				'/rest/',
+				'/api/',
+				'/webhook/',
+				'/webhook-waiting/',
+				'/webhook-test/',
+				'/form/',
+				'/form-waiting/',
+				'/form-test/',
+			],
 			metricsMiddleware,
 		);
 	}
