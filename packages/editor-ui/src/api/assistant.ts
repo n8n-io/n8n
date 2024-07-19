@@ -72,10 +72,5 @@ export async function replaceCode(
 	ctx: IRestApiContext,
 	payload: ReplaceCodeRequest.RequestPayload,
 ): Promise<ReplaceCodeRequest.ResponsePayload> {
-	return {
-		parameters: {
-			jsCode: '/** code **/',
-		},
-	};
-	// return await makeRestApiRequest(ctx, 'POST', '/ai-proxy/apply-code-diff', payload);
+	return await streamRequest(ctx, '/ai-proxy/v1/chat/apply-suggestion', payload);
 }

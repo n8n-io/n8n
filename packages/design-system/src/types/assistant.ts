@@ -2,9 +2,14 @@ export namespace ChatUI {
 	export interface TextMessage {
 		role: 'assistant' | 'user';
 		type: 'text';
-		title?: string;
 		content: string;
-		streaming?: boolean;
+	}
+
+	export interface SummaryBlock {
+		role: 'assistant';
+		type: 'summary';
+		title: string;
+		content: string;
 	}
 
 	interface CodeDiffMessage {
@@ -35,7 +40,7 @@ export namespace ChatUI {
 	}
 
 	export type AssistantMessage =
-		| ((TextMessage | CodeDiffMessage) & {
+		| ((TextMessage | CodeDiffMessage | SummaryBlock) & {
 				quickReplies?: QuickReply[];
 		  })
 		| ErrorMessage

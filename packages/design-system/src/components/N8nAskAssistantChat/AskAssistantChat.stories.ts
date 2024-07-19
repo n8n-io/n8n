@@ -54,11 +54,11 @@ Chat.args = {
 			quickReplies: [
 				{
 					type: 'new-suggestion',
-					label: 'Give me another solution',
+					content: 'Give me another solution',
 				},
 				{
 					type: 'resolved',
-					label: 'All good',
+					content: 'All good',
 				},
 			],
 		},
@@ -68,7 +68,7 @@ Chat.args = {
 			content: 'Give it to me **ignore this markdown**',
 		},
 		{
-			type: 'text',
+			type: 'summary',
 			role: 'assistant',
 			title: 'Credential doesn’t have correct permissions to send a message',
 			content:
@@ -85,11 +85,11 @@ Chat.args = {
 			quickReplies: [
 				{
 					type: 'new-suggestion',
-					label: 'Give me another solution',
+					content: 'Give me another solution',
 				},
 				{
 					type: 'resolved',
-					label: 'All good',
+					content: 'All good',
 				},
 			],
 			suggestionId: 'test',

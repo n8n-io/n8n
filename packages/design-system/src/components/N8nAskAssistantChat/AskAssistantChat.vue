@@ -84,7 +84,7 @@ function onSendMessage() {
 						<span v-if="message.role === 'assistant'">AI Assistant</span>
 						<span v-else>You</span>
 					</div>
-					<div v-if="message.type === 'text' && message.title">
+					<div v-if="message.type === 'summary'">
 						<div :class="$style.block">
 							<div :class="$style.blockTitle">{{ message.title }}</div>
 							<div :class="$style.blockBody" v-html="md.render(message.content)"></div>
