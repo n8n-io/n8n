@@ -39,10 +39,11 @@ export namespace ChatUI {
 		content: string;
 	}
 
-	export type AssistantMessage =
-		| ((TextMessage | CodeDiffMessage | SummaryBlock) & {
-				quickReplies?: QuickReply[];
-		  })
-		| ErrorMessage
-		| EndSessionMessage;
+	type MessagesWithReplies = (TextMessage | CodeDiffMessage | SummaryBlock) & {
+		quickReplies?: QuickReply[];
+	};
+
+	export type AssistantMessage = (MessagesWithReplies | ErrorMessage | EndSessionMessage) & {
+		id: string;
+	};
 }

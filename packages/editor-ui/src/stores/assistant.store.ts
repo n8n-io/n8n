@@ -60,12 +60,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 	}
 
-	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], i: number) {
-		console.log('assistant', assistantMessages);
-		const messages = chatMessages.value.slice(0, i);
+	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
+		const messages = [...chatMessages.value].filter(
+			(msg) => !(msg.id === id && msg.role === 'assistant'),
+		);
 		assistantMessages.forEach((message) => {
 			if (message.type === 'message') {
 				messages.push({
+					id,
 					type: 'text',
 					role: 'assistant',
 					content: message.content,
@@ -73,6 +75,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				});
 			} else if (message.type === 'code-diff') {
 				messages.push({
+					id,
 					role: 'assistant',
 					type: 'code-diff',
 					description: message.description,
@@ -82,6 +85,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				});
 			} else if (message.type === 'summary') {
 				messages.push({
+					id,
 					type: 'block',
 					role: 'assistant',
 					title: message.title,
@@ -116,44 +120,52 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		streaming.value = false;
 	}
 
-	function addAssistantError(content: string) {
+	function addAssistantError(content: string, id: string) {
 		chatMessages.value.push({
+			id,
 			role: 'assistant',
 			type: 'error',
 			content,
 		});
 	}
 
-	function addEmptyAssistantMessage() {
+	function addEmptyAssistantMessage(id: string) {
 		chatMessages.value.push({
+			id,
 			role: 'assistant',
 			type: 'text',
 			content: '',
 		});
 	}
 
-	function addUserMessage(content: string) {
+	function addUserMessage(content: string, id: string) {
 		chatMessages.value.push({
+			id,
 			role: 'user',
 			type: 'text',
 			content,
 		});
 	}
 
-	function handleServiceError(e: unknown) {
+	function handleServiceError(e: unknown, id: string) {
 		assert(e instanceof Error);
 		stopStreaming();
-		addAssistantError(`There was an error reaching the service: (${e.message})`);
+		addAssistantError(`There was an error reaching the service: (${e.message})`, id);
 	}
 
-	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, i: number) {
+	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId) {
 			currentSessionId.value = response.sessionId;
 		}
-		addAssistantMessages(response.messages, i);
+		addAssistantMessages(response.messages, id);
+	}
+
+	function getRandomId() {
+		return `${Math.floor(Math.random() * 10000)}`;
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
+		const id = getRandomId();
 		try {
 			if (isNodeErrorActive(context)) {
 				return;
@@ -161,8 +173,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			clearMessages();
 			chatSessionError.value = context;
 
-			addEmptyAssistantMessage();
-			const i = chatMessages.value.length;
+			addEmptyAssistantMessage(id);
 			openChat();
 
 			streaming.value = true;
@@ -178,12 +189,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					node: context.node,
 					// executionSchema todo
 				},
-				(msg) => onEachStreamingMessage(msg, i),
+				(msg) => onEachStreamingMessage(msg, id),
 				stopStreaming,
-				handleServiceError,
+				(e) => handleServiceError(e, id),
 			);
 		} catch (e) {
-			handleServiceError(e);
+			handleServiceError(e, id);
 		}
 	}
 
@@ -197,9 +208,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function sendMessage(
 		message: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
 	) {
+		const id = getRandomId();
 		try {
-			addUserMessage(message.text);
-			addEmptyAssistantMessage();
+			addUserMessage(message.text, id);
+			addEmptyAssistantMessage(id);
 			const i = chatMessages.value.length;
 
 			streaming.value = true;
@@ -213,12 +225,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplyType: message.quickReplyType,
 					sessionId: currentSessionId.value,
 				},
-				(msg) => onEachStreamingMessage(msg, i),
+				(msg) => onEachStreamingMessage(msg, id),
 				stopStreaming,
-				handleServiceError,
+				(e) => handleServiceError(e, id),
 			);
 		} catch (e: unknown) {
-			handleServiceError(e);
+			handleServiceError(e, id);
 		}
 	}
 
