@@ -114,11 +114,11 @@ export type Event = {
 
 	'public-api-key-created':
 		| { user: UserLike } // audit
-		| { userId: string; publicApi: boolean }; // telemetry
+		| { user: UserLike; publicApi: boolean }; // telemetry
 
 	'public-api-key-deleted':
 		| { user: UserLike } // audit
-		| { userId: string; publicApi: boolean }; // telemetry
+		| { user: UserLike; publicApi: boolean }; // telemetry
 
 	'email-failed': {
 		user: UserLike;
