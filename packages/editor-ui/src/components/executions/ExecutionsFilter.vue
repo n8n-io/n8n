@@ -43,8 +43,8 @@ const debouncedEmit = debounce(emit, {
 });
 
 const isCustomDataFilterTracked = ref(false);
-const isAdvancedExecutionFilterEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
+const isAdvancedExecutionFilterEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
 const showTags = computed(() => false);
 

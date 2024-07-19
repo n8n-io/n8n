@@ -49,7 +49,14 @@ describe('External Secrets Manager', () => {
 		});
 		license.isExternalSecretsEnabled.mockReturnValue(true);
 		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
-		manager = new ExternalSecretsManager(mock(), settingsRepo, license, providersMock, cipher);
+		manager = new ExternalSecretsManager(
+			mock(),
+			settingsRepo,
+			license,
+			providersMock,
+			cipher,
+			mock(),
+		);
 	});
 
 	afterEach(() => {

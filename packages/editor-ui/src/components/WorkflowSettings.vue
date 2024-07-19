@@ -478,7 +478,7 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		isSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		workflowOwnerName(): string {
 			const fallback = this.$locale.baseText(

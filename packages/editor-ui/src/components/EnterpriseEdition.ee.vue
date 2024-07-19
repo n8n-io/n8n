@@ -23,7 +23,7 @@ export default defineComponent({
 		...mapStores(useSettingsStore),
 		canAccess(): boolean {
 			return this.features.reduce((acc: boolean, feature) => {
-				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled(feature);
+				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled[feature];
 			}, true);
 		},
 	},

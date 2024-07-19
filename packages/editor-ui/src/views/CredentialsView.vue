@@ -169,9 +169,8 @@ export default defineComponent({
 		},
 		async initialize() {
 			this.loading = true;
-			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.Variables,
-			);
+			const isVarsEnabled =
+				useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(

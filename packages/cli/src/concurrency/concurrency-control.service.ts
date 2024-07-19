@@ -8,7 +8,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
@@ -29,7 +29,7 @@ export class ConcurrencyControlService {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly telemetry: Telemetry,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {
 		this.productionLimit = config.getEnv('executions.concurrency.productionLimit');
 
@@ -63,7 +63,7 @@ export class ConcurrencyControlService {
 
 		this.productionQueue.on('execution-throttled', ({ executionId }: { executionId: string }) => {
 			this.log('Execution throttled', { executionId });
-			this.eventRelay.emit('execution-throttled', { executionId });
+			this.eventService.emit('execution-throttled', { executionId });
 		});
 
 		this.productionQueue.on('execution-released', async (executionId: string) => {

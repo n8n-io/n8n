@@ -26,7 +26,7 @@ import type {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { License } from '@/License';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
@@ -42,18 +42,18 @@ export class InternalHooks {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		eventsService: EventsService,
+		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
 			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstWorkflowDataLoad',
 			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
@@ -755,33 +755,5 @@ export class InternalHooks {
 		credential_id?: string;
 	}): Promise<void> {
 		return await this.telemetry.track('Workflow first data fetched', data);
-	}
-
-	/**
-	 * License
-	 */
-	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
-		await this.telemetry.track('Instance attempted to refresh license', data);
-	}
-
-	/**
-	 * Audit
-	 */
-	async onAuditGeneratedViaCli() {
-		return await this.telemetry.track('Instance generated security audit via CLI command');
-	}
-
-	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
-		return await this.telemetry.track('User created variable', createData);
-	}
-
-	async onExternalSecretsProviderSettingsSaved(saveData: {
-		user_id?: string | undefined;
-		vault_type: string;
-		is_valid: boolean;
-		is_new: boolean;
-		error_message?: string | undefined;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated external secrets settings', saveData);
 	}
 }

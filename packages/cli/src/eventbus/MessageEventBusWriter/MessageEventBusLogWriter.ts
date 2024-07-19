@@ -7,7 +7,6 @@ import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
 import remove from 'lodash/remove';
-import config from '@/config';
 import type { EventMessageGenericOptions } from '../EventMessageClasses/EventMessageGeneric';
 import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
@@ -29,6 +28,7 @@ import { once as eventOnce } from 'events';
 import { inTest } from '@/constants';
 import { Logger } from '@/Logger';
 import Container from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -59,10 +59,13 @@ export class MessageEventBusLogWriter {
 
 	private readonly logger: Logger;
 
+	private readonly globalConfig: GlobalConfig;
+
 	private _worker: Worker | undefined;
 
 	constructor() {
 		this.logger = Container.get(Logger);
+		this.globalConfig = Container.get(GlobalConfig);
 	}
 
 	public get worker(): Worker | undefined {
@@ -83,12 +86,13 @@ export class MessageEventBusLogWriter {
 			MessageEventBusLogWriter.options = {
 				logFullBasePath: path.join(
 					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
-					options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
+					options?.logBaseName ?? Container.get(GlobalConfig).eventBus.logWriter.logBaseName,
 				),
 				keepNumberOfFiles:
-					options?.keepNumberOfFiles ?? config.getEnv('eventBus.logWriter.keepLogCount'),
+					options?.keepNumberOfFiles ?? Container.get(GlobalConfig).eventBus.logWriter.keepLogCount,
 				maxFileSizeInKB:
-					options?.maxFileSizeInKB ?? config.getEnv('eventBus.logWriter.maxFileSizeInKB'),
+					options?.maxFileSizeInKB ??
+					Container.get(GlobalConfig).eventBus.logWriter.maxFileSizeInKB,
 			};
 			await MessageEventBusLogWriter.instance.startThread();
 		}
@@ -181,7 +185,7 @@ export class MessageEventBusLogWriter {
 			sentMessages: [],
 			unfinishedExecutions: {},
 		};
-		const configLogCount = config.get('eventBus.logWriter.keepLogCount');
+		const configLogCount = this.globalConfig.eventBus.logWriter.keepLogCount;
 		const logCount = logHistory ? Math.min(configLogCount, logHistory) : configLogCount;
 		for (let i = logCount; i >= 0; i--) {
 			const logFileName = this.getLogFileName(i);
@@ -282,7 +286,7 @@ export class MessageEventBusLogWriter {
 		logHistory?: number,
 	): Promise<EventMessageTypes[]> {
 		const result: EventMessageTypes[] = [];
-		const configLogCount = config.get('eventBus.logWriter.keepLogCount');
+		const configLogCount = this.globalConfig.eventBus.logWriter.keepLogCount;
 		const logCount = logHistory ? Math.min(configLogCount, logHistory) : configLogCount;
 		for (let i = 0; i < logCount; i++) {
 			const logFileName = this.getLogFileName(i);

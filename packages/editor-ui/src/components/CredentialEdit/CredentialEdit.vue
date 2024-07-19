@@ -775,7 +775,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	};
 
 	if (
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing] &&
 		credentialData.value.sharedWithProjects
 	) {
 		credentialDetails.sharedWithProjects = credentialData.value
@@ -812,7 +812,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			type: 'success',
 		});
 	} else {
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
 				.sharedWithProjects as ProjectSharingData[];
 		}

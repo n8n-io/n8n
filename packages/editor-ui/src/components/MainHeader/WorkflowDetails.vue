@@ -7,6 +7,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -204,7 +205,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory);
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
@@ -450,7 +451,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
 						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: /^http[s]?:\/\/.*\.json$/i,
+						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
 					},
 				);
 
@@ -718,6 +719,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					:disabled="
 						isWorkflowSaving || readOnly || (!isNewWorkflow && !workflowPermissions.update)
 					"
+					:is-saving="isWorkflowSaving"
 					:with-shortcut="!readOnly && workflowPermissions.update"
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
