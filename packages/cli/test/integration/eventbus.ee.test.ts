@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
@@ -28,6 +27,7 @@ import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
+import { GlobalConfig } from '@n8n/config';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -92,8 +92,9 @@ beforeAll(async () => {
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
-	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', 1);
+	mockInstance(GlobalConfig, {
+		eventBus: { logWriter: { logBaseName: 'n8n-test-logwriter', keepLogCount: 1 } },
+	});
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
