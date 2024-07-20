@@ -37,6 +37,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}>({});
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
+	const currentSessionActiveExecutionId = ref<string | undefined>();
 
 	const canShowAssistant = computed(
 		() =>
@@ -102,13 +103,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function isNodeErrorActive(context: ChatRequest.ErrorContext) {
-		return false;
 		const targetNode = context.node.name;
-		const errorMessage = context.error.message;
 
 		return (
-			targetNode === chatSessionError.value?.node.name &&
-			errorMessage === chatSessionError.value?.error.message
+			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
+			targetNode === chatSessionError.value?.node.name
 		);
 	}
 
@@ -172,6 +171,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 			clearMessages();
 			chatSessionError.value = context;
+			if (workflowsStore.activeExecutionId) {
+				currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
+			}
 
 			addEmptyAssistantMessage(id);
 			openChat();
