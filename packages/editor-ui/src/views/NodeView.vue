@@ -757,6 +757,11 @@ export default defineComponent({
 				this.workflowsStore.getWorkflowById(this.currentWorkflow)?.scopes,
 			).workflow;
 		},
+		projectPermissions() {
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
+		},
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
@@ -4582,7 +4587,7 @@ export default defineComponent({
 		},
 		readOnlyEnvRouteCheck() {
 			if (
-				(this.readOnlyEnv || !this.workflowPermissions.create) &&
+				(this.readOnlyEnv || !this.projectPermissions.workflow.create) &&
 				(this.$route.name === VIEWS.NEW_WORKFLOW || this.$route.name === VIEWS.TEMPLATE_IMPORT)
 			) {
 				void this.$nextTick(async () => {
