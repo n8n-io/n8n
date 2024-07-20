@@ -102,8 +102,7 @@
 				:read-only="
 					isReadOnlyRoute ||
 					readOnlyEnv ||
-					!workflowPermissions.update ||
-					!projectPermissions.workflow.update
+					!(workflowPermissions.update || projectPermissions.workflow.update)
 				"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
