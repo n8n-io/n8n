@@ -120,7 +120,7 @@ const diffs = computed(() => {
 					size="mini"
 					icon="undo"
 					:class="$style.undoButton"
-					@undo="() => emit('undo')"
+					@click="() => emit('undo')"
 					>Undo</n8n-button
 				>
 				<n8n-icon icon="check" color="success" :class="$style.infoIcon" />

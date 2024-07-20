@@ -2,6 +2,28 @@ import type { IRestApiContext } from '@/Interface';
 import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { jsonParse } from 'n8n-workflow';
 
+export const postFetch = async (
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+): Promise<object> => {
+	const headers = {
+		'Content-Type': 'application/json',
+	};
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	});
+
+	if (response.ok && response.body) {
+		return await response.json();
+	} else {
+		throw new Error(response.statusText);
+	}
+};
+
 export const streamRequest = async (
 	context: IRestApiContext,
 	apiEndpoint: string,
@@ -72,5 +94,7 @@ export async function replaceCode(
 	ctx: IRestApiContext,
 	payload: ReplaceCodeRequest.RequestPayload,
 ): Promise<ReplaceCodeRequest.ResponsePayload> {
-	return await streamRequest(ctx, '/ai-proxy/v1/chat/apply-suggestion', payload);
+	const data = await postFetch(ctx, '/ai-proxy/v1/chat/apply-suggestion', payload);
+
+	return data as unknown as ReplaceCodeRequest.ResponsePayload;
 }

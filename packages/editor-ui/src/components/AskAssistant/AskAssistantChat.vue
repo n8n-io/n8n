@@ -29,7 +29,7 @@ async function onCodeReplace(index: number) {
 	await assistantStore.applyCodeDiff(index);
 }
 
-async function applyCodeDiff(index: number) {
+async function undoCodeDiff(index: number) {
 	await assistantStore.undoCodeDiff(index);
 }
 </script>
@@ -54,8 +54,8 @@ async function applyCodeDiff(index: number) {
 					:streaming="assistantStore.streaming"
 					@close="() => assistantStore.closeChat()"
 					@message="onUserMessage"
-					@codeReplace="onCodeReplace"
-					@codeUndo="onCodeUndo"
+					@code-replace="onCodeReplace"
+					@code-undo="undoCodeDiff"
 				/>
 			</div>
 		</n8n-resize-wrapper>

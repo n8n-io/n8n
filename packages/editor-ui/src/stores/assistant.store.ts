@@ -264,20 +264,27 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replacing = true;
 			const suggestionId = codeDiffMessage.suggestionId;
-			const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
-				suggestionId: codeDiffMessage.suggestionId,
-				sessionId: currentSessionId.value,
-			});
 
 			const currentWorkflow = workflowsStore.getCurrentWorkflow();
 			const activeNode = currentWorkflow.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
-			suggestions.value[suggestionId] = {
-				previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
-				suggested,
-			};
-			updateParameters(activeNode.name, suggested);
+			const cached = suggestions.value[suggestionId];
+			if (cached) {
+				updateParameters(activeNode.name, cached);
+			} else {
+				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
+					suggestionId: codeDiffMessage.suggestionId,
+					sessionId: currentSessionId.value,
+				});
+
+				suggestions.value[suggestionId] = {
+					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
+					suggested,
+				};
+				console.log('replace', activeNode.name, suggested);
+				updateParameters(activeNode.name, suggested);
+			}
 
 			codeDiffMessage.replaced = true;
 		} catch (e) {
@@ -288,7 +295,35 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function undoCodeDiff(index: number) {
-		// todo
+		const codeDiffMessage = chatMessages.value[index];
+		if (!codeDiffMessage || codeDiffMessage.type !== 'code-diff') {
+			throw new Error('No code diff to apply');
+		}
+
+		try {
+			assert(chatSessionError.value);
+			assert(currentSessionId.value);
+
+			codeDiffMessage.replacing = true;
+			const suggestionId = codeDiffMessage.suggestionId;
+
+			const suggestion = suggestions.value[suggestionId];
+			assert(suggestion);
+
+			const currentWorkflow = workflowsStore.getCurrentWorkflow();
+			const activeNode = currentWorkflow.getNode(chatSessionError.value.node.name);
+			assert(activeNode);
+
+			const suggested = suggestion.previous;
+			console.log('undo', activeNode.name, suggested);
+			updateParameters(activeNode.name, suggested);
+
+			codeDiffMessage.replaced = false;
+		} catch (e) {
+			console.error(e);
+			codeDiffMessage.error = true;
+		}
+		codeDiffMessage.replacing = false;
 	}
 
 	return {
