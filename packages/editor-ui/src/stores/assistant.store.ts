@@ -165,39 +165,35 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
-		try {
-			if (isNodeErrorActive(context)) {
-				return;
-			}
-			clearMessages();
-			chatSessionError.value = context;
-			if (workflowsStore.activeExecutionId) {
-				currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
-			}
-
-			addEmptyAssistantMessage(id);
-			openChat();
-
-			streaming.value = true;
-			chatWithAssistant(
-				rootStore.restApiContext,
-				{
-					role: 'user',
-					type: 'init-error-helper',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					error: context.error,
-					node: context.node,
-					// executionSchema todo
-				},
-				(msg) => onEachStreamingMessage(msg, id),
-				stopStreaming,
-				(e) => handleServiceError(e, id),
-			);
-		} catch (e) {
-			handleServiceError(e, id);
+		if (isNodeErrorActive(context)) {
+			return;
 		}
+		clearMessages();
+		chatSessionError.value = context;
+		if (workflowsStore.activeExecutionId) {
+			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
+		}
+
+		addEmptyAssistantMessage(id);
+		openChat();
+
+		streaming.value = true;
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				role: 'user',
+				type: 'init-error-helper',
+				user: {
+					firstName: usersStore.currentUser?.firstName ?? '',
+				},
+				error: context.error,
+				node: context.node,
+				// executionSchema todo
+			},
+			(msg) => onEachStreamingMessage(msg, id),
+			stopStreaming,
+			(e) => handleServiceError(e, id),
+		);
 	}
 
 	// async function sendEvent(eventName: ChatRequest.InteractionEventName) {
@@ -214,7 +210,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		try {
 			addUserMessage(message.text, id);
 			addEmptyAssistantMessage(id);
-			const i = chatMessages.value.length;
 
 			streaming.value = true;
 			assert(currentSessionId.value);
@@ -232,6 +227,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(e) => handleServiceError(e, id),
 			);
 		} catch (e: unknown) {
+			// in case of assert
 			handleServiceError(e, id);
 		}
 	}
