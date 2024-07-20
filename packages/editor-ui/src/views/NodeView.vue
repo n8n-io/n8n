@@ -47,7 +47,12 @@
 						v-for="nodeData in nodesToRender"
 						:key="`${nodeData.id}_node`"
 						:name="nodeData.name"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!workflowPermissions.update ||
+							!projectPermissions.workflow.update
+						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === nodeData.name"
 						:hide-actions="pullConnActive"
@@ -75,7 +80,12 @@
 						:key="`${stickyData.id}_sticky`"
 						:name="stickyData.name"
 						:workflow="currentWorkflowObject"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!workflowPermissions.update ||
+							!projectPermissions.workflow.update
+						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === stickyData.name"
 						:node-view-scale="nodeViewScale"
@@ -90,7 +100,12 @@
 			</div>
 			<NodeDetailsView
 				:workflow-object="currentWorkflowObject"
-				:read-only="isReadOnlyRoute || readOnlyEnv || !workflowPermissions.update"
+				:read-only="
+					isReadOnlyRoute ||
+					readOnlyEnv ||
+					!workflowPermissions.update ||
+					!projectPermissions.workflow.update
+				"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@redraw-node="redrawNode"
@@ -107,7 +122,11 @@
 			</Suspense>
 			<Suspense>
 				<NodeCreation
-					v-if="!isReadOnlyRoute && !readOnlyEnv && workflowPermissions.update"
+					v-if="
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						(workflowPermissions.update || projectPermissions.workflow.update)
+					"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
 					@toggle-node-creator="onToggleNodeCreator"
@@ -121,7 +140,11 @@
 				<ContextMenu @action="onContextMenuAction" />
 			</Suspense>
 			<div
-				v-if="!isReadOnlyRoute && !readOnlyEnv && workflowPermissions.update"
+				v-if="
+					!isReadOnlyRoute &&
+					!readOnlyEnv &&
+					(workflowPermissions.update || projectPermissions.workflow.update)
+				"
 				class="workflow-execute-wrapper"
 			>
 				<span
@@ -602,7 +625,7 @@ export default defineComponent({
 				!this.containsTrigger &&
 				!this.isDemo &&
 				!this.readOnlyEnv &&
-				!!this.workflowPermissions.update
+				(!!this.workflowPermissions.update || !!this.projectPermissions.workflow.update)
 			);
 		},
 		lastSelectedNode(): INodeUi | null {
