@@ -12,6 +12,7 @@ import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
 import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+import { useMessage } from '@/composables/useMessage';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -28,6 +29,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
+	const message = useMessage();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -165,9 +167,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
-		if (isNodeErrorActive(context)) {
-			return;
+		if (chatSessionError.value) {
+			if (isNodeErrorActive(context)) {
+				// context has not changed
+				return;
+			}
+
+			// todo localization
+			await message.confirm(
+				'You already have an active AI Assistant session. Starting a new session will clear your current conversation history. Are you sure you want to start a new session?',
+				'Start new AI Assistant session?',
+				{
+					confirmButtonText: 'Start new session',
+				},
+			);
 		}
+
 		clearMessages();
 		chatSessionError.value = context;
 		if (workflowsStore.activeExecutionId) {
