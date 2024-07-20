@@ -82,7 +82,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setReadOnly = (readOnly: boolean) => {
 		if (jsPlumbInstanceRef.value) {
-			jsPlumbInstanceRef.value.elementsDraggable = readOnly;
+			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
 			jsPlumbInstanceRef.value.setDragConstrainFunction(((pos: PointXY) =>
 				readOnly ? null : pos) as ConstrainFunction);
 		}
