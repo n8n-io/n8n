@@ -182,7 +182,7 @@ describe('Owner shell', () => {
 		expect(response.body.data.apiKey).not.toEqual(ownerShell.apiKey);
 	});
 
-	test('DELETE /me/api-key should fetch the api key', async () => {
+	test('DELETE /me/api-key should delete the api key', async () => {
 		const response = await authOwnerShellAgent.delete('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
@@ -327,14 +327,14 @@ describe('Member', () => {
 		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
 	});
 
-	test('GET /me/api-key should fetch the api key', async () => {
+	test('GET /me/api-key should fetch the api key redacted', async () => {
 		const response = await testServer.authAgentFor(member).get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toEqual(member.apiKey);
+		expect(response.body.data.apiKey).not.toEqual(member.apiKey);
 	});
 
-	test('DELETE /me/api-key should fetch the api key', async () => {
+	test('DELETE /me/api-key should delete the api key', async () => {
 		const response = await testServer.authAgentFor(member).delete('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
