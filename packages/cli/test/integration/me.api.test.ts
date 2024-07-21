@@ -175,11 +175,11 @@ describe('Owner shell', () => {
 		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
 	});
 
-	test('GET /me/api-key should fetch the api key', async () => {
+	test('GET /me/api-key should fetch the api key redacted', async () => {
 		const response = await authOwnerShellAgent.get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
+		expect(response.body.data.apiKey).not.toEqual(ownerShell.apiKey);
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
