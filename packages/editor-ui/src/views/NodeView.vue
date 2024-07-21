@@ -83,7 +83,7 @@
 							isReadOnlyRoute ||
 							readOnlyEnv ||
 							!workflowPermissions.update ||
-							!projectPermissions.workflow.update
+							!(projectPermissions.workflow.update || projectPermissions.workflow.update)
 						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === stickyData.name"
