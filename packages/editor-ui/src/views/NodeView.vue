@@ -779,9 +779,10 @@ export default defineComponent({
 			).workflow;
 		},
 		projectPermissions() {
-			return getResourcePermissions(
-				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
-			);
+			const project = this.$route.query?.projectId
+				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
+				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+			return getResourcePermissions(project?.scopes);
 		},
 	},
 	watch: {
@@ -3700,7 +3701,7 @@ export default defineComponent({
 			}
 
 			this.historyStore.reset();
-			if (!this.workflowPermissions.update) {
+			if (!(this.workflowPermissions.update || this.projectPermissions.workflow.update)) {
 				this.canvasStore.setReadOnly(true);
 			}
 			this.uiStore.nodeViewInitialized = true;
