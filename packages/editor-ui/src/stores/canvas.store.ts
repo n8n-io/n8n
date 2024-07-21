@@ -74,12 +74,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		() => lastSelectedConnection.value,
 	);
 
-	watch(readOnlyEnv, (readOnly) => {
-		if (jsPlumbInstanceRef.value) {
-			setReadOnly(!readOnly);
-		}
-	});
-
 	const setReadOnly = (readOnly: boolean) => {
 		if (jsPlumbInstanceRef.value) {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
@@ -327,6 +321,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 	}
 
 	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
+
+	watch(readOnlyEnv, setReadOnly);
+
 	return {
 		isDemo,
 		nodeViewScale,
