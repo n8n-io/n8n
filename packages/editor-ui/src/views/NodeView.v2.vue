@@ -148,6 +148,7 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	revertAddNode,
 	createConnection,
 	deleteConnection,
 	revertDeleteConnection,
@@ -802,6 +803,10 @@ async function onAddNodesAndConnections(
 	uiStore.resetLastInteractedWith();
 }
 
+async function onRevertAddNode({ node }: { node: INodeUi }) {
+	await revertAddNode(node.name);
+}
+
 async function onSwitchActiveNode(nodeName: string) {
 	setNodeActiveByName(nodeName);
 }
@@ -972,7 +977,7 @@ const chatTriggerNodePinnedData = computed(() => {
 
 function addUndoRedoEventBindings() {
 	// historyBus.on('nodeMove', onMoveNode);
-	// historyBus.on('revertAddNode', onRevertAddNode);
+	historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
 	// historyBus.on('revertAddConnection', onRevertAddConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
@@ -982,7 +987,7 @@ function addUndoRedoEventBindings() {
 
 function removeUndoRedoEventBindings() {
 	// historyBus.off('nodeMove', onMoveNode);
-	// historyBus.off('revertAddNode', onRevertAddNode);
+	historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
 	// historyBus.off('revertAddConnection', onRevertAddConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);

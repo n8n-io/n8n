@@ -490,6 +490,15 @@ export function useCanvasOperations({
 		return nodeData;
 	}
 
+	async function revertAddNode(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		deleteNode(node.id);
+	}
+
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
 		const lastInteractedWithNode = uiStore.lastInteractedWithNode;
 		if (!lastInteractedWithNode) {
@@ -1590,6 +1599,7 @@ export function useCanvasOperations({
 		triggerNodes,
 		addNodes,
 		addNode,
+		revertAddNode,
 		updateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
