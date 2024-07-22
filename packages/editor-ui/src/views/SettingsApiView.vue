@@ -50,7 +50,7 @@
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
-						:redact-value="false"
+						:redact-value="true"
 						@copy="onCopy"
 					/>
 				</div>
