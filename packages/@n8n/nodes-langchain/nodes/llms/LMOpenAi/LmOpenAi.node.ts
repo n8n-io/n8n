@@ -9,7 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
@@ -28,6 +27,7 @@ export class LmOpenAi implements INodeType {
 		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
+		hidden: true,
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
@@ -65,7 +65,13 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					'This node is using OpenAI completions which are now deprecated. Please use the OpenAI Chat Model node instead.',
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
