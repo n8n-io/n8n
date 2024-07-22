@@ -1164,7 +1164,6 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				toast.showError(e, i18n.baseText('openWorkflow.workflowImportError'));
 			}
 		} else if (json && json.command === 'openExecution') {
-			console.log('json', json);
 			try {
 				// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
 				// so everything it needs has to be sent using post messages and passed down to child components
