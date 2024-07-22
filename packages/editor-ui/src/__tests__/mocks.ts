@@ -23,6 +23,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 
@@ -34,6 +35,7 @@ export const mockNode = ({
 	disabled = false,
 	issues = undefined,
 	typeVersion = 1,
+	parameters = {},
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -42,7 +44,8 @@ export const mockNode = ({
 	disabled?: INodeUi['disabled'];
 	issues?: INodeIssues;
 	typeVersion?: INodeUi['typeVersion'];
-}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion });
+	parameters?: INodeUi['parameters'];
+}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
 
 export const mockNodeTypeDescription = ({
 	name,
@@ -90,6 +93,7 @@ export const mockNodes = [
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 

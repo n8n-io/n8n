@@ -58,6 +58,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import { getGlobalState } from './GlobalState';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -93,6 +94,8 @@ export class Workflow {
 	active: boolean;
 
 	settings: IWorkflowSettings;
+
+	readonly timezone: string;
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
@@ -151,6 +154,7 @@ export class Workflow {
 		});
 
 		this.settings = parameters.settings || {};
+		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
 	}

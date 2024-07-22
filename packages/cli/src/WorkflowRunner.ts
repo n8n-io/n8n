@@ -16,8 +16,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
+	ExecutionCancelledError,
 	Workflow,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import PCancelable from 'p-cancelable';
@@ -37,7 +37,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
-import { EventRelay } from './eventbus/event-relay.service';
+import { EventService } from './eventbus/event.service';
 
 @Service()
 export class WorkflowRunner {
@@ -53,7 +53,7 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {
 		if (this.executionsMode === 'queue') {
 			this.jobQueue = Container.get(Queue);
@@ -147,7 +147,7 @@ export class WorkflowRunner {
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
 			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
-			this.eventRelay.emit('workflow-pre-execute', { executionId, data });
+			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -166,7 +166,7 @@ export class WorkflowRunner {
 						executionData,
 						data.userId,
 					);
-					this.eventRelay.emit('workflow-post-execute', {
+					this.eventService.emit('workflow-post-execute', {
 						workflowId: data.workflowData.id,
 						workflowName: data.workflowData.name,
 						executionId,
@@ -188,6 +188,7 @@ export class WorkflowRunner {
 					}
 				})
 				.catch((error) => {
+					if (error instanceof ExecutionCancelledError) return;
 					ErrorReporter.error(error);
 					this.logger.error(
 						'There was a problem running internal hook "onWorkflowPostExecute"',
@@ -426,7 +427,7 @@ export class WorkflowRunner {
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
 
-					const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+					const error = new ExecutionCancelledError(executionId);
 					await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
 
 					reject(error);
