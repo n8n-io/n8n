@@ -5,6 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { apiVersion } from '../nodes/Shopify/Const';
+
 export class ShopifyAccessTokenApi implements ICredentialType {
 	name = 'shopifyAccessTokenApi';
 
@@ -42,7 +44,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			displayName: 'API Version',
 			name: 'apiVersion',
 			type: 'hidden',
-			default: '2024-07',
+			default: `${apiVersion}`,
 		},
 	];
 
@@ -57,7 +59,8 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/{{$credentials?.apiVersion}}',
+			baseURL:
+				'=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/{{$credentials?.apiVersion}}',
 			url: '/products.json',
 		},
 	};

@@ -7,6 +7,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { apiVersion } from '../nodes/Shopify/Const';
+
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
 
@@ -50,7 +52,7 @@ export class ShopifyApi implements ICredentialType {
 			displayName: 'API Version',
 			name: 'apiVersion',
 			type: 'hidden',
-			default: '2024-07',
+			default: `${apiVersion}`,
 		},
 	];
 
