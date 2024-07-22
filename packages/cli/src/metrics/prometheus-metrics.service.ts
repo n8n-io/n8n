@@ -11,7 +11,7 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 
-type MetricCategory = 'default' | 'api' | 'cache' | 'logs';
+type MetricCategory = 'default' | 'routes' | 'cache' | 'logs';
 
 @Service()
 export class PrometheusMetricsService {
@@ -27,7 +27,7 @@ export class PrometheusMetricsService {
 	private readonly includes = {
 		metrics: {
 			default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
-			api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
+			routes: config.getEnv('endpoints.metrics.includeApiEndpoints'),
 			cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
 			logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
 		},
@@ -65,6 +65,22 @@ export class PrometheusMetricsService {
 		}
 	}
 
+	enableLabels(labels: string[]) {
+		for (const label of labels as Array<
+			keyof (typeof PrometheusMetricsService)['prototype']['includes']['labels']
+		>) {
+			this.includes.labels[label] = true;
+		}
+	}
+
+	disableAllLabels() {
+		for (const label of Object.keys(this.includes.labels) as Array<
+			keyof (typeof PrometheusMetricsService)['prototype']['includes']['labels']
+		>) {
+			this.includes.labels[label] = false;
+		}
+	}
+
 	/**
 	 * Set up metric for n8n version: `n8n_version_info`
 	 */
@@ -98,7 +114,7 @@ export class PrometheusMetricsService {
 	 * Set up metrics for server routes with `express-prom-bundle`
 	 */
 	private initRouteMetrics(app: express.Application) {
-		if (!this.includes.metrics.api) return;
+		if (!this.includes.metrics.routes) return;
 
 		const metricsMiddleware = promBundle({
 			autoregister: false,
@@ -126,9 +142,23 @@ export class PrometheusMetricsService {
 	private mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
+			const prefixedMetrics = this.addPrefixToMetrics(metrics);
 			res.setHeader('Content-Type', promClient.register.contentType);
-			res.send(metrics).end();
+			res.send(prefixedMetrics).end();
 		});
+	}
+
+	private addPrefixToMetrics(metrics: string) {
+		return metrics
+			.split('\n')
+			.map((rawLine) => {
+				const line = rawLine.trim();
+
+				if (!line || line.startsWith('#') || line.startsWith(this.prefix)) return rawLine;
+
+				return this.prefix + line;
+			})
+			.join('\n');
 	}
 
 	/**
