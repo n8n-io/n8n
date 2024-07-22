@@ -15,6 +15,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type { PinDataSource } from '@/composables/usePinnedData';
+import { isPresent } from '@/utils/typesUtils';
 
 const $style = useCssModule();
 
@@ -79,6 +80,7 @@ const {
 	project,
 	nodes: graphNodes,
 	onPaneReady,
+	findNode,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 useKeybindings({
@@ -135,9 +137,18 @@ function onSetNodeActive(id: string) {
 	emit('update:node:active', id);
 }
 
+function clearSelectedNodes() {
+	removeSelectedNodes(selectedNodes.value);
+}
+
 function onSelectNode() {
 	if (!lastSelectedNode.value) return;
 	emit('update:node:selected', lastSelectedNode.value.id);
+}
+
+function onSelectNodes(ids: string[]) {
+	clearSelectedNodes();
+	addSelectedNodes(ids.map(findNode).filter(isPresent));
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -297,7 +308,7 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'select_all':
 			return addSelectedNodes(graphNodes.value);
 		case 'deselect_all':
-			return removeSelectedNodes(selectedNodes.value);
+			return clearSelectedNodes();
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
 		case 'toggle_pin':
@@ -319,12 +330,16 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('selectNodes', onSelectNodes);
 
-	setReadonly(props.readOnly);
+	if (props.readOnly) {
+		setReadonly(props.readOnly);
+	}
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('selectNodes', onSelectNodes);
 });
 
 onPaneReady(async () => {

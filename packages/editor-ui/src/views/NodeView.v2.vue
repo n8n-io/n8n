@@ -43,12 +43,13 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
 import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -84,6 +85,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
+import { useClipboard } from '@/composables/useClipboard';
 
 const NodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -142,6 +144,9 @@ const {
 	setNodeParameters,
 	deleteNode,
 	deleteNodes,
+	copyNodes,
+	cutNodes,
+	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
 	createConnection,
@@ -157,6 +162,7 @@ const {
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
 const { applyExecutionData } = useExecutionDebugging();
+useClipboard({ onPaste: onClipboardPaste });
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -211,11 +217,11 @@ async function initializeData() {
 			credentialsStore.fetchCredentialTypes(true),
 		];
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 			promises.push(environmentsStore.fetchAllVariables());
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 
@@ -476,16 +482,76 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-function onCopyNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCopyNodes(ids: string[]) {
+	await copyNodes(ids);
+
+	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
 
-function onCutNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onClipboardPaste(plainTextData: string): Promise<void> {
+	if (getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW) {
+		return;
+	}
+
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	let workflowData: IWorkflowDataUpdate | null | undefined = null;
+
+	// Check if it is an URL which could contain workflow data
+	if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
+		const importConfirm = await message.confirm(
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
+				interpolate: { plainTextData },
+			}),
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
+				),
+				dangerouslyUseHTMLString: true,
+			},
+		);
+
+		if (importConfirm !== MODAL_CONFIRM) {
+			return;
+		}
+
+		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
+	} else {
+		// Pasted data is is possible workflow data
+		workflowData = jsonParse<IWorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
+	}
+
+	if (!workflowData) {
+		return;
+	}
+
+	const result = await importWorkflowData(workflowData, 'paste', false);
+	selectNodes(result.nodes?.map((node) => node.id) ?? []);
 }
 
-function onDuplicateNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCutNodes(ids: string[]) {
+	if (isCanvasReadOnly.value) {
+		await copyNodes(ids);
+	} else {
+		await cutNodes(ids);
+	}
+}
+
+async function onDuplicateNodes(ids: string[]) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	const newIds = await duplicateNodes(ids);
+
+	selectNodes(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -497,7 +563,30 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	await workflowHelpers.saveCurrentWorkflow();
+	const saved = await workflowHelpers.saveCurrentWorkflow();
+	if (saved) {
+		canvasEventBus.emit('saved:workflow');
+	}
+}
+
+function addWorkflowSavedEventBindings() {
+	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
+}
+
+function removeWorkflowSavedEventBindings() {
+	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
+}
+
+async function onSaveFromWithinNDV() {
+	if (ndvStore.activeNodeName) {
+		toast.showMessage({
+			title: i18n.baseText('generic.workflowSaved'),
+			type: 'success',
+		});
+	}
 }
 
 async function onCreateWorkflow() {
@@ -644,9 +733,11 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
-	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+	const workflowData = data.data as IWorkflowDataUpdate;
+	await importWorkflowData(workflowData, 'file');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -658,6 +749,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	await importWorkflowData(workflowData, 'url');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -969,20 +1061,6 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 /**
- * Keyboard
- */
-
-function addKeyboardEventBindings() {
-	// document.addEventListener('keydown', this.keyDown);
-	// document.addEventListener('keyup', this.keyUp);
-}
-
-function removeKeyboardEventBindings() {
-	// document.removeEventListener('keydown', this.keyDown);
-	// document.removeEventListener('keyup', this.keyUp);
-}
-
-/**
  * History events
  */
 
@@ -1057,12 +1135,16 @@ function removePostMessageEventBindings() {
 	window.removeEventListener('message', onPostMessageReceived);
 }
 
-async function onPostMessageReceived(message: MessageEvent) {
-	if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
+async function onPostMessageReceived(messageEvent: MessageEvent) {
+	if (
+		!messageEvent ||
+		typeof messageEvent.data !== 'string' ||
+		!messageEvent.data?.includes?.('"command"')
+	) {
 		return;
 	}
 	try {
-		const json = JSON.parse(message.data);
+		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
 				await importWorkflowExact(json);
@@ -1169,11 +1251,23 @@ function checkIfRouteIsAllowed() {
 async function initializeDebugMode() {
 	if (route.name === VIEWS.EXECUTION_DEBUG) {
 		titleSet(workflowsStore.workflowName, 'DEBUG');
+
 		if (!workflowsStore.isInDebugMode) {
 			await applyExecutionData(route.params.executionId as string);
 			workflowsStore.isInDebugMode = true;
 		}
+
+		canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
 	}
+}
+
+async function onSaveFromWithinExecutionDebug() {
+	if (route.name !== VIEWS.EXECUTION_DEBUG) return;
+
+	await router.replace({
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowId.value },
+	});
 }
 
 /**
@@ -1182,6 +1276,10 @@ async function initializeDebugMode() {
 
 function fitView() {
 	setTimeout(() => canvasEventBus.emit('fitView'));
+}
+
+function selectNodes(ids: string[]) {
+	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
 }
 
 /**
@@ -1318,15 +1416,12 @@ onMounted(async () => {
 
 	addUndoRedoEventBindings();
 	addPostMessageEventBindings();
-	addKeyboardEventBindings();
 	addSourceControlEventBindings();
 	addImportEventBindings();
 	addExecutionOpenedEventBindings();
+	addWorkflowSavedEventBindings();
 
 	registerCustomActions();
-
-	// @TODO Implement this
-	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
 	void externalHooks.run('nodeView.mount').catch(() => {});
@@ -1335,10 +1430,10 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
-	removeKeyboardEventBindings();
 	removeSourceControlEventBindings();
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
+	removeWorkflowSavedEventBindings();
 });
 </script>
 
@@ -1418,10 +1513,10 @@ onBeforeUnmount(() => {
 				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenSelectiveNodeCreator"
+				@save-keyboard-shortcut="onSaveWorkflow"
 			/>
 			<!--
 				:renaming="renamingActive"
-				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			-->
 		</Suspense>
 	</WorkflowCanvas>

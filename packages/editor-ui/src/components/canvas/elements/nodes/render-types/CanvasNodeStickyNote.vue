@@ -7,6 +7,10 @@ import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer/dist/types';
 import type { XYPosition } from '@vue-flow/core';
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
 	move: [position: XYPosition];
@@ -62,6 +66,7 @@ function onDoubleClick(event: MouseEvent) {
 		@resize="onResize"
 	/>
 	<N8nSticky
+		v-bind="$attrs"
 		:id="id"
 		data-test-id="canvas-sticky-note-node"
 		:height="renderOptions.height"

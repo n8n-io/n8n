@@ -26,7 +26,7 @@ import type {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { License } from '@/License';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
@@ -42,18 +42,18 @@ export class InternalHooks {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		eventsService: EventsService,
+		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
 			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstWorkflowDataLoad',
 			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
@@ -502,29 +502,6 @@ export class InternalHooks {
 			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
-	}
-
-	async onUserInvokedApi(userInvokedApiData: {
-		user_id: string;
-		path: string;
-		method: string;
-		api_version: string;
-	}): Promise<void> {
-		return await this.telemetry.track('User invoked API', userInvokedApiData);
-	}
-
-	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key deleted', {
-			user_id: apiKeyDeletedData.user.id,
-			public_api: apiKeyDeletedData.public_api,
-		});
-	}
-
-	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key created', {
-			user_id: apiKeyCreatedData.user.id,
-			public_api: apiKeyCreatedData.public_api,
-		});
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {

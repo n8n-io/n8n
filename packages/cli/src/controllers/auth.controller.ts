@@ -24,7 +24,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController()
 export class AuthController {
@@ -36,7 +36,7 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -93,14 +93,14 @@ export class AuthController {
 
 			this.authService.issueCookie(res, user, req.browserId);
 
-			this.eventRelay.emit('user-logged-in', {
+			this.eventService.emit('user-logged-in', {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
 			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
-		this.eventRelay.emit('user-login-failed', {
+		this.eventService.emit('user-login-failed', {
 			authenticationMethod: usedAuthenticationMethod,
 			userEmail: email,
 			reason: 'wrong credentials',
@@ -180,7 +180,7 @@ export class AuthController {
 		}
 
 		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
-		this.eventRelay.emit('user-invite-email-click', { inviter, invitee });
+		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
 		return { inviter: { firstName, lastName } };
