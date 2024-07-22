@@ -378,10 +378,16 @@ export function useCanvasOperations({
 		options: {
 			dragAndDrop?: boolean;
 			position?: XYPosition;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
 		} = {},
 	) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
+
+		if (options.trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const nodeAddData of nodes) {
 			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
@@ -397,7 +403,7 @@ export function useCanvasOperations({
 						...options,
 						openNDV,
 						isAutoAdd,
-						trackHistory: true,
+						trackHistory: options.trackHistory,
 					},
 				);
 			} catch (error) {
@@ -415,6 +421,10 @@ export function useCanvasOperations({
 		if (lastAddedNode) {
 			// @TODO Figure out what this does and why it's needed
 			updatePositionForNodeWithMultipleInputs(lastAddedNode);
+		}
+
+		if (options.trackBulk) {
+			historyStore.stopRecordingUndo();
 		}
 	}
 
