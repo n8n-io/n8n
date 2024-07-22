@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -48,6 +49,16 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+
+import * as a from 'assert';
+import {
+	DirectedGraph,
+	findCycles,
+	findStartNodes,
+	findSubgraph2,
+	findTriggerForPartialExecution,
+} from './utils';
+import { recreateNodeExecutionStack } from './utils-2';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -284,6 +295,8 @@ export class WorkflowExecute {
 			}
 		}
 
+		console.log(JSON.stringify(nodeExecutionStack, null, 2));
+
 		this.runExecutionData = {
 			startData: {
 				destinationNode,
@@ -303,6 +316,127 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
+	runPartialWorkflow2(
+		workflow: Workflow,
+		runData: IRunData,
+		_startNodes: StartNodeData[],
+		destinationNodeName?: string,
+		pinData?: IPinData,
+	): PCancelable<IRun> {
+		debugger;
+		try {
+			const graph = DirectedGraph.fromWorkflow(workflow);
+
+			if (destinationNodeName === undefined) {
+				throw new ApplicationError('destinationNodeName is undefined');
+			}
+
+			const destinationNode = workflow.getNode(destinationNodeName);
+
+			if (destinationNode === null) {
+				throw new ApplicationError(
+					`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+				);
+			}
+
+			// 1. Find the Trigger
+
+			const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
+
+			if (trigger === undefined) {
+				throw new ApplicationError(
+					'The destination node is not connected to any trigger. Partial executions need a trigger.',
+				);
+			}
+
+			// 2. Find the Subgraph
+
+			// TODO: filter out the branches that connect to other triggers than the one
+			// selected above.
+			const subgraph = findSubgraph2(graph, destinationNode, trigger);
+			//const filteredNodes = findSubgraph(workflow, destinationNode);
+			const filteredNodes = subgraph.getNodes();
+			console.log('filteredNodes', filteredNodes);
+
+			// 3. Find the Start Nodes
+
+			const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+			console.log('startNodes', JSON.stringify(startNodes, null, 2));
+
+			// 4. Detect Cycles
+
+			const cycles = findCycles(workflow);
+
+			// 5. Handle Cycles
+
+			if (cycles.length) {
+				// TODO: handle
+			}
+
+			// 6. Clean Run Data
+
+			// 7. Recreate Execution Stack
+
+			this.status = 'running';
+
+			//_startNodes = startNodes.map((sn) => ({
+			//	name: sn.node.name,
+			//	sourceData: sn.sourceData
+			//		? {
+			//				...sn.sourceData,
+			//				previousNode: sn.sourceData.previousNode.name,
+			//			}
+			//		: null,
+			//}));
+
+			//console.log('_startNodes', _startNodes);
+
+			// Initialize the nodeExecutionStack and waitingExecution with
+			// the data from runData
+			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				recreateNodeExecutionStack(
+					subgraph.toWorkflow({ ...workflow }),
+					startNodes,
+					destinationNode.name,
+					runData,
+					pinData ?? {},
+				);
+
+			//console.log(JSON.stringify(nodeExecutionStack, null, 2));
+
+			// 8. Execute
+
+			this.runExecutionData = {
+				startData: {
+					destinationNode: destinationNodeName,
+					runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+				},
+				resultData: {
+					runData,
+					pinData,
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack,
+					metadata: {},
+					waitingExecution,
+					waitingExecutionSource,
+				},
+			};
+
+			return this.processRunExecutionData(
+				//workflow,
+				subgraph.toWorkflow({
+					...workflow,
+				}),
+			);
+		} catch (error) {
+			console.error(error);
+			throw error;
+		}
 	}
 
 	/**

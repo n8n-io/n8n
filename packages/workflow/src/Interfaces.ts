@@ -2080,6 +2080,7 @@ export interface ISourceData {
 
 export interface StartNodeData {
 	name: string;
+	// TODO: What is this for?
 	sourceData: ISourceData | null;
 }
 
@@ -2226,14 +2227,14 @@ export interface IWorkflowExecuteAdditionalData {
 }
 
 export type WorkflowExecuteMode =
-	| 'cli'
-	| 'error'
+	| 'cli' // unused
+	| 'error' // unused, but maybe used for error workflows
 	| 'integrated'
 	| 'internal'
 	| 'manual'
-	| 'retry'
-	| 'trigger'
-	| 'webhook';
+	| 'retry' // unused
+	| 'trigger' // unused
+	| 'webhook'; // unused
 
 export type WorkflowActivateMode =
 	| 'init'
