@@ -41,8 +41,8 @@ const editMode = ref<Record<string, boolean>>({});
 const loading = ref(false);
 const permissions = getVariablesPermissions(usersStore.currentUser);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 const variablesToResources = computed((): IResource[] =>
