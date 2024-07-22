@@ -52,7 +52,9 @@ describe('Metrics', () => {
 
 		const { version, major, minor, patch } = n8nVersion;
 
-		expect(toLines(response)).toContain(
+		const lines = toLines(response);
+
+		expect(lines).toContain(
 			`n8n_test_version_info{version="v${version}",major="${major}",minor="${minor}",patch="${patch}"} 1`,
 		);
 	});
@@ -180,7 +182,7 @@ describe('Metrics', () => {
 		);
 	});
 
-	it('should return labels in route metrics', async () => {
+	it('should return labels in route metrics if enabled', async () => {
 		/**
 		 * ARrange
 		 */
