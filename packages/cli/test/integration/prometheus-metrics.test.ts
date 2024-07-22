@@ -76,9 +76,10 @@ describe('Metrics', () => {
 		 */
 		expect(response.status).toEqual(200);
 		expect(response.type).toEqual('text/plain');
-		expect(toLines(response)).toContain(
-			'n8n_test_nodejs_heap_space_size_total_bytes{space="read_only"} 0',
-		);
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 	});
 
 	it('should not return default metrics if disabled', async () => {
