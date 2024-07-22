@@ -252,9 +252,7 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
-
-		if (areCommunityPackagesEnabled) {
+		if (Container.get(GlobalConfig).nodes.communityPackages.enabled) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,

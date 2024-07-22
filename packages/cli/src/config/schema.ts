@@ -2,17 +2,8 @@ import path from 'path';
 import convict from 'convict';
 import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
+import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'json-string-array',
-	coerce: (rawStr: string) =>
-		jsonParse<string[]>(rawStr, {
-			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
-		}),
-	validate: ensureStringArray,
-});
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -613,35 +604,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_HOOK_FILES',
-	},
-
-	nodes: {
-		include: {
-			doc: 'Nodes to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_INCLUDE',
-		},
-		exclude: {
-			doc: 'Nodes not to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_EXCLUDE',
-		},
-		errorTriggerType: {
-			doc: 'Node Type to use as Error Trigger',
-			format: String,
-			default: 'n8n-nodes-base.errorTrigger',
-			env: 'NODES_ERROR_TRIGGER_TYPE',
-		},
-		communityPackages: {
-			enabled: {
-				doc: 'Allows you to disable the usage of community packages for nodes',
-				format: Boolean,
-				default: true,
-				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
-			},
-		},
 	},
 
 	logs: {

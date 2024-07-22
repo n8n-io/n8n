@@ -88,15 +88,15 @@ export class InstanceRiskReporter implements RiskReporter {
 		const settings: Record<string, unknown> = {};
 
 		settings.features = {
-			communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			communityPackagesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
 			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
 		};
 
 		settings.nodes = {
-			nodesExclude: config.getEnv('nodes.exclude') ?? 'none',
-			nodesInclude: config.getEnv('nodes.include') ?? 'none',
+			nodesExclude: this.globalConfig.nodes.exclude ?? 'none',
+			nodesInclude: this.globalConfig.nodes.include ?? 'none',
 		};
 
 		settings.telemetry = {

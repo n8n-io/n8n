@@ -72,8 +72,9 @@ import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventService } from './eventbus/event.service';
+import { GlobalConfig } from '@n8n/config';
 
-const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+const ERROR_TRIGGER_TYPE = Container.get(GlobalConfig).nodes.errorTriggerType;
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types

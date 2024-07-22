@@ -16,7 +16,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -35,6 +34,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { Logger } from '@/Logger';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import type { Project } from '@/databases/entities/Project';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class WorkflowExecutionService {
@@ -46,6 +46,7 @@ export class WorkflowExecutionService {
 		private readonly testWebhooks: TestWebhooks,
 		private readonly permissionChecker: PermissionChecker,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async runWorkflow(
@@ -230,7 +231,7 @@ export class WorkflowExecutionService {
 
 			let node: INode;
 			let workflowStartNode: INode | undefined;
-			const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+			const ERROR_TRIGGER_TYPE = this.globalConfig.nodes.errorTriggerType;
 			for (const nodeName of Object.keys(workflowInstance.nodes)) {
 				node = workflowInstance.nodes[nodeName];
 				if (node.type === ERROR_TRIGGER_TYPE) {

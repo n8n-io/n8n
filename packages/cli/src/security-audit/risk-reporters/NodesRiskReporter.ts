@@ -1,7 +1,6 @@
 import * as path from 'path';
 import glob from 'fast-glob';
 import { Service } from 'typedi';
-import config from '@/config';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { getNodeTypes } from '@/security-audit/utils';
 import {
@@ -14,12 +13,14 @@ import {
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class NodesRiskReporter implements RiskReporter {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly communityPackagesService: CommunityPackagesService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async report(workflows: WorkflowEntity[]) {
@@ -85,7 +86,7 @@ export class NodesRiskReporter implements RiskReporter {
 	}
 
 	private async getCommunityNodeDetails() {
-		if (!config.getEnv('nodes.communityPackages.enabled')) return [];
+		if (!this.globalConfig.nodes.communityPackages.enabled) return [];
 
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
