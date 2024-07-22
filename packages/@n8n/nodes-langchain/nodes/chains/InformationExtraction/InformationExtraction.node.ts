@@ -9,7 +9,7 @@ import type {
 import type { JSONSchema7 } from 'json-schema';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { HumanMessage } from '@langchain/core/messages';
 import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
@@ -19,6 +19,9 @@ import {
 	schemaTypeField,
 } from '../../../utils/descriptions';
 import { getTracingConfig } from '../../../utils/tracing';
+import type { AttributeDefinition } from './types';
+import { makeZodSchemaFromAttributes } from './helpers';
+import { OutputParserException } from '@langchain/core/output_parsers';
 
 const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.
@@ -61,13 +64,14 @@ export class InformationExtraction implements INodeType {
 				...schemaTypeField,
 				options: [
 					{
-						name: 'From Names and Descriptions',
-						value: 'fromNamesAndDescriptions',
+						name: 'From Attribute Descriptions',
+						value: 'fromAttributes',
 						description:
-							'Extract specific fields from the text based on the field names and descriptions',
+							'Extract specific attributes from the text based on types and descriptions',
 					} as INodePropertyOptions,
 					...(schemaTypeField.options as INodePropertyOptions[]),
 				],
+				default: 'fromAttributes',
 			},
 			{
 				...jsonSchemaExampleField,
@@ -113,7 +117,7 @@ export class InformationExtraction implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						schemaType: ['fromNamesAndDescriptions'],
+						schemaType: ['fromAttributes'],
 					},
 				},
 				typeOptions: {
@@ -122,15 +126,49 @@ export class InformationExtraction implements INodeType {
 				options: [
 					{
 						name: 'attributes',
-						displayName: 'Attributes',
+						displayName: 'Attribute List',
 						values: [
 							{
-								displayName: 'Attribute',
-								name: 'attribute',
+								displayName: 'Attribute Name',
+								name: 'name',
 								type: 'string',
 								default: '',
 								description: 'Attribute to extract',
 								required: true,
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'Attribute to extract',
+								required: true,
+								options: [
+									{
+										name: 'Boolean',
+										value: 'boolean',
+									},
+									{
+										name: 'Date',
+										value: 'date',
+									},
+									{
+										name: 'Date and Time',
+										value: 'datetime',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
+									{
+										name: 'String',
+										value: 'string',
+									},
+									{
+										name: 'Time',
+										value: 'time',
+									},
+								],
+								default: 'string',
 							},
 							{
 								displayName: 'Description',
@@ -138,11 +176,39 @@ export class InformationExtraction implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'Describe your attribute',
-								required: true,
 							},
 						],
 					},
 				],
+			},
+			{
+				displayName: 'When Attribute Not Found',
+				name: 'notFoundStrategy',
+				type: 'options',
+				description: 'Choose what to do when an attribute is not found',
+				options: [
+					// This will translate in a schema with all attributes being optional
+					{
+						name: 'Skip Attribute and Continue',
+						value: 'emptyAttribute',
+					},
+					// This will translate in a schema with all attributes being required
+					{
+						name: 'Set Object to Empty and Continue',
+						value: 'emptyObject',
+					},
+					// This will translate in a scheme with all attributes being required + throw an exception on the first missing attribute
+					{
+						name: 'Fail',
+						value: 'fail',
+					},
+				],
+				default: 'emptyAttribute',
+				displayOptions: {
+					show: {
+						schemaType: ['fromAttributes'],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -177,26 +243,31 @@ export class InformationExtraction implements INodeType {
 		const options = this.getNodeParameter('options', 0, {}) as {
 			systemPromptTemplate?: string;
 		};
+
 		const schemaType = this.getNodeParameter('schemaType', 0, '') as
-			| 'fromNamesAndDescriptions'
+			| 'fromAttributes'
 			| 'fromJson'
 			| 'manual';
 
+		const notFoundStrategy = this.getNodeParameter('notFoundStrategy', 0, 'emptyAttribute') as
+			| 'emptyAttribute'
+			| 'emptyObject'
+			| 'fail';
+
 		let parser: StructuredOutputParser<z.ZodTypeAny>;
-		if (schemaType === 'fromNamesAndDescriptions') {
-			const attributes = this.getNodeParameter('attributes.attributes', 0, {}) as Array<{
-				attribute: string;
-				description: string;
-			}>;
+		if (schemaType === 'fromAttributes') {
+			const attributes = this.getNodeParameter(
+				'attributes.attributes',
+				0,
+				{},
+			) as AttributeDefinition[];
 
-			const schemaEntries = attributes.map((attr) => [
-				attr.attribute,
-				z.string().describe(attr.description),
-			]);
+			// Make zod schema strict (all attributes required) if notFoundStrategy is not 'emptyAttribute'
+			const strictSchema = notFoundStrategy !== 'emptyAttribute';
 
-			const schema = z.object(Object.fromEntries(schemaEntries));
-
-			parser = StructuredOutputParser.fromZodSchema(schema);
+			parser = StructuredOutputParser.fromZodSchema(
+				makeZodSchemaFromAttributes(attributes, strictSchema),
+			);
 
 			console.log(parser.getFormatInstructions());
 		} else {
@@ -236,9 +307,26 @@ export class InformationExtraction implements INodeType {
 			const prompt = ChatPromptTemplate.fromMessages(messages);
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-			const output = await chain.invoke(messages);
-
-			resultData.push({ json: { output } });
+			try {
+				const output = await chain.invoke(messages);
+				resultData.push({ json: { output } });
+			} catch (e) {
+				console.error(e);
+				// Add special error handling for missing attributes only for the 'fromAttributes' schema type
+				// Catch the error thrown by zod validating the output against generated schema
+				// If the missing attribute strategy is set to 'emptyObject', return an empty object
+				if (
+					schemaType === 'fromAttributes' &&
+					e instanceof OutputParserException &&
+					e.message?.startsWith('Failed to parse') &&
+					notFoundStrategy === 'emptyObject'
+				) {
+					resultData.push({ json: { output: null } });
+				} else {
+					// Re-throw the error if the schema type is not 'fromAttributes'
+					throw e;
+				}
+			}
 		}
 
 		return [resultData];
