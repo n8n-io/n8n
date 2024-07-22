@@ -2145,6 +2145,7 @@ export const eventNamesAiNodes = [
 	'n8n.ai.llm.generated',
 	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
+	'n8n.ai.vector.store.updated',
 ] as const;
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
