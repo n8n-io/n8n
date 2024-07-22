@@ -24,7 +24,6 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { telemetry } from '@/plugins/telemetry';
 import { useClipboard } from '@/composables/useClipboard';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -48,7 +47,6 @@ describe('useCanvasOperations', () => {
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
-	let nodeHelpers: ReturnType<typeof useNodeHelpers>;
 
 	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
@@ -64,7 +62,6 @@ describe('useCanvasOperations', () => {
 		nodeTypesStore = useNodeTypesStore();
 		credentialsStore = useCredentialsStore();
 		workflowHelpers = useWorkflowHelpers({ router });
-		nodeHelpers = useNodeHelpers();
 
 		const workflowId = 'test';
 		const workflow = mock<IWorkflowDb>({
