@@ -708,6 +708,24 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('revertCreateConnection', () => {
+		it('deletes connection if both source and target nodes exist', () => {
+			const connection: [IConnection, IConnection] = [
+				{ node: 'sourceNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'targetNode', type: NodeConnectionType.Main, index: 0 },
+			];
+			const testNode = createTestNode();
+
+			const removeConnectionSpy = vi.spyOn(workflowsStore, 'removeConnection');
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(testNode);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(testNode);
+
+			canvasOperations.revertCreateConnection(connection);
+
+			expect(removeConnectionSpy).toHaveBeenCalled();
+		});
+	});
+
 	describe('isConnectionAllowed', () => {
 		it('should return false if source and target nodes are the same', () => {
 			const node = mockNode({ id: '1', type: 'testType', name: 'Test Node' });
