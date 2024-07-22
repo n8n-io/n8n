@@ -10,8 +10,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
-
-type MetricCategory = 'default' | 'routes' | 'cache' | 'logs';
+import type { Includes, MetricCategory, MetricLabel } from './types';
 
 @Service()
 export class PrometheusMetricsService {
@@ -24,7 +23,7 @@ export class PrometheusMetricsService {
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
-	private readonly includes = {
+	private readonly includes: Includes = {
 		metrics: {
 			default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
 			routes: config.getEnv('endpoints.metrics.includeApiEndpoints'),
@@ -65,18 +64,14 @@ export class PrometheusMetricsService {
 		}
 	}
 
-	enableLabels(labels: string[]) {
-		for (const label of labels as Array<
-			keyof (typeof PrometheusMetricsService)['prototype']['includes']['labels']
-		>) {
+	enableLabels(labels: MetricLabel[]) {
+		for (const label of labels) {
 			this.includes.labels[label] = true;
 		}
 	}
 
 	disableAllLabels() {
-		for (const label of Object.keys(this.includes.labels) as Array<
-			keyof (typeof PrometheusMetricsService)['prototype']['includes']['labels']
-		>) {
+		for (const label of Object.keys(this.includes.labels) as MetricLabel[]) {
 			this.includes.labels[label] = false;
 		}
 	}
