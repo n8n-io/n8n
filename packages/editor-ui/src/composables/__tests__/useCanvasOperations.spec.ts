@@ -398,6 +398,70 @@ describe('useCanvasOperations', () => {
 			expect(removeNodeExecutionDataByIdSpy).toHaveBeenCalledWith(id);
 			expect(pushCommandToUndoSpy).not.toHaveBeenCalled();
 		});
+
+		it('should connect adjacent nodes when deleting a node surrounded by other nodes', () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'node' })]);
+			const nodes = [
+				createTestNode({
+					id: 'input',
+					type: 'node',
+					position: [10, 20],
+					name: 'Input Node',
+				}),
+				createTestNode({
+					id: 'middle',
+					type: 'node',
+					position: [10, 20],
+					name: 'Middle Node',
+				}),
+				createTestNode({
+					id: 'output',
+					type: 'node',
+					position: [10, 20],
+					name: 'Output Node',
+				}),
+			];
+			workflowsStore.setNodes(nodes);
+			workflowsStore.setConnections({
+				'Input Node': {
+					main: [
+						[
+							{
+								node: 'Middle Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+				'Middle Node': {
+					main: [
+						[
+							{
+								node: 'Output Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			canvasOperations.deleteNode('middle');
+			expect(workflowsStore.allConnections).toEqual({
+				'Input Node': {
+					main: [
+						[
+							{
+								node: 'Output Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+		});
 	});
 
 	describe('revertDeleteNode', () => {
