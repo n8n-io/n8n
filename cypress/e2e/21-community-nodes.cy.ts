@@ -6,6 +6,13 @@ import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_cred
 import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
 import CustomCredential from '../fixtures/Custom_credential.json';
 import { getVisibleSelect } from '../utils';
+import {
+	confirmCommunityNodeUninstall,
+	confirmCommunityNodeUpdate,
+	getCommunityCards,
+	installFirstCommunityNode,
+	visitCommunityNodesSettings,
+} from '../pages/settings-community-nodes';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
@@ -14,7 +21,7 @@ const workflowPage = new WorkflowPage();
 // We separate-out the custom nodes because they require injecting nodes and credentials
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
 // We want to keep the other tests as fast as possible so we don't want to break the cache in those.
-describe('Community Nodes', () => {
+describe('Community and custom nodes in canvas', () => {
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -93,5 +100,29 @@ describe('Community Nodes', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
+	});
+});
+
+describe.only('Community nodes', () => {
+	it('can install, update and uninstall community nodes', () => {
+		visitCommunityNodesSettings();
+		installFirstCommunityNode('n8n-nodes-chatwork@1.0.0');
+		getCommunityCards().should('have.length', 1);
+		getCommunityCards().eq(0).should('include.text', 'v1.0.0');
+
+		// update
+		getCommunityCards().eq(0).find('button').click();
+		confirmCommunityNodeUpdate();
+		getCommunityCards().should('have.length', 1);
+		getCommunityCards().eq(0).should('not.include.text', 'v1.0.0');
+
+		// uninstall
+		getCommunityCards().getByTestId('action-toggle').click();
+		cy.getByTestId('action-uninstall').click();
+		confirmCommunityNodeUninstall();
+
+		cy.reload();
+		cy.getByTestId('action-box').should('exist');
+		getCommunityCards().should('have.length', 0);
 	});
 });
