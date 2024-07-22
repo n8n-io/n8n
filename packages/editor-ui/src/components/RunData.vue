@@ -253,11 +253,14 @@
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun" :class="$style.center">
+			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node?.disabled" :class="$style.center">
+			<div
+				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				:class="$style.center"
+			>
 				<n8n-text>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="enableNode">
@@ -1077,7 +1080,7 @@ export default defineComponent({
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode.id === prevNode.id) return;
+			if (newNode?.id === prevNode?.id) return;
 			this.init();
 		},
 		hasNodeRun() {

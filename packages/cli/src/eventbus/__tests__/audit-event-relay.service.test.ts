@@ -2,12 +2,12 @@ import { mock } from 'jest-mock-extended';
 import { AuditEventRelay } from '../audit-event-relay.service';
 import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { Event } from '../event.types';
-import type { EventRelay } from '../event-relay.service';
+import type { EventService } from '../event.service';
 
 describe('AuditorService', () => {
 	const eventBus = mock<MessageEventBus>();
-	const eventRelay = mock<EventRelay>();
-	const auditor = new AuditEventRelay(eventRelay, eventBus);
+	const eventService = mock<EventService>();
+	const auditor = new AuditEventRelay(eventService, eventBus);
 
 	afterEach(() => {
 		jest.clearAllMocks();

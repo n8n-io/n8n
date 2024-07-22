@@ -29,7 +29,6 @@
 				/>
 				<ProjectSharing
 					v-model="selectedProject"
-					class="pt-2xs"
 					:projects="projectsStore.projects"
 					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 					:empty-options-text="$locale.baseText('projects.sharing.noMatchingProjects')"
@@ -150,7 +149,6 @@ export default defineComponent({
 
 .filters-dropdown {
 	width: 280px;
-	padding-bottom: var(--spacing-s);
 }
 
 .filters-dropdown-footer {

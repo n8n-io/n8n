@@ -50,8 +50,8 @@ const valueInputRef = ref<HTMLElement>();
 
 const usage = ref(`$vars.${props.data.name}`);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 onMounted(() => {

@@ -16,7 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
@@ -26,15 +26,19 @@ import type {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { License } from '@/License';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
-import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
+/**
+ * @deprecated Do not add to this class. To add audit or telemetry events, use
+ * `EventService` to emit the event and then use the `AuditEventRelay` or
+ * `TelemetryEventRelay` to forward them to the event bus or telemetry.
+ */
 @Service()
 export class InternalHooks {
 	constructor(
@@ -43,18 +47,18 @@ export class InternalHooks {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		eventsService: EventsService,
+		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
 			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstWorkflowDataLoad',
 			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
@@ -76,7 +80,7 @@ export class InternalHooks {
 		const info = {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
-			n8n_version_notifications_enabled: config.getEnv('versionNotifications.enabled'),
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
 			),
@@ -505,29 +509,6 @@ export class InternalHooks {
 		);
 	}
 
-	async onUserInvokedApi(userInvokedApiData: {
-		user_id: string;
-		path: string;
-		method: string;
-		api_version: string;
-	}): Promise<void> {
-		return await this.telemetry.track('User invoked API', userInvokedApiData);
-	}
-
-	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key deleted', {
-			user_id: apiKeyDeletedData.user.id,
-			public_api: apiKeyDeletedData.public_api,
-		});
-	}
-
-	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key created', {
-			user_id: apiKeyCreatedData.user.id,
-			public_api: apiKeyCreatedData.public_api,
-		});
-	}
-
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
 		void this.telemetry.track('User requested password reset while logged out', {
 			user_id: userPasswordResetData.user.id,
@@ -756,109 +737,5 @@ export class InternalHooks {
 		credential_id?: string;
 	}): Promise<void> {
 		return await this.telemetry.track('Workflow first data fetched', data);
-	}
-
-	/**
-	 * License
-	 */
-	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
-		await this.telemetry.track('Instance attempted to refresh license', data);
-	}
-
-	/**
-	 * Audit
-	 */
-	async onAuditGeneratedViaCli() {
-		return await this.telemetry.track('Instance generated security audit via CLI command');
-	}
-
-	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
-		return await this.telemetry.track('User created variable', createData);
-	}
-
-	async onSourceControlSettingsUpdated(data: {
-		branch_name: string;
-		read_only_instance: boolean;
-		repo_type: 'github' | 'gitlab' | 'other';
-		connected: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated source control settings', data);
-	}
-
-	async onSourceControlUserStartedPullUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started pull via UI', data);
-	}
-
-	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
-		return await this.telemetry.track('User finished pull via UI', {
-			workflow_updates: data.workflow_updates,
-		});
-	}
-
-	async onSourceControlUserPulledAPI(data: {
-		workflow_updates: number;
-		forced: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User pulled via API', data);
-	}
-
-	async onSourceControlUserStartedPushUI(data: {
-		workflows_eligible: number;
-		workflows_eligible_with_conflicts: number;
-		creds_eligible: number;
-		creds_eligible_with_conflicts: number;
-		variables_eligible: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started push via UI', data);
-	}
-
-	async onSourceControlUserFinishedPushUI(data: {
-		workflows_eligible: number;
-		workflows_pushed: number;
-		creds_pushed: number;
-		variables_pushed: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User finished push via UI', data);
-	}
-
-	async onExternalSecretsProviderSettingsSaved(saveData: {
-		user_id?: string | undefined;
-		vault_type: string;
-		is_valid: boolean;
-		is_new: boolean;
-		error_message?: string | undefined;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated external secrets settings', saveData);
-	}
-
-	async onTeamProjectCreated(data: { user_id: string; role: GlobalRole }) {
-		return await this.telemetry.track('User created project', data);
-	}
-
-	async onTeamProjectDeleted(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		removal_type: 'delete' | 'transfer';
-		target_project_id?: string;
-	}) {
-		return await this.telemetry.track('User deleted project', data);
-	}
-
-	async onTeamProjectUpdated(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		members: Array<{ user_id: string; role: ProjectRole }>;
-	}) {
-		return await this.telemetry.track('Project settings updated', data);
-	}
-
-	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
-		await this.telemetry.track('User hit concurrency limit', { threshold });
 	}
 }

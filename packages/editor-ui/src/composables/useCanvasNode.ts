@@ -6,7 +6,7 @@
 import { CanvasNodeKey } from '@/constants';
 import { computed, inject } from 'vue';
 import type { CanvasNodeData } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasNodeRenderType, CanvasConnectionMode } from '@/types';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -20,7 +20,7 @@ export function useCanvasNode() {
 				disabled: false,
 				inputs: [],
 				outputs: [],
-				connections: { input: {}, output: {} },
+				connections: { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 				issues: { items: [], visible: false },
 				pinnedData: { count: 0, visible: false },
 				execution: {

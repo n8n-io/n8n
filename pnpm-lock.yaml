@@ -337,6 +337,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.43.4
         version: 2.43.4
+      '@types/pg':
+        specifier: ^8.11.3
+        version: 8.11.6
       '@xata.io/client':
         specifier: 0.28.4
         version: 0.28.4(typescript@5.5.2)
@@ -535,6 +538,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@azure/identity':
+        specifier: ^4.3.0
+        version: 4.3.0
+      '@azure/keyvault-secrets':
+        specifier: ^4.8.0
+        version: 4.8.0
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -643,9 +652,6 @@ importers:
       formidable:
         specifier: 3.5.1
         version: 3.5.1
-      google-timezones-json:
-        specifier: 1.1.0
-        version: 1.1.0
       handlebars:
         specifier: 4.7.8
         version: 4.7.8
@@ -875,6 +881,9 @@ importers:
       '@types/yamljs':
         specifier: ^0.2.31
         version: 0.2.31
+      '@vvo/tzdb':
+        specifier: ^6.141.0
+        version: 6.141.0
       chokidar:
         specifier: 3.5.2
         version: 3.5.2
@@ -903,8 +912,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       cron:
-        specifier: 1.7.2
-        version: 1.7.2
+        specifier: 3.1.7
+        version: 3.1.7
       fast-glob:
         specifier: 3.2.12
         version: 3.2.12
@@ -957,9 +966,6 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
-      '@types/cron':
-        specifier: ~1.7.1
-        version: 1.7.3
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -1357,8 +1363,8 @@ importers:
         specifier: 3.5.2
         version: 3.5.2
       cron:
-        specifier: 1.7.2
-        version: 1.7.2
+        specifier: 3.1.7
+        version: 3.1.7
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -1528,9 +1534,6 @@ importers:
       '@types/cheerio':
         specifier: ^0.22.15
         version: 0.22.31
-      '@types/cron':
-        specifier: ~1.7.1
-        version: 1.7.3
       '@types/eventsource':
         specifier: ^1.1.2
         version: 1.1.9
@@ -1981,13 +1984,17 @@ packages:
     resolution: {integrity: sha512-3X9wzaaGgRaBCwhLQZDtFp5uLIXCPrGbwJNWPPugvL4xbIGgScv77YzzxToKGLAKvG9amDoofMoP+9hsH1vs1w==}
     engines: {node: '>=18.0.0'}
 
-  '@azure/core-client@1.6.1':
-    resolution: {integrity: sha512-mZ1MSKhZBYoV8GAWceA+PEJFWV2VpdNSpxxcj1wjIAOi00ykRuIQChT99xlQGZWLY3/NApWhSImlFwsmCEs4vA==}
-    engines: {node: '>=12.0.0'}
+  '@azure/core-client@1.9.2':
+    resolution: {integrity: sha512-kRdry/rav3fUKHl/aDLd/pDLcB+4pOFwPPTVEExuMyaI5r+JBbMWqRbCY1pn5BniDaU3lRxO9eaQ1AmSMehl/w==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/core-http-compat@1.3.0':
     resolution: {integrity: sha512-ZN9avruqbQ5TxopzG3ih3KRy52n8OAbitX3fnZT5go4hzu0J+KVPSzkL+Wt3hpJpdG8WIfg1sBD1tWkgUdEpBA==}
     engines: {node: '>=12.0.0'}
+
+  '@azure/core-http-compat@2.1.2':
+    resolution: {integrity: sha512-5MnV1yqzZwgNLLjlizsU3QqOeQChkIXw781Fwh1xdAqJR5AA32IUaq6xv1BICJvfbHoa+JYcaij2HFkhLbNTJQ==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/core-http@2.3.2':
     resolution: {integrity: sha512-Z4dfbglV9kNZO177CNx4bo5ekFuYwwsvjLiKdZI4r84bYGv3irrbQz7JC3/rUfFH2l4T/W6OFleJaa2X0IaQqw==}
@@ -2021,9 +2028,17 @@ packages:
     resolution: {integrity: sha512-0q5DL4uyR0EZ4RXQKD8MadGH6zTIcloUoS/RVbCpNpej4pwte0xpqYxk8K97Py2RiuUvI7F4GXpoT4046VfufA==}
     engines: {node: '>=14.0.0'}
 
+  '@azure/identity@4.3.0':
+    resolution: {integrity: sha512-LHZ58/RsIpIWa4hrrE2YuJ/vzG1Jv9f774RfTTAVDZDriubvJ0/S5u4pnw4akJDlS0TiJb6VMphmVUFsWmgodQ==}
+    engines: {node: '>=18.0.0'}
+
   '@azure/keyvault-keys@4.6.0':
     resolution: {integrity: sha512-0112LegxeR03L8J4k+q6HwBVvrpd9y+oInG0FG3NaHXN7YUubVBon/eb5jFI6edGrvNigpxSR0XIsprFXdkzCQ==}
     engines: {node: '>=12.0.0'}
+
+  '@azure/keyvault-secrets@4.8.0':
+    resolution: {integrity: sha512-RGfpFk6XUXHfWuTAiokOe8t6ej5C4ijf4HVyJUmTfN6VjDBVPvTtoiOi/C5072/ENHScYZFhiYOgIjLgYjfJ/A==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/logger@1.0.3':
     resolution: {integrity: sha512-aK4s3Xxjrx3daZr3VylxejK3vG5ExXck5WOHDJ8in/k9AqlfIyFMMT1uG7u8mNjX+QRILTIn0/Xgschfh/dQ9g==}
@@ -2033,9 +2048,21 @@ packages:
     resolution: {integrity: sha512-mnmi8dCXVNZI+AGRq0jKQ3YiodlIC4W9npr6FCB9WN6NQT+6rq+cIlxgUb//BjLyzKsnYo+i4LROGeMyU+6v1A==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-browser@3.19.0':
+    resolution: {integrity: sha512-3unHlh3qWtXbqks/TLq3qGWzxfmwRfk9tXSGvVCcHHnCH5QKtcg/JiDIeP/1B2qFlqnSgtYY0JPLy9EIVoZ7Ag==}
+    engines: {node: '>=0.8.0'}
+
+  '@azure/msal-common@14.13.0':
+    resolution: {integrity: sha512-b4M/tqRzJ4jGU91BiwCsLTqChveUEyFK3qY2wGfZ0zBswIBZjAxopx5CYt5wzZFKuN15HqRDYXQbztttuIC3nA==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-common@14.7.1':
     resolution: {integrity: sha512-v96btzjM7KrAu4NSEdOkhQSTGOuNUIIsUdB8wlyB9cdgl5KqEKnTonHUZ8+khvZ6Ap542FCErbnTyDWl8lZ2rA==}
     engines: {node: '>=0.8.0'}
+
+  '@azure/msal-node@2.11.0':
+    resolution: {integrity: sha512-yNRCp4Do4CGSBe1WXq4DWhfa/vYZCUgGrweYLC5my/6eDnYMt0fYGPHuTMw0iRslQGXF3CecGAxXp7ab57V4zg==}
+    engines: {node: '>=16'}
 
   '@azure/msal-node@2.6.4':
     resolution: {integrity: sha512-nNvEPx009/80UATCToF+29NZYocn01uKrB91xtFr7bSqkqO1PuQGXRyYwryWRztUrYZ1YsSbw9A+LmwOhpVvcg==}
@@ -5168,9 +5195,6 @@ packages:
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
-  '@types/cron@1.7.3':
-    resolution: {integrity: sha512-iPmUXyIJG1Js+ldPYhOQcYU3kCAQ2FWrSkm1FJPoii2eYSn6wEW6onPukNTT0bfiflexNSRPl6KWmAIqS+36YA==}
-
   '@types/cross-spawn@6.0.2':
     resolution: {integrity: sha512-KuwNhp3eza+Rhu8IFI5HUXRP0LIhqH5cAjubUvGXXthh4YYBuP2ntwEX+Cz8GJoZUHlKo247wPWOfA9LYEq4cw==}
 
@@ -5306,6 +5330,9 @@ packages:
   '@types/luxon@3.2.0':
     resolution: {integrity: sha512-lGmaGFoaXHuOLXFvuju2bfvZRqxAqkHPx9Y9IQdQABrinJJshJwfNCKV+u7rR3kJbiqfTF/NhOkcxxAFrObyaA==}
 
+  '@types/luxon@3.4.2':
+    resolution: {integrity: sha512-TifLZlFudklWlMBfhubvgqTXRzLDI5pCbGa4P8a3wPyUQSW+1xQ5eDsreP9DWHX3tjq1ke96uYG/nwundroWcA==}
+
   '@types/mailparser@3.4.4':
     resolution: {integrity: sha512-C6Znp2QVS25JqtuPyxj38Qh+QoFcLycdxsvcc6IZCGekhaMBzbdTXzwGzhGoYb3TfKu8IRCNV0sV1o3Od97cEQ==}
 
@@ -5359,6 +5386,9 @@ packages:
 
   '@types/normalize-package-data@2.4.1':
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
+
+  '@types/pg@8.11.6':
+    resolution: {integrity: sha512-/2WmmBXHLsfRqzfHW7BNZ8SbYzE8OSk7i3WjFYvfgRHj7S1xj+16Je5fUKv3lVdVzk/zn9TXOqf+avFCFIE0yQ==}
 
   '@types/phoenix@1.6.4':
     resolution: {integrity: sha512-B34A7uot1Cv0XtaHRYDATltAdKx0BvVKNgYNqE4WjtPUa4VQJM7kxeXcVKaH+KS+kCmZ+6w+QaUdcljiheiBJA==}
@@ -5802,6 +5832,9 @@ packages:
 
   '@vueuse/shared@9.13.0':
     resolution: {integrity: sha512-UrnhU+Cnufu4S6JLCPZnkWh0WwZGUp72ktOF2DFptMlOs3TOdVv8xJN53zhHGARmVOsz5KqOls09+J1NR6sBKw==}
+
+  '@vvo/tzdb@6.141.0':
+    resolution: {integrity: sha512-vpuv8Eo75WwW6oHygfSSJ8J2AIADlqoHu9HmKxD8Ey/hmRhxt0+/nEGbzBy/Y/Q1qsdgDj3kP3NRLr2082VzgA==}
 
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
@@ -6804,8 +6837,8 @@ packages:
     resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
     engines: {node: '>=12.0.0'}
 
-  cron@1.7.2:
-    resolution: {integrity: sha512-+SaJ2OfeRvfQqwXQ2kgr0Y5pzBR/lijf5OpnnaruwWnmI799JfWr2jN2ItOV9s3A/+TFOt6mxvKzQq5F0Jp6VQ==}
+  cron@3.1.7:
+    resolution: {integrity: sha512-tlBg7ARsAMQLzgwqVxy8AZl/qlTc5nibqYwtNGoCrd+cV+ugI+tvZC1oT/8dFH8W455YrywGykx/KMmAqOr7Jw==}
 
   cross-env@7.0.3:
     resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
@@ -8201,9 +8234,6 @@ packages:
     resolution: {integrity: sha512-WPkN4yGtz05WZ5EhtlxNDWPhC4JIic6G8ePitwUWy4l+XPVYec+a0j0Ts47PDtW59y3RwAhUd9/h9ZZ63px6RQ==}
     engines: {node: '>=12.0.0'}
     hasBin: true
-
-  google-timezones-json@1.1.0:
-    resolution: {integrity: sha512-6BmBx9gJVALV2jsfMks8PwmkWT5ip3+bmMyTgXu4PY+G8nKjHi61yrL7rSXpMYRsIzUXhVKpj+MnjhnwG9nung==}
 
   gopd@1.0.1:
     resolution: {integrity: sha512-d65bNlIadxvpb/A2abVdlqKqV563juRnZ1Wtk6s1sIR8uNsXR70xqIzVqxVf1eTqDunwT2MkczEeaezCKTZhwA==}
@@ -10439,6 +10469,9 @@ packages:
     resolution: {integrity: sha512-aU6xnDFYT3x17e/f0IiiwlGPTy2jzMySGfUB4fq6z7CV8l85CWHDk5ErhyhpfDHhrOMwGFhSQkhMGHaIotA6Ng==}
     engines: {node: '>= 0.4'}
 
+  obuf@1.1.2:
+    resolution: {integrity: sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==}
+
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
     engines: {node: '>= 0.8'}
@@ -10726,6 +10759,10 @@ packages:
     resolution: {integrity: sha512-1KdmFGGTP6jplJoI8MfvRlfvMiyBivMRP7/ffh4a11RUFJ7kC2J0ZHlipoKiH/1hz+DVgceon9U2qbaHpPeyPg==}
     engines: {node: '>=8.0'}
 
+  pg-numeric@1.0.2:
+    resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
+    engines: {node: '>=4'}
+
   pg-pool@3.6.1:
     resolution: {integrity: sha512-jizsIzhkIitxCGfPRzJn1ZdcosIt3pz9Sh3V01fm1vZnbnCMgmGl5wvGGdNN2EL9Rmb0EcFoCkixH4Pu+sP9Og==}
     peerDependencies:
@@ -10741,6 +10778,10 @@ packages:
   pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
     engines: {node: '>=4'}
+
+  pg-types@4.0.2:
+    resolution: {integrity: sha512-cRL3JpS3lKMGsKaWndugWQoLOCoP+Cic8oseVcbr0qhPzYD5DWXK+RZ9LY9wxRf7RQia4SCwQlXk0q6FCPrVng==}
+    engines: {node: '>=10'}
 
   pg@8.11.3:
     resolution: {integrity: sha512-+9iuvG8QfaaUrrph+kpF24cXkH1YOOUeArRNYIxq1viYHZagBxrTno7cecY1Fa44tJeZvaoG+Djpkc3JwehN5g==}
@@ -10876,17 +10917,36 @@ packages:
     resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
     engines: {node: '>=4'}
 
+  postgres-array@3.0.2:
+    resolution: {integrity: sha512-6faShkdFugNQCLwucjPcY5ARoW1SlbnrZjmGl0IrrqewpvxvhSLHimCVzqeuULCbG0fQv7Dtk1yDbG3xv7Veog==}
+    engines: {node: '>=12'}
+
   postgres-bytea@1.0.0:
     resolution: {integrity: sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==}
     engines: {node: '>=0.10.0'}
+
+  postgres-bytea@3.0.0:
+    resolution: {integrity: sha512-CNd4jim9RFPkObHSjVHlVrxoVQXz7quwNFpz7RY1okNNme49+sVyiTvTRobiLV548Hx/hb1BG+iE7h9493WzFw==}
+    engines: {node: '>= 6'}
 
   postgres-date@1.0.7:
     resolution: {integrity: sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==}
     engines: {node: '>=0.10.0'}
 
+  postgres-date@2.1.0:
+    resolution: {integrity: sha512-K7Juri8gtgXVcDfZttFKVmhglp7epKb1K4pgrkLxehjqkrgPhfG6OO8LHLkfaqkbpjNRnra018XwAr1yQFWGcA==}
+    engines: {node: '>=12'}
+
   postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
+
+  postgres-interval@3.0.0:
+    resolution: {integrity: sha512-BSNDnbyZCXSxgA+1f5UU2GmwhoI0aU5yMxRGO8CdFEcY2BQF9xm/7MqKnYoM1nJDk8nONNWDk9WeSmePFhQdlw==}
+    engines: {node: '>=12'}
+
+  postgres-range@1.1.4:
+    resolution: {integrity: sha512-i/hbxIE9803Alj/6ytL7UHQxRvZkI9O4Sy+J3HGc4F4oo/2eQAjTSNJ0bfxyse3bH0nuVesCk+3IRLaMtG3H6w==}
 
   posthog-node@3.2.1:
     resolution: {integrity: sha512-ofNX3TPfZPlWErVc2EDk66cIrfp9EXeKBsXFxf8ISXK57b10ANwRnKAlf5rQjxjRKqcUWmV0d3ZfOeVeYracMw==}
@@ -14116,9 +14176,9 @@ snapshots:
       '@azure/core-util': 1.7.0
       tslib: 2.6.2
 
-  '@azure/core-client@1.6.1':
+  '@azure/core-client@1.9.2':
     dependencies:
-      '@azure/abort-controller': 1.1.0
+      '@azure/abort-controller': 2.0.0
       '@azure/core-auth': 1.6.0
       '@azure/core-rest-pipeline': 1.9.2
       '@azure/core-tracing': 1.0.1
@@ -14131,7 +14191,15 @@ snapshots:
   '@azure/core-http-compat@1.3.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
+      '@azure/core-rest-pipeline': 1.9.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-http-compat@2.1.2':
+    dependencies:
+      '@azure/abort-controller': 2.0.0
+      '@azure/core-client': 1.9.2
       '@azure/core-rest-pipeline': 1.9.2
     transitivePeerDependencies:
       - supports-color
@@ -14199,7 +14267,7 @@ snapshots:
     dependencies:
       '@azure/abort-controller': 1.1.0
       '@azure/core-auth': 1.6.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
       '@azure/core-rest-pipeline': 1.9.2
       '@azure/core-tracing': 1.0.1
       '@azure/core-util': 1.7.0
@@ -14214,12 +14282,47 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@azure/identity@4.3.0':
+    dependencies:
+      '@azure/abort-controller': 1.1.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-client': 1.9.2
+      '@azure/core-rest-pipeline': 1.9.2
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
+      '@azure/logger': 1.0.3
+      '@azure/msal-browser': 3.19.0
+      '@azure/msal-node': 2.11.0
+      events: 3.3.0
+      jws: 4.0.0
+      open: 8.4.0
+      stoppable: 1.1.0
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@azure/keyvault-keys@4.6.0':
     dependencies:
       '@azure/abort-controller': 1.1.0
       '@azure/core-auth': 1.6.0
-      '@azure/core-client': 1.6.1
+      '@azure/core-client': 1.9.2
       '@azure/core-http-compat': 1.3.0
+      '@azure/core-lro': 2.4.0
+      '@azure/core-paging': 1.3.0
+      '@azure/core-rest-pipeline': 1.9.2
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
+      '@azure/logger': 1.0.3
+      tslib: 2.6.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/keyvault-secrets@4.8.0':
+    dependencies:
+      '@azure/abort-controller': 1.1.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-client': 1.9.2
+      '@azure/core-http-compat': 2.1.2
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
       '@azure/core-rest-pipeline': 1.9.2
@@ -14238,7 +14341,19 @@ snapshots:
     dependencies:
       '@azure/msal-common': 14.7.1
 
+  '@azure/msal-browser@3.19.0':
+    dependencies:
+      '@azure/msal-common': 14.13.0
+
+  '@azure/msal-common@14.13.0': {}
+
   '@azure/msal-common@14.7.1': {}
+
+  '@azure/msal-node@2.11.0':
+    dependencies:
+      '@azure/msal-common': 14.13.0
+      jsonwebtoken: 9.0.2
+      uuid: 8.3.2
 
   '@azure/msal-node@2.6.4':
     dependencies:
@@ -14290,7 +14405,7 @@ snapshots:
       '@babel/traverse': 7.24.0
       '@babel/types': 7.24.0
       convert-source-map: 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.6.0
@@ -14411,7 +14526,7 @@ snapshots:
       '@babel/core': 7.24.6
       '@babel/helper-compilation-targets': 7.24.6
       '@babel/helper-plugin-utils': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -14422,7 +14537,7 @@ snapshots:
       '@babel/core': 7.24.6
       '@babel/helper-compilation-targets': 7.24.6
       '@babel/helper-plugin-utils': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -15306,7 +15421,7 @@ snapshots:
       '@babel/helper-split-export-declaration': 7.22.6
       '@babel/parser': 7.24.0
       '@babel/types': 7.24.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -15321,7 +15436,7 @@ snapshots:
       '@babel/helper-split-export-declaration': 7.24.6
       '@babel/parser': 7.24.6
       '@babel/types': 7.24.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -18434,11 +18549,6 @@ snapshots:
 
   '@types/cookiejar@2.1.5': {}
 
-  '@types/cron@1.7.3':
-    dependencies:
-      '@types/node': 18.16.16
-      moment: 2.29.4
-
   '@types/cross-spawn@6.0.2':
     dependencies:
       '@types/node': 18.16.16
@@ -18581,6 +18691,8 @@ snapshots:
 
   '@types/luxon@3.2.0': {}
 
+  '@types/luxon@3.4.2': {}
+
   '@types/mailparser@3.4.4':
     dependencies:
       '@types/node': 18.16.16
@@ -18637,6 +18749,12 @@ snapshots:
       '@types/node': 18.16.16
 
   '@types/normalize-package-data@2.4.1': {}
+
+  '@types/pg@8.11.6':
+    dependencies:
+      '@types/node': 18.16.16
+      pg-protocol: 1.6.0
+      pg-types: 4.0.2
 
   '@types/phoenix@1.6.4': {}
 
@@ -18890,7 +19008,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 6.7.5
       '@typescript-eslint/visitor-keys': 6.7.5
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globby: 11.1.0
       is-glob: 4.0.3
       semver: 7.6.0
@@ -19244,6 +19362,8 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
+  '@vvo/tzdb@6.141.0': {}
+
   '@xata.io/client@0.28.4(typescript@5.5.2)':
     dependencies:
       typescript: 5.5.2
@@ -19309,7 +19429,7 @@ snapshots:
 
   agent-base@7.1.0:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -20371,9 +20491,10 @@ snapshots:
     dependencies:
       luxon: 3.4.4
 
-  cron@1.7.2:
+  cron@3.1.7:
     dependencies:
-      moment-timezone: 0.5.37
+      '@types/luxon': 3.4.2
+      luxon: 3.4.4
 
   cross-env@7.0.3:
     dependencies:
@@ -20754,7 +20875,7 @@ snapshots:
   detect-port@1.5.1:
     dependencies:
       address: 1.2.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -21132,7 +21253,7 @@ snapshots:
 
   esbuild-register@3.5.0(esbuild@0.20.2):
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       esbuild: 0.20.2
     transitivePeerDependencies:
       - supports-color
@@ -21217,7 +21338,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21242,7 +21363,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21262,7 +21383,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21792,7 +21913,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22133,7 +22254,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -22185,8 +22306,6 @@ snapshots:
   google-p12-pem@4.0.1:
     dependencies:
       node-forge: 1.3.1
-
-  google-timezones-json@1.1.0: {}
 
   gopd@1.0.1:
     dependencies:
@@ -22371,7 +22490,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 1.1.2
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -22380,7 +22499,7 @@ snapshots:
     dependencies:
       '@tootallnate/once': 2.0.0
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -22789,7 +22908,7 @@ snapshots:
 
   istanbul-lib-source-maps@4.0.1:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       istanbul-lib-coverage: 3.2.2
       source-map: 0.6.1
     transitivePeerDependencies:
@@ -24631,6 +24750,8 @@ snapshots:
       define-properties: 1.2.1
       es-abstract: 1.22.5
 
+  obuf@1.1.2: {}
+
   on-finished@2.4.1:
     dependencies:
       ee-first: 1.1.1
@@ -24898,7 +25019,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -24933,6 +25054,8 @@ snapshots:
 
   pg-minify@1.6.2: {}
 
+  pg-numeric@1.0.2: {}
+
   pg-pool@3.6.1(pg@8.11.3):
     dependencies:
       pg: 8.11.3
@@ -24959,6 +25082,16 @@ snapshots:
       postgres-bytea: 1.0.0
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
+
+  pg-types@4.0.2:
+    dependencies:
+      pg-int8: 1.0.1
+      pg-numeric: 1.0.2
+      postgres-array: 3.0.2
+      postgres-bytea: 3.0.0
+      postgres-date: 2.1.0
+      postgres-interval: 3.0.0
+      postgres-range: 1.1.4
 
   pg@8.11.3:
     dependencies:
@@ -25083,13 +25216,25 @@ snapshots:
 
   postgres-array@2.0.0: {}
 
+  postgres-array@3.0.2: {}
+
   postgres-bytea@1.0.0: {}
 
+  postgres-bytea@3.0.0:
+    dependencies:
+      obuf: 1.1.2
+
   postgres-date@1.0.7: {}
+
+  postgres-date@2.1.0: {}
 
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+
+  postgres-interval@3.0.0: {}
+
+  postgres-range@1.1.4: {}
 
   posthog-node@3.2.1:
     dependencies:
@@ -25780,7 +25925,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -26154,7 +26299,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7
@@ -26181,7 +26326,7 @@ snapshots:
   socks-proxy-agent@6.2.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       socks: 2.7.1
     transitivePeerDependencies:
       - supports-color
