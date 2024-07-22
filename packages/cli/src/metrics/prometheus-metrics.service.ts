@@ -59,8 +59,8 @@ export class PrometheusMetricsService {
 	}
 
 	disableAllMetrics() {
-		for (const metric of Object.keys(this.includes.metrics) as MetricCategory[]) {
-			this.includes.metrics[metric] = false;
+		for (const metric in this.includes.metrics) {
+			this.includes.metrics[metric as MetricCategory] = false;
 		}
 	}
 
@@ -71,8 +71,8 @@ export class PrometheusMetricsService {
 	}
 
 	disableAllLabels() {
-		for (const label of Object.keys(this.includes.labels) as MetricLabel[]) {
-			this.includes.labels[label] = false;
+		for (const label in this.includes.labels) {
+			this.includes.labels[label as MetricLabel] = false;
 		}
 	}
 
