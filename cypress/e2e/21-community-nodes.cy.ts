@@ -104,24 +104,87 @@ describe('Community and custom nodes in canvas', () => {
 });
 
 describe('Community nodes', () => {
+	const mockPackage = {
+		createdAt: '2024-07-22T19:08:06.505Z',
+		updatedAt: '2024-07-22T19:08:06.505Z',
+		packageName: 'n8n-nodes-chatwork',
+		installedVersion: '1.0.0',
+		authorName: null,
+		authorEmail: null,
+		installedNodes: [
+			{
+				name: 'Chatwork',
+				type: 'n8n-nodes-chatwork.chatwork',
+				latestVersion: 1,
+			},
+		],
+		updateAvailable: '1.1.2',
+	};
+
 	it('can install, update and uninstall community nodes', () => {
+		cy.intercept(
+			{
+				hostname: 'api.npms.io',
+				pathname: '/v2/search',
+				query: { q: 'keywords:n8n-community-node-package' },
+			},
+			{ body: {} },
+		);
+		cy.intercept(
+			{ method: 'GET', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: [] },
+			},
+		).as('getEmptyPackages');
 		visitCommunityNodesSettings();
+		cy.wait('@getEmptyPackages');
+
+		// install a package
+		cy.intercept(
+			{ method: 'POST', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: mockPackage },
+			},
+		).as('installPackage');
+		cy.intercept(
+			{ method: 'GET', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: [mockPackage] },
+			},
+		).as('getPackages');
 		installFirstCommunityNode('n8n-nodes-chatwork@1.0.0');
+		cy.wait('@installPackage');
+		cy.wait('@getPackages');
 		getCommunityCards().should('have.length', 1);
 		getCommunityCards().eq(0).should('include.text', 'v1.0.0');
 
-		// update
+		// update the package
+		cy.intercept(
+			{ method: 'PATCH', pathname: '/rest/community-packages' },
+			{
+				body: { data: { ...mockPackage, installedVersion: '1.2.0', updateAvailable: undefined } },
+			},
+		).as('updatePackage');
 		getCommunityCards().eq(0).find('button').click();
 		confirmCommunityNodeUpdate();
+		cy.wait('@updatePackage');
 		getCommunityCards().should('have.length', 1);
 		getCommunityCards().eq(0).should('not.include.text', 'v1.0.0');
 
-		// uninstall
+		// uninstall the package
+		cy.intercept(
+			{
+				method: 'DELETE',
+				pathname: '/rest/community-packages',
+				query: { name: 'n8n-nodes-chatwork' },
+			},
+			{ statusCode: 204 },
+		).as('uninstallPackage');
 		getCommunityCards().getByTestId('action-toggle').click();
 		cy.getByTestId('action-uninstall').click();
 		confirmCommunityNodeUninstall();
+		cy.wait('@uninstallPackage');
 
-		cy.reload();
 		cy.getByTestId('action-box').should('exist');
 	});
 });
