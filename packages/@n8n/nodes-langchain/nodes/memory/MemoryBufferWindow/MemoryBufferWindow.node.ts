@@ -135,7 +135,7 @@ export class MemoryBufferWindow implements INodeType {
 				name: 'contextWindowLength',
 				type: 'number',
 				default: 5,
-				description: 'The number of previous messages to consider for context',
+				hint: 'How many past interactions the model receives as context',
 			},
 		],
 	};
