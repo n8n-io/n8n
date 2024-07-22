@@ -50,6 +50,15 @@ export class TelemetryEventRelay {
 		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
 			this.externalSecretsProviderSettingsSaved(event);
 		});
+		this.eventService.on('public-api-invoked', (event) => {
+			this.publicApiInvoked(event);
+		});
+		this.eventService.on('public-api-key-created', (event) => {
+			this.publicApiKeyCreated(event);
+		});
+		this.eventService.on('public-api-key-deleted', (event) => {
+			this.publicApiKeyDeleted(event);
+		});
 	}
 
 	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
@@ -188,6 +197,37 @@ export class TelemetryEventRelay {
 			is_valid: isValid,
 			is_new: isNew,
 			error_message: errorMessage,
+		});
+	}
+
+	private publicApiInvoked({ userId, path, method, apiVersion }: Event['public-api-invoked']) {
+		void this.telemetry.track('User invoked API', {
+			user_id: userId,
+			path,
+			method,
+			api_version: apiVersion,
+		});
+	}
+
+	private publicApiKeyCreated(event: Event['public-api-key-created']) {
+		if (!('publicApi' in event)) return;
+
+		const { user, publicApi } = event;
+
+		void this.telemetry.track('API key created', {
+			user_id: user.id,
+			public_api: publicApi,
+		});
+	}
+
+	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
+		if (!('publicApi' in event)) return;
+
+		const { user, publicApi } = event;
+
+		void this.telemetry.track('API key deleted', {
+			user_id: user.id,
+			public_api: publicApi,
 		});
 	}
 }

@@ -14,8 +14,8 @@ import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
-import { makeErrorFromStatus } from './error-handling';
 import { additionalOptions } from '../gemini-common/additional-options';
+import { makeErrorFromStatus } from './error-handling';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
