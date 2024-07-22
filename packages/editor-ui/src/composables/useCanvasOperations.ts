@@ -30,6 +30,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
+	AddConnectionCommand,
 	AddNodeCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
@@ -55,6 +56,7 @@ import {
 	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
+	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -949,11 +951,19 @@ export function useCanvasOperations({
 	 * Connection operations
 	 */
 
-	function createConnection(connection: Connection) {
+	function createConnection(connection: Connection, { trackHistory = false } = {}) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
 			return;
+		}
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(
+				new AddConnectionCommand(
+					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
+				),
+			);
 		}
 
 		const mappedConnection = mapCanvasConnectionToLegacyConnection(
@@ -974,6 +984,19 @@ export function useCanvasOperations({
 		nodeHelpers.updateNodeInputIssues(targetNode);
 
 		uiStore.stateIsDirty = true;
+	}
+
+	function revertCreateConnection(connection: [IConnection, IConnection]) {
+		const sourceNodeName = connection[0].node;
+		const sourceNode = workflowsStore.getNodeByName(sourceNodeName);
+		const targetNodeName = connection[1].node;
+		const targetNode = workflowsStore.getNodeByName(targetNodeName);
+
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
 	}
 
 	function deleteConnection(
@@ -1607,6 +1630,7 @@ export function useCanvasOperations({
 		revertDeleteNode,
 		addConnections,
 		createConnection,
+		revertCreateConnection,
 		deleteConnection,
 		revertDeleteConnection,
 		isConnectionAllowed,
