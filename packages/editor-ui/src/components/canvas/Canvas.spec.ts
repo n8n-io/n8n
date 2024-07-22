@@ -8,8 +8,7 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionType } from 'n8n-workflow';
 import type { useDeviceSupport } from 'n8n-design-system';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
+// @ts-expect-error Initialize window object
 global.window = jsdom.window as unknown as Window & typeof globalThis;
 
 vi.mock('n8n-design-system', async (importOriginal) => {
