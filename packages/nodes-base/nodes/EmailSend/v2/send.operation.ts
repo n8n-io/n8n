@@ -213,6 +213,10 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		secure: credentials.secure as boolean,
 	};
 
+	if (credentials.secure === false) {
+		connectionOptions.ignoreTLS = credentials.disableStartTls as boolean;
+	}
+
 	if (typeof credentials.hostName === 'string' && credentials.hostName) {
 		connectionOptions.name = credentials.hostName;
 	}
