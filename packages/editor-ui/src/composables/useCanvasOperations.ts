@@ -74,6 +74,7 @@ import type {
 	IPinData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
+	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
 } from 'n8n-workflow';
@@ -202,6 +203,49 @@ export function useCanvasOperations({
 		await renameNode(currentName, previousName);
 	}
 
+	function connectAdjacentNodes(id: string) {
+		const node = workflowsStore.getNodeById(id);
+
+		if (!node) {
+			return;
+		}
+
+		const outputConnectionsByType = workflowsStore.outgoingConnectionsByNodeName(node.name);
+		const incomingConnectionsByType = workflowsStore.incomingConnectionsByNodeName(node.name);
+
+		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
+			incomingConnectionsByType,
+		) as Array<[NodeConnectionType, NodeInputConnections]>) {
+			// Only connect nodes connected to the first input of a type
+			for (const incomingConnection of incomingConnectionsByInputIndex.at(0) ?? []) {
+				const incomingNodeId = workflowsStore.getNodeByName(incomingConnection.node)?.id;
+
+				if (!incomingNodeId) continue;
+
+				// Only connect to nodes connected to the first output of a type
+				// For example on an If node, connect to the "true" main output
+				for (const outgoingConnection of outputConnectionsByType[type]?.at(0) ?? []) {
+					const outgoingNodeId = workflowsStore.getNodeByName(outgoingConnection.node)?.id;
+
+					if (!outgoingNodeId) continue;
+
+					createConnection({
+						source: incomingNodeId,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Output,
+							type,
+						}),
+						target: outgoingNodeId,
+						targetHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type,
+						}),
+					});
+				}
+			}
+		}
+	}
+
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
@@ -212,6 +256,7 @@ export function useCanvasOperations({
 			historyStore.startRecordingUndo();
 		}
 
+		connectAdjacentNodes(id);
 		workflowsStore.removeNodeConnectionsById(id);
 		workflowsStore.removeNodeExecutionDataById(id);
 		workflowsStore.removeNodeById(id);
