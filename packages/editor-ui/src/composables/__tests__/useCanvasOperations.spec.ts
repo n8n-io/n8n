@@ -24,6 +24,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { telemetry } from '@/plugins/telemetry';
 import { useClipboard } from '@/composables/useClipboard';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -47,6 +48,7 @@ describe('useCanvasOperations', () => {
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
+	let nodeHelpers: ReturnType<typeof useNodeHelpers>;
 
 	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
@@ -62,6 +64,7 @@ describe('useCanvasOperations', () => {
 		nodeTypesStore = useNodeTypesStore();
 		credentialsStore = useCredentialsStore();
 		workflowHelpers = useWorkflowHelpers({ router });
+		nodeHelpers = useNodeHelpers();
 
 		const workflowId = 'test';
 		const workflow = mock<IWorkflowDb>({
@@ -566,6 +569,47 @@ describe('useCanvasOperations', () => {
 			canvasOperations.setNodeActiveByName(nodeName);
 
 			expect(ndvStore.activeNodeName).toBe(nodeName);
+		});
+	});
+
+	describe('toggleNodesDisabled', () => {
+		it('disables nodes based on provided ids', async () => {
+			const nodes = [
+				createTestNode({ id: '1', name: 'A' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowsStore, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodesDisabled([nodes[0].id, nodes[1].id], {
+				trackHistory: true,
+				trackBulk: true,
+			});
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodes[0].name,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
+	describe('revertToggleNodeDisabled', () => {
+		it('re-enables a previously disabled node', () => {
+			const nodeName = 'testNode';
+			const node = createTestNode({ name: nodeName });
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.revertToggleNodeDisabled(nodeName);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodeName,
+				properties: {
+					disabled: true,
+				},
+			});
 		});
 	});
 
