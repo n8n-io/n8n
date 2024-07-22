@@ -224,6 +224,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return {};
 	}
 
+	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
+		return getCurrentWorkflow().connectionsByDestinationNode[nodeName] ?? {};
+	}
+
 	function nodeHasOutputConnection(nodeName: string): boolean {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
@@ -885,7 +889,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.stateIsDirty = true;
 
 		// Remove all source connections
-		if (!preserveOutputConnections && workflow.value.connections.hasOwnProperty(node.name)) {
+		if (!preserveOutputConnections) {
 			delete workflow.value.connections[node.name];
 		}
 
@@ -1583,6 +1587,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getTotalFinishedExecutionsCount,
 		getPastChatMessages,
 		outgoingConnectionsByNodeName,
+		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
 		getWorkflowById,
