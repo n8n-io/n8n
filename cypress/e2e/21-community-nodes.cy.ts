@@ -103,7 +103,7 @@ describe('Community and custom nodes in canvas', () => {
 	});
 });
 
-describe.only('Community nodes', () => {
+describe('Community nodes', () => {
 	it('can install, update and uninstall community nodes', () => {
 		visitCommunityNodesSettings();
 		installFirstCommunityNode('n8n-nodes-chatwork@1.0.0');
