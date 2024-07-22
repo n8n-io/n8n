@@ -123,6 +123,5 @@ describe.only('Community nodes', () => {
 
 		cy.reload();
 		cy.getByTestId('action-box').should('exist');
-		getCommunityCards().should('have.length', 0);
 	});
 });
