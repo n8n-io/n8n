@@ -40,13 +40,21 @@ const sessionEnded = computed(() => {
 });
 
 function onQuickReply(opt: ChatUI.QuickReply) {
-	emit('message', opt.content, opt.type);
+	emit('message', opt.text, opt.type);
 }
 
 function onSendMessage() {
 	if (textInputValue.value && !props.streaming) {
 		emit('message', textInputValue.value, undefined);
 		textInputValue.value = '';
+	}
+}
+
+function renderMarkdown(content: string) {
+	try {
+		return md.render(content);
+	} catch (e) {
+		return `<p>Error parsing markdown content</p>`;
 	}
 }
 </script>
@@ -91,7 +99,7 @@ function onSendMessage() {
 								<BlinkingCursor v-if="streaming && !message.content" />
 							</div>
 							<div :class="$style.blockBody">
-								<span v-html="md.render(message.content)"></span>
+								<span v-html="renderMarkdown(message.content)"></span>
 								<BlinkingCursor v-if="streaming && message.title && message.content" />
 							</div>
 						</div>
@@ -99,7 +107,11 @@ function onSendMessage() {
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
 						<span v-if="message.role === 'user'">{{ message.content }}</span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span v-else :class="$style.assistantText" v-html="md.render(message.content)"></span>
+						<span
+							v-else
+							:class="$style.assistantText"
+							v-html="renderMarkdown(message.content)"
+						></span>
 						<BlinkingCursor
 							v-if="streaming && i === props.messages?.length - 1 && message.role === 'assistant'"
 						/>
@@ -133,8 +145,13 @@ function onSendMessage() {
 					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
 						<div v-for="opt in message.quickReplies" :key="opt.type">
-							<n8n-button type="secondary" size="mini" @click="() => onQuickReply(opt)">
-								{{ opt.content }}
+							<n8n-button
+								v-if="opt.text"
+								type="secondary"
+								size="mini"
+								@click="() => onQuickReply(opt)"
+							>
+								{{ opt.text }}
 							</n8n-button>
 						</div>
 					</div>

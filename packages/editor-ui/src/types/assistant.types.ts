@@ -49,8 +49,13 @@ export namespace ChatRequest {
 	}
 
 	export type RequestPayload =
-		| InitErrorHelper
-		| ((EventRequestPayload | UserChatMessage) & { sessionId: string });
+		| {
+				payload: InitErrorHelper;
+		  }
+		| {
+				payload: EventRequestPayload | UserChatMessage;
+				sessionId: string;
+		  };
 
 	interface CodeDiffMessage {
 		role: 'assistant';
@@ -62,7 +67,7 @@ export namespace ChatRequest {
 	}
 
 	interface QuickReplyOption {
-		content: string;
+		text: string;
 		type: string;
 		isFeedback?: boolean;
 	}
@@ -70,7 +75,7 @@ export namespace ChatRequest {
 	interface AssistantChatMessage {
 		role: 'assistant';
 		type: 'message';
-		content: string;
+		text: string;
 	}
 
 	interface AssistantSummaryMessage {

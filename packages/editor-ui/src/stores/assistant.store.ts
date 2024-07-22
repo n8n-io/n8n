@@ -73,7 +73,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					id,
 					type: 'text',
 					role: 'assistant',
-					content: message.content,
+					content: message.text,
 					quickReplies: message.quickReplies,
 				});
 			} else if (message.type === 'code-diff') {
@@ -196,14 +196,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				role: 'user',
-				type: 'init-error-helper',
-				user: {
-					firstName: usersStore.currentUser?.firstName ?? '',
+				payload: {
+					role: 'user',
+					type: 'init-error-helper',
+					user: {
+						firstName: usersStore.currentUser?.firstName ?? '',
+					},
+					error: context.error,
+					node: context.node,
+					// executionSchema todo
 				},
-				error: context.error,
-				node: context.node,
-				// executionSchema todo
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			stopStreaming,
@@ -231,10 +233,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
-					role: 'user',
-					type: 'message',
-					text: message.text,
-					quickReplyType: message.quickReplyType,
+					payload: {
+						role: 'user',
+						type: 'message',
+						text: message.text,
+						quickReplyType: message.quickReplyType,
+					},
 					sessionId: currentSessionId.value,
 				},
 				(msg) => onEachStreamingMessage(msg, id),

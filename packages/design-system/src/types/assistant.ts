@@ -30,7 +30,7 @@ export namespace ChatUI {
 
 	export interface QuickReply {
 		type: string;
-		content: string;
+		text: string;
 	}
 
 	export interface ErrorMessage {
