@@ -11,6 +11,10 @@ const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
+const props = defineProps<{
+	readOnly?: boolean;
+}>();
+
 const $style = useCssModule();
 const i18n = useI18n();
 
@@ -24,6 +28,7 @@ const nodeDisabledTitle = 'Test';
 
 const isExecuteNodeVisible = computed(() => {
 	return (
+		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		!render.value.options.configuration
@@ -31,8 +36,10 @@ const isExecuteNodeVisible = computed(() => {
 });
 
 const isDisableNodeVisible = computed(() => {
-	return render.value.type === CanvasNodeRenderType.Default;
+	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
 });
+
+const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 function executeNode() {
 	emit('run');
@@ -76,6 +83,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				@click="onToggleNode"
 			/>
 			<N8nIconButton
+				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
 				type="tertiary"
 				size="small"

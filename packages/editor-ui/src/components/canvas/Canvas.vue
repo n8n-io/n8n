@@ -7,7 +7,7 @@ import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
-import { computed, onMounted, onUnmounted, ref, useCssModule } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useCssModule, watch } from 'vue';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
 import { useContextMenu, type ContextMenuAction } from '@/composables/useContextMenu';
@@ -56,6 +56,7 @@ const props = withDefaults(
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus;
+		readOnly?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -63,6 +64,7 @@ const props = withDefaults(
 		connections: () => [],
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
+		readOnly: false,
 	},
 );
 
@@ -72,6 +74,8 @@ const {
 	removeSelectedNodes,
 	viewportRef,
 	fitView,
+	setInteractive,
+	elementsSelectable,
 	project,
 	nodes: graphNodes,
 	onPaneReady,
@@ -252,6 +256,11 @@ async function onFitView() {
 	await fitView({ maxZoom: 1.2, padding: 0.1 });
 }
 
+async function setReadonly(value: boolean) {
+	setInteractive(!value);
+	elementsSelectable.value = true;
+}
+
 /**
  * Context menu
  */
@@ -310,6 +319,8 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+
+	setReadonly(props.readOnly);
 });
 
 onUnmounted(() => {
@@ -320,6 +331,8 @@ onPaneReady(async () => {
 	await onFitView();
 	paneReady.value = true;
 });
+
+watch(() => props.readOnly, setReadonly);
 </script>
 
 <template>
@@ -348,6 +361,7 @@ onPaneReady(async () => {
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
 				v-bind="canvasNodeProps"
+				:read-only="readOnly"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
@@ -363,6 +377,7 @@ onPaneReady(async () => {
 		<template #edge-canvas-edge="canvasEdgeProps">
 			<Edge
 				v-bind="canvasEdgeProps"
+				:read-only="readOnly"
 				:hovered="hoveredEdges[canvasEdgeProps.id]"
 				@add="onClickConnectionAdd"
 				@delete="onDeleteConnection"
@@ -377,6 +392,7 @@ onPaneReady(async () => {
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
+			:show-interactive="!readOnly"
 			@fit-view="onFitView"
 		></Controls>
 
