@@ -190,6 +190,60 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('updateNodesPosition', () => {
+		it('records history for multiple node position updates when tracking is enabled', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: true, trackBulk: true });
+
+			expect(startRecordingUndoSpy).toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).toHaveBeenCalled();
+		});
+
+		it('updates positions for multiple nodes', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const setNodePositionByIdSpy = vi.spyOn(workflowsStore, 'setNodePositionById');
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[0].id,
+						position: [events[0].position.x, events[0].position.y],
+					}),
+				)
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[1].id,
+						position: [events[1].position.x, events[1].position.y],
+					}),
+				);
+
+			canvasOperations.updateNodesPosition(events);
+
+			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [100, 100]);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [200, 200]);
+		});
+
+		it('does not record history when trackHistory is false', () => {
+			const events = [{ id: 'node1', position: { x: 100, y: 100 } }];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: false, trackBulk: false });
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('updateNodePosition', () => {
 		it('should update node position', () => {
 			const setNodePositionByIdSpy = vi
