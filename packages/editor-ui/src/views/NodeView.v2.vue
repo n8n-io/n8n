@@ -149,6 +149,7 @@ const {
 	revertDeleteNode,
 	addNodes,
 	createConnection,
+	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
 	setNodeActiveByName,
@@ -689,7 +690,11 @@ async function loadCredentials() {
  */
 
 function onCreateConnection(connection: Connection) {
-	createConnection(connection);
+	createConnection(connection, { trackHistory: true });
+}
+
+function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {
+	revertCreateConnection(connection);
 }
 
 function onCreateConnectionCancelled(event: ConnectStartEvent) {
@@ -974,7 +979,7 @@ function addUndoRedoEventBindings() {
 	// historyBus.on('nodeMove', onMoveNode);
 	// historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.on('revertAddConnection', onRevertAddConnection);
+	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
 	// historyBus.on('enableNodeToggle', onRevertEnableToggle);
@@ -984,7 +989,7 @@ function removeUndoRedoEventBindings() {
 	// historyBus.off('nodeMove', onMoveNode);
 	// historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.off('revertAddConnection', onRevertAddConnection);
+	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
 	// historyBus.off('enableNodeToggle', onRevertEnableToggle);
