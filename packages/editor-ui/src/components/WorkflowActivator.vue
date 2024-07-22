@@ -116,7 +116,7 @@ async function displayActivationError() {
 				:disabled="
 					disabled ||
 					workflowActivate.updatingWorkflowActivation.value ||
-					!workflowPermissions.update
+					(props.workflowId && !workflowPermissions.update)
 				"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
