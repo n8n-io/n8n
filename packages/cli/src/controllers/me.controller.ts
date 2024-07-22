@@ -198,8 +198,7 @@ export class MeController {
 
 		await this.userService.update(req.user.id, { apiKey });
 
-		void this.internalHooks.onApiKeyCreated({ user: req.user, public_api: false });
-		this.eventService.emit('api-key-created', { user: req.user });
+		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
 		return { apiKey };
 	}
@@ -219,8 +218,7 @@ export class MeController {
 	async deleteAPIKey(req: AuthenticatedRequest) {
 		await this.userService.update(req.user.id, { apiKey: null });
 
-		void this.internalHooks.onApiKeyDeleted({ user: req.user, public_api: false });
-		this.eventService.emit('api-key-deleted', { user: req.user });
+		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
 		return { success: true };
 	}
