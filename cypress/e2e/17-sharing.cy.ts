@@ -197,6 +197,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 describe('Credential Usage in Cross Shared Workflows', () => {
 	beforeEach(() => {
 		cy.resetDatabase();
+		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
 		cy.enableFeature('projectRole:admin');
 		cy.enableFeature('projectRole:editor');
@@ -207,11 +208,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 	});
 
 	it('should only show credentials from the same team project', () => {
-		cy.enableFeature('advancedPermissions');
-		cy.enableFeature('projectRole:admin');
-		cy.enableFeature('projectRole:editor');
-		cy.changeQuota('maxTeamProjects', -1);
-
 		// Create a notion credential in the home project
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
@@ -239,9 +235,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 	});
 
 	it('should only show credentials in their personal project for members', () => {
-		cy.enableFeature('sharing');
-		cy.reload();
-
 		// Create a notion credential as the owner
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
@@ -271,8 +264,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 	it('should only show credentials in their personal project for members if the workflow was shared with them', () => {
 		const workflowName = 'Test workflow';
-		cy.enableFeature('sharing');
-		cy.reload();
 
 		// Create a notion credential as the owner and a workflow that is shared
 		// with member 0
@@ -303,7 +294,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 
 	it("should show all credentials from all personal projects the workflow's been shared into for the global owner", () => {
 		const workflowName = 'Test workflow';
-		cy.enableFeature('sharing');
 
 		// As member 1, create a new notion credential. This should not show up.
 		cy.signinAsMember(1);
@@ -348,8 +338,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 	});
 
 	it('should show all personal credentials if the global owner owns the workflow', () => {
-		cy.enableFeature('sharing');
-
 		// As member 0, create a new notion credential.
 		cy.signinAsMember();
 		cy.visit(credentialsPage.url);

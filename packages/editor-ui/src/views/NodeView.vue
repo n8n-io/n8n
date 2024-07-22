@@ -787,7 +787,7 @@ export default defineComponent({
 	watch: {
 		// Listen to route changes and load the workflow accordingly
 		async $route(to: RouteLocation, from: RouteLocation) {
-			this.readOnlyEnvRouteCheck();
+			await this.readOnlyEnvRouteCheck();
 
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
@@ -4606,17 +4606,16 @@ export default defineComponent({
 				this.canvasStore.stopLoading();
 			}
 		},
-		readOnlyEnvRouteCheck() {
+		async readOnlyEnvRouteCheck() {
+			await this.$nextTick();
 			if (
 				(this.readOnlyEnv || !this.projectPermissions.workflow.create) &&
 				(this.$route.name === VIEWS.NEW_WORKFLOW || this.$route.name === VIEWS.TEMPLATE_IMPORT)
 			) {
-				void this.$nextTick(async () => {
-					this.resetWorkspace();
-					this.uiStore.stateIsDirty = false;
+				this.resetWorkspace();
+				this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.HOMEPAGE });
-				});
+				await this.$router.replace({ name: VIEWS.HOMEPAGE });
 			}
 		},
 		async checkAndInitDebugMode() {
