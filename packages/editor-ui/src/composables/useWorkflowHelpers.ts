@@ -641,9 +641,9 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 
 	function getWebhookExpressionValue(
 		webhookData: IWebhookDescription,
-		nodeName: string,
 		key: string,
 		stringify = true,
+		nodeName?: string,
 	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
@@ -678,10 +678,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, node.name, 'path');
+		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
 		const isFullPath =
-			(getWebhookExpressionValue(webhookData, node.name, 'isFullPath') as unknown as boolean) ||
-			false;
+			(getWebhookExpressionValue(
+				webhookData,
+				'isFullPath',
+				true,
+				node.name,
+			) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
