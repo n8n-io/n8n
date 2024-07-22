@@ -10,8 +10,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
-
-type MetricCategory = 'default' | 'api' | 'cache' | 'logs';
+import type { Includes, MetricCategory, MetricLabel } from './types';
 
 @Service()
 export class PrometheusMetricsService {
@@ -24,10 +23,10 @@ export class PrometheusMetricsService {
 
 	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
 
-	private readonly includes = {
+	private readonly includes: Includes = {
 		metrics: {
 			default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
-			api: config.getEnv('endpoints.metrics.includeApiEndpoints'),
+			routes: config.getEnv('endpoints.metrics.includeApiEndpoints'),
 			cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
 			logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
 		},
@@ -60,8 +59,20 @@ export class PrometheusMetricsService {
 	}
 
 	disableAllMetrics() {
-		for (const metric of Object.keys(this.includes.metrics) as MetricCategory[]) {
-			this.includes.metrics[metric] = false;
+		for (const metric in this.includes.metrics) {
+			this.includes.metrics[metric as MetricCategory] = false;
+		}
+	}
+
+	enableLabels(labels: MetricLabel[]) {
+		for (const label of labels) {
+			this.includes.labels[label] = true;
+		}
+	}
+
+	disableAllLabels() {
+		for (const label in this.includes.labels) {
+			this.includes.labels[label as MetricLabel] = false;
 		}
 	}
 
@@ -98,7 +109,7 @@ export class PrometheusMetricsService {
 	 * Set up metrics for server routes with `express-prom-bundle`
 	 */
 	private initRouteMetrics(app: express.Application) {
-		if (!this.includes.metrics.api) return;
+		if (!this.includes.metrics.routes) return;
 
 		const metricsMiddleware = promBundle({
 			autoregister: false,
@@ -126,9 +137,23 @@ export class PrometheusMetricsService {
 	private mountMetricsEndpoint(app: express.Application) {
 		app.get('/metrics', async (_req: express.Request, res: express.Response) => {
 			const metrics = await promClient.register.metrics();
+			const prefixedMetrics = this.addPrefixToMetrics(metrics);
 			res.setHeader('Content-Type', promClient.register.contentType);
-			res.send(metrics).end();
+			res.send(prefixedMetrics).end();
 		});
+	}
+
+	private addPrefixToMetrics(metrics: string) {
+		return metrics
+			.split('\n')
+			.map((rawLine) => {
+				const line = rawLine.trim();
+
+				if (!line || line.startsWith('#') || line.startsWith(this.prefix)) return rawLine;
+
+				return this.prefix + line;
+			})
+			.join('\n');
 	}
 
 	/**

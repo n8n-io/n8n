@@ -38,8 +38,8 @@ export class AuditEventRelay {
 		this.eventService.on('user-password-reset-request-click', (event) =>
 			this.userPasswordResetRequestClick(event),
 		);
-		this.eventService.on('api-key-created', (event) => this.apiKeyCreated(event));
-		this.eventService.on('api-key-deleted', (event) => this.apiKeyDeleted(event));
+		this.eventService.on('public-api-key-created', (event) => this.apiKeyCreated(event));
+		this.eventService.on('public-api-key-deleted', (event) => this.apiKeyDeleted(event));
 		this.eventService.on('email-failed', (event) => this.emailFailed(event));
 		this.eventService.on('credentials-created', (event) => this.credentialsCreated(event));
 		this.eventService.on('credentials-deleted', (event) => this.credentialsDeleted(event));
@@ -257,18 +257,22 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private apiKeyCreated({ user }: Event['api-key-created']) {
+	private apiKeyCreated(event: Event['public-api-key-created']) {
+		if ('publicApi' in event) return;
+
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
-			payload: user,
+			payload: event.user,
 		});
 	}
 
 	@Redactable()
-	private apiKeyDeleted({ user }: Event['api-key-deleted']) {
+	private apiKeyDeleted(event: Event['public-api-key-deleted']) {
+		if ('publicApi' in event) return;
+
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
-			payload: user,
+			payload: event.user,
 		});
 	}
 
