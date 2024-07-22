@@ -257,22 +257,18 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private apiKeyCreated(event: Event['public-api-key-created']) {
-		if ('publicApi' in event) return;
-
+	private apiKeyCreated({ user }: Event['public-api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
-			payload: event.user,
+			payload: user,
 		});
 	}
 
 	@Redactable()
-	private apiKeyDeleted(event: Event['public-api-key-deleted']) {
-		if ('publicApi' in event) return;
-
+	private apiKeyDeleted({ user }: Event['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
-			payload: event.user,
+			payload: user,
 		});
 	}
 
