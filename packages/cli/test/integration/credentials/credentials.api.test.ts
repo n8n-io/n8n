@@ -142,7 +142,13 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
+				[
+					'credential:move',
+					'credential:read',
+					'credential:update',
+					'credential:share',
+					'credential:delete',
+				].sort(),
 			);
 
 			// Shared cred

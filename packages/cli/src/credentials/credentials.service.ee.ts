@@ -12,6 +12,7 @@ import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -20,9 +21,11 @@ export class EnterpriseCredentialsService {
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
 
 	async shareWithProjects(
+		user: User,
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 		entityManager?: EntityManager,
@@ -30,19 +33,35 @@ export class EnterpriseCredentialsService {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
 		const projects = await em.find(Project, {
-			where: { id: In(shareWithIds), type: 'personal' },
+			where: [
+				{
+					id: In(shareWithIds),
+					type: 'team',
+					// if user can see all projects, don't check project access
+					// if they don't, find projects they can list
+					...(user.hasGlobalScope('project:list')
+						? {}
+						: {
+								projectRelations: {
+									userId: user.id,
+									role: In(this.roleService.rolesWithScope('project', 'project:list')),
+								},
+							}),
+				},
+				{
+					id: In(shareWithIds),
+					type: 'personal',
+				},
+			],
 		});
 
-		const newSharedCredentials = projects
-			// We filter by role === 'project:personalOwner' above and there should
-			// always only be one owner.
-			.map((project) =>
-				this.sharedCredentialsRepository.create({
-					credentialsId: credential.id,
-					role: 'credential:user',
-					projectId: project.id,
-				}),
-			);
+		const newSharedCredentials = projects.map((project) =>
+			this.sharedCredentialsRepository.create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
+			}),
+		);
 
 		return await em.save(newSharedCredentials);
 	}
@@ -97,7 +116,12 @@ export class EnterpriseCredentialsService {
 		return { ...rest };
 	}
 
-	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
+	async transferOne(
+		user: User,
+		credentialId: string,
+		destinationProjectId: string,
+		shareWithSource: boolean,
+	) {
 		// 1. get credential
 		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
@@ -147,8 +171,26 @@ export class EnterpriseCredentialsService {
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
 			// 6. transfer the credential
-			// remove all sharings
-			await trx.remove(credential.shared);
+
+			// remove original owner sharing
+			await trx.remove(ownerSharing);
+
+			// share it back as a user if asked to
+			if (shareWithSource) {
+				await trx.save(
+					trx.create(SharedCredentials, {
+						credentialsId: credential.id,
+						projectId: sourceProject.id,
+						role: 'credential:user',
+					}),
+				);
+			}
+
+			// remove any previous sharings with the new owner
+			await trx.delete(SharedCredentials, {
+				credentialsId: credential.id,
+				projectId: destinationProjectId,
+			});
 
 			// create new owner-sharing
 			await trx.save(
