@@ -100,7 +100,9 @@ export const useProjectsStore = defineStore('projects', () => {
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.restApiContext, project);
 		await getProjectsCount();
-		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
+		// TODO: Remove after create project API returns the project with scopes
+		await getMyProjects();
+		// myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
 
