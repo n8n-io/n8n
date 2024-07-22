@@ -303,6 +303,7 @@ onMounted(() => {
 								class="mr-2xs"
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
+								data-test-id="projects-settings-user-role-select"
 								@update:model-value="onRoleAction(user, $event)"
 							>
 								<N8nOption

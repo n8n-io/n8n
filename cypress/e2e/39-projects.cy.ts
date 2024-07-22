@@ -1,9 +1,4 @@
-import {
-	INSTANCE_MEMBERS,
-	INSTANCE_OWNER,
-	MANUAL_TRIGGER_NODE_NAME,
-	NOTION_NODE_NAME,
-} from '../constants';
+import { INSTANCE_MEMBERS, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
@@ -13,7 +8,7 @@ import {
 	NDV,
 } from '../pages';
 import * as projects from '../composables/projects';
-import { getVisibleSelect } from '../utils';
+import { getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -241,6 +236,26 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		projects.getMenuItems().should('not.exist');
 	});
 
+	it('should not show viewer role if not licensed', () => {
+		cy.signinAsAdmin();
+		cy.visit(workflowsPage.url);
+
+		projects.getMenuItems().first().click();
+		projects.getProjectTabSettings().click();
+
+		cy.get(
+			`[data-test-id="user-list-item-${INSTANCE_MEMBERS[0].email}"] [data-test-id="projects-settings-user-role-select"]`,
+		).click();
+
+		cy.get('.el-select-dropdown__item.is-disabled')
+			.should('contain.text', 'Viewer')
+			.get('span:contains("Upgrade")')
+			.filter(':visible')
+			.click();
+
+		getVisibleModalOverlay().should('contain.text', 'Upgrade to unlock additional roles');
+	});
+
 	describe('when starting from scratch', () => {
 		beforeEach(() => {
 			cy.resetDatabase();
@@ -418,7 +433,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		});
 
 		it('should move resources between projects', () => {
-			cy.signin(INSTANCE_OWNER);
+			cy.signinAsOwner();
 			cy.visit(workflowsPage.url);
 
 			// Create a workflow and a credential in the Home project
