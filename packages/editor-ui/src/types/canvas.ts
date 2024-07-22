@@ -132,3 +132,5 @@ export interface CanvasNodeHandleInjectionData {
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
+
+export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };

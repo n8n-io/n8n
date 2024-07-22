@@ -48,7 +48,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasConnection, CanvasConnectionCreateData, CanvasNode } from '@/types';
+import type {
+	CanvasConnection,
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+} from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import {
 	createCanvasConnectionHandleString,
@@ -135,18 +140,31 @@ export function useCanvasOperations({
 	 * Node operations
 	 */
 
+	function updateNodesPosition(
+		events: CanvasNodeMoveEvent[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		events.forEach(({ id, position }) => {
+			updateNodePosition(id, position, { trackHistory });
+		});
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	function updateNodePosition(
 		id: string,
 		position: CanvasNode['position'],
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false } = {},
 	) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
-		}
-
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
 		}
 
 		const oldPosition: XYPosition = [...node.position];
@@ -156,11 +174,16 @@ export function useCanvasOperations({
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newPosition));
-
-			if (trackBulk) {
-				historyStore.stopRecordingUndo();
-			}
 		}
+	}
+
+	function revertUpdateNodePosition(nodeName: string, position: CanvasNode['position']) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		updateNodePosition(node.id, position);
 	}
 
 	async function renameNode(currentName: string, newName: string, { trackHistory = false } = {}) {
@@ -1545,7 +1568,9 @@ export function useCanvasOperations({
 		triggerNodes,
 		addNodes,
 		addNode,
+		updateNodesPosition,
 		updateNodePosition,
+		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
