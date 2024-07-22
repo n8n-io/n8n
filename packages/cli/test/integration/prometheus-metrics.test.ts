@@ -26,6 +26,7 @@ describe('Metrics', () => {
 
 	beforeEach(() => {
 		prometheusService.disableAllMetrics();
+		prometheusService.disableAllLabels();
 	});
 
 	it('should return n8n version', async () => {
@@ -51,7 +52,9 @@ describe('Metrics', () => {
 
 		const { version, major, minor, patch } = n8nVersion;
 
-		expect(toLines(response)).toContain(
+		const lines = toLines(response);
+
+		expect(lines).toContain(
 			`n8n_test_version_info{version="v${version}",major="${major}",minor="${minor}",patch="${patch}"} 1`,
 		);
 	});
@@ -73,7 +76,10 @@ describe('Metrics', () => {
 		 */
 		expect(response.status).toEqual(200);
 		expect(response.type).toEqual('text/plain');
-		expect(toLines(response)).toContain('nodejs_heap_space_size_total_bytes{space="read_only"} 0');
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_nodejs_heap_space_size_total_bytes{space="read_only"} 0');
 	});
 
 	it('should not return default metrics if disabled', async () => {
@@ -145,5 +151,62 @@ describe('Metrics', () => {
 		expect(lines).not.toContain('n8n_test_cache_hits_total 0');
 		expect(lines).not.toContain('n8n_test_cache_misses_total 0');
 		expect(lines).not.toContain('n8n_test_cache_updates_total 0');
+	});
+
+	it('should return route metrics if enabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('routes');
+		await prometheusService.init(server.app);
+		await agent.get('/api/v1/workflows');
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_http_request_duration_seconds_count 1');
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_http_request_duration_seconds_sum'),
+		);
+		expect(lines).toContainEqual(
+			expect.stringContaining('n8n_test_http_request_duration_seconds_bucket'),
+		);
+	});
+
+	it('should return labels in route metrics if enabled', async () => {
+		/**
+		 * ARrange
+		 */
+		prometheusService.enableMetric('routes');
+		prometheusService.enableLabels(['apiMethod', 'apiPath', 'apiStatusCode']);
+		await prometheusService.init(server.app);
+		await agent.get('/webhook-test/some-uuid');
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContainEqual(expect.stringContaining('method="GET"'));
+		expect(lines).toContainEqual(expect.stringContaining('path="/webhook-test/some-uuid"'));
+		expect(lines).toContainEqual(expect.stringContaining('status_code="404"'));
 	});
 });

@@ -86,7 +86,7 @@ describe('PrometheusMetricsService', () => {
 			expect(service.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
-		it('should set up API metrics with `express-prom-bundle`', async () => {
+		it('should set up route metrics with `express-prom-bundle`', async () => {
 			config.set('endpoints.metrics.includeApiEndpoints', true);
 			config.set('endpoints.metrics.includeApiPathLabel', true);
 			config.set('endpoints.metrics.includeApiMethodLabel', true);
