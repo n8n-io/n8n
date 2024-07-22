@@ -50,7 +50,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 				:nodes="mappedNodes"
 				:connections="mappedConnections"
 				:event-bus="eventBus"
-				:readOnly="readOnly"
+				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
 		</div>

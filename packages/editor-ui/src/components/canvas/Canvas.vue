@@ -267,7 +267,7 @@ async function onFitView() {
 	await fitView({ maxZoom: 1.2, padding: 0.1 });
 }
 
-async function setReadonly(value: boolean) {
+function setReadonly(value: boolean) {
 	setInteractive(!value);
 	elementsSelectable.value = true;
 }
