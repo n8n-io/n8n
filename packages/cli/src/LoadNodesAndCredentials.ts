@@ -17,7 +17,7 @@ import type {
 	INodeTypeData,
 	ICredentialTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter, jsonParse } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -55,13 +55,8 @@ export class LoadNodesAndCredentials {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 	) {
-		this.includeNodes = jsonParse<string[]>(this.globalConfig.nodes.include ?? '[]', {
-			errorMessage: 'Expected NODES_INCLUDE to be valid JSON',
-		});
-
-		this.excludeNodes = jsonParse<string[]>(this.globalConfig.nodes.exclude ?? '[]', {
-			errorMessage: 'Expected NODES_EXCLUDE to be valid JSON',
-		});
+		this.includeNodes = this.globalConfig.nodes.include;
+		this.excludeNodes = this.globalConfig.nodes.exclude;
 	}
 
 	async init() {
