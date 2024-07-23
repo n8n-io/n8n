@@ -19,6 +19,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type {
 	AddedNodesAndConnections,
+	IExecutionResponse,
 	INodeUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
@@ -194,11 +195,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 
 const isCanvasReadOnly = computed(() => {
-	return isLoading.value || isDemoRoute.value || isReadOnlyEnvironment.value;
+	return isDemoRoute.value || isReadOnlyEnvironment.value;
 });
 
 const fallbackNodes = computed<INodeUi[]>(() =>
-	isCanvasReadOnly.value
+	isLoading.value || isCanvasReadOnly.value
 		? []
 		: [
 				{
@@ -940,8 +941,101 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function openExecution(_executionId: string) {
-	// @TODO
+async function openExecution(executionId: string) {
+	canvasStore.startLoading();
+	resetWorkspace();
+
+	let data: IExecutionResponse | undefined;
+	try {
+		data = await workflowsStore.getExecution(executionId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
+	}
+	if (data === undefined) {
+		throw new Error(`Execution with id "${executionId}" could not be found!`);
+	}
+
+	await initializeData();
+	await initializeWorkspace(data.workflowData);
+	workflowsStore.setWorkflowExecutionData(data);
+
+	uiStore.stateIsDirty = false;
+	canvasStore.stopLoading();
+
+	fitView();
+
+	canvasEventBus.emit('open:execution', data);
+
+	void externalHooks.run('execution.open', {
+		workflowId: data.workflowData.id,
+		workflowName: data.workflowData.name,
+		executionId,
+	});
+
+	telemetry.track('User opened read-only execution', {
+		workflow_id: data.workflowData.id,
+		execution_mode: data.mode,
+		execution_finished: data.finished,
+	});
+}
+
+function onExecutionOpenedWithError(data: IExecutionResponse) {
+	if (!data.finished && data.data?.resultData?.error) {
+		// Check if any node contains an error
+		let nodeErrorFound = false;
+		if (data.data.resultData.runData) {
+			const runData = data.data.resultData.runData;
+			errorCheck: for (const nodeName of Object.keys(runData)) {
+				for (const taskData of runData[nodeName]) {
+					if (taskData.error) {
+						nodeErrorFound = true;
+						break errorCheck;
+					}
+				}
+			}
+		}
+
+		if (
+			!nodeErrorFound &&
+			(data.data.resultData.error.stack ?? data.data.resultData.error.message)
+		) {
+			// Display some more information for now in console to make debugging easier
+			console.error(`Execution ${data.id} error:`);
+			console.error(data.data.resultData.error.stack);
+			toast.showMessage({
+				title: i18n.baseText('nodeView.showError.workflowError'),
+				message: data.data.resultData.error.message,
+				type: 'error',
+				duration: 0,
+			});
+		}
+	}
+}
+
+function onExecutionOpenedWithWaitTill(data: IExecutionResponse) {
+	if ((data as ExecutionSummary).waitTill) {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
+			message: `<a data-action="reload">${i18n.baseText('nodeView.refresh')}</a> ${i18n.baseText(
+				'nodeView.toSeeTheLatestStatus',
+			)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${i18n.baseText(
+				'nodeView.moreInfo',
+			)}</a>`,
+			type: 'warning',
+			duration: 0,
+		});
+	}
+}
+
+function addExecutionOpenedEventBindings() {
+	canvasEventBus.on('open:execution', onExecutionOpenedWithError);
+	canvasEventBus.on('open:execution', onExecutionOpenedWithWaitTill);
+}
+
+function removeExecutionOpenedEventBindings() {
+	canvasEventBus.off('open:execution', onExecutionOpenedWithError);
+	canvasEventBus.off('open:execution', onExecutionOpenedWithWaitTill);
 }
 
 async function onStopExecution() {
@@ -1353,6 +1447,7 @@ onMounted(async () => {
 	addPostMessageEventBindings();
 	addSourceControlEventBindings();
 	addImportEventBindings();
+	addExecutionOpenedEventBindings();
 	addWorkflowSavedEventBindings();
 
 	registerCustomActions();
@@ -1366,6 +1461,7 @@ onBeforeUnmount(() => {
 	removePostMessageEventBindings();
 	removeSourceControlEventBindings();
 	removeImportEventBindings();
+	removeExecutionOpenedEventBindings();
 	removeWorkflowSavedEventBindings();
 });
 </script>
@@ -1377,6 +1473,7 @@ onBeforeUnmount(() => {
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
+		:read-only="isCanvasReadOnly"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
@@ -1429,7 +1526,7 @@ onBeforeUnmount(() => {
 		</div>
 		<Suspense>
 			<NodeCreation
-				v-if="!isReadOnlyRoute && !isReadOnlyEnvironment"
+				v-if="!isCanvasReadOnly"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="1"
 				@toggle-node-creator="onOpenNodeCreator"
@@ -1439,7 +1536,7 @@ onBeforeUnmount(() => {
 		<Suspense>
 			<NodeDetailsView
 				:workflow-object="editableWorkflowObject"
-				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
+				:read-only="isCanvasReadOnly"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
 				@value-changed="onRenameNode"
