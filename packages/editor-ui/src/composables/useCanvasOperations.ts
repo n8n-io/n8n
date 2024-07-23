@@ -348,10 +348,25 @@ export function useCanvasOperations({
 
 	function toggleNodesDisabled(
 		ids: string[],
-		{ trackHistory = true }: { trackHistory?: boolean } = {},
+		{ trackHistory = true, trackBulk = true }: { trackHistory?: boolean; trackBulk?: boolean } = {},
 	) {
+		if (trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		const nodes = workflowsStore.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, trackHistory);
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function revertToggleNodeDisabled(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (node) {
+			nodeHelpers.disableNodes([node]);
+		}
 	}
 
 	function toggleNodesPinned(ids: string[], source: PinDataSource) {
@@ -1618,6 +1633,7 @@ export function useCanvasOperations({
 		setNodeActiveByName,
 		setNodeSelected,
 		toggleNodesDisabled,
+		revertToggleNodeDisabled,
 		toggleNodesPinned,
 		setNodeParameters,
 		renameNode,
