@@ -1,4 +1,4 @@
-import { jsonParse, NodeConnectionType } from 'n8n-workflow';
+import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -152,10 +152,6 @@ export class InformationExtractor implements INodeType {
 										name: 'Date',
 										value: 'date',
 									},
-									// {
-									// 	name: 'Date and Time',
-									// 	value: 'datetime',
-									// },
 									{
 										name: 'Number',
 										value: 'number',
@@ -164,10 +160,6 @@ export class InformationExtractor implements INodeType {
 										name: 'String',
 										value: 'string',
 									},
-									// {
-									// 	name: 'Time',
-									// 	value: 'time',
-									// },
 								],
 								default: 'string',
 							},
@@ -181,42 +173,6 @@ export class InformationExtractor implements INodeType {
 						],
 					},
 				],
-			},
-			{
-				displayName: 'When Attribute Not Found',
-				name: 'notFoundStrategy',
-				type: 'options',
-				description: 'Choose what to do when an attribute is not found',
-				options: [
-					// This will translate in a schema with all attributes being optional
-					{
-						name: 'Skip Attribute and Continue',
-						value: 'emptyAttribute',
-					},
-					// This will translate in a schema with all attributes being required
-					{
-						name: 'Set Object to Empty and Continue',
-						value: 'emptyObject',
-					},
-					// This will translate in a scheme with all attributes being required + throw an exception on the first missing attribute
-					{
-						name: 'Fail',
-						value: 'fail',
-					},
-				],
-				default: 'emptyAttribute',
-				displayOptions: {
-					show: {
-						schemaType: ['fromAttributes'],
-					},
-				},
-			},
-			{
-				displayName: 'Skip Empty Results',
-				name: 'skipEmpty',
-				type: 'boolean',
-				description: 'Whether to skip empty results or include them in the output',
-				default: false,
 			},
 			{
 				displayName: 'Options',
@@ -257,29 +213,19 @@ export class InformationExtractor implements INodeType {
 			| 'fromJson'
 			| 'manual';
 
-		const notFoundStrategy = this.getNodeParameter('notFoundStrategy', 0, 'emptyAttribute') as
-			| 'emptyAttribute'
-			| 'emptyObject'
-			| 'fail';
-
-		const skipEmpty = this.getNodeParameter('skipEmpty', 0, false) as boolean;
-
 		let parser: StructuredOutputParser<z.ZodTypeAny>;
 		if (schemaType === 'fromAttributes') {
 			const attributes = this.getNodeParameter(
 				'attributes.attributes',
 				0,
-				{},
+				[],
 			) as AttributeDefinition[];
 
-			// Make zod schema strict (all attributes required) if notFoundStrategy is not 'emptyAttribute'
-			const strictSchema = notFoundStrategy !== 'emptyAttribute';
+			if (attributes.length === 0) {
+				throw new NodeOperationError(this.getNode(), 'At least one attribute must be specified');
+			}
 
-			parser = StructuredOutputParser.fromZodSchema(
-				makeZodSchemaFromAttributes(attributes, strictSchema),
-			);
-
-			// console.log(parser.getFormatInstructions());
+			parser = StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes, false));
 		} else {
 			let jsonSchema: JSONSchema7;
 
@@ -302,8 +248,6 @@ export class InformationExtractor implements INodeType {
 {format_instructions}`,
 		);
 
-		// const structuredOutputModel = llm.withStructuredOutput!(zodSchema);
-
 		const resultData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const input = this.getNodeParameter('text', itemIndex) as string;
@@ -319,31 +263,14 @@ export class InformationExtractor implements INodeType {
 
 			try {
 				const output = await chain.invoke(messages);
-
-				if (
-					!skipEmpty ||
-					(typeof output === 'object' && Object.keys(output as object).length > 0)
-				) {
-					resultData.push({ json: { output } });
-				}
+				resultData.push({ json: { output } });
 			} catch (e) {
-				// console.error(e);
-
-				// Add special error handling for missing attributes only for the 'fromAttributes' schema type
-				// Catch the error thrown by zod validating the output against generated schema
-				// If the missing attribute strategy is set to 'emptyObject', return an empty object
-				if (
-					schemaType === 'fromAttributes' &&
-					notFoundStrategy === 'emptyObject' &&
-					!skipEmpty &&
-					e instanceof OutputParserException &&
-					e.message?.startsWith('Failed to parse')
-				) {
-					resultData.push({ json: { output: null } });
-				} else {
-					// Re-throw the error if the schema type is not 'fromAttributes'
-					throw e;
+				if (this.continueOnFail(e)) {
+					resultData.push({ json: { error: e.message }, pairedItem: { item: itemIndex } });
+					continue;
 				}
+
+				throw e;
 			}
 		}
 
