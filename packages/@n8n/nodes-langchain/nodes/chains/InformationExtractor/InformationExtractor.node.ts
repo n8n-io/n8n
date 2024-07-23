@@ -27,17 +27,17 @@ const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.
 If you do not know the value of an attribute asked to extract, you may omit the attribute's value.`;
 
-export class InformationExtraction implements INodeType {
+export class InformationExtractor implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Information Extraction',
-		name: 'informationExtraction',
-		icon: 'fa:code',
+		displayName: 'Information Extractor',
+		name: 'informationExtractor',
+		icon: 'fa:project-diagram',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Extract information from text in a structured format',
 		defaults: {
-			name: 'Information Extraction',
+			name: 'Information Extractor',
 		},
 		inputs: [
 			{ displayName: '', type: NodeConnectionType.Main },
@@ -62,6 +62,7 @@ export class InformationExtraction implements INodeType {
 			},
 			{
 				...schemaTypeField,
+				description: 'How to specify the schema for the desired output',
 				options: [
 					{
 						name: 'From Attribute Descriptions',
@@ -140,7 +141,7 @@ export class InformationExtraction implements INodeType {
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'Attribute to extract',
+								description: 'Data type of the attribute',
 								required: true,
 								options: [
 									{
@@ -211,6 +212,13 @@ export class InformationExtraction implements INodeType {
 				},
 			},
 			{
+				displayName: 'Skip Empty Results',
+				name: 'skipEmpty',
+				type: 'boolean',
+				description: 'Whether to skip empty results or include them in the output',
+				default: false,
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -253,6 +261,8 @@ export class InformationExtraction implements INodeType {
 			| 'emptyAttribute'
 			| 'emptyObject'
 			| 'fail';
+
+		const skipEmpty = this.getNodeParameter('skipEmpty', 0, false) as boolean;
 
 		let parser: StructuredOutputParser<z.ZodTypeAny>;
 		if (schemaType === 'fromAttributes') {
@@ -309,7 +319,13 @@ export class InformationExtraction implements INodeType {
 
 			try {
 				const output = await chain.invoke(messages);
-				resultData.push({ json: { output } });
+
+				if (
+					!skipEmpty ||
+					(typeof output === 'object' && Object.keys(output as object).length > 0)
+				) {
+					resultData.push({ json: { output } });
+				}
 			} catch (e) {
 				// console.error(e);
 
@@ -318,9 +334,10 @@ export class InformationExtraction implements INodeType {
 				// If the missing attribute strategy is set to 'emptyObject', return an empty object
 				if (
 					schemaType === 'fromAttributes' &&
+					notFoundStrategy === 'emptyObject' &&
+					!skipEmpty &&
 					e instanceof OutputParserException &&
-					e.message?.startsWith('Failed to parse') &&
-					notFoundStrategy === 'emptyObject'
+					e.message?.startsWith('Failed to parse')
 				) {
 					resultData.push({ json: { output: null } });
 				} else {

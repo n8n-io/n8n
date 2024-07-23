@@ -3,7 +3,7 @@ import get from 'lodash/get';
 
 import { FakeLLM } from '@langchain/core/utils/testing';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
-import { InformationExtraction } from '../InformationExtraction.node';
+import { InformationExtractor } from '../InformationExtractor.node';
 import { makeZodSchemaFromAttributes } from '../helpers';
 import type { AttributeDefinition } from '../types';
 
@@ -51,7 +51,7 @@ const createExecuteFunctionsMock = (parameters: IDataObject, fakeLlm: BaseLangua
 	} as unknown as IExecuteFunctions;
 };
 
-describe('InformationExtraction', () => {
+describe('InformationExtractor', () => {
 	describe('From Attribute Descriptions', () => {
 		it('should generate a schema from attribute descriptions', async () => {
 			const schema = makeZodSchemaFromAttributes(mockPersonAttributes, true);
@@ -70,7 +70,7 @@ describe('InformationExtraction', () => {
 		});
 
 		it('should make a request to LLM and return the extracted attributes', async () => {
-			const node = new InformationExtraction();
+			const node = new InformationExtractor();
 
 			const response = await node.execute.call(
 				createExecuteFunctionsMock(
@@ -90,7 +90,7 @@ describe('InformationExtraction', () => {
 		});
 
 		it('should not fail if LLM could not extract some attribute', async () => {
-			const node = new InformationExtraction();
+			const node = new InformationExtractor();
 
 			const response = await node.execute.call(
 				createExecuteFunctionsMock(
@@ -111,7 +111,7 @@ describe('InformationExtraction', () => {
 		});
 
 		it('should fail if LLM could not extract some attribute', async () => {
-			const node = new InformationExtraction();
+			const node = new InformationExtractor();
 
 			try {
 				await node.execute.call(
