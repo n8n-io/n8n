@@ -252,16 +252,15 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
+		const globalConfig = Container.get(GlobalConfig);
 
-		if (areCommunityPackagesEnabled) {
+		if (globalConfig.nodes.communityPackages.enabled) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
 		}
 
-		const globalConfig = Container.get(GlobalConfig);
 		const { type: dbType } = globalConfig.database;
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
