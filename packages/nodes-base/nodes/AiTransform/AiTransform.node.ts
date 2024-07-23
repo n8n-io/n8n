@@ -41,8 +41,8 @@ export class AiTransform implements INodeType {
 					buttonHasInputField: true,
 					buttonInputFieldMaxLength: 500,
 					action: {
-						type: 'updateProperty',
-						handler: 'generateCodeUsingAiService',
+						type: 'generateCodeFromPrompt',
+						handler: 'generateCode',
 						target: 'jsCode',
 					},
 				},
@@ -90,7 +90,7 @@ export class AiTransform implements INodeType {
 
 	methods = {
 		actionHandler: {
-			async generateCodeUsingAiService(
+			async generateCode(
 				this: ILoadOptionsFunctions,
 				payload: string,
 				inputData: INodeExecutionData[],

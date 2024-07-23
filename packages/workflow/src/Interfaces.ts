@@ -1228,7 +1228,7 @@ export interface ILoadOptions {
 }
 
 export type NodePropertyAction = {
-	type: 'updateProperty';
+	type: 'generateCodeFromPrompt';
 	handler: string;
 	target?: string;
 };

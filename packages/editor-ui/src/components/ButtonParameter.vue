@@ -9,6 +9,11 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSchemas } from './CodeNodeEditor/utils';
+import { ASK_AI_EXPERIMENT } from '@/constants';
+import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '@/stores/posthog.store';
+import { useRootStore } from '@/stores/root.store';
+import { generateCodeForPrompt } from '@/api/ai';
 
 const MIN_PROMPT_LENGTH = 10;
 
@@ -24,6 +29,9 @@ const props = defineProps<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
+const settingsStore = useSettingsStore();
+const posthog = usePostHog();
+const rootStore = useRootStore();
 
 const i18n = useI18n();
 
@@ -41,6 +49,14 @@ const isSubmitEnabled = computed(() => {
 	return true;
 });
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+
+const aiEnabled = computed(() => {
+	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+	);
+
+	return isAiExperimentEnabled && settingsStore.settings.ai.enabled;
+});
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
@@ -96,31 +112,58 @@ async function onSubmit() {
 	startLoading();
 
 	try {
-		const currentNodeParameters = activeNode.parameters;
-		console.log(getSchemas());
-		const actionResult = await nodeTypesStore.getNodeParameterActionResult({
-			nodeTypeAndVersion: {
-				name: activeNode.type,
-				version: activeNode.typeVersion,
-			},
-			path: props.path,
-			currentNodeParameters,
-			credentials: activeNode.credentials,
-			handler,
-			payload: prompt.value,
-			inputData: useNDVStore().ndvInputData,
-		});
-
-		if (actionResult === undefined) return;
-
 		switch (type) {
-			case 'updateProperty':
-				//TODO: code editor does not displays updated value, needs to be closed and reopened
+			case 'generateCodeFromPrompt':
+				let value;
+				if (aiEnabled.value) {
+					const { restApiContext } = useRootStore();
+					const version = rootStore.versionCli;
+					const schemas = getSchemas();
+					console.log('schemas', schemas);
+					const model =
+						usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
+							? 'gpt-4'
+							: 'gpt-3.5-turbo-16k';
+
+					const { code } = await generateCodeForPrompt(restApiContext, {
+						question: prompt.value,
+						context: {
+							schema: schemas.parentNodesSchemas,
+							inputSchema: schemas.inputSchema!,
+							ndvPushRef: useNDVStore().pushRef,
+							pushRef: rootStore.pushRef,
+						},
+						model,
+						n8nVersion: version,
+					});
+
+					value = code;
+				} else {
+					const currentNodeParameters = activeNode.parameters;
+					const inputData = useNDVStore().ndvInputData;
+
+					value = await nodeTypesStore.getNodeParameterActionResult({
+						nodeTypeAndVersion: {
+							name: activeNode.type,
+							version: activeNode.typeVersion,
+						},
+						path: props.path,
+						currentNodeParameters,
+						credentials: activeNode.credentials,
+						handler,
+						payload: prompt.value,
+						inputData,
+					});
+				}
+				if (value === undefined) return;
+
 				const updateInformation = {
 					name: getPath(target as string),
-					value: actionResult,
+					value,
 				};
+
 				emit('valueChanged', updateInformation);
+
 				break;
 			default:
 				return;
