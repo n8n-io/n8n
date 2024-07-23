@@ -33,12 +33,16 @@ describe('Test NotionV2, formatBlocks', () => {
 });
 
 describe('Test Notion', () => {
-	describe('extractPageId', () => {
-		const baseUrl = 'https://www.notion.so/fake-instance';
-		const testId = '4eb10d5001254b7faaa831d72d9445aa';
+	const baseUrl = 'https://www.notion.so/fake-instance';
+	const testIds = [
+		'4eb10d5001254b7faaa831d72d9445aa', // Taken from Notion
+		'fffb95d3060b80309027eb9c99605ec3', // Taken from user comment
+		'a6356387779d4df485449a72a408f0d4', // Random v4 UUID
+		'f4c1217e48f711ef94540242ac120002', // Random v1 UUID
+	];
+	describe('extractPageId From URL', () => {
 		const extractPattern =
-			'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})';
-
+			'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{1,}-)?([0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12})';
 		// RLC does some Regex extraction before extractPageId is called
 		const extractIdFromUrl = (url: string): string => {
 			const match = url.match(extractPattern);
@@ -46,27 +50,35 @@ describe('Test Notion', () => {
 		};
 
 		test('should return the part after "p="', () => {
-			const page = `${baseUrl}?p=${testId}`;
-			const result = extractPageId(extractIdFromUrl(page));
-			expect(result).toBe(testId);
+			for (const testId of testIds) {
+				const page = `${baseUrl}?p=${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
 		});
 
-		test('should return the last part after splitting by "-" when URL contains "-" and "https"', () => {
-			const page = `${baseUrl}/some-page-${testId}`;
-			const result = extractPageId(extractIdFromUrl(page));
-			expect(result).toBe(testId);
+		test('should return the last part after splitting by "-" when URL contains multiple "-"', () => {
+			for (const testId of testIds) {
+				const page = `${baseUrl}/some-page-${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
 		});
 
-		test('should return the last part after splitting by "-" when URL contains "-"', () => {
-			const page = `${baseUrl}/1-${testId}`;
-			const result = extractPageId(extractIdFromUrl(page));
-			expect(result).toBe(testId);
+		test('should return the last part after splitting by "-" when URL contains one "-"', () => {
+			for (const testId of testIds) {
+				const page = `${baseUrl}/1-${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
 		});
 
 		test('should return just the ID', () => {
-			const page = `${baseUrl}/${testId}`;
-			const result = extractPageId(extractIdFromUrl(page));
-			expect(result).toBe(testId);
+			for (const testId of testIds) {
+				const page = `${baseUrl}/${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
 		});
 	});
 });
