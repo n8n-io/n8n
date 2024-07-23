@@ -569,6 +569,47 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('toggleNodesDisabled', () => {
+		it('disables nodes based on provided ids', async () => {
+			const nodes = [
+				createTestNode({ id: '1', name: 'A' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowsStore, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodesDisabled([nodes[0].id, nodes[1].id], {
+				trackHistory: true,
+				trackBulk: true,
+			});
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodes[0].name,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
+	describe('revertToggleNodeDisabled', () => {
+		it('re-enables a previously disabled node', () => {
+			const nodeName = 'testNode';
+			const node = createTestNode({ name: nodeName });
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.revertToggleNodeDisabled(nodeName);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodeName,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
 	describe('addConnections', () => {
 		it('should create connections between nodes', async () => {
 			const nodeTypeName = 'type';
