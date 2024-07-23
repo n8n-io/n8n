@@ -28,7 +28,7 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
-import type { Connection } from '@vue-flow/core';
+import type { Connection, ViewportTransform } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
 	CanvasNode,
@@ -134,7 +134,7 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
-const lastClickPosition = ref<XYPosition>([450, 450]);
+const lastClickPosition = ref<XYPosition>([0, 0]);
 
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
@@ -1209,6 +1209,13 @@ async function onSaveFromWithinExecutionDebug() {
  * Canvas
  */
 
+const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
+
+function onViewportChange(event: ViewportTransform) {
+	viewportTransform.value = event;
+	uiStore.nodeViewOffsetPosition = [event.x, event.y];
+}
+
 function fitView() {
 	setTimeout(() => canvasEventBus.emit('fitView'));
 }
@@ -1403,6 +1410,7 @@ onBeforeUnmount(() => {
 		@run:workflow="onRunWorkflow"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
+		@viewport-change="onViewportChange"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
@@ -1431,7 +1439,7 @@ onBeforeUnmount(() => {
 			<NodeCreation
 				v-if="!isReadOnlyRoute && !isReadOnlyEnvironment"
 				:create-node-active="uiStore.isCreateNodeActive"
-				:node-view-scale="1"
+				:node-view-scale="viewportTransform.zoom"
 				@toggle-node-creator="onOpenNodeCreator"
 				@add-nodes="onAddNodesAndConnections"
 			/>

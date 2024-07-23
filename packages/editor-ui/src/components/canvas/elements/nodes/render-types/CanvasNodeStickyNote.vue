@@ -2,7 +2,7 @@
 /* eslint-disable vue/no-multiple-template-root */
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
-import { ref, computed } from 'vue';
+import { ref, computed, useCssModule } from 'vue';
 import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer/dist/types';
 import type { XYPosition } from '@vue-flow/core';
@@ -17,9 +17,16 @@ const emit = defineEmits<{
 	dblclick: [event: MouseEvent];
 }>();
 
-const { id, render } = useCanvasNode();
+const $style = useCssModule();
+
+const { id, isSelected, render } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
+
+const classes = computed(() => ({
+	[$style.sticky]: true,
+	[$style.selected]: isSelected.value,
+}));
 
 /**
  * Resizing
@@ -68,10 +75,10 @@ function onDoubleClick(event: MouseEvent) {
 	<N8nSticky
 		v-bind="$attrs"
 		:id="id"
+		:class="classes"
 		data-test-id="canvas-sticky-note-node"
 		:height="renderOptions.height"
 		:width="renderOptions.width"
-		:class="$style.sticky"
 		:model-value="renderOptions.content"
 		:background="renderOptions.color"
 		:edit-mode="isActive"
@@ -84,5 +91,14 @@ function onDoubleClick(event: MouseEvent) {
 <style lang="scss" module>
 .sticky {
 	position: relative;
+
+	/**
+	 * State classes
+	 * The reverse order defines the priority in case multiple states are active
+	 */
+
+	&.selected {
+		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+	}
 }
 </style>
