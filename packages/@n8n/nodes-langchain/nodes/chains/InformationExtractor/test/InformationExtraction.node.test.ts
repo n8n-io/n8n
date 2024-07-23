@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow/src';
 import get from 'lodash/get';
 
-import { FakeLLM } from '@langchain/core/utils/testing';
+import { FakeLLM, FakeListChatModel } from '@langchain/core/utils/testing';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { InformationExtractor } from '../InformationExtractor.node';
 import { makeZodSchemaFromAttributes } from '../helpers';
@@ -141,6 +141,31 @@ describe('InformationExtractor', () => {
 			} catch (error) {
 				expect(error.message).toContain('Failed to parse');
 			}
+		});
+
+		it('retries if LLM fails to extract some required attribute', async () => {
+			const node = new InformationExtractor();
+
+			const response = await node.execute.call(
+				createExecuteFunctionsMock(
+					{
+						text: 'John is 30 years old',
+						attributes: {
+							attributes: mockPersonAttributesRequired,
+						},
+						options: {},
+						schemaType: 'fromAttributes',
+					},
+					new FakeListChatModel({
+						responses: [
+							formatFakeLlmResponse({ name: 'John' }),
+							formatFakeLlmResponse({ name: 'John', age: 30 }),
+						],
+					}),
+				),
+			);
+
+			expect(response).toEqual([[{ json: { output: { name: 'John', age: 30 } } }]]);
 		});
 	});
 });

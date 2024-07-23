@@ -10,7 +10,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { z } from 'zod';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { HumanMessage } from '@langchain/core/messages';
 import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
 import {
@@ -21,7 +21,6 @@ import {
 import { getTracingConfig } from '../../../utils/tracing';
 import type { AttributeDefinition } from './types';
 import { makeZodSchemaFromAttributes } from './helpers';
-import { OutputParserException } from '@langchain/core/output_parsers';
 
 const SYSTEM_PROMPT_TEMPLATE = `You are an expert extraction algorithm.
 Only extract relevant information from the text.
@@ -238,7 +237,8 @@ export class InformationExtractor implements INodeType {
 			| 'fromJson'
 			| 'manual';
 
-		let parser: StructuredOutputParser<z.ZodTypeAny>;
+		let parser: OutputFixingParser<object>;
+
 		if (schemaType === 'fromAttributes') {
 			const attributes = this.getNodeParameter(
 				'attributes.attributes',
@@ -250,7 +250,10 @@ export class InformationExtractor implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'At least one attribute must be specified');
 			}
 
-			parser = StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes));
+			parser = OutputFixingParser.fromLLM(
+				llm,
+				StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes)),
+			);
 		} else {
 			let jsonSchema: JSONSchema7;
 
@@ -265,7 +268,7 @@ export class InformationExtractor implements INodeType {
 			const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
 			const zodSchema = (await zodSchemaSandbox.runCode()) as z.ZodSchema<object>;
 
-			parser = StructuredOutputParser.fromZodSchema(zodSchema);
+			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}
 
 		const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
@@ -289,13 +292,13 @@ export class InformationExtractor implements INodeType {
 			try {
 				const output = await chain.invoke(messages);
 				resultData.push({ json: { output } });
-			} catch (e) {
-				if (this.continueOnFail(e)) {
-					resultData.push({ json: { error: e.message }, pairedItem: { item: itemIndex } });
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}
 
-				throw e;
+				throw error;
 			}
 		}
 
