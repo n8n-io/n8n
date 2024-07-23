@@ -17,7 +17,7 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig = {
+	const defaultConfig: GlobalConfig = {
 		database: {
 			logging: {
 				enabled: false,
@@ -100,6 +100,14 @@ describe('GlobalConfig', () => {
 			preferGet: false,
 			updateInterval: 300,
 		},
+		nodes: {
+			communityPackages: {
+				enabled: true,
+			},
+			errorTriggerType: 'n8n-nodes-base.errorTrigger',
+			include: [],
+			exclude: [],
+		},
 		publicApi: {
 			disabled: false,
 			path: 'api',
@@ -128,6 +136,7 @@ describe('GlobalConfig', () => {
 			DB_POSTGRESDB_HOST: 'some-host',
 			DB_POSTGRESDB_USER: 'n8n',
 			DB_TABLE_PREFIX: 'test_',
+			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({
@@ -144,11 +153,15 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 			},
+			nodes: {
+				...defaultConfig.nodes,
+				include: ['n8n-nodes-base.hackerNews'],
+			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
-	it('should use values from env variables when defined and convert them to the correct type', () => {
+	it('should read values from files using _FILE env variables', () => {
 		const passwordFile = '/path/to/postgres/password';
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
