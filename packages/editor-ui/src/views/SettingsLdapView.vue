@@ -302,34 +302,33 @@ export default defineComponent({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputsRef = this.$refs.ldapConfigForm as { values: LDAPConfigForm };
+			const formInputsRef = this.$refs.ldapConfigForm as { getValues: () => LDAPConfigForm };
+			const formValues = formInputsRef.getValues();
 
 			if (!this.hasAnyChanges || !formInputsRef) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: formInputsRef.values.loginEnabled,
-				loginLabel: formInputsRef.values.loginLabel,
-				connectionUrl: formInputsRef.values.serverAddress,
-				allowUnauthorizedCerts: formInputsRef.values.allowUnauthorizedCerts,
-				connectionPort: +formInputsRef.values.port,
-				connectionSecurity: formInputsRef.values.connectionSecurity,
-				baseDn: formInputsRef.values.baseDn,
-				bindingAdminDn:
-					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminDn : '',
-				bindingAdminPassword:
-					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminPassword : '',
-				emailAttribute: formInputsRef.values.email,
-				firstNameAttribute: formInputsRef.values.firstName,
-				lastNameAttribute: formInputsRef.values.lastName,
-				loginIdAttribute: formInputsRef.values.loginId,
-				ldapIdAttribute: formInputsRef.values.ldapId,
-				userFilter: formInputsRef.values.userFilter,
-				synchronizationEnabled: formInputsRef.values.synchronizationEnabled,
-				synchronizationInterval: +formInputsRef.values.synchronizationInterval,
-				searchPageSize: +formInputsRef.values.pageSize,
-				searchTimeout: +formInputsRef.values.searchTimeout,
+				loginEnabled: formValues.loginEnabled,
+				loginLabel: formValues.loginLabel,
+				connectionUrl: formValues.serverAddress,
+				allowUnauthorizedCerts: formValues.allowUnauthorizedCerts,
+				connectionPort: +formValues.port,
+				connectionSecurity: formValues.connectionSecurity,
+				baseDn: formValues.baseDn,
+				bindingAdminDn: formValues.bindingType === 'admin' ? formValues.adminDn : '',
+				bindingAdminPassword: formValues.bindingType === 'admin' ? formValues.adminPassword : '',
+				emailAttribute: formValues.email,
+				firstNameAttribute: formValues.firstName,
+				lastNameAttribute: formValues.lastName,
+				loginIdAttribute: formValues.loginId,
+				ldapIdAttribute: formValues.ldapId,
+				userFilter: formValues.userFilter,
+				synchronizationEnabled: formValues.synchronizationEnabled,
+				synchronizationInterval: +formValues.synchronizationInterval,
+				searchPageSize: +formValues.pageSize,
+				searchTimeout: +formValues.searchTimeout,
 			};
 
 			let saveForm = true;
