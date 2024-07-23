@@ -14,7 +14,7 @@ export class VoyageAI implements INodeType {
         group: ['transform'],
         version: 1,
         subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-        description: 'Interact with Voyage AI API',
+        description: 'Use Voyage AI',
         defaults: {
             name: 'Voyage AI',
         },
@@ -22,7 +22,7 @@ export class VoyageAI implements INodeType {
         outputs: ['main'],
         credentials: [
             {
-                name: 'voyageAIApi',
+                name: 'voyageAIAPI',
                 required: true,
             },
         ],
@@ -144,7 +144,7 @@ export class VoyageAI implements INodeType {
                             model,
                         };
 
-                        const credentials = await this.getCredentials('voyageAIApi');
+                        const credentials = await this.getCredentials('voyageAIAPI');
 
                         const response = await this.helpers.httpRequest({
                             method: 'POST',
@@ -156,14 +156,27 @@ export class VoyageAI implements INodeType {
                             },
                         });
 
+                        // Format the response to match OpenAI's output
+                        const formattedResponse = {
+                            data: [{
+                                embedding: response.data[0].embedding,
+                                index: 0,
+                                object: 'embedding'
+                            }],
+                            model: response.model,
+                            object: 'list',
+                            usage: response.usage
+                        };
+
                         returnData.push({
-                            json: response as INodeExecutionData['json'],
+                            json: formattedResponse,
+                            pairedItem: { item: i },
                         });
                     }
                 }
             } catch (error) {
                 if (this.continueOnFail()) {
-                    returnData.push({ json: { error: error.message } });
+                    returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
                     continue;
                 }
                 throw new NodeOperationError(this.getNode(), error as Error, {
