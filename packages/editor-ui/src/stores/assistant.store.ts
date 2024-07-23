@@ -20,6 +20,7 @@ import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface'
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
 const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatWidth = ref<number>(275);
@@ -60,8 +61,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	const unreadCount = computed(() =>
-		chatMessages.value.reduce((count, msg) => (!msg.read ? count + 1 : count), 0),
+		chatMessages.value.reduce(
+			(count, msg) =>
+				READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read
+					? count + 1
+					: count,
+			0,
+		),
 	);
+
+	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 
 	function closeChat() {
 		chatWindowOpen.value = false;
@@ -69,6 +78,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function openChat() {
 		chatWindowOpen.value = true;
+		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
 	}
 
 	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
@@ -180,6 +190,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return `${Math.floor(Math.random() * 10000)}`;
 	}
 
+	function onDoneStreaming(id: string) {
+		stopStreaming();
+		console.log('yo messages', id, chatMessages.value);
+		lastUnread.value = chatMessages.value.find(
+			(msg) =>
+				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
+		);
+		console.log('last unread', lastUnread.value);
+		setTimeout(() => {
+			if (lastUnread.value?.id === id) {
+				lastUnread.value = undefined;
+			}
+		}, 4000);
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
 		if (chatSessionError.value) {
@@ -223,7 +248,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 			},
 			(msg) => onEachStreamingMessage(msg, id),
-			stopStreaming,
+			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id),
 		);
 	}
@@ -248,7 +273,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				sessionId: currentSessionId.value,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
-			stopStreaming,
+			() => onDoneStreaming(id),
 			(e) => handleServiceError(e, id),
 		);
 	}
@@ -287,7 +312,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					sessionId: currentSessionId.value,
 				},
 				(msg) => onEachStreamingMessage(msg, id),
-				stopStreaming,
+				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
 		} catch (e: unknown) {
@@ -408,6 +433,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isAssistantOpen,
 		canShowAssistant,
 		canShowAssistantButtons,
+		lastUnread,
 		onNodeExecution,
 		closeChat,
 		openChat,
