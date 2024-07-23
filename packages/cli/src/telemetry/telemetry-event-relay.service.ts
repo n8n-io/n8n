@@ -219,8 +219,6 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiKeyCreated(event: Event['public-api-key-created']) {
-		if (!('publicApi' in event)) return;
-
 		const { user, publicApi } = event;
 
 		void this.telemetry.track('API key created', {
@@ -230,8 +228,6 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
-		if (!('publicApi' in event)) return;
-
 		const { user, publicApi } = event;
 
 		void this.telemetry.track('API key deleted', {
