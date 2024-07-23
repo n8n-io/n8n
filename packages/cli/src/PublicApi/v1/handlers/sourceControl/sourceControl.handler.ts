@@ -10,7 +10,7 @@ import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/eventbus/event.service';
 
 export = {
 	pull: [
@@ -39,7 +39,7 @@ export = {
 				});
 
 				if (result.statusCode === 200) {
-					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
+					Container.get(EventService).emit('source-control-user-pulled-api', {
 						...getTrackingInformationFromPullResult(result.statusResult),
 						forced: req.body.force ?? false,
 					});

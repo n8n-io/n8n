@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { Position } from '@vue-flow/core';
+import { NodeConnectionType } from 'n8n-workflow';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -14,8 +15,8 @@ const DEFAULT_PROPS = {
 	targetPosition: Position.Bottom,
 	data: {
 		status: undefined,
-		source: { index: 0, type: 'main' },
-		target: { index: 0, type: 'main' },
+		source: { index: 0, type: NodeConnectionType.Main },
+		target: { index: 0, type: NodeConnectionType.Main },
 	},
 } satisfies Partial<CanvasEdgeProps>;
 const renderComponent = createComponentRenderer(CanvasEdge, {

@@ -76,7 +76,7 @@ const usersListActions = computed((): IUserListAction[] => {
 	];
 });
 const isAdvancedPermissionsEnabled = computed((): boolean => {
-	return settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedPermissions);
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
 const userRoles = computed((): Array<{ value: IRole; label: string; disabled?: boolean }> => {

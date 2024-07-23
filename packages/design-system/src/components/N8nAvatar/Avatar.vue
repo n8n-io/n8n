@@ -15,6 +15,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
+import { getInitials } from '../../utils/labelUtil';
 
 interface AvatarProps {
 	firstName: string;
@@ -37,11 +38,7 @@ const props = withDefaults(defineProps<AvatarProps>(), {
 	],
 });
 
-const initials = computed(
-	() =>
-		(props.firstName ? props.firstName.charAt(0) : '') +
-		(props.lastName ? props.lastName.charAt(0) : ''),
-);
+const initials = computed(() => getInitials(`${props.firstName} ${props.lastName}`));
 
 const getColors = (colors: string[]): string[] => {
 	const style = getComputedStyle(document.body);

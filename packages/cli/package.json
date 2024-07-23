@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.50.0",
+  "version": "1.51.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -74,12 +74,15 @@
     "@types/ws": "^8.5.4",
     "@types/xml2js": "^0.4.14",
     "@types/yamljs": "^0.2.31",
+    "@vvo/tzdb": "^6.141.0",
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
+    "@azure/identity": "^4.3.0",
+    "@azure/keyvault-secrets": "^4.8.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
@@ -116,7 +119,6 @@
     "flat": "5.0.2",
     "flatted": "3.2.7",
     "formidable": "3.5.1",
-    "google-timezones-json": "1.1.0",
     "handlebars": "4.7.8",
     "helmet": "7.1.0",
     "infisical-node": "1.3.0",

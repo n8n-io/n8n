@@ -15,12 +15,14 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
 import { isApiEnabled } from '@/PublicApi';
 import { Logger } from '@/Logger';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class InstanceRiskReporter implements RiskReporter {
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async report(workflows: WorkflowEntity[]) {
@@ -87,8 +89,8 @@ export class InstanceRiskReporter implements RiskReporter {
 
 		settings.features = {
 			communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
-			versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			templatesEnabled: config.getEnv('templates.enabled'),
+			versionNotificationsEnabled: this.globalConfig.versionNotifications.enabled,
+			templatesEnabled: this.globalConfig.templates.enabled,
 			publicApiEnabled: isApiEnabled(),
 		};
 
@@ -142,7 +144,7 @@ export class InstanceRiskReporter implements RiskReporter {
 	}
 
 	private async getNextVersions(currentVersionName: string) {
-		const BASE_URL = config.getEnv('versionNotifications.endpoint');
+		const BASE_URL = this.globalConfig.versionNotifications.endpoint;
 		const { instanceId } = this.instanceSettings;
 
 		const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {

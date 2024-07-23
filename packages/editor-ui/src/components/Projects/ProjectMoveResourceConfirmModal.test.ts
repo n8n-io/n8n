@@ -49,6 +49,7 @@ describe('ProjectMoveResourceConfirmModal', () => {
 					id: '1',
 				},
 				projectId: '1',
+				projectName: 'My Project',
 			},
 		};
 		const { getByRole, getAllByRole } = renderComponent({ props });
