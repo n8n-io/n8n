@@ -6,7 +6,7 @@ import {
 export class VoyageAIAPI implements ICredentialType {
   name = 'VoyageAIAPI';
   displayName = 'Voyage AI API';
-  documentationUrl = 'https://docs.voyageai.com/'; // Replace with actual documentation URL
+  documentationUrl = 'https://docs.voyageai.com/'; 
   properties: INodeProperties[] = [
     {
       displayName: 'API Key',
