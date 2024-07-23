@@ -159,7 +159,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
-		if (response.sessionId) {
+		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
 		}
 		addAssistantMessages(response.messages, id);
