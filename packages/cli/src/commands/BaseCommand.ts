@@ -62,6 +62,7 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
+		this.logger.debug('Initializing DB');
 		await Db.init().catch(
 			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
 		);
@@ -72,12 +73,15 @@ export abstract class BaseCommand extends Command {
 			this.shutdownService.validate();
 		}
 
+		this.logger.debug('Initializing HTTP server');
 		await this.server?.init();
 
+		this.logger.debug('Starting DB migrations');
 		await Db.migrate().catch(
 			async (error: Error) =>
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
+		this.logger.debug('Finished DB migrations');
 
 		const globalConfig = Container.get(GlobalConfig);
 		const { type: dbType } = globalConfig.database;

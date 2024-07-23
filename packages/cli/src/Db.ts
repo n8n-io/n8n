@@ -49,12 +49,17 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 }
 
 export async function init(): Promise<void> {
-	if (connectionState.connected) return;
+	if (connectionState.connected) {
+		console.log('already connected');
+		return;
+	}
 
 	const connectionOptions = getConnectionOptions();
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);
+	console.log('starting DB initialization');
 	await connection.initialize();
+	console.log('finished DB initialization');
 
 	connectionState.connected = true;
 }
