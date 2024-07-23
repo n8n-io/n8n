@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasNode, ConnectStartEvent } from '@/types';
+import type { CanvasConnection, CanvasNode, CanvasNodeMoveEvent, ConnectStartEvent } from '@/types';
 import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
@@ -16,12 +16,14 @@ import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
 
 const $style = useCssModule();
 
 const emit = defineEmits<{
 	'update:modelValue': [elements: CanvasNode[]];
 	'update:node:position': [id: string, position: XYPosition];
+	'update:nodes:position': [events: CanvasNodeMoveEvent[]];
 	'update:node:active': [id: string];
 	'update:node:enabled': [id: string];
 	'update:node:selected': [id: string];
@@ -116,9 +118,11 @@ function onClickNodeAdd(id: string, handle: string) {
 }
 
 function onNodeDragStop(e: NodeDragEvent) {
-	e.nodes.forEach((node) => {
-		onUpdateNodePosition(node.id, node.position);
-	});
+	onUpdateNodesPosition(e.nodes.map((node) => ({ id: node.id, position: node.position })));
+}
+
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
+	emit('update:nodes:position', events);
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
@@ -343,7 +347,7 @@ onPaneReady(async () => {
 		:apply-changes="false"
 		pan-on-scroll
 		snap-to-grid
-		:snap-grid="[16, 16]"
+		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0.2"
 		:max-zoom="4"
 		:class="[$style.canvas, { [$style.visible]: paneReady }]"

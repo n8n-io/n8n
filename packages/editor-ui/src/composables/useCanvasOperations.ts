@@ -49,7 +49,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasConnection, CanvasConnectionCreateData, CanvasNode } from '@/types';
+import type {
+	CanvasConnection,
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+} from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import {
 	createCanvasConnectionHandleString,
@@ -138,18 +143,31 @@ export function useCanvasOperations({
 	 * Node operations
 	 */
 
+	function updateNodesPosition(
+		events: CanvasNodeMoveEvent[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		events.forEach(({ id, position }) => {
+			updateNodePosition(id, position, { trackHistory });
+		});
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	function updateNodePosition(
 		id: string,
 		position: CanvasNode['position'],
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false } = {},
 	) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
-		}
-
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
 		}
 
 		const oldPosition: XYPosition = [...node.position];
@@ -159,11 +177,16 @@ export function useCanvasOperations({
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newPosition));
-
-			if (trackBulk) {
-				historyStore.stopRecordingUndo();
-			}
 		}
+	}
+
+	function revertUpdateNodePosition(nodeName: string, position: CanvasNode['position']) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		updateNodePosition(node.id, position);
 	}
 
 	async function renameNode(currentName: string, newName: string, { trackHistory = false } = {}) {
@@ -348,10 +371,25 @@ export function useCanvasOperations({
 
 	function toggleNodesDisabled(
 		ids: string[],
-		{ trackHistory = true }: { trackHistory?: boolean } = {},
+		{ trackHistory = true, trackBulk = true }: { trackHistory?: boolean; trackBulk?: boolean } = {},
 	) {
+		if (trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		const nodes = workflowsStore.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, trackHistory);
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function revertToggleNodeDisabled(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (node) {
+			nodeHelpers.disableNodes([node]);
+		}
 	}
 
 	function toggleNodesPinned(ids: string[], source: PinDataSource) {
@@ -380,10 +418,16 @@ export function useCanvasOperations({
 		options: {
 			dragAndDrop?: boolean;
 			position?: XYPosition;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
 		} = {},
 	) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
+
+		if (options.trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const nodeAddData of nodes) {
 			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
@@ -399,7 +443,7 @@ export function useCanvasOperations({
 						...options,
 						openNDV,
 						isAutoAdd,
-						trackHistory: true,
+						trackHistory: options.trackHistory,
 					},
 				);
 			} catch (error) {
@@ -417,6 +461,10 @@ export function useCanvasOperations({
 		if (lastAddedNode) {
 			// @TODO Figure out what this does and why it's needed
 			updatePositionForNodeWithMultipleInputs(lastAddedNode);
+		}
+
+		if (options.trackBulk) {
+			historyStore.stopRecordingUndo();
 		}
 	}
 
@@ -490,6 +538,15 @@ export function useCanvasOperations({
 		}
 
 		return nodeData;
+	}
+
+	async function revertAddNode(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		deleteNode(node.id);
 	}
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
@@ -1613,11 +1670,15 @@ export function useCanvasOperations({
 		triggerNodes,
 		addNodes,
 		addNode,
+		revertAddNode,
+		updateNodesPosition,
 		updateNodePosition,
+		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
 		toggleNodesDisabled,
+		revertToggleNodeDisabled,
 		toggleNodesPinned,
 		setNodeParameters,
 		renameNode,
