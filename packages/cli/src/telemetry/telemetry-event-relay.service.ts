@@ -44,9 +44,7 @@ export class TelemetryEventRelay {
 		this.eventService.on('license-renewal-attempted', (event) => {
 			this.licenseRenewalAttempted(event);
 		});
-		this.eventService.on('variable-created', (event) => {
-			this.variableCreated(event);
-		});
+		this.eventService.on('variable-created', () => this.variableCreated());
 		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
 			this.externalSecretsProviderSettingsSaved(event);
 		});
@@ -187,10 +185,8 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private variableCreated({ variableType }: Event['variable-created']) {
-		void this.telemetry.track('User created variable', {
-			variable_type: variableType,
-		});
+	private variableCreated() {
+		void this.telemetry.track('User created variable');
 	}
 
 	private externalSecretsProviderSettingsSaved({
