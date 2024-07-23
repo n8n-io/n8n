@@ -130,11 +130,12 @@ export class InformationExtractor implements INodeType {
 						displayName: 'Attribute List',
 						values: [
 							{
-								displayName: 'Attribute Name',
+								displayName: 'Name',
 								name: 'name',
 								type: 'string',
 								default: '',
 								description: 'Attribute to extract',
+								placeholder: 'e.g. company_name',
 								required: true,
 							},
 							{
@@ -169,6 +170,16 @@ export class InformationExtractor implements INodeType {
 								type: 'string',
 								default: '',
 								description: 'Describe your attribute',
+								placeholder: 'Add description for the attribute',
+								required: true,
+							},
+							{
+								displayName: 'Required',
+								name: 'required',
+								type: 'boolean',
+								default: false,
+								description: 'Whether attribute is required',
+								required: true,
 							},
 						],
 					},
@@ -225,7 +236,7 @@ export class InformationExtractor implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'At least one attribute must be specified');
 			}
 
-			parser = StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes, false));
+			parser = StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(attributes));
 		} else {
 			let jsonSchema: JSONSchema7;
 

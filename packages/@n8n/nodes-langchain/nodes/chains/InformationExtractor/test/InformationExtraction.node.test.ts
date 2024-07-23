@@ -12,11 +12,28 @@ const mockPersonAttributes: AttributeDefinition[] = [
 		name: 'name',
 		type: 'string',
 		description: 'The name of the person',
+		required: false,
 	},
 	{
 		name: 'age',
 		type: 'number',
 		description: 'The age of the person',
+		required: false,
+	},
+];
+
+const mockPersonAttributesRequired: AttributeDefinition[] = [
+	{
+		name: 'name',
+		type: 'string',
+		description: 'The name of the person',
+		required: true,
+	},
+	{
+		name: 'age',
+		type: 'number',
+		description: 'The age of the person',
+		required: true,
 	},
 ];
 
@@ -48,21 +65,16 @@ const createExecuteFunctionsMock = (parameters: IDataObject, fakeLlm: BaseLangua
 		getExecutionId() {
 			return 'test_execution_id';
 		},
+		continueOnFail() {
+			return false;
+		},
 	} as unknown as IExecuteFunctions;
 };
 
 describe('InformationExtractor', () => {
 	describe('From Attribute Descriptions', () => {
-		it('should generate a schema from attribute descriptions', async () => {
-			const schema = makeZodSchemaFromAttributes(mockPersonAttributes, true);
-
-			expect(schema.parse({ name: 'John', age: 30 })).toEqual({ name: 'John', age: 30 });
-			expect(() => schema.parse({ name: 'John' })).toThrow();
-			expect(() => schema.parse({ age: 30 })).toThrow();
-		});
-
 		it('should generate a schema from attribute descriptions with optional fields', async () => {
-			const schema = makeZodSchemaFromAttributes(mockPersonAttributes, false);
+			const schema = makeZodSchemaFromAttributes(mockPersonAttributes);
 
 			expect(schema.parse({ name: 'John', age: 30 })).toEqual({ name: 'John', age: 30 });
 			expect(schema.parse({ name: 'John' })).toEqual({ name: 'John' });
@@ -99,7 +111,6 @@ describe('InformationExtractor', () => {
 						attributes: {
 							attributes: mockPersonAttributes,
 						},
-						notFoundStrategy: 'emptyAttribute',
 						options: {},
 						schemaType: 'fromAttributes',
 					},
@@ -110,7 +121,7 @@ describe('InformationExtractor', () => {
 			expect(response).toEqual([[{ json: { output: { name: 'John' } } }]]);
 		});
 
-		it('should fail if LLM could not extract some attribute', async () => {
+		it('should fail if LLM could not extract some required attribute', async () => {
 			const node = new InformationExtractor();
 
 			try {
@@ -119,9 +130,8 @@ describe('InformationExtractor', () => {
 						{
 							text: 'John is 30 years old',
 							attributes: {
-								attributes: mockPersonAttributes,
+								attributes: mockPersonAttributesRequired,
 							},
-							notFoundStrategy: 'fail',
 							options: {},
 							schemaType: 'fromAttributes',
 						},

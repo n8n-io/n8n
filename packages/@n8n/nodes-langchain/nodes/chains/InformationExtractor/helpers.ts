@@ -27,8 +27,11 @@ function makeAttributeSchema(attributeDefinition: AttributeDefinition, required:
 	return schema.describe(attributeDefinition.description);
 }
 
-export function makeZodSchemaFromAttributes(attributes: AttributeDefinition[], strict: boolean) {
-	const schemaEntries = attributes.map((attr) => [attr.name, makeAttributeSchema(attr, strict)]);
+export function makeZodSchemaFromAttributes(attributes: AttributeDefinition[]) {
+	const schemaEntries = attributes.map((attr) => [
+		attr.name,
+		makeAttributeSchema(attr, attr.required),
+	]);
 
 	return z.object(Object.fromEntries(schemaEntries));
 }
