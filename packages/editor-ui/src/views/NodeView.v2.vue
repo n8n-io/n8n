@@ -29,7 +29,12 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
+import type {
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+} from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -134,6 +139,8 @@ const lastClickPosition = ref<XYPosition>([450, 450]);
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
+	updateNodesPosition,
+	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
 	setNodeActive,
@@ -444,8 +451,16 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
+	updateNodesPosition(events, { trackHistory: true });
+}
+
 function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
 	updateNodePosition(id, position, { trackHistory: true });
+}
+
+function onRevertNodePosition({ nodeName, position }: { nodeName: string; position: XYPosition }) {
+	revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
 }
 
 function onDeleteNode(id: string) {
@@ -986,7 +1001,7 @@ const chatTriggerNodePinnedData = computed(() => {
  */
 
 function addUndoRedoEventBindings() {
-	// historyBus.on('nodeMove', onMoveNode);
+	historyBus.on('nodeMove', onRevertNodePosition);
 	historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
@@ -996,7 +1011,7 @@ function addUndoRedoEventBindings() {
 }
 
 function removeUndoRedoEventBindings() {
-	// historyBus.off('nodeMove', onMoveNode);
+	historyBus.off('nodeMove', onRevertNodePosition);
 	historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
@@ -1362,6 +1377,7 @@ onBeforeUnmount(() => {
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
+		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
