@@ -1831,9 +1831,17 @@ export interface INodeOutputConfiguration {
 
 export type ExpressionString = `={{${string}}}`;
 
+export type NodeDefaults = Partial<{
+	/**
+	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
+	 */
+	color: string;
+	name: string;
+}>;
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
-	defaults: INodeParameters;
+	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
@@ -2154,6 +2162,7 @@ export const eventNamesAiNodes = [
 	'n8n.ai.llm.generated',
 	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
+	'n8n.ai.vector.store.updated',
 ] as const;
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
@@ -2613,7 +2622,7 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
-	isDocker: boolean;
+	isDocker?: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;

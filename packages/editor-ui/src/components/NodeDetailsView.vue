@@ -439,7 +439,7 @@ const foreignCredentials = computed(() => {
 	const usedCredentials = workflowsStore.usedCredentials;
 
 	const foreignCredentialsArray: string[] = [];
-	if (credentials && settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+	if (credentials && settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 		Object.values(credentials).forEach((credential) => {
 			if (
 				credential.id &&

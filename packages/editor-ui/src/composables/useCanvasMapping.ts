@@ -18,7 +18,7 @@ import type {
 	CanvasNodeDefaultRender,
 	CanvasNodeStickyNoteRender,
 } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
@@ -263,8 +263,8 @@ export function useCanvasMapping({
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
 				connections: {
-					input: inputConnections,
-					output: outputConnections,
+					[CanvasConnectionMode.Input]: inputConnections,
+					[CanvasConnectionMode.Output]: outputConnections,
 				},
 				issues: {
 					items: nodeIssuesById.value[node.id],

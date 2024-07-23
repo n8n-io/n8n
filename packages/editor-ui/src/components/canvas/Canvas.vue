@@ -15,6 +15,7 @@ import { useKeybindings } from '@/composables/useKeybindings';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type { PinDataSource } from '@/composables/usePinnedData';
+import { isPresent } from '@/utils/typesUtils';
 
 const $style = useCssModule();
 
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 	'update:node:selected': [id: string];
 	'update:node:name': [id: string];
 	'update:node:parameters': [id: string, parameters: Record<string, unknown>];
+	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
 	'delete:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -74,6 +76,7 @@ const {
 	project,
 	nodes: graphNodes,
 	onPaneReady,
+	findNode,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
 useKeybindings({
@@ -108,6 +111,10 @@ const paneReady = ref(false);
  * Nodes
  */
 
+function onClickNodeAdd(id: string, handle: string) {
+	emit('click:node:add', id, handle);
+}
+
 function onNodeDragStop(e: NodeDragEvent) {
 	e.nodes.forEach((node) => {
 		onUpdateNodePosition(node.id, node.position);
@@ -126,9 +133,18 @@ function onSetNodeActive(id: string) {
 	emit('update:node:active', id);
 }
 
+function clearSelectedNodes() {
+	removeSelectedNodes(selectedNodes.value);
+}
+
 function onSelectNode() {
 	if (!lastSelectedNode.value) return;
 	emit('update:node:selected', lastSelectedNode.value.id);
+}
+
+function onSelectNodes(ids: string[]) {
+	clearSelectedNodes();
+	addSelectedNodes(ids.map(findNode).filter(isPresent));
 }
 
 function onToggleNodeEnabled(id: string) {
@@ -283,7 +299,7 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'select_all':
 			return addSelectedNodes(graphNodes.value);
 		case 'deselect_all':
-			return removeSelectedNodes(selectedNodes.value);
+			return clearSelectedNodes();
 		case 'duplicate':
 			return emit('duplicate:nodes', nodeIds);
 		case 'toggle_pin':
@@ -305,10 +321,12 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
+	props.eventBus.on('selectNodes', onSelectNodes);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
+	props.eventBus.off('selectNodes', onSelectNodes);
 });
 
 onPaneReady(async () => {
@@ -351,6 +369,7 @@ onPaneReady(async () => {
 				@open:contextmenu="onOpenNodeContextMenu"
 				@update="onUpdateNodeParameters"
 				@move="onUpdateNodePosition"
+				@add="onClickNodeAdd"
 			/>
 		</template>
 

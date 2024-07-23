@@ -2,9 +2,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import Assignment from '../Assignment.vue';
+import { defaultSettings } from '@/__tests__/defaults';
+import { STORES } from '@/constants';
+import { merge } from 'lodash-es';
 
 const DEFAULT_SETUP = {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: { [STORES.SETTINGS]: { settings: merge({}, defaultSettings) } },
+	}),
 	props: {
 		path: 'parameters.fields.0',
 		modelValue: {

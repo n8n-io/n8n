@@ -153,7 +153,7 @@ export default defineComponent({
 		},
 		isLicensed(): boolean {
 			if (this.disableLicense) return false;
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.LogStreaming];
 		},
 		canManageLogStreaming(): boolean {
 			return hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } });

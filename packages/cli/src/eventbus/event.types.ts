@@ -12,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent by services and consumed by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
+ * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -105,13 +105,20 @@ export type Event = {
 		user: UserLike;
 	};
 
-	'api-key-created': {
-		user: UserLike;
+	'public-api-invoked': {
+		userId: string;
+		path: string;
+		method: string;
+		apiVersion: string;
 	};
 
-	'api-key-deleted': {
-		user: UserLike;
-	};
+	'public-api-key-created':
+		| { user: UserLike } // audit
+		| { user: UserLike; publicApi: boolean }; // telemetry
+
+	'public-api-key-deleted':
+		| { user: UserLike } // audit
+		| { user: UserLike; publicApi: boolean }; // telemetry
 
 	'email-failed': {
 		user: UserLike;
@@ -214,5 +221,58 @@ export type Event = {
 	'team-project-created': {
 		userId: string;
 		role: GlobalRole;
+	};
+
+	'source-control-settings-updated': {
+		branchName: string;
+		readOnlyInstance: boolean;
+		repoType: 'github' | 'gitlab' | 'other';
+		connected: boolean;
+	};
+
+	'source-control-user-started-pull-ui': {
+		workflowUpdates: number;
+		workflowConflicts: number;
+		credConflicts: number;
+	};
+
+	'source-control-user-finished-pull-ui': {
+		workflowUpdates: number;
+	};
+
+	'source-control-user-pulled-api': {
+		workflowUpdates: number;
+		forced: boolean;
+	};
+
+	'source-control-user-started-push-ui': {
+		workflowsEligible: number;
+		workflowsEligibleWithConflicts: number;
+		credsEligible: number;
+		credsEligibleWithConflicts: number;
+		variablesEligible: number;
+	};
+
+	'source-control-user-finished-push-ui': {
+		workflowsEligible: number;
+		workflowsPushed: number;
+		credsPushed: number;
+		variablesPushed: number;
+	};
+
+	'license-renewal-attempted': {
+		success: boolean;
+	};
+
+	'variable-created': {
+		variableType: string;
+	};
+
+	'external-secrets-provider-settings-saved': {
+		userId?: string;
+		vaultType: string;
+		isValid: boolean;
+		isNew: boolean;
+		errorMessage?: string;
 	};
 };

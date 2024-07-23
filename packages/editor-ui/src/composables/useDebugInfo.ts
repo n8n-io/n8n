@@ -1,3 +1,4 @@
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { WorkflowSettings } from 'n8n-workflow';
 
@@ -38,61 +39,62 @@ type DebugInfo = {
 };
 
 export function useDebugInfo() {
-	const store = useSettingsStore();
+	const settingsStore = useSettingsStore();
+	const rootStore = useRootStore();
 
 	const coreInfo = () => {
 		return {
-			n8nVersion: store.versionCli,
+			n8nVersion: rootStore.versionCli,
 			platform:
-				store.isDocker && store.deploymentType === 'cloud'
+				settingsStore.isDocker && settingsStore.deploymentType === 'cloud'
 					? 'docker (cloud)'
-					: store.isDocker
+					: settingsStore.isDocker
 						? 'docker (self-hosted)'
 						: 'npm',
-			nodeJsVersion: store.nodeJsVersion,
+			nodeJsVersion: settingsStore.nodeJsVersion,
 			database:
-				store.databaseType === 'postgresdb'
+				settingsStore.databaseType === 'postgresdb'
 					? 'postgres'
-					: store.databaseType === 'mysqldb'
+					: settingsStore.databaseType === 'mysqldb'
 						? 'mysql'
-						: store.databaseType,
-			executionMode: store.isQueueModeEnabled ? 'scaling' : 'regular',
-			concurrency: store.settings.concurrency,
-			license:
-				store.planName === 'Community'
-					? (store.planName.toLowerCase() as 'community')
-					: store.settings.license.environment === 'production'
-						? 'enterprise (production)'
-						: 'enterprise (sandbox)',
-			consumerId: store.consumerId,
+						: settingsStore.databaseType,
+			executionMode: settingsStore.isQueueModeEnabled ? 'scaling' : 'regular',
+			concurrency: settingsStore.settings.concurrency,
+			license: settingsStore.isCommunityPlan
+				? 'community'
+				: settingsStore.settings.license.environment === 'production'
+					? 'enterprise (production)'
+					: 'enterprise (sandbox)',
+			consumerId: settingsStore.consumerId,
 		} as const;
 	};
 
 	const storageInfo = (): DebugInfo['storage'] => {
 		return {
-			success: store.saveDataSuccessExecution,
-			error: store.saveDataErrorExecution,
-			progress: store.saveDataProgressExecution,
-			manual: store.saveManualExecutions,
-			binaryMode: store.binaryDataMode === 'default' ? 'memory' : store.binaryDataMode,
+			success: settingsStore.saveDataSuccessExecution,
+			error: settingsStore.saveDataErrorExecution,
+			progress: settingsStore.saveDataProgressExecution,
+			manual: settingsStore.saveManualExecutions,
+			binaryMode:
+				settingsStore.binaryDataMode === 'default' ? 'memory' : settingsStore.binaryDataMode,
 		};
 	};
 
 	const pruningInfo = () => {
-		if (!store.pruning.isEnabled) return { enabled: false } as const;
+		if (!settingsStore.pruning.isEnabled) return { enabled: false } as const;
 
 		return {
 			enabled: true,
-			maxAge: `${store.pruning.maxAge} hours`,
-			maxCount: `${store.pruning.maxCount} executions`,
+			maxAge: `${settingsStore.pruning.maxAge} hours`,
+			maxCount: `${settingsStore.pruning.maxCount} executions`,
 		} as const;
 	};
 
 	const securityInfo = () => {
 		const info: DebugInfo['security'] = {};
 
-		if (!store.security.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
-		if (!store.security.secureCookie) info.secureCookie = false;
+		if (!settingsStore.security.blockFileAccessToN8nFiles) info.blockFileAccessToN8nFiles = false;
+		if (!settingsStore.security.secureCookie) info.secureCookie = false;
 
 		if (Object.keys(info).length === 0) return;
 

@@ -18,7 +18,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { InternalHooks } from '@/InternalHooks';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -60,7 +60,7 @@ export async function saveCredential(
 		credential_id: credential.id,
 		public_api: true,
 	});
-	Container.get(EventRelay).emit('credentials-created', {
+	Container.get(EventService).emit('credentials-created', {
 		user,
 		credentialName: credential.name,
 		credentialType: credential.type,
@@ -102,7 +102,7 @@ export async function removeCredential(
 		credential_type: credentials.type,
 		credential_id: credentials.id,
 	});
-	Container.get(EventRelay).emit('credentials-deleted', {
+	Container.get(EventService).emit('credentials-deleted', {
 		user,
 		credentialName: credentials.name,
 		credentialType: credentials.type,

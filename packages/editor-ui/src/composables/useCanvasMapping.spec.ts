@@ -122,11 +122,11 @@ describe('useCanvasMapping', () => {
 							},
 						],
 						connections: {
-							input: {},
-							output: {},
+							[CanvasConnectionMode.Input]: {},
+							[CanvasConnectionMode.Output]: {},
 						},
 						render: {
-							type: 'default',
+							type: CanvasNodeRenderType.Default,
 							options: {
 								configurable: false,
 								configuration: false,
@@ -205,10 +205,14 @@ describe('useCanvasMapping', () => {
 				workflowObject: ref(workflowObject) as Ref<Workflow>,
 			});
 
-			expect(mappedNodes.value[0]?.data?.connections.output).toHaveProperty(
+			expect(mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output]).toHaveProperty(
 				NodeConnectionType.Main,
 			);
-			expect(mappedNodes.value[0]?.data?.connections.output[NodeConnectionType.Main][0][0]).toEqual(
+			expect(
+				mappedNodes.value[0]?.data?.connections[CanvasConnectionMode.Output][
+					NodeConnectionType.Main
+				][0][0],
+			).toEqual(
 				expect.objectContaining({
 					node: setNode.name,
 					type: NodeConnectionType.Main,
@@ -216,8 +220,14 @@ describe('useCanvasMapping', () => {
 				}),
 			);
 
-			expect(mappedNodes.value[1]?.data?.connections.input).toHaveProperty(NodeConnectionType.Main);
-			expect(mappedNodes.value[1]?.data?.connections.input[NodeConnectionType.Main][0][0]).toEqual(
+			expect(mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input]).toHaveProperty(
+				NodeConnectionType.Main,
+			);
+			expect(
+				mappedNodes.value[1]?.data?.connections[CanvasConnectionMode.Input][
+					NodeConnectionType.Main
+				][0][0],
+			).toEqual(
 				expect.objectContaining({
 					node: manualTriggerNode.name,
 					type: NodeConnectionType.Main,

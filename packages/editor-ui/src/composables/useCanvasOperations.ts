@@ -7,6 +7,8 @@ import type {
 	AddedNodesAndConnections,
 	INodeUi,
 	ITag,
+	IUsedCredential,
+	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	XYPosition,
@@ -20,6 +22,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
+	EnterpriseEditionFeature,
 	FORM_TRIGGER_NODE_TYPE,
 	QUICKSTART_NOTE_NAME,
 	STICKY_NODE_TYPE,
@@ -27,6 +30,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
+	AddConnectionCommand,
 	AddNodeCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
@@ -52,11 +56,11 @@ import {
 	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
+	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
-import { isPresent } from '@/utils/typesUtils';
 import type { Connection } from '@vue-flow/core';
 import type {
 	ConnectionTypes,
@@ -64,20 +68,25 @@ import type {
 	IConnections,
 	INode,
 	INodeConnections,
+	INodeCredentials,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IPinData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
+	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Ref } from 'vue';
-import { computed } from 'vue';
+import { computed, nextTick } from 'vue';
 import type { useRouter } from 'vue-router';
+import { useClipboard } from '@/composables/useClipboard';
+import { isPresent } from '../utils/typesUtils';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -116,6 +125,7 @@ export function useCanvasOperations({
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const clipboard = useClipboard();
 
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
@@ -195,6 +205,49 @@ export function useCanvasOperations({
 		await renameNode(currentName, previousName);
 	}
 
+	function connectAdjacentNodes(id: string) {
+		const node = workflowsStore.getNodeById(id);
+
+		if (!node) {
+			return;
+		}
+
+		const outputConnectionsByType = workflowsStore.outgoingConnectionsByNodeName(node.name);
+		const incomingConnectionsByType = workflowsStore.incomingConnectionsByNodeName(node.name);
+
+		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
+			incomingConnectionsByType,
+		) as Array<[NodeConnectionType, NodeInputConnections]>) {
+			// Only connect nodes connected to the first input of a type
+			for (const incomingConnection of incomingConnectionsByInputIndex.at(0) ?? []) {
+				const incomingNodeId = workflowsStore.getNodeByName(incomingConnection.node)?.id;
+
+				if (!incomingNodeId) continue;
+
+				// Only connect to nodes connected to the first output of a type
+				// For example on an If node, connect to the "true" main output
+				for (const outgoingConnection of outputConnectionsByType[type]?.at(0) ?? []) {
+					const outgoingNodeId = workflowsStore.getNodeByName(outgoingConnection.node)?.id;
+
+					if (!outgoingNodeId) continue;
+
+					createConnection({
+						source: incomingNodeId,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Output,
+							type,
+						}),
+						target: outgoingNodeId,
+						targetHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type,
+						}),
+					});
+				}
+			}
+		}
+	}
+
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
@@ -205,6 +258,7 @@ export function useCanvasOperations({
 			historyStore.startRecordingUndo();
 		}
 
+		connectAdjacentNodes(id);
 		workflowsStore.removeNodeConnectionsById(id);
 		workflowsStore.removeNodeExecutionDataById(id);
 		workflowsStore.removeNodeById(id);
@@ -296,14 +350,14 @@ export function useCanvasOperations({
 		ids: string[],
 		{ trackHistory = true }: { trackHistory?: boolean } = {},
 	) {
-		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		const nodes = workflowsStore.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, trackHistory);
 	}
 
 	function toggleNodesPinned(ids: string[], source: PinDataSource) {
 		historyStore.startRecordingUndo();
 
-		const nodes = ids.map((id) => workflowsStore.getNodeById(id)).filter(isPresent);
+		const nodes = workflowsStore.getNodesByIds(ids);
 		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
 
 		for (const node of nodes) {
@@ -428,6 +482,12 @@ export function useCanvasOperations({
 
 		workflowsStore.setNodePristine(nodeData.name, true);
 		uiStore.stateIsDirty = true;
+
+		if (options.openNDV) {
+			void nextTick(() => {
+				ndvStore.setActiveNodeName(nodeData.name);
+			});
+		}
 
 		return nodeData;
 	}
@@ -891,11 +951,19 @@ export function useCanvasOperations({
 	 * Connection operations
 	 */
 
-	function createConnection(connection: Connection) {
+	function createConnection(connection: Connection, { trackHistory = false } = {}) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
 			return;
+		}
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(
+				new AddConnectionCommand(
+					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
+				),
+			);
 		}
 
 		const mappedConnection = mapCanvasConnectionToLegacyConnection(
@@ -916,6 +984,19 @@ export function useCanvasOperations({
 		nodeHelpers.updateNodeInputIssues(targetNode);
 
 		uiStore.stateIsDirty = true;
+	}
+
+	function revertCreateConnection(connection: [IConnection, IConnection]) {
+		const sourceNodeName = connection[0].node;
+		const sourceNode = workflowsStore.getNodeByName(sourceNodeName);
+		const targetNodeName = connection[1].node;
+		const targetNode = workflowsStore.getNodeByName(targetNodeName);
+
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
 	}
 
 	function deleteConnection(
@@ -1162,7 +1243,7 @@ export function useCanvasOperations({
 
 		// Get only the connections of the nodes that get created
 		const newConnections: IConnections = {};
-		const currentConnections = data.connections!;
+		const currentConnections = data.connections ?? {};
 		const createNodeNames = createNodes.map((node) => node.name);
 		let sourceNode, type, sourceIndex, connectionIndex, connectionData;
 		for (sourceNode of Object.keys(currentConnections)) {
@@ -1265,10 +1346,10 @@ export function useCanvasOperations({
 		workflowData: IWorkflowDataUpdate,
 		source: string,
 		importTags = true,
-	): Promise<void> {
+	): Promise<IWorkflowDataUpdate> {
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
-			return;
+			return {};
 		}
 
 		try {
@@ -1340,10 +1421,6 @@ export function useCanvasOperations({
 				});
 			}
 
-			// By default we automatically deselect all the currently
-			// selected nodes and select the new ones
-			// this.deselectAllNodes();
-
 			// Fix the node position as it could be totally offscreen
 			// and the pasted nodes would so not be directly visible to
 			// the user
@@ -1354,17 +1431,14 @@ export function useCanvasOperations({
 
 			await addImportedNodesToWorkflow(workflowData);
 
-			// setTimeout(() => {
-			// 	(data?.nodes ?? []).forEach((node: INodeUi) => {
-			// 		this.nodeSelectedByName(node.name);
-			// 	});
-			// });
-
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
 				await importWorkflowTags(workflowData);
 			}
+
+			return workflowData;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.importWorkflowData.title'));
+			return {};
 		}
 	}
 
@@ -1377,9 +1451,9 @@ export function useCanvasOperations({
 
 		const creatingTagPromises: Array<Promise<ITag>> = [];
 		for (const tag of notFound) {
-			const creationPromise = tagsStore.create(tag.name).then((tag: ITag) => {
-				allTags.push(tag);
-				return tag;
+			const creationPromise = tagsStore.create(tag.name).then((newTag: ITag) => {
+				allTags.push(newTag);
+				return newTag;
 			});
 
 			creatingTagPromises.push(creationPromise);
@@ -1388,7 +1462,7 @@ export function useCanvasOperations({
 		await Promise.all(creatingTagPromises);
 
 		const tagIds = workflowTags.reduce((accu: string[], imported: ITag) => {
-			const tag = allTags.find((tag) => tag.name === imported.name);
+			const tag = allTags.find((t) => t.name === imported.name);
 			if (tag) {
 				accu.push(tag.id);
 			}
@@ -1418,6 +1492,121 @@ export function useCanvasOperations({
 		return workflowData;
 	}
 
+	function getNodesToSave(nodes: INode[]): IWorkflowData {
+		const data = {
+			nodes: [] as INodeUi[],
+			connections: {} as IConnections,
+			pinData: {} as IPinData,
+		} satisfies IWorkflowData;
+
+		const exportedNodeNames = new Set<string>();
+
+		for (const node of nodes) {
+			const nodeSaveData = workflowHelpers.getNodeDataToSave(node);
+			const pinDataForNode = workflowsStore.pinDataByNodeName(node.name);
+
+			if (pinDataForNode) {
+				data.pinData[node.name] = pinDataForNode;
+			}
+
+			if (
+				nodeSaveData.credentials &&
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
+			) {
+				nodeSaveData.credentials = filterAllowedCredentials(
+					nodeSaveData.credentials,
+					workflowsStore.usedCredentials,
+				);
+			}
+
+			data.nodes.push(nodeSaveData);
+			exportedNodeNames.add(node.name);
+		}
+
+		data.connections = getConnectionsForNodes(data.nodes, exportedNodeNames);
+
+		workflowHelpers.removeForeignCredentialsFromWorkflow(data, credentialsStore.allCredentials);
+
+		return data;
+	}
+
+	function filterAllowedCredentials(
+		credentials: INodeCredentials,
+		usedCredentials: Record<string, IUsedCredential>,
+	): INodeCredentials {
+		return Object.fromEntries(
+			Object.entries(credentials).filter(([, credential]) => {
+				return (
+					credential.id &&
+					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
+				);
+			}),
+		);
+	}
+
+	function getConnectionsForNodes(
+		nodes: INodeUi[],
+		includeNodeNames: Set<string>,
+	): Record<string, INodeConnections> {
+		const connections: Record<string, INodeConnections> = {};
+
+		for (const node of nodes) {
+			const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.name);
+			if (!Object.keys(outgoingConnections).length) continue;
+
+			const filteredConnections = filterConnectionsByNodes(outgoingConnections, includeNodeNames);
+			if (Object.keys(filteredConnections).length) {
+				connections[node.name] = filteredConnections;
+			}
+		}
+
+		return connections;
+	}
+
+	function filterConnectionsByNodes(
+		connections: Record<string, IConnection[][]>,
+		includeNodeNames: Set<string>,
+	): INodeConnections {
+		const filteredConnections: INodeConnections = {};
+
+		for (const [type, typeConnections] of Object.entries(connections)) {
+			const validConnections = typeConnections
+				.map((sourceConnections) =>
+					sourceConnections.filter((connection) => includeNodeNames.has(connection.node)),
+				)
+				.filter((sourceConnections) => sourceConnections.length > 0);
+
+			if (validConnections.length) {
+				filteredConnections[type] = validConnections;
+			}
+		}
+
+		return filteredConnections;
+	}
+
+	async function duplicateNodes(ids: string[]) {
+		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
+		const result = await importWorkflowData(workflowData, 'duplicate', false);
+
+		return result.nodes?.map((node) => node.id).filter(isPresent) ?? [];
+	}
+
+	async function copyNodes(ids: string[]) {
+		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
+
+		await clipboard.copy(JSON.stringify(workflowData, null, 2));
+
+		telemetry.track('User copied nodes', {
+			node_types: workflowData.nodes.map((node) => node.type),
+			workflow_id: workflowsStore.workflowId,
+		});
+	}
+
+	async function cutNodes(ids: string[]) {
+		await copyNodes(ids);
+		deleteNodes(ids);
+	}
+
 	return {
 		editableWorkflow,
 		editableWorkflowObject,
@@ -1435,9 +1624,13 @@ export function useCanvasOperations({
 		revertRenameNode,
 		deleteNode,
 		deleteNodes,
+		copyNodes,
+		cutNodes,
+		duplicateNodes,
 		revertDeleteNode,
 		addConnections,
 		createConnection,
+		revertCreateConnection,
 		deleteConnection,
 		revertDeleteConnection,
 		isConnectionAllowed,

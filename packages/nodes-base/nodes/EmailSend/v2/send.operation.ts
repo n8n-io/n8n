@@ -1,6 +1,9 @@
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
@@ -210,6 +213,10 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 		secure: credentials.secure as boolean,
 	};
 
+	if (credentials.secure === false) {
+		connectionOptions.ignoreTLS = credentials.disableStartTls as boolean;
+	}
+
 	if (typeof credentials.hostName === 'string' && credentials.hostName) {
 		connectionOptions.name = credentials.hostName;
 	}
@@ -228,6 +235,28 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 	}
 
 	return createTransport(connectionOptions);
+}
+
+export async function smtpConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data!;
+	const transporter = configureTransport(credentials, {});
+	try {
+		await transporter.verify();
+		return {
+			status: 'OK',
+			message: 'Connection successful!',
+		};
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message,
+		};
+	} finally {
+		transporter.close();
+	}
 }
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
