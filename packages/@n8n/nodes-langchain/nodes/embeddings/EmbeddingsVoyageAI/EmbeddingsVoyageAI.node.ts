@@ -47,7 +47,7 @@ export class EmbeddingsVoyageAI implements INodeType {
                     { name: 'voyage-law-2', value: 'voyage-law-2' },
                     { name: 'voyage-code-2', value: 'voyage-code-2' },
                 ],
-                default: 'voyage-large-2',
+                default: 'voyage-finance-2',
                 description: 'The model to use for embedding',
             },
             {
