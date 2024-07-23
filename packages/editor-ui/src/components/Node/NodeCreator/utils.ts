@@ -111,7 +111,6 @@ export function groupItemsInSections(
 	const filteredSections = sections.filter(
 		(section): section is NodeViewItemSection => typeof section === 'object',
 	);
-	console.log('🚀 ~ filteredSections:', filteredSections);
 
 	const itemsBySection = (items2: INodeCreateElement[]) =>
 		items2.reduce((acc: Record<string, INodeCreateElement[]>, item) => {
