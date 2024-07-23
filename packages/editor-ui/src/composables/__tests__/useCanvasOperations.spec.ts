@@ -190,6 +190,60 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('updateNodesPosition', () => {
+		it('records history for multiple node position updates when tracking is enabled', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: true, trackBulk: true });
+
+			expect(startRecordingUndoSpy).toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).toHaveBeenCalled();
+		});
+
+		it('updates positions for multiple nodes', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const setNodePositionByIdSpy = vi.spyOn(workflowsStore, 'setNodePositionById');
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[0].id,
+						position: [events[0].position.x, events[0].position.y],
+					}),
+				)
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[1].id,
+						position: [events[1].position.x, events[1].position.y],
+					}),
+				);
+
+			canvasOperations.updateNodesPosition(events);
+
+			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [100, 100]);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [200, 200]);
+		});
+
+		it('does not record history when trackHistory is false', () => {
+			const events = [{ id: 'node1', position: { x: 100, y: 100 } }];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: false, trackBulk: false });
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('updateNodePosition', () => {
 		it('should update node position', () => {
 			const setNodePositionByIdSpy = vi
@@ -330,6 +384,19 @@ describe('useCanvasOperations', () => {
 			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[1].id, expect.any(Object));
 			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(nodes[2].id, expect.any(Object));
+		});
+	});
+
+	describe('revertAddNode', () => {
+		it('deletes node if it exists', async () => {
+			const node = createTestNode();
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValueOnce(node);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(node);
+			const removeNodeByIdSpy = vi.spyOn(workflowsStore, 'removeNodeById');
+
+			await canvasOperations.revertAddNode(node.name);
+
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith(node.id);
 		});
 	});
 
@@ -569,6 +636,47 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('toggleNodesDisabled', () => {
+		it('disables nodes based on provided ids', async () => {
+			const nodes = [
+				createTestNode({ id: '1', name: 'A' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowsStore, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodesDisabled([nodes[0].id, nodes[1].id], {
+				trackHistory: true,
+				trackBulk: true,
+			});
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodes[0].name,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
+	describe('revertToggleNodeDisabled', () => {
+		it('re-enables a previously disabled node', () => {
+			const nodeName = 'testNode';
+			const node = createTestNode({ name: nodeName });
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.revertToggleNodeDisabled(nodeName);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodeName,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
 	describe('addConnections', () => {
 		it('should create connections between nodes', async () => {
 			const nodeTypeName = 'type';
@@ -705,6 +813,24 @@ describe('useCanvasOperations', () => {
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe('revertCreateConnection', () => {
+		it('deletes connection if both source and target nodes exist', () => {
+			const connection: [IConnection, IConnection] = [
+				{ node: 'sourceNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'targetNode', type: NodeConnectionType.Main, index: 0 },
+			];
+			const testNode = createTestNode();
+
+			const removeConnectionSpy = vi.spyOn(workflowsStore, 'removeConnection');
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(testNode);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(testNode);
+
+			canvasOperations.revertCreateConnection(connection);
+
+			expect(removeConnectionSpy).toHaveBeenCalled();
 		});
 	});
 

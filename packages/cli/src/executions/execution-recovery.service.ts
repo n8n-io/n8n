@@ -190,6 +190,10 @@ export class ExecutionRecoveryService {
 
 			if (!nodeStartedMessage) continue;
 
+			const nodeHasRunData = runExecutionData.resultData.runData[node.name] !== undefined;
+
+			if (nodeHasRunData) continue; // when saving execution progress
+
 			const nodeFinishedMessage = nodeMessages.find(
 				(m) => m.payload.nodeName === node.name && m.eventName === 'n8n.node.finished',
 			);
