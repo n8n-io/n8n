@@ -26,6 +26,11 @@ const workflowRunning = false;
 // @TODO
 const nodeDisabledTitle = 'Test';
 
+const classes = computed(() => ({
+	[$style.canvasNodeToolbar]: true,
+	[$style.readOnly]: props.readOnly,
+}));
+
 const isExecuteNodeVisible = computed(() => {
 	return (
 		!props.readOnly &&
@@ -59,7 +64,7 @@ function onOpenContextMenu(event: MouseEvent) {
 </script>
 
 <template>
-	<div :class="$style.canvasNodeToolbar">
+	<div :class="classes">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
 				v-if="isExecuteNodeVisible"
@@ -107,6 +112,9 @@ function onOpenContextMenu(event: MouseEvent) {
 <style lang="scss" module>
 .canvasNodeToolbar {
 	padding-bottom: var(--spacing-2xs);
+	display: flex;
+	justify-content: flex-end;
+	width: 100%;
 }
 
 .canvasNodeToolbarItems {
