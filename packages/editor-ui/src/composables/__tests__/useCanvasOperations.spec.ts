@@ -333,6 +333,19 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('revertAddNode', () => {
+		it('deletes node if it exists', async () => {
+			const node = createTestNode();
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValueOnce(node);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(node);
+			const removeNodeByIdSpy = vi.spyOn(workflowsStore, 'removeNodeById');
+
+			await canvasOperations.revertAddNode(node.name);
+
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith(node.id);
+		});
+	});
+
 	describe('deleteNode', () => {
 		it('should delete node and track history', () => {
 			const removeNodeByIdSpy = vi
