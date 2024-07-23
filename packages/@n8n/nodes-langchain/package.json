@@ -150,7 +150,7 @@
     "@langchain/qdrant": "^0.0.5",
     "@langchain/redis": "0.0.5",
     "@langchain/textsplitters": "0.0.2",
-    "@langchain/voyageai": "^0.0.1",
+    "@langchain/voyageai": "^0.1.1",
     "@mozilla/readability": "^0.5.0",
     "@n8n/typeorm": "0.3.20-10",
     "@n8n/vm2": "3.9.20",
