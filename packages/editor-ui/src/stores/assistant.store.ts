@@ -15,7 +15,7 @@ import { deepCopy } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import { IUpdateInformation } from '@/Interface';
+import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -217,12 +217,42 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 	}
 
-	// async function sendEvent(eventName: ChatRequest.InteractionEventName) {
-	// 	await chatWithAssistant(rootStore.restApiContext, {
-	// 		type: 'event',
-	// 		event: eventName,
-	// 	});
-	// }
+	async function sendEvent(
+		eventName: ChatRequest.InteractionEventName,
+		error?: ChatRequest.ErrorContext['error'],
+	) {
+		assert(currentSessionId.value);
+
+		const id = getRandomId();
+		addEmptyAssistantMessage(id);
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				payload: {
+					role: 'user',
+					type: 'event',
+					eventName,
+					error,
+				},
+				sessionId: currentSessionId.value,
+			},
+			(msg) => onEachStreamingMessage(msg, id),
+			stopStreaming,
+			(e) => handleServiceError(e, id),
+		);
+	}
+
+	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
+		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
+			return;
+		}
+
+		if (pushEvent.data.error) {
+			await sendEvent('node-execution-errored', pushEvent.data.error);
+		} else if (pushEvent.data.executionStatus === 'success') {
+			await sendEvent('node-execution-succeeded');
+		}
+	}
 
 	async function sendMessage(
 		message: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
@@ -366,6 +396,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isAssistantOpen,
 		canShowAssistant,
 		canShowAssistantButtons,
+		onNodeExecution,
 		closeChat,
 		openChat,
 		updateWindowWidth,

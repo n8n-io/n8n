@@ -31,14 +31,12 @@ export namespace ChatRequest {
 		};
 	}
 
-	export type InteractionEventName =
-		| 'errored-node-execution-success'
-		| 'errored-node-errored-again';
+	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
 
 	interface EventRequestPayload {
 		role: 'user';
 		type: 'event';
-		event: InteractionEventName;
+		eventName: InteractionEventName;
 	}
 
 	export interface UserChatMessage {
