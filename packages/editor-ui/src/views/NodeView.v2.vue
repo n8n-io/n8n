@@ -92,11 +92,11 @@ import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
 
-const NodeDetailsView = defineAsyncComponent(
+const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
 
@@ -1533,7 +1533,7 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<Suspense>
-			<NodeCreation
+			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="viewportTransform.zoom"
@@ -1542,7 +1542,7 @@ onBeforeUnmount(() => {
 			/>
 		</Suspense>
 		<Suspense>
-			<NodeDetailsView
+			<LazyNodeDetailsView
 				:workflow-object="editableWorkflowObject"
 				:read-only="isCanvasReadOnly"
 				:is-production-execution-preview="isProductionExecutionPreview"
