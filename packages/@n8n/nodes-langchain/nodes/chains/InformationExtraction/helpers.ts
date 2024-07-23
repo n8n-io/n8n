@@ -21,7 +21,7 @@ function makeAttributeSchema(attributeDefinition: AttributeDefinition, required:
 	}
 
 	if (!required) {
-		schema = schema.nullable();
+		schema = schema.optional();
 	}
 
 	return schema.describe(attributeDefinition.description);
