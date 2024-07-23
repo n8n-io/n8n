@@ -94,9 +94,11 @@ export class InstanceRiskReporter implements RiskReporter {
 			publicApiEnabled: isApiEnabled(),
 		};
 
+		const { exclude, include } = this.globalConfig.nodes;
+
 		settings.nodes = {
-			nodesExclude: this.globalConfig.nodes.exclude ?? 'none',
-			nodesInclude: this.globalConfig.nodes.include ?? 'none',
+			nodesExclude: exclude.length === 0 ? 'none' : exclude.join(', '),
+			nodesInclude: include.length === 0 ? 'none' : include.join(', '),
 		};
 
 		settings.telemetry = {
