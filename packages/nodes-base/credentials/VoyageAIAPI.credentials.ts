@@ -4,7 +4,7 @@ import {
 } from 'n8n-workflow';
 
 export class VoyageAIAPI implements ICredentialType {
-  name = 'voyageAIAPI';
+  name = 'VoyageAIAPI';
   displayName = 'Voyage AI API';
   documentationUrl = 'https://docs.voyageai.com/'; // Replace with actual documentation URL
   properties: INodeProperties[] = [
