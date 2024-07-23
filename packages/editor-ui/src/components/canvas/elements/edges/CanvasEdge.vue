@@ -14,6 +14,7 @@ const emit = defineEmits<{
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	readOnly?: boolean;
 	hovered?: boolean;
 };
 
@@ -51,7 +52,7 @@ const edgeStyle = computed(() => ({
 }));
 
 const edgeLabel = computed(() => {
-	if (isFocused.value) {
+	if (isFocused.value && !props.readOnly) {
 		return '';
 	}
 
@@ -117,7 +118,7 @@ function onDelete() {
 		:label-style="edgeLabelStyle"
 		:label-show-bg="false"
 	/>
-	<EdgeLabelRenderer>
+	<EdgeLabelRenderer v-if="!readOnly">
 		<CanvasEdgeToolbar
 			:type="connectionType"
 			:class="edgeToolbarClasses"

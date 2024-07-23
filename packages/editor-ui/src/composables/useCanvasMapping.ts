@@ -213,8 +213,11 @@ export function useCanvasMapping({
 			const lastNodeExecuted = workflowExecution?.data?.resultData?.lastNodeExecuted;
 
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
-				if (node.name === workflowExecution.data?.resultData?.lastNodeExecuted) {
-					const waitDate = new Date(workflowExecution.waitTill as Date);
+				if (
+					node.name === workflowExecution.data?.resultData?.lastNodeExecuted &&
+					workflowExecution.waitTill
+				) {
+					const waitDate = new Date(workflowExecution.waitTill);
 
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 						acc[node.id] = i18n.baseText(

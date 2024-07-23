@@ -17,6 +17,7 @@ const props = withDefaults(
 		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		eventBus?: EventBus;
+		readOnly?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -49,6 +50,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 				:nodes="mappedNodes"
 				:connections="mappedConnections"
 				:event-bus="eventBus"
+				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
 		</div>
