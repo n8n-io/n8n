@@ -36,6 +36,20 @@ export class InformationExtractor implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Extract information from text in a structured format',
+		codex: {
+			alias: ['NER', 'parse', 'parsing', 'JSON', 'data extraction', 'structured'],
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Chains', 'Root Nodes'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/',
+					},
+				],
+			},
+		},
 		defaults: {
 			name: 'Information Extractor',
 		},
