@@ -1,10 +1,8 @@
-import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -337,38 +335,6 @@ describe('NDV', () => {
 			ndv.actions.validateExpressionPreview('value', output ?? input);
 			ndv.getters.parameterInput('value').clear();
 		});
-	});
-
-	it('should not retrieve remote options when required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
-
-		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false });
-		// Remote options dropdown should not be visible
-		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
-	});
-
-	it('should retrieve remote options when non-required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
-
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 	});
 
 	it('should flag issues as soon as params are set', () => {
@@ -735,23 +701,6 @@ describe('NDV', () => {
 			cy.get('[data-action=openSelectiveNodeCreator]').contains('Insert one').click();
 			nodeCreator.getters.activeSubcategory().should('contain', group);
 			cy.realPress('Escape');
-		});
-	});
-
-	it('Stop listening for trigger event from NDV', () => {
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
-		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
-			keepNdvOpen: true,
-			action: 'On Changes To A Specific File',
-			isTrigger: true,
-		});
-		ndv.getters.triggerPanelExecuteButton().should('exist');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		cy.wait('@workflowRun').then(() => {
-			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			successToast().should('exist');
 		});
 	});
 

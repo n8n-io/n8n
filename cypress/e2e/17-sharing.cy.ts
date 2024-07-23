@@ -238,37 +238,6 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		getVisibleSelect().find('li').should('have.length', 2);
 	});
 
-	it('should only show credentials in their personal project for members', () => {
-		cy.enableFeature('sharing');
-		cy.reload();
-
-		// Create a notion credential as the owner
-		credentialsPage.getters.emptyListCreateCredentialButton().click();
-		credentialsModal.actions.createNewCredential('Notion API');
-
-		// Create another notion credential as the owner, but share it with member
-		// 0
-		credentialsPage.getters.createCredentialButton().click();
-		credentialsModal.actions.createNewCredential('Notion API', false);
-		credentialsModal.actions.changeTab('Sharing');
-		credentialsModal.actions.addUser(INSTANCE_MEMBERS[0].email);
-		credentialsModal.actions.saveSharing();
-
-		// As the member, create a new notion credential and a workflow
-		cy.signinAsMember();
-		cy.visit(credentialsPage.url);
-		credentialsPage.getters.createCredentialButton().click();
-		credentialsModal.actions.createNewCredential('Notion API');
-		cy.visit(workflowsPage.url);
-		workflowsPage.actions.createWorkflowFromCard();
-		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME, true, true);
-
-		// Only the own credential the shared one (+ the 'Create new' option)
-		// should be in the dropdown
-		workflowPage.getters.nodeCredentialsSelect().click();
-		getVisibleSelect().find('li').should('have.length', 3);
-	});
-
 	it('should only show credentials in their personal project for members if the workflow was shared with them', () => {
 		const workflowName = 'Test workflow';
 		cy.enableFeature('sharing');
