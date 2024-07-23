@@ -50,7 +50,7 @@
 						:is-read-only="
 							isReadOnlyRoute ||
 							readOnlyEnv ||
-							!(workflowPermissions.update || projectPermissions.workflow.update)
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
 						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === nodeData.name"
@@ -82,7 +82,7 @@
 						:is-read-only="
 							isReadOnlyRoute ||
 							readOnlyEnv ||
-							!(workflowPermissions.update || projectPermissions.workflow.update)
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
 						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === stickyData.name"
@@ -101,7 +101,7 @@
 				:read-only="
 					isReadOnlyRoute ||
 					readOnlyEnv ||
-					!(workflowPermissions.update || projectPermissions.workflow.update)
+					!(workflowPermissions.update ?? projectPermissions.workflow.update)
 				"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
@@ -122,7 +122,7 @@
 					v-if="
 						!isReadOnlyRoute &&
 						!readOnlyEnv &&
-						(workflowPermissions.update || projectPermissions.workflow.update)
+						(workflowPermissions.update ?? projectPermissions.workflow.update)
 					"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
@@ -140,7 +140,7 @@
 				v-if="
 					!isReadOnlyRoute &&
 					!readOnlyEnv &&
-					(workflowPermissions.update || projectPermissions.workflow.update)
+					(workflowPermissions.update ?? projectPermissions.workflow.update)
 				"
 				class="workflow-execute-wrapper"
 			>
@@ -205,13 +205,7 @@
 				/>
 
 				<n8n-icon-button
-					v-if="
-						!isReadOnlyRoute &&
-						!readOnlyEnv &&
-						workflowExecution &&
-						!workflowRunning &&
-						!allTriggersDisabled
-					"
+					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
 					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
@@ -447,7 +441,12 @@ export default defineComponent({
 			next();
 			return;
 		}
-		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+		if (
+			this.uiStore.stateIsDirty &&
+			!this.readOnlyEnv &&
+			!this.isReadOnlyRoute &&
+			(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+		) {
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 				{
@@ -622,7 +621,7 @@ export default defineComponent({
 				!this.containsTrigger &&
 				!this.isDemo &&
 				!this.readOnlyEnv &&
-				(!!this.workflowPermissions.update || !!this.projectPermissions.workflow.update)
+				(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
 			);
 		},
 		lastSelectedNode(): INodeUi | null {
@@ -664,7 +663,8 @@ export default defineComponent({
 			return NodeViewUtils.getBackgroundStyles(
 				this.nodeViewScale,
 				this.uiStore.nodeViewOffsetPosition,
-				this.isExecutionPreview,
+				this.isExecutionPreview ||
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 			);
 		},
 		workflowClasses() {
@@ -954,7 +954,7 @@ export default defineComponent({
 			},
 		});
 
-		this.readOnlyEnvRouteCheck();
+		await this.readOnlyEnvRouteCheck();
 		this.canvasStore.isDemo = this.isDemo;
 	},
 	activated() {
@@ -1101,7 +1101,8 @@ export default defineComponent({
 
 				return false;
 			}
-			return true;
+
+			return this.workflowPermissions.update ?? this.projectPermissions.workflow.update;
 		},
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
@@ -1501,14 +1502,17 @@ export default defineComponent({
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
 			const ctrlAltModifier = this.deviceSupport.isCtrlKeyPressed(e) && e.altKey && !e.shiftKey;
 			const noModifierKeys = !this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
-			const readOnly = this.isReadOnlyRoute || this.readOnlyEnv;
+			const readOnly =
+				this.isReadOnlyRoute ||
+				this.readOnlyEnv ||
+				!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 
 			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
 				const workflowIsSaved = !this.uiStore.stateIsDirty;
 
-				if (this.isReadOnlyRoute || this.readOnlyEnv || workflowIsSaved) {
+				if (workflowIsSaved) {
 					return;
 				}
 
@@ -1634,7 +1638,9 @@ export default defineComponent({
 				if (lastSelectedNode !== null) {
 					if (
 						lastSelectedNode.type === STICKY_NODE_TYPE &&
-						(this.isReadOnlyRoute || this.readOnlyEnv)
+						(this.isReadOnlyRoute ||
+							this.readOnlyEnv ||
+							!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update))
 					) {
 						return;
 					}
@@ -1921,7 +1927,10 @@ export default defineComponent({
 		},
 
 		cutNodes(nodes: INode[]) {
-			const deleteCopiedNodes = !this.isReadOnlyRoute && !this.readOnlyEnv;
+			const deleteCopiedNodes =
+				!this.isReadOnlyRoute &&
+				!this.readOnlyEnv &&
+				(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 			this.copyNodes(nodes, deleteCopiedNodes);
 			if (deleteCopiedNodes) {
 				this.deleteNodes(nodes);
@@ -2055,7 +2064,11 @@ export default defineComponent({
 		 * This method gets called when data got pasted into the window
 		 */
 		async onClipboardPasteEvent(plainTextData: string): Promise<void> {
-			if (this.readOnlyEnv) {
+			if (
+				this.readOnlyEnv ||
+				this.isReadOnlyRoute ||
+				!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+			) {
 				return;
 			}
 
@@ -2800,7 +2813,10 @@ export default defineComponent({
 
 					this.instance?.connect({
 						uuids: [targetEndpoint, viableConnection?.uuid || ''],
-						detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
+						detachable:
+							!this.isReadOnlyRoute &&
+							!this.readOnlyEnv &&
+							(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 					});
 					this.historyStore.stopRecordingUndo();
 					return;
@@ -3096,7 +3112,11 @@ export default defineComponent({
 				this.dropPrevented = true;
 				this.workflowsStore.addConnection({ connection: connectionData });
 
-				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
+				if (
+					!this.isReadOnlyRoute &&
+					!this.readOnlyEnv &&
+					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+				) {
 					NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
@@ -3183,6 +3203,7 @@ export default defineComponent({
 
 				if (
 					// eslint-disable-next-line no-constant-binary-expression
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					this.enterTimer ??
@@ -3221,6 +3242,7 @@ export default defineComponent({
 
 				if (
 					// eslint-disable-next-line no-constant-binary-expression
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					!connection ??
@@ -3633,7 +3655,12 @@ export default defineComponent({
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId.toString());
 			} else {
-				if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+				if (
+					this.uiStore.stateIsDirty &&
+					!this.readOnlyEnv &&
+					!this.isReadOnlyRoute &&
+					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+				) {
 					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
@@ -3700,7 +3727,7 @@ export default defineComponent({
 			}
 
 			this.historyStore.reset();
-			if (!(this.workflowPermissions.update || this.projectPermissions.workflow.update)) {
+			if (!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)) {
 				this.canvasStore.setReadOnly(true);
 			}
 			this.uiStore.nodeViewInitialized = true;
@@ -4665,7 +4692,10 @@ export default defineComponent({
 				case 'add_node':
 					this.onToggleNodeCreator({
 						source: NODE_CREATOR_OPEN_SOURCES.CONTEXT_MENU,
-						createNodeActive: !this.isReadOnlyRoute && !this.readOnlyEnv,
+						createNodeActive:
+							!this.isReadOnlyRoute &&
+							!this.readOnlyEnv &&
+							(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 					});
 					break;
 				case 'add_sticky':
