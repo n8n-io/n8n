@@ -1,3 +1,14 @@
+## [1.51.1](https://github.com/n8n-io/n8n/compare/n8n@1.51.0...n8n@1.51.1) (2024-07-23)
+
+
+### Bug Fixes
+
+* **core:** Fix SSH Tunnels when using private key ([#10148](https://github.com/n8n-io/n8n/issues/10148)) ([6209d18](https://github.com/n8n-io/n8n/commit/6209d18cf3f7cf1ca1b3b158cabfba7521b29dfb))
+* **core:** Metadata inserts using existing IDs and failing with postgres ([#10108](https://github.com/n8n-io/n8n/issues/10108)) ([0b78789](https://github.com/n8n-io/n8n/commit/0b78789f297733dffe18acf38e4e863c56789f73))
+* **editor:** Fix updating/uninstalling community nodes ([#10138](https://github.com/n8n-io/n8n/issues/10138)) ([637dde1](https://github.com/n8n-io/n8n/commit/637dde1e7bdaaca6a4248eb76432991e163caee5))
+
+
+
 # [1.51.0](https://github.com/n8n-io/n8n/compare/n8n@1.50.0...n8n@1.51.0) (2024-07-17)
 
 
