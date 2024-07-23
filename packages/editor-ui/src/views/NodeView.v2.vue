@@ -19,6 +19,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import type {
 	AddedNodesAndConnections,
+	IExecutionResponse,
 	INodeUi,
 	IUpdateInformation,
 	IWorkflowDataUpdate,
@@ -28,8 +29,13 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
-import type { Connection } from '@vue-flow/core';
-import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
+import type { Connection, ViewportTransform } from '@vue-flow/core';
+import type {
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+} from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -42,12 +48,13 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TelemetryHelpers, NodeConnectionType } from 'n8n-workflow';
+import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
 import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -83,12 +90,13 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
+import { useClipboard } from '@/composables/useClipboard';
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
 
-const NodeDetailsView = defineAsyncComponent(
+const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
 
@@ -127,23 +135,31 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
-const lastClickPosition = ref<XYPosition>([450, 450]);
+const lastClickPosition = ref<XYPosition>([0, 0]);
 
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
+	updateNodesPosition,
+	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
+	revertToggleNodeDisabled,
 	toggleNodesPinned,
 	setNodeParameters,
 	deleteNode,
 	deleteNodes,
+	copyNodes,
+	cutNodes,
+	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	revertAddNode,
 	createConnection,
+	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
 	setNodeActiveByName,
@@ -156,6 +172,7 @@ const {
 	editableWorkflowObject,
 } = useCanvasOperations({ router, lastClickPosition });
 const { applyExecutionData } = useExecutionDebugging();
+useClipboard({ onPaste: onClipboardPaste });
 
 const isLoading = ref(true);
 const isBlankRedirect = ref(false);
@@ -178,11 +195,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 
 const isCanvasReadOnly = computed(() => {
-	return isLoading.value || isDemoRoute.value || isReadOnlyEnvironment.value;
+	return isDemoRoute.value || isReadOnlyEnvironment.value;
 });
 
 const fallbackNodes = computed<INodeUi[]>(() =>
-	isCanvasReadOnly.value
+	isLoading.value || isCanvasReadOnly.value
 		? []
 		: [
 				{
@@ -210,11 +227,11 @@ async function initializeData() {
 			credentialsStore.fetchCredentialTypes(true),
 		];
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 			promises.push(environmentsStore.fetchAllVariables());
 		}
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 			promises.push(externalSecretsStore.fetchAllSecrets());
 		}
 
@@ -435,8 +452,16 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
+	updateNodesPosition(events, { trackHistory: true });
+}
+
 function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
 	updateNodePosition(id, position, { trackHistory: true });
+}
+
+function onRevertNodePosition({ nodeName, position }: { nodeName: string; position: XYPosition }) {
+	revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
 }
 
 function onDeleteNode(id: string) {
@@ -459,6 +484,10 @@ function onToggleNodeDisabled(id: string) {
 	toggleNodesDisabled([id]);
 }
 
+function onRevertToggleNodeDisabled({ nodeName }: { nodeName: string }) {
+	revertToggleNodeDisabled(nodeName);
+}
+
 function onToggleNodesDisabled(ids: string[]) {
 	if (!checkIfEditingIsAllowed()) {
 		return;
@@ -475,16 +504,76 @@ function onSetNodeSelected(id?: string) {
 	setNodeSelected(id);
 }
 
-function onCopyNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCopyNodes(ids: string[]) {
+	await copyNodes(ids);
+
+	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
 
-function onCutNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onClipboardPaste(plainTextData: string): Promise<void> {
+	if (getNodeViewTab(route) !== MAIN_HEADER_TABS.WORKFLOW) {
+		return;
+	}
+
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	let workflowData: IWorkflowDataUpdate | null | undefined = null;
+
+	// Check if it is an URL which could contain workflow data
+	if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
+		const importConfirm = await message.confirm(
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
+				interpolate: { plainTextData },
+			}),
+			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
+			{
+				type: 'warning',
+				confirmButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText(
+					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
+				),
+				dangerouslyUseHTMLString: true,
+			},
+		);
+
+		if (importConfirm !== MODAL_CONFIRM) {
+			return;
+		}
+
+		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
+	} else {
+		// Pasted data is is possible workflow data
+		workflowData = jsonParse<IWorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
+	}
+
+	if (!workflowData) {
+		return;
+	}
+
+	const result = await importWorkflowData(workflowData, 'paste', false);
+	selectNodes(result.nodes?.map((node) => node.id) ?? []);
 }
 
-function onDuplicateNodes(_ids: string[]) {
-	// @TODO: implement this
+async function onCutNodes(ids: string[]) {
+	if (isCanvasReadOnly.value) {
+		await copyNodes(ids);
+	} else {
+		await cutNodes(ids);
+	}
+}
+
+async function onDuplicateNodes(ids: string[]) {
+	if (!checkIfEditingIsAllowed()) {
+		return;
+	}
+
+	const newIds = await duplicateNodes(ids);
+
+	selectNodes(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -496,7 +585,30 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 }
 
 async function onSaveWorkflow() {
-	await workflowHelpers.saveCurrentWorkflow();
+	const saved = await workflowHelpers.saveCurrentWorkflow();
+	if (saved) {
+		canvasEventBus.emit('saved:workflow');
+	}
+}
+
+function addWorkflowSavedEventBindings() {
+	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
+}
+
+function removeWorkflowSavedEventBindings() {
+	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
+	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
+}
+
+async function onSaveFromWithinNDV() {
+	if (ndvStore.activeNodeName) {
+		toast.showMessage({
+			title: i18n.baseText('generic.workflowSaved'),
+			type: 'success',
+		});
+	}
 }
 
 async function onCreateWorkflow() {
@@ -600,7 +712,11 @@ async function loadCredentials() {
  */
 
 function onCreateConnection(connection: Connection) {
-	createConnection(connection);
+	createConnection(connection, { trackHistory: true });
+}
+
+function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {
+	revertCreateConnection(connection);
 }
 
 function onCreateConnectionCancelled(event: ConnectStartEvent) {
@@ -643,9 +759,11 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 }
 
 async function onImportWorkflowDataEvent(data: IDataObject) {
-	await importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
+	const workflowData = data.data as IWorkflowDataUpdate;
+	await importWorkflowData(workflowData, 'file');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 async function onImportWorkflowUrlEvent(data: IDataObject) {
@@ -657,6 +775,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	await importWorkflowData(workflowData, 'url');
 
 	fitView();
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -682,7 +801,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position });
+	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -708,6 +827,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
+}
+
+async function onRevertAddNode({ node }: { node: INodeUi }) {
+	await revertAddNode(node.name);
 }
 
 async function onSwitchActiveNode(nodeName: string) {
@@ -818,8 +941,101 @@ function trackRunWorkflowToNode(node: INodeUi) {
 	void externalHooks.run('nodeView.onRunNode', telemetryPayload);
 }
 
-async function openExecution(_executionId: string) {
-	// @TODO
+async function openExecution(executionId: string) {
+	canvasStore.startLoading();
+	resetWorkspace();
+
+	let data: IExecutionResponse | undefined;
+	try {
+		data = await workflowsStore.getExecution(executionId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
+	}
+	if (data === undefined) {
+		throw new Error(`Execution with id "${executionId}" could not be found!`);
+	}
+
+	await initializeData();
+	await initializeWorkspace(data.workflowData);
+	workflowsStore.setWorkflowExecutionData(data);
+
+	uiStore.stateIsDirty = false;
+	canvasStore.stopLoading();
+
+	fitView();
+
+	canvasEventBus.emit('open:execution', data);
+
+	void externalHooks.run('execution.open', {
+		workflowId: data.workflowData.id,
+		workflowName: data.workflowData.name,
+		executionId,
+	});
+
+	telemetry.track('User opened read-only execution', {
+		workflow_id: data.workflowData.id,
+		execution_mode: data.mode,
+		execution_finished: data.finished,
+	});
+}
+
+function onExecutionOpenedWithError(data: IExecutionResponse) {
+	if (!data.finished && data.data?.resultData?.error) {
+		// Check if any node contains an error
+		let nodeErrorFound = false;
+		if (data.data.resultData.runData) {
+			const runData = data.data.resultData.runData;
+			errorCheck: for (const nodeName of Object.keys(runData)) {
+				for (const taskData of runData[nodeName]) {
+					if (taskData.error) {
+						nodeErrorFound = true;
+						break errorCheck;
+					}
+				}
+			}
+		}
+
+		if (
+			!nodeErrorFound &&
+			(data.data.resultData.error.stack ?? data.data.resultData.error.message)
+		) {
+			// Display some more information for now in console to make debugging easier
+			console.error(`Execution ${data.id} error:`);
+			console.error(data.data.resultData.error.stack);
+			toast.showMessage({
+				title: i18n.baseText('nodeView.showError.workflowError'),
+				message: data.data.resultData.error.message,
+				type: 'error',
+				duration: 0,
+			});
+		}
+	}
+}
+
+function onExecutionOpenedWithWaitTill(data: IExecutionResponse) {
+	if ((data as ExecutionSummary).waitTill) {
+		toast.showMessage({
+			title: i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
+			message: `<a data-action="reload">${i18n.baseText('nodeView.refresh')}</a> ${i18n.baseText(
+				'nodeView.toSeeTheLatestStatus',
+			)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${i18n.baseText(
+				'nodeView.moreInfo',
+			)}</a>`,
+			type: 'warning',
+			duration: 0,
+		});
+	}
+}
+
+function addExecutionOpenedEventBindings() {
+	canvasEventBus.on('open:execution', onExecutionOpenedWithError);
+	canvasEventBus.on('open:execution', onExecutionOpenedWithWaitTill);
+}
+
+function removeExecutionOpenedEventBindings() {
+	canvasEventBus.off('open:execution', onExecutionOpenedWithError);
+	canvasEventBus.off('open:execution', onExecutionOpenedWithWaitTill);
 }
 
 async function onStopExecution() {
@@ -875,41 +1091,27 @@ const chatTriggerNodePinnedData = computed(() => {
 });
 
 /**
- * Keyboard
- */
-
-function addKeyboardEventBindings() {
-	// document.addEventListener('keydown', this.keyDown);
-	// document.addEventListener('keyup', this.keyUp);
-}
-
-function removeKeyboardEventBindings() {
-	// document.removeEventListener('keydown', this.keyDown);
-	// document.removeEventListener('keyup', this.keyUp);
-}
-
-/**
  * History events
  */
 
 function addUndoRedoEventBindings() {
-	// historyBus.on('nodeMove', onMoveNode);
-	// historyBus.on('revertAddNode', onRevertAddNode);
+	historyBus.on('nodeMove', onRevertNodePosition);
+	historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.on('revertAddConnection', onRevertAddConnection);
+	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
-	// historyBus.on('enableNodeToggle', onRevertEnableToggle);
+	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
 function removeUndoRedoEventBindings() {
-	// historyBus.off('nodeMove', onMoveNode);
-	// historyBus.off('revertAddNode', onRevertAddNode);
+	historyBus.off('nodeMove', onRevertNodePosition);
+	historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.off('revertAddConnection', onRevertAddConnection);
+	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
-	// historyBus.off('enableNodeToggle', onRevertEnableToggle);
+	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
 /**
@@ -963,12 +1165,16 @@ function removePostMessageEventBindings() {
 	window.removeEventListener('message', onPostMessageReceived);
 }
 
-async function onPostMessageReceived(message: MessageEvent) {
-	if (!message || typeof message.data !== 'string' || !message.data?.includes?.('"command"')) {
+async function onPostMessageReceived(messageEvent: MessageEvent) {
+	if (
+		!messageEvent ||
+		typeof messageEvent.data !== 'string' ||
+		!messageEvent.data?.includes?.('"command"')
+	) {
 		return;
 	}
 	try {
-		const json = JSON.parse(message.data);
+		const json = JSON.parse(messageEvent.data);
 		if (json && json.command === 'openWorkflow') {
 			try {
 				await importWorkflowExact(json);
@@ -1074,19 +1280,42 @@ function checkIfRouteIsAllowed() {
 async function initializeDebugMode() {
 	if (route.name === VIEWS.EXECUTION_DEBUG) {
 		titleSet(workflowsStore.workflowName, 'DEBUG');
+
 		if (!workflowsStore.isInDebugMode) {
 			await applyExecutionData(route.params.executionId as string);
 			workflowsStore.isInDebugMode = true;
 		}
+
+		canvasEventBus.on('saved:workflow', onSaveFromWithinExecutionDebug);
 	}
+}
+
+async function onSaveFromWithinExecutionDebug() {
+	if (route.name !== VIEWS.EXECUTION_DEBUG) return;
+
+	await router.replace({
+		name: VIEWS.WORKFLOW,
+		params: { name: workflowId.value },
+	});
 }
 
 /**
  * Canvas
  */
 
+const viewportTransform = ref<ViewportTransform>({ x: 0, y: 0, zoom: 1 });
+
+function onViewportChange(event: ViewportTransform) {
+	viewportTransform.value = event;
+	uiStore.nodeViewOffsetPosition = [event.x, event.y];
+}
+
 function fitView() {
 	setTimeout(() => canvasEventBus.emit('fitView'));
+}
+
+function selectNodes(ids: string[]) {
+	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
 }
 
 /**
@@ -1223,14 +1452,12 @@ onMounted(async () => {
 
 	addUndoRedoEventBindings();
 	addPostMessageEventBindings();
-	addKeyboardEventBindings();
 	addSourceControlEventBindings();
 	addImportEventBindings();
+	addExecutionOpenedEventBindings();
+	addWorkflowSavedEventBindings();
 
 	registerCustomActions();
-
-	// @TODO Implement this
-	// this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 	// @TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
 	void externalHooks.run('nodeView.mount').catch(() => {});
@@ -1239,9 +1466,10 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
-	removeKeyboardEventBindings();
 	removeSourceControlEventBindings();
 	removeImportEventBindings();
+	removeExecutionOpenedEventBindings();
+	removeWorkflowSavedEventBindings();
 });
 </script>
 
@@ -1252,6 +1480,8 @@ onBeforeUnmount(() => {
 		:workflow-object="editableWorkflowObject"
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
+		:read-only="isCanvasReadOnly"
+		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"
@@ -1277,6 +1507,7 @@ onBeforeUnmount(() => {
 		@run:workflow="onRunWorkflow"
 		@save:workflow="onSaveWorkflow"
 		@create:workflow="onCreateWorkflow"
+		@viewport-change="onViewportChange"
 	>
 		<div :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
@@ -1302,28 +1533,28 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<Suspense>
-			<NodeCreation
-				v-if="!isReadOnlyRoute && !isReadOnlyEnvironment"
+			<LazyNodeCreation
+				v-if="!isCanvasReadOnly"
 				:create-node-active="uiStore.isCreateNodeActive"
-				:node-view-scale="1"
+				:node-view-scale="viewportTransform.zoom"
 				@toggle-node-creator="onOpenNodeCreator"
 				@add-nodes="onAddNodesAndConnections"
 			/>
 		</Suspense>
 		<Suspense>
-			<NodeDetailsView
+			<LazyNodeDetailsView
 				:workflow-object="editableWorkflowObject"
-				:read-only="isReadOnlyRoute || isReadOnlyEnvironment"
+				:read-only="isCanvasReadOnly"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				:renaming="false"
 				@value-changed="onRenameNode"
 				@stop-execution="onStopExecution"
 				@switch-selected-node="onSwitchActiveNode"
 				@open-connection-node-creator="onOpenSelectiveNodeCreator"
+				@save-keyboard-shortcut="onSaveWorkflow"
 			/>
 			<!--
 				:renaming="renamingActive"
-				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			-->
 		</Suspense>
 	</WorkflowCanvas>

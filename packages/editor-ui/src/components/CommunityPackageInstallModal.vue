@@ -148,8 +148,6 @@ export default defineComponent({
 					this.infoTextErrorMessage = '';
 					this.loading = true;
 					await this.communityNodesStore.installPackage(this.packageName);
-					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
-					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
 					this.modalBus.emit('close');
 					this.showMessage({

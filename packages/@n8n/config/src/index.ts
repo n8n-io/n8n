@@ -5,6 +5,9 @@ import { EmailConfig } from './configs/email';
 import { VersionNotificationsConfig } from './configs/version-notifications';
 import { PublicApiConfig } from './configs/public-api';
 import { ExternalSecretsConfig } from './configs/external-secrets';
+import { TemplatesConfig } from './configs/templates';
+import { EventBusConfig } from './configs/event-bus';
+import { NodesConfig } from './configs/nodes';
 
 @Config
 class UserManagementConfig {
@@ -31,4 +34,13 @@ export class GlobalConfig {
 
 	@Nested
 	externalSecrets: ExternalSecretsConfig;
+
+	@Nested
+	templates: TemplatesConfig;
+
+	@Nested
+	eventBus: EventBusConfig;
+
+	@Nested
+	readonly nodes: NodesConfig;
 }

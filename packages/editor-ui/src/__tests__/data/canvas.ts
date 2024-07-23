@@ -64,12 +64,20 @@ export function createCanvasNodeProps({
 	id = 'node',
 	label = 'Test Node',
 	selected = false,
+	readOnly = false,
 	data = {},
-}: { id?: string; label?: string; selected?: boolean; data?: Partial<CanvasNodeData> } = {}) {
+}: {
+	id?: string;
+	label?: string;
+	selected?: boolean;
+	readOnly?: boolean;
+	data?: Partial<CanvasNodeData>;
+} = {}) {
 	return {
 		id,
 		label,
 		selected,
+		readOnly,
 		data: createCanvasNodeData(data),
 	};
 }

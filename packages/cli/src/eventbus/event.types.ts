@@ -12,7 +12,7 @@ export type UserLike = {
 };
 
 /**
- * Events sent at services and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
+ * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
 	'workflow-created': {
@@ -105,12 +105,11 @@ export type Event = {
 		user: UserLike;
 	};
 
-	'api-key-created': {
-		user: UserLike;
-	};
-
-	'api-key-deleted': {
-		user: UserLike;
+	'public-api-invoked': {
+		userId: string;
+		path: string;
+		method: string;
+		apiVersion: string;
 	};
 
 	'email-failed': {
@@ -251,5 +250,35 @@ export type Event = {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
+	};
+
+	'license-renewal-attempted': {
+		success: boolean;
+	};
+
+	'variable-created': {
+		variableType: string;
+	};
+
+	'external-secrets-provider-settings-saved': {
+		userId?: string;
+		vaultType: string;
+		isValid: boolean;
+		isNew: boolean;
+		errorMessage?: string;
+	};
+
+	/**
+	 * Events listened to by more than one relay
+	 */
+
+	'public-api-key-created': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
+	};
+
+	'public-api-key-deleted': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
 	};
 };

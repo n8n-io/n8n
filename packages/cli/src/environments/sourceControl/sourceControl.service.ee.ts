@@ -30,7 +30,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -52,7 +52,7 @@ export class SourceControlService {
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
 		this.gitFolder = gitFolder;
@@ -292,7 +292,7 @@ export class SourceControlService {
 		});
 
 		// #region Tracking Information
-		this.eventRelay.emit(
+		this.eventService.emit(
 			'source-control-user-finished-push-ui',
 			getTrackingInformationFromPostPushResult(statusResult),
 		);
@@ -370,7 +370,7 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		this.eventRelay.emit(
+		this.eventService.emit(
 			'source-control-user-finished-pull-ui',
 			getTrackingInformationFromPullResult(statusResult),
 		);
@@ -424,12 +424,12 @@ export class SourceControlService {
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
-			this.eventRelay.emit(
+			this.eventService.emit(
 				'source-control-user-started-push-ui',
 				getTrackingInformationFromPrePushResult(sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
-			this.eventRelay.emit(
+			this.eventService.emit(
 				'source-control-user-started-pull-ui',
 				getTrackingInformationFromPullResult(sourceControlledFiles),
 			);

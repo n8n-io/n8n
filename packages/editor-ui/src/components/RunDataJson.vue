@@ -1,7 +1,7 @@
 <template>
 	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
 		<Suspense>
-			<RunDataJsonActions
+			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
 				:push-ref="pushRef"
@@ -93,7 +93,7 @@ import { nonExistingJsonPath } from '@/constants';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
-const RunDataJsonActions = defineAsyncComponent(
+const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
 );
 
@@ -102,7 +102,7 @@ export default defineComponent({
 	components: {
 		VueJsonPretty,
 		Draggable,
-		RunDataJsonActions,
+		LazyRunDataJsonActions,
 		MappingPill,
 		TextWithHighlights,
 	},
