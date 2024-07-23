@@ -16,11 +16,18 @@ describe('GCP Secrets Manager', () => {
 	});
 
 	it('should update cached secrets', async () => {
-		const PROJECT_ID = 'my-project-id';
-
 		/**
 		 * Arrange
 		 */
+		const PROJECT_ID = 'my-project-id';
+
+		const SECRETS: Record<string, string> = {
+			secret1: 'value1',
+			secret2: 'value2',
+			secret3: '', // no value
+			'#@&': 'value', // unsupported name
+		};
+
 		await gcpSecretsManager.init(
 			mock<GcpSecretsManagerContext>({
 				settings: { serviceAccountKey: `{ "project_id": "${PROJECT_ID}" }` },
@@ -34,24 +41,18 @@ describe('GCP Secrets Manager', () => {
 				[
 					{ name: `projects/${PROJECT_ID}/secrets/secret1` },
 					{ name: `projects/${PROJECT_ID}/secrets/secret2` },
-					{ name: `projects/${PROJECT_ID}/secrets/secret3` }, // no value
-					{ name: `projects/${PROJECT_ID}/secrets/secret4` }, // unsupported name
+					{ name: `projects/${PROJECT_ID}/secrets/secret3` },
+					{ name: `projects/${PROJECT_ID}/secrets/#@&` },
 				],
 			]);
 
 		const getSpy = jest
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
 			.mockImplementation(async ({ name }: { name: string }) => {
-				if (name === `projects/${PROJECT_ID}/secrets/secret1/versions/latest`) {
-					return [{ payload: { data: Buffer.from('value1') } }] as GcpSecretVersionResponse[];
-				} else if (name === `projects/${PROJECT_ID}/secrets/secret2/versions/latest`) {
-					return [{ payload: { data: Buffer.from('value2') } }] as GcpSecretVersionResponse[];
-				} else if (name === `projects/${PROJECT_ID}/secrets/secret3/versions/latest`) {
-					return [{ payload: { data: Buffer.from('') } }] as GcpSecretVersionResponse[];
-				} else if (name === `projects/${PROJECT_ID}/secrets/secret4/versions/latest`) {
-					return [{ payload: { data: Buffer.from('#@&') } }] as GcpSecretVersionResponse[];
-				}
-				throw new Error('Unexpected secret name');
+				const secretName = name.split('/')[3];
+				return [
+					{ payload: { data: Buffer.from(SECRETS[secretName]) } },
+				] as GcpSecretVersionResponse[];
 			});
 
 		/**
@@ -64,11 +65,18 @@ describe('GCP Secrets Manager', () => {
 		 * Assert
 		 */
 		expect(listSpy).toHaveBeenCalled();
+
 		expect(getSpy).toHaveBeenCalledWith({
-			name: 'projects/my-project-id/secrets/secret1/versions/latest',
+			name: `projects/${PROJECT_ID}/secrets/secret1/versions/latest`,
 		});
 		expect(getSpy).toHaveBeenCalledWith({
-			name: 'projects/my-project-id/secrets/secret2/versions/latest',
+			name: `projects/${PROJECT_ID}/secrets/secret2/versions/latest`,
+		});
+		expect(getSpy).toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/secret3/versions/latest`,
+		});
+		expect(getSpy).not.toHaveBeenCalledWith({
+			name: `projects/${PROJECT_ID}/secrets/#@&/versions/latest`,
 		});
 
 		expect(gcpSecretsManager.getSecret('secret1')).toBe('value1');
