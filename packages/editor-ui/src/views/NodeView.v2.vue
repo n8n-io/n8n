@@ -30,7 +30,12 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
-import type { CanvasConnectionCreateData, CanvasNode, ConnectStartEvent } from '@/types';
+import type {
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	ConnectStartEvent,
+} from '@/types';
 import { CanvasNodeRenderType } from '@/types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -135,11 +140,14 @@ const lastClickPosition = ref<XYPosition>([450, 450]);
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
+	updateNodesPosition,
+	revertUpdateNodePosition,
 	renameNode,
 	revertRenameNode,
 	setNodeActive,
 	setNodeSelected,
 	toggleNodesDisabled,
+	revertToggleNodeDisabled,
 	toggleNodesPinned,
 	setNodeParameters,
 	deleteNode,
@@ -149,7 +157,9 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	revertAddNode,
 	createConnection,
+	revertCreateConnection,
 	deleteConnection,
 	revertDeleteConnection,
 	setNodeActiveByName,
@@ -442,8 +452,16 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
+function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
+	updateNodesPosition(events, { trackHistory: true });
+}
+
 function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
 	updateNodePosition(id, position, { trackHistory: true });
+}
+
+function onRevertNodePosition({ nodeName, position }: { nodeName: string; position: XYPosition }) {
+	revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
 }
 
 function onDeleteNode(id: string) {
@@ -464,6 +482,10 @@ function onToggleNodeDisabled(id: string) {
 	}
 
 	toggleNodesDisabled([id]);
+}
+
+function onRevertToggleNodeDisabled({ nodeName }: { nodeName: string }) {
+	revertToggleNodeDisabled(nodeName);
 }
 
 function onToggleNodesDisabled(ids: string[]) {
@@ -690,7 +712,11 @@ async function loadCredentials() {
  */
 
 function onCreateConnection(connection: Connection) {
-	createConnection(connection);
+	createConnection(connection, { trackHistory: true });
+}
+
+function onRevertCreateConnection({ connection }: { connection: [IConnection, IConnection] }) {
+	revertCreateConnection(connection);
 }
 
 function onCreateConnectionCancelled(event: ConnectStartEvent) {
@@ -775,7 +801,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position });
+	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -801,6 +827,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
+}
+
+async function onRevertAddNode({ node }: { node: INodeUi }) {
+	await revertAddNode(node.name);
 }
 
 async function onSwitchActiveNode(nodeName: string) {
@@ -1065,23 +1095,23 @@ const chatTriggerNodePinnedData = computed(() => {
  */
 
 function addUndoRedoEventBindings() {
-	// historyBus.on('nodeMove', onMoveNode);
-	// historyBus.on('revertAddNode', onRevertAddNode);
+	historyBus.on('nodeMove', onRevertNodePosition);
+	historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.on('revertAddConnection', onRevertAddConnection);
+	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.on('revertRenameNode', onRevertRenameNode);
-	// historyBus.on('enableNodeToggle', onRevertEnableToggle);
+	historyBus.on('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
 function removeUndoRedoEventBindings() {
-	// historyBus.off('nodeMove', onMoveNode);
-	// historyBus.off('revertAddNode', onRevertAddNode);
+	historyBus.off('nodeMove', onRevertNodePosition);
+	historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
-	// historyBus.off('revertAddConnection', onRevertAddConnection);
+	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
 	historyBus.off('revertRenameNode', onRevertRenameNode);
-	// historyBus.off('enableNodeToggle', onRevertEnableToggle);
+	historyBus.off('enableNodeToggle', onRevertToggleNodeDisabled);
 }
 
 /**
@@ -1444,6 +1474,7 @@ onBeforeUnmount(() => {
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
+		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
 		@update:node:selected="onSetNodeSelected"

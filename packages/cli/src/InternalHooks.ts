@@ -34,6 +34,11 @@ import { ProjectRelationRepository } from './databases/repositories/projectRelat
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
+/**
+ * @deprecated Do not add to this class. To add audit or telemetry events, use
+ * `EventService` to emit the event and then use the `AuditEventRelay` or
+ * `TelemetryEventRelay` to forward them to the event bus or telemetry.
+ */
 @Service()
 export class InternalHooks {
 	constructor(

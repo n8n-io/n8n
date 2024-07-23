@@ -27,7 +27,7 @@ export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
-	const options = ctx.getNodeParameter('options', itemIndex);
+	const options = ctx.getNodeParameter('options', itemIndex, {});
 
 	if (options.metadata) {
 		const { metadataValues: metadata } = options.metadata as {

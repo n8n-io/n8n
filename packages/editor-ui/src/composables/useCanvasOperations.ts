@@ -30,6 +30,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import {
+	AddConnectionCommand,
 	AddNodeCommand,
 	MoveNodeCommand,
 	RemoveConnectionCommand,
@@ -48,13 +49,19 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CanvasConnection, CanvasConnectionCreateData, CanvasNode } from '@/types';
+import type {
+	CanvasConnection,
+	CanvasConnectionCreateData,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+} from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import {
 	createCanvasConnectionHandleString,
 	getUniqueNodeName,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
+	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -74,6 +81,7 @@ import type {
 	IPinData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
+	NodeInputConnections,
 	NodeParameterValueType,
 	Workflow,
 } from 'n8n-workflow';
@@ -135,18 +143,31 @@ export function useCanvasOperations({
 	 * Node operations
 	 */
 
+	function updateNodesPosition(
+		events: CanvasNodeMoveEvent[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		events.forEach(({ id, position }) => {
+			updateNodePosition(id, position, { trackHistory });
+		});
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
 	function updateNodePosition(
 		id: string,
 		position: CanvasNode['position'],
-		{ trackHistory = false, trackBulk = true } = {},
+		{ trackHistory = false } = {},
 	) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
 			return;
-		}
-
-		if (trackHistory && trackBulk) {
-			historyStore.startRecordingUndo();
 		}
 
 		const oldPosition: XYPosition = [...node.position];
@@ -156,11 +177,16 @@ export function useCanvasOperations({
 
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newPosition));
-
-			if (trackBulk) {
-				historyStore.stopRecordingUndo();
-			}
 		}
+	}
+
+	function revertUpdateNodePosition(nodeName: string, position: CanvasNode['position']) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		updateNodePosition(node.id, position);
 	}
 
 	async function renameNode(currentName: string, newName: string, { trackHistory = false } = {}) {
@@ -202,6 +228,49 @@ export function useCanvasOperations({
 		await renameNode(currentName, previousName);
 	}
 
+	function connectAdjacentNodes(id: string) {
+		const node = workflowsStore.getNodeById(id);
+
+		if (!node) {
+			return;
+		}
+
+		const outputConnectionsByType = workflowsStore.outgoingConnectionsByNodeName(node.name);
+		const incomingConnectionsByType = workflowsStore.incomingConnectionsByNodeName(node.name);
+
+		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
+			incomingConnectionsByType,
+		) as Array<[NodeConnectionType, NodeInputConnections]>) {
+			// Only connect nodes connected to the first input of a type
+			for (const incomingConnection of incomingConnectionsByInputIndex.at(0) ?? []) {
+				const incomingNodeId = workflowsStore.getNodeByName(incomingConnection.node)?.id;
+
+				if (!incomingNodeId) continue;
+
+				// Only connect to nodes connected to the first output of a type
+				// For example on an If node, connect to the "true" main output
+				for (const outgoingConnection of outputConnectionsByType[type]?.at(0) ?? []) {
+					const outgoingNodeId = workflowsStore.getNodeByName(outgoingConnection.node)?.id;
+
+					if (!outgoingNodeId) continue;
+
+					createConnection({
+						source: incomingNodeId,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Output,
+							type,
+						}),
+						target: outgoingNodeId,
+						targetHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type,
+						}),
+					});
+				}
+			}
+		}
+	}
+
 	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
 		const node = workflowsStore.getNodeById(id);
 		if (!node) {
@@ -212,6 +281,7 @@ export function useCanvasOperations({
 			historyStore.startRecordingUndo();
 		}
 
+		connectAdjacentNodes(id);
 		workflowsStore.removeNodeConnectionsById(id);
 		workflowsStore.removeNodeExecutionDataById(id);
 		workflowsStore.removeNodeById(id);
@@ -301,10 +371,25 @@ export function useCanvasOperations({
 
 	function toggleNodesDisabled(
 		ids: string[],
-		{ trackHistory = true }: { trackHistory?: boolean } = {},
+		{ trackHistory = true, trackBulk = true }: { trackHistory?: boolean; trackBulk?: boolean } = {},
 	) {
+		if (trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
 		const nodes = workflowsStore.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, trackHistory);
+
+		if (trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function revertToggleNodeDisabled(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (node) {
+			nodeHelpers.disableNodes([node]);
+		}
 	}
 
 	function toggleNodesPinned(ids: string[], source: PinDataSource) {
@@ -333,10 +418,16 @@ export function useCanvasOperations({
 		options: {
 			dragAndDrop?: boolean;
 			position?: XYPosition;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
 		} = {},
 	) {
 		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
+
+		if (options.trackBulk) {
+			historyStore.startRecordingUndo();
+		}
 
 		for (const nodeAddData of nodes) {
 			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
@@ -352,7 +443,7 @@ export function useCanvasOperations({
 						...options,
 						openNDV,
 						isAutoAdd,
-						trackHistory: true,
+						trackHistory: options.trackHistory,
 					},
 				);
 			} catch (error) {
@@ -370,6 +461,10 @@ export function useCanvasOperations({
 		if (lastAddedNode) {
 			// @TODO Figure out what this does and why it's needed
 			updatePositionForNodeWithMultipleInputs(lastAddedNode);
+		}
+
+		if (options.trackBulk) {
+			historyStore.stopRecordingUndo();
 		}
 	}
 
@@ -443,6 +538,15 @@ export function useCanvasOperations({
 		}
 
 		return nodeData;
+	}
+
+	async function revertAddNode(nodeName: string) {
+		const node = workflowsStore.getNodeByName(nodeName);
+		if (!node) {
+			return;
+		}
+
+		deleteNode(node.id);
 	}
 
 	function createConnectionToLastInteractedWithNode(node: INodeUi, options: AddNodeOptions = {}) {
@@ -904,11 +1008,19 @@ export function useCanvasOperations({
 	 * Connection operations
 	 */
 
-	function createConnection(connection: Connection) {
+	function createConnection(connection: Connection, { trackHistory = false } = {}) {
 		const sourceNode = workflowsStore.getNodeById(connection.source);
 		const targetNode = workflowsStore.getNodeById(connection.target);
 		if (!sourceNode || !targetNode) {
 			return;
+		}
+
+		if (trackHistory) {
+			historyStore.pushCommandToUndo(
+				new AddConnectionCommand(
+					mapCanvasConnectionToLegacyConnection(sourceNode, targetNode, connection),
+				),
+			);
 		}
 
 		const mappedConnection = mapCanvasConnectionToLegacyConnection(
@@ -929,6 +1041,19 @@ export function useCanvasOperations({
 		nodeHelpers.updateNodeInputIssues(targetNode);
 
 		uiStore.stateIsDirty = true;
+	}
+
+	function revertCreateConnection(connection: [IConnection, IConnection]) {
+		const sourceNodeName = connection[0].node;
+		const sourceNode = workflowsStore.getNodeByName(sourceNodeName);
+		const targetNodeName = connection[1].node;
+		const targetNode = workflowsStore.getNodeByName(targetNodeName);
+
+		if (!sourceNode || !targetNode) {
+			return;
+		}
+
+		deleteConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection));
 	}
 
 	function deleteConnection(
@@ -1545,11 +1670,15 @@ export function useCanvasOperations({
 		triggerNodes,
 		addNodes,
 		addNode,
+		revertAddNode,
+		updateNodesPosition,
 		updateNodePosition,
+		revertUpdateNodePosition,
 		setNodeActive,
 		setNodeActiveByName,
 		setNodeSelected,
 		toggleNodesDisabled,
+		revertToggleNodeDisabled,
 		toggleNodesPinned,
 		setNodeParameters,
 		renameNode,
@@ -1562,6 +1691,7 @@ export function useCanvasOperations({
 		revertDeleteNode,
 		addConnections,
 		createConnection,
+		revertCreateConnection,
 		deleteConnection,
 		revertDeleteConnection,
 		isConnectionAllowed,
