@@ -6,6 +6,13 @@ import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_cred
 import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
 import CustomCredential from '../fixtures/Custom_credential.json';
 import { getVisibleSelect } from '../utils';
+import {
+	confirmCommunityNodeUninstall,
+	confirmCommunityNodeUpdate,
+	getCommunityCards,
+	installFirstCommunityNode,
+	visitCommunityNodesSettings,
+} from '../pages/settings-community-nodes';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
@@ -14,7 +21,7 @@ const workflowPage = new WorkflowPage();
 // We separate-out the custom nodes because they require injecting nodes and credentials
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
 // We want to keep the other tests as fast as possible so we don't want to break the cache in those.
-describe('Community Nodes', () => {
+describe('Community and custom nodes in canvas', () => {
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -93,5 +100,91 @@ describe('Community Nodes', () => {
 		cy.contains('Create New Credential').click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
 		credentialsModal.getters.editCredentialModal().should('contain.text', 'Custom E2E Credential');
+	});
+});
+
+describe('Community nodes', () => {
+	const mockPackage = {
+		createdAt: '2024-07-22T19:08:06.505Z',
+		updatedAt: '2024-07-22T19:08:06.505Z',
+		packageName: 'n8n-nodes-chatwork',
+		installedVersion: '1.0.0',
+		authorName: null,
+		authorEmail: null,
+		installedNodes: [
+			{
+				name: 'Chatwork',
+				type: 'n8n-nodes-chatwork.chatwork',
+				latestVersion: 1,
+			},
+		],
+		updateAvailable: '1.1.2',
+	};
+
+	it('can install, update and uninstall community nodes', () => {
+		cy.intercept(
+			{
+				hostname: 'api.npms.io',
+				pathname: '/v2/search',
+				query: { q: 'keywords:n8n-community-node-package' },
+			},
+			{ body: {} },
+		);
+		cy.intercept(
+			{ method: 'GET', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: [] },
+			},
+		).as('getEmptyPackages');
+		visitCommunityNodesSettings();
+		cy.wait('@getEmptyPackages');
+
+		// install a package
+		cy.intercept(
+			{ method: 'POST', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: mockPackage },
+			},
+		).as('installPackage');
+		cy.intercept(
+			{ method: 'GET', pathname: '/rest/community-packages', times: 1 },
+			{
+				body: { data: [mockPackage] },
+			},
+		).as('getPackages');
+		installFirstCommunityNode('n8n-nodes-chatwork@1.0.0');
+		cy.wait('@installPackage');
+		cy.wait('@getPackages');
+		getCommunityCards().should('have.length', 1);
+		getCommunityCards().eq(0).should('include.text', 'v1.0.0');
+
+		// update the package
+		cy.intercept(
+			{ method: 'PATCH', pathname: '/rest/community-packages' },
+			{
+				body: { data: { ...mockPackage, installedVersion: '1.2.0', updateAvailable: undefined } },
+			},
+		).as('updatePackage');
+		getCommunityCards().eq(0).find('button').click();
+		confirmCommunityNodeUpdate();
+		cy.wait('@updatePackage');
+		getCommunityCards().should('have.length', 1);
+		getCommunityCards().eq(0).should('not.include.text', 'v1.0.0');
+
+		// uninstall the package
+		cy.intercept(
+			{
+				method: 'DELETE',
+				pathname: '/rest/community-packages',
+				query: { name: 'n8n-nodes-chatwork' },
+			},
+			{ statusCode: 204 },
+		).as('uninstallPackage');
+		getCommunityCards().getByTestId('action-toggle').click();
+		cy.getByTestId('action-uninstall').click();
+		confirmCommunityNodeUninstall();
+		cy.wait('@uninstallPackage');
+
+		cy.getByTestId('action-box').should('exist');
 	});
 });

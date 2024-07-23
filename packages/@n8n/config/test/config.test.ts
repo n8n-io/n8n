@@ -56,7 +56,6 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 		},
-
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
@@ -87,6 +86,33 @@ describe('GlobalConfig', () => {
 					workflowShared: '',
 				},
 			},
+		},
+		eventBus: {
+			checkUnsentInterval: 0,
+			crashRecoveryMode: 'extensive',
+			logWriter: {
+				keepLogCount: 3,
+				logBaseName: 'n8nEventLog',
+				maxFileSizeInKB: 10240,
+			},
+		},
+		externalSecrets: {
+			preferGet: false,
+			updateInterval: 300,
+		},
+		publicApi: {
+			disabled: false,
+			path: 'api',
+			swaggerUiDisabled: false,
+		},
+		templates: {
+			enabled: true,
+			host: 'https://api.n8n.io/api/',
+		},
+		versionNotifications: {
+			enabled: true,
+			endpoint: 'https://api.n8n.io/api/versions/',
+			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
 	};
 
