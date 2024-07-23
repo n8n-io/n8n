@@ -331,10 +331,6 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
 	props.eventBus.on('selectNodes', onSelectNodes);
-
-	if (props.readOnly) {
-		setReadonly(props.readOnly);
-	}
 });
 
 onUnmounted(() => {
@@ -347,7 +343,9 @@ onPaneReady(async () => {
 	paneReady.value = true;
 });
 
-watch(() => props.readOnly, setReadonly);
+watch(() => props.readOnly, setReadonly, {
+	immediate: true,
+});
 </script>
 
 <template>
