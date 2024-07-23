@@ -38,7 +38,7 @@ export class EnterpriseCredentialsService {
 					id: In(shareWithIds),
 					type: 'team',
 					// if user can see all projects, don't check project access
-					// if they don't, find projects they can list
+					// if they can't, find projects they can list
 					...(user.hasGlobalScope('project:list')
 						? {}
 						: {

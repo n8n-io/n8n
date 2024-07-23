@@ -981,7 +981,7 @@ describe('PUT /credentials/:id/share', () => {
 		config.set('userManagement.emails.mode', 'smtp');
 	});
 
-	test('should be able to share from personal project to team project that member has access to', async () => {
+	test('member should be able to share from personal project to team project that member has access to', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const testProject = await createTeamProject();
@@ -1000,7 +1000,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(testShare?.role).toBe('credential:user');
 	});
 
-	test('should be able to share from team project to personal project', async () => {
+	test('member should be able to share from team project to personal project', async () => {
 		const testProject = await createTeamProject(undefined, member);
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
@@ -1020,7 +1020,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(testShare?.role).toBe('credential:user');
 	});
 
-	test('should be able to share from team project to team project that member has access to', async () => {
+	test('member should be able to share from team project to team project that member has access to', async () => {
 		const testProject = await createTeamProject(undefined, member);
 		const testProject2 = await createTeamProject();
 		await linkUserToProject(member, testProject2, 'project:editor');
@@ -1042,7 +1042,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(testShare?.role).toBe('credential:user');
 	});
 
-	test('admins should be able to share from any team project to team project ', async () => {
+	test('admins should be able to share from any team project to any team project ', async () => {
 		const testProject = await createTeamProject();
 		const testProject2 = await createTeamProject();
 
@@ -1063,7 +1063,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(testShare?.role).toBe('credential:user');
 	});
 
-	test('admins should be able to share from any team project to personal project ', async () => {
+	test("admins should be able to share from any team project to any user's personal project ", async () => {
 		const testProject = await createTeamProject();
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
@@ -1083,7 +1083,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(testShare?.role).toBe('credential:user');
 	});
 
-	test('admins should be able to share from any personal project to team project ', async () => {
+	test('admins should be able to share from any personal project to any team project ', async () => {
 		const testProject = await createTeamProject();
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), {

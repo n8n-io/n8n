@@ -291,15 +291,15 @@ export class CredentialsController {
 		let newShareeIds: string[] = [];
 
 		await Db.transaction(async (trx) => {
-			const currentProjectIDs = credential.shared
+			const currentProjectIds = credential.shared
 				.filter((sc) => sc.role === 'credential:user')
 				.map((sc) => sc.projectId);
 			const newProjectIds = shareWithIds;
 
-			const toShare = utils.rightDiff([currentProjectIDs, (id) => id], [newProjectIds, (id) => id]);
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
 			const toUnshare = utils.rightDiff(
 				[newProjectIds, (id) => id],
-				[currentProjectIDs, (id) => id],
+				[currentProjectIds, (id) => id],
 			);
 
 			const deleteResult = await trx.delete(SharedCredentials, {
