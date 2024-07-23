@@ -12,7 +12,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 export class EmbeddingsVoyageAI implements INodeType {
     description: INodeTypeDescription = {
         displayName: 'Embeddings Voyage AI',
-        name: 'embeddingsVoyageAI',
+        name: 'EmbeddingsVoyageAI',
         icon: 'file:voyage.svg',
         group: ['transform'],
         version: 1,
