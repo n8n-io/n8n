@@ -34,7 +34,7 @@
       "dist/credentials/PineconeApi.credentials.js",
       "dist/credentials/QdrantApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
-       "dist/credentials/VoyageAIAPI.credentials.js",
+      "dist/credentials/VoyageAIAPI.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
