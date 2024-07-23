@@ -47,9 +47,13 @@ function getInputs(
 		};
 
 		return inputs.map(({ type, filter }) => {
+			let displayName = type in displayNames ? displayNames[type] : undefined;
+			if (['openAiFunctionsAgent', 'toolsAgent', 'conversationalAgent'].includes(agent)) {
+				displayName = 'Chat Model';
+			}
 			const input: INodeInputConfiguration = {
 				type,
-				displayName: type in displayNames ? displayNames[type] : undefined,
+				displayName,
 				required: type === NodeConnectionType.AiLanguageModel,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
 					type as NodeConnectionType,
