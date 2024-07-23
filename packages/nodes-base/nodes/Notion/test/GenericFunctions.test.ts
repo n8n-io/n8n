@@ -73,9 +73,17 @@ describe('Test Notion', () => {
 			}
 		});
 
-		test('should return just the ID', () => {
+		test('should return just the id when there is an instance name', () => {
 			for (const testId of testIds) {
 				const page = `${baseUrl}/${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
+		});
+
+		test('should return the id when there is no instance name', () => {
+			for (const testId of testIds) {
+				const page = `https://www.notion.so/${testId}`;
 				const result = extractPageId(extractIdFromUrl(page));
 				expect(result).toBe(testId);
 			}
