@@ -112,14 +112,6 @@ export type Event = {
 		apiVersion: string;
 	};
 
-	'public-api-key-created':
-		| { user: UserLike } // audit
-		| { user: UserLike; publicApi: boolean }; // telemetry
-
-	'public-api-key-deleted':
-		| { user: UserLike } // audit
-		| { user: UserLike; publicApi: boolean }; // telemetry
-
 	'email-failed': {
 		user: UserLike;
 		messageType:
@@ -274,5 +266,19 @@ export type Event = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	/**
+	 * Events listened to by more than one relay
+	 */
+
+	'public-api-key-created': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
+	};
+
+	'public-api-key-deleted': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
 	};
 };
