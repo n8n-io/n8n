@@ -143,6 +143,28 @@ describe('InformationExtractor', () => {
 			}
 		});
 
+		it('should fail if LLM extracted an attribute with the wrong type', async () => {
+			const node = new InformationExtractor();
+
+			try {
+				await node.execute.call(
+					createExecuteFunctionsMock(
+						{
+							text: 'John is 30 years old',
+							attributes: {
+								attributes: mockPersonAttributes,
+							},
+							options: {},
+							schemaType: 'fromAttributes',
+						},
+						new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: '30' }) }),
+					),
+				);
+			} catch (error) {
+				expect(error.message).toContain('Failed to parse');
+			}
+		});
+
 		it('retries if LLM fails to extract some required attribute', async () => {
 			const node = new InformationExtractor();
 
@@ -159,6 +181,31 @@ describe('InformationExtractor', () => {
 					new FakeListChatModel({
 						responses: [
 							formatFakeLlmResponse({ name: 'John' }),
+							formatFakeLlmResponse({ name: 'John', age: 30 }),
+						],
+					}),
+				),
+			);
+
+			expect(response).toEqual([[{ json: { output: { name: 'John', age: 30 } } }]]);
+		});
+
+		it('retries if LLM extracted an attribute with a wrong type', async () => {
+			const node = new InformationExtractor();
+
+			const response = await node.execute.call(
+				createExecuteFunctionsMock(
+					{
+						text: 'John is 30 years old',
+						attributes: {
+							attributes: mockPersonAttributesRequired,
+						},
+						options: {},
+						schemaType: 'fromAttributes',
+					},
+					new FakeListChatModel({
+						responses: [
+							formatFakeLlmResponse({ name: 'John', age: '30' }),
 							formatFakeLlmResponse({ name: 'John', age: 30 }),
 						],
 					}),
