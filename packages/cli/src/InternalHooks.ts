@@ -34,6 +34,11 @@ import { ProjectRelationRepository } from './databases/repositories/projectRelat
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
+/**
+ * @deprecated Do not add to this class. To add audit or telemetry events, use
+ * `EventService` to emit the event and then use the `AuditEventRelay` or
+ * `TelemetryEventRelay` to forward them to the event bus or telemetry.
+ */
 @Service()
 export class InternalHooks {
 	constructor(
@@ -502,29 +507,6 @@ export class InternalHooks {
 			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
-	}
-
-	async onUserInvokedApi(userInvokedApiData: {
-		user_id: string;
-		path: string;
-		method: string;
-		api_version: string;
-	}): Promise<void> {
-		return await this.telemetry.track('User invoked API', userInvokedApiData);
-	}
-
-	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key deleted', {
-			user_id: apiKeyDeletedData.user.id,
-			public_api: apiKeyDeletedData.public_api,
-		});
-	}
-
-	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key created', {
-			user_id: apiKeyCreatedData.user.id,
-			public_api: apiKeyCreatedData.public_api,
-		});
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {

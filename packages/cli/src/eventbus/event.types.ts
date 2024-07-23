@@ -105,13 +105,20 @@ export type Event = {
 		user: UserLike;
 	};
 
-	'api-key-created': {
-		user: UserLike;
+	'public-api-invoked': {
+		userId: string;
+		path: string;
+		method: string;
+		apiVersion: string;
 	};
 
-	'api-key-deleted': {
-		user: UserLike;
-	};
+	'public-api-key-created':
+		| { user: UserLike } // audit
+		| { user: UserLike; publicApi: boolean }; // telemetry
+
+	'public-api-key-deleted':
+		| { user: UserLike } // audit
+		| { user: UserLike; publicApi: boolean }; // telemetry
 
 	'email-failed': {
 		user: UserLike;
