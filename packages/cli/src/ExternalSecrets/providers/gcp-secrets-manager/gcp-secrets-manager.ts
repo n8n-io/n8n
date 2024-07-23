@@ -1,4 +1,4 @@
-import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
+import { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { jsonParse, type INodeProperties } from 'n8n-workflow';
@@ -23,15 +23,16 @@ export class GcpSecretsManager implements SecretsProvider {
 			type: 'string',
 			default: '',
 			required: true,
+			typeOptions: { password: true },
 			placeholder: 'e.g. { "type": "service_account", "project_id": "gcp-secrets-store", ... }',
-			hint: 'JSON file downloaded from Google Cloud Console.',
+			hint: 'Content of JSON file downloaded from Google Cloud Console.',
 			noDataExpression: true,
 		},
 	];
 
 	private cachedSecrets: Record<string, string> = {};
 
-	private client: SecretManagerServiceClient;
+	private client: GcpClient;
 
 	private settings: GcpSecretAccountKey;
 
@@ -43,7 +44,7 @@ export class GcpSecretsManager implements SecretsProvider {
 		const { projectId, privateKey, clientEmail } = this.settings;
 
 		try {
-			this.client = new SecretManagerServiceClient({
+			this.client = new GcpClient({
 				credentials: { client_email: clientEmail, private_key: privateKey },
 				projectId,
 			});
@@ -65,7 +66,7 @@ export class GcpSecretsManager implements SecretsProvider {
 	}
 
 	async disconnect() {
-		// await this.client.close();
+		// unused
 	}
 
 	async update() {
@@ -86,16 +87,26 @@ export class GcpSecretsManager implements SecretsProvider {
 		}, []);
 
 		const promises = secretNames.map(async (name) => {
-			const [latestVersion] = await this.client.accessSecretVersion({
+			const versions = await this.client.accessSecretVersion({
 				name: `projects/${projectId}/secrets/${name}/versions/latest`,
 			});
 
+			if (!Array.isArray(versions) || !versions.length) return null;
+
+			const [latestVersion] = versions;
+
 			if (!latestVersion.payload?.data) return null;
 
-			return { name, value: latestVersion.payload.data.toString() };
+			const value = latestVersion.payload.data.toString();
+
+			if (!value) return null;
+
+			return { name, value };
 		});
 
 		const results = await Promise.all(promises);
+
+		console.log('results', results);
 
 		this.cachedSecrets = results.reduce<Record<string, string>>((acc, cur) => {
 			if (cur) acc[cur.name] = cur.value;

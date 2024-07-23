@@ -1,7 +1,9 @@
 import type { SecretsProviderSettings } from '@/Interfaces';
 
+type JsonString = string;
+
 export type GcpSecretsManagerContext = SecretsProviderSettings<{
-	serviceAccountKey: string;
+	serviceAccountKey: JsonString;
 }>;
 
 export type RawGcpSecretAccountKey = {
