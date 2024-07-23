@@ -106,8 +106,6 @@ export class GcpSecretsManager implements SecretsProvider {
 
 		const results = await Promise.all(promises);
 
-		console.log('results', results);
-
 		this.cachedSecrets = results.reduce<Record<string, string>>((acc, cur) => {
 			if (cur) acc[cur.name] = cur.value;
 			return acc;
