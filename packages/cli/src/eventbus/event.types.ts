@@ -269,7 +269,7 @@ export type Event = {
 	};
 
 	/**
-	 * Common events
+	 * Events listened to by more than one relay
 	 */
 
 	'public-api-key-created': {
