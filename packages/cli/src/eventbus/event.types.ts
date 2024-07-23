@@ -124,31 +124,30 @@ export type Event = {
 
 	'credentials-created': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
+		publicApi: boolean;
+		projectId?: string;
+		projectType?: string;
 	};
 
 	'credentials-shared': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 		userIdSharer: string;
-		userIdsShareesRemoved: string[];
+		userIdsShareesAdded: string[];
 		shareesRemoved: number | null;
 	};
 
 	'credentials-updated': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 	};
 
 	'credentials-deleted': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 	};

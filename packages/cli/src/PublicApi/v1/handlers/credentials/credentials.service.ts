@@ -17,7 +17,6 @@ import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { InternalHooks } from '@/InternalHooks';
 import { EventService } from '@/eventbus/event.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
@@ -53,18 +52,16 @@ export async function saveCredential(
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
-	void Container.get(InternalHooks).onUserCreatedCredentials({
-		user,
-		credential_name: credential.name,
-		credential_type: credential.type,
-		credential_id: credential.id,
-		public_api: true,
-	});
+	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+		credential.id,
+	);
 	Container.get(EventService).emit('credentials-created', {
 		user,
-		credentialName: credential.name,
 		credentialType: credential.type,
 		credentialId: credential.id,
+		projectId: project?.id,
+		projectType: project?.type,
+		publicApi: true,
 	});
 
 	return await Db.transaction(async (transactionManager) => {
@@ -96,15 +93,8 @@ export async function removeCredential(
 	credentials: CredentialsEntity,
 ): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
-	void Container.get(InternalHooks).onUserDeletedCredentials({
-		user,
-		credential_name: credentials.name,
-		credential_type: credentials.type,
-		credential_id: credentials.id,
-	});
 	Container.get(EventService).emit('credentials-deleted', {
 		user,
-		credentialName: credentials.name,
 		credentialType: credentials.type,
 		credentialId: credentials.id,
 	});
