@@ -256,9 +256,7 @@ export type Event = {
 		success: boolean;
 	};
 
-	'variable-created': {
-		variableType: string;
-	};
+	'variable-created': {};
 
 	'external-secrets-provider-settings-saved': {
 		userId?: string;
