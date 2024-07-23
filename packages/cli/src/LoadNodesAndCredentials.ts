@@ -44,9 +44,9 @@ export class LoadNodesAndCredentials {
 
 	loaders: Record<string, DirectoryLoader> = {};
 
-	excludeNodes: string[];
+	excludeNodes = this.globalConfig.nodes.exclude;
 
-	includeNodes: string[];
+	includeNodes = this.globalConfig.nodes.include;
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
@@ -54,10 +54,7 @@ export class LoadNodesAndCredentials {
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
-	) {
-		this.includeNodes = this.globalConfig.nodes.include;
-		this.excludeNodes = this.globalConfig.nodes.exclude;
-	}
+	) {}
 
 	async init() {
 		if (inTest) throw new ApplicationError('Not available in tests');

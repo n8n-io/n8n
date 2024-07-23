@@ -74,8 +74,6 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventService } from './eventbus/event.service';
 import { GlobalConfig } from '@n8n/config';
 
-const ERROR_TRIGGER_TYPE = Container.get(GlobalConfig).nodes.errorTriggerType;
-
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
 	if (errorObject instanceof Error) {
@@ -177,6 +175,7 @@ export function executeErrorWorkflow(
 			};
 		}
 
+		const { errorTriggerType } = Container.get(GlobalConfig).nodes;
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		const { errorWorkflow } = workflowData.settings ?? {};
@@ -221,7 +220,7 @@ export function executeErrorWorkflow(
 		} else if (
 			mode !== 'error' &&
 			workflowId !== undefined &&
-			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
+			workflowData.nodes.some((node) => node.type === errorTriggerType)
 		) {
 			logger.verbose('Start internal error workflow', { executionId, workflowId });
 			void Container.get(OwnershipService)

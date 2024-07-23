@@ -231,17 +231,17 @@ export class WorkflowExecutionService {
 
 			let node: INode;
 			let workflowStartNode: INode | undefined;
-			const ERROR_TRIGGER_TYPE = this.globalConfig.nodes.errorTriggerType;
+			const { errorTriggerType } = this.globalConfig.nodes;
 			for (const nodeName of Object.keys(workflowInstance.nodes)) {
 				node = workflowInstance.nodes[nodeName];
-				if (node.type === ERROR_TRIGGER_TYPE) {
+				if (node.type === errorTriggerType) {
 					workflowStartNode = node;
 				}
 			}
 
 			if (workflowStartNode === undefined) {
 				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${errorTriggerType}" in workflow "${workflowId}"`,
 				);
 				return;
 			}
