@@ -135,7 +135,7 @@ const getProperties = computed(() => {
 	const returnProperties = [];
 	let tempProperties;
 	for (const name of propertyNames.value) {
-		tempProperties = getOptionProperties(name);
+		tempProperties = getOptionProperties(name) as INodeProperties[];
 		if (tempProperties !== undefined) {
 			returnProperties.push(...tempProperties);
 		}

@@ -102,11 +102,11 @@
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
-					<SetupWorkflowCredentialsButton />
+					<LazySetupWorkflowCredentialsButton />
 				</div>
 			</Suspense>
 			<Suspense>
-				<NodeCreation
+				<LazyNodeCreation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
@@ -115,7 +115,7 @@
 				/>
 			</Suspense>
 			<Suspense>
-				<CanvasControls />
+				<LazyCanvasControls />
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
@@ -390,13 +390,13 @@ interface AddNodeOptions {
 	name?: string;
 }
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
-const CanvasControls = defineAsyncComponent(
+const LazyCanvasControls = defineAsyncComponent(
 	async () => await import('@/components/CanvasControls.vue'),
 );
-const SetupWorkflowCredentialsButton = defineAsyncComponent(
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 	async () =>
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
@@ -409,10 +409,10 @@ export default defineComponent({
 		Sticky,
 		CanvasAddButton,
 		KeyboardShortcutTooltip,
-		NodeCreation,
-		CanvasControls,
+		LazyNodeCreation,
+		LazyCanvasControls,
 		ContextMenu,
-		SetupWorkflowCredentialsButton,
+		LazySetupWorkflowCredentialsButton,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
