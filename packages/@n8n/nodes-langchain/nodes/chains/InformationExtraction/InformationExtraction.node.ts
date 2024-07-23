@@ -151,10 +151,10 @@ export class InformationExtraction implements INodeType {
 										name: 'Date',
 										value: 'date',
 									},
-									{
-										name: 'Date and Time',
-										value: 'datetime',
-									},
+									// {
+									// 	name: 'Date and Time',
+									// 	value: 'datetime',
+									// },
 									{
 										name: 'Number',
 										value: 'number',
@@ -163,10 +163,10 @@ export class InformationExtraction implements INodeType {
 										name: 'String',
 										value: 'string',
 									},
-									{
-										name: 'Time',
-										value: 'time',
-									},
+									// {
+									// 	name: 'Time',
+									// 	value: 'time',
+									// },
 								],
 								default: 'string',
 							},
@@ -269,7 +269,7 @@ export class InformationExtraction implements INodeType {
 				makeZodSchemaFromAttributes(attributes, strictSchema),
 			);
 
-			console.log(parser.getFormatInstructions());
+			// console.log(parser.getFormatInstructions());
 		} else {
 			let jsonSchema: JSONSchema7;
 
@@ -311,7 +311,8 @@ export class InformationExtraction implements INodeType {
 				const output = await chain.invoke(messages);
 				resultData.push({ json: { output } });
 			} catch (e) {
-				console.error(e);
+				// console.error(e);
+
 				// Add special error handling for missing attributes only for the 'fromAttributes' schema type
 				// Catch the error thrown by zod validating the output against generated schema
 				// If the missing attribute strategy is set to 'emptyObject', return an empty object
