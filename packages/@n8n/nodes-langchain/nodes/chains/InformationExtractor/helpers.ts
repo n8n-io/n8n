@@ -12,10 +12,6 @@ function makeAttributeSchema(attributeDefinition: AttributeDefinition, required:
 		schema = z.boolean();
 	} else if (attributeDefinition.type === 'date') {
 		schema = z.string().date();
-	} else if (attributeDefinition.type === 'time') {
-		schema = z.string().time();
-	} else if (attributeDefinition.type === 'datetime') {
-		schema = z.string().datetime();
 	} else {
 		schema = z.unknown();
 	}
