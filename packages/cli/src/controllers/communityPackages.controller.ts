@@ -108,14 +108,6 @@ export class CommunityPackagesController {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			void this.internalHooks.onCommunityPackageInstallFinished({
-				user: req.user,
-				input_string: name,
-				package_name: parsed.packageName,
-				success: false,
-				package_version: parsed.version,
-				failure_reason: errorMessage,
-			});
 			this.eventService.emit('community-package-installed', {
 				user: req.user,
 				inputString: name,
@@ -144,16 +136,6 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageInstallFinished({
-			user: req.user,
-			input_string: name,
-			package_name: parsed.packageName,
-			success: true,
-			package_version: parsed.version,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
-		});
 		this.eventService.emit('community-package-installed', {
 			user: req.user,
 			inputString: name,
@@ -245,14 +227,6 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageDeleteFinished({
-			user: req.user,
-			package_name: name,
-			package_version: installedPackage.installedVersion,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
-		});
 		this.eventService.emit('community-package-deleted', {
 			user: req.user,
 			packageName: name,
@@ -300,15 +274,6 @@ export class CommunityPackagesController {
 				});
 			});
 
-			void this.internalHooks.onCommunityPackageUpdateFinished({
-				user: req.user,
-				package_name: name,
-				package_version_current: previouslyInstalledPackage.installedVersion,
-				package_version_new: newInstalledPackage.installedVersion,
-				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
-				package_author: newInstalledPackage.authorName,
-				package_author_email: newInstalledPackage.authorEmail,
-			});
 			this.eventService.emit('community-package-updated', {
 				user: req.user,
 				packageName: name,

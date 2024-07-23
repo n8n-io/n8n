@@ -147,7 +147,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
@@ -213,8 +213,8 @@ const WorkflowsView = defineComponent({
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
-		allWorkflows(): IWorkflowDb[] {
-			return this.workflowsStore.allWorkflows;
+		allWorkflows(): IResource[] {
+			return this.workflowsStore.allWorkflows as IResource[];
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];

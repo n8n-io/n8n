@@ -123,7 +123,7 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/communityPackages.controller');
 		}
 
