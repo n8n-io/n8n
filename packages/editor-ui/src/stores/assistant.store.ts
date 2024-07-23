@@ -13,6 +13,9 @@ import { useWorkflowsStore } from './workflows.store';
 import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
+import { ndvEventBus } from '@/event-bus';
+import { useNDVStore } from './ndv.store';
+import { IUpdateInformation } from '@/Interface';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -30,6 +33,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const message = useMessage();
+	const ndvStore = useNDVStore();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -252,13 +256,25 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function updateParameters(nodeName: string, parameters: INodeParameters) {
-		workflowsStore.setNodeParameters(
-			{
-				name: nodeName,
-				value: parameters,
-			},
-			true,
-		);
+		if (ndvStore.activeNodeName === nodeName) {
+			Object.keys(parameters).forEach((key) => {
+				const update: IUpdateInformation = {
+					node: nodeName,
+					name: `parameters.${key}`,
+					value: parameters[key],
+				};
+
+				ndvEventBus.emit('updateParameterValue', update);
+			});
+		} else {
+			workflowsStore.setNodeParameters(
+				{
+					name: nodeName,
+					value: parameters,
+				},
+				true,
+			);
+		}
 	}
 
 	function getRelevantParameters(
@@ -290,7 +306,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			const cached = suggestions.value[suggestionId];
 			if (cached) {
-				updateParameters(activeNode.name, cached);
+				updateParameters(activeNode.name, cached.suggested);
 			} else {
 				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiffMessage.suggestionId,
@@ -301,7 +317,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					previous: getRelevantParameters(activeNode.parameters, Object.keys(suggested)),
 					suggested,
 				};
-				console.log('replace', activeNode.name, suggested);
 				updateParameters(activeNode.name, suggested);
 			}
 
@@ -334,7 +349,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			assert(activeNode);
 
 			const suggested = suggestion.previous;
-			console.log('undo', activeNode.name, suggested);
 			updateParameters(activeNode.name, suggested);
 
 			codeDiffMessage.replaced = false;

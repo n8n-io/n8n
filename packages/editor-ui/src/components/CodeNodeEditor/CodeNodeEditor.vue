@@ -218,6 +218,22 @@ const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
 });
 
 watch(
+	() => props.modelValue,
+	(newValue) => {
+		if (!editor.value) {
+			return;
+		}
+		const current = editor.value.state.doc.toString();
+		if (current === newValue) {
+			return;
+		}
+		editor.value.dispatch({
+			changes: { from: 0, to: getCurrentEditorContent().length, insert: newValue },
+		});
+	},
+);
+
+watch(
 	() => props.mode,
 	(_newMode, previousMode: CodeExecutionMode) => {
 		reloadLinter();
