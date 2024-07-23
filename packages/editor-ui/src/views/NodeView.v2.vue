@@ -149,6 +149,7 @@ const {
 	duplicateNodes,
 	revertDeleteNode,
 	addNodes,
+	revertAddNode,
 	createConnection,
 	revertCreateConnection,
 	deleteConnection,
@@ -784,7 +785,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position });
+	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -810,6 +811,10 @@ async function onAddNodesAndConnections(
 	await addConnections(mappedConnections);
 
 	uiStore.resetLastInteractedWith();
+}
+
+async function onRevertAddNode({ node }: { node: INodeUi }) {
+	await revertAddNode(node.name);
 }
 
 async function onSwitchActiveNode(nodeName: string) {
@@ -982,7 +987,7 @@ const chatTriggerNodePinnedData = computed(() => {
 
 function addUndoRedoEventBindings() {
 	// historyBus.on('nodeMove', onMoveNode);
-	// historyBus.on('revertAddNode', onRevertAddNode);
+	historyBus.on('revertAddNode', onRevertAddNode);
 	historyBus.on('revertRemoveNode', onRevertDeleteNode);
 	historyBus.on('revertAddConnection', onRevertCreateConnection);
 	historyBus.on('revertRemoveConnection', onRevertDeleteConnection);
@@ -992,7 +997,7 @@ function addUndoRedoEventBindings() {
 
 function removeUndoRedoEventBindings() {
 	// historyBus.off('nodeMove', onMoveNode);
-	// historyBus.off('revertAddNode', onRevertAddNode);
+	historyBus.off('revertAddNode', onRevertAddNode);
 	historyBus.off('revertRemoveNode', onRevertDeleteNode);
 	historyBus.off('revertAddConnection', onRevertCreateConnection);
 	historyBus.off('revertRemoveConnection', onRevertDeleteConnection);
