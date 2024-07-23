@@ -5,7 +5,7 @@ import {
     type INodeTypeDescription,
     type SupplyData,
 } from 'n8n-workflow';
-import { VoyageAIEmbeddings } from 'langchain/embeddings/voyageai';
+import { VoyageAIEmbeddings } from '@langchain/voyageai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
