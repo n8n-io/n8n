@@ -9,7 +9,10 @@ const assistantStore = useAssistantStore();
 		v-if="assistantStore.canShowAssistantButtons && !assistantStore.isAssistantOpen"
 		:class="$style.container"
 	>
-		<n8n-a-i-assistant-button @click="assistantStore.openChat" />
+		<n8n-a-i-assistant-button
+			:unread-count="assistantStore.unreadCount"
+			@click="assistantStore.openChat"
+		/>
 	</div>
 </template>
 

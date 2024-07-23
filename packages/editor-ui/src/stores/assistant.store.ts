@@ -59,6 +59,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
+	const unreadCount = computed(() =>
+		chatMessages.value.reduce((count, msg) => (!msg.read ? count + 1 : count), 0),
+	);
+
 	function closeChat() {
 		chatWindowOpen.value = false;
 	}
@@ -68,6 +72,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
+		const read = chatWindowOpen.value;
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
@@ -79,6 +84,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					role: 'assistant',
 					content: message.text,
 					quickReplies: message.quickReplies,
+					read,
 				});
 			} else if (message.type === 'code-diff') {
 				messages.push({
@@ -89,6 +95,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					codeDiff: message.codeDiff,
 					suggestionId: message.suggestionId,
 					quickReplies: message.quickReplies,
+					read,
 				});
 			} else if (message.type === 'summary') {
 				messages.push({
@@ -98,6 +105,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					title: message.title,
 					content: message.content,
 					quickReplies: message.quickReplies,
+					read,
 				});
 			}
 		});
@@ -131,6 +139,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			role: 'assistant',
 			type: 'error',
 			content,
+			read: true,
 		});
 	}
 
@@ -140,6 +149,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			role: 'assistant',
 			type: 'text',
 			content: '',
+			read: false,
 		});
 	}
 
@@ -149,6 +159,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			role: 'user',
 			type: 'text',
 			content,
+			read: true,
 		});
 	}
 
@@ -392,6 +403,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	return {
 		chatWidth,
 		chatMessages,
+		unreadCount,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,

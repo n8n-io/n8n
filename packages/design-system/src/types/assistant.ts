@@ -45,5 +45,6 @@ export namespace ChatUI {
 
 	export type AssistantMessage = (MessagesWithReplies | ErrorMessage | EndSessionMessage) & {
 		id: string;
+		read: boolean;
 	};
 }
