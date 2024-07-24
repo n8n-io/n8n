@@ -2,7 +2,7 @@ import { WorkflowOperationError } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/Project';
 import type { INode } from 'n8n-workflow';
 
-export type SubworkflowPolicyDenialErrorParams = {
+type SubworkflowPolicyDenialErrorParams = {
 	subworkflowId: string;
 	subworkflowProject: Project;
 	areOwnedBySameProject?: boolean;
