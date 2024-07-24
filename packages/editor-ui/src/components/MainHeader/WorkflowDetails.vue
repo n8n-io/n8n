@@ -96,7 +96,7 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', '');
+const nodeViewSwitcher = useLocalStorage('NodeView.switcher', import.meta.env.DEV ? 'true' : '');
 const nodeViewVersion = useLocalStorage('NodeView.version', '1');
 
 const hasChanged = (prev: string[], curr: string[]) => {
