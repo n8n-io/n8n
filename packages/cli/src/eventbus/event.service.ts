@@ -4,7 +4,7 @@ import type { Event } from './event.types';
 
 @Service()
 export class EventService extends EventEmitter {
-	emit<K extends keyof Event>(eventName: K, arg: Event[K]) {
+	emit<K extends keyof Event>(eventName: K, arg?: Event[K]) {
 		super.emit(eventName, arg);
 		return true;
 	}
