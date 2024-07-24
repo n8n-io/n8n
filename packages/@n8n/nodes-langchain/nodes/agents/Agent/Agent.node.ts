@@ -218,7 +218,7 @@ const agentTypeProperty: INodeProperties = {
 			name: 'OpenAI Functions Agent',
 			value: 'openAiFunctionsAgent',
 			description:
-				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs or when working with OpenAI models.",
+				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models.",
 		},
 		{
 			name: 'Plan and Execute Agent',
