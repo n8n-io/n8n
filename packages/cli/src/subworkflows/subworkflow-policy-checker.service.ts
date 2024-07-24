@@ -49,22 +49,11 @@ export class SubworkflowPolicyChecker {
 
 		const policy = this.findPolicy(subworkflow);
 
-		if (policy === 'none') {
-			this.logDenial({ parentWorkflowId, subworkflowId, policy });
-
-			throw new SubworkflowPolicyDenialError(errorParams);
-		}
-
 		if (
-			policy === 'workflowsFromAList' &&
-			!this.findCallerIds(subworkflow).includes(parentWorkflowId)
+			policy === 'none' ||
+			(policy === 'workflowsFromAList' && !this.hasParentListed(subworkflow, parentWorkflowId)) ||
+			(policy === 'workflowsFromSameOwner' && !areOwnedBySameProject)
 		) {
-			this.logDenial({ parentWorkflowId, subworkflowId, policy });
-
-			throw new SubworkflowPolicyDenialError(errorParams);
-		}
-
-		if (policy === 'workflowsFromSameOwner' && !areOwnedBySameProject) {
 			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
 			throw new SubworkflowPolicyDenialError(errorParams);
@@ -101,15 +90,16 @@ export class SubworkflowPolicyChecker {
 	}
 
 	/**
-	 * Find the IDs of the workflows that are allowed to call the subworkflow.
+	 * Whether the subworkflow has the parent workflow listed as a caller.
 	 */
-	private findCallerIds(subworkflow: Workflow): string[] {
-		return (
+	private hasParentListed(subworkflow: Workflow, parentWorkflowId: string) {
+		const callerIds =
 			subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
-				.filter((id) => id !== '') ?? []
-		);
+				.filter((id) => id !== '') ?? [];
+
+		return callerIds.includes(parentWorkflowId);
 	}
 
 	private logDenial({
