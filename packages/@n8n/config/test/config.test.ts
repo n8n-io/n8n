@@ -135,6 +135,11 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		workflows: {
+			defaultName: 'My workflow',
+			onboardingFlowDisabled: false,
+			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
