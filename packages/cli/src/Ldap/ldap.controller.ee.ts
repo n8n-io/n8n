@@ -1,18 +1,18 @@
 import pick from 'lodash/pick';
 import { Get, Post, Put, RestController, GlobalScope } from '@/decorators';
-import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';
 import { getLdapSynchronizations } from './helpers.ee';
 import { LdapConfiguration } from './types';
 import { LdapService } from './ldap.service.ee';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController('/ldap')
 export class LdapController {
 	constructor(
-		private readonly internalHooks: InternalHooks,
 		private readonly ldapService: LdapService,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/config')
@@ -42,8 +42,8 @@ export class LdapController {
 
 		const data = await this.ldapService.loadConfig();
 
-		void this.internalHooks.onUserUpdatedLdapSettings({
-			user_id: req.user.id,
+		this.eventService.emit('ldap-settings-updated', {
+			userId: req.user.id,
 			...pick(data, NON_SENSIBLE_LDAP_CONFIG_PROPERTIES),
 		});
 

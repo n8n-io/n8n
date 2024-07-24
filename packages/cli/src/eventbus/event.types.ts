@@ -266,6 +266,36 @@ export type Event = {
 		errorMessage?: string;
 	};
 
+	'ldap-general-sync-finished': {
+		type: string;
+		succeeded: boolean;
+		usersSynced: number;
+		error: string;
+	};
+
+	'ldap-settings-updated': {
+		userId: string;
+		loginIdAttribute: string;
+		firstNameAttribute: string;
+		lastNameAttribute: string;
+		emailAttribute: string;
+		ldapIdAttribute: string;
+		searchPageSize: number;
+		searchTimeout: number;
+		synchronizationEnabled: boolean;
+		synchronizationInterval: number;
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+
+	'ldap-login-sync-failed': {
+		error: string;
+	};
+
+	'login-failed-due-to-ldap-disabled': {
+		userId: string;
+	};
+
 	/**
 	 * Events listened to by more than one relay
 	 */
