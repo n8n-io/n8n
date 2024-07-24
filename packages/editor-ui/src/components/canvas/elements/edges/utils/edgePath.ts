@@ -5,6 +5,7 @@ const EDGE_PADDING_Y = 140;
 const EDGE_PADDING_Y_TOP = 80;
 const EDGE_BORDER_RADIUS = 8;
 const EDGE_OFFSET = 40;
+const HANDLE_SIZE = -16;
 
 export function getCustomPath(
 	props: Pick<
@@ -18,7 +19,7 @@ export function getCustomPath(
 
 	// Connection is backwards and the source is on the right side
 	// -> We need to avoid overlapping the source node
-	if (xDiff < -16 && sourcePosition === Position.Right) {
+	if (xDiff < HANDLE_SIZE && sourcePosition === Position.Right) {
 		const direction = yDiff < -EDGE_PADDING_Y || yDiff > 0 ? 'up' : 'down';
 		const firstSegmentTargetX = sourceX;
 		const firstSegmentTargetY =
