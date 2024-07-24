@@ -399,6 +399,10 @@ export class Server extends AbstractServer {
 		this.app.use(
 			`/${apiRestPath}/ai-proxy`,
 			cookieParser(),
+			(req: APIRequest, _, next) => {
+				req.browserId = req.headers['browser-id'] as string;
+				next();
+			},
 			authService.authMiddleware,
 			getAiServiceProxyMiddleware({
 				licenseCert,
