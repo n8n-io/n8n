@@ -56,10 +56,12 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
+		const info = i18n.baseText(`nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey);
 
 		pushViewStack({
 			subcategory: item.key,
 			title,
+			info,
 			mode: 'nodes',
 			...(item.properties.icon
 				? {

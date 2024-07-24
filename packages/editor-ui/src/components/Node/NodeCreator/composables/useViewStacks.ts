@@ -300,6 +300,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		await nextTick();
 		pushViewStack({
 			title: relatedAIView?.properties.title,
+			info: relatedAIView?.properties.info,
 			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
