@@ -5,8 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class ElasticSecurityApiKeyApi implements ICredentialType {
-	name = 'elasticSecurityApiKeyApi';
+// eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
+export class ElasticSecurityApiKey implements ICredentialType {
+	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-unsuffixed
+	name = 'elasticSecurityApiKey';
 
 	displayName = 'Elastic Security API Key';
 

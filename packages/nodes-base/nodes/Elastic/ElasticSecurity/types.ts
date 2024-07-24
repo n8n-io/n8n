@@ -4,7 +4,7 @@ export type ElasticSecurityApiCredentials = {
 	baseUrl: string;
 };
 
-export type ElasticSecurityApiKeyApiCredentials = {
+export type ElasticSecurityApiKey = {
 	apiKey: string;
 	baseUrl: string;
 };

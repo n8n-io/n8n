@@ -55,7 +55,8 @@ export class ElasticSecurity implements INodeType {
 				},
 			},
 			{
-				name: 'elasticSecurityApiKeyApi',
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'elasticSecurityApiKey',
 				required: true,
 				displayOptions: {
 					show: {
