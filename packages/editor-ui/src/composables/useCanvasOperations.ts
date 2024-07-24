@@ -721,7 +721,7 @@ export function useCanvasOperations({
 	}
 
 	async function loadNodeTypesProperties(
-		nodes: Array<{ type: INodeUi['type']; typeVersion: INodeUi['typeVersion'] }>,
+		nodes: Array<Pick<INodeUi, 'type' | 'typeVersion'>>,
 	): Promise<void> {
 		const allNodeTypeDescriptions: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
