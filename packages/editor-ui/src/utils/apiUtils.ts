@@ -210,14 +210,14 @@ export const postFetch = async (
 	if (browserId) {
 		headers['browser-id'] = browserId;
 	}
-	const request = {
+	const request: RequestInit = {
 		headers,
 		method: 'POST',
 		credentials: 'include',
 		body: JSON.stringify(payload),
 	};
 	debugLog.push({ request: { ...request, endpoint: `${context.baseUrl}${apiEndpoint}` } });
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`);
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
 
 	debugLog.push({ response });
 	if (response.ok && response.body) {
