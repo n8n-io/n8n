@@ -1,10 +1,28 @@
 <script setup lang="ts">
 import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
+
+withDefaults(defineProps<{ size: 'small' | 'mini' }>(), {
+	size: 'small',
+});
+
+const sizes = {
+	small: {
+		container: '20px',
+		icon: 10,
+	},
+	mini: {
+		container: '16px',
+		icon: 8,
+	},
+};
 </script>
 
 <template>
-	<div :class="$style.container">
-		<AssistantIcon :size="10" :style="'blank'" />
+	<div
+		:class="$style.container"
+		:style="{ height: sizes[size].container, width: sizes[size].container }"
+	>
+		<AssistantIcon :size="sizes[size].icon" :style="'blank'" />
 	</div>
 </template>
 
@@ -12,8 +30,6 @@ import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
 .container {
 	background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
 	border-radius: 50%;
-	width: 20px;
-	height: 20px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
