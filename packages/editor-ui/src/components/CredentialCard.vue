@@ -13,6 +13,8 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
+import { ResourceType } from '@/utils/projects.utils';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -44,7 +46,9 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
 
+const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
 const credentialPermissions = computed(() => getCredentialPermissions(props.data));
 const actions = computed(() => {
@@ -62,7 +66,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move) {
+	if (credentialPermissions.value.move && !settingsStore.isCommunityPlan) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
@@ -76,7 +80,7 @@ const formattedCreatedAtDate = computed(() => {
 
 	return dateformat(
 		props.data.createdAt,
-		`d mmmm${props.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
 
@@ -121,7 +125,8 @@ function moveResource() {
 		name: PROJECT_MOVE_RESOURCE_MODAL,
 		data: {
 			resource: props.data,
-			resourceType: locale.baseText('generic.credential').toLocaleLowerCase(),
+			resourceType: ResourceType.Credential,
+			resourceTypeLabel: resourceTypeLabel.value,
 		},
 	});
 }
@@ -150,7 +155,12 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<ProjectCardBadge :resource="data" :personal-project="projectsStore.personalProject" />
+				<ProjectCardBadge
+					:resource="data"
+					:resource-type="ResourceType.Credential"
+					:resource-type-label="resourceTypeLabel"
+					:personal-project="projectsStore.personalProject"
+				/>
 				<n8n-action-toggle
 					data-test-id="credential-card-actions"
 					:actions="actions"

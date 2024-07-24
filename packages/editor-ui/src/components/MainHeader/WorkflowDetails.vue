@@ -3,9 +3,11 @@ import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
+	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -55,6 +57,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { BaseTextKey } from '../../plugins/i18n';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { useLocalStorage } from '@vueuse/core';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -93,6 +96,9 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
+const nodeViewSwitcher = useLocalStorage('NodeView.switcher', import.meta.env.DEV ? 'true' : '');
+const nodeViewVersion = useLocalStorage('NodeView.version', '1');
+
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
 		return true;
@@ -111,7 +117,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive['workflowSaving'];
+	return uiStore.isActionActive.workflowSaving;
 });
 
 const onWorkflowPage = computed(() => {
@@ -178,6 +184,17 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
+	if (nodeViewSwitcher.value === 'true') {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
+			label:
+				nodeViewVersion.value === '2'
+					? locale.baseText('menuActions.switchToOldNodeViewVersion')
+					: locale.baseText('menuActions.switchToNewNodeViewVersion'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
+
 	if ((workflowPermissions.value.delete && !props.readOnly) || isNewWorkflow.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.DELETE,
@@ -192,7 +209,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory);
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
@@ -438,7 +455,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
 						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: /^http[s]?:\/\/.*\.json$/i,
+						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
 					},
 				);
 
@@ -486,6 +503,38 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.SETTINGS: {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION: {
+			if (uiStore.stateIsDirty) {
+				const confirmModal = await message.confirm(
+					locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					{
+						title: locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+						type: 'warning',
+						confirmButtonText: locale.baseText(
+							'generic.unsavedWork.confirmMessage.confirmButtonText',
+						),
+						cancelButtonText: locale.baseText(
+							'generic.unsavedWork.confirmMessage.cancelButtonText',
+						),
+						showClose: true,
+					},
+				);
+
+				if (confirmModal === MODAL_CONFIRM) {
+					await onSaveButtonClick();
+				} else if (confirmModal === MODAL_CLOSE) {
+					return;
+				}
+			}
+
+			if (nodeViewVersion.value === '1') {
+				nodeViewVersion.value = '2';
+			} else {
+				nodeViewVersion.value = '1';
+			}
+
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
@@ -662,6 +711,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
+					:is-saving="isWorkflowSaving"
 					with-shortcut
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"

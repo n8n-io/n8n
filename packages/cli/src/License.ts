@@ -17,7 +17,7 @@ import type { RedisServicePubSubPublisher } from './services/redis/RedisServiceP
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { UsageMetricsService } from './services/usageMetrics.service';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -38,7 +38,7 @@ export class License {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly usageMetricsService: UsageMetricsService,
+		private readonly licenseMetricsService: LicenseMetricsService,
 	) {}
 
 	/**
@@ -82,10 +82,10 @@ export class License {
 			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
-			? async () => await this.usageMetricsService.collectUsageMetrics()
+			? async () => await this.licenseMetricsService.collectUsageMetrics()
 			: async () => [];
 		const collectPassthroughData = isMainInstance
-			? async () => await this.usageMetricsService.collectPassthroughData()
+			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
 
 		const renewalEnabled = this.renewalEnabled(instanceType);

@@ -65,17 +65,21 @@ import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+
+type ResolveParameterOptions = {
+	targetItem?: TargetItem;
+	inputNodeName?: string;
+	inputRunIndex?: number;
+	inputBranchIndex?: number;
+	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+	isForCredential?: boolean;
+	contextNodeName?: string;
+};
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: {
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-		isForCredential?: boolean;
-	} = {},
+	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
@@ -116,7 +120,9 @@ export function resolveParameter<T = IDataObject>(
 	}
 
 	const inputName = NodeConnectionType.Main;
-	const activeNode = useNDVStore().activeNode;
+
+	const activeNode =
+		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -439,6 +445,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -636,6 +643,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
+		nodeName?: string,
 	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
@@ -644,7 +652,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			return resolveExpression(
 				webhookData[key] as string,
 				undefined,
-				undefined,
+				{ contextNodeName: nodeName },
 				stringify,
 			) as string;
 		} catch (e) {
@@ -670,9 +678,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path');
+		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
 		const isFullPath =
-			(getWebhookExpressionValue(webhookData, 'isFullPath') as unknown as boolean) || false;
+			(getWebhookExpressionValue(
+				webhookData,
+				'isFullPath',
+				true,
+				node.name,
+			) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -680,15 +693,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
-		opts: {
-			targetItem?: TargetItem;
-			inputNodeName?: string;
-			inputRunIndex?: number;
-			inputBranchIndex?: number;
-			c?: number;
-			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-			isForCredential?: boolean;
-		} = {},
+		opts: ResolveParameterOptions & { c?: number } = {},
 		stringifyObject = true,
 	) {
 		const parameters = {
@@ -1062,6 +1067,17 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
+
+		if (workflowData.usedCredentials) {
+			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
+		}
+
+		if (workflowData.sharedWithProjects) {
+			workflowsEEStore.setWorkflowSharedWith({
+				workflowId: workflowData.id,
+				sharedWithProjects: workflowData.sharedWithProjects,
+			});
+		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);

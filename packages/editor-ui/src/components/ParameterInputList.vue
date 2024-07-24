@@ -67,7 +67,7 @@
 				/>
 				<Suspense v-if="!asyncLoadingError">
 					<template #default>
-						<CollectionParameter
+						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"
 							:parameter="parameter"
 							:values="getParameterValue(parameter.name)"
@@ -76,7 +76,7 @@
 							:is-read-only="isReadOnly"
 							@value-changed="valueChanged"
 						/>
-						<FixedCollectionParameter
+						<LazyFixedCollectionParameter
 							v-else-if="parameter.type === 'fixedCollection'"
 							:parameter="parameter"
 							:values="getParameterValue(parameter.name)"
@@ -192,10 +192,10 @@ import {
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
 
-const FixedCollectionParameter = defineAsyncComponent(
+const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(
+const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./CollectionParameter.vue'),
 );
 
@@ -205,7 +205,7 @@ type Props = {
 	path?: string;
 	hideDelete?: boolean;
 	indent?: boolean;
-	isReadOnly: boolean;
+	isReadOnly?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
 };
@@ -227,7 +227,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 
 onErrorCaptured((e, component) => {
 	if (
-		!['FixedCollectionParameter', 'CollectionParameter'].includes(
+		!['LazyFixedCollectionParameter', 'LazyCollectionParameter'].includes(
 			component?.$options.name as string,
 		)
 	) {

@@ -47,10 +47,18 @@ function getInputs(
 		};
 
 		return inputs.map(({ type, filter }) => {
+			const isModelType = type === NodeConnectionType.AiLanguageModel;
+			let displayName = type in displayNames ? displayNames[type] : undefined;
+			if (
+				isModelType &&
+				['openAiFunctionsAgent', 'toolsAgent', 'conversationalAgent'].includes(agent)
+			) {
+				displayName = 'Chat Model';
+			}
 			const input: INodeInputConfiguration = {
 				type,
-				displayName: type in displayNames ? displayNames[type] : undefined,
-				required: type === NodeConnectionType.AiLanguageModel,
+				displayName,
+				required: isModelType,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
 					type as NodeConnectionType,
 				)
@@ -80,6 +88,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 					],
@@ -106,6 +115,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleVertex',
 					],
 				},
 			},

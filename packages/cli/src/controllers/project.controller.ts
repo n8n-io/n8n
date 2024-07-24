@@ -23,7 +23,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController('/projects')
 export class ProjectController {
@@ -31,7 +31,7 @@ export class ProjectController {
 		private readonly projectsService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly projectRepository: ProjectRepository,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
@@ -48,16 +48,25 @@ export class ProjectController {
 	@GlobalScope('project:create')
 	// Using admin as all plans that contain projects should allow admins at the very least
 	@Licensed('feat:projectRole:admin')
-	async createProject(req: ProjectRequest.Create): Promise<Project> {
+	async createProject(req: ProjectRequest.Create) {
 		try {
 			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
 
-			void this.internalHooks.onTeamProjectCreated({
-				user_id: req.user.id,
+			this.eventService.emit('team-project-created', {
+				userId: req.user.id,
 				role: req.user.role,
 			});
 
-			return project;
+			return {
+				...project,
+				role: 'project:admin',
+				scopes: [
+					...combineScopes({
+						global: this.roleService.getRoleScopes(req.user.role),
+						project: this.roleService.getRoleScopes('project:admin'),
+					}),
+				],
+			};
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
 				throw new BadRequestError(e.message);
@@ -195,11 +204,11 @@ export class ProjectController {
 				throw e;
 			}
 
-			void this.internalHooks.onTeamProjectUpdated({
-				user_id: req.user.id,
+			this.eventService.emit('team-project-updated', {
+				userId: req.user.id,
 				role: req.user.role,
-				members: req.body.relations.map(({ userId, role }) => ({ user_id: userId, role })),
-				project_id: req.params.projectId,
+				members: req.body.relations,
+				projectId: req.params.projectId,
 			});
 		}
 	}
@@ -211,12 +220,12 @@ export class ProjectController {
 			migrateToProject: req.query.transferId,
 		});
 
-		void this.internalHooks.onTeamProjectDeleted({
-			user_id: req.user.id,
+		this.eventService.emit('team-project-deleted', {
+			userId: req.user.id,
 			role: req.user.role,
-			project_id: req.params.projectId,
-			removal_type: req.query.transferId !== undefined ? 'transfer' : 'delete',
-			target_project_id: req.query.transferId,
+			projectId: req.params.projectId,
+			removalType: req.query.transferId !== undefined ? 'transfer' : 'delete',
+			targetProjectId: req.query.transferId,
 		});
 	}
 }

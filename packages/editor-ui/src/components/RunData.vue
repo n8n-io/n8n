@@ -50,7 +50,7 @@
 				data-test-id="run-data-pane-header"
 				@click.stop
 			>
-				<RunDataSearch
+				<LazyRunDataSearch
 					v-if="showIOSearch"
 					v-model="search"
 					:class="$style.search"
@@ -253,11 +253,14 @@
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun" :class="$style.center">
+			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node?.disabled" :class="$style.center">
+			<div
+				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				:class="$style.center"
+			>
 				<n8n-text>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="enableNode">
@@ -377,7 +380,7 @@
 			</div>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
-				<RunDataTable
+				<LazyRunDataTable
 					:node="node"
 					:input-data="inputDataPage"
 					:mapping-enabled="mappingEnabled"
@@ -394,7 +397,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
-				<RunDataJson
+				<LazyRunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
 					:push-ref="pushRef"
@@ -409,11 +412,11 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<RunDataHtml :input-html="inputHtml" />
+				<LazyRunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
-				<RunDataSchema
+				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
 					:node="node"
@@ -625,15 +628,19 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
-const RunDataTable = defineAsyncComponent(
+const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
-const RunDataJson = defineAsyncComponent(async () => await import('@/components/RunDataJson.vue'));
-const RunDataSchema = defineAsyncComponent(
+const LazyRunDataJson = defineAsyncComponent(
+	async () => await import('@/components/RunDataJson.vue'),
+);
+const LazyRunDataSchema = defineAsyncComponent(
 	async () => await import('@/components/RunDataSchema.vue'),
 );
-const RunDataHtml = defineAsyncComponent(async () => await import('@/components/RunDataHtml.vue'));
-const RunDataSearch = defineAsyncComponent(
+const LazyRunDataHtml = defineAsyncComponent(
+	async () => await import('@/components/RunDataHtml.vue'),
+);
+const LazyRunDataSearch = defineAsyncComponent(
 	async () => await import('@/components/RunDataSearch.vue'),
 );
 
@@ -647,11 +654,11 @@ export default defineComponent({
 		BinaryDataDisplay,
 		NodeErrorView,
 		JsonEditor,
-		RunDataTable,
-		RunDataJson,
-		RunDataSchema,
-		RunDataHtml,
-		RunDataSearch,
+		LazyRunDataTable,
+		LazyRunDataJson,
+		LazyRunDataSchema,
+		LazyRunDataHtml,
+		LazyRunDataSearch,
 		RunDataPinButton,
 	},
 	props: {
@@ -1077,7 +1084,7 @@ export default defineComponent({
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode.id === prevNode.id) return;
+			if (newNode?.id === prevNode?.id) return;
 			this.init();
 		},
 		hasNodeRun() {

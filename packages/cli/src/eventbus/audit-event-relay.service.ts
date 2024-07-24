@@ -1,14 +1,14 @@
 import { Service } from 'typedi';
 import { MessageEventBus } from './MessageEventBus/MessageEventBus';
 import { Redactable } from '@/decorators/Redactable';
-import { EventRelay } from './event-relay.service';
+import { EventService } from './event.service';
 import type { Event } from './event.types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 @Service()
 export class AuditEventRelay {
 	constructor(
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
 	) {}
 
@@ -17,42 +17,46 @@ export class AuditEventRelay {
 	}
 
 	private setupHandlers() {
-		this.eventRelay.on('workflow-created', (event) => this.workflowCreated(event));
-		this.eventRelay.on('workflow-deleted', (event) => this.workflowDeleted(event));
-		this.eventRelay.on('workflow-saved', (event) => this.workflowSaved(event));
-		this.eventRelay.on('workflow-pre-execute', (event) => this.workflowPreExecute(event));
-		this.eventRelay.on('workflow-post-execute', (event) => this.workflowPostExecute(event));
-		this.eventRelay.on('node-pre-execute', (event) => this.nodePreExecute(event));
-		this.eventRelay.on('node-post-execute', (event) => this.nodePostExecute(event));
-		this.eventRelay.on('user-deleted', (event) => this.userDeleted(event));
-		this.eventRelay.on('user-invited', (event) => this.userInvited(event));
-		this.eventRelay.on('user-reinvited', (event) => this.userReinvited(event));
-		this.eventRelay.on('user-updated', (event) => this.userUpdated(event));
-		this.eventRelay.on('user-signed-up', (event) => this.userSignedUp(event));
-		this.eventRelay.on('user-logged-in', (event) => this.userLoggedIn(event));
-		this.eventRelay.on('user-login-failed', (event) => this.userLoginFailed(event));
-		this.eventRelay.on('user-invite-email-click', (event) => this.userInviteEmailClick(event));
-		this.eventRelay.on('user-password-reset-email-click', (event) =>
+		this.eventService.on('workflow-created', (event) => this.workflowCreated(event));
+		this.eventService.on('workflow-deleted', (event) => this.workflowDeleted(event));
+		this.eventService.on('workflow-saved', (event) => this.workflowSaved(event));
+		this.eventService.on('workflow-pre-execute', (event) => this.workflowPreExecute(event));
+		this.eventService.on('workflow-post-execute', (event) => this.workflowPostExecute(event));
+		this.eventService.on('node-pre-execute', (event) => this.nodePreExecute(event));
+		this.eventService.on('node-post-execute', (event) => this.nodePostExecute(event));
+		this.eventService.on('user-deleted', (event) => this.userDeleted(event));
+		this.eventService.on('user-invited', (event) => this.userInvited(event));
+		this.eventService.on('user-reinvited', (event) => this.userReinvited(event));
+		this.eventService.on('user-updated', (event) => this.userUpdated(event));
+		this.eventService.on('user-signed-up', (event) => this.userSignedUp(event));
+		this.eventService.on('user-logged-in', (event) => this.userLoggedIn(event));
+		this.eventService.on('user-login-failed', (event) => this.userLoginFailed(event));
+		this.eventService.on('user-invite-email-click', (event) => this.userInviteEmailClick(event));
+		this.eventService.on('user-password-reset-email-click', (event) =>
 			this.userPasswordResetEmailClick(event),
 		);
-		this.eventRelay.on('user-password-reset-request-click', (event) =>
+		this.eventService.on('user-password-reset-request-click', (event) =>
 			this.userPasswordResetRequestClick(event),
 		);
-		this.eventRelay.on('api-key-created', (event) => this.apiKeyCreated(event));
-		this.eventRelay.on('api-key-deleted', (event) => this.apiKeyDeleted(event));
-		this.eventRelay.on('email-failed', (event) => this.emailFailed(event));
-		this.eventRelay.on('credentials-created', (event) => this.credentialsCreated(event));
-		this.eventRelay.on('credentials-deleted', (event) => this.credentialsDeleted(event));
-		this.eventRelay.on('credentials-shared', (event) => this.credentialsShared(event));
-		this.eventRelay.on('credentials-updated', (event) => this.credentialsUpdated(event));
-		this.eventRelay.on('credentials-deleted', (event) => this.credentialsDeleted(event));
-		this.eventRelay.on('community-package-installed', (event) =>
+		this.eventService.on('public-api-key-created', (event) => this.publicApiKeyCreated(event));
+		this.eventService.on('public-api-key-deleted', (event) => this.publicApiKeyDeleted(event));
+		this.eventService.on('email-failed', (event) => this.emailFailed(event));
+		this.eventService.on('credentials-created', (event) => this.credentialsCreated(event));
+		this.eventService.on('credentials-deleted', (event) => this.credentialsDeleted(event));
+		this.eventService.on('credentials-shared', (event) => this.credentialsShared(event));
+		this.eventService.on('credentials-updated', (event) => this.credentialsUpdated(event));
+		this.eventService.on('credentials-deleted', (event) => this.credentialsDeleted(event));
+		this.eventService.on('community-package-installed', (event) =>
 			this.communityPackageInstalled(event),
 		);
-		this.eventRelay.on('community-package-updated', (event) => this.communityPackageUpdated(event));
-		this.eventRelay.on('community-package-deleted', (event) => this.communityPackageDeleted(event));
-		this.eventRelay.on('execution-throttled', (event) => this.executionThrottled(event));
-		this.eventRelay.on('execution-started-during-bootup', (event) =>
+		this.eventService.on('community-package-updated', (event) =>
+			this.communityPackageUpdated(event),
+		);
+		this.eventService.on('community-package-deleted', (event) =>
+			this.communityPackageDeleted(event),
+		);
+		this.eventService.on('execution-throttled', (event) => this.executionThrottled(event));
+		this.eventService.on('execution-started-during-bootup', (event) =>
 			this.executionStartedDuringBootup(event),
 		);
 	}
@@ -253,7 +257,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private apiKeyCreated({ user }: Event['api-key-created']) {
+	private publicApiKeyCreated({ user }: Event['public-api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
 			payload: user,
@@ -261,7 +265,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private apiKeyDeleted({ user }: Event['api-key-deleted']) {
+	private publicApiKeyDeleted({ user }: Event['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
 			payload: user,

@@ -320,11 +320,9 @@ export class Worker extends BaseCommand {
 
 		const envConcurrency = config.getEnv('executions.concurrency.productionLimit');
 		const concurrency = envConcurrency !== -1 ? envConcurrency : flags.concurrency;
+		Worker.jobQueue.setConcurrency(concurrency);
 
-		void Worker.jobQueue.process(
-			concurrency,
-			async (job) => await this.runJob(job, this.nodeTypes),
-		);
+		void Worker.jobQueue.process(async (job) => await this.runJob(job, this.nodeTypes));
 
 		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used

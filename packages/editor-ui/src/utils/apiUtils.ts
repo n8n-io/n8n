@@ -1,6 +1,6 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { GenericValue, IDataObject } from 'n8n-workflow';
+import { ApplicationError, type GenericValue, type IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
@@ -13,7 +13,7 @@ if (!browserId && 'randomUUID' in crypto) {
 
 export const NO_NETWORK_ERROR_CODE = 999;
 
-export class ResponseError extends Error {
+export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 

@@ -7,7 +7,7 @@
 				[$style.highlight]: highlight,
 			}"
 		>
-			<span v-html="simplyText"></span>
+			<span data-test-id="parameter-input-hint" v-html="simplyText"></span>
 		</div>
 		<div
 			v-else

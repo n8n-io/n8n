@@ -49,7 +49,8 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			options.headers![headerAuth.name as string] = headerAuth.value;
+			if (!options.headers) options.headers = {};
+			options.headers[headerAuth.name as string] = headerAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
 	}
@@ -58,9 +59,7 @@ const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: numbe
 		const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			if (!options.qs) {
-				options.qs = {};
-			}
+			if (!options.qs) options.qs = {};
 			options.qs[queryAuth.name as string] = queryAuth.value;
 			return await ctx.helpers.httpRequest(options);
 		};
@@ -355,7 +354,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 };
 
 const extractPlaceholders = (text: string): string[] => {
-	const placeholder = /(\{[a-zA-Z0-9_]+\})/g;
+	const placeholder = /(\{[a-zA-Z0-9_-]+\})/g;
 	const returnData: string[] = [];
 
 	const matches = text.matchAll(placeholder);
