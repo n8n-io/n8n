@@ -84,28 +84,23 @@
 					<ElTableColumn
 						prop="status"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
-					>
-					</ElTableColumn>
+					/>
 					<ElTableColumn
 						prop="endedAt"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
-					>
-					</ElTableColumn>
+					/>
 					<ElTableColumn
 						prop="runMode"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
-					>
-					</ElTableColumn>
+					/>
 					<ElTableColumn
 						prop="runTime"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
-					>
-					</ElTableColumn>
+					/>
 					<ElTableColumn
 						prop="details"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
-					>
-					</ElTableColumn>
+					/>
 					<template #empty>{{
 						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
 					}}</template>
@@ -197,12 +192,10 @@ type LDAPConfigForm = {
 };
 
 type CellClassStyleMethodParams<T> = {
-	data: {
-		row: T;
-		rowIndex: number;
-		column: TableColumnCtx<T>;
-		columnIndex: number;
-	};
+	row: T;
+	rowIndex: number;
+	column: TableColumnCtx<T>;
+	columnIndex: number;
 };
 
 export default defineComponent({
@@ -253,8 +246,7 @@ export default defineComponent({
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
-		cellClassStyle({ data }: CellClassStyleMethodParams<TableRow>): CSSProperties {
-			const { row, column } = data;
+		cellClassStyle({ row, column }: CellClassStyleMethodParams<TableRow>): CSSProperties {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
 					return { color: 'green' };
@@ -302,34 +294,33 @@ export default defineComponent({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputsRef = this.$refs.ldapConfigForm as { values: LDAPConfigForm };
+			const formInputsRef = this.$refs.ldapConfigForm as { getValues: () => LDAPConfigForm };
+			const formValues = formInputsRef.getValues();
 
 			if (!this.hasAnyChanges || !formInputsRef) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: formInputsRef.values.loginEnabled,
-				loginLabel: formInputsRef.values.loginLabel,
-				connectionUrl: formInputsRef.values.serverAddress,
-				allowUnauthorizedCerts: formInputsRef.values.allowUnauthorizedCerts,
-				connectionPort: +formInputsRef.values.port,
-				connectionSecurity: formInputsRef.values.connectionSecurity,
-				baseDn: formInputsRef.values.baseDn,
-				bindingAdminDn:
-					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminDn : '',
-				bindingAdminPassword:
-					formInputsRef.values.bindingType === 'admin' ? formInputsRef.values.adminPassword : '',
-				emailAttribute: formInputsRef.values.email,
-				firstNameAttribute: formInputsRef.values.firstName,
-				lastNameAttribute: formInputsRef.values.lastName,
-				loginIdAttribute: formInputsRef.values.loginId,
-				ldapIdAttribute: formInputsRef.values.ldapId,
-				userFilter: formInputsRef.values.userFilter,
-				synchronizationEnabled: formInputsRef.values.synchronizationEnabled,
-				synchronizationInterval: +formInputsRef.values.synchronizationInterval,
-				searchPageSize: +formInputsRef.values.pageSize,
-				searchTimeout: +formInputsRef.values.searchTimeout,
+				loginEnabled: formValues.loginEnabled,
+				loginLabel: formValues.loginLabel,
+				connectionUrl: formValues.serverAddress,
+				allowUnauthorizedCerts: formValues.allowUnauthorizedCerts,
+				connectionPort: +formValues.port,
+				connectionSecurity: formValues.connectionSecurity,
+				baseDn: formValues.baseDn,
+				bindingAdminDn: formValues.bindingType === 'admin' ? formValues.adminDn : '',
+				bindingAdminPassword: formValues.bindingType === 'admin' ? formValues.adminPassword : '',
+				emailAttribute: formValues.email,
+				firstNameAttribute: formValues.firstName,
+				lastNameAttribute: formValues.lastName,
+				loginIdAttribute: formValues.loginId,
+				ldapIdAttribute: formValues.ldapId,
+				userFilter: formValues.userFilter,
+				synchronizationEnabled: formValues.synchronizationEnabled,
+				synchronizationInterval: +formValues.synchronizationInterval,
+				searchPageSize: +formValues.pageSize,
+				searchTimeout: +formValues.searchTimeout,
 			};
 
 			let saveForm = true;
