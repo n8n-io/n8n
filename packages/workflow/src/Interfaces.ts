@@ -19,6 +19,7 @@ import type { Workflow } from './Workflow';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { ExecutionCancelledError } from './errors';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
@@ -80,6 +81,7 @@ export type ExecutionError =
 	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
+	| ExecutionCancelledError
 	| NodeOperationError
 	| NodeApiError;
 
@@ -750,6 +752,7 @@ export interface BinaryHelperFunctions {
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
+	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -837,6 +840,14 @@ export type SSHCredentials = {
 
 export interface SSHTunnelFunctions {
 	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
+}
+
+type CronUnit = number | '*' | `*/${number}`;
+export type CronExpression =
+	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
+
+export interface SchedulingFunctions {
+	registerCron(cronExpression: CronExpression, onTick: () => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -991,6 +1002,7 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1011,6 +1023,7 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1283,7 +1296,8 @@ export type DisplayCondition =
 	| { _cnd: { startsWith: string } }
 	| { _cnd: { endsWith: string } }
 	| { _cnd: { includes: string } }
-	| { _cnd: { regex: string } };
+	| { _cnd: { regex: string } }
+	| { _cnd: { exists: true } };
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1433,14 +1447,10 @@ export type IParameterLabel = {
 	size?: 'small' | 'medium';
 };
 
-export interface IPollResponse {
-	closeFunction?: CloseFunction;
-}
-
 export interface ITriggerResponse {
 	closeFunction?: CloseFunction;
 	// To manually trigger the run
-	manualTriggerFunction?: CloseFunction;
+	manualTriggerFunction?: () => Promise<void>;
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
@@ -1804,9 +1814,17 @@ export interface INodeOutputConfiguration {
 
 export type ExpressionString = `={{${string}}}`;
 
+export type NodeDefaults = Partial<{
+	/**
+	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
+	 */
+	color: string;
+	name: string;
+}>;
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
-	defaults: INodeParameters;
+	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
@@ -2127,6 +2145,7 @@ export const eventNamesAiNodes = [
 	'n8n.ai.llm.generated',
 	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
+	'n8n.ai.vector.store.updated',
 ] as const;
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
@@ -2586,7 +2605,7 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
-	isDocker: boolean;
+	isDocker?: boolean;
 	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;

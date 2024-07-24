@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { PROJECT_MOVE_RESOURCE_CONFIRM_MODAL } from '@/constants';
+import type { ResourceType } from '@/utils/projects.utils';
 import { splitName } from '@/utils/projects.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -13,7 +14,8 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: 'workflow' | 'credential';
+		resourceType: ResourceType;
+		resourceTypeLabel: string;
 	};
 }>();
 
@@ -46,7 +48,9 @@ const next = () => {
 		data: {
 			resource: props.data.resource,
 			resourceType: props.data.resourceType,
+			resourceTypeLabel: props.data.resourceTypeLabel,
 			projectId: projectId.value,
+			projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
 		},
 	});
 };
@@ -64,7 +68,7 @@ onMounted(() => {
 			<N8nHeading tag="h2" size="xlarge" class="mb-m">
 				{{
 					i18n.baseText('projects.move.resource.modal.title', {
-						interpolate: { resourceType: props.data.resourceType },
+						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
 					})
 				}}
 			</N8nHeading>
@@ -74,7 +78,7 @@ onMounted(() => {
 						><strong>{{ props.data.resource.name }}</strong></template
 					>
 					<template #resourceHomeProjectName>{{ processedName }}</template>
-					<template #resourceType>{{ props.data.resourceType }}</template>
+					<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
 				</i18n-t>
 			</N8nText>
 		</template>

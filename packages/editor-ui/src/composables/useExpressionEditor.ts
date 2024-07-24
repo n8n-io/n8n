@@ -293,14 +293,13 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts;
+				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-						additionalKeys: toValue(additionalData),
 					};
 				}
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
@@ -330,22 +329,7 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const targetItem = computed<TargetItem | null>(() => {
-		if (ndvStore.hoveringItem) {
-			return ndvStore.hoveringItem;
-		}
-
-		if (ndvStore.expressionOutputItemIndex && ndvStore.ndvInputNodeName) {
-			return {
-				nodeName: ndvStore.ndvInputNodeName,
-				runIndex: ndvStore.ndvInputRunIndex ?? 0,
-				outputIndex: ndvStore.ndvInputBranchIndex ?? 0,
-				itemIndex: ndvStore.expressionOutputItemIndex,
-			};
-		}
-
-		return null;
-	});
+	const targetItem = computed<TargetItem | null>(() => ndvStore.expressionTargetItem);
 
 	const resolvableSegments = computed<Resolvable[]>(() => {
 		return segments.value.filter((s): s is Resolvable => s.kind === 'resolvable');

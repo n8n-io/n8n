@@ -16,7 +16,7 @@ const title = computed(() =>
 </script>
 
 <template>
-	<n8n-icon-button
+	<N8nIconButton
 		icon="stop"
 		size="large"
 		class="stop-execution"

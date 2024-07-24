@@ -7,6 +7,7 @@ import { VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import type { IWorkflowDb } from '@/Interface';
 import { useRouter } from 'vue-router';
+import { useSettingsStore } from '@/stores/settings.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -39,12 +40,14 @@ describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
 	let router: ReturnType<typeof useRouter>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		router = useRouter();
-		windowOpenSpy = vi.spyOn(window, 'open');
+		settingsStore = useSettingsStore();
+		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
 	afterEach(() => {
@@ -95,10 +98,11 @@ describe('WorkflowCard', () => {
 		});
 
 		const actions = document.querySelector(`#${controllingId}`);
-		await waitFor(() => {
-			expect(actions).toBeInTheDocument();
-		});
-		await userEvent.click(actions!.querySelectorAll('li')[0]);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		await userEvent.click(actions.querySelectorAll('li')[0]);
+		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
@@ -137,5 +141,29 @@ describe('WorkflowCard', () => {
 
 		expect(heading).toHaveTextContent(data.name);
 		expect(badge).toHaveTextContent('John Doe');
+	});
+
+	it('should show Move action only if there is resource permission and not on community plan', async () => {
+		vi.spyOn(settingsStore, 'isCommunityPlan', 'get').mockReturnValue(false);
+
+		const data = createWorkflow({
+			scopes: ['workflow:move'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Move');
 	});
 });

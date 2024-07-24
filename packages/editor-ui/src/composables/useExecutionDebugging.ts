@@ -28,8 +28,8 @@ export const useExecutionDebugging = () => {
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
-	const isDebugEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+	const isDebugEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor],
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {

@@ -121,7 +121,15 @@ const loadNodeData = async (node: INodeUi) => {
 	const pinData = workflowsStore.pinDataByNodeName(node.name);
 	const data =
 		pinData ??
-		executionDataToJson(getNodeInputData(node, 0, 0, props.paneType, props.connectionType) ?? []);
+		executionDataToJson(
+			getNodeInputData(
+				node,
+				props.runIndex,
+				props.outputIndex,
+				props.paneType,
+				props.connectionType,
+			) ?? [],
+		);
 
 	nodesData.value[node.name] = {
 		schema: getSchemaForExecutionData(data),
@@ -277,6 +285,7 @@ watch(
 
 					<div :class="$style.title">
 						{{ currentNode.node.name }}
+						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
@@ -321,8 +330,16 @@ watch(
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
 							<div
-								v-if="isDataEmpty(currentNode.schema)"
-								:class="$style.empty"
+								v-if="currentNode.node.disabled"
+								:class="$style.notice"
+								data-test-id="run-data-schema-disabled"
+							>
+								{{ i18n.baseText('dataMapping.schemaView.disabled') }}
+							</div>
+
+							<div
+								v-else-if="isDataEmpty(currentNode.schema)"
+								:class="$style.notice"
 								data-test-id="run-data-schema-empty"
 							>
 								{{ i18n.baseText('dataMapping.schemaView.emptyData') }}
@@ -413,7 +430,7 @@ watch(
 		scroll-margin-top: var(--header-height);
 	}
 
-	.empty {
+	.notice {
 		padding-left: var(--spacing-l);
 	}
 }
@@ -435,7 +452,7 @@ watch(
 	}
 }
 
-.empty {
+.notice {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 }

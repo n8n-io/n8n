@@ -38,11 +38,11 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
-
+const loading = ref(false);
 const permissions = getVariablesPermissions(usersStore.currentUser);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 const variablesToResources = computed((): IResource[] =>
@@ -121,7 +121,7 @@ function resetNewVariablesList() {
 const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
 	id: data.id,
 	key: data.name,
-	value: 'value' in data ? data.value : '',
+	value: 'value' in data ? data.value ?? '' : '',
 });
 
 const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
@@ -132,9 +132,11 @@ const environmentVariableToResource = (data: EnvironmentVariable): IResource => 
 
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
+	loading.value = true;
 	await environmentsStore.fetchAllVariables();
 
 	allVariables.value = [...environmentsStore.variables];
+	loading.value = false;
 }
 
 function addTemporaryVariable() {
@@ -260,6 +262,7 @@ onBeforeUnmount(() => {
 		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
+		:loading="loading"
 		@sort="resetNewVariablesList"
 		@click:add="addTemporaryVariable"
 	>

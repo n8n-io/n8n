@@ -10,12 +10,24 @@ import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicTool, type Tool } from '@langchain/core/tools';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+
+function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
+	return methodNames.every(
+		(methodName) =>
+			typeof obj === 'object' &&
+			obj !== null &&
+			methodName in obj &&
+			typeof (obj as Record<string | symbol, unknown>)[methodName] === 'function',
+	);
+}
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 ): Record<string, never> | undefined {
-	const options = ctx.getNodeParameter('options', itemIndex);
+	const options = ctx.getNodeParameter('options', itemIndex, {});
 
 	if (options.metadata) {
 		const { metadataValues: metadata } = options.metadata as {
@@ -38,10 +50,24 @@ export function getMetadataFiltersValues(
 	return undefined;
 }
 
+export function isBaseChatMemory(obj: unknown) {
+	return hasMethods<BaseChatMemory>(obj, 'loadMemoryVariables', 'saveContext');
+}
+
+export function isBaseChatMessageHistory(obj: unknown) {
+	return hasMethods<BaseChatMessageHistory>(obj, 'getMessages', 'addMessage');
+}
+
 export function isChatInstance(model: unknown): model is BaseChatModel {
-	const namespace = (model as BaseLLM | BaseChatModel)?.lc_namespace ?? [];
+	const namespace = (model as BaseLLM)?.lc_namespace ?? [];
 
 	return namespace.includes('chat_models');
+}
+
+export function isToolsInstance(model: unknown): model is Tool {
+	const namespace = (model as Tool)?.lc_namespace ?? [];
+
+	return namespace.includes('tools');
 }
 
 export async function getOptionalOutputParsers(

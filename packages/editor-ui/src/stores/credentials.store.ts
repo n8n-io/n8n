@@ -314,7 +314,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			projectId,
 		);
 
-		if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			upsertCredential(credential);
 			if (data.sharedWithProjects) {
 				await setCredentialSharedWith({
@@ -389,7 +389,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
 	}): Promise<ICredentialsResponse> => {
-		if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			await credentialsEeApi.setCredentialSharedWith(
 				useRootStore().restApiContext,
 				payload.credentialId,

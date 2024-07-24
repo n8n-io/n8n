@@ -7,6 +7,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -95,7 +96,7 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', '');
+const nodeViewSwitcher = useLocalStorage('NodeView.switcher', import.meta.env.DEV ? 'true' : '');
 const nodeViewVersion = useLocalStorage('NodeView.version', '1');
 
 const hasChanged = (prev: string[], curr: string[]) => {
@@ -116,7 +117,7 @@ const isNewWorkflow = computed(() => {
 });
 
 const isWorkflowSaving = computed(() => {
-	return uiStore.isActionActive['workflowSaving'];
+	return uiStore.isActionActive.workflowSaving;
 });
 
 const onWorkflowPage = computed(() => {
@@ -208,7 +209,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 });
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory);
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
@@ -454,7 +455,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 						confirmButtonText: locale.baseText('mainSidebar.prompt.import'),
 						cancelButtonText: locale.baseText('mainSidebar.prompt.cancel'),
 						inputErrorMessage: locale.baseText('mainSidebar.prompt.invalidUrl'),
-						inputPattern: /^http[s]?:\/\/.*\.json$/i,
+						inputPattern: VALID_WORKFLOW_IMPORT_URL_REGEX,
 					},
 				);
 
@@ -710,6 +711,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					type="primary"
 					:saved="!uiStore.stateIsDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
+					:is-saving="isWorkflowSaving"
 					with-shortcut
 					:shortcut-tooltip="$locale.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
