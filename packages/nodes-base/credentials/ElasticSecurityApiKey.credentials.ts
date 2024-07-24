@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/cred-filename-against-convention */
 import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
@@ -11,8 +12,6 @@ export class ElasticApi implements ICredentialType {
 	displayName = 'Elastic API';
 
 	documentationUrl = 'elastic';
-
-	icon = { light: 'file:icons/Elastic.svg', dark: 'file:icons/Elastic.svg' } as const;
 
 	properties: INodeProperties[] = [
 		{

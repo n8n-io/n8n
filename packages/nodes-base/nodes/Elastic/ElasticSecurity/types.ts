@@ -4,6 +4,11 @@ export type ElasticSecurityApiCredentials = {
 	baseUrl: string;
 };
 
+export type ElasticApiCredentials = {
+	apiKey: string;
+	baseUrl: string;
+};
+
 export type ConnectorType = '.jira' | '.servicenow' | '.resilient';
 
 export type Connector = {
