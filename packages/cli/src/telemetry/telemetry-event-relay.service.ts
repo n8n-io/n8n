@@ -338,7 +338,7 @@ export class TelemetryEventRelay {
 		loginLabel,
 		loginEnabled,
 	}: Event['ldap-settings-updated']) {
-		void this.telemetry.track('User Updated Ldap settings', {
+		void this.telemetry.track('User updated Ldap settings', {
 			user_id: userId,
 			loginIdAttribute,
 			firstNameAttribute,
