@@ -7,6 +7,9 @@ import { PublicApiConfig } from './configs/public-api';
 import { ExternalSecretsConfig } from './configs/external-secrets';
 import { TemplatesConfig } from './configs/templates';
 import { EventBusConfig } from './configs/event-bus';
+import { NodesConfig } from './configs/nodes';
+import { ExternalStorageConfig } from './configs/external-storage';
+import { WorkflowsConfig } from './configs/workflows';
 
 @Config
 class UserManagementConfig {
@@ -17,26 +20,35 @@ class UserManagementConfig {
 @Config
 export class GlobalConfig {
 	@Nested
-	database: DatabaseConfig;
+	readonly database: DatabaseConfig;
 
 	@Nested
-	credentials: CredentialsConfig;
+	readonly credentials: CredentialsConfig;
 
 	@Nested
-	userManagement: UserManagementConfig;
+	readonly userManagement: UserManagementConfig;
 
 	@Nested
-	versionNotifications: VersionNotificationsConfig;
+	readonly versionNotifications: VersionNotificationsConfig;
 
 	@Nested
-	publicApi: PublicApiConfig;
+	readonly publicApi: PublicApiConfig;
 
 	@Nested
-	externalSecrets: ExternalSecretsConfig;
+	readonly externalSecrets: ExternalSecretsConfig;
 
 	@Nested
-	templates: TemplatesConfig;
+	readonly templates: TemplatesConfig;
 
 	@Nested
-	eventBus: EventBusConfig;
+	readonly eventBus: EventBusConfig;
+
+	@Nested
+	readonly nodes: NodesConfig;
+
+	@Nested
+	readonly externalStorage: ExternalStorageConfig;
+
+	@Nested
+	readonly workflows: WorkflowsConfig;
 }
