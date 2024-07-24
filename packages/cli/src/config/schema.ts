@@ -12,27 +12,6 @@ convict.addFormat({
 });
 
 export const schema = {
-	workflows: {
-		defaultName: {
-			doc: 'Default name for workflow',
-			format: String,
-			default: 'My workflow',
-			env: 'WORKFLOWS_DEFAULT_NAME',
-		},
-		onboardingFlowDisabled: {
-			doc: 'Show onboarding flow in new workflow',
-			format: Boolean,
-			default: false,
-			env: 'N8N_ONBOARDING_FLOW_DISABLED',
-		},
-		callerPolicyDefaultOption: {
-			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
-			default: 'workflowsFromSameOwner',
-			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
-		},
-	},
-
 	executions: {
 		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {

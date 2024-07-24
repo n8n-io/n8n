@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { WorkflowOperationError } from 'n8n-workflow';
-import config from '@/config';
+import { GlobalConfig } from '@n8n/config';
 import { Logger } from '@/Logger';
 import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
@@ -12,6 +12,7 @@ export class SubworkflowPolicyChecker {
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly ownershipService: OwnershipService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode) {
@@ -28,7 +29,7 @@ export class SubworkflowPolicyChecker {
 		}
 
 		let policy =
-			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption;
 
 		const isSharingEnabled = this.license.isSharingEnabled();
 

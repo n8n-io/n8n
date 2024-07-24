@@ -9,6 +9,7 @@ import { TemplatesConfig } from './configs/templates';
 import { EventBusConfig } from './configs/event-bus';
 import { NodesConfig } from './configs/nodes';
 import { ExternalStorageConfig } from './configs/external-storage';
+import { WorkflowsConfig } from './configs/workflows';
 
 @Config
 class UserManagementConfig {
@@ -47,4 +48,7 @@ export class GlobalConfig {
 
 	@Nested
 	readonly externalStorage: ExternalStorageConfig;
+
+	@Nested
+	readonly workflows: WorkflowsConfig;
 }
