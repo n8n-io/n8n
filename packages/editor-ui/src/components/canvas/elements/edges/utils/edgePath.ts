@@ -1,4 +1,4 @@
-import type { ConnectionLineProps } from '@vue-flow/core';
+import type { EdgeProps } from '@vue-flow/core';
 import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
 
 const EDGE_PADDING_Y = 140;
@@ -6,7 +6,12 @@ const EDGE_PADDING_Y_TOP = 80;
 const EDGE_BORDER_RADIUS = 8;
 const EDGE_OFFSET = 40;
 
-export function getCustomPath(props: ConnectionLineProps) {
+export function getCustomPath(
+	props: Pick<
+		EdgeProps,
+		'sourceX' | 'sourceY' | 'sourcePosition' | 'targetX' | 'targetY' | 'targetPosition'
+	>,
+) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const xDiff = targetX - sourceX;
 	const yDiff = targetY - sourceY;
