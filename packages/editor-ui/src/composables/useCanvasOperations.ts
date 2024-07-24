@@ -460,7 +460,6 @@ export function useCanvasOperations({
 			historyStore.startRecordingUndo();
 		}
 
-		const nodesData: INodeUi[] = [];
 		for (const nodeAddData of nodesWithTypeVersion) {
 			const { isAutoAdd, openDetail: openNDV, ...node } = nodeAddData;
 			const position = node.position ?? insertPosition;
@@ -480,7 +479,6 @@ export function useCanvasOperations({
 						trackHistory: options.trackHistory,
 					},
 				);
-				nodesData.push(lastAddedNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				continue;
