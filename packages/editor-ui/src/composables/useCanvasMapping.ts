@@ -82,22 +82,6 @@ export function useCanvasMapping({
 		};
 	}
 
-	function getNodeSubtitle(node: INodeUi) {
-		try {
-			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeType) return '';
-
-			const nodeSubtitle = nodeHelpers.getNodeSubtitle(node, nodeType, workflowObject.value) ?? '';
-			if (nodeSubtitle.includes(CUSTOM_API_CALL_KEY)) {
-				return '';
-			}
-
-			return nodeSubtitle;
-		} catch (e) {
-			return '';
-		}
-	}
-
 	const renderTypeByNodeId = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
@@ -115,6 +99,27 @@ export function useCanvasMapping({
 				return acc;
 			}, {}) ?? {},
 	);
+
+	const nodeSubtitleById = computed(() => {
+		return nodes.value.reduce<Record<string, string>>((acc, node) => {
+			try {
+				const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeTypeDescription) {
+					return acc;
+				}
+
+				const nodeSubtitle =
+					nodeHelpers.getNodeSubtitle(node, nodeTypeDescription, workflowObject.value) ?? '';
+				if (nodeSubtitle.includes(CUSTOM_API_CALL_KEY)) {
+					return acc;
+				}
+
+				acc[node.id] = nodeSubtitle;
+			} catch (e) {}
+
+			return acc;
+		}, {});
+	});
 
 	const nodeInputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
@@ -281,7 +286,7 @@ export function useCanvasMapping({
 			const data: CanvasNodeData = {
 				id: node.id,
 				name: node.name,
-				subtitle: getNodeSubtitle(node),
+				subtitle: nodeSubtitleById.value[node.id] ?? '',
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: !!node.disabled,
