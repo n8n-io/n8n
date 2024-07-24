@@ -723,23 +723,6 @@ export function useCanvasOperations({
 	async function loadNodeTypesProperties(
 		nodes: Array<{ type: INodeUi['type']; typeVersion: INodeUi['typeVersion'] }>,
 	): Promise<void> {
-		const nodeTypesWithTypeVersionToLoadPropertiesFor = Object.values(
-			nodes.reduce<Record<string, { name: INodeUi['type']; version: INodeUi['typeVersion'] }>>(
-				(acc, node) => {
-					const id = `${node.type}@${node.typeVersion}`;
-					if (acc[id]) return acc;
-
-					acc[id] = {
-						name: node.type,
-						version: node.typeVersion,
-					};
-
-					return acc;
-				},
-				{},
-			),
-		);
-
 		const allNodeTypeDescriptions: INodeTypeDescription[] = nodeTypesStore.allNodeTypes;
 
 		const nodesToBeFetched: INodeTypeNameVersion[] = [];
@@ -748,8 +731,8 @@ export function useCanvasOperations({
 				? nodeTypeDescription.version
 				: [nodeTypeDescription.version];
 			if (
-				!!nodeTypesWithTypeVersionToLoadPropertiesFor.find(
-					(n) => n.name === nodeTypeDescription.name && nodeVersions.includes(n.version),
+				!!nodes.find(
+					(n) => n.type === nodeTypeDescription.name && nodeVersions.includes(n.typeVersion),
 				) &&
 				!nodeTypeDescription.hasOwnProperty('properties')
 			) {
@@ -1716,6 +1699,7 @@ export function useCanvasOperations({
 		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
+		requireNodeTypeDescription,
 		addNodes,
 		addNode,
 		revertAddNode,
