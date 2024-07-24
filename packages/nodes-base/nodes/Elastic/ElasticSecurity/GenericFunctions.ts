@@ -8,7 +8,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { Connector, ElasticApiCredentials, ElasticSecurityApiCredentials } from './types';
+import type {
+	Connector,
+	ElasticSecurityApiCredentials,
+	ElasticSecurityApiKeyApiCredentials,
+} from './types';
 
 export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
@@ -30,7 +34,9 @@ export async function elasticSecurityApiRequest(
 			'elasticSecurityApi',
 		)) as ElasticSecurityApiCredentials);
 	} else {
-		({ baseUrl: rawBaseUrl } = (await this.getCredentials('elasticApi')) as ElasticApiCredentials);
+		({ baseUrl: rawBaseUrl } = (await this.getCredentials(
+			'elasticSecurityApiKeyApi',
+		)) as ElasticSecurityApiKeyApiCredentials);
 	}
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
@@ -51,7 +57,8 @@ export async function elasticSecurityApiRequest(
 		delete options.qs;
 	}
 
-	const credentialType = authenticationMethod === 'basicAuth' ? 'elasticSecurityApi' : 'elasticApi';
+	const credentialType =
+		authenticationMethod === 'basicAuth' ? 'elasticSecurityApi' : 'elasticSecurityApiKeyApi';
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);

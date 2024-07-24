@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/cred-filename-against-convention */
 import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
@@ -6,10 +5,10 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export class ElasticApi implements ICredentialType {
-	name = 'elasticApi';
+export class ElasticSecurityApiKeyApi implements ICredentialType {
+	name = 'elasticSecurityApiKeyApi';
 
-	displayName = 'Elastic API';
+	displayName = 'Elastic Security API Key';
 
 	documentationUrl = 'elastic';
 

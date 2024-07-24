@@ -55,7 +55,7 @@ export class ElasticSecurity implements INodeType {
 				},
 			},
 			{
-				name: 'elasticApi',
+				name: 'elasticSecurityApiKeyApi',
 				required: true,
 				displayOptions: {
 					show: {
