@@ -2,6 +2,13 @@ import type { IRestApiContext } from '@/Interface';
 import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
 import { jsonParse } from 'n8n-workflow';
 
+const debugLog = [];
+
+// @ts-ignore
+window.debugChat = () => {
+	console.log(debugLog);
+};
+
 export const postFetch = async (
 	context: IRestApiContext,
 	apiEndpoint: string,
@@ -10,13 +17,16 @@ export const postFetch = async (
 	const headers = {
 		'Content-Type': 'application/json',
 	};
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, {
+	const request = {
 		headers,
 		method: 'POST',
 		credentials: 'include',
 		body: JSON.stringify(payload),
-	});
+	};
+	debugLog.push({ request: { ...request, endpoint: `${context.baseUrl}${apiEndpoint}` } });
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`);
 
+	debugLog.push({ response });
 	if (response.ok && response.body) {
 		return await response.json();
 	} else {
@@ -35,13 +45,16 @@ export const streamRequest = async (
 	const headers = {
 		'Content-Type': 'application/json',
 	};
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, {
+	const request: RequestInit = {
 		headers,
 		method: 'POST',
 		credentials: 'include',
 		body: JSON.stringify(payload),
-	});
+	};
+	debugLog.push({ request: { ...request, endpoint: `${context.baseUrl}${apiEndpoint}` } });
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
 
+	debugLog.push({ response });
 	if (response.ok && response.body) {
 		// Handle the streaming response
 		const reader = response.body.getReader();
@@ -50,11 +63,13 @@ export const streamRequest = async (
 		async function readStream() {
 			const { done, value } = await reader.read();
 			if (done) {
+				debugLog.push({ done });
 				onDone?.();
 				return;
 			}
 
 			const chunk = decoder.decode(value);
+			debugLog.push({ chunk });
 			const splitChunks = chunk.split('\n');
 
 			for (const splitChunk of splitChunks) {

@@ -201,12 +201,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	function onDoneStreaming(id: string) {
 		stopStreaming();
-		console.log('yo messages', id, chatMessages.value);
 		lastUnread.value = chatMessages.value.find(
 			(msg) =>
 				msg.id === id && !msg.read && msg.role === 'assistant' && READABLE_TYPES.includes(msg.type),
 		);
-		console.log('last unread', lastUnread.value);
 		setTimeout(() => {
 			if (lastUnread.value?.id === id) {
 				lastUnread.value = undefined;
