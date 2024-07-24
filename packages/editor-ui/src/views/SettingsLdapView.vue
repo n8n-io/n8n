@@ -71,7 +71,7 @@
 				$locale.baseText('settings.ldap.section.synchronization.title')
 			}}</n8n-heading>
 			<div :class="$style.syncTable">
-				<el-table
+				<ElTable
 					:key="tableKey"
 					v-loading="loadingTable"
 					:border="true"
@@ -81,23 +81,23 @@
 					style="width: 100%"
 					max-height="250"
 				>
-					<el-table-column
+					<ElTableColumn
 						prop="status"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
 					/>
-					<el-table-column
+					<ElTableColumn
 						prop="endedAt"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
 					/>
-					<el-table-column
+					<ElTableColumn
 						prop="runMode"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
 					/>
-					<el-table-column
+					<ElTableColumn
 						prop="runTime"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
 					/>
-					<el-table-column
+					<ElTableColumn
 						prop="details"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
 					/>
@@ -108,7 +108,7 @@
 						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
 						</InfiniteLoading>
 					</template>
-				</el-table>
+				</ElTable>
 			</div>
 			<div class="pb-3xl">
 				<n8n-button
