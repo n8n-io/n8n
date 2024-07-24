@@ -17,14 +17,6 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'NoTagsView',
-});
-</script>
-
 <style lang="scss" module>
 $--footer-spacing: 45px;
 

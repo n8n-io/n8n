@@ -16,7 +16,7 @@ import config from '@/config';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import type { QueueRecoverySettings } from './execution.types';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 /**
  * Service for recovering key properties in executions.
@@ -28,7 +28,7 @@ export class ExecutionRecoveryService {
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -190,6 +190,10 @@ export class ExecutionRecoveryService {
 
 			if (!nodeStartedMessage) continue;
 
+			const nodeHasRunData = runExecutionData.resultData.runData[node.name] !== undefined;
+
+			if (nodeHasRunData) continue; // when saving execution progress
+
 			const nodeFinishedMessage = nodeMessages.find(
 				(m) => m.payload.nodeName === node.name && m.eventName === 'n8n.node.finished',
 			);
@@ -286,7 +290,7 @@ export class ExecutionRecoveryService {
 			status: execution.status,
 		});
 
-		this.eventRelay.emit('workflow-post-execute', {
+		this.eventService.emit('workflow-post-execute', {
 			workflowId: execution.workflowData.id,
 			workflowName: execution.workflowData.name,
 			executionId: execution.id,

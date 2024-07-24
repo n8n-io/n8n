@@ -63,11 +63,10 @@ export class CredentialsService {
 		user: User,
 		options: {
 			listQueryOptions?: ListQuery.Options;
-			onlyOwn?: boolean;
 			includeScopes?: string;
 		} = {},
 	) {
-		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
+		const returnAll = user.hasGlobalScope('credential:list');
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		let projectRelations: ProjectRelation[] | undefined = undefined;
@@ -408,7 +407,7 @@ export class CredentialsService {
 
 		for (const dataKey of Object.keys(copiedData)) {
 			// The frontend only cares that this value isn't falsy.
-			if (dataKey === 'oauthTokenData') {
+			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
 				if (copiedData[dataKey].toString().length > 0) {
 					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {

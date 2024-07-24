@@ -12,11 +12,12 @@ import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
 
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
+import { GlobalConfig } from '@n8n/config';
+import { EventService } from '@/eventbus/event.service';
 
 async function createApiRouter(
 	version: string,
@@ -35,7 +36,7 @@ async function createApiRouter(
 	];
 	const apiController = express.Router();
 
-	if (!config.getEnv('publicApi.swaggerUi.disabled')) {
+	if (!Container.get(GlobalConfig).publicApi.swaggerUiDisabled) {
 		const { serveFiles, setup } = await import('swagger-ui-express');
 		const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 		const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
@@ -99,11 +100,11 @@ async function createApiRouter(
 
 						if (!user) return false;
 
-						void Container.get(InternalHooks).onUserInvokedApi({
-							user_id: user.id,
+						Container.get(EventService).emit('public-api-invoked', {
+							userId: user.id,
 							path: req.path,
 							method: req.method,
-							api_version: version,
+							apiVersion: version,
 						});
 
 						req.user = user;
@@ -153,5 +154,5 @@ export const loadPublicApiVersions = async (
 };
 
 export function isApiEnabled(): boolean {
-	return !config.get('publicApi.disabled') && !Container.get(License).isAPIDisabled();
+	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
 }

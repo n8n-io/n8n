@@ -12,7 +12,7 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import type { ImportResult } from './types/importResult';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/eventbus/event.service';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,7 +22,7 @@ export class SourceControlController {
 	constructor(
 		private readonly sourceControlService: SourceControlService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
@@ -83,11 +83,11 @@ export class SourceControlController {
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
-			void this.internalHooks.onSourceControlSettingsUpdated({
-				branch_name: resultingPreferences.branchName,
+			this.eventService.emit('source-control-settings-updated', {
+				branchName: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
-				read_only_instance: resultingPreferences.branchReadOnly,
-				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+				readOnlyInstance: resultingPreferences.branchReadOnly,
+				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
 			// #endregion
 			return resultingPreferences;
@@ -128,11 +128,11 @@ export class SourceControlController {
 			}
 			await this.sourceControlService.init();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
-			void this.internalHooks.onSourceControlSettingsUpdated({
-				branch_name: resultingPreferences.branchName,
+			this.eventService.emit('source-control-settings-updated', {
+				branchName: resultingPreferences.branchName,
 				connected: resultingPreferences.connected,
-				read_only_instance: resultingPreferences.branchReadOnly,
-				repo_type: getRepoType(resultingPreferences.repositoryUrl),
+				readOnlyInstance: resultingPreferences.branchReadOnly,
+				repoType: getRepoType(resultingPreferences.repositoryUrl),
 			});
 			return resultingPreferences;
 		} catch (error) {

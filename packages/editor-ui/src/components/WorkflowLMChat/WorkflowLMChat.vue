@@ -54,7 +54,7 @@
 						locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div :class="$style.logs">
-						<RunDataAi :key="messages.length" :node="node" hide-title slim />
+						<LazyRunDataAi :key="messages.length" :node="node" hide-title slim />
 					</div>
 				</div>
 			</div>
@@ -137,7 +137,7 @@ import { get, last } from 'lodash-es';
 import { isEmpty } from '@/utils/typesUtils';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
-const RunDataAi = defineAsyncComponent(
+const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
 );
 

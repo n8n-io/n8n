@@ -444,11 +444,11 @@ export class ExecutionService {
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
-			await this.activeExecutions.stopExecution(execution.id);
+			this.activeExecutions.stopExecution(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {
-			await this.waitTracker.stopExecution(execution.id);
+			this.waitTracker.stopExecution(execution.id);
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
@@ -460,8 +460,12 @@ export class ExecutionService {
 			return await this.stopInRegularMode(execution);
 		}
 
+		if (this.activeExecutions.has(execution.id)) {
+			this.activeExecutions.stopExecution(execution.id);
+		}
+
 		if (this.waitTracker.has(execution.id)) {
-			await this.waitTracker.stopExecution(execution.id);
+			this.waitTracker.stopExecution(execution.id);
 		}
 
 		const job = await this.queue.findRunningJobBy({ executionId: execution.id });

@@ -11,8 +11,10 @@ import { useUsersStore } from '@/stores/users.store';
 import { createUser } from '@/__tests__/data/users';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import { useRBACStore } from '@/stores/rbac.store';
-import { DELETE_USER_MODAL_KEY } from '@/constants';
+import { DELETE_USER_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import * as usersApi from '@/api/users';
+import { useSettingsStore } from '@/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 const wrapperComponentWithModal = {
 	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
@@ -46,6 +48,11 @@ describe('SettingsUsersView', () => {
 		projectsStore = useProjectsStore();
 		usersStore = useUsersStore();
 		rbacStore = useRBACStore();
+
+		useSettingsStore().settings.enterprise = {
+			...defaultSettings.enterprise,
+			[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+		};
 
 		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
 		vi.spyOn(usersApi, 'getUsers').mockResolvedValue(users);

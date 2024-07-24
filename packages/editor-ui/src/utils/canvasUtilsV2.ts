@@ -1,6 +1,6 @@
 import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import type { CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import type { Connection } from '@vue-flow/core';
 import { v4 as uuid } from 'uuid';
@@ -14,33 +14,54 @@ export function mapLegacyConnectionsToCanvasConnections(
 	const mappedConnections: CanvasConnection[] = [];
 
 	Object.keys(legacyConnections).forEach((fromNodeName) => {
-		const fromId = nodes.find((node) => node.name === fromNodeName)?.id;
-		const fromConnectionTypes = Object.keys(legacyConnections[fromNodeName]);
+		const fromId = nodes.find((node) => node.name === fromNodeName)?.id ?? '';
+		const fromConnectionTypes = Object.keys(
+			legacyConnections[fromNodeName],
+		) as NodeConnectionType[];
 
 		fromConnectionTypes.forEach((fromConnectionType) => {
 			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
 			fromPorts.forEach((toPorts, fromIndex) => {
 				toPorts.forEach((toPort) => {
-					const toId = nodes.find((node) => node.name === toPort.node)?.id;
-					const toConnectionType = toPort.type;
+					const toId = nodes.find((node) => node.name === toPort.node)?.id ?? '';
+					const toConnectionType = toPort.type as NodeConnectionType;
 					const toIndex = toPort.index;
+
+					const sourceHandle = createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: fromConnectionType,
+						index: fromIndex,
+					});
+
+					const targetHandle = createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: toConnectionType,
+						index: toIndex,
+					});
+
+					const connectionId = createCanvasConnectionId({
+						source: fromId,
+						sourceHandle,
+						target: toId,
+						targetHandle,
+					});
 
 					if (fromId && toId) {
 						mappedConnections.push({
-							id: `[${fromId}/${fromConnectionType}/${fromIndex}][${toId}/${toConnectionType}/${toIndex}]`,
+							id: connectionId,
 							source: fromId,
 							target: toId,
-							sourceHandle: `${CanvasConnectionMode.Output}/${fromConnectionType}/${fromIndex}`,
-							targetHandle: `${CanvasConnectionMode.Input}/${toConnectionType}/${toIndex}`,
+							sourceHandle,
+							targetHandle,
 							data: {
 								fromNodeName,
 								source: {
 									index: fromIndex,
-									type: fromConnectionType as CanvasConnectionPortType,
+									type: fromConnectionType,
 								},
 								target: {
 									index: toIndex,
-									type: toConnectionType as CanvasConnectionPortType,
+									type: toConnectionType,
 								},
 							},
 						});
@@ -51,6 +72,32 @@ export function mapLegacyConnectionsToCanvasConnections(
 	});
 
 	return mappedConnections;
+}
+
+export function mapLegacyConnectionToCanvasConnection(
+	sourceNode: INodeUi,
+	targetNode: INodeUi,
+	legacyConnection: [IConnection, IConnection],
+): Connection {
+	const source = sourceNode.id;
+	const sourceHandle = createCanvasConnectionHandleString({
+		mode: CanvasConnectionMode.Output,
+		type: legacyConnection[0].type,
+		index: legacyConnection[0].index,
+	});
+	const target = targetNode.id;
+	const targetHandle = createCanvasConnectionHandleString({
+		mode: CanvasConnectionMode.Input,
+		type: legacyConnection[1].type,
+		index: legacyConnection[1].index,
+	});
+
+	return {
+		source,
+		sourceHandle,
+		target,
+		targetHandle,
+	};
 }
 
 export function parseCanvasConnectionHandleString(handle: string | null | undefined) {
@@ -81,6 +128,10 @@ export function createCanvasConnectionHandleString({
 	index?: number;
 }) {
 	return `${mode}/${type}/${index}`;
+}
+
+export function createCanvasConnectionId(connection: Connection) {
+	return `[${connection.source}/${connection.sourceHandle}][${connection.target}/${connection.targetHandle}]`;
 }
 
 export function mapCanvasConnectionToLegacyConnection(
@@ -123,7 +174,8 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	}
 
 	return endpoints.map((endpoint, endpointIndex) => {
-		const type = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
 		const label = typeof endpoint === 'string' ? undefined : endpoint.displayName;
 		const index =
 			endpoints

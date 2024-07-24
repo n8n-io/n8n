@@ -128,11 +128,6 @@ describe('Editor actions should work', () => {
 		createNewWorkflowAndActivate();
 	});
 
-	it('after saving a new workflow', () => {
-		editWorkflowAndDeactivate();
-		editWorkflowMoreAndActivate();
-	});
-
 	it('after switching between Editor and Executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 

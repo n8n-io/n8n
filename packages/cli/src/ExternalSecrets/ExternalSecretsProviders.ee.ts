@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { InfisicalProvider } from './providers/infisical';
 import { VaultProvider } from './providers/vault';
 import { AwsSecretsManager } from './providers/aws-secrets/aws-secrets-manager';
+import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
 
 @Service()
 export class ExternalSecretsProviders {
@@ -10,6 +11,7 @@ export class ExternalSecretsProviders {
 		awsSecretsManager: AwsSecretsManager,
 		infisical: InfisicalProvider,
 		vault: VaultProvider,
+		azureKeyVault: AzureKeyVault,
 	};
 
 	getProvider(name: string): { new (): SecretsProvider } | null {
