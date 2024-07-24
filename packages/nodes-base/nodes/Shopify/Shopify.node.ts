@@ -18,7 +18,6 @@ import { productFields, productOperations } from './ProductDescription';
 import type { IAddress, IDiscountCode, ILineItem, IOrder } from './OrderInterface';
 
 import type { IProduct } from './ProductInterface';
-import { apiVersion } from './Const';
 
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,7 +64,7 @@ export class Shopify implements INodeType {
 		],
 		properties: [
 			{
-				displayName: `Shopify API Version: ${apiVersion}`,
+				displayName: 'Shopify API Version: 2024-07',
 				type: 'notice',
 				name: 'apiVersion',
 				default: '',

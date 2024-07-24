@@ -4,9 +4,6 @@ import type {
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
-import { apiVersion } from '../nodes/Shopify/Const';
-
 export class ShopifyAccessTokenApi implements ICredentialType {
 	name = 'shopifyAccessTokenApi';
 
@@ -40,12 +37,6 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			default: '',
 			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
 		},
-		{
-			displayName: 'API Version',
-			name: 'apiVersion',
-			type: 'hidden',
-			default: `${apiVersion}`,
-		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -59,8 +50,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL:
-				'=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/{{$credentials?.apiVersion}}',
+			baseURL: '=https://{{$credentials?.shopSubdomain}}.myshopify.com/admin/api/2024-07',
 			url: '/products.json',
 		},
 	};

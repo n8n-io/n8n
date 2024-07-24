@@ -6,9 +6,6 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-
-import { apiVersion } from '../nodes/Shopify/Const';
-
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
 
@@ -48,12 +45,6 @@ export class ShopifyApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
-		{
-			displayName: 'API Version',
-			name: 'apiVersion',
-			type: 'hidden',
-			default: `${apiVersion}`,
-		},
 	];
 
 	async authenticate(
@@ -72,7 +63,7 @@ export class ShopifyApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/{{$credentials.apiVersion}}',
+				'=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2024-07',
 			url: '/products.json',
 		},
 	};

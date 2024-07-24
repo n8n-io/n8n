@@ -10,8 +10,6 @@ import type {
 
 import { snakeCase } from 'change-case';
 
-import { apiVersion } from './Const';
-
 export async function shopifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
@@ -40,9 +38,7 @@ export async function shopifyApiRequest(
 	const options: IRequestOptions = {
 		method,
 		qs: query,
-		uri:
-			uri ||
-			`https://${credentials.shopSubdomain}.myshopify.com/admin/api/${apiVersion}/${resource}`,
+		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2024-07/${resource}`,
 		body,
 		json: true,
 	};
