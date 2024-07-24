@@ -5,19 +5,18 @@ import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyDenialErrorParams } from '@/errors/subworkflow-policy-denial.error';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
 
-const DENIAL_REASONS: Record<DenialPolicy, string> = {
-	none: 'Subworkflow may not be called by any workflow',
-	workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
-	workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
-};
-
 @Service()
 export class SubworkflowPolicyChecker {
+	private readonly denialReasons: Record<DenialPolicy, string> = {
+		none: 'Subworkflow may not be called by any workflow',
+		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
+		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
+	};
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -44,13 +43,6 @@ export class SubworkflowPolicyChecker {
 
 		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
-		const errorParams: SubworkflowPolicyDenialErrorParams = {
-			subworkflowId,
-			subworkflowProjectName: subworkflowProject.name,
-			areOwnedBySameProject,
-			node,
-		};
-
 		if (
 			policy === 'none' ||
 			(policy === 'workflowsFromAList' && !this.hasParentListed(subworkflow, parentWorkflowId)) ||
@@ -58,7 +50,12 @@ export class SubworkflowPolicyChecker {
 		) {
 			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
-			throw new SubworkflowPolicyDenialError(errorParams);
+			throw new SubworkflowPolicyDenialError({
+				subworkflowId,
+				subworkflowProjectName: subworkflowProject.name,
+				areOwnedBySameProject,
+				node,
+			});
 		}
 	}
 
@@ -114,7 +111,7 @@ export class SubworkflowPolicyChecker {
 		policy: DenialPolicy;
 	}) {
 		this.logger.warn('[SubworkflowPolicyChecker] Subworkflow execution denied', {
-			reason: DENIAL_REASONS[policy],
+			reason: this.denialReasons[policy],
 			parentWorkflowId,
 			subworkflowId,
 			isSharingEnabled: this.license.isSharingEnabled(),
