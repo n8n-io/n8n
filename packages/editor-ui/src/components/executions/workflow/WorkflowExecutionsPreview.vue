@@ -166,28 +166,28 @@ function onRetryButtonBlur(event: FocusEvent) {
 				</N8nText>
 			</div>
 			<div>
-				<N8nButton
-					size="medium"
-					:type="debugButtonData.type"
-					:class="$style.debugLink"
-					:disabled="!workflowPermissions.update"
+				<router-link
+					:to="{
+						name: VIEWS.EXECUTION_DEBUG,
+						params: {
+							name: execution.workflowId,
+							executionId: execution.id,
+						},
+					}"
 				>
-					<router-link
-						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
-							params: {
-								name: execution.workflowId,
-								executionId: execution.id,
-							},
-						}"
+					<N8nButton
+						size="medium"
+						:type="debugButtonData.type"
+						:class="$style.debugLink"
+						:disabled="!workflowPermissions.update"
 					>
 						<span
 							data-test-id="execution-debug-button"
 							@click="executionDebugging.handleDebugLinkClick"
 							>{{ debugButtonData.text }}</span
 						>
-					</router-link>
-				</N8nButton>
+					</N8nButton>
+				</router-link>
 
 				<ElDropdown
 					v-if="isRetriable"
@@ -201,6 +201,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 							size="medium"
 							type="tertiary"
 							:title="locale.baseText('executionsList.retryExecution')"
+							:disabled="!workflowPermissions.update"
 							icon="redo"
 							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
@@ -211,9 +212,9 @@ function onRetryButtonBlur(event: FocusEvent) {
 							<ElDropdownItem command="current-workflow">
 								{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 							</ElDropdownItem>
-							<ElDropdownDtem command="original-workflow">
+							<ElDropdownItem command="original-workflow">
 								{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-							</ElDropdownDtem>
+							</ElDropdownItem>
 						</ElDropdownMenu>
 					</template>
 				</ElDropdown>
@@ -302,7 +303,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 
 .debugLink {
 	margin-right: var(--spacing-xs);
-	padding: 0;
 
 	a > span {
 		display: block;
