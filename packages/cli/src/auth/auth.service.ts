@@ -138,6 +138,12 @@ export class AuthService {
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		console.log(
+			'yo',
+			req.browserId,
+			jwtPayload.browserId,
+			req.browserId ? this.hash(req.browserId) : 'XXX',
+		);
 		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
