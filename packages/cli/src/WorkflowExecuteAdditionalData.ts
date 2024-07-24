@@ -73,6 +73,7 @@ import { WorkflowExecutionService } from './workflows/workflowExecution.service'
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventService } from './eventbus/event.service';
 import { GlobalConfig } from '@n8n/config';
+import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -826,7 +827,7 @@ async function executeWorkflow(
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
-		await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
+		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
