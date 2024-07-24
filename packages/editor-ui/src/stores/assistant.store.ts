@@ -88,7 +88,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 		// todo simplify
 		assistantMessages.forEach((message) => {
-			if (message.type === 'message') {
+			if (message.type === 'message' || message.type === 'string') {
 				messages.push({
 					id,
 					type: 'text',
