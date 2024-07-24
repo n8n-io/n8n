@@ -118,7 +118,7 @@ export class SubworkflowPolicyChecker {
 				'Subworkflow may be called only by workflows owned by the same project',
 		};
 
-		this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
+		this.logger.warn('[SubworkflowPolicyChecker] Subworkflow execution denied', {
 			reason: DENIAL_REASONS[policy],
 			parentWorkflowId,
 			subworkflowId,
