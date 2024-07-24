@@ -12,9 +12,14 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
   <!--v-if-->
   <!--v-if-->
   <div
-    class="label"
+    class="description"
   >
-    Test Node 
+    <div
+      class="label"
+    >
+      Test Node 
+      <!--v-if-->
+    </div>
     <!--v-if-->
   </div>
 </div>
@@ -32,9 +37,14 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
   <!--v-if-->
   <!--v-if-->
   <div
-    class="label"
+    class="description"
   >
-    Test Node 
+    <div
+      class="label"
+    >
+      Test Node 
+      <!--v-if-->
+    </div>
     <!--v-if-->
   </div>
 </div>
@@ -52,9 +62,14 @@ exports[`CanvasNodeDefault > configuration > should render configuration node co
   <!--v-if-->
   <!--v-if-->
   <div
-    class="label"
+    class="description"
   >
-    Test Node 
+    <div
+      class="label"
+    >
+      Test Node 
+      <!--v-if-->
+    </div>
     <!--v-if-->
   </div>
 </div>
@@ -72,9 +87,14 @@ exports[`CanvasNodeDefault > should render node correctly 1`] = `
   <!--v-if-->
   <!--v-if-->
   <div
-    class="label"
+    class="description"
   >
-    Test Node 
+    <div
+      class="label"
+    >
+      Test Node 
+      <!--v-if-->
+    </div>
     <!--v-if-->
   </div>
 </div>
@@ -115,9 +135,14 @@ exports[`CanvasNodeDefault > trigger > should render trigger node correctly 1`] 
   <!--v-if-->
   <!--v-if-->
   <div
-    class="label"
+    class="description"
   >
-    Test Node 
+    <div
+      class="label"
+    >
+      Test Node 
+      <!--v-if-->
+    </div>
     <!--v-if-->
   </div>
 </div>
