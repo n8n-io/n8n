@@ -75,7 +75,7 @@ export class Form implements INodeType {
 		icon: 'file:form.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{ $parameter["operation"] }}',
+		subtitle: '=type: {{ $parameter["operation"] }}',
 		description: 'Create a multi-step webform by adding pages to a n8n form',
 		defaults: {
 			name: 'Form Page',
@@ -125,9 +125,17 @@ export class Form implements INodeType {
 			);
 		}
 
-		const operation = this.getNodeParameter('operation', 0);
+		// TODO: get res form trigger stored in somewhere and send it here to update the form
+		// wait for response and send it back, process data and return
 		const items = this.getInputData();
-		console.log(operation, items);
+		for (const item of items) {
+			if (item.json.res) {
+				(item.json.res as any).json({
+					triggeredBy: this.getNode().name,
+				});
+			}
+		}
+
 		const returnData: INodeExecutionData[] = [];
 
 		return [returnData];

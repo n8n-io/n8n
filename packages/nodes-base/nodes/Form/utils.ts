@@ -120,6 +120,9 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 	checkResponseModeConfiguration(context);
 
+	//TODO get form steps from child nodes
+	// const connectedNodes = context.getChildNodes(context.getNode().name);
+
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
@@ -192,6 +195,12 @@ export async function formWebhook(context: IWebhookFunctions) {
 	}
 	returnData.submittedAt = new Date().toISOString();
 	returnData.formMode = mode;
+
+	// TODO store res so Form Page could access it
+	// returnData.res = context.getResponseObject();
+	// check body data if it was send from form page
+	// store it somewhere so form page can access it
+	// send noWebhookResponse: true
 
 	const webhookResponse: IDataObject = { status: 200 };
 

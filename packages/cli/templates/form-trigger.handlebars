@@ -84,7 +84,7 @@
 				font-weight: 400;
 			}
 
-			.inputs-wrapper {
+			#inputs-wrapper {
 				padding-top: 24px;
 				padding-bottom: 24px;
 			}
@@ -247,7 +247,7 @@
 							<p>{{formDescription}} </p>
 						</div>
 
-						<div class='inputs-wrapper'>
+						<div id='inputs-wrapper'>
 							{{#each formFields}}
 								{{#if isMultiSelect}}
 									<div>
@@ -442,105 +442,148 @@
 				}
 			}
 
-			const form = document.querySelector('#n8n-form');
+			function cleanUpListeners(form, requiredInputs) {
+				form.removeEventListener('submit', (e) => onSubmit(e, requiredInputs, form));
 
-			const requiredInputs = document.querySelectorAll('.form-required');
+				requiredInputs.forEach((input) => {
+					if (input.classList.contains('multiselect')) {
+						input.removeEventListener('click', () => {
+							validateMultiselect(input, error);
+						});
+					} else {
+						input.removeEventListener('blur', () => {
+							validateInput(input, error);
+						});
+						input.removeEventListener('input', () => {
+							error.classList.remove('error-show');
+						});
+					}
+				});
+			}
 
-			requiredInputs.forEach((input) => {
-				const errorSelector = `.error-${input.id}`;
-				const error = document.querySelector(errorSelector);
+			function onSubmit(e, requiredInputs, form) {
+					const valid = [];
+					let completed = false;
+					e.preventDefault();
 
-				if (input.classList.contains('multiselect')) {
-					input.addEventListener('click', () => {
-						validateMultiselect(input, error);
+					requiredInputs.forEach((input) => {
+						const errorSelector = `.error-${input.id}`;
+						const error = document.querySelector(errorSelector);
+
+						if (input.classList.contains('multiselect')) {
+							valid.push(validateMultiselect(input, error));
+						} else {
+							valid.push(validateInput(input, error));
+						}
 					});
-				} else {
-					input.addEventListener('blur', () => {
-						validateInput(input, error);
-					});
-					input.addEventListener('input', () => {
-						error.classList.remove('error-show');
-					});
+
+					if (valid.every((v) => v)) {
+						var formData = new FormData(form);
+
+						document.querySelectorAll('.multiselect').forEach((multiselect) => {
+							const selectedValues = getSelectedValues(multiselect);
+							formData.append(multiselect.id, JSON.stringify(selectedValues));
+						});
+
+						document.querySelector('#submit-btn').disabled = true;
+						document.querySelector('#submit-btn').style.cursor = 'not-allowed';
+						document.querySelector('#submit-btn span').style.display = 'inline-block';
+						fetch('', {
+							method: 'POST',
+							body: formData,
+						})
+							.then(async function (response) {
+								const useResponseData = document.getElementById("useResponseData").value;
+
+								if (useResponseData === "true") {
+									const text = await response.text();
+									let json;
+
+									try{
+										json = JSON.parse(text);
+									} catch (e) {}
+
+									if (json?.triggeredBy) {
+										//TODO if send from form page update input parameters
+										document.querySelector('#submit-btn').disabled = false;
+										document.querySelector('#submit-btn').style.cursor = 'pointer';
+										document.querySelector('#submit-btn span').style.display = 'none';
+										document.querySelector('#inputs-wrapper').innerHTML = '<p>Triggered by: ' + json?.triggeredBy + '</p>';
+										return;
+									}
+
+									if (json?.redirectURL) {
+										const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
+										window.location.replace(url);
+									} else if (json?.formSubmittedText) {
+										form.style.display = 'none';
+										document.querySelector('#submitted-form').style.display = 'block';
+										document.querySelector('#submitted-content').textContent = json.formSubmittedText;
+									} else {
+										document.body.innerHTML = text;
+									}
+
+									completed = true;
+									return;
+								}
+
+								if (response.status === 200) {
+									const redirectUrl = document.getElementById("redirectUrl");
+									if (redirectUrl) {
+										window.location.replace(redirectUrl.href);
+									} else {
+										form.style.display = 'none';
+										document.querySelector('#submitted-form').style.display = 'block';
+									}
+								} else {
+									form.style.display = 'none';
+									document.querySelector('#submitted-form').style.display = 'block';
+									document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+									document.querySelector('#submitted-content').textContent =
+										'An error occurred in the workflow handling this form';
+								}
+
+								completed = true;
+								return;
+							})
+							.catch(function (error) {
+								console.error('Error:', error);
+							});
+
+            //TODO form page is not completed yet so we need to clean up listeners as parameters are changed
+						if (!completed) {
+							cleanUpListeners(form, requiredInputs);
+							processForm();
+						}
+					}
 				}
-			});
 
-			form.addEventListener('submit', (e) => {
-				const valid = [];
-				e.preventDefault();
+			function processForm() {
+				const form = document.querySelector('#n8n-form');
+				const requiredInputs = document.querySelectorAll('.form-required');
 
 				requiredInputs.forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
 					const error = document.querySelector(errorSelector);
 
 					if (input.classList.contains('multiselect')) {
-						valid.push(validateMultiselect(input, error));
+						input.addEventListener('click', () => {
+							validateMultiselect(input, error);
+						});
 					} else {
-						valid.push(validateInput(input, error));
+						input.addEventListener('blur', () => {
+							validateInput(input, error);
+						});
+						input.addEventListener('input', () => {
+							error.classList.remove('error-show');
+						});
 					}
 				});
 
-				if (valid.every((v) => v)) {
-					var formData = new FormData(form);
+				form.addEventListener('submit', (e) => onSubmit(e, requiredInputs, form));
+			}
 
-					document.querySelectorAll('.multiselect').forEach((multiselect) => {
-						const selectedValues = getSelectedValues(multiselect);
-						formData.append(multiselect.id, JSON.stringify(selectedValues));
-					});
-
-					document.querySelector('#submit-btn').disabled = true;
-					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
-					document.querySelector('#submit-btn span').style.display = 'inline-block';
-					fetch('', {
-						method: 'POST',
-						body: formData,
-					})
-						.then(async function (response) {
-							const useResponseData = document.getElementById("useResponseData").value;
-
-							if (useResponseData === "true") {
-								const text = await response.text();
-								let json;
-
-								try{
-									json = JSON.parse(text);
-								} catch (e) {}
-
-								if (json?.redirectURL) {
-									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
-									window.location.replace(url);
-								} else if (json?.formSubmittedText) {
-									form.style.display = 'none';
-									document.querySelector('#submitted-form').style.display = 'block';
-									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
-								} else {
-									document.body.innerHTML = text;
-								}
-								return;
-							}
-
-							if (response.status === 200) {
-								const redirectUrl = document.getElementById("redirectUrl");
-								if (redirectUrl) {
-									window.location.replace(redirectUrl.href);
-								} else {
-									form.style.display = 'none';
-									document.querySelector('#submitted-form').style.display = 'block';
-								}
-							} else {
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
-								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
-								document.querySelector('#submitted-content').textContent =
-									'An error occurred in the workflow handling this form';
-							}
-
-							return;
-						})
-						.catch(function (error) {
-							console.error('Error:', error);
-						});
-				}
-			});
+			processForm();
 		</script>
 	</body>
 </html>

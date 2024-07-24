@@ -147,20 +147,27 @@ export const formFields: INodeProperties = {
 };
 
 export const formRespondMode: INodeProperties = {
-	displayName: 'Respond When',
+	displayName: 'Respond',
 	name: 'responseMode',
 	type: 'options',
 	options: [
 		{
-			name: 'Form Is Submitted',
+			name: 'When Form Is Submitted',
 			value: 'onReceived',
 			description: 'As soon as this node receives the form submission',
 		},
 		{
-			name: 'Workflow Finishes',
+			name: 'When Workflow Finishes',
 			value: 'lastNode',
 			description: 'When the last node of the workflow is executed',
 		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: "Using Next 'n8n Form' Node",
+			value: 'responseNode',
+			description: 'Show the form of the next n8n Form in the workflow',
+		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-option-value-duplicate
 		{
 			name: "Using 'Respond to Webhook' Node",
 			value: 'responseNode',
