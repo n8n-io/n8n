@@ -157,6 +157,12 @@ export function groupItemsInSections(
 		})
 		.filter((section) => section.type !== 'section' || section.children.length > 0);
 
+	result.sort((a, b) => {
+		if (a.key.toLowerCase().includes('recommended')) return -1;
+		if (b.key.toLowerCase().includes('recommended')) return 1;
+
+		return 0;
+	});
 	if (result.length <= 1) {
 		return items;
 	}

@@ -34,6 +34,7 @@ describe('ProjectMoveResourceModal', () => {
 					id: '1',
 				},
 				projectId: '1',
+				projectName: 'My Project',
 			},
 		};
 		renderComponent({ props });

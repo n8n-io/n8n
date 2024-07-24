@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { Position } from '@vue-flow/core';
+import { NodeConnectionType } from 'n8n-workflow';
 
 const DEFAULT_PROPS = {
 	sourceX: 0,
@@ -14,8 +15,8 @@ const DEFAULT_PROPS = {
 	targetPosition: Position.Bottom,
 	data: {
 		status: undefined,
-		source: { index: 0, type: 'main' },
-		target: { index: 0, type: 'main' },
+		source: { index: 0, type: NodeConnectionType.Main },
+		target: { index: 0, type: NodeConnectionType.Main },
 	},
 } satisfies Partial<CanvasEdgeProps>;
 const renderComponent = createComponentRenderer(CanvasEdge, {
@@ -35,6 +36,26 @@ describe('CanvasEdge', () => {
 		await fireEvent.click(deleteButton);
 
 		expect(emitted()).toHaveProperty('delete');
+	});
+
+	it('should emit add event when toolbar add is clicked', async () => {
+		const { emitted, getByTestId } = renderComponent();
+		const addButton = getByTestId('add-connection-button');
+
+		await fireEvent.click(addButton);
+
+		expect(emitted()).toHaveProperty('add');
+	});
+
+	it('should not render toolbar actions when readOnly', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				readOnly: true,
+			},
+		});
+
+		expect(() => getByTestId('add-connection-button')).toThrow();
+		expect(() => getByTestId('delete-connection-button')).toThrow();
 	});
 
 	it('should compute edgeStyle correctly', () => {

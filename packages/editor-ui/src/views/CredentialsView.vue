@@ -7,6 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
+		:loading="loading"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
@@ -79,8 +80,6 @@ import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
-
 export default defineComponent({
 	name: 'CredentialsView',
 	components: {
@@ -96,6 +95,7 @@ export default defineComponent({
 				type: '',
 			},
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -133,9 +133,6 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
 		'$route.params.projectId'() {
 			void this.initialize();
 		},
@@ -161,9 +158,9 @@ export default defineComponent({
 			});
 		},
 		async initialize() {
-			const isVarsEnabled = useSettingsStore().isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.Variables,
-			);
+			this.loading = true;
+			const isVarsEnabled =
+				useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
 
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(
@@ -176,6 +173,7 @@ export default defineComponent({
 			];
 
 			await Promise.all(loadPromises);
+			this.loading = false;
 		},
 		onFilter(
 			resource: ICredentialsResponse,
@@ -198,9 +196,6 @@ export default defineComponent({
 			}
 
 			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 	},
 });

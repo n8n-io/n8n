@@ -7,8 +7,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, toCronExpression } from 'n8n-workflow';
 
-import { CronJob } from 'cron';
-
 export class Cron implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cron',
@@ -66,27 +64,11 @@ export class Cron implements INodeType {
 			this.emit([this.helpers.returnJsonArray([{}])]);
 		};
 
-		const timezone = this.getTimezone();
-
-		// Start the cron-jobs
-		const cronJobs = cronTimes.map(
-			(cronTime) => new CronJob(cronTime, executeTrigger, undefined, true, timezone),
-		);
-
-		// Stop the cron-jobs
-		async function closeFunction() {
-			for (const cronJob of cronJobs) {
-				cronJob.stop();
-			}
-		}
-
-		async function manualTriggerFunction() {
-			executeTrigger();
-		}
+		// Register the cron-jobs
+		cronTimes.forEach((cronTime) => this.helpers.registerCron(cronTime, executeTrigger));
 
 		return {
-			closeFunction,
-			manualTriggerFunction,
+			manualTriggerFunction: async () => executeTrigger(),
 		};
 	}
 }

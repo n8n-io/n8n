@@ -190,9 +190,9 @@ export default defineComponent({
 				: [];
 		},
 		isAdvancedPermissionsEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.AdvancedPermissions,
-			);
+			return this.settingsStore.isEnterpriseFeatureEnabled[
+				EnterpriseEditionFeature.AdvancedPermissions
+			];
 		},
 	},
 	methods: {
