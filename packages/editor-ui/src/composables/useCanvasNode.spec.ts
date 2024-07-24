@@ -42,6 +42,7 @@ describe('useCanvasNode', () => {
 			data: ref({
 				id: 'node1',
 				name: 'Node 1',
+				subtitle: '',
 				type: 'nodeType1',
 				typeVersion: 1,
 				disabled: true,

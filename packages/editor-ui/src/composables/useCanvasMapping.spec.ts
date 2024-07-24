@@ -20,6 +20,7 @@ import {
 	createCanvasConnectionId,
 } from '@/utils/canvasUtilsV2';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { MarkerType } from '@vue-flow/core';
 
 beforeEach(() => {
 	const pinia = createPinia();
@@ -87,6 +88,7 @@ describe('useCanvasMapping', () => {
 					data: {
 						id: manualTriggerNode.id,
 						name: manualTriggerNode.name,
+						subtitle: '',
 						type: manualTriggerNode.type,
 						typeVersion: expect.anything(),
 						disabled: false,
@@ -381,6 +383,7 @@ describe('useCanvasMapping', () => {
 					},
 					id: connectionId,
 					label: '',
+					markerEnd: MarkerType.ArrowClosed,
 					source,
 					sourceHandle,
 					target,
@@ -469,6 +472,7 @@ describe('useCanvasMapping', () => {
 					},
 					id: connectionIdA,
 					label: '',
+					markerEnd: MarkerType.ArrowClosed,
 					source: sourceA,
 					sourceHandle: sourceHandleA,
 					target: targetA,
@@ -496,6 +500,7 @@ describe('useCanvasMapping', () => {
 					target: targetB,
 					targetHandle: targetHandleB,
 					type: 'canvas-edge',
+					markerEnd: MarkerType.ArrowClosed,
 					animated: false,
 				},
 			]);
