@@ -4,22 +4,22 @@ import { Config, Env, Nested } from '../decorators';
 class S3BucketConfig {
 	/** Name of the n8n bucket in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME')
-	name: string = '';
+	readonly name: string = '';
 
 	/** Region of the n8n bucket in S3-compatible external storage @example "us-east-1" */
 	@Env('N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION')
-	region: string = '';
+	readonly region: string = '';
 }
 
 @Config
 class S3CredentialsConfig {
 	/** Access key in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY')
-	accessKey: string = '';
+	readonly accessKey: string = '';
 
 	/** Access secret in S3-compatible external storage */
 	@Env('N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET')
-	accessSecret: string = '';
+	readonly accessSecret: string = '';
 }
 
 @Config
