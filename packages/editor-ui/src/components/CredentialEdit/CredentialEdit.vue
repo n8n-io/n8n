@@ -430,7 +430,7 @@ const sidebarItems = computed(() => {
 const defaultCredentialTypeName = computed(() => {
 	let defaultName = credentialTypeName.value;
 	if (!defaultName || defaultName === 'null') {
-		if (activeNodeType.value?.credentials) {
+		if (activeNodeType.value?.credentials && activeNodeType.value.credentials.length > 0) {
 			defaultName = activeNodeType.value.credentials[0].name;
 		}
 	}
