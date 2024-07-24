@@ -20,26 +20,9 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'webflowOAuth2Api',
 			required: true,
-			displayOptions: {
-				show: {
-					authentication: ['oAuth2'],
-				},
-			},
 		},
 	],
 	properties: [
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'options',
-			options: [
-				{
-					name: 'OAuth2',
-					value: 'oAuth2',
-				},
-			],
-			default: 'oAuth2',
-		},
 		{
 			displayName: 'Resource',
 			name: 'resource',
