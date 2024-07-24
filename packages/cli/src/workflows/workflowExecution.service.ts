@@ -32,9 +32,9 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
 import { Logger } from '@/Logger';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import type { Project } from '@/databases/entities/Project';
 import { GlobalConfig } from '@n8n/config';
+import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -44,9 +44,9 @@ export class WorkflowExecutionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly testWebhooks: TestWebhooks,
-		private readonly permissionChecker: PermissionChecker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	) {}
 
 	async runWorkflow(
@@ -188,7 +188,7 @@ export class WorkflowExecutionService {
 				const failedNode = workflowErrorData.execution?.lastNodeExecuted
 					? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
 					: undefined;
-				await this.permissionChecker.checkSubworkflowExecutePolicy(
+				await this.subworkflowPolicyChecker.check(
 					workflowInstance,
 					workflowErrorData.workflow.id!,
 					failedNode ?? undefined,
