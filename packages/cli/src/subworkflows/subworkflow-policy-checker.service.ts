@@ -26,16 +26,16 @@ export class SubworkflowPolicyChecker {
 
 		const policy = this.findPolicy(subworkflow);
 
-		const { parentProject, childProject } = await this.findProjects({
+		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
 			parentWorkflowId,
 			subworkflowId: subworkflow.id,
 		});
 
-		const areOwnedBySameProject = parentProject.id === childProject.id;
+		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
 		const errorProps = {
 			subworkflowId: subworkflow.id,
-			subworkflowProjectName: childProject.name,
+			subworkflowProjectName: subworkflowProject.name,
 			areOwnedBySameProject,
 			node,
 		};
@@ -82,12 +82,12 @@ export class SubworkflowPolicyChecker {
 		parentWorkflowId: string;
 		subworkflowId: string;
 	}) {
-		const [parentProject, childProject] = await Promise.all([
+		const [parentWorkflowProject, subworkflowProject] = await Promise.all([
 			this.ownershipService.getWorkflowProjectCached(parentWorkflowId),
 			this.ownershipService.getWorkflowProjectCached(subworkflowId),
 		]);
 
-		return { parentProject, childProject };
+		return { parentWorkflowProject, subworkflowProject };
 	}
 
 	/**
