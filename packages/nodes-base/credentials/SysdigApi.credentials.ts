@@ -12,6 +12,14 @@ export class SysdigApi implements ICredentialType {
 
 	documentationUrl = 'sysdig';
 
+	icon = { light: 'file:icons/Sysdig.png', dark: 'file:icons/Sysdig.png' } as const;
+
+	httpRequestNode = {
+		name: 'Sysdig',
+		docsUrl: 'https://docs.sysdig.com/en/docs/developer-tools/sysdig-api/',
+		apiBaseUrl: 'https://api.us2.sysdig.com/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
@@ -28,15 +36,6 @@ export class SysdigApi implements ICredentialType {
 			headers: {
 				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: 'https://api.malcore.io/api',
-			url: '/urlcheck',
-			method: 'POST',
-			body: { url: 'google.com' },
 		},
 	};
 }
