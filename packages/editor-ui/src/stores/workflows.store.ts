@@ -1048,6 +1048,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
+	function addNodes(nodes: INodeUi[]): void {
+		workflow.value.nodes.push(...nodes);
+		// nodeMetadata.value = {
+		// 	...nodes.reduce<Record<string, INodeMetadata>>((acc, node) => {
+		// 		acc[node.name] = {} as INodeMetadata;
+		// 		return acc;
+		// 	}, {}),
+		// 	...nodeMetadata.value,
+		// };
+	}
+
 	function removeNode(node: INodeUi): void {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
@@ -1648,6 +1659,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeAtIndex,
 		setNodeIssue,
 		addNode,
+		addNodes,
 		removeNode,
 		removeAllNodes,
 		updateNodeProperties,
