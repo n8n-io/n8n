@@ -71,7 +71,7 @@
 				$locale.baseText('settings.ldap.section.synchronization.title')
 			}}</n8n-heading>
 			<div :class="$style.syncTable">
-				<ElTable
+				<el-table
 					:key="tableKey"
 					v-loading="loadingTable"
 					:border="true"
@@ -81,31 +81,26 @@
 					style="width: 100%"
 					max-height="250"
 				>
-					<ElTableColumn
+					<el-table-column
 						prop="status"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
-					>
-					</ElTableColumn>
-					<ElTableColumn
+					/>
+					<el-table-column
 						prop="endedAt"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
-					>
-					</ElTableColumn>
-					<ElTableColumn
+					/>
+					<el-table-column
 						prop="runMode"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
-					>
-					</ElTableColumn>
-					<ElTableColumn
+					/>
+					<el-table-column
 						prop="runTime"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
-					>
-					</ElTableColumn>
-					<ElTableColumn
+					/>
+					<el-table-column
 						prop="details"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
-					>
-					</ElTableColumn>
+					/>
 					<template #empty>{{
 						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
 					}}</template>
@@ -113,7 +108,7 @@
 						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
 						</InfiniteLoading>
 					</template>
-				</ElTable>
+				</el-table>
 			</div>
 			<div class="pb-3xl">
 				<n8n-button
@@ -197,12 +192,10 @@ type LDAPConfigForm = {
 };
 
 type CellClassStyleMethodParams<T> = {
-	data: {
-		row: T;
-		rowIndex: number;
-		column: TableColumnCtx<T>;
-		columnIndex: number;
-	};
+	row: T;
+	rowIndex: number;
+	column: TableColumnCtx<T>;
+	columnIndex: number;
 };
 
 export default defineComponent({
@@ -253,8 +246,7 @@ export default defineComponent({
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
-		cellClassStyle({ data }: CellClassStyleMethodParams<TableRow>): CSSProperties {
-			const { row, column } = data;
+		cellClassStyle({ row, column }: CellClassStyleMethodParams<TableRow>): CSSProperties {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
 					return { color: 'green' };
