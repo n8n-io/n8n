@@ -10,6 +10,7 @@ import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service'
 
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { License } from '@/License';
+import type { GlobalConfig } from '@n8n/config';
 
 const toTargetCallErrorMsg = (subworkflowId: string) =>
 	`Target workflow ID ${subworkflowId} may not be called`;
@@ -19,7 +20,10 @@ const memberPersonalProject = mock<Project>();
 
 describe('SubworkflowPolicyChecker', () => {
 	const license = mock<License>();
-	const checker = new SubworkflowPolicyChecker(mock(), license, ownershipService);
+	const globalConfig = mock<GlobalConfig>({
+		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
+	});
+	const checker = new SubworkflowPolicyChecker(mock(), license, ownershipService, globalConfig);
 
 	beforeEach(() => {
 		license.isSharingEnabled.mockReturnValue(true);
@@ -31,7 +35,12 @@ describe('SubworkflowPolicyChecker', () => {
 
 	describe('no caller policy', () => {
 		test('should fall back to N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', async () => {
-			config.set('workflows.callerPolicyDefaultOption', 'none');
+			const checker = new SubworkflowPolicyChecker(
+				mock(),
+				license,
+				ownershipService,
+				mock<GlobalConfig>({ workflows: { callerPolicyDefaultOption: 'none' } }),
+			);
 
 			const parentWorkflow = mock<WorkflowEntity>();
 			const subworkflow = mock<Workflow>(); // no caller policy
