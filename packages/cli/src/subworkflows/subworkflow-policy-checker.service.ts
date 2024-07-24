@@ -33,6 +33,10 @@ export class SubworkflowPolicyChecker {
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
+		const policy = this.findPolicy(subworkflow);
+
+		if (policy === 'any') return;
+
 		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
 			parentWorkflowId,
 			subworkflowId,
@@ -46,8 +50,6 @@ export class SubworkflowPolicyChecker {
 			areOwnedBySameProject,
 			node,
 		};
-
-		const policy = this.findPolicy(subworkflow);
 
 		if (
 			policy === 'none' ||
