@@ -11,12 +11,6 @@ type DenialPolicy = Exclude<Policy, 'any'>;
 
 @Service()
 export class SubworkflowPolicyChecker {
-	private readonly denialReasons: Record<DenialPolicy, string> = {
-		none: 'Subworkflow may not be called by any workflow',
-		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
-		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
-	};
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -52,7 +46,7 @@ export class SubworkflowPolicyChecker {
 
 			throw new SubworkflowPolicyDenialError({
 				subworkflowId,
-				subworkflowProjectName: subworkflowProject.name,
+				subworkflowProject,
 				areOwnedBySameProject,
 				node,
 			});
@@ -100,6 +94,12 @@ export class SubworkflowPolicyChecker {
 
 		return callerIds.includes(parentWorkflowId);
 	}
+
+	private readonly denialReasons: Record<DenialPolicy, string> = {
+		none: 'Subworkflow may not be called by any workflow',
+		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
+		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
+	};
 
 	private logDenial({
 		parentWorkflowId,
