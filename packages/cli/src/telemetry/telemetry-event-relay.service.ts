@@ -66,6 +66,18 @@ export class TelemetryEventRelay {
 		this.eventService.on('community-package-deleted', (event) => {
 			this.communityPackageDeleted(event);
 		});
+		this.eventService.on('ldap-general-sync-finished', (event) => {
+			this.ldapGeneralSyncFinished(event);
+		});
+		this.eventService.on('ldap-settings-updated', (event) => {
+			this.ldapSettingsUpdated(event);
+		});
+		this.eventService.on('ldap-login-sync-failed', (event) => {
+			this.ldapLoginSyncFailed(event);
+		});
+		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
+			this.loginFailedDueToLdapDisabled(event);
+		});
 	}
 
 	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
@@ -292,5 +304,57 @@ export class TelemetryEventRelay {
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
 		});
+	}
+
+	private ldapGeneralSyncFinished({
+		type,
+		succeeded,
+		usersSynced,
+		error,
+	}: Event['ldap-general-sync-finished']) {
+		void this.telemetry.track('Ldap general sync finished', {
+			type,
+			succeeded,
+			users_synced: usersSynced,
+			error,
+		});
+	}
+
+	private ldapSettingsUpdated({
+		userId,
+		loginIdAttribute,
+		firstNameAttribute,
+		lastNameAttribute,
+		emailAttribute,
+		ldapIdAttribute,
+		searchPageSize,
+		searchTimeout,
+		synchronizationEnabled,
+		synchronizationInterval,
+		loginLabel,
+		loginEnabled,
+	}: Event['ldap-settings-updated']) {
+		void this.telemetry.track('User updated Ldap settings', {
+			user_id: userId,
+			loginIdAttribute,
+			firstNameAttribute,
+			lastNameAttribute,
+			emailAttribute,
+			ldapIdAttribute,
+			searchPageSize,
+			searchTimeout,
+			synchronizationEnabled,
+			synchronizationInterval,
+			loginLabel,
+			loginEnabled,
+		});
+	}
+
+	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
+		void this.telemetry.track('Ldap login sync failed', { error });
+	}
+
+	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
+		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
 }

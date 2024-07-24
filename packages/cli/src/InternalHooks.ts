@@ -618,40 +618,6 @@ export class InternalHooks {
 		});
 	}
 
-	async onLdapSyncFinished(data: {
-		type: string;
-		succeeded: boolean;
-		users_synced: number;
-		error: string;
-	}): Promise<void> {
-		return await this.telemetry.track('Ldap general sync finished', data);
-	}
-
-	async onUserUpdatedLdapSettings(data: {
-		user_id: string;
-		loginIdAttribute: string;
-		firstNameAttribute: string;
-		lastNameAttribute: string;
-		emailAttribute: string;
-		ldapIdAttribute: string;
-		searchPageSize: number;
-		searchTimeout: number;
-		synchronizationEnabled: boolean;
-		synchronizationInterval: number;
-		loginLabel: string;
-		loginEnabled: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('Ldap general sync finished', data);
-	}
-
-	async onLdapLoginSyncFailed(data: { error: string }): Promise<void> {
-		return await this.telemetry.track('Ldap login sync failed', data);
-	}
-
-	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
-		return await this.telemetry.track('User login failed since ldap disabled', data);
-	}
-
 	/*
 	 * Execution Statistics
 	 */
