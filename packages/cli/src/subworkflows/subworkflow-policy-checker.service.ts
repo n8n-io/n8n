@@ -29,40 +29,43 @@ export class SubworkflowPolicyChecker {
 	 * Check whether the parent workflow is allowed to call the subworkflow.
 	 */
 	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode) {
-		if (!subworkflow.id) return; // e.g. when running a subworkflow loaded from a file
+		const { id: subworkflowId } = subworkflow;
 
-		const policy = this.findPolicy(subworkflow);
+		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
 		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
 			parentWorkflowId,
-			subworkflowId: subworkflow.id,
+			subworkflowId,
 		});
 
 		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
 		const errorParams: SubworkflowPolicyDenialErrorParams = {
-			subworkflowId: subworkflow.id,
+			subworkflowId,
 			subworkflowProjectName: subworkflowProject.name,
 			areOwnedBySameProject,
 			node,
 		};
 
+		const policy = this.findPolicy(subworkflow);
+
 		if (policy === 'none') {
-			this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
+			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
 			throw new SubworkflowPolicyDenialError(errorParams);
 		}
 
-		if (policy === 'workflowsFromAList') {
-			if (!this.findCallerIds(subworkflow).includes(parentWorkflowId)) {
-				this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
+		if (
+			policy === 'workflowsFromAList' &&
+			!this.findCallerIds(subworkflow).includes(parentWorkflowId)
+		) {
+			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
-				throw new SubworkflowPolicyDenialError(errorParams);
-			}
+			throw new SubworkflowPolicyDenialError(errorParams);
 		}
 
 		if (policy === 'workflowsFromSameOwner' && !areOwnedBySameProject) {
-			this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
+			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
 			throw new SubworkflowPolicyDenialError(errorParams);
 		}
