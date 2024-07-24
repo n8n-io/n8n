@@ -25,7 +25,8 @@ export namespace ChatUI {
 
 	interface EndSessionMessage {
 		role: 'assistant';
-		type: 'end-session';
+		type: 'event';
+		eventName: 'end-session';
 	}
 
 	export interface QuickReply {

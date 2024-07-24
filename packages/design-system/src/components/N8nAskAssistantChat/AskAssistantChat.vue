@@ -36,8 +36,12 @@ const props = defineProps<Props>();
 const textInputValue = ref<string>('');
 
 const sessionEnded = computed(() => {
-	return Boolean(props.messages?.[props.messages.length - 1].type === 'end-session');
+	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
 });
+
+function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
+	return event && event.type === 'event' && event.eventName === 'end-session';
+}
 
 function onQuickReply(opt: ChatUI.QuickReply) {
 	emit('message', opt.text, opt.type);
@@ -76,7 +80,7 @@ function renderMarkdown(content: string) {
 				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
 					<div
 						v-if="
-							message.type !== 'end-session' &&
+							!isEndOfSessionEvent(message) &&
 							(i === 0 || message.role !== props.messages[i - 1].role)
 						"
 						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
@@ -131,7 +135,7 @@ function renderMarkdown(content: string) {
 							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
-					<div v-else-if="message.type === 'end-session'" :class="$style.endOfSessionText">
+					<div v-else-if="isEndOfSessionEvent(message)" :class="$style.endOfSessionText">
 						<span>
 							This Assistant session has ended. To start a new session with the Assistant, click an
 						</span>

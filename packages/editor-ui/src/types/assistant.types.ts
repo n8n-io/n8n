@@ -84,7 +84,9 @@ export namespace ChatRequest {
 	}
 
 	interface EndSessionMessage {
-		type: 'end-session';
+		role: 'assistant';
+		type: 'event';
+		eventName: 'end-session';
 	}
 
 	// export type MessageResponse = (

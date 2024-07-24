@@ -86,6 +86,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
+		// todo simplify
 		assistantMessages.forEach((message) => {
 			if (message.type === 'message') {
 				messages.push({
@@ -116,6 +117,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					content: message.content,
 					quickReplies: message.quickReplies,
 					read,
+				});
+			} else if (message.type === 'event') {
+				messages.push({
+					id,
+					type: 'event',
+					role: 'assistant',
+					eventName: message.eventName,
+					read: true,
 				});
 			}
 		});
