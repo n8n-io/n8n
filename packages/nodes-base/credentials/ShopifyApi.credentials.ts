@@ -62,8 +62,7 @@ export class ShopifyApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL:
-				'=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2024-07',
+			baseURL: '=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2024-07',
 			url: '/products.json',
 		},
 	};
