@@ -401,7 +401,7 @@ watch(() => props.readOnly, setReadonly, {
 			/>
 		</template>
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
 		<MiniMap data-test-id="canvas-minimap" pannable />
 
