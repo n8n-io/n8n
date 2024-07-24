@@ -10,6 +10,12 @@ import type { SubworkflowPolicyDenialErrorParams } from '@/errors/subworkflow-po
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
 
+const DENIAL_REASONS: Record<DenialPolicy, string> = {
+	none: 'Subworkflow may not be called by any workflow',
+	workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
+	workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
+};
+
 @Service()
 export class SubworkflowPolicyChecker {
 	constructor(
@@ -112,13 +118,6 @@ export class SubworkflowPolicyChecker {
 		subworkflowId: string;
 		policy: DenialPolicy;
 	}) {
-		const DENIAL_REASONS: Record<DenialPolicy, string> = {
-			none: 'Subworkflow may not be called by any workflow',
-			workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
-			workflowsFromSameOwner:
-				'Subworkflow may be called only by workflows owned by the same project',
-		};
-
 		this.logger.warn('[SubworkflowPolicyChecker] Subworkflow execution denied', {
 			reason: DENIAL_REASONS[policy],
 			parentWorkflowId,
