@@ -671,45 +671,6 @@ export const schema = {
 		},
 	},
 
-	externalStorage: {
-		s3: {
-			host: {
-				format: String,
-				default: '',
-				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
-			},
-			bucket: {
-				name: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
-					doc: 'Name of the n8n bucket in S3-compatible external storage',
-				},
-				region: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
-				},
-			},
-			credentials: {
-				accessKey: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
-					doc: 'Access key in S3-compatible external storage',
-				},
-				accessSecret: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
-					doc: 'Access secret in S3-compatible external storage',
-				},
-			},
-		},
-	},
-
 	deployment: {
 		type: {
 			format: String,
