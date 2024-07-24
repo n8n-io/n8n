@@ -5,6 +5,7 @@ import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import type { SubworkflowPolicyDenialErrorParams } from '@/errors/subworkflow-policy-denial.error';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -33,7 +34,7 @@ export class SubworkflowPolicyChecker {
 
 		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
-		const errorProps = {
+		const errorParams: SubworkflowPolicyDenialErrorParams = {
 			subworkflowId: subworkflow.id,
 			subworkflowProjectName: subworkflowProject.name,
 			areOwnedBySameProject,
@@ -43,21 +44,21 @@ export class SubworkflowPolicyChecker {
 		if (policy === 'none') {
 			this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
 
-			throw new SubworkflowPolicyDenialError(errorProps);
+			throw new SubworkflowPolicyDenialError(errorParams);
 		}
 
 		if (policy === 'workflowsFromAList') {
 			if (!this.findCallerIds(subworkflow).includes(parentWorkflowId)) {
 				this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
 
-				throw new SubworkflowPolicyDenialError(errorProps);
+				throw new SubworkflowPolicyDenialError(errorParams);
 			}
 		}
 
 		if (policy === 'workflowsFromSameOwner' && !areOwnedBySameProject) {
 			this.logDenial({ parentWorkflowId, subworkflowId: subworkflow.id, policy });
 
-			throw new SubworkflowPolicyDenialError(errorProps);
+			throw new SubworkflowPolicyDenialError(errorParams);
 		}
 	}
 
