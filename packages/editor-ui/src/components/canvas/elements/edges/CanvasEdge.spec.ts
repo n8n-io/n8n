@@ -38,6 +38,26 @@ describe('CanvasEdge', () => {
 		expect(emitted()).toHaveProperty('delete');
 	});
 
+	it('should emit add event when toolbar add is clicked', async () => {
+		const { emitted, getByTestId } = renderComponent();
+		const addButton = getByTestId('add-connection-button');
+
+		await fireEvent.click(addButton);
+
+		expect(emitted()).toHaveProperty('add');
+	});
+
+	it('should not render toolbar actions when readOnly', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				readOnly: true,
+			},
+		});
+
+		expect(() => getByTestId('add-connection-button')).toThrow();
+		expect(() => getByTestId('delete-connection-button')).toThrow();
+	});
+
 	it('should compute edgeStyle correctly', () => {
 		const { container } = renderComponent();
 

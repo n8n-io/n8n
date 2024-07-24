@@ -44,9 +44,7 @@ export class TelemetryEventRelay {
 		this.eventService.on('license-renewal-attempted', (event) => {
 			this.licenseRenewalAttempted(event);
 		});
-		this.eventService.on('variable-created', (event) => {
-			this.variableCreated(event);
-		});
+		this.eventService.on('variable-created', () => this.variableCreated());
 		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
 			this.externalSecretsProviderSettingsSaved(event);
 		});
@@ -58,6 +56,27 @@ export class TelemetryEventRelay {
 		});
 		this.eventService.on('public-api-key-deleted', (event) => {
 			this.publicApiKeyDeleted(event);
+		});
+		this.eventService.on('community-package-installed', (event) => {
+			this.communityPackageInstalled(event);
+		});
+		this.eventService.on('community-package-updated', (event) => {
+			this.communityPackageUpdated(event);
+		});
+		this.eventService.on('community-package-deleted', (event) => {
+			this.communityPackageDeleted(event);
+		});
+		this.eventService.on('ldap-general-sync-finished', (event) => {
+			this.ldapGeneralSyncFinished(event);
+		});
+		this.eventService.on('ldap-settings-updated', (event) => {
+			this.ldapSettingsUpdated(event);
+		});
+		this.eventService.on('ldap-login-sync-failed', (event) => {
+			this.ldapLoginSyncFailed(event);
+		});
+		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
+			this.loginFailedDueToLdapDisabled(event);
 		});
 	}
 
@@ -178,10 +197,8 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private variableCreated({ variableType }: Event['variable-created']) {
-		void this.telemetry.track('User created variable', {
-			variable_type: variableType,
-		});
+	private variableCreated() {
+		void this.telemetry.track('User created variable');
 	}
 
 	private externalSecretsProviderSettingsSaved({
@@ -210,8 +227,6 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiKeyCreated(event: Event['public-api-key-created']) {
-		if (!('publicApi' in event)) return;
-
 		const { user, publicApi } = event;
 
 		void this.telemetry.track('API key created', {
@@ -221,13 +236,125 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
-		if (!('publicApi' in event)) return;
-
 		const { user, publicApi } = event;
 
 		void this.telemetry.track('API key deleted', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
+	}
+
+	private communityPackageInstalled({
+		user,
+		inputString,
+		packageName,
+		success,
+		packageVersion,
+		packageNodeNames,
+		packageAuthor,
+		packageAuthorEmail,
+		failureReason,
+	}: Event['community-package-installed']) {
+		void this.telemetry.track('cnr package install finished', {
+			user_id: user.id,
+			input_string: inputString,
+			package_name: packageName,
+			success,
+			package_version: packageVersion,
+			package_node_names: packageNodeNames,
+			package_author: packageAuthor,
+			package_author_email: packageAuthorEmail,
+			failure_reason: failureReason,
+		});
+	}
+
+	private communityPackageUpdated({
+		user,
+		packageName,
+		packageVersionCurrent,
+		packageVersionNew,
+		packageNodeNames,
+		packageAuthor,
+		packageAuthorEmail,
+	}: Event['community-package-updated']) {
+		void this.telemetry.track('cnr package updated', {
+			user_id: user.id,
+			package_name: packageName,
+			package_version_current: packageVersionCurrent,
+			package_version_new: packageVersionNew,
+			package_node_names: packageNodeNames,
+			package_author: packageAuthor,
+			package_author_email: packageAuthorEmail,
+		});
+	}
+
+	private communityPackageDeleted({
+		user,
+		packageName,
+		packageVersion,
+		packageNodeNames,
+		packageAuthor,
+		packageAuthorEmail,
+	}: Event['community-package-deleted']) {
+		void this.telemetry.track('cnr package deleted', {
+			user_id: user.id,
+			package_name: packageName,
+			package_version: packageVersion,
+			package_node_names: packageNodeNames,
+			package_author: packageAuthor,
+			package_author_email: packageAuthorEmail,
+		});
+	}
+
+	private ldapGeneralSyncFinished({
+		type,
+		succeeded,
+		usersSynced,
+		error,
+	}: Event['ldap-general-sync-finished']) {
+		void this.telemetry.track('Ldap general sync finished', {
+			type,
+			succeeded,
+			users_synced: usersSynced,
+			error,
+		});
+	}
+
+	private ldapSettingsUpdated({
+		userId,
+		loginIdAttribute,
+		firstNameAttribute,
+		lastNameAttribute,
+		emailAttribute,
+		ldapIdAttribute,
+		searchPageSize,
+		searchTimeout,
+		synchronizationEnabled,
+		synchronizationInterval,
+		loginLabel,
+		loginEnabled,
+	}: Event['ldap-settings-updated']) {
+		void this.telemetry.track('User updated Ldap settings', {
+			user_id: userId,
+			loginIdAttribute,
+			firstNameAttribute,
+			lastNameAttribute,
+			emailAttribute,
+			ldapIdAttribute,
+			searchPageSize,
+			searchTimeout,
+			synchronizationEnabled,
+			synchronizationInterval,
+			loginLabel,
+			loginEnabled,
+		});
+	}
+
+	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
+		void this.telemetry.track('Ldap login sync failed', { error });
+	}
+
+	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
+		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
 }

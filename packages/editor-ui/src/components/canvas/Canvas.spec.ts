@@ -8,8 +8,7 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionType } from 'n8n-workflow';
 import type { useDeviceSupport } from 'n8n-design-system';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
+// @ts-expect-error Initialize window object
 global.window = jsdom.window as unknown as Window & typeof globalThis;
 
 vi.mock('n8n-design-system', async (importOriginal) => {
@@ -100,12 +99,14 @@ describe('Canvas', () => {
 		await fireEvent.mouseDown(node, { view: window });
 		await fireEvent.mouseMove(node, {
 			view: window,
-			clientX: 100,
-			clientY: 100,
+			clientX: 96,
+			clientY: 96,
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
-		// Snap to 16px grid: 100 -> 96
-		expect(emitted()['update:node:position']).toEqual([['1', { x: 96, y: 96 }]]);
+		// Snap to 20px grid: 96 -> 100
+		expect(emitted()['update:nodes:position']).toEqual([
+			[[{ id: '1', position: { x: 100, y: 100 } }]],
+		]);
 	});
 });
