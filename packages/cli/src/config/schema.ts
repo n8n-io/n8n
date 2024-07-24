@@ -933,13 +933,13 @@ export const schema = {
 			doc: 'Whether AI assistant feature is enabled',
 			format: Boolean,
 			default: false,
-			env: 'AI_ASSISTANT_ENABLED',
+			env: 'N8N_AI_ASSISTANT_ENABLED',
 		},
 		baseUrl: {
 			doc: 'Base URL of the AI assistant service',
 			format: String,
 			default: 'https://ai-assistant.n8n.io',
-			env: 'AI_ASSISTANT_BASE_URL',
+			env: 'N8N_AI_ASSISTANT_BASE_URL',
 		},
 	},
 
