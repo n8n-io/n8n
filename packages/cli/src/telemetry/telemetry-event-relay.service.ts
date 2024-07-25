@@ -44,9 +44,7 @@ export class TelemetryEventRelay {
 		this.eventService.on('license-renewal-attempted', (event) => {
 			this.licenseRenewalAttempted(event);
 		});
-		this.eventService.on('variable-created', (event) => {
-			this.variableCreated(event);
-		});
+		this.eventService.on('variable-created', () => this.variableCreated());
 		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
 			this.externalSecretsProviderSettingsSaved(event);
 		});
@@ -67,6 +65,31 @@ export class TelemetryEventRelay {
 		});
 		this.eventService.on('community-package-deleted', (event) => {
 			this.communityPackageDeleted(event);
+		});
+
+		this.eventService.on('credentials-created', (event) => {
+			this.credentialsCreated(event);
+		});
+		this.eventService.on('credentials-shared', (event) => {
+			this.credentialsShared(event);
+		});
+		this.eventService.on('credentials-updated', (event) => {
+			this.credentialsUpdated(event);
+		});
+		this.eventService.on('credentials-deleted', (event) => {
+			this.credentialsDeleted(event);
+		});
+		this.eventService.on('ldap-general-sync-finished', (event) => {
+			this.ldapGeneralSyncFinished(event);
+		});
+		this.eventService.on('ldap-settings-updated', (event) => {
+			this.ldapSettingsUpdated(event);
+		});
+		this.eventService.on('ldap-login-sync-failed', (event) => {
+			this.ldapLoginSyncFailed(event);
+		});
+		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
+			this.loginFailedDueToLdapDisabled(event);
 		});
 	}
 
@@ -187,10 +210,8 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private variableCreated({ variableType }: Event['variable-created']) {
-		void this.telemetry.track('User created variable', {
-			variable_type: variableType,
-		});
+	private variableCreated() {
+		void this.telemetry.track('User created variable');
 	}
 
 	private externalSecretsProviderSettingsSaved({
@@ -296,5 +317,107 @@ export class TelemetryEventRelay {
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
 		});
+	}
+
+	private credentialsCreated({
+		user,
+		credentialType,
+		credentialId,
+		projectId,
+		projectType,
+	}: Event['credentials-created']) {
+		void this.telemetry.track('User created credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+			project_id: projectId,
+			project_type: projectType,
+		});
+	}
+
+	private credentialsShared({
+		user,
+		credentialType,
+		credentialId,
+		userIdSharer,
+		userIdsShareesAdded,
+		shareesRemoved,
+	}: Event['credentials-shared']) {
+		void this.telemetry.track('User updated cred sharing', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+			user_id_sharer: userIdSharer,
+			user_ids_sharees_added: userIdsShareesAdded,
+			sharees_removed: shareesRemoved,
+		});
+	}
+
+	private credentialsUpdated({ user, credentialId, credentialType }: Event['credentials-updated']) {
+		void this.telemetry.track('User updated credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
+	private credentialsDeleted({ user, credentialId, credentialType }: Event['credentials-deleted']) {
+		void this.telemetry.track('User deleted credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
+	private ldapGeneralSyncFinished({
+		type,
+		succeeded,
+		usersSynced,
+		error,
+	}: Event['ldap-general-sync-finished']) {
+		void this.telemetry.track('Ldap general sync finished', {
+			type,
+			succeeded,
+			users_synced: usersSynced,
+			error,
+		});
+	}
+
+	private ldapSettingsUpdated({
+		userId,
+		loginIdAttribute,
+		firstNameAttribute,
+		lastNameAttribute,
+		emailAttribute,
+		ldapIdAttribute,
+		searchPageSize,
+		searchTimeout,
+		synchronizationEnabled,
+		synchronizationInterval,
+		loginLabel,
+		loginEnabled,
+	}: Event['ldap-settings-updated']) {
+		void this.telemetry.track('User updated Ldap settings', {
+			user_id: userId,
+			loginIdAttribute,
+			firstNameAttribute,
+			lastNameAttribute,
+			emailAttribute,
+			ldapIdAttribute,
+			searchPageSize,
+			searchTimeout,
+			synchronizationEnabled,
+			synchronizationInterval,
+			loginLabel,
+			loginEnabled,
+		});
+	}
+
+	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
+		void this.telemetry.track('Ldap login sync failed', { error });
+	}
+
+	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
+		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
 }

@@ -13,7 +13,8 @@ export const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
 		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
-		description: "Specify a file's path or path pattern to read multiple files",
+		description:
+			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
 	},
 	{
 		displayName: 'Options',
@@ -73,7 +74,12 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
-			fileSelector = this.getNodeParameter('fileSelector', itemIndex) as string;
+			fileSelector = String(this.getNodeParameter('fileSelector', itemIndex));
+
+			if (/^[a-zA-Z]:/.test(fileSelector)) {
+				fileSelector = fileSelector.replace(/\\\\/g, '/');
+			}
+
 			const options = this.getNodeParameter('options', itemIndex, {});
 
 			let dataPropertyName = 'data';

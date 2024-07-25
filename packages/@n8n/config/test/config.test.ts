@@ -122,6 +122,24 @@ describe('GlobalConfig', () => {
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
+		externalStorage: {
+			s3: {
+				host: '',
+				bucket: {
+					name: '',
+					region: '',
+				},
+				credentials: {
+					accessKey: '',
+					accessSecret: '',
+				},
+			},
+		},
+		workflows: {
+			defaultName: 'My workflow',
+			onboardingFlowDisabled: false,
+			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

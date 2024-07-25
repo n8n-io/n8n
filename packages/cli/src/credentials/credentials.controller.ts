@@ -5,7 +5,6 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -42,7 +41,6 @@ export class CredentialsController {
 		private readonly namingService: NamingService,
 		private readonly license: License,
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -162,18 +160,17 @@ export class CredentialsController {
 			req.body.projectId,
 		);
 
-		void this.internalHooks.onUserCreatedCredentials({
-			user: req.user,
-			credential_name: newCredential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-			public_api: false,
-		});
+		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
+			credential.id,
+		);
+
 		this.eventService.emit('credentials-created', {
 			user: req.user,
-			credentialName: newCredential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			publicApi: false,
+			projectId: project?.id,
+			projectType: project?.type,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
@@ -223,15 +220,8 @@ export class CredentialsController {
 
 		this.logger.verbose('Credential updated', { credentialId });
 
-		void this.internalHooks.onUserUpdatedCredentials({
-			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-		});
 		this.eventService.emit('credentials-updated', {
 			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
@@ -264,15 +254,8 @@ export class CredentialsController {
 
 		await this.credentialsService.delete(credential);
 
-		void this.internalHooks.onUserDeletedCredentials({
-			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-		});
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
@@ -335,22 +318,12 @@ export class CredentialsController {
 			newShareeIds = toShare;
 		});
 
-		void this.internalHooks.onUserSharedCredentials({
-			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-			user_id_sharer: req.user.id,
-			user_ids_sharees_added: newShareeIds,
-			sharees_removed: amountRemoved,
-		});
 		this.eventService.emit('credentials-shared', {
 			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			userIdSharer: req.user.id,
-			userIdsShareesRemoved: newShareeIds,
+			userIdsShareesAdded: newShareeIds,
 			shareesRemoved: amountRemoved,
 		});
 

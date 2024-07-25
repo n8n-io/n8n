@@ -125,7 +125,7 @@ async function fetchWorkflow() {
 		try {
 			await workflowsStore.fetchActiveWorkflows();
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
-			await workflowHelpers.initState(data);
+			workflowHelpers.initState(data);
 			await nodeHelpers.addNodes(data.nodes, data.connections);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));

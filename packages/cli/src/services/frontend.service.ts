@@ -99,7 +99,7 @@ export class FrontendService {
 			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
-			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
+			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
 			timezone: config.getEnv('generic.timezone'),
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
