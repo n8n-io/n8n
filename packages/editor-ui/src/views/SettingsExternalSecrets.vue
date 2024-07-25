@@ -46,10 +46,6 @@ function goToUpgrade() {
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}
 				</a>
 			</n8n-callout>
-			<n8n-notice
-				v-if="sortedProviders.some((p) => p.name === 'infisical' && p.connected)"
-				:content="$locale.baseText('settings.externalSecrets.infisicalDeprecation')"
-			/>
 			<ExternalSecretsProviderCard
 				v-for="provider in sortedProviders"
 				:key="provider.name"
