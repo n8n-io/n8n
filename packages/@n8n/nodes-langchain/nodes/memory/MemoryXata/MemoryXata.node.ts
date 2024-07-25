@@ -6,7 +6,7 @@ import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryXata implements INodeType {
@@ -81,18 +81,7 @@ export class MemoryXata implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			{
-				displayName: 'Context Window Length',
-				name: 'contextWindowLength',
-				type: 'number',
-				default: 5,
-				hint: 'How many past interactions the model receives as context',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lt: 1.3 } }],
-					},
-				},
-			}
+			contextWindowLengthProperty({ hide: { '@version': [{ _cnd: { lt: 1.3 } }] } }),
 		],
 	};
 

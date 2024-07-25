@@ -14,7 +14,7 @@ import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryRedisChat implements INodeType {
@@ -95,18 +95,7 @@ export class MemoryRedisChat implements INodeType {
 				description:
 					'For how long the session should be stored in seconds. If set to 0 it will not expire.',
 			},
-			{
-				displayName: 'Context Window Length',
-				name: 'contextWindowLength',
-				type: 'number',
-				default: 5,
-				hint: 'How many past interactions the model receives as context',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lt: 1.3 } }],
-					},
-				},
-			},
+			contextWindowLengthProperty({ hide: { '@version': [{ _cnd: { lt: 1.3 } }] } }),
 		],
 	};
 

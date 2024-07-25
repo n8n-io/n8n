@@ -9,7 +9,7 @@ import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
 import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryPostgresChat implements INodeType {
@@ -60,18 +60,7 @@ export class MemoryPostgresChat implements INodeType {
 				description:
 					'The table name to store the chat history in. If table does not exist, it will be created.',
 			},
-			{
-				displayName: 'Context Window Length',
-				name: 'contextWindowLength',
-				type: 'number',
-				default: 5,
-				hint: 'How many past interactions the model receives as context',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lt: 1.1 } }],
-					},
-				},
-			},
+			contextWindowLengthProperty({ hide: { '@version': [{ _cnd: { lt: 1.1 } }] } }),
 		],
 	};
 

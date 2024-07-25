@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, IDisplayOptions } from 'n8n-workflow';
 
 export const sessionIdOption: INodeProperties = {
 	displayName: 'Session ID',
@@ -33,3 +33,14 @@ export const sessionKeyProperty: INodeProperties = {
 		},
 	},
 };
+
+export function contextWindowLengthProperty(displayOptions?: IDisplayOptions): INodeProperties {
+	return {
+		displayName: 'Context Window Length',
+		name: 'contextWindowLength',
+		type: 'number',
+		default: 5,
+		hint: 'How many past interactions the model receives as context',
+		displayOptions: displayOptions ?? {},
+	};
+}
