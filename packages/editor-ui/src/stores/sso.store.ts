@@ -42,8 +42,8 @@ export const useSSOStore = defineStore('sso', () => {
 			void toggleLoginEnabled(value);
 		},
 	});
-	const isEnterpriseSamlEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Saml),
+	const isEnterpriseSamlEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
 	);
 	const isDefaultAuthenticationSaml = computed(() => settingsStore.isDefaultAuthenticationSaml);
 	const showSsoLoginButton = computed(

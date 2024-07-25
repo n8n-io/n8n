@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -46,7 +46,7 @@
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
     "@types/markdown-it": "^12.2.3",
-    "unplugin-icons": "^0.17.0",
+    "unplugin-icons": "^0.19.0",
     "vite-plugin-dts": "^3.9.1"
   },
   "files": [

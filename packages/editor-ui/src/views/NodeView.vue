@@ -102,11 +102,11 @@
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
-					<SetupWorkflowCredentialsButton />
+					<LazySetupWorkflowCredentialsButton />
 				</div>
 			</Suspense>
 			<Suspense>
-				<NodeCreation
+				<LazyNodeCreation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
@@ -115,7 +115,7 @@
 				/>
 			</Suspense>
 			<Suspense>
-				<CanvasControls />
+				<LazyCanvasControls />
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
@@ -241,6 +241,7 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
+	VALID_WORKFLOW_IMPORT_URL_REGEX,
 } from '@/constants';
 
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
@@ -389,13 +390,13 @@ interface AddNodeOptions {
 	name?: string;
 }
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
-const CanvasControls = defineAsyncComponent(
+const LazyCanvasControls = defineAsyncComponent(
 	async () => await import('@/components/CanvasControls.vue'),
 );
-const SetupWorkflowCredentialsButton = defineAsyncComponent(
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 	async () =>
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
@@ -408,10 +409,10 @@ export default defineComponent({
 		Sticky,
 		CanvasAddButton,
 		KeyboardShortcutTooltip,
-		NodeCreation,
-		CanvasControls,
+		LazyNodeCreation,
+		LazyCanvasControls,
 		ContextMenu,
-		SetupWorkflowCredentialsButton,
+		LazySetupWorkflowCredentialsButton,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
@@ -833,10 +834,10 @@ export default defineComponent({
 		const loadPromises = (() => {
 			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
 			const promises = [this.loadActiveWorkflows(), this.loadCredentialTypes()];
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
 				promises.push(this.loadVariables());
 			}
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
 				promises.push(this.loadSecrets());
 			}
 			return promises;
@@ -2024,7 +2025,7 @@ export default defineComponent({
 					return;
 				}
 				// Check if it is an URL which could contain workflow data
-				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
+				if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
 					// Pasted data points to a possible workflow JSON file
 
 					if (!this.editAllowedCheck()) {
@@ -4208,7 +4209,7 @@ export default defineComponent({
 
 				if (
 					nodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+					this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					nodeData.credentials = Object.fromEntries(

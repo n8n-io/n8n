@@ -29,6 +29,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '../shared/mocking';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { RoleService } from '@/services/role.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -394,6 +395,10 @@ describe('POST /projects/', () => {
 		expect(async () => {
 			await findProject(respProject.id);
 		}).not.toThrow();
+		expect(resp.body.data.role).toBe('project:admin');
+		for (const scope of Container.get(RoleService).getRoleScopes('project:admin')) {
+			expect(resp.body.data.scopes).toContain(scope);
+		}
 	});
 
 	test('should allow to create a team projects if below the quota', async () => {
@@ -871,7 +876,7 @@ describe('DELETE /project/:projectId', () => {
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
 		await shareWorkflowWithProjects(sharedWorkflow2, [
-			{ project: otherProject, role: 'workflow:user' },
+			{ project: otherProject, role: 'workflow:editor' },
 		]);
 
 		//
@@ -928,7 +933,7 @@ describe('DELETE /project/:projectId', () => {
 			{ project: otherProject, role: 'workflow:editor' },
 		]);
 		await shareWorkflowWithProjects(ownedWorkflow2, [
-			{ project: otherProject, role: 'workflow:user' },
+			{ project: otherProject, role: 'workflow:editor' },
 		]);
 
 		//

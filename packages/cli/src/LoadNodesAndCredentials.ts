@@ -19,7 +19,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import config from '@/config';
 import {
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
@@ -28,6 +27,7 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { Logger } from '@/Logger';
+import { GlobalConfig } from '@n8n/config';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -44,15 +44,16 @@ export class LoadNodesAndCredentials {
 
 	loaders: Record<string, DirectoryLoader> = {};
 
-	excludeNodes = config.getEnv('nodes.exclude');
+	excludeNodes = this.globalConfig.nodes.exclude;
 
-	includeNodes = config.getEnv('nodes.include');
+	includeNodes = this.globalConfig.nodes.include;
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async init() {

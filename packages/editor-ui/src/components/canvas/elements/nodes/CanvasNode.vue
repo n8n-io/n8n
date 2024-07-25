@@ -17,6 +17,10 @@ import { useContextMenu } from '@/composables/useContextMenu';
 import { Position } from '@vue-flow/core';
 import type { XYPosition, NodeProps } from '@vue-flow/core';
 
+type Props = NodeProps<CanvasNodeData> & {
+	readOnly?: boolean;
+};
+
 const emit = defineEmits<{
 	add: [id: string, handle: string];
 	delete: [id: string];
@@ -28,7 +32,8 @@ const emit = defineEmits<{
 	update: [id: string, parameters: Record<string, unknown>];
 	move: [id: string, position: XYPosition];
 }>();
-const props = defineProps<NodeProps<CanvasNodeData>>();
+
+const props = defineProps<Props>();
 
 const nodeTypesStore = useNodeTypesStore();
 const contextMenu = useContextMenu();
@@ -248,6 +253,7 @@ watch(
 		<CanvasNodeToolbar
 			v-if="nodeTypeDescription"
 			data-test-id="canvas-node-toolbar"
+			:read-only="readOnly"
 			:class="$style.canvasNodeToolbar"
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
@@ -256,7 +262,7 @@ watch(
 		/>
 
 		<CanvasNodeRenderer
-			@dblclick="onActivate"
+			@dblclick.stop="onActivate"
 			@move="onMove"
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromNode"

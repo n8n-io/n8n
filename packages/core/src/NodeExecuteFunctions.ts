@@ -2755,6 +2755,12 @@ async function getInputConnectionData(
 
 	const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 	if (parentNodes.length === 0) {
+		if (inputConfiguration.required) {
+			throw new NodeOperationError(
+				node,
+				`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
+			);
+		}
 		return inputConfiguration.maxConnections === 1 ? undefined : [];
 	}
 
@@ -2888,7 +2894,10 @@ async function getInputConnectionData(
 	const nodes = await Promise.all(constParentNodes);
 
 	if (inputConfiguration.required && nodes.length === 0) {
-		throw new NodeOperationError(node, `A ${inputName} processor node must be connected`);
+		throw new NodeOperationError(
+			node,
+			`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
+		);
 	}
 	if (
 		inputConfiguration.maxConnections !== undefined &&
@@ -2896,7 +2905,7 @@ async function getInputConnectionData(
 	) {
 		throw new NodeOperationError(
 			node,
-			`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected`,
+			`Only ${inputConfiguration.maxConnections} ${inputName} sub-nodes are/is allowed to be connected`,
 		);
 	}
 

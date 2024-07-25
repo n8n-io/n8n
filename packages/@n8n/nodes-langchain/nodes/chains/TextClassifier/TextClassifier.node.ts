@@ -34,6 +34,7 @@ export class TextClassifier implements INodeType {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
 		icon: 'fa:tags',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Classify your text into distinct categories',

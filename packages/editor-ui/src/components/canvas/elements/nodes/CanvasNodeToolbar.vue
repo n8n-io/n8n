@@ -11,6 +11,10 @@ const emit = defineEmits<{
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
+const props = defineProps<{
+	readOnly?: boolean;
+}>();
+
 const $style = useCssModule();
 const i18n = useI18n();
 
@@ -22,8 +26,14 @@ const workflowRunning = false;
 // @TODO
 const nodeDisabledTitle = 'Test';
 
+const classes = computed(() => ({
+	[$style.canvasNodeToolbar]: true,
+	[$style.readOnly]: props.readOnly,
+}));
+
 const isExecuteNodeVisible = computed(() => {
 	return (
+		!props.readOnly &&
 		render.value.type === CanvasNodeRenderType.Default &&
 		'configuration' in render.value.options &&
 		!render.value.options.configuration
@@ -31,8 +41,10 @@ const isExecuteNodeVisible = computed(() => {
 });
 
 const isDisableNodeVisible = computed(() => {
-	return render.value.type === CanvasNodeRenderType.Default;
+	return !props.readOnly && render.value.type === CanvasNodeRenderType.Default;
 });
+
+const isDeleteNodeVisible = computed(() => !props.readOnly);
 
 function executeNode() {
 	emit('run');
@@ -52,7 +64,7 @@ function onOpenContextMenu(event: MouseEvent) {
 </script>
 
 <template>
-	<div :class="$style.canvasNodeToolbar">
+	<div :class="classes">
 		<div :class="$style.canvasNodeToolbarItems">
 			<N8nIconButton
 				v-if="isExecuteNodeVisible"
@@ -76,6 +88,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				@click="onToggleNode"
 			/>
 			<N8nIconButton
+				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
 				type="tertiary"
 				size="small"
@@ -99,6 +112,9 @@ function onOpenContextMenu(event: MouseEvent) {
 <style lang="scss" module>
 .canvasNodeToolbar {
 	padding-bottom: var(--spacing-2xs);
+	display: flex;
+	justify-content: flex-end;
+	width: 100%;
 }
 
 .canvasNodeToolbarItems {

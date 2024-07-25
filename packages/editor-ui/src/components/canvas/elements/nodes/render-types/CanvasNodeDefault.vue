@@ -18,6 +18,7 @@ const emit = defineEmits<{
 
 const {
 	label,
+	subtitle,
 	inputs,
 	outputs,
 	connections,
@@ -102,17 +103,20 @@ function openContextMenu(event: MouseEvent) {
 		</N8nTooltip>
 		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
-		<div v-if="label" :class="$style.label">
-			{{ label }}
-			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+		<div :class="$style.description">
+			<div v-if="label" :class="$style.label">
+				{{ label }}
+				<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+			</div>
+			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .node {
-	--canvas-node--height: calc(96px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
-	--canvas-node--width: 96px;
+	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
+	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
@@ -154,13 +158,13 @@ function openContextMenu(event: MouseEvent) {
 	}
 
 	&.configurable {
-		--canvas-node--height: 96px;
+		--canvas-node--height: 100px;
 		--canvas-node--width: calc(
 			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
 
-		.label {
+		.description {
 			top: unset;
 			position: relative;
 			margin-left: var(--spacing-s);
@@ -205,14 +209,30 @@ function openContextMenu(event: MouseEvent) {
 	}
 }
 
-.label {
+.description {
 	top: 100%;
 	position: absolute;
-	font-size: var(--font-size-m);
-	text-align: center;
 	width: 100%;
 	min-width: 200px;
 	margin-top: var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
+	align-items: center;
+}
+
+.label {
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-compact);
+	text-align: center;
+}
+
+.subtitle {
+	color: var(--color-text-light);
+	font-size: var(--font-size-xs);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .statusIcons {

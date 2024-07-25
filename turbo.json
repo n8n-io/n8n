@@ -24,6 +24,7 @@
 		"format": {},
 		"lint:backend": {
 			"dependsOn": [
+				"@n8n/config#lint",
 				"@n8n/client-oauth2#lint",
 				"@n8n/imap#lint",
 				"@n8n/permissions#lint",
@@ -50,6 +51,7 @@
 		"lintfix": {},
 		"test:backend": {
 			"dependsOn": [
+				"@n8n/config#test",
 				"@n8n/client-oauth2#test",
 				"@n8n/imap#test",
 				"@n8n/permissions#test",
