@@ -219,10 +219,10 @@ function renderMarkdown(content: string) {
 }
 
 .header {
-	padding: 23px 23px;
+	height: 65px; // same as header height in editor
+	padding: 0 var(--spacing-l);
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
-	// todo
 	border-top: 0;
 	display: flex;
 
@@ -239,7 +239,7 @@ function renderMarkdown(content: string) {
 .body {
 	background-color: var(--color-background-light);
 	border: var(--border-base);
-	border-top: 0; // todo
+	border-top: 0;
 	height: 100%;
 	overflow: scroll;
 	padding-bottom: 250px; // make scrollable at the end
@@ -247,34 +247,34 @@ function renderMarkdown(content: string) {
 }
 
 .placeholder {
-	padding: 16px;
+	padding: var(--spacing-s);
 }
 
 .messages {
-	padding: 12px;
+	padding: var(--spacing-xs);
 }
 
 .message {
-	margin-bottom: 12px;
-	font-size: 12px;
-	line-height: 19px;
+	margin-bottom: var(--spacing-xs);
+	font-size: var(--font-size-2xs);
+	line-height: 19px; // todo
 }
 
 .roleName {
 	display: flex;
 	align-items: center;
-	margin-bottom: 6px;
+	margin-bottom: var(--spacing-3xs);
 
-	font-weight: 600;
-	font-size: 12px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
 
 	> * {
-		margin-right: 6px;
+		margin-right: var(--spacing-3xs);
 	}
 }
 
 .userSection {
-	margin-top: 28px;
+	margin-top: var(--spacing-l);
 }
 
 .chatTitle > * {
@@ -284,8 +284,8 @@ function renderMarkdown(content: string) {
 .greeting {
 	color: var(--color-text-dark);
 	font-size: var(--font-size-m);
-	line-height: 24px;
-	margin-bottom: 16px;
+	line-height: 24px; // todo
+	margin-bottom: var(--spacing-s);
 }
 
 .info {
@@ -298,9 +298,9 @@ function renderMarkdown(content: string) {
 }
 
 .quickReplies {
-	margin-top: 16px;
+	margin-top: var(--spacing-s);
 	> * {
-		margin-bottom: 8px;
+		margin-bottom: var(--spacing-2xs);
 	}
 }
 
@@ -317,48 +317,47 @@ function renderMarkdown(content: string) {
 	font-size: var(--font-size-2xs);
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 
 	li {
-		margin-left: 12px;
+		margin-left: var(--spacing-xs);
 	}
 }
 
 .blockTitle {
 	border-bottom: var(--border-base);
-	padding: 8px 8px 12px 8px;
-	font-weight: 600;
+	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
+	font-weight: var(--font-weight-bold);
 }
 
 .blockBody {
-	padding: 12px;
+	padding: var(--spacing-xs);
 }
 
 .inputWrapper {
 	position: absolute;
 	bottom: 0;
-	height: 48px;
+	height: var(--spacing-2xl);
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
 
 	display: flex;
 	align-items: center;
-	padding: 12px;
+	padding: var(--spacing-xs);
 
 	input {
 		border: none;
 		background-color: transparent;
 		width: 100%;
-		font-size: 12px;
+		font-size: var(--spacing-xs);
 		outline: none;
 		color: var(--color-text-dark);
 	}
 }
 
 .sendButton {
-	// todo
-	color: #d9dee8;
+	color: var(--color-text-lighter);
 	cursor: pointer;
 }
 
@@ -375,14 +374,14 @@ function renderMarkdown(content: string) {
 }
 
 .endOfSessionText {
-	margin-top: 24px;
-	padding-top: 6px;
+	margin-top: var(--spacing-l);
+	padding-top: var(--spacing-3xs);
 	border-top: var(--border-base);
 	color: var(--color-text-base);
 
 	> button,
 	> span {
-		margin-right: 6px;
+		margin-right: var(--spacing-3xs);
 	}
 }
 
