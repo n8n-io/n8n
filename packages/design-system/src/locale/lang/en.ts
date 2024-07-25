@@ -43,4 +43,6 @@ export default {
 	'assistantChat.placeholder.3': 'button.',
 	'assistantChat.placeholder.4': 'Clicking it starts a chat session with me.',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
+	'inlineAskAssistantButton.askAssistant': 'Ask Assistant',
+	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;

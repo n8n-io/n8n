@@ -2,6 +2,9 @@
 import { computed } from 'vue';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
+import { useI18n } from '../../composables/useI18n';
+
+const { t } = useI18n();
 
 interface Props {
 	size: 'small' | 'medium';
@@ -51,8 +54,8 @@ const onClick = () => {
 		<div>
 			<div :style="{ padding: sizes[size].padding }">
 				<AssistantIcon :size="size" :class="$style.icon" />
-				<span v-if="asked">Asked</span>
-				<AssistantText v-else :size="size" text="Ask Assistant" />
+				<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
+				<AssistantText v-else :size="size" :text="t('inlineAskAssistantButton.askAssistant')" />
 			</div>
 		</div>
 	</button>
