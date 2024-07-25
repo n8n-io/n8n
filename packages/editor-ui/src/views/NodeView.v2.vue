@@ -825,9 +825,11 @@ async function onAddNodesAndConnections(
 		};
 	});
 
-	await addConnections(mappedConnections);
+	addConnections(mappedConnections);
 
-	uiStore.resetLastInteractedWith();
+	void nextTick(() => {
+		uiStore.resetLastInteractedWith();
+	});
 }
 
 async function onRevertAddNode({ node }: { node: INodeUi }) {
