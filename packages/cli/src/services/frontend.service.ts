@@ -217,6 +217,9 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+			ai: {
+				enabled: config.getEnv('ai.enabled'),
+			},
 			workflowHistory: {
 				pruneTime: -1,
 				licensePruneTime: -1,

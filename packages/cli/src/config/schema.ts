@@ -868,9 +868,18 @@ export const schema = {
 		},
 	},
 
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled',
+			format: Boolean,
+			default: false,
+			env: 'N8N_AI_ASSISTANT_ENABLED',
+		},
+	},
+
 	aiAssistant: {
 		enabled: {
-			doc: 'Whether AI assistant feature is enabled',
+			doc: 'Whether AI assistant features are enabled',
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ASSISTANT_ENABLED',

@@ -2726,6 +2726,9 @@ export interface IN8nUISettings {
 	banners: {
 		dismissed: string[];
 	};
+	ai: {
+		enabled: boolean;
+	};
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
