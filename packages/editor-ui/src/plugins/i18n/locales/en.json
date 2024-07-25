@@ -130,6 +130,7 @@
 	"auth.signup.setupYourAccount": "Set up your account",
 	"auth.signup.setupYourAccountError": "Problem setting up your account",
 	"auth.signup.tokenValidationError": "Issue validating invite token",
+	"aiAssistant.name": "AI Assistant",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",

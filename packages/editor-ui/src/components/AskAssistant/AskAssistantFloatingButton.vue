@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from 'n8n-design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
+const i18n = useI18n();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -37,7 +39,7 @@ const lastUnread = computed(() => {
 				<div :class="$style.text">{{ lastUnread }}</div>
 				<div :class="$style.assistant">
 					<AssistantAvatar size="mini" />
-					<span>AI Assistant</span>
+					<span>{{ i18n.baseText('aiAssistant.name') }}</span>
 				</div>
 			</template>
 			<AskAssistantButton
