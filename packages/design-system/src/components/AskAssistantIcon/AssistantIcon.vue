@@ -37,8 +37,8 @@ const sizes = {
 				gradientUnits="userSpaceOnUse"
 			>
 				<stop stop-color="var(--color-assistant-highlight-1)" />
-				<stop offset="0.495" stop-color="#AA7BEC" />
-				<stop offset="1" stop-color="#EC7B8E" />
+				<stop offset="0.495" stop-color="var(--color-assistant-highlight-2)" />
+				<stop offset="1" stop-color="var(--color-assistant-highlight-3)" />
 			</linearGradient>
 		</defs>
 	</svg>
