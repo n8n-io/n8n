@@ -873,7 +873,7 @@ export const schema = {
 			doc: 'Whether AI features are enabled',
 			format: Boolean,
 			default: false,
-			env: 'N8N_AI_ASSISTANT_ENABLED',
+			env: 'N8N_AI_ENABLED',
 		},
 	},
 
