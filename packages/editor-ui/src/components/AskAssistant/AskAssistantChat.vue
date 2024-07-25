@@ -4,6 +4,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
+import AskAssistantChat from 'n8n-design-system/components/AskAssistantChat/AskAssistantChat.vue';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
@@ -48,7 +49,7 @@ async function undoCodeDiff(index: number) {
 				:class="$style.wrapper"
 				data-test-id="ask-assistant-chat"
 			>
-				<n8n-ask-assistant-chat
+				<AskAssistantChat
 					:user="user"
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useAssistantStore } from '@/stores/assistant.store';
 import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
+import AskAssistantButton from 'n8n-design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
@@ -39,7 +40,7 @@ const lastUnread = computed(() => {
 					<span>AI Assistant</span>
 				</div>
 			</template>
-			<n8n-a-i-assistant-button
+			<AskAssistantButton
 				:unread-count="assistantStore.unreadCount"
 				@click="assistantStore.openChat"
 			/>

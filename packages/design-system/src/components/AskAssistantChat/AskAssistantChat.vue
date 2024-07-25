@@ -174,7 +174,7 @@ function renderMarkdown(content: string) {
 					<p>I'm here to assist you with building workflows.</p>
 					<p>
 						Whenever you encounter a task that I can help with, you'll see the
-						<n8n-ask-assistant-button size="small" :static="true" /> button.
+						<InlineAskAssistantButton size="small" :static="true" /> button.
 					</p>
 					<p>Clicking it starts a chat session with me.</p>
 				</div>

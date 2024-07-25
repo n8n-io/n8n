@@ -20,6 +20,7 @@ import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
+import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 type Props = {
 	// todo .node can be undefined
@@ -422,7 +423,7 @@ async function onClick() {
 				v-html="getErrorDescription()"
 			></div>
 			<div class="node-error-view__assistant-button" v-if="assistantStore.canShowAssistantButtons">
-				<n8n-ask-assistant-button :asked="assistantAlreadyAsked" @click="onClick" />
+				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onClick" />
 			</div>
 		</div>
 
