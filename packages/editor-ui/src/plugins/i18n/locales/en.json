@@ -1753,6 +1753,7 @@
 	"settings.usageAndPlan.desktop.description": "Cloud plans allow you to collaborate with teammates. Plus you don’t need to leave this app open all the time for your workflows to run.",
 	"settings.externalSecrets.title": "External Secrets",
 	"settings.externalSecrets.info": "Connect external secrets tools for centralized credentials management across environments, and to enhance system security.",
+	"settings.externalSecrets.infisicalDeprecation": "<h2>Important information about our infisical integration</h2><br>From the <b>30th July, 2024</b>, we will no longer be supporting new connections to inifiscal secrets vault using service tokens. Existing service tokens will remain usable until <b>July, 2025</b>. After that period, we will be removing support for Infisical from our external secrets integrations. You can find out more information about this change on <a href=\"https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store\" target=\"_blank\">our docs</a>",
 	"settings.externalSecrets.info.link": "More info",
 	"settings.externalSecrets.actionBox.title": "Available on the Enterprise plan",
 	"settings.externalSecrets.actionBox.description": "Connect external secrets tools for centralized credentials management across instances. {link}",
