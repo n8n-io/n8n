@@ -2,6 +2,7 @@ import { fireEvent } from '@testing-library/vue';
 import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { CanvasNodeRenderType } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeToolbar);
 
@@ -24,7 +25,10 @@ describe('CanvasNodeToolbar', () => {
 				provide: {
 					...createCanvasNodeProvide({
 						data: {
-							renderType: 'configuration',
+							render: {
+								type: CanvasNodeRenderType.Default,
+								options: { configuration: true },
+							},
 						},
 					}),
 				},
@@ -34,75 +38,59 @@ describe('CanvasNodeToolbar', () => {
 		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
 	});
 
-	it('should call executeNode function when execute node button is clicked', async () => {
-		const executeNode = vi.fn();
-		const { getByTestId } = renderComponent({
+	it('should emit "run" when execute node button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
-				},
-				mocks: {
-					executeNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('execute-node-button'));
 
-		expect(executeNode).toHaveBeenCalled();
+		expect(emitted('run')[0]).toEqual([]);
 	});
 
-	it('should call toggleDisableNode function when disable node button is clicked', async () => {
-		const onToggleNode = vi.fn();
-		const { getByTestId } = renderComponent({
+	it('should emit "toggle" when disable node button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
-				},
-				mocks: {
-					onToggleNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('disable-node-button'));
 
-		expect(onToggleNode).toHaveBeenCalled();
+		expect(emitted('toggle')[0]).toEqual([]);
 	});
 
-	it('should call deleteNode function when delete node button is clicked', async () => {
-		const onDeleteNode = vi.fn();
-		const { getByTestId } = renderComponent({
+	it('should emit "delete" when delete node button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
-				},
-				mocks: {
-					onDeleteNode,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('delete-node-button'));
 
-		expect(onDeleteNode).toHaveBeenCalled();
+		expect(emitted('delete')[0]).toEqual([]);
 	});
 
-	it('should call openContextMenu function when overflow node button is clicked', async () => {
-		const openContextMenu = vi.fn();
-		const { getByTestId } = renderComponent({
+	it('should emit "open:contextmenu" when overflow node button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide(),
-				},
-				mocks: {
-					openContextMenu,
 				},
 			},
 		});
 
 		await fireEvent.click(getByTestId('overflow-node-button'));
 
-		expect(openContextMenu).toHaveBeenCalled();
+		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
 	});
 });

@@ -9,6 +9,7 @@ import type {
 	IWorkflowSettings,
 	LoadedClass,
 	INodeTypeDescription,
+	INodeIssues,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
@@ -22,7 +23,9 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
 } from '@/constants';
+import type { INodeUi } from '@/Interface';
 
 export const mockNode = ({
 	id = uuid(),
@@ -30,22 +33,32 @@ export const mockNode = ({
 	type,
 	position = [0, 0],
 	disabled = false,
+	issues = undefined,
+	typeVersion = 1,
+	parameters = {},
 }: {
-	id?: INode['id'];
-	name: INode['name'];
-	type: INode['type'];
-	position?: INode['position'];
-	disabled?: INode['disabled'];
-}) => mock<INode>({ id, name, type, position, disabled });
+	id?: INodeUi['id'];
+	name: INodeUi['name'];
+	type: INodeUi['type'];
+	position?: INodeUi['position'];
+	disabled?: INodeUi['disabled'];
+	issues?: INodeIssues;
+	typeVersion?: INodeUi['typeVersion'];
+	parameters?: INodeUi['parameters'];
+}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
 
 export const mockNodeTypeDescription = ({
 	name,
 	version = 1,
 	credentials = [],
+	inputs = ['main'],
+	outputs = ['main'],
 }: {
 	name: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
+	inputs?: INodeTypeDescription['inputs'];
+	outputs?: INodeTypeDescription['outputs'];
 }) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -58,8 +71,8 @@ export const mockNodeTypeDescription = ({
 		properties: [],
 		maxNodes: Infinity,
 		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs,
+		outputs,
 		credentials,
 		documentationUrl: 'https://docs',
 		webhooks: undefined,
@@ -80,6 +93,7 @@ export const mockNodes = [
 	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 

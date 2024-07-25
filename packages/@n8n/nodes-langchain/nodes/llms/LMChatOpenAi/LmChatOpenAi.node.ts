@@ -27,6 +27,7 @@ export class LmChatOpenAi implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -90,7 +91,11 @@ export class LmChatOpenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
+											// If the baseURL is not set or is set to api.openai.com, include only chat models
+											pass: `={{
+												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
+												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
+											}}`,
 										},
 									},
 									{
@@ -118,6 +123,18 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-3.5-turbo',
+			},
+			{
+				displayName:
+					'When using non-OpenAI models via "Base URL" override, not all models might be chat-compatible or support other features, like tools calling or JSON response format',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.baseURL': [{ _cnd: { exists: true } }],
+					},
+				},
 			},
 			{
 				displayName: 'Options',

@@ -3,9 +3,9 @@ import { generateUpgradeLinkUrl, useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { merge } from 'lodash-es';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import * as cloudPlanApi from '@/api/cloudPlans';
+import { defaultSettings } from '../../__tests__/defaults';
 import {
 	getTrialExpiredUserResponse,
 	getTrialingUserResponse,
@@ -34,7 +34,7 @@ function setUser(role: IRole) {
 function setupOwnerAndCloudDeployment() {
 	setUser(ROLE.Owner);
 	settingsStore.setSettings(
-		merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+		merge({}, defaultSettings, {
 			n8nMetadata: {
 				userId: '1',
 			},
@@ -103,7 +103,7 @@ describe('UI store', () => {
 			setUser(role as IRole);
 
 			settingsStore.setSettings(
-				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+				merge({}, defaultSettings, {
 					deployment: {
 						type,
 					},
@@ -123,7 +123,7 @@ describe('UI store', () => {
 
 	it('should add non-production license banner to stack based on enterprise settings', () => {
 		settingsStore.setSettings(
-			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+			merge({}, defaultSettings, {
 				enterprise: {
 					showNonProdBanner: true,
 				},
@@ -134,7 +134,7 @@ describe('UI store', () => {
 
 	it("should add V1 banner to stack if it's not dismissed", () => {
 		settingsStore.setSettings(
-			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+			merge({}, defaultSettings, {
 				versionCli: '1.0.0',
 			}),
 		);
@@ -143,7 +143,7 @@ describe('UI store', () => {
 
 	it("should not add V1 banner to stack if it's dismissed", () => {
 		settingsStore.setSettings(
-			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+			merge({}, defaultSettings, {
 				versionCli: '1.0.0',
 				banners: {
 					dismissed: ['V1'],

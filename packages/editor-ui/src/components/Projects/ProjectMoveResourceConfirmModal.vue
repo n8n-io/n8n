@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, h } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
@@ -8,13 +8,18 @@ import Modal from '@/components/Modal.vue';
 import { N8nCheckbox, N8nText } from 'n8n-design-system';
 import { useToast } from '@/composables/useToast';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/constants';
+import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
+import { ResourceType } from '@/utils/projects.utils';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: 'workflow' | 'credential';
+		resourceType: ResourceType;
+		resourceTypeLabel: string;
 		projectId: string;
+		projectName: string;
 	};
 }>();
 
@@ -28,7 +33,7 @@ const checks = ref([false, false]);
 const allChecked = computed(() => checks.value.every(Boolean));
 
 const moveResourceLabel = computed(() =>
-	props.data.resourceType === 'workflow'
+	props.data.resourceType === ResourceType.Workflow
 		? i18n.baseText('projects.move.workflow.confirm.modal.label')
 		: i18n.baseText('projects.move.credential.confirm.modal.label'),
 );
@@ -49,12 +54,30 @@ const confirm = async () => {
 			[`${props.data.resourceType}_id`]: props.data.resource.id,
 			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
 		});
+		toast.showToast({
+			title: i18n.baseText('projects.move.resource.success.title', {
+				interpolate: {
+					resourceTypeLabel: props.data.resourceTypeLabel,
+				},
+			}),
+			message: h(ProjectMoveSuccessToastMessage, {
+				routeName:
+					props.data.resourceType === ResourceType.Workflow
+						? VIEWS.PROJECTS_WORKFLOWS
+						: VIEWS.PROJECTS_CREDENTIALS,
+				resource: props.data.resource,
+				resourceTypeLabel: props.data.resourceTypeLabel,
+				projectId: props.data.projectId,
+				projectName: props.data.projectName,
+			}),
+			type: 'success',
+		});
 	} catch (error) {
 		toast.showError(
 			error.message,
 			i18n.baseText('projects.move.resource.error.title', {
 				interpolate: {
-					resourceType: props.data.resourceType,
+					resourceTypeLabel: props.data.resourceTypeLabel,
 					resourceName: props.data.resource.name,
 				},
 			}),
@@ -74,7 +97,7 @@ const confirm = async () => {
 			<N8nCheckbox v-model="checks[1]">
 				<N8nText>
 					<i18n-t keypath="projects.move.resource.confirm.modal.label">
-						<template #resourceType>{{ props.data.resourceType }}</template>
+						<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
 						<template #numberOfUsers>{{
 							i18n.baseText('projects.move.resource.confirm.modal.numberOfUsers', {
 								interpolate: {

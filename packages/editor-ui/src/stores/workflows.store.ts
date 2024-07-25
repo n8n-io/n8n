@@ -31,7 +31,6 @@ import type {
 	WorkflowMetadata,
 	IExecutionFlattedResponse,
 	IWorkflowTemplateNode,
-	ITag,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -65,7 +64,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
-import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
+import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/utils/typesUtils';
 import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -74,7 +73,7 @@ import { i18n } from '@/plugins/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import { useTagsStore } from '@/stores/tags.store';
+import type { ProjectSharingData } from '@/types/projects.types';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -225,6 +224,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return {};
 	}
 
+	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
+		return getCurrentWorkflow().connectionsByDestinationNode[nodeName] ?? {};
+	}
+
 	function nodeHasOutputConnection(nodeName: string): boolean {
 		return workflow.value.connections.hasOwnProperty(nodeName);
 	}
@@ -249,6 +252,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getNodeById(nodeId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
+	}
+
+	function getNodesByIds(nodeIds: string[]): INodeUi[] {
+		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	function getParametersLastUpdate(nodeName: string): number | undefined {
@@ -452,6 +459,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
 		return workflowData;
+	}
+
+	function makeNewWorkflowShareable() {
+		const { currentProject, personalProject } = useProjectsStore();
+		const homeProject = currentProject ?? personalProject ?? {};
+		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
+
+		workflow.value.homeProject = homeProject as ProjectSharingData;
+		workflow.value.scopes = scopes;
 	}
 
 	function resetWorkflow() {
@@ -873,7 +889,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.stateIsDirty = true;
 
 		// Remove all source connections
-		if (!preserveOutputConnections && workflow.value.connections.hasOwnProperty(node.name)) {
+		if (!preserveOutputConnections) {
 			delete workflow.value.connections[node.name];
 		}
 
@@ -1524,31 +1540,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		clearNodeExecutionData(node.name);
 	}
 
-	function initializeEditableWorkflow(id: string) {
-		const targetWorkflow = workflowsById.value[id];
-		const tags = (targetWorkflow?.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-
-		addWorkflow(targetWorkflow);
-		setWorkflow(targetWorkflow);
-		setActive(targetWorkflow.active || false);
-		setWorkflowId(targetWorkflow.id);
-		setWorkflowName({ newName: targetWorkflow.name, setStateDirty: false });
-		setWorkflowSettings(targetWorkflow.settings ?? {});
-		setWorkflowPinData(targetWorkflow.pinData ?? {});
-		setWorkflowVersionId(targetWorkflow.versionId);
-		setWorkflowMetadata(targetWorkflow.meta);
-		if (targetWorkflow.usedCredentials) {
-			setUsedCredentials(targetWorkflow.usedCredentials);
-		}
-		setWorkflowTagIds(tagIds || []);
-
-		if (tags.length > 0) {
-			const tagsStore = useTagsStore();
-			tagsStore.upsertTags(tags);
-		}
-	}
-
 	//
 	// End Canvas V2 Functions
 	//
@@ -1596,11 +1587,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getTotalFinishedExecutionsCount,
 		getPastChatMessages,
 		outgoingConnectionsByNodeName,
+		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
 		getWorkflowById,
 		getNodeByName,
 		getNodeById,
+		getNodesByIds,
 		getParametersLastUpdate,
 		isNodePristine,
 		isNodeExecuting,
@@ -1616,6 +1609,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		fetchAllWorkflows,
 		fetchWorkflow,
 		getNewWorkflowData,
+		makeNewWorkflowShareable,
 		resetWorkflow,
 		resetState,
 		addExecutingNode,
@@ -1689,6 +1683,5 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		removeNodeExecutionDataById,
 		setNodes,
 		setConnections,
-		initializeEditableWorkflow,
 	};
 });

@@ -149,7 +149,7 @@ const parameterHint = computed(() => {
 	return props.hint;
 });
 
-const targetItem = computed(() => ndvStore.hoveringItem);
+const targetItem = computed(() => ndvStore.expressionTargetItem);
 
 const isInputParentOfActiveNode = computed(() => ndvStore.isInputParentOfActiveNode);
 
@@ -176,6 +176,8 @@ const evaluatedExpression = computed<Result<unknown, Error>>(() => {
 				additionalKeys: resolvedAdditionalExpressionData.value,
 			};
 		}
+
+		if (props.isForCredential) opts.additionalKeys = resolvedAdditionalExpressionData.value;
 
 		return { ok: true, result: workflowHelpers.resolveExpression(value, undefined, opts) };
 	} catch (error) {

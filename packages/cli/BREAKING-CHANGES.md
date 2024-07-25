@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.52.0
+
+### What changed?
+
+Prometheus metrics enabled via `N8N_METRICS_INCLUDE_DEFAULT_METRICS` and `N8N_METRICS_INCLUDE_API_ENDPOINTS` were fixed to include the default `n8n_` prefix.
+
+### When is action necessary?
+
+If you are using Prometheus metrics from these categories and are using a non-empty prefix, please update those metrics to match their new prefixed names.
+
 ## 1.47.0
 
 ### What changed?

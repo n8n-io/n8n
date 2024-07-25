@@ -674,10 +674,10 @@ export default defineComponent({
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
-			// In case the redirect to canvas for new users didn't happen
+			// In case the redirect to homepage for new users didn't happen
 			// we try again after closing the modal
-			if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-				void this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+			if (this.$route.name !== VIEWS.HOMEPAGE) {
+				void this.$router.replace({ name: VIEWS.HOMEPAGE });
 			}
 		},
 		async loadDomainBlocklist() {

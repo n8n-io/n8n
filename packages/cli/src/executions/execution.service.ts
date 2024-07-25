@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
@@ -80,6 +81,7 @@ export const allowedExecutionsQueryFilterFields = Object.keys(
 @Service()
 export class ExecutionService {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
@@ -337,7 +339,7 @@ export class ExecutionService {
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
-		if (config.getEnv('database.type') === 'postgresdb') {
+		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
 			if (liveRows === -1) return { count: -1, estimated: false, results };
@@ -442,11 +444,11 @@ export class ExecutionService {
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
-			await this.activeExecutions.stopExecution(execution.id);
+			this.activeExecutions.stopExecution(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {
-			await this.waitTracker.stopExecution(execution.id);
+			this.waitTracker.stopExecution(execution.id);
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
@@ -458,8 +460,12 @@ export class ExecutionService {
 			return await this.stopInRegularMode(execution);
 		}
 
+		if (this.activeExecutions.has(execution.id)) {
+			this.activeExecutions.stopExecution(execution.id);
+		}
+
 		if (this.waitTracker.has(execution.id)) {
-			await this.waitTracker.stopExecution(execution.id);
+			this.waitTracker.stopExecution(execution.id);
 		}
 
 		const job = await this.queue.findRunningJobBy({ executionId: execution.id });

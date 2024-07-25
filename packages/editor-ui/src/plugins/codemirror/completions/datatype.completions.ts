@@ -1,4 +1,3 @@
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n } from '@/plugins/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
@@ -37,6 +36,8 @@ import type { AutocompleteInput, ExtensionTypeName, FnToDoc, Resolved } from './
 import {
 	applyBracketAccessCompletion,
 	applyCompletion,
+	attempt,
+	expressionWithFirstItem,
 	getDefaultArgs,
 	getDisplayType,
 	hasNoParams,
@@ -48,10 +49,13 @@ import {
 	isSplitInBatchesAbsent,
 	longestCommonPrefix,
 	prefixMatch,
+	resolveAutocompleteExpression,
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
 } from './utils';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { isPairedItemIntermediateNodesError } from '@/utils/expressions';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -63,7 +67,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	const [base, tail] = splitBaseTail(word.text);
+	const syntaxTree = javascriptLanguage.parser.parse(word.text);
+	const [base, tail] = splitBaseTail(syntaxTree, word.text);
 
 	let options: Completion[] = [];
 
@@ -80,25 +85,30 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
-		let resolved: Resolved;
+		const resolved = attempt(
+			(): Resolved => resolveAutocompleteExpression(`={{ ${base} }}`),
+			(error) => {
+				if (!isPairedItemIntermediateNodesError(error)) {
+					return null;
+				}
 
-		try {
-			resolved = resolveParameter(`={{ ${base} }}`);
-		} catch (error) {
-			return null;
-		}
+				// Fallback on first item to provide autocomplete when intermediate nodes have not run
+				return attempt(() =>
+					resolveAutocompleteExpression(`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`),
+				);
+			},
+		);
 
 		if (resolved === null) return null;
 
-		try {
-			options = datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context));
-		} catch (error) {
-			return null;
-		}
+		options = attempt(
+			() => datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context)),
+			() => [],
+		);
 	}
 
 	if (tail !== '') {
-		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
+		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
 	let from = word.to - tail.length;
@@ -125,17 +135,18 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 }
 
 function explicitDataTypeOptions(expression: string): Completion[] {
-	try {
-		const resolved = resolveParameter(`={{ ${expression} }}`);
-		return datatypeOptions({
-			resolved,
-			base: expression,
-			tail: '',
-			transformLabel: (label) => '.' + label,
-		});
-	} catch {
-		return [];
-	}
+	return attempt(
+		() => {
+			const resolved = resolveAutocompleteExpression(`={{ ${expression} }}`);
+			return datatypeOptions({
+				resolved,
+				base: expression,
+				tail: '',
+				transformLabel: (label) => '.' + label,
+			});
+		},
+		() => [],
+	);
 }
 
 function datatypeOptions(input: AutocompleteInput): Completion[] {
@@ -155,7 +166,13 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return booleanOptions();
 	}
 
-	if (DateTime.isDateTime(resolved)) {
+	if (
+		attempt(
+			// This can throw when resolved is a proxy
+			() => DateTime.isDateTime(resolved),
+			() => false,
+		)
+	) {
 		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
 
@@ -453,12 +470,13 @@ const applySections = ({
 };
 
 const isUrl = (url: string): boolean => {
-	try {
-		new URL(url);
-		return true;
-	} catch (error) {
-		return false;
-	}
+	return attempt(
+		() => {
+			new URL(url);
+			return true;
+		},
+		() => false,
+	);
 };
 
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {

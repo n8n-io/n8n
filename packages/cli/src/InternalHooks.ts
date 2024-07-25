@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
+import { GlobalConfig } from '@n8n/config';
 import type {
 	ExecutionStatus,
 	INodesGraphResult,
@@ -15,7 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { GlobalRole, User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
@@ -25,34 +26,39 @@ import type {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { License } from '@/License';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
-import type { ProjectRole } from '@db/entities/ProjectRelation';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
+/**
+ * @deprecated Do not add to this class. To add audit or telemetry events, use
+ * `EventService` to emit the event and then use the `AuditEventRelay` or
+ * `TelemetryEventRelay` to forward them to the event bus or telemetry.
+ */
 @Service()
 export class InternalHooks {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		eventsService: EventsService,
+		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstProductionWorkflowSuccess',
 			async (metrics) => await this.onFirstProductionWorkflowSuccess(metrics),
 		);
-		eventsService.on(
+		workflowStatisticsService.on(
 			'telemetry.onFirstWorkflowDataLoad',
 			async (metrics) => await this.onFirstWorkflowDataLoad(metrics),
 		);
@@ -73,8 +79,8 @@ export class InternalHooks {
 
 		const info = {
 			version_cli: N8N_VERSION,
-			db_type: config.getEnv('database.type'),
-			n8n_version_notifications_enabled: config.getEnv('versionNotifications.enabled'),
+			db_type: this.globalConfig.database.type,
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
 			n8n_disable_production_main_process: config.getEnv(
 				'endpoints.disableProductionWebhooksOnMainProcess',
 			),
@@ -105,7 +111,7 @@ export class InternalHooks {
 			},
 			n8n_deployment_type: config.getEnv('deployment.type'),
 			n8n_binary_data_mode: binaryDataConfig.mode,
-			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
 			license_plan_name: this.license.getPlanName(),
@@ -503,29 +509,6 @@ export class InternalHooks {
 		);
 	}
 
-	async onUserInvokedApi(userInvokedApiData: {
-		user_id: string;
-		path: string;
-		method: string;
-		api_version: string;
-	}): Promise<void> {
-		return await this.telemetry.track('User invoked API', userInvokedApiData);
-	}
-
-	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key deleted', {
-			user_id: apiKeyDeletedData.user.id,
-			public_api: apiKeyDeletedData.public_api,
-		});
-	}
-
-	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
-		void this.telemetry.track('API key created', {
-			user_id: apiKeyCreatedData.user.id,
-			public_api: apiKeyCreatedData.public_api,
-		});
-	}
-
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
 		void this.telemetry.track('User requested password reset while logged out', {
 			user_id: userPasswordResetData.user.id,
@@ -564,177 +547,6 @@ export class InternalHooks {
 		});
 	}
 
-	/**
-	 * Credentials
-	 */
-
-	async onUserCreatedCredentials(userCreatedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-		public_api: boolean;
-	}): Promise<void> {
-		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
-			userCreatedCredentialsData.credential_id,
-		);
-		void this.telemetry.track('User created credentials', {
-			user_id: userCreatedCredentialsData.user.id,
-			credential_type: userCreatedCredentialsData.credential_type,
-			credential_id: userCreatedCredentialsData.credential_id,
-			instance_id: this.instanceSettings.instanceId,
-			project_id: project?.id,
-			project_type: project?.type,
-		});
-	}
-
-	async onUserSharedCredentials(userSharedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-		user_id_sharer: string;
-		user_ids_sharees_added: string[];
-		sharees_removed: number | null;
-	}): Promise<void> {
-		void this.telemetry.track('User updated cred sharing', {
-			user_id: userSharedCredentialsData.user.id,
-			credential_type: userSharedCredentialsData.credential_type,
-			credential_id: userSharedCredentialsData.credential_id,
-			user_id_sharer: userSharedCredentialsData.user_id_sharer,
-			user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
-			sharees_removed: userSharedCredentialsData.sharees_removed,
-			instance_id: this.instanceSettings.instanceId,
-		});
-	}
-
-	async onUserUpdatedCredentials(userUpdatedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-	}): Promise<void> {
-		void this.telemetry.track('User updated credentials', {
-			user_id: userUpdatedCredentialsData.user.id,
-			credential_type: userUpdatedCredentialsData.credential_type,
-			credential_id: userUpdatedCredentialsData.credential_id,
-		});
-	}
-
-	async onUserDeletedCredentials(userUpdatedCredentialsData: {
-		user: User;
-		credential_name: string;
-		credential_type: string;
-		credential_id: string;
-	}): Promise<void> {
-		void this.telemetry.track('User deleted credentials', {
-			user_id: userUpdatedCredentialsData.user.id,
-			credential_type: userUpdatedCredentialsData.credential_type,
-			credential_id: userUpdatedCredentialsData.credential_id,
-			instance_id: this.instanceSettings.instanceId,
-		});
-	}
-
-	/**
-	 * Community nodes backend telemetry events
-	 */
-
-	async onCommunityPackageInstallFinished(installationData: {
-		user: User;
-		input_string: string;
-		package_name: string;
-		success: boolean;
-		package_version?: string;
-		package_node_names?: string[];
-		package_author?: string;
-		package_author_email?: string;
-		failure_reason?: string;
-	}): Promise<void> {
-		void this.telemetry.track('cnr package install finished', {
-			user_id: installationData.user.id,
-			input_string: installationData.input_string,
-			package_name: installationData.package_name,
-			success: installationData.success,
-			package_version: installationData.package_version,
-			package_node_names: installationData.package_node_names,
-			package_author: installationData.package_author,
-			package_author_email: installationData.package_author_email,
-			failure_reason: installationData.failure_reason,
-		});
-	}
-
-	async onCommunityPackageUpdateFinished(updateData: {
-		user: User;
-		package_name: string;
-		package_version_current: string;
-		package_version_new: string;
-		package_node_names: string[];
-		package_author?: string;
-		package_author_email?: string;
-	}): Promise<void> {
-		void this.telemetry.track('cnr package updated', {
-			user_id: updateData.user.id,
-			package_name: updateData.package_name,
-			package_version_current: updateData.package_version_current,
-			package_version_new: updateData.package_version_new,
-			package_node_names: updateData.package_node_names,
-			package_author: updateData.package_author,
-			package_author_email: updateData.package_author_email,
-		});
-	}
-
-	async onCommunityPackageDeleteFinished(deleteData: {
-		user: User;
-		package_name: string;
-		package_version: string;
-		package_node_names: string[];
-		package_author?: string;
-		package_author_email?: string;
-	}): Promise<void> {
-		void this.telemetry.track('cnr package deleted', {
-			user_id: deleteData.user.id,
-			package_name: deleteData.package_name,
-			package_version: deleteData.package_version,
-			package_node_names: deleteData.package_node_names,
-			package_author: deleteData.package_author,
-			package_author_email: deleteData.package_author_email,
-		});
-	}
-
-	async onLdapSyncFinished(data: {
-		type: string;
-		succeeded: boolean;
-		users_synced: number;
-		error: string;
-	}): Promise<void> {
-		return await this.telemetry.track('Ldap general sync finished', data);
-	}
-
-	async onUserUpdatedLdapSettings(data: {
-		user_id: string;
-		loginIdAttribute: string;
-		firstNameAttribute: string;
-		lastNameAttribute: string;
-		emailAttribute: string;
-		ldapIdAttribute: string;
-		searchPageSize: number;
-		searchTimeout: number;
-		synchronizationEnabled: boolean;
-		synchronizationInterval: number;
-		loginLabel: string;
-		loginEnabled: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('Ldap general sync finished', data);
-	}
-
-	async onLdapLoginSyncFailed(data: { error: string }): Promise<void> {
-		return await this.telemetry.track('Ldap login sync failed', data);
-	}
-
-	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
-		return await this.telemetry.track('User login failed since ldap disabled', data);
-	}
-
 	/*
 	 * Execution Statistics
 	 */
@@ -754,109 +566,5 @@ export class InternalHooks {
 		credential_id?: string;
 	}): Promise<void> {
 		return await this.telemetry.track('Workflow first data fetched', data);
-	}
-
-	/**
-	 * License
-	 */
-	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
-		await this.telemetry.track('Instance attempted to refresh license', data);
-	}
-
-	/**
-	 * Audit
-	 */
-	async onAuditGeneratedViaCli() {
-		return await this.telemetry.track('Instance generated security audit via CLI command');
-	}
-
-	async onVariableCreated(createData: { variable_type: string }): Promise<void> {
-		return await this.telemetry.track('User created variable', createData);
-	}
-
-	async onSourceControlSettingsUpdated(data: {
-		branch_name: string;
-		read_only_instance: boolean;
-		repo_type: 'github' | 'gitlab' | 'other';
-		connected: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated source control settings', data);
-	}
-
-	async onSourceControlUserStartedPullUI(data: {
-		workflow_updates: number;
-		workflow_conflicts: number;
-		cred_conflicts: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started pull via UI', data);
-	}
-
-	async onSourceControlUserFinishedPullUI(data: { workflow_updates: number }): Promise<void> {
-		return await this.telemetry.track('User finished pull via UI', {
-			workflow_updates: data.workflow_updates,
-		});
-	}
-
-	async onSourceControlUserPulledAPI(data: {
-		workflow_updates: number;
-		forced: boolean;
-	}): Promise<void> {
-		return await this.telemetry.track('User pulled via API', data);
-	}
-
-	async onSourceControlUserStartedPushUI(data: {
-		workflows_eligible: number;
-		workflows_eligible_with_conflicts: number;
-		creds_eligible: number;
-		creds_eligible_with_conflicts: number;
-		variables_eligible: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User started push via UI', data);
-	}
-
-	async onSourceControlUserFinishedPushUI(data: {
-		workflows_eligible: number;
-		workflows_pushed: number;
-		creds_pushed: number;
-		variables_pushed: number;
-	}): Promise<void> {
-		return await this.telemetry.track('User finished push via UI', data);
-	}
-
-	async onExternalSecretsProviderSettingsSaved(saveData: {
-		user_id?: string | undefined;
-		vault_type: string;
-		is_valid: boolean;
-		is_new: boolean;
-		error_message?: string | undefined;
-	}): Promise<void> {
-		return await this.telemetry.track('User updated external secrets settings', saveData);
-	}
-
-	async onTeamProjectCreated(data: { user_id: string; role: GlobalRole }) {
-		return await this.telemetry.track('User created project', data);
-	}
-
-	async onTeamProjectDeleted(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		removal_type: 'delete' | 'transfer';
-		target_project_id?: string;
-	}) {
-		return await this.telemetry.track('User deleted project', data);
-	}
-
-	async onTeamProjectUpdated(data: {
-		user_id: string;
-		role: GlobalRole;
-		project_id: string;
-		members: Array<{ user_id: string; role: ProjectRole }>;
-	}) {
-		return await this.telemetry.track('Project settings updated', data);
-	}
-
-	async onConcurrencyLimitHit({ threshold }: { threshold: number }) {
-		await this.telemetry.track('User hit concurrency limit', { threshold });
 	}
 }

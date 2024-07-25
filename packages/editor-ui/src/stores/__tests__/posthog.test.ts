@@ -44,8 +44,8 @@ function setCurrentUser() {
 }
 
 function resetStores() {
-	useSettingsStore().$reset();
-	useUsersStore().$reset();
+	useSettingsStore().reset();
+	useUsersStore().reset();
 }
 
 function setup() {

@@ -1,19 +1,19 @@
 import { Container, Service } from 'typedi';
 import { exec as callbackExec } from 'child_process';
+import { resolve } from 'path';
 import { access as fsAccess } from 'fs/promises';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
+import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
-
-// @ts-expect-error missing types
-import timezones from 'google-timezones-json';
 
 import config from '@/config';
 
 import {
+	CLI_DIR,
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
 	inE2ETests,
@@ -81,6 +81,7 @@ export class Server extends AbstractServer {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		super('main');
 
@@ -95,7 +96,8 @@ export class Server extends AbstractServer {
 		}
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -118,7 +120,7 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/communityPackages.controller');
 		}
 
@@ -165,8 +167,8 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
@@ -183,7 +185,7 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
-		const publicApiEndpoint = config.getEnv('publicApi.path');
+		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// ----------------------------------------
 		// Public API
@@ -226,11 +228,8 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// Returns all the available timezones
-		this.app.get(
-			`/${this.restEndpoint}/options/timezones`,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			ResponseHelper.send(async () => timezones),
-		);
+		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
 
 		// ----------------------------------------
 		// Settings
@@ -331,7 +330,9 @@ export class Server extends AbstractServer {
 
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
+				'favicon.ico',
 				'assets',
+				'static',
 				'types',
 				'healthz',
 				'metrics',
@@ -361,12 +362,20 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));

@@ -8,6 +8,7 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
+import { GlobalConfig } from '@n8n/config';
 import { jsonParse, randomString } from 'n8n-workflow';
 
 import config from '@/config';
@@ -32,7 +33,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -251,18 +252,18 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
+		const globalConfig = Container.get(GlobalConfig);
 
-		if (areCommunityPackagesEnabled) {
+		if (globalConfig.nodes.communityPackages.enabled) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
 		}
 
-		const dbType = config.getEnv('database.type');
+		const { type: dbType } = globalConfig.database;
 		if (dbType === 'sqlite') {
-			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
+			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
@@ -376,7 +377,7 @@ export class Start extends BaseCommand {
 				projectId: project.id,
 			};
 
-			Container.get(EventRelay).emit('execution-started-during-bootup', {
+			Container.get(EventService).emit('execution-started-during-bootup', {
 				executionId: execution.id,
 			});
 

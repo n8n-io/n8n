@@ -69,6 +69,7 @@ import {
 	updateTheme,
 } from './ui.utils';
 import { computed, ref } from 'vue';
+import type { Connection } from '@vue-flow/core';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -187,6 +188,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const isCreateNodeActive = ref<boolean>(false);
 
+	// Last interacted with - Canvas v2 specific
+	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
+	const lastInteractedWithNodeHandle = ref<string | null>(null);
+	const lastInteractedWithNodeId = ref<string | null>(null);
+
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const rootStore = useRootStore();
@@ -270,6 +276,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		if (lastSelectedNode.value) {
 			return workflowsStore.getNodeByName(lastSelectedNode.value);
 		}
+		return null;
+	});
+
+	const lastInteractedWithNode = computed(() => {
+		if (lastInteractedWithNodeId.value) {
+			return workflowsStore.getNodeById(lastInteractedWithNodeId.value);
+		}
+
 		return null;
 	});
 
@@ -466,14 +480,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	};
 
 	const openCommunityPackageUninstallConfirmModal = (packageName: string) => {
-		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
-		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
+		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL);
+		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
 	const openCommunityPackageUpdateConfirmModal = (packageName: string) => {
-		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
-		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
+		setMode(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE);
+		setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
 		openModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
 	};
 
@@ -598,6 +612,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		delete pendingNotificationsForViews.value[view];
 	};
 
+	function resetLastInteractedWith() {
+		lastInteractedWithNodeConnection.value = null;
+		lastInteractedWithNodeHandle.value = null;
+		lastInteractedWithNodeId.value = null;
+	}
+
 	return {
 		appliedTheme,
 		logo,
@@ -619,6 +639,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		selectedNodes,
 		bannersHeight,
 		lastSelectedNodeEndpointUuid,
+		lastInteractedWithNodeConnection,
+		lastInteractedWithNodeHandle,
+		lastInteractedWithNodeId,
+		lastInteractedWithNode,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
 		nodeViewInitialized,
@@ -667,6 +691,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		clearBannerStack,
 		setNotificationsForView,
 		deleteNotificationsForView,
+		resetLastInteractedWith,
 	};
 });
 

@@ -20,14 +20,16 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
+import { GlobalConfig } from '@n8n/config';
 import {
 	ApplicationError,
-	WorkflowOperationError,
 	type ExecutionStatus,
 	type ExecutionSummary,
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
+import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -44,7 +46,6 @@ import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -113,6 +114,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	constructor(
 		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -482,7 +484,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			status: Not('crashed'),
 		};
 
-		const dbType = config.getEnv('database.type');
+		const dbType = this.globalConfig.database.type;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -639,8 +641,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async stopDuringRun(execution: IExecutionResponse) {
-		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+		const error = new ExecutionCancelledError(execution.id);
 
+		execution.data ??= { resultData: { runData: {} } };
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,
@@ -730,7 +733,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
+		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
 		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 

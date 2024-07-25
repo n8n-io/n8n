@@ -459,6 +459,13 @@ export class HelpScout implements INodeType {
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
+						let threadType = this.getNodeParameter('type', i) as string;
+
+						// We need to update the types to match the API - Avoids a breaking change
+						const singular = ['reply', 'customer'];
+						if (!singular.includes(threadType)) {
+							threadType = `${threadType}s`;
+						}
 						const body: IThread = {
 							text,
 							attachments: [],
@@ -527,7 +534,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'POST',
-							`/v2/conversations/${conversationId}/chats`,
+							`/v2/conversations/${conversationId}/${threadType}`,
 							body,
 						);
 						responseData = { success: true };

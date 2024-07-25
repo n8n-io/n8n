@@ -4,7 +4,7 @@ import uniq from 'lodash/uniq';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
-
+import { GlobalConfig } from '@n8n/config';
 import type {
 	ICredentialType,
 	IN8nUISettings,
@@ -41,6 +41,7 @@ export class FrontendService {
 	private communityPackagesService?: CommunityPackagesService;
 
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
@@ -56,7 +57,7 @@ export class FrontendService {
 
 		this.initSettings();
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
@@ -85,7 +86,7 @@ export class FrontendService {
 
 		this.settings = {
 			isDocker: this.isDocker(),
-			databaseType: config.getEnv('database.type'),
+			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
@@ -98,7 +99,7 @@ export class FrontendService {
 			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
-			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
+			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
 			timezone: config.getEnv('generic.timezone'),
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
@@ -115,9 +116,9 @@ export class FrontendService {
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
 			versionNotifications: {
-				enabled: config.getEnv('versionNotifications.enabled'),
-				endpoint: config.getEnv('versionNotifications.endpoint'),
-				infoUrl: config.getEnv('versionNotifications.infoUrl'),
+				enabled: this.globalConfig.versionNotifications.enabled,
+				endpoint: this.globalConfig.versionNotifications.endpoint,
+				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -151,21 +152,21 @@ export class FrontendService {
 			publicApi: {
 				enabled: isApiEnabled(),
 				latestVersion: 1,
-				path: config.getEnv('publicApi.path'),
+				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
-					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			templates: {
-				enabled: config.getEnv('templates.enabled'),
-				host: config.getEnv('templates.host'),
+				enabled: this.globalConfig.templates.enabled,
+				host: this.globalConfig.templates.host,
 			},
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: config.getEnv('push.backend'),
-			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},
