@@ -9,7 +9,7 @@ import {
 	ref,
 	useCssModule,
 } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -42,10 +42,8 @@ import {
 	EnterpriseEditionFeature,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -136,8 +134,6 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
-const lastClickPosition = ref<XYPosition>([0, 0]);
-
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
@@ -171,7 +167,8 @@ const {
 	initializeWorkspace,
 	editableWorkflow,
 	editableWorkflowObject,
-} = useCanvasOperations({ router, lastClickPosition });
+	lastClickPosition,
+} = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 useClipboard({ onPaste: onClipboardPaste });
 
@@ -1371,66 +1368,6 @@ function registerCustomActions() {
 	// 	},
 	// });
 }
-
-/**
- * Routing
- */
-
-onBeforeRouteLeave(async (to, from, next) => {
-	const toNodeViewTab = getNodeViewTab(to);
-
-	if (
-		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
-		from.name === VIEWS.TEMPLATE_IMPORT ||
-		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-	) {
-		next();
-		return;
-	}
-
-	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
-		const confirmModal = await message.confirm(
-			i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-			{
-				title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-				type: 'warning',
-				confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				showClose: true,
-			},
-		);
-
-		if (confirmModal === MODAL_CONFIRM) {
-			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			const saved = await workflowHelpers.saveCurrentWorkflow({}, false);
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-			uiStore.stateIsDirty = false;
-
-			if (from.name === VIEWS.NEW_WORKFLOW) {
-				// Replace the current route with the new workflow route
-				// before navigating to the new route when saving new workflow.
-				await router.replace({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowId.value },
-				});
-
-				await router.push(to);
-			} else {
-				next();
-			}
-		} else if (confirmModal === MODAL_CANCEL) {
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			resetWorkspace();
-			uiStore.stateIsDirty = false;
-			next();
-		}
-	} else {
-		next();
-	}
-});
 
 /**
  * Lifecycle
