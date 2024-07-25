@@ -408,7 +408,7 @@ export class Server extends AbstractServer {
 				licenseCert,
 				consumerId,
 				n8nVersion: N8N_VERSION,
-				options: { aiServiceApiBase },
+				options: { aiServiceApiBase, timeout: 10000 },
 			}),
 		);
 	}
