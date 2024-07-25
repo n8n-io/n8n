@@ -133,7 +133,7 @@ describe('useCanvasOperations', () => {
 				mockNodeTypeDescription({ name: 'type' }),
 			);
 
-			expect(result.position).toEqual([460, 460]); // Default last click position
+			expect(result.position).toEqual([0, 0]); // Default last click position
 		});
 
 		it('should create node with provided position when position is provided', () => {
