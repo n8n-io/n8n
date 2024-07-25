@@ -189,7 +189,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	}
 
 	function getSubcategoryInfo(subcategory: string) {
-		const localeKey: BaseTextKey = `nodeCreator.subcategoryInfos.${camelCase(subcategory)}`;
+		const localeKey = `nodeCreator.subcategoryInfos.${camelCase(subcategory)}` as BaseTextKey;
 
 		const info = i18n.baseText(localeKey);
 

@@ -58,7 +58,7 @@ function onSelected(item: INodeCreateElement) {
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
 
 		// If the info message exists in locale, add it to the info field of the view
-		const infoKey: BaseTextKey = `nodeCreator.subcategoryInfos.${subcategoryKey}`;
+		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
 		const info = i18n.baseText(infoKey);
 		const extendedInfo = info !== infoKey ? { info } : {};
 
