@@ -4,13 +4,12 @@ import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasNode } from '@/types';
-import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
+import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { ref } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
@@ -42,7 +41,6 @@ describe('useCanvasOperations', () => {
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
-	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
 
 	beforeEach(async () => {
@@ -67,7 +65,7 @@ describe('useCanvasOperations', () => {
 		workflowsStore.workflowsById[workflowId] = workflow;
 		await workflowHelpers.initState(workflow);
 
-		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+		canvasOperations = useCanvasOperations({ router });
 	});
 
 	describe('updateNodePosition', () => {

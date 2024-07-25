@@ -9,7 +9,7 @@ import {
 	ref,
 	useCssModule,
 } from 'vue';
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -34,12 +34,8 @@ import {
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT,
 	CHAT_TRIGGER_NODE_TYPE,
 	EnterpriseEditionFeature,
-	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	MODAL_CANCEL,
-	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
@@ -63,9 +59,7 @@ import { historyBus } from '@/models/history';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { useMessage } from '@/composables/useMessage';
 import { useTitleChange } from '@/composables/useTitleChange';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useHistoryStore } from '@/stores/history.store';
@@ -80,7 +74,6 @@ import { sourceControlEventBus } from '@/event-bus/source-control';
 import { useTagsStore } from '@/stores/tags.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { getNodeViewTab } from '@/utils/canvasUtils';
 import CanvasStopCurrentExecutionButton from '@/components/canvas/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/components/canvas/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import CanvasClearExecutionDataButton from '@/components/canvas/elements/buttons/CanvasClearExecutionDataButton.vue';
@@ -104,7 +97,6 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
 const toast = useToast();
-const message = useMessage();
 const titleChange = useTitleChange();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
@@ -123,7 +115,6 @@ const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
-const npsSurveyStore = useNpsSurveyStore();
 const historyStore = useHistoryStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
@@ -133,8 +124,6 @@ const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
-
-const lastClickPosition = ref<XYPosition>([450, 450]);
 
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
@@ -155,7 +144,8 @@ const {
 	addConnections,
 	editableWorkflow,
 	editableWorkflowObject,
-} = useCanvasOperations({ router, lastClickPosition });
+	lastClickPosition,
+} = useCanvasOperations({ router });
 const { applyExecutionData } = useExecutionDebugging();
 
 const isLoading = ref(true);
@@ -1057,66 +1047,6 @@ function registerCustomActions() {
 	// 	},
 	// });
 }
-
-/**
- * Routing
- */
-
-onBeforeRouteLeave(async (to, from, next) => {
-	const toNodeViewTab = getNodeViewTab(to);
-
-	if (
-		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
-		from.name === VIEWS.TEMPLATE_IMPORT ||
-		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-	) {
-		next();
-		return;
-	}
-
-	if (uiStore.stateIsDirty && !isReadOnlyEnvironment.value) {
-		const confirmModal = await message.confirm(
-			i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-			{
-				title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-				type: 'warning',
-				confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				showClose: true,
-			},
-		);
-
-		if (confirmModal === MODAL_CONFIRM) {
-			// Make sure workflow id is empty when leaving the editor
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			const saved = await workflowHelpers.saveCurrentWorkflow({}, false);
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-			uiStore.stateIsDirty = false;
-
-			if (from.name === VIEWS.NEW_WORKFLOW) {
-				// Replace the current route with the new workflow route
-				// before navigating to the new route when saving new workflow.
-				await router.replace({
-					name: VIEWS.WORKFLOW,
-					params: { name: workflowId.value },
-				});
-
-				await router.push(to);
-			} else {
-				next();
-			}
-		} else if (confirmModal === MODAL_CANCEL) {
-			workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			resetWorkspace();
-			uiStore.stateIsDirty = false;
-			next();
-		}
-	} else {
-		next();
-	}
-});
 
 /**
  * Lifecycle

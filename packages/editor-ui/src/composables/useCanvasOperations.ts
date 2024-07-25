@@ -49,13 +49,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { v4 as uuid } from 'uuid';
-import type { Ref } from 'vue';
-import { computed } from 'vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { computed, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 type AddNodeData = Partial<INodeUi> & {
 	type: string;
@@ -68,13 +69,7 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-export function useCanvasOperations({
-	router,
-	lastClickPosition,
-}: {
-	router: ReturnType<typeof useRouter>;
-	lastClickPosition: Ref<XYPosition>;
-}) {
+export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
@@ -82,6 +77,8 @@ export function useCanvasOperations({
 	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
+	const nodeCreatorStore = useNodeCreatorStore();
+	const executionsStore = useExecutionsStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -89,6 +86,7 @@ export function useCanvasOperations({
 	const nodeHelpers = useNodeHelpers();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const lastClickPosition = ref<XYPosition>([0, 0]);
 
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
@@ -970,7 +968,40 @@ export function useCanvasOperations({
 		}
 	}
 
+	/**
+	 * Workspace operations
+	 */
+
+	function resetWorkspace() {
+		// Reset node creator
+		nodeCreatorStore.openNodeCreator({ createNodeActive: false });
+		nodeCreatorStore.setShowScrim(false);
+
+		// Make sure that if there is a waiting test-webhook, it gets removed
+		if (workflowsStore.executionWaitingForWebhook) {
+			try {
+				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			} catch (error) {}
+		}
+
+		// Reset editable workflow state
+		workflowsStore.resetWorkflow();
+		workflowsStore.resetState();
+		workflowsStore.currentWorkflowExecutions = [];
+
+		// Reset actions
+		uiStore.removeActiveAction('workflowRunning');
+		uiStore.stateIsDirty = false;
+
+		// Reset executions
+		executionsStore.activeExecution = null;
+
+		// Reset credentials updates
+		nodeHelpers.credentialsUpdated.value = false;
+	}
+
 	return {
+		lastClickPosition,
 		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
@@ -991,5 +1022,6 @@ export function useCanvasOperations({
 		deleteConnection,
 		revertDeleteConnection,
 		isConnectionAllowed,
+		resetWorkspace,
 	};
 }
