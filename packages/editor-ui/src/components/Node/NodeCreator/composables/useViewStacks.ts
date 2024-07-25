@@ -297,9 +297,16 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			);
 		}
 
+		// Only add info field if the view does not have any filters (e.g.
+		let extendedInfo = {};
+		if (!filter?.nodes?.length && relatedAIView?.properties.info) {
+			extendedInfo = { info: relatedAIView?.properties.info };
+		}
+
 		await nextTick();
 		pushViewStack({
 			title: relatedAIView?.properties.title,
+			...extendedInfo,
 			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
