@@ -1,10 +1,13 @@
 import { Service } from 'typedi';
-import { WorkflowOperationError } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
 import { Logger } from '@/Logger';
 import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import type { Workflow, INode } from 'n8n-workflow';
+import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+
+type Policy = WorkflowSettings.CallerPolicy;
+type DenialPolicy = Exclude<Policy, 'any'>;
 
 @Service()
 export class SubworkflowPolicyChecker {
@@ -15,97 +18,103 @@ export class SubworkflowPolicyChecker {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
+	/**
+	 * Check whether the parent workflow is allowed to call the subworkflow.
+	 */
 	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode) {
-		/**
-		 * Important considerations: both the current workflow and the parent can have empty IDs.
-		 * This happens when a user is executing an unsaved workflow manually running a workflow
-		 * loaded from a file or code, for instance.
-		 * This is an important topic to keep in mind for all security checks
-		 */
-		if (!subworkflow.id) {
-			// It's a workflow from code and not loaded from DB
-			// No checks are necessary since it doesn't have any sort of settings
-			return;
-		}
+		const { id: subworkflowId } = subworkflow;
 
-		let policy =
-			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption;
+		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
-		const isSharingEnabled = this.license.isSharingEnabled();
+		const policy = this.findPolicy(subworkflow);
 
-		if (!isSharingEnabled) {
-			// Community version allows only same owner workflows
-			policy = 'workflowsFromSameOwner';
-		}
+		if (policy === 'any') return;
 
-		const parentWorkflowOwner =
-			await this.ownershipService.getWorkflowProjectCached(parentWorkflowId);
+		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
+			parentWorkflowId,
+			subworkflowId,
+		});
 
-		const subworkflowOwner = await this.ownershipService.getWorkflowProjectCached(subworkflow.id);
+		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
-		const description =
-			subworkflowOwner.id === parentWorkflowOwner.id
-				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `An admin for the ${subworkflowOwner.name} project can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+		if (
+			policy === 'none' ||
+			(policy === 'workflowsFromAList' && !this.hasParentListed(subworkflow, parentWorkflowId)) ||
+			(policy === 'workflowsFromSameOwner' && !areOwnedBySameProject)
+		) {
+			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
-		const errorToThrow = new WorkflowOperationError(
-			`Target workflow ID ${subworkflow.id} may not be called`,
-			node,
-			description,
-		);
-
-		if (policy === 'none') {
-			this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
-				callerWorkflowId: parentWorkflowId,
-				subworkflowId: subworkflow.id,
-				reason: 'Subworkflow may not be called',
-				policy,
-				isSharingEnabled,
+			throw new SubworkflowPolicyDenialError({
+				subworkflowId,
+				subworkflowProject,
+				areOwnedBySameProject,
+				node,
 			});
-			throw errorToThrow;
 		}
+	}
 
-		if (policy === 'workflowsFromAList') {
-			if (parentWorkflowId === undefined) {
-				this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
-					reason: 'Subworkflow may be called only by workflows from an allowlist',
-					callerWorkflowId: parentWorkflowId,
-					subworkflowId: subworkflow.id,
-					policy,
-					isSharingEnabled,
-				});
-				throw errorToThrow;
-			}
+	/**
+	 * Find the subworkflow's caller policy.
+	 */
+	private findPolicy(subworkflow: Workflow): WorkflowSettings.CallerPolicy {
+		if (!this.license.isSharingEnabled()) return 'workflowsFromSameOwner';
 
-			const allowedCallerIds = subworkflow.settings.callerIds
+		return (
+			subworkflow.settings?.callerPolicy ?? this.globalConfig.workflows.callerPolicyDefaultOption
+		);
+	}
+
+	/**
+	 * Find the projects that own the parent workflow and the subworkflow.
+	 */
+	private async findProjects({
+		parentWorkflowId,
+		subworkflowId,
+	}: {
+		parentWorkflowId: string;
+		subworkflowId: string;
+	}) {
+		const [parentWorkflowProject, subworkflowProject] = await Promise.all([
+			this.ownershipService.getWorkflowProjectCached(parentWorkflowId),
+			this.ownershipService.getWorkflowProjectCached(subworkflowId),
+		]);
+
+		return { parentWorkflowProject, subworkflowProject };
+	}
+
+	/**
+	 * Whether the subworkflow has the parent workflow listed as a caller.
+	 */
+	private hasParentListed(subworkflow: Workflow, parentWorkflowId: string) {
+		const callerIds =
+			subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
-				.filter((id) => id !== '');
+				.filter((id) => id !== '') ?? [];
 
-			if (!allowedCallerIds?.includes(parentWorkflowId)) {
-				this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
-					reason: 'Subworkflow may be called only by workflows from an allowlist',
-					callerWorkflowId: parentWorkflowId,
-					subworkflowId: subworkflow.id,
-					allowlist: allowedCallerIds,
-					policy,
-					isSharingEnabled,
-				});
-				throw errorToThrow;
-			}
-		}
+		return callerIds.includes(parentWorkflowId);
+	}
 
-		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
-			this.logger.warn('[PermissionChecker] Subworkflow execution denied', {
-				reason: 'Subworkflow may be called only by workflows owned by the same project',
-				callerWorkflowId: parentWorkflowId,
-				subworkflowId: subworkflow.id,
-				callerProjectId: parentWorkflowOwner.id,
-				subworkflowProjectId: subworkflowOwner.id,
-				policy,
-				isSharingEnabled,
-			});
-			throw errorToThrow;
-		}
+	private readonly denialReasons: Record<DenialPolicy, string> = {
+		none: 'Subworkflow may not be called by any workflow',
+		workflowsFromAList: 'Subworkflow may be called only by workflows from an allowlist',
+		workflowsFromSameOwner: 'Subworkflow may be called only by workflows owned by the same project',
+	};
+
+	private logDenial({
+		parentWorkflowId,
+		subworkflowId,
+		policy,
+	}: {
+		parentWorkflowId: string;
+		subworkflowId: string;
+		policy: DenialPolicy;
+	}) {
+		this.logger.warn('[SubworkflowPolicyChecker] Subworkflow execution denied', {
+			reason: this.denialReasons[policy],
+			parentWorkflowId,
+			subworkflowId,
+			isSharingEnabled: this.license.isSharingEnabled(),
+		});
 	}
 }
