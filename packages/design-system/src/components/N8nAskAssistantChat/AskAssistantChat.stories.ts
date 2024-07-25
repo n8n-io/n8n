@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3';
 import type { ChatUI } from '../../types/assistant';
 
 export default {
-	title: 'Atoms/AskAssistantChat',
+	title: 'Assistant/AskAssistantChat',
 	component: AskAssistantChat,
 	argTypes: {},
 };
@@ -44,6 +44,7 @@ Chat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: 'Hi Max! Here is my top solution to fix the error in your **Transform data** node👇',
+			read: false,
 		},
 		{
 			id: '1',
@@ -56,19 +57,21 @@ Chat.args = {
 			quickReplies: [
 				{
 					type: 'new-suggestion',
-					content: 'Give me another solution',
+					text: 'Give me another solution',
 				},
 				{
 					type: 'resolved',
-					content: 'All good',
+					text: 'All good',
 				},
 			],
+			read: false,
 		},
 		{
 			id: '2',
 			type: 'text',
 			role: 'user',
 			content: 'Give it to me **ignore this markdown**',
+			read: false,
 		},
 		{
 			id: '2',
@@ -77,6 +80,7 @@ Chat.args = {
 			title: 'Credential doesn’t have correct permissions to send a message',
 			content:
 				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
+			read: false,
 		},
 		{
 			id: '2',
@@ -90,14 +94,15 @@ Chat.args = {
 			quickReplies: [
 				{
 					type: 'new-suggestion',
-					content: 'Give me another solution',
+					text: 'Give me another solution',
 				},
 				{
 					type: 'resolved',
-					content: 'All good',
+					text: 'All good',
 				},
 			],
 			suggestionId: 'test',
+			read: false,
 		},
 	]),
 };
@@ -116,6 +121,7 @@ JustSummary.args = {
 			title: 'Credential doesn’t have correct permissions to send a message',
 			content:
 				'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur **adipiscing** elit. Proin id nulla placerat, tristique ex at, euismod dui.\n2. Copy this into somewhere\n3. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.\n4. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui. \n Testing more code \n - Unordered item 1 \n - Unordered item 2',
+			read: false,
 		},
 	]),
 };
@@ -133,13 +139,14 @@ SummaryTitleStreaming.args = {
 			type: 'block',
 			title: 'Credential doesn’t have',
 			content: '',
+			read: false,
 		},
 	]),
 	streaming: true,
 };
 
 export const SummaryContentStreaming = Template.bind({});
-SummaryTitleStreaming.args = {
+SummaryContentStreaming.args = {
 	user: {
 		firstName: 'Max',
 		lastName: 'Test',
@@ -151,6 +158,7 @@ SummaryTitleStreaming.args = {
 			type: 'block',
 			title: 'Credential doesn’t have correct permissions to send a message',
 			content: 'Solution steps:\n1. Lorem ipsum dolor sit amet, consectetur',
+			read: false,
 		},
 	]),
 	streaming: true,
@@ -168,6 +176,7 @@ ErrorChat.args = {
 			role: 'assistant',
 			type: 'error',
 			content: 'There was an error reaching the service',
+			read: false,
 		},
 	]),
 };
@@ -184,6 +193,7 @@ EmptyStreamingChat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: '',
+			read: false,
 		},
 	]),
 	streaming: true,
@@ -201,6 +211,7 @@ StreamingChat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: 'I am thinking through this problem',
+			read: false,
 		},
 	]),
 	streaming: true,
@@ -218,11 +229,14 @@ EndOfSessionChat.args = {
 			type: 'text',
 			role: 'assistant',
 			content: "Great, glad I could help! I'm here whenever you need more help.",
+			read: false,
 		},
 		{
 			id: '123',
 			role: 'assistant',
-			type: 'end-session',
+			type: 'event',
+			eventName: 'end-session',
+			read: false,
 		},
 	]),
 };

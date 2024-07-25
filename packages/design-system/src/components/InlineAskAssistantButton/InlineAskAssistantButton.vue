@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import AssistantIcon from './AssistantIcon.vue';
-import AssistantText from './AssistantText.vue';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import AssistantText from '../AskAssistantText/AssistantText.vue';
 
 interface Props {
 	size: 'small' | 'medium';
@@ -21,16 +21,10 @@ const emit = defineEmits<{
 
 const sizes = {
 	medium: {
-		fontSize: '12px',
-		iconSize: 12,
-		lineHeight: '16px',
 		padding: '0px 12px',
 		height: '28px',
 	},
 	small: {
-		fontSize: '9px',
-		iconSize: 9,
-		lineHeight: '12px',
 		padding: '0px 3px',
 		height: '18px',
 	},
@@ -51,18 +45,14 @@ const onClick = () => {
 		:class="{ [$style.button]: true, [$style.hoverable]: hoverable, [$style.asked]: asked }"
 		:style="{ height: sizes[size].height }"
 		:disabled="asked"
+		:tabindex="static ? '-1' : ''"
 		@click="onClick"
 	>
 		<div>
 			<div :style="{ padding: sizes[size].padding }">
-				<AssistantIcon :size="sizes[size].iconSize" :class="$style.icon" />
+				<AssistantIcon :size="size" :class="$style.icon" />
 				<span v-if="asked">Asked</span>
-				<AssistantText
-					v-else
-					:font-size="sizes[size].fontSize"
-					:line-height="sizes[size].lineHeight"
-					text="Ask Assistant"
-				/>
+				<AssistantText v-else :size="size" text="Ask Assistant" />
 			</div>
 		</div>
 	</button>
@@ -135,3 +125,4 @@ const onClick = () => {
 	margin-bottom: -1px; // center icon to align with text
 }
 </style>
+../AskAssistantText/AssistantText.vue../AskAssistantIcon/AssistantIcon.vue

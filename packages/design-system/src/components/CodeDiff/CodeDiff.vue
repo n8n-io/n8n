@@ -85,8 +85,8 @@ const diffs = computed(() => {
 <template>
 	<div :class="$style.container">
 		<div :class="$style.title">
-			{{ props.title }}
-			<BlinkingCursor v-if="streaming && !props.content" />
+			{{ title }}
+			<BlinkingCursor v-if="streaming && !content" />
 		</div>
 		<div :class="$style.diffSection">
 			<div v-for="(diff, i) in diffs" :key="i" :class="$style.diff">
@@ -129,7 +129,7 @@ const diffs = computed(() => {
 				:type="replacing ? 'secondary' : 'primary'"
 				size="mini"
 				icon="refresh"
-				:disabled="!props.content || props.streaming"
+				:disabled="!content || streaming"
 				:loading="replacing"
 				@click="() => emit('replace')"
 				>{{ replacing ? t('codeDiff.replacing') : t('codeDiff.replaceMyCode') }}</n8n-button

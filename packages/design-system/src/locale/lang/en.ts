@@ -28,4 +28,6 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
+	'betaTag.beta': 'beta',
+	'askAssistantButton.askAssistant': 'Ask Assistant',
 } as N8nLocale;

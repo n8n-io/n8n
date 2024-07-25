@@ -1,10 +1,10 @@
-import AIAssistantButton from './AIAssistantButton.vue';
+import AskAssistantButton from './AskAssistantButton.vue';
 import { action } from '@storybook/addon-actions';
 import type { StoryFn } from '@storybook/vue3';
 
 export default {
-	title: 'Atoms/AIAssistantButton',
-	component: AIAssistantButton,
+	title: 'Assistant/AskAssistantButton',
+	component: AskAssistantButton,
 	argTypes: {},
 };
 
@@ -16,10 +16,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		AIAssistantButton,
+		AskAssistantButton,
 	},
 	template:
-		'<div style="display: flex; height: 50px; width: 300px; align-items: center; justify-content: center"><AIAssistantButton v-bind="args" @click="onClick" /></div>',
+		'<div style="display: flex; height: 50px; width: 300px; align-items: center; justify-content: center"><AskAssistantButton v-bind="args" @click="onClick" /></div>',
 	methods,
 });
 

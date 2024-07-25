@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
-import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
-import AssistantAvatar from './AssistantAvatar.vue';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import AssistantText from '../AskAssistantText/AssistantText.vue';
+import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
 import CodeDiff from '../CodeDiff/CodeDiff.vue';
 import type { ChatUI } from '../../types/assistant';
 import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 
 import Markdown from 'markdown-it';
+import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 const md = new Markdown({
 	breaks: true,
 });
 
 interface Props {
-	user: {
+	user?: {
 		firstName: string;
 		lastName: string;
 	};
@@ -67,8 +68,8 @@ function renderMarkdown(content: string) {
 	<div :class="$style.container">
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
-				<AssistantIcon :size="18" />
-				<AssistantText font-size="14px" line-height="18px" text="AI Assistant" />
+				<AssistantIcon size="large" />
+				<AssistantText size="large" text="AI Assistant" />
 				<div :class="$style.beta">beta</div>
 			</div>
 			<div :class="$style.back" @click="onClose">
@@ -88,8 +89,8 @@ function renderMarkdown(content: string) {
 						<AssistantAvatar v-if="message.role === 'assistant'" />
 						<n8n-avatar
 							v-else
-							:first-name="user.firstName"
-							:last-name="user.lastName"
+							:first-name="user?.firstName"
+							:last-name="user?.lastName"
 							size="xsmall"
 						/>
 
@@ -139,7 +140,7 @@ function renderMarkdown(content: string) {
 						<span>
 							This Assistant session has ended. To start a new session with the Assistant, click an
 						</span>
-						<n8n-ask-assistant-button size="small" :static="true" />
+						<InlineAskAssistantButton size="small" :static="true" />
 						<span>button in n8n</span>
 					</div>
 
@@ -168,7 +169,7 @@ function renderMarkdown(content: string) {
 			</div>
 
 			<div v-else :class="$style.placeholder">
-				<div :class="$style.greeting">Hi {{ props.user.firstName }} 👋</div>
+				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
 					<p>I'm here to assist you with building workflows.</p>
 					<p>
@@ -393,3 +394,4 @@ function renderMarkdown(content: string) {
 	}
 }
 </style>
+../AskAssistantText/AssistantText.vue../AskAssistantIcon/AssistantIcon.vue../AskAssistantAvatar/AssistantAvatar.vue

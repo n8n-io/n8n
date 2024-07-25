@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import AssistantIcon from '../N8nAskAssistantButton/AssistantIcon.vue';
-import AssistantText from '../N8nAskAssistantButton/AssistantText.vue';
+import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import AssistantText from '../AskAssistantText/AssistantText.vue';
+import BetaTag from '../BetaTag/BetaTag.vue';
+import { useI18n } from '../../composables/useI18n';
+
+const { t } = useI18n();
 
 const hovering = ref(false);
 
@@ -32,13 +36,13 @@ function onMouseLeave() {
 		<div v-if="props.unreadCount" :class="$style.num">
 			{{ props.unreadCount }}
 		</div>
-		<AssistantIcon v-else :size="18" :style="hovering ? 'blank' : 'default'" />
+		<AssistantIcon v-else size="large" :theme="hovering ? 'blank' : 'default'" />
 		<div v-show="hovering" :class="$style.text">
 			<div>
-				<AssistantText text="Ask Assistant" />
+				<AssistantText :text="t('askAssistantButton.askAssistant')" />
 			</div>
 			<div>
-				<div :class="$style.beta">beta</div>
+				<BetaTag />
 			</div>
 		</div>
 	</button>
@@ -98,17 +102,5 @@ function onMouseLeave() {
 		float: right;
 		line-height: 12px;
 	}
-}
-
-.beta {
-	display: inline-block;
-
-	color: var(--color-secondary);
-	font-size: 10px;
-	font-weight: 600;
-	line-height: 10px; /* 100% */
-	background-color: var(--color-secondary-tint-3);
-	padding: 1px 4px 2px 4px;
-	border-radius: 16px;
 }
 </style>
