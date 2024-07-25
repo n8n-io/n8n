@@ -236,7 +236,7 @@ const agentTypeProperty: INodeProperties = {
 			name: 'SQL Agent',
 			value: 'sqlAgent',
 			description:
-				'Specialized in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
+				'Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
 		},
 	],
 	default: '',
