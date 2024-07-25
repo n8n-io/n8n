@@ -1389,7 +1389,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			await this.workflowHelpers.initState(workflow);
+			this.workflowHelpers.initState(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
