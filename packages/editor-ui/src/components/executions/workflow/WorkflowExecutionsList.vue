@@ -61,6 +61,7 @@ export default defineComponent({
 			next();
 			return;
 		}
+
 		if (this.uiStore.stateIsDirty) {
 			const confirmModal = await this.confirm(
 				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
