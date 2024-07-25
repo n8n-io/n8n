@@ -82,12 +82,11 @@ function renderMarkdown(content: string) {
 			</div>
 		</div>
 		<div :class="$style.body">
-			<div v-if="props.messages?.length" :class="$style.messages">
-				<div v-for="(message, i) in props.messages" :key="i" :class="$style.message">
+			<div v-if="messages?.length" :class="$style.messages">
+				<div v-for="(message, i) in messages" :key="i" :class="$style.message">
 					<div
 						v-if="
-							!isEndOfSessionEvent(message) &&
-							(i === 0 || message.role !== props.messages[i - 1].role)
+							!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
 						"
 						:class="{ [$style.roleName]: true, [$style.userSection]: i > 0 }"
 					>
@@ -125,7 +124,7 @@ function renderMarkdown(content: string) {
 							v-html="renderMarkdown(message.content)"
 						></span>
 						<BlinkingCursor
-							v-if="streaming && i === props.messages?.length - 1 && message.role === 'assistant'"
+							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
 					</div>
 					<div v-else-if="message.type === 'error'" :class="$style.error">
@@ -138,7 +137,7 @@ function renderMarkdown(content: string) {
 							:replacing="message.replacing"
 							:replaced="message.replaced"
 							:error="message.error"
-							:streaming="streaming && i === props.messages?.length - 1"
+							:streaming="streaming && i === messages?.length - 1"
 							@replace="() => emit('codeReplace', i)"
 							@undo="() => emit('codeUndo', i)"
 						/>
@@ -158,7 +157,7 @@ function renderMarkdown(content: string) {
 							!streaming &&
 							'quickReplies' in message &&
 							message.quickReplies?.length &&
-							i === props.messages?.length - 1
+							i === messages?.length - 1
 						"
 						:class="$style.quickReplies"
 					>
@@ -193,7 +192,7 @@ function renderMarkdown(content: string) {
 			</div>
 		</div>
 		<div
-			v-if="props.messages?.length"
+			v-if="messages?.length"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 		>
 			<input
@@ -203,7 +202,7 @@ function renderMarkdown(content: string) {
 				@keydown.enter="onSendMessage"
 			/>
 			<n8n-icon
-				:class="{ [$style.sendButton]: true, [$style.disabledInput]: props.streaming }"
+				:class="{ [$style.sendButton]: true, [$style.disabledInput]: streaming }"
 				icon="paper-plane"
 				size="large"
 				@click="onSendMessage"

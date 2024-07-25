@@ -1,12 +1,12 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' }>(), {
+withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' }>(), {
 	text: '',
 	size: 'medium',
 });
 </script>
 
 <template>
-	<span :class="[$style.text, $style[size]]">{{ props.text }}</span>
+	<span :class="[$style.text, $style[size]]">{{ text }}</span>
 </template>
 
 <style lang="scss" module>
