@@ -127,6 +127,7 @@ const onClick = () => {
 .asked {
 	cursor: not-allowed;
 	background: var(--color-foreground-base);
+	color: var(--color-text-light);
 }
 
 .icon {

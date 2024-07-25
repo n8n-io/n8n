@@ -45,11 +45,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
+	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 
 	const canShowAssistant = computed(
 		() =>
 			settings.isAiAssistantEnabled && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
+
+	const isSessionEnded = computed(() => {
+		const assistantMessages = chatMessages.value.filter((msg) => msg.role === 'assistant');
+		const lastMessage = assistantMessages[assistantMessages.length - 1];
+		return (
+			assistantMessages.length &&
+			lastMessage?.type === 'event' &&
+			lastMessage?.eventName === 'end-session'
+		);
+	});
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
@@ -70,7 +81,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		),
 	);
 
-	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
+	function resetAssistantChat() {
+		clearMessages();
+		currentSessionId.value = undefined;
+		chatSessionError.value = undefined;
+		lastUnread.value = undefined;
+		currentSessionActiveExecutionId.value = undefined;
+		suggestions.value = {};
+	}
 
 	function closeChat() {
 		chatWindowOpen.value = false;
@@ -221,16 +239,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 
 			// todo localization
-			await message.confirm(
-				'You already have an active AI Assistant session. Starting a new session will clear your current conversation history. Are you sure you want to start a new session?',
-				'Start new AI Assistant session?',
-				{
-					confirmButtonText: 'Start new session',
-				},
-			);
+			if (!isSessionEnded.value) {
+				await message.confirm(
+					'You already have an active AI Assistant session. Starting a new session will clear your current conversation history. Are you sure you want to start a new session?',
+					'Start new AI Assistant session?',
+					{
+						confirmButtonText: 'Start new session',
+					},
+				);
+			}
 		}
 
-		clearMessages();
+		resetAssistantChat();
 		chatSessionError.value = context;
 		if (workflowsStore.activeExecutionId) {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
@@ -264,6 +284,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		eventName: ChatRequest.InteractionEventName,
 		error?: ChatRequest.ErrorContext['error'],
 	) {
+		if (isSessionEnded.value || streaming.value) {
+			return;
+		}
+
 		assert(currentSessionId.value);
 
 		const id = getRandomId();
@@ -300,6 +324,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function sendMessage(
 		message: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
 	) {
+		if (isSessionEnded.value || streaming.value) {
+			return;
+		}
+
 		const id = getRandomId();
 		try {
 			addUserMessage(message.text, id);
@@ -441,6 +469,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		canShowAssistant,
 		canShowAssistantButtons,
 		lastUnread,
+		isSessionEnded,
 		onNodeExecution,
 		closeChat,
 		openChat,

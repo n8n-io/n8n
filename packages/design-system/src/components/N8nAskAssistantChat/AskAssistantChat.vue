@@ -351,6 +351,7 @@ function renderMarkdown(content: string) {
 		width: 100%;
 		font-size: 12px;
 		outline: none;
+		color: var(--color-text-dark);
 	}
 }
 
