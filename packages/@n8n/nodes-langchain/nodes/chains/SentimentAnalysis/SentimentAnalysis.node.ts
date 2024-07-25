@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
@@ -46,7 +46,7 @@ export class SentimentAnalysis implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.sentimentanalysis/',
 					},
 				],
 			},
@@ -146,83 +146,110 @@ export class SentimentAnalysis implements INodeType {
 
 		const returnData: INodeExecutionData[][] = [];
 
-		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
-			const sentimentCategories = this.getNodeParameter(
-				'options.categories',
-				itemIdx,
-				DEFAULT_CATEGORIES,
-			) as string;
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const sentimentCategories = this.getNodeParameter(
+					'options.categories',
+					i,
+					DEFAULT_CATEGORIES,
+				) as string;
 
-			const categories = sentimentCategories.split(',').map((cat) => cat.trim());
+				const categories = sentimentCategories
+					.split(',')
+					.map((cat) => cat.trim())
+					.filter(Boolean);
 
-			// Initialize returnData with empty arrays for each category
-			if (returnData.length === 0) {
-				returnData.push(
-					...Array(categories.length)
-						.fill([])
-						.map(() => []),
-				);
-			}
-
-			const options = this.getNodeParameter('options', itemIdx, {}) as {
-				systemPromptTemplate?: string;
-				includeDetailedResults?: boolean;
-				enableAutoFixing?: boolean;
-			};
-
-			const schema = z.object({
-				sentiment: z.enum(categories as [string, ...string[]]),
-				strength: z
-					.number()
-					.min(0)
-					.max(1)
-					.describe('Strength score for sentiment in relation to the category'),
-				confidence: z.number().min(0).max(1),
-			});
-
-			const structuredParser = StructuredOutputParser.fromZodSchema(schema);
-
-			const parser = options.enableAutoFixing
-				? OutputFixingParser.fromLLM(llm, structuredParser)
-				: structuredParser;
-
-			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-				`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
-	{format_instructions}`,
-			);
-
-			const input = this.getNodeParameter('inputText', itemIdx) as string;
-			const inputPrompt = new HumanMessage(input);
-			const messages = [
-				await systemPromptTemplate.format({
-					categories: sentimentCategories,
-					format_instructions: parser.getFormatInstructions(),
-				}),
-				inputPrompt,
-			];
-
-			const prompt = ChatPromptTemplate.fromMessages(messages);
-			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
-
-			const output = await chain.invoke(messages);
-			const sentimentIndex = categories.findIndex(
-				(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
-			);
-
-			if (sentimentIndex !== -1) {
-				const resultItem = { ...items[itemIdx] };
-				const sentimentAnalysis: IDataObject = {
-					category: output.sentiment,
-				};
-				if (options.includeDetailedResults) {
-					sentimentAnalysis.strength = output.strength;
-					sentimentAnalysis.confidence = output.confidence;
+				if (categories.length === 0) {
+					throw new NodeOperationError(this.getNode(), 'No sentiment categories provided', {
+						itemIndex: i,
+					});
 				}
-				resultItem.json = {
-					...resultItem.json,
-					sentimentAnalysis,
+
+				// Initialize returnData with empty arrays for each category
+				if (returnData.length === 0) {
+					returnData.push(...Array.from({ length: categories.length }, () => []));
+				}
+
+				const options = this.getNodeParameter('options', i, {}) as {
+					systemPromptTemplate?: string;
+					includeDetailedResults?: boolean;
+					enableAutoFixing?: boolean;
 				};
-				returnData[sentimentIndex].push(resultItem);
+
+				const schema = z.object({
+					sentiment: z.enum(categories as [string, ...string[]]),
+					strength: z
+						.number()
+						.min(0)
+						.max(1)
+						.describe('Strength score for sentiment in relation to the category'),
+					confidence: z.number().min(0).max(1),
+				});
+
+				const structuredParser = StructuredOutputParser.fromZodSchema(schema);
+
+				const parser = options.enableAutoFixing
+					? OutputFixingParser.fromLLM(llm, structuredParser)
+					: structuredParser;
+
+				const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+					`${options.systemPromptTemplate ?? DEFAULT_SYSTEM_PROMPT_TEMPLATE}
+		{format_instructions}`,
+				);
+
+				const input = this.getNodeParameter('inputText', i) as string;
+				const inputPrompt = new HumanMessage(input);
+				const messages = [
+					await systemPromptTemplate.format({
+						categories: sentimentCategories,
+						format_instructions: parser.getFormatInstructions(),
+					}),
+					inputPrompt,
+				];
+
+				const prompt = ChatPromptTemplate.fromMessages(messages);
+				const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
+
+				try {
+					const output = await chain.invoke(messages);
+					const sentimentIndex = categories.findIndex(
+						(s) => s.toLowerCase() === output.sentiment.toLowerCase(),
+					);
+
+					if (sentimentIndex !== -1) {
+						const resultItem = { ...items[i] };
+						const sentimentAnalysis: IDataObject = {
+							category: output.sentiment,
+						};
+						if (options.includeDetailedResults) {
+							sentimentAnalysis.strength = output.strength;
+							sentimentAnalysis.confidence = output.confidence;
+						}
+						resultItem.json = {
+							...resultItem.json,
+							sentimentAnalysis,
+						};
+						returnData[sentimentIndex].push(resultItem);
+					}
+				} catch (error) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Error during parsing of LLM output, please check your LLM model and configuration',
+						{
+							itemIndex: i,
+						},
+					);
+				}
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData[0].push(...executionErrorData);
+					continue;
+				}
+				throw error;
 			}
 		}
 		return returnData;
