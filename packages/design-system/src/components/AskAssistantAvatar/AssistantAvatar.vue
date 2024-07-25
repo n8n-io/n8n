@@ -4,22 +4,10 @@ import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 withDefaults(defineProps<{ size: 'small' | 'mini' }>(), {
 	size: 'small',
 });
-
-const sizes = {
-	small: {
-		container: '20px',
-	},
-	mini: {
-		container: '16px',
-	},
-};
 </script>
 
 <template>
-	<div
-		:class="$style.container"
-		:style="{ height: sizes[size].container, width: sizes[size].container }"
-	>
+	<div :class="[$style.container, $style[size]]">
 		<AssistantIcon :size="size" theme="blank" />
 	</div>
 </template>
@@ -31,5 +19,15 @@ const sizes = {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.small {
+	height: 20px;
+	width: 20px;
+}
+
+.mini {
+	height: 16px;
+	width: 16px;
 }
 </style>
