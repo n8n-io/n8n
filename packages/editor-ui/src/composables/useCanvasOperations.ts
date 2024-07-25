@@ -87,8 +87,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import type { Ref } from 'vue';
-import { computed, nextTick } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import type { useRouter } from 'vue-router';
 import { useClipboard } from '@/composables/useClipboard';
 import { isPresent } from '../utils/typesUtils';
@@ -104,13 +103,7 @@ type AddNodeOptions = {
 	isAutoAdd?: boolean;
 };
 
-export function useCanvasOperations({
-	router,
-	lastClickPosition,
-}: {
-	router: ReturnType<typeof useRouter>;
-	lastClickPosition: Ref<XYPosition>;
-}) {
+export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
@@ -131,6 +124,8 @@ export function useCanvasOperations({
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
+
+	const lastClickPosition = ref<XYPosition>([0, 0]);
 
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
@@ -1665,6 +1660,7 @@ export function useCanvasOperations({
 	}
 
 	return {
+		lastClickPosition,
 		editableWorkflow,
 		editableWorkflowObject,
 		triggerNodes,
