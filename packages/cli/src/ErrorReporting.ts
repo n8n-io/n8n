@@ -1,6 +1,8 @@
 import { createHash } from 'crypto';
 import config from '@/config';
 import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { QueryFailedError } from '@n8n/typeorm';
 
 let initialized = false;
 
@@ -64,6 +66,13 @@ export const initErrorHandling = async () => {
 	const seenErrors = new Set<string>();
 	addEventProcessor((event, { originalException }) => {
 		if (!originalException) return null;
+
+		if (
+			originalException instanceof QueryFailedError &&
+			originalException.message.includes('SQLITE_FULL')
+		) {
+			return null;
+		}
 
 		if (originalException instanceof ApplicationError) {
 			const { level, extra, tags } = originalException;

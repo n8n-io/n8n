@@ -24,6 +24,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { telemetry } from '@/plugins/telemetry';
 import { useClipboard } from '@/composables/useClipboard';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -74,68 +75,89 @@ describe('useCanvasOperations', () => {
 
 		workflowsStore.resetWorkflow();
 		workflowsStore.resetState();
-		await workflowHelpers.initState(workflow);
+		workflowHelpers.initState(workflow);
 
 		canvasOperations = useCanvasOperations({ router, lastClickPosition });
 		vi.clearAllMocks();
 	});
 
-	describe('addNode', () => {
-		it('should throw error when node type does not exist', async () => {
-			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+	describe('requireNodeTypeDescription', () => {
+		it('should return node type description when type and version match', () => {
+			const type = 'testType';
+			const version = 1;
+			const expectedDescription = mockNodeTypeDescription({ name: type, version });
+			nodeTypesStore.setNodeTypes([expectedDescription]);
 
-			await expect(canvasOperations.addNode({ type: 'nonexistent' })).rejects.toThrow();
+			const result = canvasOperations.requireNodeTypeDescription(type, version);
+
+			expect(result).toBe(expectedDescription);
 		});
 
-		it('should create node with default version when version is undefined', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+		it('should throw an error when node type does not exist', () => {
+			const type = 'nonexistentType';
 
-			const result = await canvasOperations.addNode({
-				name: 'example',
-				type: 'type',
-			});
+			expect(() => {
+				canvasOperations.requireNodeTypeDescription(type);
+			}).toThrow();
+		});
+
+		it('should return node type description when only type is provided and it exists', () => {
+			const type = 'testTypeWithoutVersion';
+			const expectedDescription = mockNodeTypeDescription({ name: type });
+			nodeTypesStore.setNodeTypes([expectedDescription]);
+
+			const result = canvasOperations.requireNodeTypeDescription(type);
+
+			expect(result).toBe(expectedDescription);
+		});
+	});
+
+	describe('addNode', () => {
+		it('should create node with default version when version is undefined', () => {
+			const result = canvasOperations.addNode(
+				{
+					name: 'example',
+					type: 'type',
+					typeVersion: 1,
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
 			expect(result.typeVersion).toBe(1);
 		});
 
-		it('should create node with last version when version is an array', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
-
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
-
-			expect(result.typeVersion).toBe(2);
-		});
-
-		it('should create node with default position when position is not provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
+		it('should create node with default position when position is not provided', () => {
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
 			expect(result.position).toEqual([460, 460]); // Default last click position
 		});
 
-		it('should create node with provided position when position is provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.addNode({
-				type: 'type',
-				position: [20, 20],
-			});
+		it('should create node with provided position when position is provided', () => {
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+					position: [20, 20],
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
 			expect(result.position).toEqual([20, 20]);
 		});
 
-		it('should create node with default credentials when only one credential is available', async () => {
+		it('should create node with default credentials when only one credential is available', () => {
 			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
 			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
-			]);
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeTypeName,
+				credentials: [{ name: credential.name }],
+			});
 
 			credentialsStore.addCredentials([credential]);
 
@@ -144,24 +166,25 @@ describe('useCanvasOperations', () => {
 				credential,
 			]);
 
-			const result = await canvasOperations.addNode({
-				type: nodeTypeName,
-			});
+			const result = canvasOperations.addNode(
+				{
+					type: nodeTypeName,
+					typeVersion: 1,
+				},
+				nodeTypeDescription,
+			);
 
 			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
 		});
 
-		it('should not assign credentials when multiple credentials are available', async () => {
+		it('should not assign credentials when multiple credentials are available', () => {
 			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
 			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
 			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({
-					name: nodeTypeName,
-					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
-				}),
-			]);
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeTypeName,
+				credentials: [{ name: credentialA.name }, { name: credentialB.name }],
+			});
 
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
@@ -169,24 +192,30 @@ describe('useCanvasOperations', () => {
 				credentialB,
 			]);
 
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+				},
+				nodeTypeDescription,
+			);
 			expect(result.credentials).toBeUndefined();
 		});
 
 		it('should open NDV when specified', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+			const nodeTypeDescription = mockNodeTypeDescription({ name: 'type' });
 
-			await canvasOperations.addNode(
+			canvasOperations.addNode(
 				{
 					type: 'type',
+					typeVersion: 1,
 					name: 'Test Name',
 				},
+				nodeTypeDescription,
 				{ openNDV: true },
 			);
 
-			expect(ndvStore.activeNodeName).toBe('Test Name');
+			await waitFor(() => expect(ndvStore.activeNodeName).toBe('Test Name'));
 		});
 	});
 
@@ -719,7 +748,7 @@ describe('useCanvasOperations', () => {
 
 			const addConnectionSpy = vi.spyOn(workflowsStore, 'addConnection');
 
-			await canvasOperations.addConnections(connections);
+			canvasOperations.addConnections(connections);
 
 			expect(addConnectionSpy).toHaveBeenCalledWith({
 				connection: [

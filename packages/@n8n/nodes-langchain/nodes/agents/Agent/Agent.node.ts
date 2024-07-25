@@ -206,35 +206,37 @@ const agentTypeProperty: INodeProperties = {
 			name: 'Tools Agent',
 			value: 'toolsAgent',
 			description:
-				'Utilized unified Tool calling interface to select the appropriate tools and argument for execution',
+				'Utilizes structured tool schemas for precise and reliable tool selection and execution. Recommended for complex tasks requiring accurate and consistent tool usage, but only usable with models that support tool calling.',
 		},
 		{
 			name: 'Conversational Agent',
 			value: 'conversationalAgent',
 			description:
-				'Selects tools to accomplish its task and uses memory to recall previous conversations',
+				'Describes tools in the system prompt and parses JSON responses for tool calls. More flexible but potentially less reliable than the Tools Agent. Suitable for simpler interactions or with models not supporting structured schemas.',
 		},
 		{
 			name: 'OpenAI Functions Agent',
 			value: 'openAiFunctionsAgent',
 			description:
-				"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
+				"Leverages OpenAI's function calling capabilities to precisely select and execute tools. Excellent for tasks requiring structured outputs when working with OpenAI models.",
 		},
 		{
 			name: 'Plan and Execute Agent',
 			value: 'planAndExecuteAgent',
 			description:
-				'Plan and execute agents accomplish an objective by first planning what to do, then executing the sub tasks',
+				'Creates a high-level plan for complex tasks and then executes each step. Suitable for multi-stage problems or when a strategic approach is needed.',
 		},
 		{
 			name: 'ReAct Agent',
 			value: 'reActAgent',
-			description: 'Strategically select tools to accomplish a given task',
+			description:
+				'Combines reasoning and action in an iterative process. Effective for tasks that require careful analysis and step-by-step problem-solving.',
 		},
 		{
 			name: 'SQL Agent',
 			value: 'sqlAgent',
-			description: 'Answers questions about data in an SQL database',
+			description:
+				'Specializes in interacting with SQL databases. Ideal for data analysis tasks, generating queries, or extracting insights from structured data.',
 		},
 	],
 	default: '',
@@ -256,7 +258,7 @@ export class Agent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			alias: ['LangChain'],
+			alias: ['LangChain', 'Chat', 'Conversational', 'Plan and Execute', 'ReAct', 'Tools'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents', 'Root Nodes'],
