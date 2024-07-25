@@ -102,6 +102,10 @@ describe('jsonParse', () => {
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
 	});
+
+	it('optionally returns a `fallbackValue` from a function', () => {
+		expect(jsonParse('', { fallbackValue: () => ({ foo: 'bar' }) })).toEqual({ foo: 'bar' });
+	});
 });
 
 describe('jsonStringify', () => {

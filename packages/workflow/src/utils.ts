@@ -71,8 +71,10 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
-
-type JSONParseOptions<T> = MutuallyExclusive<{ errorMessage?: string }, { fallbackValue?: T }>;
+type JSONParseOptions<T> = MutuallyExclusive<
+	{ errorMessage?: string },
+	{ fallbackValue?: T | (() => T) }
+>;
 
 /**
  * Parses a JSON string into an object with optional error handling and recovery mechanisms.
@@ -88,6 +90,9 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
 		if (options?.fallbackValue !== undefined) {
+			if (options.fallbackValue instanceof Function) {
+				return options.fallbackValue();
+			}
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
 			throw new ApplicationError(options.errorMessage);

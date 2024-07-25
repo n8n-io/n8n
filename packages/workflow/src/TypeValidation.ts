@@ -176,7 +176,7 @@ export const tryToParseObject = (value: unknown): object => {
 	}
 	try {
 		const parsedJsonObject = jsonParse<object>(String(value), {
-			fallbackValue: parseJSObject(String(value)),
+			fallbackValue: () => parseJSObject(String(value)),
 		});
 
 		if (typeof parsedJsonObject !== 'object' || Array.isArray(parsedJsonObject)) {
