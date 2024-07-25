@@ -49,7 +49,6 @@ describe('useCanvasOperations', () => {
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
-	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
 
 	beforeEach(async () => {
@@ -77,7 +76,7 @@ describe('useCanvasOperations', () => {
 		workflowsStore.resetState();
 		workflowHelpers.initState(workflow);
 
-		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+		canvasOperations = useCanvasOperations({ router });
 		vi.clearAllMocks();
 	});
 
