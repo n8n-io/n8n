@@ -2,6 +2,7 @@
 import parseDiff from 'parse-diff';
 import { computed } from 'vue';
 import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
+import { useI18n } from 'n8n-design-system/composables/useI18n';
 
 const MIN_LINES = 4;
 
@@ -34,6 +35,8 @@ const emit = defineEmits<{
 	replace: [];
 	undo: [];
 }>();
+
+const { t } = useI18n();
 
 const diffs = computed(() => {
 	const parsed = parseDiff(props.content);
@@ -111,20 +114,15 @@ const diffs = computed(() => {
 		</div>
 		<div :class="$style.actions">
 			<div v-if="error">
-				<n8n-icon icon="exclamation-triangle" color="danger" :class="$style.infoIcon" />
-				<span :class="$style.infoText">Could not replace code</span>
+				<n8n-icon icon="exclamation-triangle" color="danger" class="mr-5xs" />
+				<span :class="$style.infoText">{{ t('codeDiff.couldNotReplace') }}</span>
 			</div>
 			<div v-else-if="replaced">
-				<n8n-button
-					type="secondary"
-					size="mini"
-					icon="undo"
-					:class="$style.undoButton"
-					@click="() => emit('undo')"
-					>Undo</n8n-button
-				>
-				<n8n-icon icon="check" color="success" :class="$style.infoIcon" />
-				<span :class="$style.infoText">Code replaced</span>
+				<n8n-button type="secondary" size="mini" icon="undo" @click="() => emit('undo')">{{
+					t('codeDiff.undo')
+				}}</n8n-button>
+				<n8n-icon icon="check" color="success" class="ml-2xs mr-5xs" />
+				<span :class="$style.infoText">{{ t('codeDiff.codeReplaced') }}</span>
 			</div>
 			<n8n-button
 				v-else
@@ -134,7 +132,7 @@ const diffs = computed(() => {
 				:disabled="!props.content || props.streaming"
 				:loading="replacing"
 				@click="() => emit('replace')"
-				>{{ replacing ? 'Replacing...' : 'Replace my code' }}</n8n-button
+				>{{ replacing ? t('codeDiff.replacing') : t('codeDiff.replaceMyCode') }}</n8n-button
 			>
 		</div>
 	</div>
@@ -144,18 +142,21 @@ const diffs = computed(() => {
 .container {
 	border: var(--border-base);
 	background-color: var(--color-foreground-xlight);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 }
 
 .title {
-	padding: 8px;
-	font-weight: 600;
-	font-size: 12px;
-	min-height: 28px;
+	padding: var(--spacing-2xs);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	// ensure consistent spacing even if title is empty
+	min-height: 32.5px;
+	line-height: normal;
+	display: flex;
 }
 
 .lineNumber {
-	font-size: 10px;
+	font-size: var(--font-size-3xs);
 	min-width: 18px;
 	max-width: 18px;
 	text-align: center;
@@ -172,14 +173,13 @@ const diffs = computed(() => {
 
 .diff {
 	display: flex;
-	font-size: 10px;
+	font-size: var(--font-size-3xs);
 	line-height: 18px; /* 100% */
 	height: 18px;
 	max-height: 18px;
 }
 
 .diffContent {
-	// flex-grow: 1;
 	width: 100%;
 	text-wrap: nowrap;
 }
@@ -199,19 +199,11 @@ const diffs = computed(() => {
 }
 
 .actions {
-	padding: 8px;
+	padding: var(--spacing-2xs);
 }
 
 .infoText {
 	color: var(--color-text-light);
-}
-
-.undoButton {
-	// todo
-	margin-right: 8px !important;
-}
-
-.infoIcon {
-	margin-right: 2px;
+	font-size: var(--font-size-s);
 }
 </style>

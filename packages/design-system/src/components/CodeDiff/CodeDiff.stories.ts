@@ -2,7 +2,7 @@ import CodeDiff from './CodeDiff.vue';
 import type { StoryFn } from '@storybook/vue3';
 
 export default {
-	title: 'Atoms/CodeDiff',
+	title: 'Assistant/CodeDiff',
 	component: CodeDiff,
 	argTypes: {},
 };
