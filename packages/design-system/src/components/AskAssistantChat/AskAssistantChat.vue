@@ -10,6 +10,9 @@ import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 import Markdown from 'markdown-it';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
+import { useI18n } from '../../composables/useI18n';
+
+const { t } = useI18n();
 
 const md = new Markdown({
 	breaks: true,
@@ -60,7 +63,8 @@ function renderMarkdown(content: string) {
 	try {
 		return md.render(content);
 	} catch (e) {
-		return '<p>Error parsing markdown content</p>';
+		console.error(`Error parsing markdown content ${content}`);
+		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
 	}
 }
 </script>
@@ -70,7 +74,7 @@ function renderMarkdown(content: string) {
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
 				<AssistantIcon size="large" />
-				<AssistantText size="large" text="AI Assistant" />
+				<AssistantText size="large" :text="t('assistantChat.aiAssistantName')" />
 				<BetaTag />
 			</div>
 			<div :class="$style.back" @click="onClose">
@@ -95,8 +99,10 @@ function renderMarkdown(content: string) {
 							size="xsmall"
 						/>
 
-						<span v-if="message.role === 'assistant'">AI Assistant</span>
-						<span v-else>You</span>
+						<span v-if="message.role === 'assistant'">{{
+							t('assistantChat.aiAssistantName')
+						}}</span>
+						<span v-else>{{ t('assistantChat.you') }}</span>
 					</div>
 					<div v-if="message.type === 'block'">
 						<div :class="$style.block">
@@ -139,10 +145,12 @@ function renderMarkdown(content: string) {
 					</div>
 					<div v-else-if="isEndOfSessionEvent(message)" :class="$style.endOfSessionText">
 						<span>
-							This Assistant session has ended. To start a new session with the Assistant, click an
+							{{ t('assistantChat.sessionEndMessage.1') }}
 						</span>
 						<InlineAskAssistantButton size="small" :static="true" />
-						<span>button in n8n</span>
+						<span>
+							{{ t('assistantChat.sessionEndMessage.2') }}
+						</span>
 					</div>
 
 					<div
@@ -154,7 +162,7 @@ function renderMarkdown(content: string) {
 						"
 						:class="$style.quickReplies"
 					>
-						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
+						<div :class="$style.quickRepliesTitle">{{ t('assistantChat.quickRepliesTitle') }}</div>
 						<div v-for="opt in message.quickReplies" :key="opt.type">
 							<n8n-button
 								v-if="opt.text"
@@ -172,12 +180,15 @@ function renderMarkdown(content: string) {
 			<div v-else :class="$style.placeholder">
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
-					<p>I'm here to assist you with building workflows.</p>
+					<p>{{ t('assistantChat.placeholder.1') }}</p>
 					<p>
-						Whenever you encounter a task that I can help with, you'll see the
-						<InlineAskAssistantButton size="small" :static="true" /> button.
+						{{ t('assistantChat.placeholder.2') }}
+						<InlineAskAssistantButton size="small" :static="true" />
+						{{ t('assistantChat.placeholder.3') }}
 					</p>
-					<p>Clicking it starts a chat session with me.</p>
+					<p>
+						{{ t('assistantChat.placeholder.4') }}
+					</p>
 				</div>
 			</div>
 		</div>
@@ -188,7 +199,7 @@ function renderMarkdown(content: string) {
 			<input
 				v-model="textInputValue"
 				:disabled="sessionEnded"
-				placeholder="Enter your response..."
+				:placeholder="t('assistantChat.inputPlaceholder')"
 				@keydown.enter="onSendMessage"
 			/>
 			<n8n-icon
