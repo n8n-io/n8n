@@ -160,11 +160,17 @@ export class CredentialsController {
 			req.body.projectId,
 		);
 
+		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
+			credential.id,
+		);
+
 		this.eventService.emit('credentials-created', {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			publicApi: false,
+			projectId: project?.id,
+			projectType: project?.type,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
