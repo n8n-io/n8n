@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAssistantStore } from '@/stores/assistant.store';
-import AssistantAvatar from 'n8n-design-system/components/N8nAskAssistantChat/AssistantAvatar.vue';
+import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
