@@ -189,12 +189,14 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	}
 
 	function getSubcategoryInfo(subcategory: string) {
-		const localeKey = `nodeCreator.aiPanel.${camelCase(subcategory)}` as BaseTextKey;
-		if (i18n.exists(localeKey)) {
-			return i18n.baseText(localeKey);
-		}
+		const localeKey: BaseTextKey = `nodeCreator.subcategoryInfos.${camelCase(subcategory)}`;
 
-		return undefined;
+		const info = i18n.baseText(localeKey);
+
+		// Return undefined if the locale key is not found
+		if (info === localeKey) return undefined;
+
+		return info;
 	}
 
 	return {

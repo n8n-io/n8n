@@ -56,13 +56,17 @@ function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
-		const info = i18n.baseText(`nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey);
+
+		// If the info message exists in locale, add it to the info field of the view
+		const infoKey: BaseTextKey = `nodeCreator.subcategoryInfos.${subcategoryKey}`;
+		const info = i18n.baseText(infoKey);
+		const extendedInfo = info !== infoKey ? { info } : {};
 
 		pushViewStack({
 			subcategory: item.key,
-			title,
-			info,
 			mode: 'nodes',
+			title,
+			...extendedInfo,
 			...(item.properties.icon
 				? {
 						nodeIcon: {
