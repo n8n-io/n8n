@@ -196,7 +196,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function getRandomId() {
-		return `${Math.floor(Math.random() * 10000)}`;
+		return `${Math.floor(Math.random() * 100000000)}`;
 	}
 
 	function onDoneStreaming(id: string) {
