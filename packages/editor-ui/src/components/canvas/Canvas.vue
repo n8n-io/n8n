@@ -401,7 +401,11 @@ watch(() => props.readOnly, setReadonly, {
 			/>
 		</template>
 
-		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="16" />
+		<template #connection-line="connectionLineProps">
+			<CanvasConnectionLine v-bind="connectionLineProps" />
+		</template>
+
+		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
 		<MiniMap data-test-id="canvas-minimap" pannable />
 

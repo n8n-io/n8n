@@ -68,6 +68,7 @@ export type CanvasNodeStickyNoteRender = {
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
+	subtitle: string;
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
