@@ -136,6 +136,8 @@ export function useCanvasOperations({
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 
+	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
+
 	const editableWorkflow = computed(() => workflowsStore.workflow);
 	const editableWorkflowObject = computed(() => workflowsStore.getCurrentWorkflow());
 
@@ -558,7 +560,7 @@ export function useCanvasOperations({
 
 			runAddNodeHooks(nodeData, options);
 
-			if (options.openNDV) {
+			if (options.openNDV && !preventOpeningNDV) {
 				ndvStore.setActiveNodeName(nodeData.name);
 			}
 		});
