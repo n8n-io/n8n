@@ -41,7 +41,7 @@ const npsSurveyStore = useNpsSurveyStore();
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
 		? undefined
-		: props.execution,
+		: props.execution ?? undefined,
 );
 const hidePreview = computed<boolean>(
 	() => props.loading || (!props.execution && props.executions.length > 0),

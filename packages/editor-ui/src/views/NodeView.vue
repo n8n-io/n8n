@@ -621,7 +621,7 @@ export default defineComponent({
 				!this.containsTrigger &&
 				!this.isDemo &&
 				!this.readOnlyEnv &&
-				(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+				!!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
 			);
 		},
 		lastSelectedNode(): INodeUi | null {
@@ -1102,7 +1102,7 @@ export default defineComponent({
 				return false;
 			}
 
-			return this.workflowPermissions.update ?? this.projectPermissions.workflow.update;
+			return !!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 		},
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
@@ -4695,7 +4695,7 @@ export default defineComponent({
 						createNodeActive:
 							!this.isReadOnlyRoute &&
 							!this.readOnlyEnv &&
-							(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
+							!!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 					});
 					break;
 				case 'add_sticky':
