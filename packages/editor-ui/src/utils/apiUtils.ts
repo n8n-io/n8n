@@ -4,13 +4,6 @@ import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
-const debugLog = [];
-
-// @ts-ignore
-window.debugChat = () => {
-	console.log(debugLog);
-};
-
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
 if (!browserId && 'randomUUID' in crypto) {
@@ -216,10 +209,8 @@ export const postFetch = async (
 		credentials: 'include',
 		body: JSON.stringify(payload),
 	};
-	debugLog.push({ request: { ...request, endpoint: `${context.baseUrl}${apiEndpoint}` } });
 	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
 
-	debugLog.push({ response });
 	if (response.ok && response.body) {
 		return await response.json();
 	} else {
@@ -247,10 +238,8 @@ export const streamRequest = async (
 		credentials: 'include',
 		body: JSON.stringify(payload),
 	};
-	debugLog.push({ request: { ...request, endpoint: `${context.baseUrl}${apiEndpoint}` } });
 	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
 
-	debugLog.push({ response });
 	if (response.ok && response.body) {
 		// Handle the streaming response
 		const reader = response.body.getReader();
@@ -259,13 +248,11 @@ export const streamRequest = async (
 		async function readStream() {
 			const { done, value } = await reader.read();
 			if (done) {
-				debugLog.push({ done });
 				onDone?.();
 				return;
 			}
 
 			const chunk = decoder.decode(value);
-			debugLog.push({ chunk });
 			const splitChunks = chunk.split('\n');
 
 			for (const splitChunk of splitChunks) {
