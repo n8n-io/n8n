@@ -144,7 +144,12 @@ function renderMarkdown(content: string) {
 					</div>
 
 					<div
-						v-if="!streaming && 'quickReplies' in message && i === props.messages?.length - 1"
+						v-if="
+							!streaming &&
+							'quickReplies' in message &&
+							message.quickReplies?.length &&
+							i === props.messages?.length - 1
+						"
 						:class="$style.quickReplies"
 					>
 						<div :class="$style.quickRepliesTitle">Quick reply 👇</div>
