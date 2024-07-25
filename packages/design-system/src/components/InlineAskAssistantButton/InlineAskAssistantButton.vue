@@ -69,7 +69,7 @@ const onClick = () => {
 	border: 0;
 	padding: 1px;
 
-	background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
+	background: var(--color-assistant-highlight-gradient);
 
 	> div {
 		background: var(--color-background-xlight);
@@ -89,7 +89,7 @@ const onClick = () => {
 .hoverable {
 	&:hover {
 		cursor: pointer;
-		background: linear-gradient(105deg, #ec7b8e 0%, #aa7bec 50%, #5b60e8 100%);
+		background: var(--color-assistant-highlight-reverse);
 
 		> div > div {
 			background: linear-gradient(
@@ -102,7 +102,7 @@ const onClick = () => {
 	}
 
 	&:active {
-		background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
+		background: var(--color-assistant-highlight-gradient);
 		> div > div {
 			background: linear-gradient(
 				108.82deg,

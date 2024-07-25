@@ -36,7 +36,7 @@ const sizes = {
 				y2="9.82667"
 				gradientUnits="userSpaceOnUse"
 			>
-				<stop stop-color="#5B60E8" />
+				<stop stop-color="var(--color-assistant-highlight-1)" />
 				<stop offset="0.495" stop-color="#AA7BEC" />
 				<stop offset="1" stop-color="#EC7B8E" />
 			</linearGradient>

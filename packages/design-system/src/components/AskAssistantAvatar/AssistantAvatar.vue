@@ -26,7 +26,7 @@ const sizes = {
 
 <style lang="scss" module>
 .container {
-	background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
+	background: var(--color-assistant-highlight-gradient);
 	border-radius: 50%;
 	display: inline-flex;
 	align-items: center;

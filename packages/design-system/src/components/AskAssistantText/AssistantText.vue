@@ -30,7 +30,7 @@ const sizes = {
 
 <style lang="scss" module>
 .text {
-	background: linear-gradient(105deg, #5b60e8 0%, #aa7bec 50%, #ec7b8e 100%);
+	background: var(--color-assistant-highlight-gradient);
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
 	font-weight: 600;
