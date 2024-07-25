@@ -72,17 +72,13 @@ type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
-type JSONParseOptions<T> = { recovery?: boolean } & MutuallyExclusive<
-	{ errorMessage?: string },
-	{ fallbackValue?: T }
->;
+type JSONParseOptions<T> = MutuallyExclusive<{ errorMessage?: string }, { fallbackValue?: T }>;
 
 /**
  * Parses a JSON string into an object with optional error handling and recovery mechanisms.
  *
  * @param {string} jsonString - The JSON string to parse.
  * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
- * @param {boolean} [options.recovery=false] - If true, attempts to recover from common JSON format errors by replacing single quotes with double quotes and trimming trailing commas.
  * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
  * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
  * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.
@@ -91,19 +87,6 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 	try {
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
-		if (options?.recovery) {
-			try {
-				const jsonStringCleaned = jsonString
-					.replace(/'/g, '"') // Replace single quotes with double quotes
-					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
-					.replace(/,\s*([\]}])/g, '$1') // Remove trailing commas from objects
-					.replace(/,+$/, ''); // Remove trailing comma
-				return JSON.parse(jsonStringCleaned) as T;
-			} catch (e) {
-				// Ignore this error and return the original error or the fallback value
-			}
-		}
-
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {

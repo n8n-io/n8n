@@ -3,6 +3,12 @@ import type { FieldType, INodePropertyOptions, ValidationResult } from './Interf
 import isObject from 'lodash/isObject';
 import { ApplicationError } from './errors';
 import { jsonParse } from './utils';
+import {
+	parse as esprimaParse,
+	Syntax,
+	type Node as SyntaxNode,
+	type ExpressionStatement,
+} from 'esprima-next';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -131,16 +137,52 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 	}
 };
 
+function syntaxNodeToValue(expression?: SyntaxNode | null): unknown {
+	switch (expression?.type) {
+		case Syntax.ObjectExpression:
+			return Object.fromEntries(
+				expression.properties
+					.filter((prop) => prop.type === Syntax.Property)
+					.map(({ key, value }) => [syntaxNodeToValue(key), syntaxNodeToValue(value)]),
+			);
+		case Syntax.Identifier:
+			return expression.name;
+		case Syntax.Literal:
+			return expression.value;
+		case Syntax.ArrayExpression:
+			return expression.elements.map((exp) => syntaxNodeToValue(exp));
+		default:
+			return undefined;
+	}
+}
+
+/**
+ * Parse any JavaScript ObjectExpression, including:
+ * - single quoted keys
+ * - unquoted keys
+ */
+function parseJSObject(objectAsString: string): object {
+	const jsExpression = esprimaParse(`(${objectAsString})`).body.find(
+		(node): node is ExpressionStatement =>
+			node.type === Syntax.ExpressionStatement && node.expression.type === Syntax.ObjectExpression,
+	);
+
+	return syntaxNodeToValue(jsExpression?.expression) as object;
+}
+
 export const tryToParseObject = (value: unknown): object => {
 	if (value && typeof value === 'object' && !Array.isArray(value)) {
 		return value;
 	}
 	try {
-		const o = jsonParse<object>(String(value), { recovery: true });
-		if (typeof o !== 'object' || Array.isArray(o)) {
+		const parsedJsonObject = jsonParse<object>(String(value), {
+			fallbackValue: parseJSObject(String(value)),
+		});
+
+		if (typeof parsedJsonObject !== 'object' || Array.isArray(parsedJsonObject)) {
 			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
-		return o;
+		return parsedJsonObject;
 	} catch (e) {
 		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
