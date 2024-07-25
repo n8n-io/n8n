@@ -68,7 +68,7 @@ const diffs = computed(() => {
 	}, []);
 
 	const len = lines.length;
-	// why programmatic and not min height? to ensure numbers border goes all the way down.s
+	// why programmatic and not min height? to ensure numbers border goes all the way down.
 	if (len <= MIN_LINES) {
 		for (let i = 0; i < MIN_LINES - len; i++) {
 			lines.push({
