@@ -169,7 +169,7 @@ describe('Type Validation', () => {
 			'1.1',
 			1.1,
 			'"a"',
-			'{a: 1}',
+			// '{a: 1}', // we support this with jsonParse recovery option
 			'["apples", "oranges"]',
 			[{ name: 'john' }, { name: 'bob' }],
 			'[ { name: "john" }, { name: "bob" } ]',

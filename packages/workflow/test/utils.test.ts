@@ -93,7 +93,7 @@ describe('jsonParse', () => {
 		expect(jsonParse('{ "a": 1 }')).toEqual({ a: 1 });
 	});
 
-	it('optionally throws `errorMessage', () => {
+	it('optionally throws `errorMessage`', () => {
 		expect(() => {
 			jsonParse('', { errorMessage: 'Invalid JSON' });
 		}).toThrow('Invalid JSON');
@@ -101,6 +101,45 @@ describe('jsonParse', () => {
 
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+
+	it('recovers from common JSON format errors', () => {
+		expect(jsonParse("{ 'a': 1 }", { recovery: true })).toEqual({ a: 1 });
+		expect(jsonParse('{ a: 1 }', { recovery: true })).toEqual({ a: 1 });
+		expect(jsonParse('{ "a": 1, }', { recovery: true })).toEqual({ a: 1 });
+		expect(jsonParse("{ a: 'b', c: [1, 2, 3], }", { recovery: true })).toEqual({
+			a: 'b',
+			c: [1, 2, 3],
+		});
+	});
+
+	it('returns fallbackValue when recovery fails', () => {
+		expect(jsonParse('invalid JSON', { recovery: true, fallbackValue: { foo: 'bar' } })).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('throws errorMessage when recovery fails and errorMessage is set', () => {
+		expect(() => {
+			jsonParse('invalid JSON', { recovery: true, errorMessage: 'Recovery failed' });
+		}).toThrow('Recovery failed');
+	});
+
+	it('handles recovery and then fallbackValue if recovery fails', () => {
+		expect(jsonParse('invalid JSON', { recovery: true, fallbackValue: { foo: 'bar' } })).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('handles recovery and then throws errorMessage if recovery fails', () => {
+		expect(() => {
+			jsonParse('invalid JSON', { recovery: true, errorMessage: 'Recovery failed' });
+		}).toThrow('Recovery failed');
+	});
+
+	it('parses valid JSON with recovery option enabled', () => {
+		expect(jsonParse('[1, 2, 3]', { recovery: true })).toEqual([1, 2, 3]);
+		expect(jsonParse('{ "a": 1 }', { recovery: true })).toEqual({ a: 1 });
 	});
 });
 
