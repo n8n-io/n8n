@@ -51,20 +51,7 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
-	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
-		credential.id,
-	);
-	Container.get(EventService).emit('credentials-created', {
-		user,
-		credentialType: credential.type,
-		credentialId: credential.id,
-		projectId: project?.id,
-		projectType: project?.type,
-		publicApi: true,
-	});
-
-	return await Db.transaction(async (transactionManager) => {
+	const result = await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
@@ -86,6 +73,23 @@ export async function saveCredential(
 
 		return savedCredential;
 	});
+
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+
+	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+		credential.id,
+	);
+
+	Container.get(EventService).emit('credentials-created', {
+		user,
+		credentialType: credential.type,
+		credentialId: credential.id,
+		projectId: project?.id,
+		projectType: project?.type,
+		publicApi: true,
+	});
+
+	return result;
 }
 
 export async function removeCredential(
