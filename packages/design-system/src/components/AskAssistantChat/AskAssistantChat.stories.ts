@@ -87,8 +87,6 @@ Chat.args = {
 			type: 'code-diff',
 			role: 'assistant',
 			description: 'Short solution with min height',
-			// codeDiff:
-			// '--- original.js\n+++ modified.js\n- cons a = 1\n+ const a = 1\n\n+for (const item of items) {\n+  item.json.myNewField = 1;\n+}\n\n+return items;',
 			codeDiff:
 				'@@ -1,7 +1,6 @@\n-The Way that can be told of is not the eternal Way;\n-The name that can be named is not the eternal name.\n+The door of all subtleties!',
 			quickReplies: [
