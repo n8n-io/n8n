@@ -228,10 +228,6 @@ export class InformationExtractor implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const options = this.getNodeParameter('options', 0, {}) as {
-			systemPromptTemplate?: string;
-		};
-
 		const schemaType = this.getNodeParameter('schemaType', 0, '') as
 			| 'fromAttributes'
 			| 'fromJson'
@@ -271,15 +267,20 @@ export class InformationExtractor implements INodeType {
 			parser = OutputFixingParser.fromLLM(llm, StructuredOutputParser.fromZodSchema(zodSchema));
 		}
 
-		const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-			`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}`,
-		);
-
 		const resultData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const input = this.getNodeParameter('text', itemIndex) as string;
 			const inputPrompt = new HumanMessage(input);
+
+			const options = this.getNodeParameter('options', itemIndex, {}) as {
+				systemPromptTemplate?: string;
+			};
+
+			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+				`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
+{format_instructions}`,
+			);
+
 			const messages = [
 				await systemPromptTemplate.format({
 					format_instructions: parser.getFormatInstructions(),
