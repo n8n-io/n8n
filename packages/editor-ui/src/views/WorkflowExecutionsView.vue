@@ -131,7 +131,7 @@ async function fetchWorkflow() {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}
 	}
-	workflow.value = workflowsStore.workflow;
+	workflow.value = workflowsStore.getWorkflowById(workflowId.value);
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -175,7 +175,10 @@ async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	await executionsStore.initialize(workflowId.value);
 }
 
-async function onExecutionStop(id: string) {
+async function onExecutionStop(id?: string) {
+	if (!id) {
+		return;
+	}
 	try {
 		await executionsStore.stopCurrentExecution(id);
 
@@ -193,7 +196,10 @@ async function onExecutionStop(id: string) {
 	}
 }
 
-async function onExecutionDelete(id: string) {
+async function onExecutionDelete(id?: string) {
+	if (!id) {
+		return;
+	}
 	loading.value = true;
 	try {
 		const executionIndex = executions.value.findIndex((e: ExecutionSummary) => e.id === id);

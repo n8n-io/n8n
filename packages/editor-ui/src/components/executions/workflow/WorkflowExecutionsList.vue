@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import { MAIN_HEADER_TABS, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/constants';
@@ -14,7 +14,7 @@ import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps<{
 	loading: boolean;
-	workflow: IWorkflowDb;
+	workflow?: IWorkflowDb;
 	executions: ExecutionSummary[];
 	filters: ExecutionFilterType;
 	execution: ExecutionSummary | null;
@@ -39,7 +39,9 @@ const uiStore = useUIStore();
 const npsSurveyStore = useNpsSurveyStore();
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
-	props.executions.find((execution) => execution.id === props.execution?.id),
+	props.executions.find((execution) => execution.id === props.execution?.id)
+		? undefined
+		: props.execution,
 );
 const hidePreview = computed<boolean>(
 	() => props.loading || (!props.execution && props.executions.length > 0),
@@ -48,7 +50,7 @@ const hidePreview = computed<boolean>(
 watch(
 	() => props.execution,
 	(value: ExecutionSummary | null) => {
-		if (!value) {
+		if (!value || !props.workflow) {
 			return;
 		}
 
@@ -119,10 +121,11 @@ function onRetryExecution(payload: { execution: ExecutionSummary; command: strin
 			:loading="loading && !executions.length"
 			:loading-more="loadingMore"
 			:temporary-execution="temporaryExecution"
-			@update:auto-refresh="$emit('update:auto-refresh', $event)"
-			@reload-executions="$emit('reload')"
-			@filter-updated="$emit('update:filters', $event)"
-			@load-more="$emit('load-more')"
+			:workflow="workflow"
+			@update:auto-refresh="emit('update:auto-refresh', $event)"
+			@reload-executions="emit('reload')"
+			@filter-updated="emit('update:filters', $event)"
+			@load-more="emit('load-more')"
 			@retry-execution="onRetryExecution"
 		/>
 		<div v-if="!hidePreview" :class="$style.content">

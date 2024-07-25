@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineProps, defineEmits, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { VIEWS } from '@/constants';
@@ -8,11 +8,13 @@ import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
+import type { PermissionsRecord } from '@/permissions';
 
 const props = defineProps<{
 	execution: ExecutionSummary;
 	highlight?: boolean;
 	showGap?: boolean;
+	workflowPermissions: PermissionsRecord['workflow'];
 }>();
 
 const emit = defineEmits<{
@@ -114,6 +116,7 @@ function onRetryMenuItemSelect(action: string): void {
 					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
+					:disabled="!workflowPermissions.update"
 					activator-icon="redo"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
