@@ -52,7 +52,7 @@ function onMouseLeave() {
 .button {
 	border: var(--border-base);
 	background: var(--color-foreground-xlight);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -63,12 +63,7 @@ function onMouseLeave() {
 	&:hover {
 		border: 0;
 		cursor: pointer;
-		background: linear-gradient(
-			108.82deg,
-			rgba(236, 123, 142) 0%,
-			rgba(170, 123, 236) 50.5%,
-			rgba(91, 96, 232) 100%
-		);
+		background: var(--color-assistant-highlight-reverse);
 
 		> div {
 			background: transparent;
@@ -77,20 +72,15 @@ function onMouseLeave() {
 }
 
 .num {
-	color: #fff;
-	background: linear-gradient(
-		108.82deg,
-		rgba(236, 123, 142) 0%,
-		rgba(170, 123, 236) 50.5%,
-		rgba(91, 96, 232) 100%
-	);
+	color: var(--prim-color-white);
+	background: var(--color-assistant-highlight-reverse);
 	border-radius: 50%;
 	width: 16px;
 	height: 16px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 10px;
+	font-size: var(--font-size-3xs);
 }
 
 .text {
@@ -100,7 +90,7 @@ function onMouseLeave() {
 
 	> * {
 		float: right;
-		line-height: 12px;
+		line-height: var(--font-line-height-compact);
 	}
 }
 </style>
