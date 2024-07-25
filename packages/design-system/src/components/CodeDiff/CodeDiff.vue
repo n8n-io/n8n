@@ -182,6 +182,11 @@ const diffs = computed(() => {
 .diffContent {
 	width: 100%;
 	text-wrap: nowrap;
+	display: flex;
+
+	> span {
+		display: flex;
+	}
 }
 
 .add {
