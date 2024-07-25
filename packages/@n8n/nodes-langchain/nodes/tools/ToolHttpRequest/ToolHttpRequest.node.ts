@@ -49,6 +49,7 @@ export class ToolHttpRequest implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [

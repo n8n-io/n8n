@@ -50,6 +50,7 @@ import {
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -92,11 +93,11 @@ import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
 
-const NodeDetailsView = defineAsyncComponent(
+const LazyNodeDetailsView = defineAsyncComponent(
 	async () => await import('@/components/NodeDetailsView.vue'),
 );
 
@@ -1090,6 +1091,17 @@ const chatTriggerNodePinnedData = computed(() => {
 	return workflowsStore.pinDataByNodeName(chatTriggerNode.value.name);
 });
 
+async function onOpenChat() {
+	uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+
+	const payload = {
+		workflow_id: workflowId.value,
+	};
+
+	void externalHooks.run('nodeView.onOpenChat', payload);
+	telemetry.track('User clicked chat open button', payload);
+}
+
 /**
  * History events
  */
@@ -1518,6 +1530,7 @@ onBeforeUnmount(() => {
 				@mouseleave="onRunWorkflowButtonMouseLeave"
 				@click="onRunWorkflow"
 			/>
+			<CanvasChatButton v-if="containsChatTriggerNodes" @click="onOpenChat" />
 			<CanvasStopCurrentExecutionButton
 				v-if="isStopExecutionButtonVisible"
 				:stopping="isStoppingExecution"
@@ -1533,7 +1546,7 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<Suspense>
-			<NodeCreation
+			<LazyNodeCreation
 				v-if="!isCanvasReadOnly"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="viewportTransform.zoom"
@@ -1542,7 +1555,7 @@ onBeforeUnmount(() => {
 			/>
 		</Suspense>
 		<Suspense>
-			<NodeDetailsView
+			<LazyNodeDetailsView
 				:workflow-object="editableWorkflowObject"
 				:read-only="isCanvasReadOnly"
 				:is-production-execution-preview="isProductionExecutionPreview"

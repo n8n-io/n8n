@@ -4,6 +4,7 @@ import { Container, Service } from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
+type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
 interface PropertyMetadata {
 	type: unknown;
@@ -46,6 +47,8 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					} else {
 						value = value === 'true';
 					}
+				} else if (type !== String && type !== Object) {
+					value = new (type as Constructable)(value as string);
 				}
 
 				if (value !== undefined) {

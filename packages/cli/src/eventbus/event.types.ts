@@ -112,14 +112,6 @@ export type Event = {
 		apiVersion: string;
 	};
 
-	'public-api-key-created':
-		| { user: UserLike } // audit
-		| { user: UserLike; publicApi: boolean }; // telemetry
-
-	'public-api-key-deleted':
-		| { user: UserLike } // audit
-		| { user: UserLike; publicApi: boolean }; // telemetry
-
 	'email-failed': {
 		user: UserLike;
 		messageType:
@@ -264,9 +256,7 @@ export type Event = {
 		success: boolean;
 	};
 
-	'variable-created': {
-		variableType: string;
-	};
+	'variable-created': {};
 
 	'external-secrets-provider-settings-saved': {
 		userId?: string;
@@ -274,5 +264,49 @@ export type Event = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'ldap-general-sync-finished': {
+		type: string;
+		succeeded: boolean;
+		usersSynced: number;
+		error: string;
+	};
+
+	'ldap-settings-updated': {
+		userId: string;
+		loginIdAttribute: string;
+		firstNameAttribute: string;
+		lastNameAttribute: string;
+		emailAttribute: string;
+		ldapIdAttribute: string;
+		searchPageSize: number;
+		searchTimeout: number;
+		synchronizationEnabled: boolean;
+		synchronizationInterval: number;
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+
+	'ldap-login-sync-failed': {
+		error: string;
+	};
+
+	'login-failed-due-to-ldap-disabled': {
+		userId: string;
+	};
+
+	/**
+	 * Events listened to by more than one relay
+	 */
+
+	'public-api-key-created': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
+	};
+
+	'public-api-key-deleted': {
+		user: UserLike; // audit and telemetry
+		publicApi: boolean; // telemetry only
 	};
 };

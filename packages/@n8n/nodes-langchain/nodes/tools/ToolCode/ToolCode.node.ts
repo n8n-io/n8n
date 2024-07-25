@@ -17,19 +17,20 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom Code Tool',
+		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
 		defaults: {
-			name: 'Custom Code Tool',
+			name: 'Code Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [

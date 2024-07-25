@@ -28,19 +28,20 @@ import {
 } from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom n8n Workflow Tool',
+		displayName: 'Call n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Custom n8n Workflow Tool',
+			name: 'Call n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
