@@ -145,6 +145,10 @@
 					sans-serif;
 			}
 
+			::placeholder {
+				opacity: 0.5;
+			}
+
 			#submit-btn {
 				width: 100%;
 				height: 48px;
@@ -237,9 +241,35 @@
 					color: #ff6d5a;
 			}
 
+			hr {
+				border: 0;
+				height: 1px;
+				border-top: 1px solid #dbdfe7;
+				margin-top: 24px;
+				margin-bottom: 24px;
+				display: none;
+			}
+
 			@media only screen and (max-width: 400px) {
+				hr {
+					display: block;
+				}
 				.container {
 					width: 95%;
+					min-height: 100vh;
+					padding: 24px;
+					background-color: white;
+					border: 1px solid #dbdfe7;
+					border-radius: 8px;
+					box-shadow: 0px 4px 16px 0px #634dff0f;
+				}
+				.card {
+					padding: 0px;
+					background-color: white;
+					border: 0px solid #dbdfe7;
+					border-radius: 0px;
+					box-shadow: 0px 0px 10px 0px #634dff0f;
+					margin-bottom: 0px;
 				}
 			}
 		</style>
@@ -252,7 +282,10 @@
 					<div class='test-notice'>
 						<p>This is test version of your form. Use it only for testing your Form Trigger.</p>
 					</div>
+					<hr>
 				{{/if}}
+
+
 
 				{{#if validForm}}
 					<form class='card' action='#' method='POST' name='n8n-form' id='n8n-form' novalidate>
@@ -390,6 +423,7 @@
 				</div>
 
 				{{#if appendAttribution}}
+					<hr>
 					<div class='n8n-link'>
 						<a href={{n8nWebsiteLink}} target='_blank'>
 							Form automated with
@@ -504,7 +538,7 @@
                 event.preventDefault();
             }
         });
-    });
+    	});
 
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 
@@ -542,7 +576,20 @@
 				});
 
 				if (valid.every((v) => v)) {
-					var formData = new FormData(form);
+					var formData = new FormData();
+
+					for (const filed of form.elements) {
+						if(filed.type !== 'file') {
+							formData.append(filed.name, filed.value);
+						} else {
+							for (const file of filed.files) {
+								if(file.size === 0) {
+									continue;
+								}
+								formData.append(filed.name, file);
+							}
+						}
+					}
 
 					document.querySelectorAll('.multiselect').forEach((multiselect) => {
 						const selectedValues = getSelectedValues(multiselect);

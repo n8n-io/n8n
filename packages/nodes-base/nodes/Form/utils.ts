@@ -289,7 +289,10 @@ export async function formWebhook(context: IWebhookFunctions) {
 		const key = `field-${index}`;
 		let value = bodyData[key] ?? null;
 
-		if (value === null) returnItem.json[field.fieldLabel] = null;
+		if (value === null) {
+			returnItem.json[field.fieldLabel] = null;
+			continue;
+		}
 
 		if (field.fieldType === 'number') {
 			value = Number(value);
@@ -302,6 +305,9 @@ export async function formWebhook(context: IWebhookFunctions) {
 		}
 		if (field.fieldType === 'date' && value && field.formatDate !== '') {
 			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		}
+		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
+			value = [value];
 		}
 
 		returnItem.json[field.fieldLabel] = value;

@@ -106,7 +106,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['dropdown', 'date'],
+							fieldType: ['dropdown', 'date', 'file'],
 						},
 					},
 				},
