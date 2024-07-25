@@ -9,6 +9,7 @@ import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 
 import Markdown from 'markdown-it';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import BetaTag from '../BetaTag/BetaTag.vue';
 
 const md = new Markdown({
 	breaks: true,
@@ -59,7 +60,7 @@ function renderMarkdown(content: string) {
 	try {
 		return md.render(content);
 	} catch (e) {
-		return `<p>Error parsing markdown content</p>`;
+		return '<p>Error parsing markdown content</p>';
 	}
 }
 </script>
@@ -70,7 +71,7 @@ function renderMarkdown(content: string) {
 			<div :class="$style.chatTitle">
 				<AssistantIcon size="large" />
 				<AssistantText size="large" text="AI Assistant" />
-				<div :class="$style.beta">beta</div>
+				<BetaTag />
 			</div>
 			<div :class="$style.back" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />
@@ -248,18 +249,6 @@ function renderMarkdown(content: string) {
 	line-height: 19px;
 }
 
-.beta {
-	display: inline-block;
-
-	color: var(--color-secondary);
-	font-size: 10px;
-	font-weight: 600;
-	line-height: 10px; /* 100% */
-	background-color: var(--color-secondary-tint-3);
-	padding: 1px 4px 2px 4px;
-	border-radius: 16px;
-}
-
 .roleName {
 	display: flex;
 	align-items: center;
@@ -394,4 +383,3 @@ function renderMarkdown(content: string) {
 	}
 }
 </style>
-../AskAssistantText/AssistantText.vue../AskAssistantIcon/AssistantIcon.vue../AskAssistantAvatar/AssistantAvatar.vue
