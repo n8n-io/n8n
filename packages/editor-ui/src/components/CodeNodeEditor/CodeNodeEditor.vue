@@ -196,9 +196,7 @@ const aiEnabled = computed(() => {
 	);
 
 	return (
-		isAiExperimentEnabled &&
-		settingsStore.settings.ai.enabled &&
-		props.language === 'javaScript'
+		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
 	);
 });
 
