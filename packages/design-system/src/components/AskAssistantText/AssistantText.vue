@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<{ text: string; size: 'small' | 'medium' 
 	background: var(--color-assistant-highlight-gradient);
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 }
 
 .small {

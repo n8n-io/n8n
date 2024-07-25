@@ -257,7 +257,7 @@ function renderMarkdown(content: string) {
 .message {
 	margin-bottom: var(--spacing-xs);
 	font-size: var(--font-size-2xs);
-	line-height: 19px; // todo
+	line-height: var(--font-line-height-xloose);
 }
 
 .roleName {
@@ -284,7 +284,6 @@ function renderMarkdown(content: string) {
 .greeting {
 	color: var(--color-text-dark);
 	font-size: var(--font-size-m);
-	line-height: 24px; // todo
 	margin-bottom: var(--spacing-s);
 }
 
