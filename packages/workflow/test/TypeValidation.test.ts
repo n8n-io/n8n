@@ -150,6 +150,7 @@ describe('Type Validation', () => {
 			['{"a": 1}', { a: 1 }],
 			['{a: 1}', { a: 1 }],
 			["{'a': '1'}", { a: '1' }],
+			["{'\\'single quoted\\' \"double quoted\"': 1}", { '\'single quoted\' "double quoted"': 1 }],
 			['{"a": 1, "b": { "c": 10, "d": "test"}}', { a: 1, b: { c: 10, d: 'test' } }],
 			["{\"a\": 1, b: { 'c': 10, d: 'test'}}", { a: 1, b: { c: 10, d: 'test' } }],
 			[{ name: 'John' }, { name: 'John' }],
