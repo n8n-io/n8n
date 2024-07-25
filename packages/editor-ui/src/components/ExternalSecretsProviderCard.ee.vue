@@ -139,7 +139,7 @@ async function onActionDropdownClick(id: string) {
 					icon="exclamation-triangle"
 				></font-awesome-icon>
 				<N8nBadge class="mr-xs" theme="tertiary" bold data-test-id="card-badge">
-					deprecated
+					{{ i18n.baseText('settings.externalSecrets.card.deprecated') }}
 				</N8nBadge>
 			</div>
 			<div v-if="canConnect" :class="$style.cardActions">
