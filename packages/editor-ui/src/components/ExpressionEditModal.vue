@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		width="80%"
+		width="calc(100vw - 200px)"
 		append-to-body
 		:class="$style.modal"
 		:model-value="dialogVisible"
@@ -8,7 +8,7 @@
 		:before-close="closeDialog"
 	>
 		<div :class="$style.container">
-			<div :class="$style.schema">
+			<div :class="$style.sidebar">
 				<N8nInput
 					v-model="search"
 					size="small"
@@ -21,6 +21,7 @@
 				</N8nInput>
 
 				<RunDataSchema
+					:class="$style.schema"
 					:search="appliedSearch"
 					:nodes="parentNodes"
 					mapping-enabled
@@ -42,18 +43,21 @@
 						/>
 					</div>
 
-					<DraggableTarget type="mapping" @drop="onDrop">
+					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
 						<template #default="{ droppable, activeDrop }">
 							<ExpressionEditorModalInput
 								ref="expressionInputRef"
 								:model-value="modelValue"
 								:is-read-only="isReadOnly"
 								:path="path"
-								:class="{
-									'ph-no-capture': redactValues,
-									[$style.drop]: droppable,
-									[$style.activeDrop]: activeDrop,
-								}"
+								:class="[
+									$style.editor,
+									{
+										'ph-no-capture': redactValues,
+										[$style.drop]: droppable,
+										[$style.activeDrop]: activeDrop,
+									},
+								]"
 								data-test-id="expression-modal-input"
 								@change="valueChanged"
 								@close="closeDialog"
@@ -70,9 +74,10 @@
 						<OutputItemSelect />
 					</div>
 
-					<div :class="{ 'ph-no-capture': redactValues }">
+					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
 						<ExpressionOutput
 							ref="expressionResultRef"
+							:class="$style.editor"
 							:segments="segments"
 							:extensions="theme"
 							data-test-id="expression-modal-output"
@@ -209,12 +214,16 @@ function onDrop(expression: string) {
 
 <style module lang="scss">
 .modal {
-	overflow: hidden;
-	height: 80vh;
+	--modal-header-height: 76px;
+	display: flex;
+	flex-direction: column;
+	overflow: clip;
+	height: calc(100vh - 140px);
+	margin-bottom: 0;
 
 	:global(.el-dialog__body) {
 		background-color: var(--color-expression-editor-modal-background);
-		height: 100%;
+		height: calc(100% - var(--modal-header-height));
 		border-top: var(--border-base);
 		padding-top: var(--spacing-l);
 	}
@@ -227,14 +236,31 @@ function onDrop(expression: string) {
 	height: 100%;
 }
 
-.schema {
+.sidebar {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-s);
-	flex-basis: 320px;
+	flex-basis: 360px;
 	flex-shrink: 0;
 	height: 100%;
+}
+
+.schema {
+	height: 100%;
 	overflow-y: auto;
+	padding-right: var(--spacing-4xs);
+}
+
+.editor {
+	height: 100%;
+
+	> div {
+		height: 100%;
+	}
+}
+
+.editorContainer {
+	height: 100%;
 }
 
 .io {
@@ -242,10 +268,6 @@ function onDrop(expression: string) {
 	flex-wrap: wrap;
 	flex-grow: 1;
 	gap: var(--spacing-s);
-
-	:global(.cm-content) {
-		height: 60vh;
-	}
 }
 
 .input,
@@ -253,7 +275,7 @@ function onDrop(expression: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-s);
-	min-width: 300px;
+	min-width: 400px;
 	flex: 1;
 }
 

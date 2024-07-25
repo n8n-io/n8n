@@ -30,6 +30,7 @@ type Props = {
 	data?: IDataObject[];
 	mappingEnabled?: boolean;
 	runIndex?: number;
+	outputIndex?: number;
 	totalRuns?: number;
 	paneType: 'input' | 'output';
 	connectionType?: ConnectionTypes;
@@ -52,6 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 	node: null,
 	data: undefined,
 	runIndex: 0,
+	outputIndex: 0,
 	totalRuns: 1,
 	connectionType: NodeConnectionType.Main,
 	search: '',
