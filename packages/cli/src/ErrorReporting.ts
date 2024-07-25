@@ -59,6 +59,15 @@ export const initErrorHandling = async () => {
 				},
 			}),
 		],
+		beforeSend(event) {
+			const exception = event.exception?.values?.[0];
+
+			if (exception?.type === 'QueryFailedError' && exception?.value?.includes('SQLITE_FULL')) {
+				return null;
+			}
+
+			return event;
+		},
 	});
 
 	const seenErrors = new Set<string>();
