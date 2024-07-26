@@ -254,7 +254,9 @@
 					:type="getStringInputType"
 					:rows="editorRows"
 					:disabled="
-						isReadOnly || remoteParameterOptionsLoading || remoteParameterOptionsLoadingIssues
+						isReadOnly ||
+						remoteParameterOptionsLoading ||
+						remoteParameterOptionsLoadingIssues !== null
 					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
