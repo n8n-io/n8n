@@ -14,7 +14,7 @@ export class TogglApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Username',
+			displayName: 'Email Address',
 			name: 'username',
 			type: 'string',
 			default: '',
