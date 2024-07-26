@@ -26,6 +26,7 @@ const versionDescription: INodeTypeDescription = {
 		{
 			name: 'smtp',
 			required: true,
+			testedBy: 'smtpConnectionTest',
 		},
 	],
 	properties: [
@@ -69,6 +70,10 @@ export class EmailSendV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
+	methods = {
+		credentialTest: { smtpConnectionTest: send.smtpConnectionTest },
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let returnData: INodeExecutionData[][] = [];

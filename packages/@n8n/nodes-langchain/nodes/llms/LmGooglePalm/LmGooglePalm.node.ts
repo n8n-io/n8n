@@ -26,6 +26,7 @@ export class LmGooglePalm implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [

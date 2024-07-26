@@ -4,13 +4,12 @@ import type { IConnection, Workflow } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasNode } from '@/types';
-import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
+import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useHistoryStore } from '@/stores/history.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { ref } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
@@ -24,6 +23,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { telemetry } from '@/plugins/telemetry';
 import { useClipboard } from '@/composables/useClipboard';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal<{}>();
@@ -48,7 +48,6 @@ describe('useCanvasOperations', () => {
 	let canvasOperations: ReturnType<typeof useCanvasOperations>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
 
-	const lastClickPosition = ref<XYPosition>([450, 450]);
 	const router = useRouter();
 
 	beforeEach(async () => {
@@ -74,68 +73,89 @@ describe('useCanvasOperations', () => {
 
 		workflowsStore.resetWorkflow();
 		workflowsStore.resetState();
-		await workflowHelpers.initState(workflow);
+		workflowHelpers.initState(workflow);
 
-		canvasOperations = useCanvasOperations({ router, lastClickPosition });
+		canvasOperations = useCanvasOperations({ router });
 		vi.clearAllMocks();
 	});
 
-	describe('addNode', () => {
-		it('should throw error when node type does not exist', async () => {
-			vi.spyOn(nodeTypesStore, 'getNodeTypes').mockResolvedValue(undefined);
+	describe('requireNodeTypeDescription', () => {
+		it('should return node type description when type and version match', () => {
+			const type = 'testType';
+			const version = 1;
+			const expectedDescription = mockNodeTypeDescription({ name: type, version });
+			nodeTypesStore.setNodeTypes([expectedDescription]);
 
-			await expect(canvasOperations.addNode({ type: 'nonexistent' })).rejects.toThrow();
+			const result = canvasOperations.requireNodeTypeDescription(type, version);
+
+			expect(result).toBe(expectedDescription);
 		});
 
-		it('should create node with default version when version is undefined', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+		it('should throw an error when node type does not exist', () => {
+			const type = 'nonexistentType';
 
-			const result = await canvasOperations.addNode({
-				name: 'example',
-				type: 'type',
-			});
+			expect(() => {
+				canvasOperations.requireNodeTypeDescription(type);
+			}).toThrow();
+		});
+
+		it('should return node type description when only type is provided and it exists', () => {
+			const type = 'testTypeWithoutVersion';
+			const expectedDescription = mockNodeTypeDescription({ name: type });
+			nodeTypesStore.setNodeTypes([expectedDescription]);
+
+			const result = canvasOperations.requireNodeTypeDescription(type);
+
+			expect(result).toBe(expectedDescription);
+		});
+	});
+
+	describe('addNode', () => {
+		it('should create node with default version when version is undefined', () => {
+			const result = canvasOperations.addNode(
+				{
+					name: 'example',
+					type: 'type',
+					typeVersion: 1,
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
 			expect(result.typeVersion).toBe(1);
 		});
 
-		it('should create node with last version when version is an array', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type', version: [1, 2] })]);
+		it('should create node with default position when position is not provided', () => {
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
-
-			expect(result.typeVersion).toBe(2);
+			expect(result.position).toEqual([0, 0]); // Default last click position
 		});
 
-		it('should create node with default position when position is not provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
-
-			expect(result.position).toEqual([460, 460]); // Default last click position
-		});
-
-		it('should create node with provided position when position is provided', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
-
-			const result = await canvasOperations.addNode({
-				type: 'type',
-				position: [20, 20],
-			});
+		it('should create node with provided position when position is provided', () => {
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+					position: [20, 20],
+				},
+				mockNodeTypeDescription({ name: 'type' }),
+			);
 
 			expect(result.position).toEqual([20, 20]);
 		});
 
-		it('should create node with default credentials when only one credential is available', async () => {
+		it('should create node with default credentials when only one credential is available', () => {
 			const credential = mock<ICredentialsResponse>({ id: '1', name: 'cred', type: 'cred' });
 			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({ name: nodeTypeName, credentials: [{ name: credential.name }] }),
-			]);
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeTypeName,
+				credentials: [{ name: credential.name }],
+			});
 
 			credentialsStore.addCredentials([credential]);
 
@@ -144,24 +164,25 @@ describe('useCanvasOperations', () => {
 				credential,
 			]);
 
-			const result = await canvasOperations.addNode({
-				type: nodeTypeName,
-			});
+			const result = canvasOperations.addNode(
+				{
+					type: nodeTypeName,
+					typeVersion: 1,
+				},
+				nodeTypeDescription,
+			);
 
 			expect(result.credentials).toEqual({ [credential.name]: { id: '1', name: credential.name } });
 		});
 
-		it('should not assign credentials when multiple credentials are available', async () => {
+		it('should not assign credentials when multiple credentials are available', () => {
 			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
 			const credentialB = mock<ICredentialsResponse>({ id: '1', name: 'credB', type: 'cred' });
 			const nodeTypeName = 'type';
-
-			nodeTypesStore.setNodeTypes([
-				mockNodeTypeDescription({
-					name: nodeTypeName,
-					credentials: [{ name: credentialA.name }, { name: credentialB.name }],
-				}),
-			]);
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: nodeTypeName,
+				credentials: [{ name: credentialA.name }, { name: credentialB.name }],
+			});
 
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
@@ -169,24 +190,84 @@ describe('useCanvasOperations', () => {
 				credentialB,
 			]);
 
-			const result = await canvasOperations.addNode({
-				type: 'type',
-			});
+			const result = canvasOperations.addNode(
+				{
+					type: 'type',
+					typeVersion: 1,
+				},
+				nodeTypeDescription,
+			);
 			expect(result.credentials).toBeUndefined();
 		});
 
 		it('should open NDV when specified', async () => {
-			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'type' })]);
+			const nodeTypeDescription = mockNodeTypeDescription({ name: 'type' });
 
-			await canvasOperations.addNode(
+			canvasOperations.addNode(
 				{
 					type: 'type',
+					typeVersion: 1,
 					name: 'Test Name',
 				},
+				nodeTypeDescription,
 				{ openNDV: true },
 			);
 
-			expect(ndvStore.activeNodeName).toBe('Test Name');
+			await waitFor(() => expect(ndvStore.activeNodeName).toBe('Test Name'));
+		});
+	});
+
+	describe('updateNodesPosition', () => {
+		it('records history for multiple node position updates when tracking is enabled', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: true, trackBulk: true });
+
+			expect(startRecordingUndoSpy).toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).toHaveBeenCalled();
+		});
+
+		it('updates positions for multiple nodes', () => {
+			const events = [
+				{ id: 'node1', position: { x: 100, y: 100 } },
+				{ id: 'node2', position: { x: 200, y: 200 } },
+			];
+			const setNodePositionByIdSpy = vi.spyOn(workflowsStore, 'setNodePositionById');
+			vi.spyOn(workflowsStore, 'getNodeById')
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[0].id,
+						position: [events[0].position.x, events[0].position.y],
+					}),
+				)
+				.mockReturnValueOnce(
+					createTestNode({
+						id: events[1].id,
+						position: [events[1].position.x, events[1].position.y],
+					}),
+				);
+
+			canvasOperations.updateNodesPosition(events);
+
+			expect(setNodePositionByIdSpy).toHaveBeenCalledTimes(2);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node1', [100, 100]);
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith('node2', [200, 200]);
+		});
+
+		it('does not record history when trackHistory is false', () => {
+			const events = [{ id: 'node1', position: { x: 100, y: 100 } }];
+			const startRecordingUndoSpy = vi.spyOn(historyStore, 'startRecordingUndo');
+			const stopRecordingUndoSpy = vi.spyOn(historyStore, 'stopRecordingUndo');
+
+			canvasOperations.updateNodesPosition(events, { trackHistory: false, trackBulk: false });
+
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+			expect(stopRecordingUndoSpy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -333,6 +414,19 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('revertAddNode', () => {
+		it('deletes node if it exists', async () => {
+			const node = createTestNode();
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValueOnce(node);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValueOnce(node);
+			const removeNodeByIdSpy = vi.spyOn(workflowsStore, 'removeNodeById');
+
+			await canvasOperations.revertAddNode(node.name);
+
+			expect(removeNodeByIdSpy).toHaveBeenCalledWith(node.id);
+		});
+	});
+
 	describe('deleteNode', () => {
 		it('should delete node and track history', () => {
 			const removeNodeByIdSpy = vi
@@ -397,6 +491,70 @@ describe('useCanvasOperations', () => {
 			expect(removeNodeConnectionsByIdSpy).toHaveBeenCalledWith(id);
 			expect(removeNodeExecutionDataByIdSpy).toHaveBeenCalledWith(id);
 			expect(pushCommandToUndoSpy).not.toHaveBeenCalled();
+		});
+
+		it('should connect adjacent nodes when deleting a node surrounded by other nodes', () => {
+			nodeTypesStore.setNodeTypes([mockNodeTypeDescription({ name: 'node' })]);
+			const nodes = [
+				createTestNode({
+					id: 'input',
+					type: 'node',
+					position: [10, 20],
+					name: 'Input Node',
+				}),
+				createTestNode({
+					id: 'middle',
+					type: 'node',
+					position: [10, 20],
+					name: 'Middle Node',
+				}),
+				createTestNode({
+					id: 'output',
+					type: 'node',
+					position: [10, 20],
+					name: 'Output Node',
+				}),
+			];
+			workflowsStore.setNodes(nodes);
+			workflowsStore.setConnections({
+				'Input Node': {
+					main: [
+						[
+							{
+								node: 'Middle Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+				'Middle Node': {
+					main: [
+						[
+							{
+								node: 'Output Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			canvasOperations.deleteNode('middle');
+			expect(workflowsStore.allConnections).toEqual({
+				'Input Node': {
+					main: [
+						[
+							{
+								node: 'Output Node',
+								type: NodeConnectionType.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
 		});
 	});
 
@@ -505,6 +663,47 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('toggleNodesDisabled', () => {
+		it('disables nodes based on provided ids', async () => {
+			const nodes = [
+				createTestNode({ id: '1', name: 'A' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowsStore, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.toggleNodesDisabled([nodes[0].id, nodes[1].id], {
+				trackHistory: true,
+				trackBulk: true,
+			});
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodes[0].name,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
+	describe('revertToggleNodeDisabled', () => {
+		it('re-enables a previously disabled node', () => {
+			const nodeName = 'testNode';
+			const node = createTestNode({ name: nodeName });
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(node);
+			const updateNodePropertiesSpy = vi.spyOn(workflowsStore, 'updateNodeProperties');
+
+			canvasOperations.revertToggleNodeDisabled(nodeName);
+
+			expect(updateNodePropertiesSpy).toHaveBeenCalledWith({
+				name: nodeName,
+				properties: {
+					disabled: true,
+				},
+			});
+		});
+	});
+
 	describe('addConnections', () => {
 		it('should create connections between nodes', async () => {
 			const nodeTypeName = 'type';
@@ -547,7 +746,7 @@ describe('useCanvasOperations', () => {
 
 			const addConnectionSpy = vi.spyOn(workflowsStore, 'addConnection');
 
-			await canvasOperations.addConnections(connections);
+			canvasOperations.addConnections(connections);
 
 			expect(addConnectionSpy).toHaveBeenCalledWith({
 				connection: [
@@ -641,6 +840,24 @@ describe('useCanvasOperations', () => {
 				],
 			});
 			expect(uiStore.stateIsDirty).toBe(true);
+		});
+	});
+
+	describe('revertCreateConnection', () => {
+		it('deletes connection if both source and target nodes exist', () => {
+			const connection: [IConnection, IConnection] = [
+				{ node: 'sourceNode', type: NodeConnectionType.Main, index: 0 },
+				{ node: 'targetNode', type: NodeConnectionType.Main, index: 0 },
+			];
+			const testNode = createTestNode();
+
+			const removeConnectionSpy = vi.spyOn(workflowsStore, 'removeConnection');
+			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(testNode);
+			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(testNode);
+
+			canvasOperations.revertCreateConnection(connection);
+
+			expect(removeConnectionSpy).toHaveBeenCalled();
 		});
 	});
 

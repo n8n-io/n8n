@@ -57,7 +57,7 @@ export class FrontendService {
 
 		this.initSettings();
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
@@ -99,7 +99,7 @@ export class FrontendService {
 			saveExecutionProgress: config.getEnv('executions.saveExecutionProgress'),
 			executionTimeout: config.getEnv('executions.timeout'),
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
-			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
+			workflowCallerPolicyDefaultOption: this.globalConfig.workflows.callerPolicyDefaultOption,
 			timezone: config.getEnv('generic.timezone'),
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
@@ -154,7 +154,7 @@ export class FrontendService {
 				latestVersion: 1,
 				path: this.globalConfig.publicApi.path,
 				swaggerUi: {
-					enabled: !Container.get(GlobalConfig).publicApi.swaggerUiDisabled,
+					enabled: !this.globalConfig.publicApi.swaggerUiDisabled,
 				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
@@ -166,7 +166,7 @@ export class FrontendService {
 			},
 			executionMode: config.getEnv('executions.mode'),
 			pushBackend: config.getEnv('push.backend'),
-			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			communityNodesEnabled: this.globalConfig.nodes.communityPackages.enabled,
 			deployment: {
 				type: config.getEnv('deployment.type'),
 			},

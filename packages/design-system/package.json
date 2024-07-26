@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "main": "src/main.ts",
   "import": "src/main.ts",
   "scripts": {
@@ -31,7 +31,9 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "sass": "^1.64.1",
-    "tailwindcss": "^3.4.3"
+    "tailwindcss": "^3.4.3",
+    "unplugin-icons": "^0.19.0",
+    "unplugin-vue-components": "^0.27.2"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
