@@ -62,7 +62,7 @@ export class TogglTrigger implements INodeType {
 
 		const qs: IDataObject = {};
 		let timeEntries = [];
-		qs.start_date = webhookData.lastTimeChecked;
+		qs.start_date = webhookData.lastTimeChecked ?? new Date().toJSON().slice(0, 10);
 		qs.end_date = moment().format();
 
 		try {
