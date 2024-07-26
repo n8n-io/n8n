@@ -38,7 +38,7 @@ export async function togglApiRequest(
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://api.track.toggl.com/api/v8${resource}`,
+		uri: uri || `https://api.track.toggl.com/api/v9/me/${resource}`,
 		body,
 		json: true,
 	};
