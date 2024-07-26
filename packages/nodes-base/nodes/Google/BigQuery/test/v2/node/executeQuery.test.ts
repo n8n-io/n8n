@@ -47,8 +47,8 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
 		const { result } = await executeWorkflow(testData, types);
 
-		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.googleApiRequest).toHaveBeenCalledWith(
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/v2/projects/test-project/jobs',
 			{
@@ -60,7 +60,7 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 				},
 			},
 		);
-		expect(transport.googleApiRequest).toHaveBeenCalledWith(
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/v2/projects/test-project/queries/job_123',
 			undefined,
