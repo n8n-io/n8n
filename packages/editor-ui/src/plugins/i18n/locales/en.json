@@ -1761,6 +1761,7 @@
 	"settings.externalSecrets.actionBox.description.link": "More info",
 	"settings.externalSecrets.actionBox.buttonText": "See plans",
 	"settings.externalSecrets.card.setUp": "Set Up",
+	"settings.externalSecrets.card.deprecated": "deprecated",
 	"settings.externalSecrets.card.secretsCount": "{count} secrets",
 	"settings.externalSecrets.card.connectedAt": "Connected {date}",
 	"settings.externalSecrets.card.connected": "Enabled",
