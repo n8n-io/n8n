@@ -104,7 +104,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
-		// todo simplify
+		// TODO: simplify
 		assistantMessages.forEach((message) => {
 			if (message.type === 'message' || message.type === 'string') {
 				messages.push({
@@ -238,7 +238,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				return;
 			}
 
-			// todo localization
+			// TODO: localization
 			if (!isSessionEnded.value) {
 				await message.confirm(
 					'You already have an active AI Assistant session. Starting a new session will clear your current conversation history. Are you sure you want to start a new session?',

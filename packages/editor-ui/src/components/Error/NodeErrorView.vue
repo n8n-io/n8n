@@ -23,7 +23,7 @@ import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 type Props = {
-	// todo .node can be undefined
+	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
 };
 

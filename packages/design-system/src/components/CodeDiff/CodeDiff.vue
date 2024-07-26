@@ -180,7 +180,7 @@ const diffs = computed(() => {
 }
 
 .diffContent {
-	width: 100%;
+	width: auto;
 	text-wrap: nowrap;
 	display: flex;
 

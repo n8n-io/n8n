@@ -22,7 +22,7 @@ const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	position: 'bottom-right',
 	zIndex: 3000, // above NDV and chat window
 	offset: 64,
-	// todo find a way to order the
+	// TODO: find a way to order the z-index (floating button, chat, toast, ...)
 };
 
 const stickyNotificationQueue: NotificationHandle[] = [];

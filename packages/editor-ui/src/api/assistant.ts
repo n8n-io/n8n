@@ -9,7 +9,7 @@ export function chatWithAssistant(
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void {
-	// todo better type handling
+	// TODO: better type handling
 	void streamRequest(ctx, '/ai-proxy/v1/chat', payload, onMessageUpdated, onDone, onError);
 }
 
