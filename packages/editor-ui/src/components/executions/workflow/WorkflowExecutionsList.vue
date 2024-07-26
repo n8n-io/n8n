@@ -67,7 +67,7 @@ const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 const router = useRouter();
 
 const temporaryExecution = computed(() => {
-	const isTemporary = props.executions.find((execution) => execution.id === props.execution?.id);
+	const isTemporary = !props.executions.find((execution) => execution.id === props.execution?.id);
 	return isTemporary ? props.execution : undefined;
 });
 
