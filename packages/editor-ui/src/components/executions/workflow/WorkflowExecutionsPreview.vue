@@ -1,5 +1,13 @@
 <template>
-	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
+	<div v-if="executionUIDetails?.name === 'new'" :class="$style.newInfo">
+		<n8n-text :class="$style.newMessage" color="text-light">
+			{{ $locale.baseText('executionDetails.newMessage') }}
+		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
+	</div>
+	<div v-else-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
 			<n8n-spinner type="ring" />
 		</div>
@@ -34,7 +42,14 @@
 					{{ executionUIDetails.label }}
 				</n8n-text>
 				{{ ' ' }}
-				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+				<n8n-text
+					v-if="executionUIDetails?.showTimestamp === false"
+					color="text-base"
+					size="medium"
+				>
+					| ID#{{ execution.id }}
+				</n8n-text>
+				<n8n-text v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
 							interpolate: { time: executionUIDetails?.runningTime },
@@ -53,13 +68,6 @@
 							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
 						})
 					}}
-					| ID#{{ execution.id }}
-				</n8n-text>
-				<n8n-text
-					v-else-if="executionUIDetails?.name === 'waiting'"
-					color="text-base"
-					size="medium"
-				>
 					| ID#{{ execution.id }}
 				</n8n-text>
 				<br /><n8n-text v-if="execution.mode === 'retry'" color="text-base" size="medium">
@@ -296,6 +304,7 @@ export default defineComponent({
 	color: var(--color-danger);
 }
 
+.newInfo,
 .runningInfo {
 	display: flex;
 	flex-direction: column;
@@ -303,8 +312,9 @@ export default defineComponent({
 	margin-top: var(--spacing-4xl);
 }
 
+.newMessage,
 .runningMessage {
-	width: 200px;
+	width: 240px;
 	margin-top: var(--spacing-l);
 	text-align: center;
 }
