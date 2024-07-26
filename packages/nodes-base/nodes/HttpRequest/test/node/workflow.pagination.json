@@ -35,13 +35,13 @@
           }
         }
       },
-      "id": "c42631bf-5122-4b84-86c7-00ad9dcdcdfb",
+      "id": "47ce146a-3af0-4356-8316-86d8b0121344",
       "name": "Page Limit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        1980
+        -200,
+        1400
       ]
     },
     {
@@ -77,13 +77,13 @@
           }
         }
       },
-      "id": "337101b7-9815-466b-8920-b69529c90c73",
+      "id": "6d640013-5455-41af-a87f-ac0120e7fffb",
       "name": "Response Empty",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        2160
+        -200,
+        1740
       ]
     },
     {
@@ -121,13 +121,13 @@
           }
         }
       },
-      "id": "a2953ca3-e17c-4e83-8bf0-149587c14088",
+      "id": "9a185b8c-354d-49ed-96b3-98b83da384eb",
       "name": "Receive Status Code",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        2320
+        -200,
+        1900
       ]
     },
     {
@@ -165,13 +165,13 @@
           }
         }
       },
-      "id": "aad6795d-4156-445b-8b6c-968692ed3620",
+      "id": "361a0cbf-8376-48d6-b1a8-029216efcb53",
       "name": "Complete Expression",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        2500
+        -200,
+        2080
       ]
     },
     {
@@ -180,28 +180,28 @@
         "height": 223.6542431762359,
         "width": 365.5274479049966
       },
-      "id": "036cf1e4-0534-4422-9aea-36a9bb308e79",
+      "id": "45257c19-8944-4baf-8fba-3f136aeb9d70",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        920,
-        3100
+        -260,
+        2720
       ]
     },
     {
       "parameters": {
         "content": "### Update a Parameter in Each Request\nResponse Format: JSON",
-        "height": 1140.0832129820226,
-        "width": 354.2110090941684
+        "height": 1360,
+        "width": 354
       },
-      "id": "e36564a0-d1d9-4f15-9c78-b4713f75b13f",
+      "id": "2ccb057b-e9c2-46e9-a629-defccdc14764",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        927,
-        1901
+        -260,
+        1320
       ]
     },
     {
@@ -233,13 +233,13 @@
           }
         }
       },
-      "id": "83ca19dd-f110-4b36-8c52-836c0b501a7e",
+      "id": "9e685749-432d-4982-a0c1-5f8f448d3afc",
       "name": "Response Empty - Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        3420
+        -200,
+        3040
       ]
     },
     {
@@ -270,13 +270,13 @@
           }
         }
       },
-      "id": "2b770b1b-0c66-4668-a037-f7b2986fd793",
+      "id": "bb916cdd-b884-480a-b666-271be9d86940",
       "name": "Response Empty Next with Max Pages",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        3160
+        -200,
+        2780
       ]
     },
     {
@@ -285,13 +285,13 @@
         "height": 388.6542431762359,
         "width": 363.5274479049966
       },
-      "id": "fee3b5a3-9af9-44d6-8814-a8334e29ed0e",
+      "id": "2168f813-29e6-4e1a-8f8a-88542855b485",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        920,
-        3360
+        -260,
+        2980
       ]
     },
     {
@@ -329,13 +329,13 @@
           }
         }
       },
-      "id": "d91beb91-8716-4817-a729-91114a8d4a63",
+      "id": "88a55fa4-3f30-417c-9c53-c93051c0cb7e",
       "name": "Complete Expression - JSON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        1700
+        -200,
+        1120
       ]
     },
     {
@@ -344,13 +344,13 @@
         "height": 232.15942469988397,
         "width": 323.21100909416833
       },
-      "id": "693b1adb-1be8-4e87-bad8-23936c685155",
+      "id": "acab629f-49f8-40cc-a168-a647038b22b5",
       "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        920,
-        1632.366284408126
+        -260,
+        1060
       ]
     },
     {
@@ -383,13 +383,13 @@
           }
         }
       },
-      "id": "72a3ce0d-f428-41cc-a93e-8692f5ed97f9",
+      "id": "bdcfffc2-4127-4da8-a715-b201accacf68",
       "name": "Response Empty - Include Full Response",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        3600
+        -200,
+        3220
       ]
     },
     {
@@ -418,13 +418,13 @@
           }
         }
       },
-      "id": "b579b38a-ac67-40ab-ab82-b465dc6387dc",
+      "id": "9b0db080-7414-4682-a7a8-5e419d61a0f3",
       "name": "Pagination Off",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        3820
+        -200,
+        3440
       ]
     },
     {
@@ -433,13 +433,13 @@
         "height": 373,
         "width": 363
       },
-      "id": "601cef96-0ac0-4890-b1c3-8ca15fbc2571",
+      "id": "116d5cdf-aa2e-4acb-93c1-80d76c349334",
       "name": "Sticky Note4",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        920,
-        3780
+        -260,
+        3400
       ]
     },
     {
@@ -463,13 +463,13 @@
           }
         }
       },
-      "id": "bdd6cf22-746e-4fda-84b2-df178f5d3dab",
+      "id": "2484f7fc-670d-4ba5-a991-344f794e3f53",
       "name": "Pagination Not Set",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        4000
+        -200,
+        3620
       ]
     },
     {
@@ -478,13 +478,13 @@
         "height": 232.15942469988397,
         "width": 394.89100909416834
       },
-      "id": "1e7bfcfb-93d0-4ee2-8c0f-380ee2dd7fcb",
+      "id": "52206538-3939-4938-8015-03c859b73108",
       "name": "Sticky Note5",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        920,
-        4220
+        -260,
+        3840
       ]
     },
     {
@@ -500,13 +500,13 @@
         "include": "none",
         "options": {}
       },
-      "id": "35a1f1f3-d701-4252-9dea-5b2b0ef7f32f",
+      "id": "f12a7aeb-60fc-49b3-b4b3-27f8ad35d7ed",
       "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        1160,
-        4300
+        -20,
+        3920
       ]
     },
     {
@@ -541,13 +541,13 @@
           }
         }
       },
-      "id": "12f6310f-e88e-490f-9dd1-2012586bf9c9",
+      "id": "4ed73314-825b-41cb-b228-d4cef067d422",
       "name": "Loop",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        4300
+        -200,
+        3920
       ],
       "continueOnFail": true
     },
@@ -557,13 +557,13 @@
         "height": 650.4724697091658,
         "width": 323.21100909416833
       },
-      "id": "0074b955-3217-4fc9-b7c4-58f11fc323c1",
+      "id": "0545e04a-9c3f-4b21-a993-58754a0ddf50",
       "name": "Sticky Note6",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        900,
-        507.8499967658788
+        -280,
+        -80
       ]
     },
     {
@@ -571,13 +571,13 @@
         "content": "# Response Format: Autodetect\n",
         "width": 545.8929725020898
       },
-      "id": "e7b7440f-aad2-49df-9c10-695497aec7c5",
+      "id": "72af3737-b12e-42cc-b779-59e93aca225b",
       "name": "Sticky Note7",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        280,
-        708
+        -900,
+        140
       ]
     },
     {
@@ -585,13 +585,13 @@
         "content": "# Response Format: set",
         "width": 545.8929725020898
       },
-      "id": "1ad4fad8-4c66-4afe-8893-2727c852ba44",
+      "id": "1a2b62f3-2fa2-41e9-9b2e-8590219a58d8",
       "name": "Sticky Note8",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        300,
-        1640
+        -880,
+        1060
       ]
     },
     {
@@ -620,13 +620,13 @@
           }
         }
       },
-      "id": "415e52cd-bdb4-42a8-af18-fec7eb9e6a1f",
+      "id": "1c8eca03-b963-4228-9f9f-8b7c74dda79e",
       "name": "Complete Expression - JSON Autodetect set",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        600
+        -220,
+        20
       ]
     },
     {
@@ -652,46 +652,46 @@
           }
         }
       },
-      "id": "a111a0a4-ae9c-4b27-af04-5ab9584798ae",
+      "id": "c2fcf50b-2e02-48b9-8b3b-34bdd91c7c58",
       "name": "Complete Expression - JSON unset",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        780
+        -220,
+        200
       ]
     },
     {
       "parameters": {},
-      "id": "aaa4d56b-5d72-4ecb-bcc4-9ccdf0c7c139",
+      "id": "3c83c1b5-63a5-48ee-8c44-5eb7e3fa1b22",
       "name": "No Operation, do nothing1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        500,
-        2500
+        -680,
+        1920
       ]
     },
     {
       "parameters": {},
-      "id": "6fbde1fb-8f7d-4947-84f1-2695b919cc43",
+      "id": "f2124260-f883-4f41-bd38-45952f038e02",
       "name": "Data 2",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        200,
-        1980
+        -980,
+        1400
       ]
     },
     {
       "parameters": {},
-      "id": "f13379f2-5867-46d9-9af1-48b9ff9524d0",
+      "id": "f4723b21-a0d6-4679-96d9-11e664e5a3bc",
       "name": "Data 1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        520,
-        960
+        -660,
+        380
       ]
     },
     {
@@ -731,13 +731,13 @@
           }
         }
       },
-      "id": "bcbb8fe5-1613-4dc6-a92c-89f1415c1821",
+      "id": "7b6fcc37-5cc0-454a-a33d-a3624f8412bd",
       "name": "Response Empty - Text1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        1260
+        -220,
+        680
       ]
     },
     {
@@ -746,13 +746,13 @@
         "height": 437.60980047313967,
         "width": 323.31395441111135
       },
-      "id": "4e73a489-5c9f-4b8f-a32f-ad6d91fc187a",
+      "id": "8c4febe5-b19e-4eb8-bc8f-c00cb5f68f86",
       "name": "Sticky Note9",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        900,
-        1173.7738085909446
+        -280,
+        600
       ]
     },
     {
@@ -793,13 +793,13 @@
           }
         }
       },
-      "id": "c02661c0-b6e7-45f8-8049-ef1a97f4b590",
+      "id": "3367e7cb-2d1b-4398-901f-8e54e704f0aa",
       "name": "Response Empty - Include Full Response1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        1440
+        -220,
+        860
       ]
     },
     {
@@ -843,13 +843,13 @@
           }
         }
       },
-      "id": "69569627-0e1b-45e0-a279-bf53c3f99c8f",
+      "id": "f87c4844-24e5-4fdf-bcb0-ecd6351ddaa7",
       "name": "POST Form Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        2860
+        -200,
+        2440
       ]
     },
     {
@@ -892,13 +892,13 @@
           }
         }
       },
-      "id": "c68c8649-298e-42fe-bc61-df4a4b9d5c39",
+      "id": "18abeae2-9f6d-4ee1-8f0b-494c7024657b",
       "name": "POST JSON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        980,
-        2680
+        -200,
+        2260
       ]
     },
     {
@@ -914,15 +914,58 @@
           }
         }
       },
-      "id": "c004d7eb-d755-4d65-b359-6e0ddab0406d",
+      "id": "0d0d6db1-8002-4561-8633-2c4e4e2a99f3",
       "name": "Complete Expression - JSON unset1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        960,
-        980
+        -220,
+        400
       ],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://dummyjson.com/users",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "skip",
+                    "value": "={{ $pageCount * 3 }}"
+                  }
+                ]
+              },
+              "limitPagesFetched": true,
+              "maxRequests": "={{ 3 }}"
+            }
+          }
+        }
+      },
+      "id": "8662f597-b750-4a36-945e-7f5a43ddd6a1",
+      "name": "Page Limit Expression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -200,
+        1580
+      ]
     }
   ],
   "pinData": {
@@ -1721,6 +1764,53 @@
           }
         }
       }
+    ],
+    "Page Limit Expression": [
+      {
+        "json": {
+          "id": 0
+        }
+      },
+      {
+        "json": {
+          "id": 1
+        }
+      },
+      {
+        "json": {
+          "id": 2
+        }
+      },
+      {
+        "json": {
+          "id": 3
+        }
+      },
+      {
+        "json": {
+          "id": 4
+        }
+      },
+      {
+        "json": {
+          "id": 5
+        }
+      },
+      {
+        "json": {
+          "id": 6
+        }
+      },
+      {
+        "json": {
+          "id": 7
+        }
+      },
+      {
+        "json": {
+          "id": 8
+        }
+      }
     ]
   },
   "connections": {
@@ -1802,6 +1892,11 @@
             "node": "POST Form Data",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Page Limit Expression",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1858,11 +1953,10 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "5189ec73-b659-4740-83f5-d5bf3995f5df",
+  "versionId": "2b03c5d0-b0bf-4622-9e69-11365392e7e6",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
   },
-  "id": "4WORX7JyBFP94dXM",
+  "id": "VtkCgJEYesF8JTg8",
   "tags": []
 }
