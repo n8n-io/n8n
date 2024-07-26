@@ -80,6 +80,17 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			displayName: 'Treat query parameters in single quotes as text',
+			name: 'treatQueryParametersInSingleQuotesAsText',
+			type: 'boolean',
+			default: false,
+			description: "Whether to treat query parameters enclosed in single quotes as text e.g. '$1'",
+			displayOptions: {
+				show: { queryReplacement: [{ _cnd: { exists: true } }] },
+			},
+		},
+		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 			displayName: 'Output Columns',
 			name: 'outputColumns',
