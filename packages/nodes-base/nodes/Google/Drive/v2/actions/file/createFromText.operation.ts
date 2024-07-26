@@ -96,8 +96,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options,
 	);
 
-	const boundary = 'XXXXXX';
-
 	const qs = setUpdateCommonParams(
 		{
 			includeItemsFromAllDrives: true,
@@ -147,32 +145,34 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const content = Buffer.from(this.getNodeParameter('content', i, '') as string, 'utf8');
 		const contentLength = content.byteLength;
 
-		const body = `
-		\n--${boundary}\
-		\nContent-Type: application/json; charset=UTF-8\
-		\n\n${JSON.stringify(bodyParameters)}\
-		\n--${boundary}\
-		\nContent-Type: text/plain\
-		\nContent-Transfer-Encoding: base64\
-		\n\n${content}\
-		\n--${boundary}--`;
-
-		const responseData = await googleApiRequest.call(
+		const uploadData = await googleApiRequest.call(
 			this,
 			'POST',
 			'/upload/drive/v3/files',
-			body,
+			content,
 			{
-				uploadType: 'multipart',
-				...qs,
+				uploadType: 'media',
 			},
 			undefined,
 			{
 				headers: {
-					'Content-Type': `multipart/related; boundary=${boundary}`,
+					'Content-Type': mimeType,
 					'Content-Length': contentLength,
 				},
 			},
+		);
+
+		const uploadId = uploadData.id;
+
+		qs.addParents = setParentFolder(folderId, driveId);
+		delete bodyParameters.parents;
+
+		const responseData = await googleApiRequest.call(
+			this,
+			'PATCH',
+			`/drive/v3/files/${uploadId}`,
+			bodyParameters,
+			qs,
 		);
 
 		response = { id: responseData.id };

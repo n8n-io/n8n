@@ -20,6 +20,7 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
+import { GlobalConfig } from '@n8n/config';
 import {
 	ApplicationError,
 	type ExecutionStatus,
@@ -27,6 +28,8 @@ import {
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
+import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -35,13 +38,28 @@ import type {
 } from '@/Interfaces';
 
 import config from '@/config';
-import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
 import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { GetManyActiveFilter } from '@/executions/execution.types';
+import type { ExecutionSummaries } from '@/executions/execution.types';
+import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import { separate } from '@/utils';
+
+export interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string> | string;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	status?: ExecutionStatus[];
+	workflowId?: string;
+	waitTill?: FindOperator<any> | boolean;
+	metadata?: Array<{ key: string; value: string }>;
+	startedAfter?: string;
+	startedBefore?: string;
+}
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -55,7 +73,7 @@ function parseFiltersToQueryBuilder(
 	if (filters?.finished) {
 		qb.andWhere({ finished: filters.finished });
 	}
-	if (filters?.metadata && isAdvancedExecutionFiltersEnabled()) {
+	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
 		for (const md of filters.metadata) {
 			qb.andWhere('md.key = :key AND md.value = :value', md);
@@ -82,12 +100,21 @@ function parseFiltersToQueryBuilder(
 	}
 }
 
+const lessThanOrEqual = (date: string): unknown => {
+	return LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+};
+
+const moreThanOrEqual = (date: string): unknown => {
+	return MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(date)));
+};
+
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -127,27 +154,33 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (!queryParams.relations) {
 				queryParams.relations = [];
 			}
-			(queryParams.relations as string[]).push('executionData');
+			(queryParams.relations as string[]).push('executionData', 'metadata');
 		}
 
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
-			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: parse(executionData.data) as IRunExecutionData,
 					workflowData: executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
-			return executions.map((execution) => {
-				const { executionData, ...rest } = execution;
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
+				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
 					data: execution.executionData.data,
 					workflowData: execution.executionData.workflowData,
+					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionFlattedDb;
 			});
 		}
@@ -156,6 +189,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const { executionData, ...rest } = execution;
 			return rest;
 		});
+	}
+
+	reportInvalidExecutions(executions: ExecutionEntity[]) {
+		if (executions.length === 0) return;
+
+		ErrorReporter.error(
+			new ApplicationError('Found executions without executionData', {
+				extra: { executionIds: executions.map(({ id }) => id) },
+			}),
+		);
 	}
 
 	async findSingleExecution(
@@ -197,7 +240,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = ['executionData'];
+			findOptions.relations = ['executionData', 'metadata'];
 		}
 
 		const execution = await this.findOne(findOptions);
@@ -206,19 +249,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, ...rest } = execution;
+		const { executionData, metadata, ...rest } = execution;
 
 		if (options?.includeData && options?.unflattenData) {
 			return {
 				...rest,
 				data: parse(execution.executionData.data) as IRunExecutionData,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionResponse;
 		} else if (options?.includeData) {
 			return {
 				...rest,
 				data: execution.executionData.data,
 				workflowData: execution.executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			} as IExecutionFlattedDb;
 		}
 
@@ -238,7 +283,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return String(executionId);
 	}
 
-	async markAsCrashed(executionIds: string[]) {
+	async markAsCrashed(executionIds: string | string[]) {
+		if (!Array.isArray(executionIds)) executionIds = [executionIds];
+
 		await this.update(
 			{ id: In(executionIds) },
 			{
@@ -246,6 +293,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+
+		this.logger.info('Marked executions as `crashed`', { executionIds });
 	}
 
 	/**
@@ -262,11 +311,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.update({ id: executionId }, { status });
 	}
 
+	async resetStartedAt(executionId: string) {
+		await this.update({ id: executionId }, { startedAt: new Date() });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
+		const { id, data, workflowId, workflowData, startedAt, customData, ...executionInformation } =
+			execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
@@ -282,114 +336,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// @ts-ignore
 			await this.executionDataRepository.update({ executionId }, executionData);
 		}
-	}
-
-	async countExecutions(
-		filters: IGetExecutionsQueryFilter | undefined,
-		accessibleWorkflowIds: string[],
-		currentlyRunningExecutions: string[],
-		hasGlobalRead: boolean,
-	): Promise<{ count: number; estimated: boolean }> {
-		const dbType = config.getEnv('database.type');
-		if (dbType !== 'postgresdb' || (filters && Object.keys(filters).length > 0) || !hasGlobalRead) {
-			const query = this.createQueryBuilder('execution').andWhere(
-				'execution.workflowId IN (:...accessibleWorkflowIds)',
-				{ accessibleWorkflowIds },
-			);
-			if (currentlyRunningExecutions.length > 0) {
-				query.andWhere('execution.id NOT IN (:...currentlyRunningExecutions)', {
-					currentlyRunningExecutions,
-				});
-			}
-
-			parseFiltersToQueryBuilder(query, filters);
-
-			const count = await query.getCount();
-			return { count, estimated: false };
-		}
-
-		try {
-			// Get an estimate of rows count.
-			const estimateRowsNumberSql =
-				"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
-			const rows = (await this.query(estimateRowsNumberSql)) as Array<{ n_live_tup: string }>;
-
-			const estimate = parseInt(rows[0].n_live_tup, 10);
-			// If over 100k, return just an estimate.
-			if (estimate > 100_000) {
-				// if less than 100k, we get the real count as even a full
-				// table scan should not take so long.
-				return { count: estimate, estimated: true };
-			}
-		} catch (error) {
-			if (error instanceof Error) {
-				this.logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
-					error,
-				});
-			}
-		}
-
-		const count = await this.count({
-			where: {
-				workflowId: In(accessibleWorkflowIds),
-			},
-		});
-
-		return { count, estimated: false };
-	}
-
-	async searchExecutions(
-		filters: IGetExecutionsQueryFilter | undefined,
-		limit: number,
-		excludedExecutionIds: string[],
-		accessibleWorkflowIds: string[],
-		additionalFilters?: { lastId?: string; firstId?: string },
-	): Promise<ExecutionSummary[]> {
-		if (accessibleWorkflowIds.length === 0) {
-			return [];
-		}
-		const query = this.createQueryBuilder('execution')
-			.select([
-				'execution.id',
-				'execution.finished',
-				'execution.mode',
-				'execution.retryOf',
-				'execution.retrySuccessId',
-				'execution.status',
-				'execution.startedAt',
-				'execution.stoppedAt',
-				'execution.workflowId',
-				'execution.waitTill',
-				'workflow.name',
-			])
-			.innerJoin('execution.workflow', 'workflow')
-			.limit(limit)
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			.orderBy({ 'execution.id': 'DESC' })
-			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
-		if (excludedExecutionIds.length > 0) {
-			query.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds });
-		}
-
-		if (additionalFilters?.lastId) {
-			query.andWhere('execution.id < :lastId', { lastId: additionalFilters.lastId });
-		}
-		if (additionalFilters?.firstId) {
-			query.andWhere('execution.id > :firstId', { firstId: additionalFilters.firstId });
-		}
-
-		parseFiltersToQueryBuilder(query, filters);
-
-		const executions = await query.getMany();
-
-		return executions.map((execution) => {
-			const { workflow, waitTill, ...rest } = execution;
-			return {
-				...rest,
-				waitTill: waitTill ?? undefined,
-				workflowName: workflow.name,
-			};
-		});
 	}
 
 	async deleteExecutionsByFilter(
@@ -538,7 +484,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			status: Not('crashed'),
 		};
 
-		const dbType = config.getEnv('database.type');
+		const dbType = this.globalConfig.database.type;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -682,52 +628,207 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async getManyActive(
-		activeExecutionIds: string[],
-		accessibleWorkflowIds: string[],
-		filter?: GetManyActiveFilter,
-	) {
-		const where: FindOptionsWhere<ExecutionEntity> = {
-			id: In(activeExecutionIds),
-			status: Not(In(['finished', 'stopped', 'error', 'crashed'])),
+	async stopBeforeRun(execution: IExecutionResponse) {
+		execution.status = 'canceled';
+		execution.stoppedAt = new Date();
+
+		await this.update(
+			{ id: execution.id },
+			{ status: execution.status, stoppedAt: execution.stoppedAt },
+		);
+
+		return execution;
+	}
+
+	async stopDuringRun(execution: IExecutionResponse) {
+		const error = new ExecutionCancelledError(execution.id);
+
+		execution.data ??= { resultData: { runData: {} } };
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
 		};
 
-		if (filter) {
-			const { workflowId, status, finished } = filter;
-			if (workflowId && accessibleWorkflowIds.includes(workflowId)) {
-				where.workflowId = workflowId;
-			} else {
-				where.workflowId = In(accessibleWorkflowIds);
-			}
-			if (status) {
-				// @ts-ignore
-				where.status = In(status);
-			}
-			if (finished !== undefined) {
-				where.finished = finished;
-			}
-		} else {
-			where.workflowId = In(accessibleWorkflowIds);
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.updateExistingExecution(execution.id, execution);
+
+		return execution;
+	}
+
+	async cancelMany(executionIds: string[]) {
+		await this.update({ id: In(executionIds) }, { status: 'canceled', stoppedAt: new Date() });
+	}
+
+	// ----------------------------------
+	//            new API
+	// ----------------------------------
+
+	/**
+	 * Fields to include in the summary of an execution when querying for many.
+	 */
+	private summaryFields = {
+		id: true,
+		workflowId: true,
+		mode: true,
+		retryOf: true,
+		status: true,
+		startedAt: true,
+		stoppedAt: true,
+	};
+
+	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
+		if (query?.accessibleWorkflowIds?.length === 0) {
+			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		return await this.findMultipleExecutions({
-			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
-			order: { id: 'DESC' },
-			where,
-		});
-	}
-}
+		const executions: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
 
-export interface IGetExecutionsQueryFilter {
-	id?: FindOperator<string> | string;
-	finished?: boolean;
-	mode?: string;
-	retryOf?: string;
-	retrySuccessId?: string;
-	status?: ExecutionStatus[];
-	workflowId?: string;
-	waitTill?: FindOperator<any> | boolean;
-	metadata?: Array<{ key: string; value: string }>;
-	startedAfter?: string;
-	startedBefore?: string;
+		return executions.map((execution) => this.toSummary(execution));
+	}
+
+	// @tech_debt: These transformations should not be needed
+	private toSummary(execution: {
+		id: number | string;
+		startedAt?: Date | string;
+		stoppedAt?: Date | string;
+		waitTill?: Date | string | null;
+	}): ExecutionSummary {
+		execution.id = execution.id.toString();
+
+		const normalizeDateString = (date: string) => {
+			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
+			return date;
+		};
+
+		if (execution.startedAt) {
+			execution.startedAt =
+				execution.startedAt instanceof Date
+					? execution.startedAt.toISOString()
+					: normalizeDateString(execution.startedAt);
+		}
+
+		if (execution.waitTill) {
+			execution.waitTill =
+				execution.waitTill instanceof Date
+					? execution.waitTill.toISOString()
+					: normalizeDateString(execution.waitTill);
+		}
+
+		if (execution.stoppedAt) {
+			execution.stoppedAt =
+				execution.stoppedAt instanceof Date
+					? execution.stoppedAt.toISOString()
+					: normalizeDateString(execution.stoppedAt);
+		}
+
+		return execution as ExecutionSummary;
+	}
+
+	async fetchCount(query: ExecutionSummaries.CountQuery) {
+		return await this.toQueryBuilder(query).getCount();
+	}
+
+	async getLiveExecutionRowsOnPostgres() {
+		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
+
+		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
+
+		try {
+			const rows = (await this.query(pgSql)) as Array<{ result: string }>;
+
+			if (rows.length !== 1) throw new PostgresLiveRowsRetrievalError(rows);
+
+			const [row] = rows;
+
+			return parseInt(row.result, 10);
+		} catch (error) {
+			if (error instanceof Error) this.logger.error(error.message, { error });
+
+			return -1;
+		}
+	}
+
+	private toQueryBuilder(query: ExecutionSummaries.Query) {
+		const {
+			accessibleWorkflowIds,
+			status,
+			finished,
+			workflowId,
+			startedBefore,
+			startedAfter,
+			metadata,
+		} = query;
+
+		const fields = Object.keys(this.summaryFields)
+			.concat(['waitTill', 'retrySuccessId'])
+			.map((key) => `execution.${key} AS "${key}"`)
+			.concat('workflow.name AS "workflowName"');
+
+		const qb = this.createQueryBuilder('execution')
+			.select(fields)
+			.innerJoin('execution.workflow', 'workflow')
+			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+
+		if (query.kind === 'range') {
+			const { limit, firstId, lastId } = query.range;
+
+			qb.limit(limit);
+
+			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
+			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+
+			if (query.order?.stoppedAt === 'DESC') {
+				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			} else if (query.order?.top) {
+				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
+			} else {
+				qb.orderBy({ 'execution.id': 'DESC' });
+			}
+		}
+
+		if (status) qb.andWhere('execution.status IN (:...status)', { status });
+		if (finished) qb.andWhere({ finished });
+		if (workflowId) qb.andWhere({ workflowId });
+		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
+		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
+
+		if (metadata?.length === 1) {
+			const [{ key, value }] = metadata;
+
+			qb.innerJoin(
+				ExecutionMetadata,
+				'md',
+				'md.executionId = execution.id AND md.key = :key AND md.value = :value',
+			);
+
+			qb.setParameter('key', key);
+			qb.setParameter('value', value);
+		}
+
+		return qb;
+	}
+
+	async getAllIds() {
+		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
+
+		return executions.map(({ id }) => id);
+	}
+
+	/**
+	 * Retrieve a batch of execution IDs with `new` or `running` status, in most recent order.
+	 */
+	async getInProgressExecutionIds(batchSize: number) {
+		const executions = await this.find({
+			select: ['id'],
+			where: { status: In(['new', 'running']) },
+			order: { startedAt: 'DESC' },
+			take: batchSize,
+		});
+
+		return executions.map(({ id }) => id);
+	}
 }

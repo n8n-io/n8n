@@ -30,4 +30,5 @@ export type FormTriggerData = {
 	n8nWebsiteLink: string;
 	formFields: FormTriggerInput[];
 	useResponseData?: boolean;
+	appendAttribution?: boolean;
 };

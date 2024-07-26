@@ -16,7 +16,7 @@ import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities'
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Respond to Webhook',
-		icon: 'file:webhook.svg',
+		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -290,10 +290,12 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
+		const WEBHOOK_NODE_TYPES = ['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger'];
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
-				if (!connectedNodes.some((node) => node.type === 'n8n-nodes-base.webhook')) {
+				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
 						new Error('No Webhook node found in the workflow'),
@@ -427,7 +429,7 @@ export class RespondToWebhook implements INodeType {
 
 			this.sendResponse(response);
 		} catch (error) {
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				const itemData = generatePairedItemData(items.length);
 				const returnData = this.helpers.constructExecutionMetaData(
 					[{ json: { error: error.message } }],

@@ -19,14 +19,13 @@ type Mode = 'manual' | 'raw';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Edit Fields (Set)',
 	name: 'set',
-	icon: 'fa:pen',
+	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3],
+	version: [3, 3.1, 3.2, 3.3, 3.4],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
-		color: '#0000FF',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
@@ -209,7 +208,26 @@ const versionDescription: INodeTypeDescription = {
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,
+					displayOptions: {
+						hide: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+						},
+					},
 					description: 'Whether binary data should be included if present in the input item',
+				},
+				{
+					displayName: 'Strip Binary Data',
+					name: 'stripBinary',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether binary data should be stripped from the input item. Only applies when "Include Other Input Fields" is enabled.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+							'/includeOtherFields': [true],
+						},
+					},
 				},
 				{
 					displayName: 'Ignore Type Conversion Errors',

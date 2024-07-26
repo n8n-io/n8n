@@ -85,7 +85,7 @@ export class Hunter implements INodeType {
 					},
 				},
 				default: true,
-				description: 'Whether to return only the the found emails',
+				description: 'Whether to return only the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -372,7 +372,7 @@ export class Hunter implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -28,9 +28,7 @@
 				>
 					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
 						<div class="http-field">
-							<div class="http-method">
-								{{ workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
-							</div>
+							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
 						</div>
 						<div class="url-field">
 							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
@@ -195,11 +193,26 @@ export default defineComponent({
 			return '';
 		},
 		isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
+			try {
+				const method = this.workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+				if (Array.isArray(method) && method.length !== 1) {
+					return false;
+				}
+			} catch (error) {}
+
 			if (typeof webhook.ndvHideMethod === 'string') {
 				return !this.workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
 			}
 
 			return !webhook.ndvHideMethod;
+		},
+
+		getWebhookHttpMethod(webhook: IWebhookDescription): string {
+			const method = this.workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			if (Array.isArray(method)) {
+				return method[0];
+			}
+			return method;
 		},
 	},
 });

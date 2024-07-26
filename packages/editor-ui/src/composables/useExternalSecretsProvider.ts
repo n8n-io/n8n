@@ -1,36 +1,41 @@
 import type {
-	ExternalSecretsProviderWithProperties,
 	ExternalSecretsProvider,
 	IUpdateInformation,
 	ExternalSecretsProviderData,
+	ExternalSecretsProviderProperty,
+	ExternalSecretsProviderState,
 } from '@/Interface';
-import type { Ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 
 export function useExternalSecretsProvider(
-	provider: Ref<ExternalSecretsProvider>,
+	provider:
+		| Ref<ExternalSecretsProvider | undefined>
+		| ComputedRef<ExternalSecretsProvider | undefined>,
 	providerData: Ref<ExternalSecretsProviderData>,
 ) {
 	const toast = useToast();
 	const externalSecretsStore = useExternalSecretsStore();
 
-	const initialConnectionState = ref<ExternalSecretsProviderWithProperties['state'] | undefined>(
-		'initializing',
-	);
+	const initialConnectionState = ref<ExternalSecretsProvider['state'] | undefined>('initializing');
 	const connectionState = computed(
-		() => externalSecretsStore.connectionState[provider.value?.name],
+		() => externalSecretsStore.connectionState[provider.value?.name ?? ''],
 	);
-	const setConnectionState = (state: ExternalSecretsProviderWithProperties['state']) => {
-		externalSecretsStore.setConnectionState(provider.value?.name, state);
+	const setConnectionState = (state: ExternalSecretsProvider['state']) => {
+		if (!provider.value) {
+			return;
+		}
+
+		externalSecretsStore.setConnectionState(provider.value.name, state);
 	};
 
 	const normalizedProviderData = computed(() => {
 		return Object.entries(providerData.value).reduce(
 			(acc, [key, value]) => {
-				const property = provider.value?.properties?.find((property) => property.name === key);
-				if (shouldDisplayProperty(property)) {
+				const property = provider.value?.properties?.find((p) => p.name === key);
+				if (property && shouldDisplayProperty(property)) {
 					acc[key] = value;
 				}
 
@@ -40,16 +45,14 @@ export function useExternalSecretsProvider(
 		);
 	});
 
-	function shouldDisplayProperty(
-		property: ExternalSecretsProviderWithProperties['properties'][0],
-	): boolean {
+	function shouldDisplayProperty(property: ExternalSecretsProviderProperty): boolean {
 		let visible = true;
 
 		if (property.displayOptions?.show) {
 			visible =
 				visible &&
 				Object.entries(property.displayOptions.show).every(([key, value]) => {
-					return value?.includes(providerData.value[key]);
+					return value?.includes(providerData.value[key] as string);
 				});
 		}
 
@@ -57,14 +60,20 @@ export function useExternalSecretsProvider(
 			visible =
 				visible &&
 				!Object.entries(property.displayOptions.hide).every(([key, value]) => {
-					return value?.includes(providerData.value[key]);
+					return value?.includes(providerData.value[key] as string);
 				});
 		}
 
 		return visible;
 	}
 
-	async function testConnection(options: { showError?: boolean } = { showError: true }) {
+	async function testConnection(
+		options: { showError?: boolean } = { showError: true },
+	): Promise<ExternalSecretsProviderState> {
+		if (!provider.value) {
+			return 'initializing';
+		}
+
 		try {
 			const { testState } = await externalSecretsStore.testProviderConnection(
 				provider.value.name,

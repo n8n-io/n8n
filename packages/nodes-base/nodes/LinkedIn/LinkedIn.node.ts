@@ -86,7 +86,7 @@ export class LinkedIn implements INodeType {
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = this.getNodeParameter('authentication', 0);
-				let endpoint = '/me';
+				let endpoint = '/v2/me';
 				if (authentication === 'standard') {
 					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
 					if (!legacy) {
@@ -172,11 +172,22 @@ export class LinkedIn implements INodeType {
 							);
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							this.helpers.assertBinaryData(i, binaryPropertyName);
+							const imageMetadata = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 							const { uploadUrl, image } = registerObject.value;
-							await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+
+							const headers = {};
+							Object.assign(headers, { 'Content-Type': imageMetadata.mimeType });
+
+							await linkedInApiRequest.call(
+								this,
+								'POST',
+								uploadUrl as string,
+								buffer,
+								true,
+								headers,
+							);
 
 							const imageBody = {
 								content: {
@@ -225,11 +236,22 @@ export class LinkedIn implements INodeType {
 								);
 
 								const binaryPropertyName = additionalFields.thumbnailBinaryPropertyName as string;
-								this.helpers.assertBinaryData(i, binaryPropertyName);
+								const imageMetadata = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 								const { uploadUrl, image } = registerObject.value;
-								await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+
+								const headers = {};
+								Object.assign(headers, { 'Content-Type': imageMetadata.mimeType });
+
+								await linkedInApiRequest.call(
+									this,
+									'POST',
+									uploadUrl as string,
+									buffer,
+									true,
+									headers,
+								);
 								Object.assign(articleBody.content.article, { thumbnail: image });
 							}
 
@@ -254,7 +276,7 @@ export class LinkedIn implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

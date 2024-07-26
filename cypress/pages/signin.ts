@@ -4,6 +4,7 @@ import { WorkflowsPage } from './workflows';
 
 export class SigninPage extends BasePage {
 	url = '/signin';
+
 	getters = {
 		form: () => cy.getByTestId('auth-form'),
 		email: () => cy.getByTestId('email'),

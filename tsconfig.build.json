@@ -1,7 +1,6 @@
 {
 	"compilerOptions": {
 		"types": ["node"],
-		"noEmit": false,
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"declaration": true

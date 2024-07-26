@@ -6,6 +6,7 @@ import type {
 	IHookFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
@@ -20,6 +21,7 @@ import { camelCase, capitalCase, snakeCase } from 'change-case';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+import set from 'lodash/set';
 import { filters } from './descriptions/Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
@@ -1170,3 +1172,17 @@ export function extractBlockId(this: IExecuteFunctions, nodeVersion: number, ite
 
 	return blockId;
 }
+
+export const prepareNotionError = (node: INode, error: Error, itemIndex: number) => {
+	if (error instanceof NodeApiError) {
+		set(error, 'context.itemIndex', itemIndex);
+		return error;
+	}
+
+	if (error instanceof NodeOperationError && error?.context?.itemIndex === undefined) {
+		set(error, 'context.itemIndex', itemIndex);
+		return error;
+	}
+
+	return new NodeOperationError(node, error, { itemIndex });
+};

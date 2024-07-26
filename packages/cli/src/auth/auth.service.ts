@@ -8,7 +8,7 @@ import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import type { AuthenticatedRequest } from '@/requests';
@@ -41,7 +41,11 @@ const skipBrowserIdCheckEndpoints = [
 	`/${restEndpoint}/push`,
 
 	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-	`/${restEndpoint}/binary-data`,
+	`/${restEndpoint}/binary-data/`,
+
+	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+	`/${restEndpoint}/oauth1-credential/callback`,
+	`/${restEndpoint}/oauth2-credential/callback`,
 ];
 
 @Service()
@@ -88,7 +92,7 @@ export class AuthService {
 			!user.isOwner &&
 			!isWithinUsersLimit
 		) {
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		const token = this.issueJWT(user, browserId);
@@ -127,18 +131,26 @@ export class AuthService {
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
 			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user) ||
-			// If the token was issued for another browser session
-			(!skipBrowserIdCheckEndpoints.includes(req.baseUrl) &&
-				jwtPayload.browserId &&
-				(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId)))
+			jwtPayload.hash !== this.createJWTHash(user)
 		) {
+			throw new AuthError('Unauthorized');
+		}
+
+		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
+		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
 		}
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.browserId);
+			this.issueCookie(res, user, req.browserId);
 		}
 
 		return user;

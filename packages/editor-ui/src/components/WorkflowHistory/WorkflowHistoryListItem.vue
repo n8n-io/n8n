@@ -16,16 +16,15 @@ const props = defineProps<{
 	isActive: boolean;
 }>();
 const emit = defineEmits<{
-	(
-		event: 'action',
+	action: [
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
-	): void;
-	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
-	(event: 'mounted', value: { index: number; offsetTop: number; isActive: boolean }): void;
+	];
+	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
+	mounted: [value: { index: number; offsetTop: number; isActive: boolean }];
 }>();
 
 const i18n = useI18n();
@@ -86,7 +85,7 @@ onMounted(() => {
 		isActive: props.isActive,
 	});
 	isAuthorElementTruncated.value =
-		authorElement.value?.scrollWidth > authorElement.value?.clientWidth;
+		(authorElement.value?.scrollWidth ?? 0) > (authorElement.value?.clientWidth ?? 0);
 });
 </script>
 <template>

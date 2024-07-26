@@ -51,6 +51,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useStorage } from '@/composables/useStorage';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export default defineComponent({
 	name: 'ActivationModal',
@@ -67,7 +68,7 @@ export default defineComponent({
 	},
 	methods: {
 		async showExecutionsList() {
-			const activeExecution = this.workflowsStore.activeWorkflowExecution;
+			const activeExecution = this.executionsStore.activeExecution;
 			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
@@ -93,7 +94,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore, useExecutionsStore),
 		triggerContent(): string {
 			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {

@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Message } from './index';
 import type { ChatMessage } from '@n8n/chat/types';
 
-const props = defineProps({
-	animation: {
-		type: String as PropType<'bouncing' | 'scaling'>,
-		default: 'bouncing',
+const props = withDefaults(
+	defineProps<{
+		animation?: 'bouncing' | 'scaling';
+	}>(),
+	{
+		animation: 'bouncing',
 	},
-});
+);
 
 const message: ChatMessage = {
 	id: 'typing',
@@ -17,7 +18,7 @@ const message: ChatMessage = {
 	sender: 'bot',
 	createdAt: '',
 };
-
+const messageContainer = ref<InstanceType<typeof Message>>();
 const classes = computed(() => {
 	return {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -25,9 +26,13 @@ const classes = computed(() => {
 		[`chat-message-typing-animation-${props.animation}`]: true,
 	};
 });
+
+onMounted(() => {
+	messageContainer.value?.scrollToView();
+});
 </script>
 <template>
-	<Message :class="classes" :message="message">
+	<Message ref="messageContainer" :class="classes" :message="message">
 		<div class="chat-message-typing-body">
 			<span class="chat-message-typing-circle"></span>
 			<span class="chat-message-typing-circle"></span>

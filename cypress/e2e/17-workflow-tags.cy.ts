@@ -51,34 +51,13 @@ describe('Workflow tags', () => {
 		wf.getters.tagPills().should('have.length', 0); // none attached
 	});
 
-	it('should update a tag via modal', () => {
-		wf.actions.openTagManagerModal();
-
-		const [first] = TEST_TAGS;
-
-		cy.contains('Create a tag').click();
-		cy.getByTestId('tags-table').find('input').type(first).type('{enter}');
-		cy.getByTestId('tags-table').should('contain.text', first);
-		cy.getByTestId('edit-tag-button').eq(-1).click({ force: true });
-		cy.wait(300);
-		cy.getByTestId('tags-table')
-			.find('.el-input--large')
-			.should('be.visible')
-			.type(' Updated')
-			.type('{enter}');
-		cy.contains('Done').click();
-		wf.getters.createTagButton().click();
-		wf.getters.tagsInDropdown().should('have.length', 1); // one stored
-		wf.getters.tagsInDropdown().contains('Updated').should('exist');
-		wf.getters.tagPills().should('have.length', 0); // none attached
-	});
-
 	it('should detach a tag inline by clicking on X on tag pill', () => {
 		wf.getters.createTagButton().click();
 		wf.actions.addTags(TEST_TAGS);
 		wf.getters.nthTagPill(1).click();
 		wf.getters.tagsDropdown().find('.el-tag__close').first().click();
 		cy.get('body').click(0, 0);
+		wf.getters.workflowTags().click();
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 
@@ -88,6 +67,7 @@ describe('Workflow tags', () => {
 		wf.getters.nthTagPill(1).click();
 		wf.getters.tagsInDropdown().filter('.selected').first().click();
 		cy.get('body').click(0, 0);
+		wf.getters.workflowTags().click();
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
 	});
 });

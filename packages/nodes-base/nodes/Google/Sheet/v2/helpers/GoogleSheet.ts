@@ -380,16 +380,25 @@ export class GoogleSheet {
 		return keys;
 	}
 
-	async appendSheetData(
-		inputData: IDataObject[],
-		range: string,
-		keyRowIndex: number,
-		valueInputMode: ValueInputOption,
-		usePathForKeyRow: boolean,
-		columnNamesList?: string[][],
-		lastRow?: number,
-		useAppend?: boolean,
-	): Promise<string[][]> {
+	async appendSheetData({
+		inputData,
+		range,
+		keyRowIndex,
+		valueInputMode,
+		usePathForKeyRow,
+		columnNamesList,
+		lastRow,
+		useAppend,
+	}: {
+		inputData: IDataObject[];
+		range: string;
+		keyRowIndex: number;
+		valueInputMode: ValueInputOption;
+		usePathForKeyRow?: boolean;
+		columnNamesList?: string[][];
+		lastRow?: number;
+		useAppend?: boolean;
+	}): Promise<string[][]> {
 		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
 			range,
@@ -406,13 +415,19 @@ export class GoogleSheet {
 		return xlsxUtils.encode_col(columnIndex);
 	}
 
-	async getColumnValues(
-		range: string,
-		keyIndex: number,
-		dataStartRowIndex: number,
-		valueRenderMode: ValueRenderOption,
-		sheetData?: string[][],
-	): Promise<string[]> {
+	async getColumnValues({
+		range,
+		keyIndex,
+		dataStartRowIndex,
+		valueRenderMode,
+		sheetData,
+	}: {
+		range: string;
+		keyIndex: number;
+		dataStartRowIndex: number;
+		valueRenderMode: ValueRenderOption;
+		sheetData?: string[][];
+	}): Promise<string[]> {
 		let columnValuesList;
 		if (sheetData) {
 			columnValuesList = sheetData.slice(dataStartRowIndex - 1).map((row) => row[keyIndex]);
@@ -448,17 +463,27 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async prepareDataForUpdateOrUpsert(
-		inputData: IDataObject[],
-		indexKey: string,
-		range: string,
-		keyRowIndex: number,
-		dataStartRowIndex: number,
-		valueRenderMode: ValueRenderOption,
+	async prepareDataForUpdateOrUpsert({
+		inputData,
+		indexKey,
+		range,
+		keyRowIndex,
+		dataStartRowIndex,
+		valueRenderMode,
 		upsert = false,
-		columnNamesList?: string[][],
-		columnValuesList?: string[],
-	) {
+		columnNamesList,
+		columnValuesList,
+	}: {
+		inputData: IDataObject[];
+		indexKey: string;
+		range: string;
+		keyRowIndex: number;
+		dataStartRowIndex: number;
+		valueRenderMode: ValueRenderOption;
+		upsert?: boolean;
+		columnNamesList?: string[][];
+		columnValuesList?: string[];
+	}) {
 		const decodedRange = this.getDecodedSheetRange(range);
 		// prettier-ignore
 		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
@@ -476,7 +501,7 @@ export class GoogleSheet {
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
-		if (keyIndex === -1) {
+		if (keyIndex === -1 && !upsert) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				`Could not find column for key "${indexKey}"`,
@@ -485,7 +510,7 @@ export class GoogleSheet {
 
 		const columnValues: Array<string | number> =
 			columnValuesList ||
-			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
+			(await this.getColumnValues({ range, keyIndex, dataStartRowIndex, valueRenderMode }));
 
 		const updateData: ISheetUpdateData[] = [];
 		const appendData: IDataObject[] = [];
@@ -612,7 +637,7 @@ export class GoogleSheet {
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
@@ -620,14 +645,21 @@ export class GoogleSheet {
 	 * @returns {Promise<IDataObject[]>}
 	 * @memberof GoogleSheet
 	 */
-	async lookupValues(
-		inputData: string[][],
-		keyRowIndex: number,
-		dataStartRowIndex: number,
-		lookupValues: ILookupValues[],
-		returnAllMatches?: boolean,
-		combineFilters: 'AND' | 'OR' = 'OR',
-	): Promise<IDataObject[]> {
+	async lookupValues({
+		inputData,
+		keyRowIndex,
+		dataStartRowIndex,
+		lookupValues,
+		returnAllMatches,
+		combineFilters = 'OR',
+	}: {
+		inputData: string[][];
+		keyRowIndex: number;
+		dataStartRowIndex: number;
+		lookupValues: ILookupValues[];
+		returnAllMatches?: boolean;
+		combineFilters?: 'AND' | 'OR';
+	}): Promise<IDataObject[]> {
 		const keys: string[] = [];
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
@@ -740,7 +772,7 @@ export class GoogleSheet {
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
-		usePathForKeyRow: boolean,
+		usePathForKeyRow?: boolean,
 		columnNamesList?: string[][],
 		emptyValue: string | null = '',
 	): Promise<string[][]> {

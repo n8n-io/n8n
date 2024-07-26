@@ -1,11 +1,16 @@
 <template>
 	<div>
-		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
+		<aside
+			:class="{
+				[$style.nodeCreatorScrim]: true,
+				[$style.active]: showScrim,
+			}"
+		/>
 		<SlideTransition>
 			<div
 				v-if="active"
 				ref="nodeCreator"
-				:class="$style.nodeCreator"
+				:class="{ [$style.nodeCreator]: true }"
 				:style="nodeCreatorInlineStyle"
 				data-test-id="node-creator"
 				@dragover="onDragOver"
@@ -43,8 +48,8 @@ const props = defineProps<Props>();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
-	(event: 'closeNodeCreator'): void;
-	(event: 'nodeTypeSelected', value: string[]): void;
+	closeNodeCreator: [];
+	nodeTypeSelected: [value: string[]];
 }>();
 const uiStore = useUIStore();
 

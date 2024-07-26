@@ -1110,7 +1110,7 @@ export class Nasa implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'earthImagery' && operation === 'get') {
 						items[i].json = { error: error.message };
 					} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download) {

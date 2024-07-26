@@ -14,6 +14,7 @@ export class RssFeedReadTrigger implements INodeType {
 		displayName: 'RSS Feed Trigger',
 		name: 'rssFeedReadTrigger',
 		icon: 'fa:rss',
+		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts a workflow when an RSS feed is updated',
@@ -76,7 +77,10 @@ export class RssFeedReadTrigger implements INodeType {
 					returnData.push(item);
 				}
 			});
-			pollData.lastItemDate = feed.items[0].isoDate;
+			const maxIsoDate = feed.items.reduce((a, b) =>
+				new Date(a.isoDate as string) > new Date(b.isoDate as string) ? a : b,
+			).isoDate;
+			pollData.lastItemDate = maxIsoDate;
 		}
 
 		if (Array.isArray(returnData) && returnData.length !== 0) {

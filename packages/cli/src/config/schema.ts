@@ -2,17 +2,8 @@ import path from 'path';
 import convict from 'convict';
 import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
+import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'json-string-array',
-	coerce: (rawStr: string) =>
-		jsonParse<string[]>(rawStr, {
-			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
-		}),
-	validate: ensureStringArray,
-});
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -21,224 +12,6 @@ convict.addFormat({
 });
 
 export const schema = {
-	database: {
-		type: {
-			doc: 'Type of database to use',
-			format: ['sqlite', 'mariadb', 'mysqldb', 'postgresdb'] as const,
-			default: 'sqlite',
-			env: 'DB_TYPE',
-		},
-		tablePrefix: {
-			doc: 'Prefix for table names',
-			format: '*',
-			default: '',
-			env: 'DB_TABLE_PREFIX',
-		},
-		logging: {
-			enabled: {
-				doc: 'Typeorm logging enabled flag.',
-				format: Boolean,
-				default: false,
-				env: 'DB_LOGGING_ENABLED',
-			},
-			options: {
-				doc: 'Logging level options, default is "error". Possible values: query,error,schema,warn,info,log. To enable all logging, specify "all"',
-				format: String,
-				default: 'error',
-				env: 'DB_LOGGING_OPTIONS',
-			},
-			maxQueryExecutionTime: {
-				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
-				format: Number,
-				default: 0, // 0 disables the slow-query log
-				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
-			},
-		},
-		postgresdb: {
-			database: {
-				doc: 'PostgresDB Database',
-				format: String,
-				default: 'n8n',
-				env: 'DB_POSTGRESDB_DATABASE',
-			},
-			host: {
-				doc: 'PostgresDB Host',
-				format: String,
-				default: 'localhost',
-				env: 'DB_POSTGRESDB_HOST',
-			},
-			password: {
-				doc: 'PostgresDB Password',
-				format: String,
-				default: '',
-				env: 'DB_POSTGRESDB_PASSWORD',
-			},
-			port: {
-				doc: 'PostgresDB Port',
-				format: Number,
-				default: 5432,
-				env: 'DB_POSTGRESDB_PORT',
-			},
-			user: {
-				doc: 'PostgresDB User',
-				format: String,
-				default: 'root',
-				env: 'DB_POSTGRESDB_USER',
-			},
-			schema: {
-				doc: 'PostgresDB Schema',
-				format: String,
-				default: 'public',
-				env: 'DB_POSTGRESDB_SCHEMA',
-			},
-			poolSize: {
-				doc: 'PostgresDB Pool Size',
-				format: Number,
-				default: 2,
-				env: 'DB_POSTGRESDB_POOL_SIZE',
-			},
-
-			ssl: {
-				enabled: {
-					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
-					format: Boolean,
-					default: false,
-					env: 'DB_POSTGRESDB_SSL_ENABLED',
-				},
-				ca: {
-					doc: 'SSL certificate authority',
-					format: String,
-					default: '',
-					env: 'DB_POSTGRESDB_SSL_CA',
-				},
-				cert: {
-					doc: 'SSL certificate',
-					format: String,
-					default: '',
-					env: 'DB_POSTGRESDB_SSL_CERT',
-				},
-				key: {
-					doc: 'SSL key',
-					format: String,
-					default: '',
-					env: 'DB_POSTGRESDB_SSL_KEY',
-				},
-				rejectUnauthorized: {
-					doc: 'If unauthorized SSL connections should be rejected',
-					format: Boolean,
-					default: true,
-					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
-				},
-			},
-		},
-		mysqldb: {
-			database: {
-				doc: '[DEPRECATED] MySQL Database',
-				format: String,
-				default: 'n8n',
-				env: 'DB_MYSQLDB_DATABASE',
-			},
-			host: {
-				doc: 'MySQL Host',
-				format: String,
-				default: 'localhost',
-				env: 'DB_MYSQLDB_HOST',
-			},
-			password: {
-				doc: 'MySQL Password',
-				format: String,
-				default: '',
-				env: 'DB_MYSQLDB_PASSWORD',
-			},
-			port: {
-				doc: 'MySQL Port',
-				format: Number,
-				default: 3306,
-				env: 'DB_MYSQLDB_PORT',
-			},
-			user: {
-				doc: 'MySQL User',
-				format: String,
-				default: 'root',
-				env: 'DB_MYSQLDB_USER',
-			},
-		},
-		sqlite: {
-			database: {
-				doc: 'SQLite Database file name',
-				format: String,
-				default: 'database.sqlite',
-				env: 'DB_SQLITE_DATABASE',
-			},
-			enableWAL: {
-				doc: 'Enable SQLite WAL mode (Always enabled for pool-size > 1)',
-				format: Boolean,
-				default: false,
-				env: 'DB_SQLITE_ENABLE_WAL',
-			},
-			poolSize: {
-				doc: 'SQLite Pool Size (Setting this to 0 disables pooling)',
-				format: Number,
-				default: 0,
-				env: 'DB_SQLITE_POOL_SIZE',
-			},
-			executeVacuumOnStartup: {
-				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
-				format: Boolean,
-				default: false,
-				env: 'DB_SQLITE_VACUUM_ON_STARTUP',
-			},
-		},
-	},
-
-	credentials: {
-		overwrite: {
-			data: {
-				// Allows to set default values for credentials which
-				// get automatically prefilled and the user does not get
-				// displayed and can not change.
-				// Format: { CREDENTIAL_NAME: { PARAMETER: VALUE }}
-				doc: 'Overwrites for credentials',
-				format: '*',
-				default: '{}',
-				env: 'CREDENTIALS_OVERWRITE_DATA',
-			},
-			endpoint: {
-				doc: 'Fetch credentials from API',
-				format: String,
-				default: '',
-				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
-			},
-		},
-		defaultName: {
-			doc: 'Default name for credentials',
-			format: String,
-			default: 'My credentials',
-			env: 'CREDENTIALS_DEFAULT_NAME',
-		},
-	},
-
-	workflows: {
-		defaultName: {
-			doc: 'Default name for workflow',
-			format: String,
-			default: 'My workflow',
-			env: 'WORKFLOWS_DEFAULT_NAME',
-		},
-		onboardingFlowDisabled: {
-			doc: 'Show onboarding flow in new workflow',
-			format: Boolean,
-			default: false,
-			env: 'N8N_ONBOARDING_FLOW_DISABLED',
-		},
-		callerPolicyDefaultOption: {
-			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
-			default: 'workflowsFromSameOwner',
-			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
-		},
-	},
-
 	executions: {
 		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
@@ -252,6 +25,15 @@ export const schema = {
 			format: ['regular', 'queue'] as const,
 			default: 'regular',
 			env: 'EXECUTIONS_MODE',
+		},
+
+		concurrency: {
+			productionLimit: {
+				doc: "Max production executions allowed to run concurrently, in main process for regular mode and in worker for queue mode. Default for main mode is `-1` (disabled). Default for queue mode is taken from the worker's `--concurrency` flag.",
+				format: Number,
+				default: -1,
+				env: 'N8N_CONCURRENCY_PRODUCTION_LIMIT',
+			},
 		},
 
 		// A Workflow times out and gets canceled after this time (seconds).
@@ -362,6 +144,21 @@ export const schema = {
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
+
+		queueRecovery: {
+			interval: {
+				doc: 'How often (minutes) to check for queue recovery',
+				format: Number,
+				default: 180,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_INTERVAL',
+			},
+			batchSize: {
+				doc: 'Size of batch of executions to check for queue recovery',
+				format: Number,
+				default: 100,
+				env: 'N8N_EXECUTIONS_QUEUE_RECOVERY_BATCH',
+			},
+		},
 	},
 
 	queue: {
@@ -412,7 +209,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_PORT',
 				},
 				timeoutThreshold: {
-					doc: 'Redis timeout threshold',
+					doc: 'Max cumulative timeout (in milliseconds) of connection retries before process exit',
 					format: Number,
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
@@ -735,29 +532,6 @@ export const schema = {
 		},
 	},
 
-	publicApi: {
-		disabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_PUBLIC_API_DISABLED',
-			doc: 'Whether to disable the Public API',
-		},
-		path: {
-			format: String,
-			default: 'api',
-			env: 'N8N_PUBLIC_API_ENDPOINT',
-			doc: 'Path for the public api endpoints',
-		},
-		swaggerUi: {
-			disabled: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
-				doc: 'Whether to disable the Swagger UI for the Public API',
-			},
-		},
-	},
-
 	workflowTagsDisabled: {
 		format: Boolean,
 		default: false,
@@ -790,92 +564,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 		},
-		emails: {
-			mode: {
-				doc: 'How to send emails',
-				format: ['', 'smtp'] as const,
-				default: 'smtp',
-				env: 'N8N_EMAIL_MODE',
-			},
-			smtp: {
-				host: {
-					doc: 'SMTP server host',
-					format: String, // e.g. 'smtp.gmail.com'
-					default: '',
-					env: 'N8N_SMTP_HOST',
-				},
-				port: {
-					doc: 'SMTP server port',
-					format: Number,
-					default: 465,
-					env: 'N8N_SMTP_PORT',
-				},
-				secure: {
-					doc: 'Whether or not to use SSL for SMTP',
-					format: Boolean,
-					default: true,
-					env: 'N8N_SMTP_SSL',
-				},
-				auth: {
-					user: {
-						doc: 'SMTP login username',
-						format: String, // e.g.'you@gmail.com'
-						default: '',
-						env: 'N8N_SMTP_USER',
-					},
-					pass: {
-						doc: 'SMTP login password',
-						format: String,
-						default: '',
-						env: 'N8N_SMTP_PASS',
-					},
-					serviceClient: {
-						doc: 'SMTP OAuth Service Client',
-						format: String,
-						default: '',
-						env: 'N8N_SMTP_OAUTH_SERVICE_CLIENT',
-					},
-					privateKey: {
-						doc: 'SMTP OAuth Private Key',
-						format: String,
-						default: '',
-						env: 'N8N_SMTP_OAUTH_PRIVATE_KEY',
-					},
-				},
-				sender: {
-					doc: 'How to display sender name',
-					format: String,
-					default: '',
-					env: 'N8N_SMTP_SENDER',
-				},
-			},
-			templates: {
-				invite: {
-					doc: 'Overrides default HTML template for inviting new people (use full path)',
-					format: String,
-					default: '',
-					env: 'N8N_UM_EMAIL_TEMPLATES_INVITE',
-				},
-				passwordReset: {
-					doc: 'Overrides default HTML template for resetting password (use full path)',
-					format: String,
-					default: '',
-					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
-				},
-				workflowShared: {
-					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
-					format: String,
-					default: '',
-					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
-				},
-				credentialsShared: {
-					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
-					format: String,
-					default: '',
-					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
-				},
-			},
-		},
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
 			format: ['email', 'ldap', 'saml'] as const,
@@ -895,35 +583,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_HOOK_FILES',
-	},
-
-	nodes: {
-		include: {
-			doc: 'Nodes to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_INCLUDE',
-		},
-		exclude: {
-			doc: 'Nodes not to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_EXCLUDE',
-		},
-		errorTriggerType: {
-			doc: 'Node Type to use as Error Trigger',
-			format: String,
-			default: 'n8n-nodes-base.errorTrigger',
-			env: 'NODES_ERROR_TRIGGER_TYPE',
-		},
-		communityPackages: {
-			enabled: {
-				doc: 'Allows you to disable the usage of community packages for nodes',
-				format: Boolean,
-				default: true,
-				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
-			},
-		},
 	},
 
 	logs: {
@@ -961,42 +620,6 @@ export const schema = {
 		},
 	},
 
-	versionNotifications: {
-		enabled: {
-			doc: 'Whether feature is enabled to request notifications about new versions and security updates.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_VERSION_NOTIFICATIONS_ENABLED',
-		},
-		endpoint: {
-			doc: 'Endpoint to retrieve version information from.',
-			format: String,
-			default: 'https://api.n8n.io/api/versions/',
-			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
-		},
-		infoUrl: {
-			doc: "Url in New Versions Panel with more information on updating one's instance.",
-			format: String,
-			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
-			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
-		},
-	},
-
-	templates: {
-		enabled: {
-			doc: 'Whether templates feature is enabled to load workflow templates.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_TEMPLATES_ENABLED',
-		},
-		host: {
-			doc: 'Endpoint host to retrieve workflow templates from endpoints.',
-			format: String,
-			default: 'https://api.n8n.io/api/',
-			env: 'N8N_TEMPLATES_HOST',
-		},
-	},
-
 	push: {
 		backend: {
 			format: ['sse', 'websocket'] as const,
@@ -1024,60 +647,6 @@ export const schema = {
 			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-	},
-
-	externalStorage: {
-		s3: {
-			host: {
-				format: String,
-				default: '',
-				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
-			},
-			bucket: {
-				name: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
-					doc: 'Name of the n8n bucket in S3-compatible external storage',
-				},
-				region: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
-				},
-			},
-			credentials: {
-				accessKey: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
-					doc: 'Access key in S3-compatible external storage',
-				},
-				accessSecret: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
-					doc: 'Access secret in S3-compatible external storage',
-				},
-			},
-		},
-	},
-
-	externalSecrets: {
-		updateInterval: {
-			format: Number,
-			default: 300,
-			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
-			doc: 'How often (in seconds) to check for secret updates.',
-		},
-		preferGet: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
-			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
 		},
 	},
 
@@ -1202,15 +771,6 @@ export const schema = {
 		env: 'N8N_DEFAULT_LOCALE',
 	},
 
-	onboardingCallPrompt: {
-		enabled: {
-			doc: 'Whether onboarding call prompt feature is available',
-			format: Boolean,
-			default: true,
-			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
-		},
-	},
-
 	license: {
 		serverUrl: {
 			format: String,
@@ -1255,41 +815,6 @@ export const schema = {
 		default: false,
 		env: 'N8N_HIDE_USAGE_PAGE',
 		doc: 'Hide or show the usage page',
-	},
-
-	eventBus: {
-		checkUnsentInterval: {
-			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
-			format: Number,
-			default: 0,
-			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
-		},
-		logWriter: {
-			keepLogCount: {
-				doc: 'How many event log files to keep.',
-				format: Number,
-				default: 3,
-				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
-			},
-			maxFileSizeInKB: {
-				doc: 'Maximum size of an event log file before a new one is started.',
-				format: Number,
-				default: 10240, // 10MB
-				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
-			},
-			logBaseName: {
-				doc: 'Basename of the event log file.',
-				format: String,
-				default: 'n8nEventLog',
-				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
-			},
-		},
-		crashRecoveryMode: {
-			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
-			format: ['simple', 'extensive'] as const,
-			default: 'extensive',
-			env: 'N8N_EVENTBUS_RECOVERY_MODE',
-		},
 	},
 
 	redis: {
@@ -1349,18 +874,6 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
-		},
-		provider: {
-			doc: 'AI provider to use. Currently only "openai" is supported.',
-			format: String,
-			default: 'openai',
-			env: 'N8N_AI_PROVIDER',
-		},
-		openAIApiKey: {
-			doc: 'Enable AI features using OpenAI API key',
-			format: String,
-			default: '',
-			env: 'N8N_AI_OPENAI_API_KEY',
 		},
 	},
 

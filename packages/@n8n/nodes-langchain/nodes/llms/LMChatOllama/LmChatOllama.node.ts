@@ -7,10 +7,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOllama } from '@langchain/community/chat_models/ollama';
-import { logWrapper } from '../../../utils/logWrapper';
+import type { ChatOllamaInput } from '@langchain/ollama';
+import { ChatOllama } from '@langchain/ollama';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +29,7 @@ export class LmChatOllama implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -54,16 +56,18 @@ export class LmChatOllama implements INodeType {
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
 
 		const model = new ChatOllama({
+			...options,
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
-			...options,
+			format: options.format === 'default' ? undefined : options.format,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

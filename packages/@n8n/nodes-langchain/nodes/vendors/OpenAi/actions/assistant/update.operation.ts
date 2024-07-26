@@ -41,7 +41,7 @@ const properties: INodeProperties[] = [
 				type: 'multiOptions',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description:
-					'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant',
+					'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant. You can use expression to pass file IDs as an array or comma-separated string.',
 				typeOptions: {
 					loadOptionsMethod: 'getFiles',
 				},
@@ -67,7 +67,7 @@ const properties: INodeProperties[] = [
 				description:
 					'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
 			},
-			{ ...modelRLC, required: false },
+			{ ...modelRLC('modelSearch'), required: false },
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -83,6 +83,25 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to remove all custom tools (functions) from the assistant',
+			},
+
+			{
+				displayName: 'Output Randomness (Temperature)',
+				name: 'temperature',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. We generally recommend altering this or temperature but not both.',
+				type: 'number',
+			},
+			{
+				displayName: 'Output Randomness (Top P)',
+				name: 'topP',
+				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+				type: 'number',
 			},
 		],
 	},
@@ -109,6 +128,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		knowledgeRetrieval,
 		file_ids,
 		removeCustomTools,
+		temperature,
+		topP,
 	} = options;
 
 	const assistantDescription = options.description as string;
@@ -116,6 +137,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {};
 
 	if (file_ids) {
+		let files = file_ids;
+		if (typeof files === 'string') {
+			files = files.split(',').map((file_id) => file_id.trim());
+		}
 		if ((file_ids as IDataObject[]).length > 20) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -124,7 +149,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			);
 		}
 
-		body.file_ids = file_ids;
+		body.tool_resources = {
+			...((body.tool_resources as object) ?? {}),
+			code_interpreter: {
+				file_ids,
+			},
+			file_search: {
+				vector_stores: [
+					{
+						file_ids,
+					},
+				],
+			},
+		};
 	}
 
 	if (modelId) {
@@ -143,11 +180,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.instructions = instructions;
 	}
 
+	if (temperature) {
+		body.temperature = temperature;
+	}
+
+	if (topP) {
+		body.topP = topP;
+	}
+
 	let tools =
 		((
 			await apiRequest.call(this, 'GET', `/assistants/${assistantId}`, {
 				headers: {
-					'OpenAI-Beta': 'assistants=v1',
+					'OpenAI-Beta': 'assistants=v2',
 				},
 			})
 		).tools as IDataObject[]) || [];
@@ -162,14 +207,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools = tools.filter((tool) => tool.type !== 'code_interpreter');
 	}
 
-	if (knowledgeRetrieval && !tools.find((tool) => tool.type === 'retrieval')) {
+	if (knowledgeRetrieval && !tools.find((tool) => tool.type === 'file_search')) {
 		tools.push({
-			type: 'retrieval',
+			type: 'file_search',
 		});
 	}
 
-	if (knowledgeRetrieval === false && tools.find((tool) => tool.type === 'retrieval')) {
-		tools = tools.filter((tool) => tool.type !== 'retrieval');
+	if (knowledgeRetrieval === false && tools.find((tool) => tool.type === 'file_search')) {
+		tools = tools.filter((tool) => tool.type !== 'file_search');
 	}
 
 	if (removeCustomTools) {
@@ -181,7 +226,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await apiRequest.call(this, 'POST', `/assistants/${assistantId}`, {
 		body,
 		headers: {
-			'OpenAI-Beta': 'assistants=v1',
+			'OpenAI-Beta': 'assistants=v2',
 		},
 	});
 

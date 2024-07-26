@@ -1,26 +1,18 @@
 {
   "name": "n8n-core",
-  "version": "1.36.0",
+  "version": "1.52.0",
   "description": "Core functionality of n8n",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://n8n.io",
-  "author": {
-    "name": "Jan Oberhauser",
-    "email": "jan@n8n.io"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/n8n-io/n8n.git"
-  },
   "main": "dist/index",
   "types": "dist/index.d.ts",
   "bin": {
+    "n8n-copy-icons": "./bin/copy-icons",
     "n8n-generate-known": "./bin/generate-known",
+    "n8n-generate-translations": "./bin/generate-translations",
     "n8n-generate-ui-types": "./bin/generate-ui-types"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
@@ -36,22 +28,18 @@
   "devDependencies": {
     "@types/aws4": "^1.5.1",
     "@types/concat-stream": "^2.0.0",
-    "@types/cron": "~1.7.1",
-    "@types/express": "^4.17.6",
+    "@types/express": "^4.17.21",
     "@types/lodash": "^4.14.195",
     "@types/mime-types": "^2.1.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.14"
-  },
-  "peerDependencies": {
-    "n8n-nodes-base": "workspace:*"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
     "aws4": "1.11.0",
     "axios": "1.6.7",
     "concat-stream": "2.0.0",
-    "cron": "1.7.2",
+    "cron": "3.1.7",
     "fast-glob": "3.2.12",
     "file-type": "16.5.4",
     "form-data": "4.0.0",
@@ -63,9 +51,10 @@
     "p-cancelable": "2.1.1",
     "pretty-bytes": "5.6.0",
     "qs": "6.11.0",
+    "ssh2": "1.15.0",
     "typedi": "0.10.0",
     "uuid": "8.3.2",
     "xml2js": "0.6.2",
-    "zod": "3.22.4"
+    "zod": "3.23.8"
   }
 }

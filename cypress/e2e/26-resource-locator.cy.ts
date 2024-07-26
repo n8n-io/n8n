@@ -1,5 +1,5 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
-import { getVisiblePopper, getVisibleSelect } from '../utils';
+import { getVisiblePopper } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -37,18 +37,46 @@ describe('Resource Locator', () => {
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
 	});
 
+	it('should show create credentials modal when clicking "add your credential"', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Manual');
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
+		ndv.getters.resourceLocator('documentId').should('be.visible');
+		ndv.getters.resourceLocatorInput('documentId').click();
+		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
+		ndv.getters.resourceLocatorAddCredentials().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+	});
+
 	it('should show appropriate error when credentials are not valid', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
 		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
-		workflowPage.getters.nodeCredentialsSelect().click();
+
 		// Add oAuth credentials
-		getVisibleSelect().find('li').last().click();
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
 		credentialsModal.actions.fillCredentialsForm();
 		cy.get('.el-message-box').find('button').contains('Close').click();
+
 		ndv.getters.resourceLocatorInput('documentId').click();
+		ndv.getters.resourceLocatorErrorMessage().should('contain', INVALID_CREDENTIALS_MESSAGE);
+	});
+
+	it('should show appropriate errors when search filter is required', () => {
+		workflowPage.actions.addNodeToCanvas('Github', true, true, 'On Pull Request');
+		ndv.getters.resourceLocator('owner').should('be.visible');
+		ndv.getters.resourceLocatorInput('owner').click();
+		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
+
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsCreateOption().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.actions.fillCredentialsForm();
+
+		ndv.getters.resourceLocatorInput('owner').click();
+		ndv.getters.resourceLocatorSearch('owner').type('owner');
 		ndv.getters.resourceLocatorErrorMessage().should('contain', INVALID_CREDENTIALS_MESSAGE);
 	});
 
@@ -75,7 +103,7 @@ describe('Resource Locator', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
+		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.resourceLocatorInput('rlc').click();
 

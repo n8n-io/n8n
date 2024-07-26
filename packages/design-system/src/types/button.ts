@@ -9,6 +9,9 @@ export type ButtonType = (typeof BUTTON_TYPE)[number];
 const BUTTON_SIZE = ['small', 'medium', 'large'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];
 
+const BUTTON_NATIVE_TYPE = ['submit', 'reset', 'button'] as const;
+export type ButtonNativeType = (typeof BUTTON_NATIVE_TYPE)[number];
+
 export interface IconButtonProps {
 	active?: boolean;
 	disabled?: boolean;
@@ -19,6 +22,7 @@ export interface IconButtonProps {
 	size?: ButtonSize;
 	text?: boolean;
 	type?: ButtonType;
+	nativeType?: ButtonNativeType;
 }
 
 export interface ButtonProps extends IconButtonProps {

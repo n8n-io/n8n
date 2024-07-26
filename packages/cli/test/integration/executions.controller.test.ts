@@ -1,20 +1,23 @@
 import type { User } from '@db/entities/User';
-import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
-import { WaitTracker } from '@/WaitTracker';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
-import { createOwner } from './shared/db/users';
-import { createWorkflow } from './shared/db/workflows';
+import { createMember, createOwner } from './shared/db/users';
+import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 
-mockInstance(EnterpriseExecutionsService);
-mockInstance(WaitTracker);
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { WaitTracker } from '@/WaitTracker';
+import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
-let testServer = setupTestServer({ endpointGroups: ['executions'] });
+mockInstance(WaitTracker);
+mockInstance(ConcurrencyControlService, { isEnabled: false });
+
+const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;
+let member: User;
 
 const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 	const workflow = await createWorkflow({}, belongingTo);
@@ -23,7 +26,61 @@ const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
 
 beforeEach(async () => {
 	await testDb.truncate(['Execution', 'Workflow', 'SharedWorkflow']);
+	testServer.license.reset();
 	owner = await createOwner();
+	member = await createMember();
+});
+
+describe('GET /executions', () => {
+	test('only returns executions of shared workflows if sharing is enabled', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		await createSuccessfulExecution(workflow);
+
+		const response1 = await testServer.authAgentFor(member).get('/executions').expect(200);
+		expect(response1.body.data.count).toBe(0);
+
+		testServer.license.enable('feat:sharing');
+
+		const response2 = await testServer.authAgentFor(member).get('/executions').expect(200);
+		expect(response2.body.data.count).toBe(1);
+	});
+});
+
+describe('GET /executions/:id', () => {
+	test('project viewers can view executions for workflows in the project', async () => {
+		// if sharing is not enabled, we're only returning the executions of
+		// personal workflows
+		testServer.license.enable('feat:sharing');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+	});
+
+	test('only returns executions of shared workflows if sharing is enabled', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(404);
+
+		testServer.license.enable('feat:sharing');
+
+		const response = await testServer
+			.authAgentFor(member)
+			.get(`/executions/${execution.id}`)
+			.expect(200);
+
+		expect(response.body.data.id).toBe(execution.id);
+	});
 });
 
 describe('POST /executions/delete', () => {

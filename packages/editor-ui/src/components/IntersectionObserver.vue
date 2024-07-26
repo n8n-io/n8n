@@ -28,7 +28,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			observer: null,
+			observer: null as IntersectionObserver | null,
 		};
 	},
 	mounted() {
@@ -64,7 +64,7 @@ export default defineComponent({
 		});
 	},
 	beforeUnmount() {
-		if (this.enabled) {
+		if (this.enabled && this.observer) {
 			this.observer.disconnect();
 		}
 	},

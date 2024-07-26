@@ -23,34 +23,33 @@ const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
 type Props = {
 	path: string;
 	modelValue: string;
-	isReadOnly: boolean;
-	rows: number;
-	isAssignment: boolean;
-	additionalExpressionData: IDataObject;
-	eventBus: EventBus;
+	rows?: number;
+	additionalExpressionData?: IDataObject;
+	eventBus?: EventBus;
+	isReadOnly?: boolean;
+	isAssignment?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	isAssignment: false,
+	isReadOnly: false,
 	additionalExpressionData: () => ({}),
 	eventBus: () => createEventBus(),
 });
 
 const emit = defineEmits<{
-	(event: 'modal-opener-click'): void;
-	(event: 'update:model-value', value: string): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
+	'modal-opener-click': [];
+	'update:model-value': [value: string];
+	focus: [];
+	blur: [];
 }>();
 
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 
-const hoveringItemNumber = computed(() => ndvStore.hoveringItemNumber);
 const isDragging = computed(() => ndvStore.isDraggableDragging);
-const noInputData = computed(() => ndvStore.hasInputData);
 
 function focus() {
 	if (inlineInput.value) {
@@ -166,9 +165,7 @@ defineExpose({ focus });
 			:editor-state="editorState"
 			:segments="segments"
 			:is-read-only="isReadOnly"
-			:no-input-data="noInputData"
 			:visible="isFocused"
-			:hovering-item-number="hoveringItemNumber"
 		/>
 	</div>
 </template>

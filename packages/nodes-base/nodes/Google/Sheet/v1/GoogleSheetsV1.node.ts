@@ -144,7 +144,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					return [items];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
@@ -159,7 +159,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const items = this.getInputData();
 					return [items];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
@@ -201,7 +201,7 @@ export class GoogleSheetsV1 implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ error: error.message });
 							continue;
 						}
@@ -248,7 +248,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const items = this.getInputData();
 					return [items];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
@@ -307,7 +307,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					return [lookupOutput];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
 					}
 					throw error;
@@ -344,7 +344,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					return [this.helpers.returnJsonArray(returnData)];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
 					}
 					throw error;
@@ -375,7 +375,7 @@ export class GoogleSheetsV1 implements INodeType {
 						delete responseData.replies;
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ error: error.message });
 							continue;
 						}
@@ -432,7 +432,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					return [items];
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
@@ -488,7 +488,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							returnData.push({ error: error.message });
 							continue;
 						}

@@ -5,6 +5,7 @@
 			:placement="placement"
 			:trigger="trigger"
 			:popper-class="popperClass"
+			:teleported="teleported"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -61,29 +62,20 @@ import { ref, useCssModule, useAttrs, computed } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
-import type { KeyboardShortcut } from '../../types';
-import type { IconSize } from '@/types/icon';
-
-interface IActionDropdownItem {
-	id: string;
-	label: string;
-	icon?: string;
-	divided?: boolean;
-	disabled?: boolean;
-	shortcut?: KeyboardShortcut;
-	customClass?: string;
-}
+import type { ActionDropdownItem } from '../../types';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: IActionDropdownItem[];
+	items: ActionDropdownItem[];
 	placement?: Placement;
 	activatorIcon?: string;
 	activatorSize?: IconSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
+	teleported?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -93,13 +85,14 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	iconSize: 'medium',
 	trigger: 'click',
 	hideArrow: false,
+	teleported: true,
 });
 
-const $attrs = useAttrs();
-const testIdPrefix = $attrs['data-test-id'];
+const attrs = useAttrs();
+const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: IActionDropdownItem): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -108,15 +101,18 @@ const getItemClasses = (item: IActionDropdownItem): Record<string, boolean> => {
 	};
 };
 
-const $emit = defineEmits(['select', 'visibleChange']);
+const emit = defineEmits<{
+	select: [action: string];
+	visibleChange: [open: boolean];
+}>();
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
 	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
 );
 
-const onSelect = (action: string) => $emit('select', action);
-const onVisibleChange = (open: boolean) => $emit('visibleChange', open);
+const onSelect = (action: string) => emit('select', action);
+const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
 	// Hide dropdown when clicking outside of current document

@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.editor">
-		<div ref="htmlEditor"></div>
+		<div ref="htmlEditor" data-test-id="html-editor-container"></div>
 		<slot name="suffix" />
 	</div>
 </template>
@@ -59,7 +59,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:model-value', value: string): void;
+	'update:model-value': [value: string];
 }>();
 
 const htmlEditor = ref<HTMLElement>();
@@ -244,7 +244,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	htmlEditorEventBus.off('format-html', formatHtml);
-	emit('update:model-value', readEditorValue());
 });
 </script>
 

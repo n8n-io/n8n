@@ -63,7 +63,7 @@ export class DummyProvider extends SecretsProvider {
 		test2: 'value2',
 	};
 
-	async init(settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
 	async connect(): Promise<void> {
 		this.state = 'connected';
@@ -101,7 +101,7 @@ export class ErrorProvider extends SecretsProvider {
 
 	state: SecretsProviderState = 'initializing';
 
-	async init(settings: SecretsProviderSettings<IDataObject>): Promise<void> {
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {
 		throw new Error();
 	}
 
@@ -122,11 +122,11 @@ export class ErrorProvider extends SecretsProvider {
 		throw new Error();
 	}
 
-	getSecret(name: string): IDataObject | undefined {
+	getSecret(_name: string): IDataObject | undefined {
 		throw new Error();
 	}
 
-	hasSecret(name: string): boolean {
+	hasSecret(_name: string): boolean {
 		throw new Error();
 	}
 
@@ -144,7 +144,7 @@ export class FailedProvider extends SecretsProvider {
 
 	state: SecretsProviderState = 'initializing';
 
-	async init(settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
 	async connect(): Promise<void> {
 		this.state = 'error';
@@ -185,7 +185,7 @@ export class TestFailProvider extends SecretsProvider {
 		test2: 'value2',
 	};
 
-	async init(settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
+	async init(_settings: SecretsProviderSettings<IDataObject>): Promise<void> {}
 
 	async connect(): Promise<void> {
 		this.state = 'connected';

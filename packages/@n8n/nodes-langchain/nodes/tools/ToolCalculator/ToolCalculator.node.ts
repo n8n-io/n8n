@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { Calculator } from 'langchain/tools/calculator';
+import { Calculator } from '@langchain/community/tools/calculator';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -25,6 +25,7 @@ export class ToolCalculator implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Other Tools'],
 			},
 			resources: {
 				primaryDocumentation: [

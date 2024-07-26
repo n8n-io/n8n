@@ -10,7 +10,9 @@ import {
 	prepareItem,
 	replaceEmptyStringsByNulls,
 	wrapData,
+	convertArraysToPostgresFormat,
 } from '../../v2/helpers/utils';
+import type { ColumnInfo } from '../../v2/helpers/interfaces';
 
 const node: INode = {
 	id: '1',
@@ -371,5 +373,80 @@ describe('Test PostgresV2, checkItemAgainstSchema', () => {
 		} catch (error) {
 			expect(error.message).toEqual("Column 'foo' is not nullable");
 		}
+	});
+});
+
+describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
+	it('should convert js arrays to postgres format', () => {
+		const item = {
+			jsonb_array: [
+				{
+					key: 'value44',
+				},
+			],
+			json_array: [
+				{
+					key: 'value54',
+				},
+			],
+			int_array: [1, 2, 5],
+			text_array: ['one', 't"w"o'],
+			bool_array: [true, false],
+		};
+
+		const schema: ColumnInfo[] = [
+			{
+				column_name: 'id',
+				data_type: 'integer',
+				is_nullable: 'NO',
+				udt_name: 'int4',
+				column_default: "nextval('test_data_array_id_seq'::regclass)",
+			},
+			{
+				column_name: 'jsonb_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_jsonb',
+				column_default: null,
+			},
+			{
+				column_name: 'json_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_json',
+				column_default: null,
+			},
+			{
+				column_name: 'int_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_int4',
+				column_default: null,
+			},
+			{
+				column_name: 'bool_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_bool',
+				column_default: null,
+			},
+			{
+				column_name: 'text_array',
+				data_type: 'ARRAY',
+				is_nullable: 'YES',
+				udt_name: '_text',
+				column_default: null,
+			},
+		];
+
+		convertArraysToPostgresFormat(item, schema, node, 0);
+
+		expect(item).toEqual({
+			jsonb_array: '{"{\\"key\\":\\"value44\\"}"}',
+			json_array: '{"{\\"key\\":\\"value54\\"}"}',
+			int_array: '{1,2,5}',
+			text_array: '{"one","t\\"w\\"o"}',
+			bool_array: '{"true","false"}',
+		});
 	});
 });

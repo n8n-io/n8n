@@ -20,6 +20,7 @@ import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
 import jwt from 'jsonwebtoken';
 
+import { formatPrivateKey } from '../../utils/utilities';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -39,14 +40,13 @@ import {
 	isIpWhitelisted,
 	setupOutputConnection,
 } from './utils';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
 
 	description: INodeTypeDescription = {
 		displayName: 'Webhook',
-		icon: 'file:webhook.svg',
+		icon: { light: 'file:webhook.svg', dark: 'file:webhook.dark.svg' },
 		name: 'webhook',
 		group: ['trigger'],
 		version: [1, 1.1, 2],
@@ -74,7 +74,60 @@ export class Webhook extends Node {
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [
-			httpMethodsProperty,
+			{
+				displayName: 'Allow Multiple HTTP Methods',
+				name: 'multipleMethods',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				description: 'Whether to allow the webhook to listen for multiple HTTP methods',
+			},
+			{
+				...httpMethodsProperty,
+				displayOptions: {
+					show: {
+						multipleMethods: [false],
+					},
+				},
+			},
+			{
+				displayName: 'HTTP Methods',
+				name: 'httpMethod',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
+						name: 'GET',
+						value: 'GET',
+					},
+					{
+						name: 'HEAD',
+						value: 'HEAD',
+					},
+					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
+						name: 'POST',
+						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
+					},
+				],
+				default: ['GET', 'POST'],
+				description: 'The HTTP methods to listen to',
+				displayOptions: {
+					show: {
+						multipleMethods: [true],
+					},
+				},
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -144,6 +197,7 @@ export class Webhook extends Node {
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
+		const requestMethod = context.getRequestObject().method;
 
 		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);
@@ -165,7 +219,7 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		const prepareOutput = setupOutputConnection(context, {
+		const prepareOutput = setupOutputConnection(context, requestMethod, {
 			jwtPayload: validationData,
 		});
 
@@ -278,7 +332,7 @@ export class Webhook extends Node {
 			}
 
 			const authHeader = req.headers.authorization;
-			const token = authHeader && authHeader.split(' ')[1];
+			const token = authHeader?.split(' ')[1];
 
 			if (!token) {
 				throw new WebhookAuthorizationError(401, 'No token provided');

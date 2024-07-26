@@ -2,11 +2,12 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import checker from 'vite-plugin-checker';
 
 import packageJSON from './package.json';
 import { vitestConfig } from '../design-system/vite.config.mts';
 import icons from 'unplugin-icons/vite';
+import iconsResolver from 'unplugin-icons/resolver'
+import components from 'unplugin-vue-components/vite';
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system', '@n8n/chat'];
@@ -73,12 +74,18 @@ const alias = [
 const plugins = [
 	icons({
 		compiler: 'vue3',
+		autoInstall: true,
+	}),
+	components({
+		dts: './src/components.d.ts',
+		resolvers: [
+			iconsResolver({
+				prefix: 'icon'
+			})
+		]
 	}),
 	vue(),
 ];
-if (process.env.ENABLE_TYPE_CHECKING === 'true') {
-	plugins.push(checker({ vueTsc: true }));
-}
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

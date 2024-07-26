@@ -1,87 +1,71 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
 import { exec as callbackExec } from 'child_process';
+import { resolve } from 'path';
 import { access as fsAccess } from 'fs/promises';
-import { join as pathJoin } from 'path';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { engine as expressHandlebars } from 'express-handlebars';
-import type { ServeStaticOptions } from 'serve-static';
-
-import { type Class, InstanceSettings } from 'n8n-core';
-
+import helmet from 'helmet';
+import { GlobalConfig } from '@n8n/config';
+import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
-// @ts-ignore
-import timezones from 'google-timezones-json';
-import history from 'connect-history-api-fallback';
-
 import config from '@/config';
-import { Queue } from '@/Queue';
 
-import { WorkflowsController } from '@/workflows/workflows.controller';
 import {
+	CLI_DIR,
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
 	inE2ETests,
+	inProduction,
 	N8N_VERSION,
-	TEMPLATES_DIR,
+	Time,
 } from '@/constants';
-import { CredentialsController } from '@/credentials/credentials.controller';
-import type { APIRequest, CurlHelper } from '@/requests';
-import { registerController } from '@/decorators';
-import { AuthController } from '@/controllers/auth.controller';
-import { BinaryDataController } from '@/controllers/binaryData.controller';
-import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
-import { MeController } from '@/controllers/me.controller';
-import { MFAController } from '@/controllers/mfa.controller';
-import { NodeTypesController } from '@/controllers/nodeTypes.controller';
-import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
-import { OwnerController } from '@/controllers/owner.controller';
-import { PasswordResetController } from '@/controllers/passwordReset.controller';
-import { TagsController } from '@/controllers/tags.controller';
-import { TranslationController } from '@/controllers/translation.controller';
-import { UsersController } from '@/controllers/users.controller';
-import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
-import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
-import { ExecutionsController } from '@/executions/executions.controller';
+import type { APIRequest } from '@/requests';
+import { ControllerRegistry } from '@/decorators';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { EventBusController } from '@/eventbus/eventBus.controller';
-import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
-import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { isLdapEnabled } from './Ldap/helpers';
-import { AbstractServer } from './AbstractServer';
-import { PostHogClient } from './posthog';
+import { isLdapEnabled } from '@/Ldap/helpers.ee';
+import { AbstractServer } from '@/AbstractServer';
+import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from './InternalHooks';
-import { SamlController } from './sso/saml/routes/saml.controller.ee';
-import { SamlService } from './sso/saml/saml.service.ee';
-import { VariablesController } from './environments/variables/variables.controller.ee';
-import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { AIController } from '@/controllers/ai.controller';
-
-import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
-import type { FrontendService } from './services/frontend.service';
-import { ActiveWorkflowsController } from './controllers/activeWorkflows.controller';
-import { OrchestrationController } from './controllers/orchestration.controller';
-import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
-import { InvitationController } from './controllers/invitation.controller';
-// import { CollaborationService } from './collaboration/collaboration.service';
-import { BadRequestError } from './errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
+import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
+import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { AuditEventRelay } from './eventbus/audit-event-relay.service';
+
+import '@/controllers/activeWorkflows.controller';
+import '@/controllers/auth.controller';
+import '@/controllers/binaryData.controller';
+import '@/controllers/curl.controller';
+import '@/controllers/dynamicNodeParameters.controller';
+import '@/controllers/invitation.controller';
+import '@/controllers/me.controller';
+import '@/controllers/nodeTypes.controller';
+import '@/controllers/oauth/oAuth1Credential.controller';
+import '@/controllers/oauth/oAuth2Credential.controller';
+import '@/controllers/orchestration.controller';
+import '@/controllers/owner.controller';
+import '@/controllers/passwordReset.controller';
+import '@/controllers/project.controller';
+import '@/controllers/role.controller';
+import '@/controllers/tags.controller';
+import '@/controllers/translation.controller';
+import '@/controllers/users.controller';
+import '@/controllers/userSettings.controller';
+import '@/controllers/workflowStatistics.controller';
+import '@/credentials/credentials.controller';
+import '@/eventbus/eventBus.controller';
+import '@/executions/executions.controller';
+import '@/ExternalSecrets/ExternalSecrets.controller.ee';
+import '@/license/license.controller';
+import '@/workflows/workflowHistory/workflowHistory.controller.ee';
+import '@/workflows/workflows.controller';
 
 const exec = promisify(callbackExec);
 
@@ -91,31 +75,29 @@ export class Server extends AbstractServer {
 
 	private presetCredentialsLoaded: boolean;
 
-	private loadNodesAndCredentials: LoadNodesAndCredentials;
-
 	private frontendService?: FrontendService;
 
-	constructor() {
+	constructor(
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly orchestrationService: OrchestrationService,
+		private readonly postHogClient: PostHogClient,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super('main');
-
-		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
-		this.app.set('view engine', 'handlebars');
-		this.app.set('views', TEMPLATES_DIR);
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
 	}
 
 	async start() {
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
-			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
+			const { FrontendService } = await import('@/services/frontend.service');
+			this.frontendService = Container.get(FrontendService);
 		}
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -125,87 +107,68 @@ export class Server extends AbstractServer {
 		}
 
 		void Container.get(InternalHooks).onServerStarted();
-		// Container.get(CollaborationService);
 	}
 
-	private async registerControllers() {
-		const { app } = this;
-
-		const controllers: Array<Class<object>> = [
-			EventBusController,
-			EventBusControllerEE,
-			AuthController,
-			LicenseController,
-			OAuth1CredentialController,
-			OAuth2CredentialController,
-			OwnerController,
-			MeController,
-			DynamicNodeParametersController,
-			NodeTypesController,
-			PasswordResetController,
-			TagsController,
-			TranslationController,
-			UsersController,
-			SamlController,
-			SourceControlController,
-			WorkflowStatisticsController,
-			ExternalSecretsController,
-			OrchestrationController,
-			WorkflowHistoryController,
-			BinaryDataController,
-			VariablesController,
-			InvitationController,
-			VariablesController,
-			ActiveWorkflowsController,
-			WorkflowsController,
-			ExecutionsController,
-			CredentialsController,
-			AIController,
-		];
-
-		if (
-			process.env.NODE_ENV !== 'production' &&
-			Container.get(OrchestrationService).isMultiMainSetupEnabled
-		) {
-			const { DebugController } = await import('@/controllers/debug.controller');
-			controllers.push(DebugController);
+	private async registerAdditionalControllers() {
+		if (!inProduction && this.orchestrationService.isMultiMainSetupEnabled) {
+			await import('@/controllers/debug.controller');
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/Ldap/ldap.service');
-			const { LdapController } = await require('@/Ldap/ldap.controller');
+			const { LdapService } = await import('@/Ldap/ldap.service.ee');
+			await import('@/Ldap/ldap.controller.ee');
 			await Container.get(LdapService).init();
-			controllers.push(LdapController);
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			const { CommunityPackagesController } = await import(
-				'@/controllers/communityPackages.controller'
-			);
-			controllers.push(CommunityPackagesController);
+		if (this.globalConfig.nodes.communityPackages.enabled) {
+			await import('@/controllers/communityPackages.controller');
 		}
 
 		if (inE2ETests) {
-			const { E2EController } = await import('./controllers/e2e.controller');
-			controllers.push(E2EController);
+			await import('@/controllers/e2e.controller');
 		}
 
 		if (isMfaFeatureEnabled()) {
-			controllers.push(MFAController);
+			await import('@/controllers/mfa.controller');
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			const { CtaController } = await import('@/controllers/cta.controller');
-			controllers.push(CtaController);
+			await import('@/controllers/cta.controller');
 		}
 
-		controllers.forEach((controller) => registerController(app, controller));
+		// ----------------------------------------
+		// SAML
+		// ----------------------------------------
+
+		// initialize SamlService if it is licensed, even if not enabled, to
+		// set up the initial environment
+		try {
+			const { SamlService } = await import('@/sso/saml/saml.service.ee');
+			await Container.get(SamlService).init();
+			await import('@/sso/saml/routes/saml.controller.ee');
+		} catch (error) {
+			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
+		}
+
+		// ----------------------------------------
+		// Source Control
+		// ----------------------------------------
+		try {
+			const { SourceControlService } = await import(
+				'@/environments/sourceControl/sourceControl.service.ee'
+			);
+			await Container.get(SourceControlService).init();
+			await import('@/environments/sourceControl/sourceControl.controller.ee');
+			await import('@/environments/variables/variables.controller.ee');
+		} catch (error) {
+			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);
+		}
 	}
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
@@ -220,9 +183,9 @@ export class Server extends AbstractServer {
 			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
 		}
 
-		await Container.get(PostHogClient).init();
+		await this.postHogClient.init();
 
-		const publicApiEndpoint = config.getEnv('publicApi.path');
+		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// ----------------------------------------
 		// Public API
@@ -248,85 +211,25 @@ export class Server extends AbstractServer {
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
 
-		const nonUIRoutes: Readonly<string[]> = [
-			'assets',
-			'healthz',
-			'metrics',
-			'e2e',
-			this.restEndpoint,
-			this.endpointPresetCredentials,
-			isApiEnabled() ? '' : publicApiEndpoint,
-			...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
-		].filter((u) => !!u);
-		const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
-
-		// Make sure that Vue history mode works properly
-		this.app.use(
-			history({
-				rewrites: [
-					{
-						from: nonUIRoutesRegex,
-						to: ({ parsedUrl }) => parsedUrl.pathname!.toString(),
-					},
-				],
-			}),
-		);
-
 		if (config.getEnv('executions.mode') === 'queue') {
+			const { Queue } = await import('@/Queue');
 			await Container.get(Queue).init();
 		}
 
 		await handleMfaDisable();
 
-		await this.registerControllers();
+		await this.registerAdditionalControllers();
 
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			await Container.get(SamlService).init();
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${error.message}`);
-		}
-
-		// ----------------------------------------
-		// Source Control
-		// ----------------------------------------
-		try {
-			await Container.get(SourceControlService).init();
-		} catch (error) {
-			this.logger.warn(`Source Control initialization failed: ${error.message}`);
-		}
-
-		// ----------------------------------------
-		// curl-converter
-		// ----------------------------------------
-		this.app.post(
-			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(async (req: CurlHelper.ToJson) => {
-				const curlCommand = req.body.curlCommand ?? '';
-
-				try {
-					const parameters = toHttpNodeParameters(curlCommand);
-					return ResponseHelper.flattenObject(parameters, 'parameters');
-				} catch (e) {
-					throw new BadRequestError('Invalid cURL command');
-				}
-			}),
-		);
+		// register all known controllers
+		Container.get(ControllerRegistry).activate(app);
 
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------
 
 		// Returns all the available timezones
-		this.app.get(
-			`/${this.restEndpoint}/options/timezones`,
-			ResponseHelper.send(async () => timezones),
-		);
+		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
 
 		// ----------------------------------------
 		// Settings
@@ -348,6 +251,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
+		Container.get(AuditEventRelay).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -381,19 +285,10 @@ export class Server extends AbstractServer {
 			);
 		}
 
+		const maxAge = Time.days.toMilliseconds;
+		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
-			const staticOptions: ServeStaticOptions = {
-				cacheControl: false,
-				setHeaders: (res: express.Response, path: string) => {
-					const isIndex = path === pathJoin(staticCacheDir, 'index.html');
-					const cacheControl = isIndex
-						? 'no-cache, no-store, must-revalidate'
-						: 'max-age=86400, immutable';
-					res.header('Cache-Control', cacheControl);
-				},
-			};
-
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				// eslint-disable-next-line prefer-const
 				let { scope, packageName } = req.params;
@@ -402,7 +297,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath);
+						return res.sendFile(filePath, cacheOptions);
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -411,19 +306,79 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
+			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const securityHeadersMiddleware = helmet({
+				contentSecurityPolicy: false,
+				xFrameOptions:
+					isPreviewMode || inE2ETests || inDevelopment ? false : { action: 'sameorigin' },
+				dnsPrefetchControl: false,
+				// This is only relevant for Internet-explorer, which we do not support
+				ieNoOpen: false,
+				// This is already disabled in AbstractServer
+				xPoweredBy: false,
+				// Enable HSTS headers only when n8n handles TLS.
+				// if n8n is behind a reverse-proxy, then these headers needs to be configured there
+				strictTransportSecurity: isTLSEnabled
+					? {
+							maxAge: 180 * Time.days.toSeconds,
+							includeSubDomains: false,
+							preload: false,
+						}
+					: false,
+			});
+
+			// Route all UI urls to index.html to support history-api
+			const nonUIRoutes: Readonly<string[]> = [
+				'favicon.ico',
+				'assets',
+				'static',
+				'types',
+				'healthz',
+				'metrics',
+				'e2e',
+				this.restEndpoint,
+				this.endpointPresetCredentials,
+				isApiEnabled() ? '' : publicApiEndpoint,
+				...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
+			].filter((u) => !!u);
+			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+			const historyApiHandler: express.RequestHandler = (req, res, next) => {
+				const {
+					method,
+					headers: { accept },
+				} = req;
+				if (
+					method === 'GET' &&
+					accept &&
+					(accept.includes('text/html') || accept.includes('*/*')) &&
+					!nonUIRoutesRegex.test(req.path)
+				) {
+					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+					securityHeadersMiddleware(req, res, () => {
+						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+					});
+				} else {
+					next();
+				}
+			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
+
 			this.app.use(
 				'/',
-				express.static(staticCacheDir),
-				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
-
-			const startTime = new Date().toUTCString();
-			this.app.use('/index.html', (req, res, next) => {
-				res.setHeader('Last-Modified', startTime);
-				next();
-			});
 		} else {
-			this.app.use('/', express.static(staticCacheDir));
+			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}
 

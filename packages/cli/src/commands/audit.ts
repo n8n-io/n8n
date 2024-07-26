@@ -7,7 +7,6 @@ import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
 import type { Risk } from '@/security-audit/types';
 import { BaseCommand } from './BaseCommand';
-import { InternalHooks } from '@/InternalHooks';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -24,7 +23,7 @@ export class SecurityAudit extends BaseCommand {
 			default: RISK_CATEGORIES.join(','),
 			description: 'Comma-separated list of categories to include in the audit',
 		}),
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		'days-abandoned-workflow': Flags.integer({
 			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
 			description: 'Days for a workflow to be considered abandoned if not executed',
@@ -61,8 +60,6 @@ export class SecurityAudit extends BaseCommand {
 		} else {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
-
-		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {

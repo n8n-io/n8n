@@ -13,7 +13,7 @@ import { Logger } from '@/Logger';
 import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { License } from '@/License';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/eventbus/event.service';
 import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -38,6 +38,7 @@ export class ExternalSecretsManager {
 		private readonly license: License,
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
+		private readonly eventService: EventService,
 	) {}
 
 	async init(): Promise<void> {
@@ -116,7 +117,7 @@ export class ExternalSecretsManager {
 			)
 		).map((i) => (i.status === 'rejected' ? null : i.value));
 		this.providers = Object.fromEntries(
-			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
+			providers.filter((p): p is SecretsProvider => p !== null).map((s) => [s.name, s]),
 		);
 		this.cachedSettings = settings;
 		await this.updateSecrets();
@@ -308,12 +309,12 @@ export class ExternalSecretsManager {
 		try {
 			testResult = await this.getProvider(vaultType)?.test();
 		} catch {}
-		void Container.get(InternalHooks).onExternalSecretsProviderSettingsSaved({
-			user_id: userId,
-			vault_type: vaultType,
-			is_new: isNew,
-			is_valid: testResult?.[0] ?? false,
-			error_message: testResult?.[1],
+		this.eventService.emit('external-secrets-provider-settings-saved', {
+			userId,
+			vaultType,
+			isNew,
+			isValid: testResult?.[0] ?? false,
+			errorMessage: testResult?.[1],
 		});
 	}
 

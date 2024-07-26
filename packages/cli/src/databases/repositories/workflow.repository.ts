@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import {
 	DataSource,
 	Repository,
@@ -8,24 +9,27 @@ import {
 	type FindOptionsWhere,
 	type FindOptionsSelect,
 	type FindManyOptions,
-	type EntityManager,
-	type DeleteResult,
-	Not,
+	type FindOptionsRelations,
 } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 import config from '@/config';
 import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { SharedWorkflow } from '../entities/SharedWorkflow';
 import { WebhookEntity } from '../entities/WebhookEntity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
 
-	async get(where: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+	async get(
+		where: FindOptionsWhere<WorkflowEntity>,
+		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+	) {
 		return await this.findOne({
 			where,
 			relations: options?.relations,
@@ -35,7 +39,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getAllActive() {
 		return await this.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user'],
+			relations: { shared: { project: { projectRelations: true } } },
 		});
 	}
 
@@ -50,7 +54,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user'],
+			relations: { shared: { project: { projectRelations: true } } },
 		});
 	}
 
@@ -71,37 +75,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return totalTriggerCount ?? 0;
 	}
 
-	async getSharings(
-		transaction: EntityManager,
-		workflowId: string,
-		relations = ['shared'],
-	): Promise<SharedWorkflow[]> {
-		const workflow = await transaction.findOne(WorkflowEntity, {
-			where: { id: workflowId },
-			relations,
-		});
-		return workflow?.shared ?? [];
-	}
-
-	async pruneSharings(
-		transaction: EntityManager,
-		workflowId: string,
-		userIds: string[],
-	): Promise<DeleteResult> {
-		return await transaction.delete(SharedWorkflow, {
-			workflowId,
-			userId: Not(In(userIds)),
-		});
-	}
-
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
 		const qb = this.createQueryBuilder('workflow');
+		const dbType = this.globalConfig.database.type;
 		return await qb
 			.update()
 			.set({
 				triggerCount,
 				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+					if (['mysqldb', 'mariadb'].includes(dbType)) {
 						return 'updatedAt';
 					}
 					return '"updatedAt"';
@@ -113,6 +95,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
+
+		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+			options.filter.shared = { projectId: options.filter.projectId };
+			delete options.filter.projectId;
+		}
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
@@ -135,7 +122,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					createdAt: true,
 					updatedAt: true,
 					versionId: true,
-					shared: { userId: true, role: true },
+					shared: { role: true },
 				};
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
@@ -152,7 +139,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.user');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.project');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);

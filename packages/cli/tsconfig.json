@@ -8,7 +8,9 @@
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"],
-			"@db/*": ["./databases/*"]
+			"@db/*": ["./databases/*"],
+			"@test/*": ["../test/shared/*"],
+			"@test-integration/*": ["../test/integration/shared/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
@@ -20,6 +22,7 @@
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
+		{ "path": "../@n8n/config/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }

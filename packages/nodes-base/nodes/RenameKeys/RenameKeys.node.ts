@@ -21,6 +21,7 @@ export class RenameKeys implements INodeType {
 		displayName: 'Rename Keys',
 		name: 'renameKeys',
 		icon: 'fa:edit',
+		iconColor: 'crimson',
 		group: ['transform'],
 		version: 1,
 		description: 'Update item field names',

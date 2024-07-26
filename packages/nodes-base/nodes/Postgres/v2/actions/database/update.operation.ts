@@ -21,6 +21,7 @@ import {
 	doesRowExist,
 	getTableSchema,
 	prepareItem,
+	convertArraysToPostgresFormat,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
 
@@ -172,7 +173,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2, 2.3],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 	},
@@ -300,6 +301,10 @@ export async function execute(
 		}
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+
+		if (nodeVersion >= 2.4) {
+			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+		}
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 

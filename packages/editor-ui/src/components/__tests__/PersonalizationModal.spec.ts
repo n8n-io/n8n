@@ -11,7 +11,7 @@ import { useUsageStore } from '@/stores/usage.store';
 const pinia = createTestingPinia({
 	initialState: {
 		[STORES.UI]: {
-			modals: {
+			modalsById: {
 				[PERSONALIZATION_MODAL_KEY]: { open: true },
 			},
 		},
@@ -23,14 +23,13 @@ const pinia = createTestingPinia({
 			},
 		},
 		[STORES.USERS]: {
-			users: {
+			usersById: {
 				123: {
 					email: 'john@doe.com',
 					firstName: 'John',
 					lastName: 'Doe',
 					isDefaultUser: false,
 					isPendingUser: false,
-					hasRecoveryCodesLeft: true,
 					role: ROLE.Owner,
 					mfaEnabled: false,
 				},
@@ -49,7 +48,7 @@ const renderComponent = createComponentRenderer(PersonalizationModal, {
 	global: {
 		mocks: {
 			$route: {
-				name: VIEWS.NEW_WORKFLOW,
+				name: VIEWS.HOMEPAGE,
 			},
 		},
 	},
@@ -74,6 +73,7 @@ describe('PersonalizationModal.vue', () => {
 		);
 
 		for (const index of [3, 4, 5, 6]) {
+			const expectFn = expect; // So we don't break @typescript-eslint/no-loop-func
 			const select = wrapper.container.querySelectorAll('.n8n-select')[1];
 
 			await fireEvent.click(select);
@@ -83,8 +83,8 @@ describe('PersonalizationModal.vue', () => {
 			await fireEvent.click(item);
 
 			await retry(() => {
-				expect(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(6);
-				expect(wrapper.container.querySelector('[name^="automationGoal"]')).toBeInTheDocument();
+				expectFn(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(6);
+				expectFn(wrapper.container.querySelector('[name^="automationGoal"]')).toBeInTheDocument();
 			});
 		}
 	});
@@ -126,7 +126,8 @@ describe('PersonalizationModal.vue', () => {
 		const item = select.querySelectorAll('.el-select-dropdown__item')[3];
 		await fireEvent.click(item);
 
-		const agreeCheckbox = wrapper.container.querySelector('.n8n-checkbox')!;
+		const agreeCheckbox = wrapper.container.querySelector('.n8n-checkbox');
+		assert(agreeCheckbox);
 		await fireEvent.click(agreeCheckbox);
 
 		const submitButton = wrapper.getByRole('button');

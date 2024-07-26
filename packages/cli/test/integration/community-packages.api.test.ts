@@ -1,5 +1,4 @@
 import path from 'path';
-import type { SuperAgentTest } from 'supertest';
 
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
@@ -10,6 +9,7 @@ import { mockInstance } from '../shared/mocking';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
 import { createOwner } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,

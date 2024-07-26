@@ -139,7 +139,10 @@ const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
-const emit = defineEmits(['switchSelectedNode', 'openConnectionNodeCreator']);
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
+}>();
 
 interface NodeConfig {
 	node: INodeUi;
@@ -406,7 +409,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border-base);
-	background-color: var(--color-canvas-node-background);
+	background-color: var(--color-node-background);
 	border-radius: 100%;
 	padding: var(--spacing-xs);
 	cursor: pointer;

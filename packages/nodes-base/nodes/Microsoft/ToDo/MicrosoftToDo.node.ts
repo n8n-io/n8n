@@ -311,6 +311,16 @@ export class MicrosoftToDo implements INodeType {
 							};
 						}
 
+						if (body.reminderDateTime) {
+							body.reminderDateTime = {
+								dateTime: moment.tz(body.reminderDateTime, timezone).format(),
+								timeZone: timezone,
+							};
+							body.isReminderOn = true;
+						} else {
+							body.isReminderOn = false;
+						}
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
@@ -404,7 +414,7 @@ export class MicrosoftToDo implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
+import type { IUpdateInformation, DynamicNodeParameters } from '@/Interface';
 import { resolveRequiredParameters } from '@/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
@@ -16,9 +16,10 @@ import MappingModeSelect from './MappingModeSelect.vue';
 import MatchingColumnsSelect from './MatchingColumnsSelect.vue';
 import MappingFields from './MappingFields.vue';
 import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { isResourceMapperValue } from '@/utils/typeGuards';
+import { isFullExecutionResponse, isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -32,13 +33,15 @@ type Props = {
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
+	dependentParametersValues: null,
 });
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
 
 const state = reactive({
@@ -67,6 +70,21 @@ watch(
 			emitValueChanged();
 			await initFetching();
 			setDefaultFieldValues(true);
+		}
+	},
+);
+
+// Reload fields to map when node is executed
+watch(
+	() => workflowsStore.getWorkflowExecution,
+	async (data) => {
+		if (
+			data &&
+			isFullExecutionResponse(data) &&
+			data.status === 'success' &&
+			state.paramValue.mappingMode === 'autoMapInputData'
+		) {
+			await initFetching(true);
 		}
 	},
 );
@@ -199,9 +217,9 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLading = false): Promise<void> {
+async function initFetching(inlineLoading = false): Promise<void> {
 	state.loadingError = false;
-	if (inlineLading) {
+	if (inlineLoading) {
 		state.refreshInProgress = true;
 	} else {
 		state.loading = true;
@@ -223,7 +241,13 @@ async function loadFieldsToMap(): Promise<void> {
 	if (!props.node) {
 		return;
 	}
-	const requestParams: ResourceMapperReqParams = {
+
+	const methodName = props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod;
+	if (typeof methodName !== 'string') {
+		return;
+	}
+
+	const requestParams: DynamicNodeParameters.ResourceMapperFieldsRequest = {
 		nodeTypeAndVersion: {
 			name: props.node?.type,
 			version: props.node.typeVersion,
@@ -233,7 +257,7 @@ async function loadFieldsToMap(): Promise<void> {
 			props.node.parameters,
 		) as INodeParameters,
 		path: props.path,
-		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
+		methodName,
 		credentials: props.node.credentials,
 	};
 	const fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
@@ -298,7 +322,7 @@ function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 function updateNodeIssues(): void {
 	if (props.node) {
 		const parameterIssues = NodeHelpers.getNodeParametersIssues(
-			nodeType.value?.properties || [],
+			nodeType.value?.properties ?? [],
 			props.node,
 		);
 		if (parameterIssues) {
@@ -307,10 +331,10 @@ function updateNodeIssues(): void {
 	}
 }
 
-function onMatchingColumnsChanged(matchingColumns: string[]): void {
+function onMatchingColumnsChanged(columns: string[]): void {
 	state.paramValue = {
 		...state.paramValue,
-		matchingColumns,
+		matchingColumns: columns,
 	};
 	// Set all matching fields to be visible
 	state.paramValue.schema.forEach((field) => {

@@ -15,7 +15,7 @@ import type {
 	StartNodeData,
 	IRun,
 } from 'n8n-workflow';
-import { NodeConnectionType, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -27,8 +27,9 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -37,6 +38,7 @@ import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -47,7 +49,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const executionsStore = useExecutionsStore();
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -89,7 +93,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	}): Promise<IExecutionPushResponse | undefined> {
 		const workflow = workflowHelpers.getCurrentWorkflow();
 
-		if (uiStore.isActionActive('workflowRunning')) {
+		if (uiStore.isActionActive['workflowRunning']) {
 			return;
 		}
 
@@ -217,7 +221,6 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			const startRunData: IStartRunData = {
 				workflowData,
 				runData: newRunData,
-				pinData: workflowData.pinData,
 				startNodes,
 			};
 			if ('destinationNode' in options) {
@@ -276,14 +279,11 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				if (node.name === options.destinationNode || !node.disabled) {
 					let testUrl = '';
 
-					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
-						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
-					}
-
-					if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
-						const webhookPath = (node.parameters.path as string) || node.webhookId;
-						testUrl = `${rootStore.getFormTestUrl}/${webhookPath}`;
+					if (node.type === FORM_TRIGGER_NODE_TYPE) {
+						const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+						if (nodeType?.webhooks?.length) {
+							testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+						}
 					}
 
 					if (
@@ -305,8 +305,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						if (!showForm) continue;
 
 						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
-						const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
-						testUrl = `${rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
+						const suffix =
+							webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+						testUrl = `${rootStore.formWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}
 
 					if (testUrl) openPopUpWindow(testUrl);
@@ -332,7 +333,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		pinData: IPinData | undefined,
 		workflow: Workflow,
 	): { runData: IRunData | undefined; startNodeNames: string[] } {
-		const startNodeNames: string[] = [];
+		const startNodeNames = new Set<string>();
 		let newRunData: IRunData | undefined;
 
 		if (runData !== null && Object.keys(runData).length !== 0) {
@@ -358,7 +359,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						// When we hit a node which has no data we stop and set it
 						// as a start node the execution from and then go on with other
 						// direct input nodes
-						startNodeNames.push(parentNode);
+						startNodeNames.add(parentNode);
 						break;
 					}
 					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
@@ -374,7 +375,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			}
 		}
 
-		return { runData: newRunData, startNodeNames };
+		return { runData: newRunData, startNodeNames: [...startNodeNames] };
 	}
 
 	async function stopCurrentExecution() {
@@ -384,10 +385,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 
 		try {
-			await workflowsStore.stopCurrentExecution(executionId);
+			await executionsStore.stopCurrentExecution(executionId);
 		} catch (error) {
 			// Execution stop might fail when the execution has already finished. Let's treat this here.
-			const execution = await this.workflowsStore.getExecution(executionId);
+			const execution = await workflowsStore.getExecution(executionId);
 
 			if (execution === undefined) {
 				// execution finished but was not saved (e.g. due to low connectivity)
@@ -434,10 +435,20 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 	}
 
+	async function stopWaitingForWebhook() {
+		try {
+			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
+			return;
+		}
+	}
+
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
 		runWorkflowApi,
 		stopCurrentExecution,
+		stopWaitingForWebhook,
 	};
 }

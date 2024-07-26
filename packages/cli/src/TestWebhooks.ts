@@ -238,13 +238,20 @@ export class TestWebhooks implements IWebhookManager {
 
 		for (const webhook of webhooks) {
 			const key = this.registrations.toKey(webhook);
-			const isAlreadyRegistered = await this.registrations.get(key);
+			const registrationByKey = await this.registrations.get(key);
 
 			if (runData && webhook.node in runData) {
 				return false;
 			}
 
-			if (isAlreadyRegistered && !webhook.webhookId) {
+			// if registration already exists and is not a test webhook created by this user in this workflow throw an error
+			if (
+				registrationByKey &&
+				!webhook.webhookId &&
+				!registrationByKey.webhook.isTest &&
+				registrationByKey.webhook.userId !== userId &&
+				registrationByKey.webhook.workflowId !== workflow.id
+			) {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 

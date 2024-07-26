@@ -7,14 +7,14 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { GooglePaLM } from '@langchain/community/llms/googlepalm';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google PaLM Language Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmGooglePalm',
+		hidden: true,
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
@@ -26,6 +26,7 @@ export class LmGooglePalm implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -51,7 +52,13 @@ export class LmGooglePalm implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					"Google PaLM API is <a href='https://ai.google.dev/palm_docs/deprecation' target='_blank'>deprecated</a>. Please use Google Vertex or Google Gemini nodes instead.",
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'modelName',
@@ -163,10 +170,11 @@ export class LmGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

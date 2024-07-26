@@ -16,7 +16,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -33,7 +32,9 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { TestWebhooks } from '@/TestWebhooks';
 import { Logger } from '@/Logger';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import type { Project } from '@/databases/entities/Project';
+import { GlobalConfig } from '@n8n/config';
+import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -43,8 +44,9 @@ export class WorkflowExecutionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly testWebhooks: TestWebhooks,
-		private readonly permissionChecker: PermissionChecker,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly globalConfig: GlobalConfig,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	) {}
 
 	async runWorkflow(
@@ -91,16 +93,11 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{
-			workflowData,
-			runData,
-			pinData,
-			startNodes,
-			destinationNode,
-		}: WorkflowRequest.ManualRunPayload,
+		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
 	) {
+		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
@@ -161,7 +158,7 @@ export class WorkflowExecutionService {
 	async executeErrorWorkflow(
 		workflowId: string,
 		workflowErrorData: IWorkflowErrorData,
-		runningUser: User,
+		runningProject: Project,
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
@@ -191,7 +188,7 @@ export class WorkflowExecutionService {
 				const failedNode = workflowErrorData.execution?.lastNodeExecuted
 					? workflowInstance.getNode(workflowErrorData.execution?.lastNodeExecuted)
 					: undefined;
-				await this.permissionChecker.checkSubworkflowExecutePolicy(
+				await this.subworkflowPolicyChecker.check(
 					workflowInstance,
 					workflowErrorData.workflow.id!,
 					failedNode ?? undefined,
@@ -234,17 +231,17 @@ export class WorkflowExecutionService {
 
 			let node: INode;
 			let workflowStartNode: INode | undefined;
-			const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+			const { errorTriggerType } = this.globalConfig.nodes;
 			for (const nodeName of Object.keys(workflowInstance.nodes)) {
 				node = workflowInstance.nodes[nodeName];
-				if (node.type === ERROR_TRIGGER_TYPE) {
+				if (node.type === errorTriggerType) {
 					workflowStartNode = node;
 				}
 			}
 
 			if (workflowStartNode === undefined) {
 				this.logger.error(
-					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${errorTriggerType}" in workflow "${workflowId}"`,
 				);
 				return;
 			}
@@ -284,7 +281,7 @@ export class WorkflowExecutionService {
 				executionMode,
 				executionData: runExecutionData,
 				workflowData,
-				userId: runningUser.id,
+				projectId: runningProject.id,
 			};
 
 			await this.workflowRunner.run(runData);

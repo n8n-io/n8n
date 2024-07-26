@@ -31,9 +31,9 @@ Open the **Webhook** node and replace `YOUR_PRODUCTION_WEBHOOK_URL` with your pr
 Add the following code to your HTML page.
 
 ```html
-<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 <script type="module">
-	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
+	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 
 	createChat({
 		webhookUrl: 'YOUR_PRODUCTION_WEBHOOK_URL'
@@ -210,12 +210,31 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--window--width: 400px;
 	--chat--window--height: 600px;
 
+	--chat--header-height: auto;
+	--chat--header--padding: var(--chat--spacing);
+	--chat--header--background: var(--chat--color-dark);
+	--chat--header--color: var(--chat--color-light);
+	--chat--header--border-top: none;
+	--chat--header--border-bottom: none;
+	--chat--header--border-bottom: none;
+	--chat--header--border-bottom: none;
+	--chat--heading--font-size: 2em;
+	--chat--header--color: var(--chat--color-light);
+	--chat--subtitle--font-size: inherit;
+	--chat--subtitle--line-height: 1.8;
+
 	--chat--textarea--height: 50px;
 
+	--chat--message--font-size: 1rem;
+	--chat--message--padding: var(--chat--spacing);
+	--chat--message--border-radius: var(--chat--border-radius);
+	--chat--message-line-height: 1.8;
 	--chat--message--bot--background: var(--chat--color-white);
 	--chat--message--bot--color: var(--chat--color-dark);
+	--chat--message--bot--border: none;
 	--chat--message--user--background: var(--chat--color-secondary);
 	--chat--message--user--color: var(--chat--color-white);
+	--chat--message--user--border: none;
 	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
 
 	--chat--toggle--background: var(--chat--color-primary);

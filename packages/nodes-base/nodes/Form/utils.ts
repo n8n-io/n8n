@@ -1,4 +1,9 @@
-import { jsonParse, type IDataObject, type IWebhookFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	jsonParse,
+	type IDataObject,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
 
 export const prepareFormData = (
@@ -10,6 +15,7 @@ export const prepareFormData = (
 	testRun: boolean,
 	instanceId?: string,
 	useResponseData?: boolean,
+	appendAttribution = true,
 ) => {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -28,6 +34,7 @@ export const prepareFormData = (
 		n8nWebsiteLink,
 		formFields: [],
 		useResponseData,
+		appendAttribution,
 	};
 
 	if (redirectUrl) {
@@ -75,10 +82,43 @@ export const prepareFormData = (
 	return formData;
 };
 
+const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
+	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
+	const connectedNodes = context.getChildNodes(context.getNode().name);
+
+	const isRespondToWebhookConnected = connectedNodes.some(
+		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
+	);
+
+	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
+		throw new NodeOperationError(
+			context.getNode(),
+			new Error('No Respond to Webhook node found in the workflow'),
+			{
+				description:
+					'Insert a Respond to Webhook node to your workflow to respond to the form submission or choose another option for the “Respond When” parameter',
+			},
+		);
+	}
+
+	if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
+		throw new NodeOperationError(
+			context.getNode(),
+			new Error(`${context.getNode().name} node not correctly configured`),
+			{
+				description:
+					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+			},
+		);
+	}
+};
+
 export async function formWebhook(context: IWebhookFunctions) {
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
 	const method = context.getRequestObject().method;
+
+	checkResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {
@@ -90,6 +130,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		let formSubmittedText;
 		let redirectUrl;
+		let appendAttribution = true;
 
 		if (options.respondWithOptions) {
 			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
@@ -103,6 +144,10 @@ export async function formWebhook(context: IWebhookFunctions) {
 			formSubmittedText = options.formSubmittedText as string;
 		}
 
+		if (options.appendAttribution === false) {
+			appendAttribution = false;
+		}
+
 		const useResponseData = responseMode === 'responseNode';
 
 		const data = prepareFormData(
@@ -114,6 +159,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			mode === 'test',
 			instanceId,
 			useResponseData,
+			appendAttribution,
 		);
 
 		const res = context.getResponseObject();

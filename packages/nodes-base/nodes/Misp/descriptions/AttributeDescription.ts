@@ -1,4 +1,15 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions } from '../../../utils/utilities';
+import { searchProperties } from './common.descriptions';
+
+const searchDisplayOptions = {
+	show: {
+		resource: ['attribute'],
+		operation: ['search'],
+	},
+};
+
+const searchDescription = updateDisplayOptions(searchDisplayOptions, searchProperties);
 
 export const attributeOperations: INodeProperties[] = [
 	{
@@ -31,6 +42,11 @@ export const attributeOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get many attributes',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Get a filtered list of attributes',
 			},
 			{
 				name: 'Update',
@@ -225,6 +241,11 @@ export const attributeFields: INodeProperties[] = [
 			},
 		},
 	},
+
+	// ----------------------------------------
+	//            attribute: search
+	// ----------------------------------------
+	...searchDescription,
 
 	// ----------------------------------------
 	//            attribute: update

@@ -24,22 +24,31 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
+import { useUserHelpers } from '@/composables/useUserHelpers';
 import type { IFakeDoor } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { hasPermission } from '@/rbac/permissions';
+import { useRootStore } from '@/stores/root.store';
+import { hasPermission } from '@/utils/rbac/permissions';
+import { useRoute, useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'SettingsSidebar',
-	mixins: [userHelpers],
+	setup() {
+		const router = useRouter();
+		const route = useRoute();
+		return {
+			...useUserHelpers(router, route),
+		};
+	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
-			return this.uiStore.getFakeDoorByLocation('settings');
+			return Object.keys(this.uiStore.fakeDoorsByLocation)
+				.filter((location: string) => location.includes('settings'))
+				.map((location) => this.uiStore.fakeDoorsByLocation[location]);
 		},
 		sidebarMenuItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [
@@ -165,7 +174,9 @@ export default defineComponent({
 			return this.canUserAccessRouteByName(VIEWS.COMMUNITY_NODES);
 		},
 		canAccessApiSettings(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+			return (
+				this.settingsStore.isPublicApiEnabled && this.canUserAccessRouteByName(VIEWS.API_SETTINGS)
+			);
 		},
 		canAccessLdapSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
@@ -190,11 +201,6 @@ export default defineComponent({
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
-		},
-		async navigateTo(routeName: (typeof VIEWS)[keyof typeof VIEWS]) {
-			if (this.$router.currentRoute.name !== routeName) {
-				await this.$router.push({ name: routeName });
-			}
 		},
 		async handleSelect(key: string) {
 			switch (key) {

@@ -21,7 +21,9 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span>Test content</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span><!--v-if-->Test content</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -32,18 +34,19 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span>1</span>');
+		expect(wrapper.html()).toEqual('<span class="content"><span>1</span></span>');
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
-	it('renders correctly objects when search is not set', () => {
+	it('renders correctly objects when search is not set', async () => {
 		const wrapper = shallowMount(TextWithHighlights, {
 			props: {
 				content: { hello: 'world' },
 			},
 		});
-
-		expect(wrapper.html()).toEqual('<span>{\n  "hello": "world"\n}</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span>{\n  "hello": "world"\n}</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -55,7 +58,9 @@ describe('TextWithHighlights', () => {
 			},
 		});
 
-		expect(wrapper.html()).toEqual('<span>{\n  "hello": "world"\n}</span>');
+		expect(wrapper.html()).toEqual(
+			'<span class="content"><span>{\n  "hello": "world"\n}</span></span>',
+		);
 		expect(wrapper.html()).not.toContain('<mark>');
 	});
 
@@ -98,6 +103,18 @@ describe('TextWithHighlights', () => {
 		expect(wrapper.html()).toEqual(
 			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			'<span><span>Test content </span><mark>()^${}[]</mark><span> world</span></span>',
+		);
+	});
+
+	it('renders new lines in the content correctly', () => {
+		const wrapper = shallowMount(TextWithHighlights, {
+			props: {
+				content: 'Line 1\n Line 2\nLine 3',
+			},
+		});
+
+		expect(wrapper.html()).toContain(
+			'<span class="content"><span><!--v-if-->Line 1</span><span><span class="newLine">\\n</span> Line 2</span><span><span class="newLine">\\n</span>Line 3</span></span>',
 		);
 	});
 });

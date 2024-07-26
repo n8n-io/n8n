@@ -2,8 +2,19 @@ import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
 
+export function getDefaultExecutionFilters(): ExecutionFilterType {
+	return {
+		workflowId: 'all',
+		status: 'all',
+		startDate: '',
+		endDate: '',
+		tags: [],
+		metadata: [],
+	};
+}
+
 export const executionFilterToQueryFilter = (
-	filter: ExecutionFilterType,
+	filter: Partial<ExecutionFilterType>,
 ): ExecutionsQueryFilter => {
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {

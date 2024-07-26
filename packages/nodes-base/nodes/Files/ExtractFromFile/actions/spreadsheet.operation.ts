@@ -17,7 +17,9 @@ export const description: INodeProperties[] = fromFile.description
 		if (newProperty.name === 'options') {
 			newProperty.options = (newProperty.options as INodeProperties[]).map((option) => {
 				let newOption = option;
-				if (['delimiter', 'fromLine', 'maxRowCount', 'enableBOM'].includes(option.name)) {
+				if (
+					['delimiter', 'encoding', 'fromLine', 'maxRowCount', 'enableBOM'].includes(option.name)
+				) {
 					newOption = { ...option, displayOptions: { show: { '/operation': ['csv'] } } };
 				}
 				if (option.name === 'sheetName') {

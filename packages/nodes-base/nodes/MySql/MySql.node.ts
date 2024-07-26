@@ -9,9 +9,9 @@ export class MySql extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'MySQL',
 			name: 'mySql',
-			icon: 'file:mysql.svg',
+			icon: { light: 'file:mysql.svg', dark: 'file:mysql.dark.svg' },
 			group: ['input'],
-			defaultVersion: 2.3,
+			defaultVersion: 2.4,
 			description: 'Get, add and update data in MySQL',
 			parameterPane: 'wide',
 		};
@@ -22,6 +22,7 @@ export class MySql extends VersionedNodeType {
 			2.1: new MySqlV2(baseDescription),
 			2.2: new MySqlV2(baseDescription),
 			2.3: new MySqlV2(baseDescription),
+			2.4: new MySqlV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

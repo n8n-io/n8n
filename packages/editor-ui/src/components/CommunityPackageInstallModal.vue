@@ -16,7 +16,7 @@
 					</n8n-text>
 					{{ ' ' }}
 					<n8n-link :to="COMMUNITY_NODES_INSTALLATION_DOCS_URL" @click="onMoreInfoTopClick">
-						{{ $locale.baseText('_reusableDynamicText.moreInfo') }}
+						{{ $locale.baseText('generic.moreInfo') }}
 					</n8n-link>
 				</div>
 				<n8n-button
@@ -67,7 +67,7 @@
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
 					><br />
 					<n8n-link :to="COMMUNITY_NODES_RISKS_DOCS_URL" @click="onLearnMoreLinkClick">{{
-						$locale.baseText('_reusableDynamicText.moreInfo')
+						$locale.baseText('generic.moreInfo')
 					}}</n8n-link>
 				</el-checkbox>
 			</div>
@@ -148,8 +148,6 @@ export default defineComponent({
 					this.infoTextErrorMessage = '';
 					this.loading = true;
 					await this.communityNodesStore.installPackage(this.packageName);
-					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
-					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
 					this.modalBus.emit('close');
 					this.showMessage({

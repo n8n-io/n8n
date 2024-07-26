@@ -40,7 +40,7 @@ export class ExecutionEntity {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column('varchar', { nullable: true })
+	@Column('varchar')
 	status: ExecutionStatus;
 
 	@Column(datetimeColumnType)
