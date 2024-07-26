@@ -253,7 +253,9 @@
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="editorRows"
-					:disabled="isReadOnly"
+					:disabled="
+						isReadOnly || remoteParameterOptionsLoading || remoteParameterOptionsLoadingIssues
+					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
