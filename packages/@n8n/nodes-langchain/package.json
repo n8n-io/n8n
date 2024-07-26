@@ -137,7 +137,7 @@
     "@google/generative-ai": "0.11.4",
     "@huggingface/inference": "2.7.0",
     "@langchain/anthropic": "0.2.9",
-    "@langchain/cohere": "0.2.1",
+    "@langchain/cohere": "0.0.10",
     "@langchain/community": "0.2.20",
     "@langchain/core": "0.2.18",
     "@langchain/google-genai": "0.0.23",
