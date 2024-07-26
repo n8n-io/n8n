@@ -1,3 +1,12 @@
+## [1.51.2](https://github.com/n8n-io/n8n/compare/n8n@1.51.1...n8n@1.51.2) (2024-07-26)
+
+
+### Bug Fixes
+
+* **editor:** Fix issue with existing credential not opening in HTTP agent tool ([#10167](https://github.com/n8n-io/n8n/issues/10167)) ([cc0dff2](https://github.com/n8n-io/n8n/commit/cc0dff2cf85cb4d183428403792abfef84049deb))
+
+
+
 ## [1.51.1](https://github.com/n8n-io/n8n/compare/n8n@1.51.0...n8n@1.51.1) (2024-07-23)
 
 
