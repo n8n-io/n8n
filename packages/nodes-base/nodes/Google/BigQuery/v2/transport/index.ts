@@ -67,7 +67,7 @@ export async function googleBigQueryApiRequest(
 	}
 }
 
-export async function googleBigQeryApiRequestAllItems(
+export async function googleBigQueryApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,

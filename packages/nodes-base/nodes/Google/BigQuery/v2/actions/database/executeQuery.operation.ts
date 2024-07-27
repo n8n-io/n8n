@@ -9,7 +9,7 @@ import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
-import { googleBigQeryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
+import { googleBigQueryApiRequestAllItems, googleBigQueryApiRequest } from '../../transport';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -255,7 +255,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				const qs = { location, maxResults, timeoutMs };
 
 				//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults
-				const queryResponse: IDataObject = await googleBigQeryApiRequestAllItems.call(
+				const queryResponse: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
 					`/v2/projects/${projectId}/queries/${jobId}`,
@@ -305,7 +305,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs.timeoutMs = timeoutMs;
 
 				//https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults
-				const response: IDataObject = await googleBigQeryApiRequestAllItems.call(
+				const response: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
 					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
