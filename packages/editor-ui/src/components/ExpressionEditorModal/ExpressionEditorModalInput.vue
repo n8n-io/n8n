@@ -24,6 +24,7 @@ import {
 import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
+import { mappingDropCursor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	modelValue: string;
@@ -64,6 +65,7 @@ const extensions = computed(() => [
 	),
 	n8nLang(),
 	n8nAutocompletion(),
+	mappingDropCursor(),
 	dropCursor(),
 	history(),
 	expressionInputHandler(),

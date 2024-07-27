@@ -9,6 +9,9 @@ const commonThemeProps = {
 		borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
 		backgroundColor: 'var(--color-expression-editor-background)',
 	},
+	'.cm-cursor, .cm-dropCursor': {
+		borderLeftColor: 'var(--color-code-caret)',
+	},
 	'&.cm-focused': {
 		borderColor: 'var(--color-secondary)',
 		outline: '0 !important',

@@ -44,7 +44,7 @@
 					</div>
 
 					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
-						<template #default="{ droppable, activeDrop }">
+						<template #default>
 							<ExpressionEditorModalInput
 								ref="expressionInputRef"
 								:model-value="modelValue"
@@ -54,8 +54,6 @@
 									$style.editor,
 									{
 										'ph-no-capture': redactValues,
-										[$style.drop]: droppable,
-										[$style.activeDrop]: activeDrop,
 									},
 								]"
 								data-test-id="expression-modal-input"
@@ -91,7 +89,7 @@
 
 <script setup lang="ts">
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -108,6 +106,7 @@ import OutputItemSelect from './InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
+import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
 
 type Props = {
 	parameter: INodeProperties;
@@ -141,7 +140,6 @@ const { debounce } = useDebounce();
 const segments = ref<Segment[]>([]);
 const search = ref('');
 const appliedSearch = ref('');
-const dropPosition = ref(0);
 const expressionInputRef = ref<InstanceType<typeof ExpressionEditorModalInput>>();
 const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
@@ -201,14 +199,11 @@ function closeDialog() {
 	emit('closeDialog');
 }
 
-function onDrop(expression: string) {
-	expressionInputRef.value?.editor?.dispatch({
-		changes: {
-			from: dropPosition.value,
-			to: dropPosition.value,
-			insert: expression,
-		},
-	});
+async function onDrop(expression: string, event: MouseEvent) {
+	const editor = expressionInputRef.value?.editor;
+	if (!editor) return;
+
+	await dropInEditor(toRaw(editor), event, expression);
 }
 </script>
 
@@ -287,13 +282,5 @@ function onDrop(expression: string) {
 
 .tip {
 	min-height: 22px;
-}
-
-.drop {
-	outline: 1px solid blue;
-}
-
-.activeDrop {
-	outline: 1px solid red;
 }
 </style>
