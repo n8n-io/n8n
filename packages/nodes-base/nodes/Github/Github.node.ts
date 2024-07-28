@@ -122,6 +122,12 @@ export class Github implements INodeType {
 				},
 				options: [
 					{
+						name: 'Create Repository',
+						value: 'createRepository',
+						description: 'Create a repository of an organization',
+						action: 'Create a repository for an organization',
+					},
+					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns all repositories of an organization',
@@ -1814,6 +1820,47 @@ export class Github implements INodeType {
 				description: 'The email address of the invited user',
 			},
 			// ----------------------------------
+			//    organization:createRepository
+			// ----------------------------------
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['organization'],
+						operation: ['createRepository'],
+					},
+				},
+				description: 'The name of the repository',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: ['organization'],
+						operation: ['createRepository'],
+					},
+				},
+				description: 'A short description of the repository',
+			},
+			{
+				displayName: 'Private',
+				name: 'private',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['organization'],
+						operation: ['createRepository'],
+					},
+				},
+				default: false,
+				description: 'Whether the repository is private',
+			},
+			// ----------------------------------
 			//    organization:getRepositories
 			// ----------------------------------
 			{
@@ -2335,6 +2382,17 @@ export class Github implements INodeType {
 					}
 				} else if (resource === 'organization') {
 					if (operation === 'getRepositories') {
+						// ----------------------------------
+						//          createRepository
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						endpoint = `/orgs/${owner}/repos`;
+						body.name = this.getNodeParameter('name', i) as string;
+						body.description = this.getNodeParameter('description', i) as string;
+						body.private = this.getNodeParameter('private', i) as string;
+					} else if (operation === 'getRepositories') {
 						// ----------------------------------
 						//         getRepositories
 						// ----------------------------------
