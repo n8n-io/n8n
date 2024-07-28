@@ -6,6 +6,11 @@ export const operationFields: INodeProperties[] = [
 	// ----------------------------------
 	{
 		displayName: 'Database Name or ID',
+		displayOptions: {
+			show: {
+				resource: ['row'],
+			},
+		},
 		name: 'databaseId',
 		type: 'options',
 		default: '',
@@ -18,6 +23,11 @@ export const operationFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Table Name or ID',
+		displayOptions: {
+			show: {
+				resource: ['row'],
+			},
+		},
 		name: 'tableId',
 		type: 'options',
 		default: '',
@@ -441,5 +451,33 @@ export const operationFields: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'File',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['upload'],
+			},
+		},
+		name: 'file',
+		type: 'resourceLocator',
+		default: '',
+		required: true,
+		description: 'The file to upload',
+	},
+	{
+		displayName: 'File URL',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['upload-via-url'],
+			},
+		},
+		name: 'url',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The URL of the file to upload',
 	},
 ];

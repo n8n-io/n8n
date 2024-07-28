@@ -35,7 +35,9 @@ export type Row = Record<string, string>;
 
 export type FieldsUiValues = Array<{
 	fieldId: string;
-	fieldValue: string;
+	fieldValue: string | string[];
 }>;
 
-export type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
+export type Resource = 'file' | 'row' | 'table' | 'database';
+export type RowOperation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
+export type FileOperation = 'upload' | 'upload-via-url';

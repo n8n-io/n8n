@@ -1,6 +1,6 @@
 {
 	"node": "n8n-nodes-base.baserow",
-	"nodeVersion": "1.0",
+	"nodeVersion": "1.1",
 	"codexVersion": "1.0",
 	"categories": ["Data & Storage"],
 	"resources": {
