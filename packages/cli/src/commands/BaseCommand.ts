@@ -44,12 +44,15 @@ export abstract class BaseCommand extends Command {
 
 	protected license: License;
 
-	private globalConfig = Container.get(GlobalConfig);
+	protected globalConfig = Container.get(GlobalConfig);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
 	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+
+	/** This flag determines if a command needs to initialize Community nodes (when they are enabled) */
+	protected needsCommunityNodes = false;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -67,6 +70,12 @@ export abstract class BaseCommand extends Command {
 		await Db.init().catch(
 			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		const { communityPackages } = this.globalConfig.nodes;
+		if (communityPackages.enabled && this.needsCommunityNodes) {
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).checkForMissingPackages();
+		}
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
 		// available via the dependency Container that services depend on.

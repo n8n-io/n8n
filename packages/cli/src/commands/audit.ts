@@ -30,6 +30,8 @@ export class SecurityAudit extends BaseCommand {
 		}),
 	};
 
+	override needsCommunityNodes = true;
+
 	async run() {
 		const { flags: auditFlags } = await this.parse(SecurityAudit);
 
