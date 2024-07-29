@@ -105,43 +105,43 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		// TODO: simplify
-		assistantMessages.forEach((message) => {
-			if (message.type === 'message' || message.type === 'string') {
+		assistantMessages.forEach((msg) => {
+			if (msg.type === 'message') {
 				messages.push({
 					id,
 					type: 'text',
 					role: 'assistant',
-					content: message.text,
-					quickReplies: message.quickReplies,
+					content: msg.text,
+					quickReplies: msg.quickReplies,
 					read,
 				});
-			} else if (message.type === 'code-diff') {
+			} else if (msg.type === 'code-diff') {
 				messages.push({
 					id,
 					role: 'assistant',
 					type: 'code-diff',
-					description: message.description,
-					codeDiff: message.codeDiff,
-					suggestionId: message.suggestionId,
-					quickReplies: message.quickReplies,
+					description: msg.description,
+					codeDiff: msg.codeDiff,
+					suggestionId: msg.suggestionId,
+					quickReplies: msg.quickReplies,
 					read,
 				});
-			} else if (message.type === 'summary') {
+			} else if (msg.type === 'summary') {
 				messages.push({
 					id,
 					type: 'block',
 					role: 'assistant',
-					title: message.title,
-					content: message.content,
-					quickReplies: message.quickReplies,
+					title: msg.title,
+					content: msg.content,
+					quickReplies: msg.quickReplies,
 					read,
 				});
-			} else if (message.type === 'event') {
+			} else if (msg.type === 'event') {
 				messages.push({
 					id,
 					type: 'event',
 					role: 'assistant',
-					eventName: message.eventName,
+					eventName: msg.eventName,
 					read: true,
 				});
 			}
@@ -271,7 +271,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					},
 					error: context.error,
 					node: context.node,
-					// executionSchema todo
+					// TODO: Add executionSchema
 				},
 			},
 			(msg) => onEachStreamingMessage(msg, id),
@@ -322,7 +322,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function sendMessage(
-		message: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
+		chatMessage: Pick<ChatRequest.UserChatMessage, 'text' | 'quickReplyType'>,
 	) {
 		if (isSessionEnded.value || streaming.value) {
 			return;
@@ -330,7 +330,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const id = getRandomId();
 		try {
-			addUserMessage(message.text, id);
+			addUserMessage(chatMessage.text, id);
 			addEmptyAssistantMessage(id);
 
 			streaming.value = true;
@@ -341,8 +341,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					payload: {
 						role: 'user',
 						type: 'message',
-						text: message.text,
-						quickReplyType: message.quickReplyType,
+						text: chatMessage.text,
+						quickReplyType: chatMessage.quickReplyType,
 					},
 					sessionId: currentSessionId.value,
 				},

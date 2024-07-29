@@ -3,6 +3,7 @@ import axios from 'axios';
 import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
+import { ChatRequest } from '@/types/assistant.types';
 
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
@@ -221,8 +222,8 @@ export const postFetch = async (
 export const streamRequest = async (
 	context: IRestApiContext,
 	apiEndpoint: string,
-	payload: object,
-	onChunk?: (chunk: object) => void,
+	payload: ChatRequest.RequestPayload,
+	onChunk?: (chunk: ChatRequest.ResponsePayload) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
 ): Promise<void> => {
@@ -232,13 +233,13 @@ export const streamRequest = async (
 	if (browserId) {
 		headers['browser-id'] = browserId;
 	}
-	const request: RequestInit = {
+	const assistantRequest: RequestInit = {
 		headers,
 		method: 'POST',
 		credentials: 'include',
 		body: JSON.stringify(payload),
 	};
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
 
 	if (response.ok && response.body) {
 		// Handle the streaming response

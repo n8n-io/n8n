@@ -398,6 +398,7 @@ async function onClick() {
 	const { message, lineNumber, description } = props.error;
 	await assistantStore.initErrorHelper({
 		error: {
+			name: props.error.name,
 			message,
 			lineNumber,
 			description: description ?? '',

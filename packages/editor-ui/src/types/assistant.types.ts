@@ -16,7 +16,7 @@ export namespace ChatRequest {
 			name: string;
 			message: string;
 			type?: string;
-			description?: string;
+			description?: string | null;
 			lineNumber?: number;
 			stack?: string;
 		};
@@ -37,6 +37,7 @@ export namespace ChatRequest {
 		role: 'user';
 		type: 'event';
 		eventName: InteractionEventName;
+		error?: ErrorContext['error'];
 	}
 
 	export interface UserChatMessage {
