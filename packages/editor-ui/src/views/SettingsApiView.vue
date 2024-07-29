@@ -37,21 +37,14 @@
 					</n8n-link>
 				</span>
 				<div>
-					<n8n-info-tip
-						v-if="!isRedactedApiKey"
-						:class="$style['warning-copy']"
-						theme="warning"
-						:bold="false"
-					>
-						<i18n-t keypath="settings.api.view.copy" tag="span"> </i18n-t>
-					</n8n-info-tip>
 					<CopyInput
-						:label="isRedactedApiKey ? $locale.baseText('settings.api.view.myKey') : ''"
+						:label="$locale.baseText('settings.api.view.myKey')"
 						:value="apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
 						:disable-copy="isRedactedApiKey"
+						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
 						@copy="onCopy"
 					/>
 				</div>
