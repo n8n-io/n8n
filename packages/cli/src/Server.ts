@@ -403,6 +403,7 @@ export class Server extends AbstractServer {
 				req.browserId = req.headers['browser-id'] as string;
 				next();
 			},
+			// eslint-disable-next-line @typescript-eslint/unbound-method
 			authService.authMiddleware,
 			getAiServiceProxyMiddleware({
 				licenseCert,
