@@ -3,12 +3,20 @@ import { EventService } from '@/eventbus/event.service';
 import type { Event } from '@/eventbus/event.types';
 import { Telemetry } from '.';
 import config from '@/config';
+import os from 'node:os';
+import { License } from '@/License';
+import { GlobalConfig } from '@n8n/config';
+import { N8N_VERSION } from '@/constants';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()
 export class TelemetryEventRelay {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
+		private readonly license: License,
+		private readonly globalConfig: GlobalConfig,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async init() {
@@ -20,6 +28,8 @@ export class TelemetryEventRelay {
 	}
 
 	private setupHandlers() {
+		this.eventService.on('server-started', async () => await this.serverStarted());
+
 		this.eventService.on('team-project-updated', (event) => this.teamProjectUpdated(event));
 		this.eventService.on('team-project-deleted', (event) => this.teamProjectDeleted(event));
 		this.eventService.on('team-project-created', (event) => this.teamProjectCreated(event));
@@ -419,5 +429,72 @@ export class TelemetryEventRelay {
 
 	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
 		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
+	}
+
+	private async serverStarted() {
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+
+		const info = {
+			version_cli: N8N_VERSION,
+			db_type: this.globalConfig.database.type,
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
+			n8n_disable_production_main_process: config.getEnv(
+				'endpoints.disableProductionWebhooksOnMainProcess',
+			),
+			system_info: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			execution_variables: {
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+			},
+			n8n_deployment_type: config.getEnv('deployment.type'),
+			n8n_binary_data_mode: binaryDataConfig.mode,
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
+			ldap_allowed: authenticationMethod === 'ldap',
+			saml_enabled: authenticationMethod === 'saml',
+			license_plan_name: this.license.getPlanName(),
+			license_tenant_id: config.getEnv('license.tenantId'),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+		};
+
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
+
+		void Promise.all([
+			this.telemetry.identify(info),
+			this.telemetry.track('Instance started', {
+				...info,
+				earliest_workflow_created: firstWorkflow?.createdAt,
+			}),
+		]);
 	}
 }
