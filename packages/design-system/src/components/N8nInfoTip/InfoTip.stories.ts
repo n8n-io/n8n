@@ -18,8 +18,13 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Note = Template.bind({});
 
-export const Tooltip = Template.bind({});
-Tooltip.args = {
+export const RightPlacementTooltip = Template.bind({});
+RightPlacementTooltip.args = {
 	type: 'tooltip',
 	tooltipPlacement: 'right',
+};
+
+export const WarningTip = Template.bind({});
+WarningTip.args = {
+	theme: 'warning',
 };
