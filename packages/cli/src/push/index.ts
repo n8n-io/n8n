@@ -18,6 +18,10 @@ import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import { TypedEmitter } from '@/TypedEmitter';
 
+interface Events {
+	editorUiConnected: string;
+}
+
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
 /**
@@ -28,9 +32,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  * @emits message when a message is received from a client
  */
 @Service()
-export class Push extends TypedEmitter<{
-	editorUiConnected: string;
-}> {
+export class Push extends TypedEmitter<Events> {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(private readonly orchestrationService: OrchestrationService) {
