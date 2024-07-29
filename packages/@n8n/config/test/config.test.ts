@@ -18,6 +18,9 @@ describe('GlobalConfig', () => {
 	});
 
 	const defaultConfig: GlobalConfig = {
+		path: '/',
+		host: 'localhost',
+		port: 5678,
 		database: {
 			logging: {
 				enabled: false,
