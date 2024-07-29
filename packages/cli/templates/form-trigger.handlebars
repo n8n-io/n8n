@@ -508,7 +508,7 @@
 				const type = input.type;
 
 				if (type === 'email' && value !== '') {
-					return validateEmailInput(input, errorElement);
+					return validateEmailInput(value, errorElement);
 				} else if (type === 'number' && value !== '') {
 					if (isNaN(value)) {
 						errorElement.textContent = 'Enter only numbers in this field';
@@ -528,26 +528,19 @@
 				}
 			}
 
-			function validateEmailInput(input, errorElement) {
-				const value = input.value.trim();
+			function validateEmailInput(value, errorElement) {
+				const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+				const isValidEmail = regex.test(value);
 
-				if (value !== '') {
-					const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    			const isValidEmail = regex.test(value);
-
-					if (!isValidEmail) {
-						errorElement.textContent = 'Enter a valid email address in this field';
-						errorElement.classList.add('error-show');
-						return false;
-					} else {
-						errorElement.textContent = 'This field is required';
-						errorElement.classList.remove('error-show');
-						return true;
-					}
+				if (!isValidEmail) {
+					errorElement.textContent = 'Enter a valid email address in this field';
+					errorElement.classList.add('error-show');
+					return false;
+				} else {
+					errorElement.textContent = 'This field is required';
+					errorElement.classList.remove('error-show');
+					return true;
 				}
-
-				errorElement.classList.remove('error-show');
-				return true;
 			}
 
 			function getSelectedValues(input) {
@@ -640,7 +633,12 @@
 				const error = document.querySelector(errorSelector);
 
         input.addEventListener("input", function(event) {
-					validateEmailInput(input, error);
+					const value = input.value.trim();
+					if (value === "") {
+						error.classList.remove('error-show');
+					} else {
+						validateEmailInput(value, error);
+					}
         });
     	});
 
@@ -649,12 +647,13 @@
 				e.preventDefault();
 
 				emailInputs.forEach(function (input) {
-					if(input.value === '') {
+					const value = input.value.trim();
+					if(value === '') {
 						return;
 					}
 					const errorSelector = `.error-${input.id}`;
 					const error = document.querySelector(errorSelector);
-					valid.push(validateEmailInput(input, error));
+					valid.push(validateEmailInput(value, error));
 				});
 
 				requiredInputs.forEach((input) => {
