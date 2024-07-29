@@ -414,61 +414,6 @@ export default defineComponent({
 		ContextMenu,
 		LazySetupWorkflowCredentialsButton,
 	},
-	async beforeRouteLeave(to, from, next) {
-		if (
-			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
-			from.name === VIEWS.TEMPLATE_IMPORT ||
-			(getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-		) {
-			next();
-			return;
-		}
-		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
-			const confirmModal = await this.confirm(
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.cancelButtonText',
-					),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
-				if (saved) {
-					await this.npsSurveyStore.fetchPromptsData();
-				}
-				this.uiStore.stateIsDirty = false;
-
-				if (from.name === VIEWS.NEW_WORKFLOW) {
-					// Replace the current route with the new workflow route
-					// before navigating to the new route when saving new workflow.
-					await this.$router.replace({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.currentWorkflow },
-					});
-
-					await this.$router.push(to);
-				} else {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.resetWorkspace();
-				this.uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
-	},
 	setup() {
 		const nodeViewRootRef = ref<HTMLElement | null>(null);
 		const nodeViewRef = ref<HTMLElement | null>(null);

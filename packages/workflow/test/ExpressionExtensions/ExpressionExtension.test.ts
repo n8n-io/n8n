@@ -250,10 +250,7 @@ describe('tmpl Expression Parser', () => {
 				extend(undefined, 'toDateTime', []);
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionExtensionError);
-				expect(error).toHaveProperty(
-					'message',
-					'toDateTime() could not be called on "undefined" type',
-				);
+				expect(error).toHaveProperty('message', "toDateTime can't be used on undefined value");
 			}
 		});
 		test('input is null', () => {
@@ -261,7 +258,7 @@ describe('tmpl Expression Parser', () => {
 				extend(null, 'startsWith', []);
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionExtensionError);
-				expect(error).toHaveProperty('message', 'startsWith() could not be called on "null" type');
+				expect(error).toHaveProperty('message', "startsWith can't be used on null value");
 			}
 		});
 		test('input should be converted to upper case', () => {
