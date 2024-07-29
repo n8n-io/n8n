@@ -6,13 +6,14 @@
 					[$style.copyText]: true,
 					[$style[size]]: true,
 					[$style.collapsed]: collapse,
+					[$style.noHover]: disableCopy,
 					'ph-no-capture': redactValue,
 				}"
 				data-test-id="copy-input"
 				@click="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
-				<div :class="$style.copyButton">
+				<div v-if="!disableCopy" :class="$style.copyButton">
 					<span>{{ copyButtonText }}</span>
 				</div>
 			</div>
@@ -36,6 +37,7 @@ type Props = {
 	size?: 'medium' | 'large';
 	collapse?: boolean;
 	redactValue?: boolean;
+	disableCopy: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
 	size: 'medium',
 	copyButtonText: useI18n().baseText('generic.copy'),
 	toastTitle: useI18n().baseText('generic.copiedToClipboard'),
+	disableCopy: false,
 });
 const emit = defineEmits<{
 	copy: [];
@@ -55,6 +58,8 @@ const clipboard = useClipboard();
 const { showMessage } = useToast();
 
 function copy() {
+	if (props.disableCopy) return;
+
 	emit('copy');
 	void clipboard.copy(props.value ?? '');
 
@@ -86,6 +91,10 @@ function copy() {
 		--display-copy-button: flex;
 		width: 100%;
 	}
+}
+
+.noHover {
+	cursor: default;
 }
 
 .large {
