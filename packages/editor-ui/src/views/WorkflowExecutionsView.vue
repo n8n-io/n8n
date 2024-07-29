@@ -172,7 +172,7 @@ async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	await executionsStore.initialize(workflowId.value);
 }
 
-async function onExecutionStop(id?: string) {
+async function onExecutionStop(id: string) {
 	try {
 		await executionsStore.stopCurrentExecution(id);
 
