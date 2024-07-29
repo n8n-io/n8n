@@ -4,7 +4,6 @@ import { createWriteStream } from 'fs';
 import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeTypeDescription,
@@ -15,12 +14,9 @@ import type {
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
-import basicAuth from 'basic-auth';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
-import jwt from 'jsonwebtoken';
 
-import { formatPrivateKey } from '../../utils/utilities';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -39,6 +35,7 @@ import {
 	configuredOutputs,
 	isIpWhitelisted,
 	setupOutputConnection,
+	validateWebhookAuthentication,
 } from './utils';
 
 export class Webhook extends Node {
@@ -265,93 +262,7 @@ export class Webhook extends Node {
 	}
 
 	private async validateAuth(context: IWebhookFunctions) {
-		const authentication = context.getNodeParameter(this.authPropertyName) as string;
-		if (authentication === 'none') return;
-
-		const req = context.getRequestObject();
-		const headers = context.getHeaderData();
-
-		if (authentication === 'basicAuth') {
-			// Basic authorization is needed to call webhook
-			let expectedAuth: ICredentialDataDecryptedObject | undefined;
-			try {
-				expectedAuth = await context.getCredentials('httpBasicAuth');
-			} catch {}
-
-			if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {
-				// Data is not defined on node so can not authenticate
-				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
-			}
-
-			const providedAuth = basicAuth(req);
-			// Authorization data is missing
-			if (!providedAuth) throw new WebhookAuthorizationError(401);
-
-			if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
-				// Provided authentication data is wrong
-				throw new WebhookAuthorizationError(403);
-			}
-		} else if (authentication === 'headerAuth') {
-			// Special header with value is needed to call webhook
-			let expectedAuth: ICredentialDataDecryptedObject | undefined;
-			try {
-				expectedAuth = await context.getCredentials('httpHeaderAuth');
-			} catch {}
-
-			if (expectedAuth === undefined || !expectedAuth.name || !expectedAuth.value) {
-				// Data is not defined on node so can not authenticate
-				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
-			}
-			const headerName = (expectedAuth.name as string).toLowerCase();
-			const expectedValue = expectedAuth.value as string;
-
-			if (
-				!headers.hasOwnProperty(headerName) ||
-				(headers as IDataObject)[headerName] !== expectedValue
-			) {
-				// Provided authentication data is wrong
-				throw new WebhookAuthorizationError(403);
-			}
-		} else if (authentication === 'jwtAuth') {
-			let expectedAuth;
-
-			try {
-				expectedAuth = (await context.getCredentials('jwtAuth')) as {
-					keyType: 'passphrase' | 'pemKey';
-					publicKey: string;
-					secret: string;
-					algorithm: jwt.Algorithm;
-				};
-			} catch {}
-
-			if (expectedAuth === undefined) {
-				// Data is not defined on node so can not authenticate
-				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
-			}
-
-			const authHeader = req.headers.authorization;
-			const token = authHeader?.split(' ')[1];
-
-			if (!token) {
-				throw new WebhookAuthorizationError(401, 'No token provided');
-			}
-
-			let secretOrPublicKey;
-
-			if (expectedAuth.keyType === 'passphrase') {
-				secretOrPublicKey = expectedAuth.secret;
-			} else {
-				secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey, true);
-			}
-
-			try {
-				return jwt.verify(token, secretOrPublicKey, {
-					algorithms: [expectedAuth.algorithm],
-				}) as IDataObject;
-			} catch (error) {
-				throw new WebhookAuthorizationError(403, error.message);
-			}
-		}
+		return await validateWebhookAuthentication(context, this.authPropertyName);
 	}
 
 	private async handleFormData(

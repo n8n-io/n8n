@@ -310,7 +310,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						testUrl = `${rootStore.formWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}
 
-					if (testUrl) openPopUpWindow(testUrl);
+					if (testUrl && options.source !== 'RunData.ManualChatMessage') openPopUpWindow(testUrl);
 				}
 			}
 
