@@ -26,7 +26,6 @@ export function prepareFormData({
 	instanceId,
 	useResponseData,
 	appendAttribution = true,
-	customAttribution,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -38,7 +37,6 @@ export function prepareFormData({
 	instanceId?: string;
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
-	customAttribution?: string;
 }) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -58,7 +56,6 @@ export function prepareFormData({
 		formFields: [],
 		useResponseData,
 		appendAttribution,
-		customAttribution,
 	};
 
 	if (redirectUrl) {
@@ -157,7 +154,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 		formSubmittedText?: string;
 		useWorkflowTimezone?: boolean;
 		appendAttribution?: boolean;
-		customAttribution?: string;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -225,7 +221,6 @@ export async function formWebhook(context: IWebhookFunctions) {
 			instanceId,
 			useResponseData,
 			appendAttribution,
-			customAttribution: options.customAttribution as string,
 		});
 
 		res.render('form-trigger', data);
