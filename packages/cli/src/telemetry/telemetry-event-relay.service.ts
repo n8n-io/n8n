@@ -514,7 +514,6 @@ export class TelemetryEventRelay {
 
 	// eslint-disable-next-line complexity
 	private async workflowPostExecute({ telemetry }: Event['workflow-post-execute']) {
-		console.log('=======================');
 		const { workflow, runData, userId } = telemetry;
 
 		if (!workflow.id) {
@@ -649,8 +648,6 @@ export class TelemetryEventRelay {
 				}
 			}
 		}
-
-		console.log('telemetryProperties', telemetryProperties);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
