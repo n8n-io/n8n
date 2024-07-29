@@ -648,6 +648,7 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	WAIT_NODE_TYPE,
 	DISCORD_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
