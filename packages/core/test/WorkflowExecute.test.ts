@@ -120,6 +120,8 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
+						if (testData.output.testAllOutputs)
+							return nodeData.data.main.map(data => data!.map(entry => entry.json));
 						return nodeData.data.main[0]!.map((entry) => entry.json);
 					});
 

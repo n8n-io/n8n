@@ -2256,6 +2256,7 @@ export interface WorkflowTestData {
 	};
 	output: {
 		nodeExecutionOrder?: string[];
+		testAllOutputs?: boolean;
 		nodeData: {
 			[key: string]: any[][];
 		};

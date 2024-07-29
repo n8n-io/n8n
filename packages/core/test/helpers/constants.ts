@@ -4835,50 +4835,78 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 				'Edit Fields2',
 				'Edit Fields3',
 			],
+			testAllOutputs: true,
 			nodeData: {
-				Start: [[{}]],
+				Start: [[[{}]]],
 				'Edit Fields': [
 					[
-						{
-							name: 'foo',
-							value: 'bar',
-						},
+						[
+							{
+								name: 'foo',
+								value: 'bar',
+							},
+						],
 					],
 				],
 				'Edit Fields1': [
 					[
-						{
-							name: 'bar',
-							value: 'baz',
-						},
+						[
+							{
+								name: 'bar',
+								value: 'baz',
+							},
+						],
 					],
 				],
 				Merge: [
 					[
-						{
-							name: 'foo',
-							value: 'bar',
-						},
-						{
-							name: 'bar',
-							value: 'baz',
-						},
+						[
+							{
+								name: 'foo',
+								value: 'bar',
+							},
+							{
+								name: 'bar',
+								value: 'baz',
+							},
+						],
+					],
+				],
+				If1: [
+					[
+						[
+							{
+								name: 'foo',
+								value: 'bar',
+							},
+						],
+						[
+							{
+								name: 'bar',
+								value: 'baz',
+							},
+						],
+						[],
 					],
 				],
 				'Edit Fields2': [
 					[
-						{
-							name: 'foo',
-							value: 'bar',
-						},
+						[
+							{
+								name: 'foo',
+								value: 'bar',
+							},
+						],
 					],
 				],
 				'Edit Fields3': [
 					[
-						{
-							name: 'bar',
-							value: 'baz',
-						},
+						[
+							{
+								name: 'bar',
+								value: 'baz',
+							},
+						],
 					],
 				],
 			},
