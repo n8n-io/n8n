@@ -9,7 +9,13 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { GlobalConfig } from '@n8n/config';
 
 describe('UserService', () => {
-	const globalConfig = mockInstance(GlobalConfig, { host: 'localhost', path: '/', port: 5678 });
+	const globalConfig = mockInstance(GlobalConfig, {
+		host: 'localhost',
+		path: '/',
+		port: 5678,
+		listen_address: '0.0.0.0',
+		protocol: 'http',
+	});
 	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);
 	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
