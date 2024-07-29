@@ -33,7 +33,6 @@ import { isLdapEnabled } from '@/Ldap/helpers.ee';
 import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -66,6 +65,7 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
+import { EventService } from './eventbus/event.service';
 
 const exec = promisify(callbackExec);
 
@@ -82,6 +82,7 @@ export class Server extends AbstractServer {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
 		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
 	) {
 		super('main');
 
@@ -106,7 +107,7 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Container.get(InternalHooks).onServerStarted();
+		this.eventService.emit('server-started');
 	}
 
 	private async registerAdditionalControllers() {
