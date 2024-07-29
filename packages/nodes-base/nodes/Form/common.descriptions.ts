@@ -191,7 +191,7 @@ export const respondWithOptions: INodeProperties = {
 	displayName: 'Form Response',
 	name: 'respondWithOptions',
 	type: 'fixedCollection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: { values: { respondWith: 'text' } },
 	options: [
 		{

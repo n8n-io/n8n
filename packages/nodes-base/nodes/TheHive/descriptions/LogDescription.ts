@@ -189,7 +189,7 @@ export const logFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Attachment',
