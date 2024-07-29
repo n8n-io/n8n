@@ -6,6 +6,7 @@ import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO
 import { InternalHooks } from '@/InternalHooks'; // @TODO: Dependency cycle if injected
 import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import type { EventMessageTypes } from '../eventbus/EventMessageClasses';
 import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
@@ -25,6 +26,7 @@ import { EventService } from '@/eventbus/event.service';
 export class ExecutionRecoveryService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly orchestrationService: OrchestrationService,
@@ -37,10 +39,10 @@ export class ExecutionRecoveryService {
 	init() {
 		if (config.getEnv('executions.mode') === 'regular') return;
 
-		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
-
+		const { isLeader } = this.instanceSettings;
 		if (isLeader) this.scheduleQueueRecovery();
 
+		const { isMultiMainSetupEnabled } = this.orchestrationService;
 		if (isMultiMainSetupEnabled) {
 			this.orchestrationService.multiMainSetup
 				.on('leader-takeover', () => this.scheduleQueueRecovery())
@@ -59,7 +61,7 @@ export class ExecutionRecoveryService {
 	 * Recover key properties of a truncated execution using event logs.
 	 */
 	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
-		if (this.orchestrationService.isFollower) return;
+		if (this.instanceSettings.isFollower) return;
 
 		const amendedExecution = await this.amend(executionId, messages);
 
@@ -332,7 +334,7 @@ export class ExecutionRecoveryService {
 	private shouldScheduleQueueRecovery() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('instanceRole') === 'leader' &&
+			this.instanceSettings.isLeader &&
 			!this.isShuttingDown
 		);
 	}

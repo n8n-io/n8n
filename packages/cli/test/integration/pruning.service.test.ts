@@ -1,5 +1,5 @@
 import config from '@/config';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -15,10 +15,11 @@ import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
 import { mock } from 'jest-mock-extended';
-import type { OrchestrationService } from '@/services/orchestration.service';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
+	const instanceSettings = new InstanceSettings();
+	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
@@ -29,9 +30,10 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
+			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
-			mock<OrchestrationService>(),
+			mock(),
 		);
 
 		workflow = await createWorkflow();
