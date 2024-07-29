@@ -17,7 +17,7 @@ import N8nIcon from '../N8nIcon';
 const TYPE = ['dots', 'ring'] as const;
 
 interface SpinnerProps {
-	size?: Exclude<TextSize, | 'mini' | 'xlarge'>;
+	size?: Exclude<TextSize, 'mini' | 'xlarge'>;
 	type?: (typeof TYPE)[number];
 }
 
