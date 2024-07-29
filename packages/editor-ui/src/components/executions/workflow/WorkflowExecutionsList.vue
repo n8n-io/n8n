@@ -32,8 +32,6 @@ import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useUIStore } from '@/stores/ui.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { watch } from 'vue';
 
 const props = withDefaults(
@@ -52,8 +50,8 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'execution:delete': [value?: string];
-	'execution:stop': [value?: string];
+	'execution:delete': [value: string];
+	'execution:stop': [value: string];
 	'execution:retry': [value: { id: string; loadWorkflow: boolean }];
 	'update:auto-refresh': [value: boolean];
 	'update:filters': [value: ExecutionFilterType];
