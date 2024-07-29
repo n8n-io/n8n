@@ -1,4 +1,4 @@
-import { Config, Nested } from './decorators';
+import { Config, Env, Nested } from './decorators';
 import { CredentialsConfig } from './configs/credentials';
 import { DatabaseConfig } from './configs/database';
 import { EmailConfig } from './configs/email';
@@ -51,4 +51,16 @@ export class GlobalConfig {
 
 	@Nested
 	readonly workflows: WorkflowsConfig;
+
+	/** Path n8n is deployed to */
+	@Env('N8N_PATH')
+	readonly path: string = '/';
+
+	/** Host name n8n can be reached */
+	@Env('N8N_HOST')
+	readonly host: string = 'localhost';
+
+	/** HTTP port n8n can be reached */
+	@Env('N8N_PORT')
+	readonly port: number = 5678;
 }

@@ -22,6 +22,7 @@ import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { ActiveWebhooks } from '@/ActiveWebhooks';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export abstract class AbstractServer {
@@ -149,25 +150,25 @@ export abstract class AbstractServer {
 			this.server = http.createServer(app);
 		}
 
-		const PORT = config.getEnv('port');
+		const { port } = Container.get(GlobalConfig);
 		const ADDRESS = config.getEnv('listen_address');
 
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				this.logger.info(
-					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
 			}
 		});
 
-		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
+		await new Promise<void>((resolve) => this.server.listen(port, ADDRESS, () => resolve()));
 
 		this.externalHooks = Container.get(ExternalHooks);
 
 		await this.setupHealthCheck();
 
-		this.logger.info(`n8n ready on ${ADDRESS}, port ${PORT}`);
+		this.logger.info(`n8n ready on ${ADDRESS}, port ${port}`);
 	}
 
 	async start(): Promise<void> {
