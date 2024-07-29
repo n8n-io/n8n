@@ -250,6 +250,38 @@
 				display: none;
 			}
 
+			.file-input-wrapper {
+				position: relative;
+				display: inline-block;
+				width: 100%;
+			}
+			input[type="file"] {
+			}
+			.clear-button {
+				position: absolute;
+				right: 5px;
+				top: 50%;
+				transform: translateY(-65%);
+				background-color: #7e8186;
+				border: none;
+				border-radius: 50%;
+				font-size: 14px;
+				font-weight: 600;
+				font-family:
+					Open Sans,
+					sans-serif;
+				color: white;
+				width: 20px;
+				height: 20px;
+				text-align: center;
+				line-height: 20px;
+				cursor: pointer;
+				display: none;
+			}
+			input[type="file"]:not(:empty) + .clear-button {
+					display: inline-block;
+			}
+
 			@media only screen and (max-width: 400px) {
 				hr {
 					display: block;
@@ -346,7 +378,7 @@
 								{{/if}}
 
 								{{#if isFileInput}}
-									<div class='form-group'>
+									<div class='form-group file-input-wrapper'>
 										<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 										<input
 											class='form-input {{inputRequired}}'
@@ -357,6 +389,7 @@
 											{{multipleFiles}}
 											placeholder="{{placeholder}}"
 										/>
+										<button class="clear-button">&times;</button>
 										<p class='{{errorId}} error-hidden'>
 											This field is required
 										</p>
@@ -552,6 +585,34 @@
             }
         });
     	});
+
+			document.querySelectorAll('input[type="file"]').forEach(fileInput => {
+				const clearButton = fileInput.nextElementSibling;
+				let previousFiles = [];
+
+				fileInput.addEventListener('change', () => {
+					const files = fileInput.files;
+
+					if (files.length > 0) {
+							previousFiles = Array.from(files);
+							clearButton.style.display = 'inline-block';
+					} else {
+						if (previousFiles.length > 0) {
+							const dataTransfer = new DataTransfer();
+							previousFiles.forEach(file => dataTransfer.items.add(file));
+							fileInput.files = dataTransfer.files;
+							clearButton.style.display = 'inline-block';
+						}
+					}
+				});
+
+				clearButton.addEventListener('click', (event) => {
+					event.preventDefault();
+					fileInput.value = '';
+					previousFiles = [];
+					clearButton.style.display = 'none';
+				});
+			});
 
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
 			const emailInputs = document.querySelectorAll("input[type=email]");
