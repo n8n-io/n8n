@@ -1,5 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
-import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -16,6 +16,7 @@ import { useMessage } from '@/composables/useMessage';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
+import { useUIStore } from './ui.store';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -35,6 +36,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const streaming = ref<boolean>();
 	const message = useMessage();
 	const ndvStore = useNDVStore();
+	const uiStore = useUIStore();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -55,11 +57,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const isSessionEnded = computed(() => {
 		const assistantMessages = chatMessages.value.filter((msg) => msg.role === 'assistant');
 		const lastMessage = assistantMessages[assistantMessages.length - 1];
-		return (
-			assistantMessages.length &&
+		const sessionExplicitlyEnded =
+			assistantMessages.length > 0 &&
 			lastMessage?.type === 'event' &&
-			lastMessage?.eventName === 'end-session'
-		);
+			lastMessage?.eventName === 'end-session';
+		const sessionStarted = currentSessionId.value !== undefined;
+		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
@@ -236,17 +239,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (isNodeErrorActive(context)) {
 				// context has not changed
 				return;
-			}
-
-			// TODO: localization
-			if (!isSessionEnded.value) {
-				await message.confirm(
-					'You already have an active AI Assistant session. Starting a new session will clear your current conversation history. Are you sure you want to start a new session?',
-					'Start new AI Assistant session?',
-					{
-						confirmButtonText: 'Start new session',
-					},
-				);
 			}
 		}
 
@@ -468,6 +460,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		isAssistantOpen,
 		canShowAssistant,
 		canShowAssistantButtons,
+		currentSessionId,
 		lastUnread,
 		isSessionEnded,
 		onNodeExecution,

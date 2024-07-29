@@ -16,11 +16,12 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useUIStore } from '@/stores/ui.store';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -36,6 +37,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -394,9 +396,11 @@ function copySuccess() {
 	});
 }
 
-async function onClick() {
+// TODO: Rename to something more specific
+async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
-	await assistantStore.initErrorHelper({
+	const sessionInProgress = !assistantStore.isSessionEnded;
+	const errorPayload: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
 			message,
@@ -405,7 +409,15 @@ async function onClick() {
 			type: 'type' in props.error ? props.error.type : undefined,
 		},
 		node: props.error.node || ndvStore.activeNode,
-	});
+	};
+	if (sessionInProgress) {
+		uiStore.openModalWithData({
+			name: NEW_ASSISTANT_SESSION_MODAL,
+			data: { context: errorPayload },
+		});
+		return;
+	}
+	await assistantStore.initErrorHelper(errorPayload);
 }
 </script>
 
@@ -423,8 +435,8 @@ async function onClick() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
-			<div class="node-error-view__assistant-button" v-if="assistantStore.canShowAssistantButtons">
-				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onClick" />
+			<div v-if="assistantStore.canShowAssistantButtons" class="node-error-view__assistant-button">
+				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 			</div>
 		</div>
 

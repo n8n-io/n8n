@@ -35,6 +35,7 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -122,6 +123,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+				NEW_ASSISTANT_SESSION_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
