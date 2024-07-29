@@ -77,7 +77,7 @@ export class KafkaTrigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Allow Topic Creation',

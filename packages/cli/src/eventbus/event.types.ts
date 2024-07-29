@@ -15,6 +15,8 @@ export type UserLike = {
  * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
+	'server-started': {};
+
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;
@@ -124,31 +126,30 @@ export type Event = {
 
 	'credentials-created': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
+		publicApi: boolean;
+		projectId?: string;
+		projectType?: string;
 	};
 
 	'credentials-shared': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 		userIdSharer: string;
-		userIdsShareesRemoved: string[];
+		userIdsShareesAdded: string[];
 		shareesRemoved: number | null;
 	};
 
 	'credentials-updated': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 	};
 
 	'credentials-deleted': {
 		user: UserLike;
-		credentialName: string;
 		credentialType: string;
 		credentialId: string;
 	};
@@ -264,6 +265,36 @@ export type Event = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'ldap-general-sync-finished': {
+		type: string;
+		succeeded: boolean;
+		usersSynced: number;
+		error: string;
+	};
+
+	'ldap-settings-updated': {
+		userId: string;
+		loginIdAttribute: string;
+		firstNameAttribute: string;
+		lastNameAttribute: string;
+		emailAttribute: string;
+		ldapIdAttribute: string;
+		searchPageSize: number;
+		searchTimeout: number;
+		synchronizationEnabled: boolean;
+		synchronizationInterval: number;
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
+
+	'ldap-login-sync-failed': {
+		error: string;
+	};
+
+	'login-failed-due-to-ldap-disabled': {
+		userId: string;
 	};
 
 	/**

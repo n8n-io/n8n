@@ -167,6 +167,7 @@ export function mapCanvasConnectionToLegacyConnection(
 
 export function mapLegacyEndpointsToCanvasConnectionPort(
 	endpoints: INodeTypeDescription['inputs'],
+	endpointNames: string[] = [],
 ): CanvasConnectionPort[] {
 	if (typeof endpoints === 'string') {
 		console.warn('Node endpoints have not been evaluated', endpoints);
@@ -176,7 +177,8 @@ export function mapLegacyEndpointsToCanvasConnectionPort(
 	return endpoints.map((endpoint, endpointIndex) => {
 		const typeValue = typeof endpoint === 'string' ? endpoint : endpoint.type;
 		const type = isValidNodeConnectionType(typeValue) ? typeValue : NodeConnectionType.Main;
-		const label = typeof endpoint === 'string' ? undefined : endpoint.displayName;
+		const label =
+			typeof endpoint === 'string' ? endpointNames[endpointIndex] : endpoint.displayName;
 		const index =
 			endpoints
 				.slice(0, endpointIndex + 1)
