@@ -186,7 +186,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && config.getEnv('instanceRole') === 'leader') {
+		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -210,7 +210,7 @@ export class Start extends BaseCommand {
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('instanceRole', 'leader');
+			this.instanceSettings.markAsLeader();
 			return;
 		}
 

@@ -55,7 +55,7 @@ export class License {
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
 		if (config.getEnv('multiMainSetup.enabled')) {
-			return autoRenewEnabled && config.getEnv('instanceRole') === 'leader';
+			return autoRenewEnabled && this.instanceSettings.isLeader;
 		}
 
 		return autoRenewEnabled;

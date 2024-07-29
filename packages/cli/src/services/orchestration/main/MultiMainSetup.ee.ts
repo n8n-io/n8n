@@ -1,6 +1,7 @@
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
+import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
@@ -16,6 +17,7 @@ type MultiMainEvents = {
 export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly redisPublisher: RedisServicePubSubPublisher,
 		private readonly redisClientService: RedisClientService,
 	) {
@@ -50,7 +52,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
-		const isLeader = config.getEnv('instanceRole') === 'leader';
+		const { isLeader } = this.instanceSettings;
 
 		if (isLeader) await this.redisPublisher.clear(this.leaderKey);
 	}
@@ -69,8 +71,8 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		if (leaderId && leaderId !== this.instanceId) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
 
-			if (config.getEnv('instanceRole') === 'leader') {
-				config.set('instanceRole', 'follower');
+			if (this.instanceSettings.isLeader) {
+				this.instanceSettings.markAsFollower();
 
 				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
@@ -85,7 +87,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
 			);
 
-			config.set('instanceRole', 'follower');
+			this.instanceSettings.markAsFollower();
 
 			/**
 			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
@@ -106,7 +108,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
 
-			config.set('instanceRole', 'leader');
+			this.instanceSettings.markAsLeader();
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
@@ -115,7 +117,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			 */
 			this.emit('leader-takeover');
 		} else {
-			config.set('instanceRole', 'follower');
+			this.instanceSettings.markAsFollower();
 		}
 	}
 
