@@ -124,7 +124,7 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
+		const n8nPath = Container.get(GlobalConfig).path;
 		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
@@ -283,7 +283,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const port = config.getEnv('port');
+			const { port } = Container.get(GlobalConfig);
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
