@@ -4826,12 +4826,12 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Edit Fields',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 								{
 									node: 'Edit Fields1',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -4842,7 +4842,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -4853,7 +4853,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Merge',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 1,
 								},
 							],
@@ -4864,7 +4864,7 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'If1',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
@@ -4875,14 +4875,14 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 							[
 								{
 									node: 'Edit Fields2',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],
 							[
 								{
 									node: 'Edit Fields3',
-									type: 'main',
+									type: NodeConnectionType.Main,
 									index: 0,
 								},
 							],

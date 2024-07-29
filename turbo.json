@@ -49,6 +49,11 @@
 		},
 		"lint": {},
 		"lintfix": {},
+		"test:wf": {
+			"dependsOn": [
+				"n8n-core#test"
+			]
+		},
 		"test:backend": {
 			"dependsOn": [
 				"@n8n/config#test",
