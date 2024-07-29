@@ -61,8 +61,6 @@ const emit = defineEmits<{
 	reload: [];
 }>();
 
-const uiStore = useUIStore();
-const npsSurveyStore = useNpsSurveyStore();
 const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 const router = useRouter();
 
@@ -76,11 +74,15 @@ const hidePreview = computed(() => {
 });
 
 const onDeleteCurrentExecution = () => {
-	emit('execution:delete', props.execution?.id);
+	if (!props.execution?.id) return;
+
+	emit('execution:delete', props.execution.id);
 };
 
 const onStopExecution = () => {
-	emit('execution:stop', props.execution?.id);
+	if (!props.execution?.id) return;
+
+	emit('execution:stop', props.execution.id);
 };
 
 const onRetryExecution = (payload: { execution: ExecutionSummary; command: string }) => {
@@ -93,9 +95,8 @@ const onRetryExecution = (payload: { execution: ExecutionSummary; command: strin
 };
 
 watch(
-	//@ts-ignore
 	() => props.execution,
-	(value: ExecutionSummary) => {
+	(value: ExecutionSummary | undefined) => {
 		if (!value) {
 			return;
 		}

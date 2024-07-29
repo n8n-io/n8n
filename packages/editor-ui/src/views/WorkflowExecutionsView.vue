@@ -173,8 +173,6 @@ async function onUpdateFilters(newFilters: ExecutionFilterType) {
 }
 
 async function onExecutionStop(id?: string) {
-	if (!id) return;
-
 	try {
 		await executionsStore.stopCurrentExecution(id);
 
@@ -193,8 +191,6 @@ async function onExecutionStop(id?: string) {
 }
 
 async function onExecutionDelete(id?: string) {
-	if (!id) return;
-
 	loading.value = true;
 	try {
 		const executionIndex = executions.value.findIndex((e: ExecutionSummary) => e.id === id);
