@@ -1,4 +1,4 @@
-import type { AuthenticationMethod, IWorkflowBase } from 'n8n-workflow';
+import type { AuthenticationMethod, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { GlobalRole } from '@/databases/entities/User';
@@ -39,13 +39,20 @@ export type Event = {
 	};
 
 	'workflow-post-execute': {
-		executionId: string;
-		success: boolean;
-		userId?: string;
-		workflowId: string;
-		isManual: boolean;
-		workflowName: string;
-		metadata?: Record<string, string>;
+		audit: {
+			executionId: string;
+			success: boolean;
+			userId?: string;
+			workflowId: string;
+			isManual: boolean;
+			workflowName: string;
+			metadata?: Record<string, string>;
+		};
+		telemetry: {
+			workflow: IWorkflowBase;
+			runData?: IRun;
+			userId?: string;
+		};
 	};
 
 	'node-pre-execute': {

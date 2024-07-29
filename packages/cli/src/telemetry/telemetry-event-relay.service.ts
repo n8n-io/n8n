@@ -8,6 +8,13 @@ import { License } from '@/License';
 import { GlobalConfig } from '@n8n/config';
 import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TelemetryHelpers } from 'n8n-workflow';
+import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
+import { NodeTypes } from '@/NodeTypes';
+import { get as pslGet } from 'psl';
+import type { IExecutionTrackProperties } from '@/Interfaces';
+import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 @Service()
 export class TelemetryEventRelay {
@@ -17,6 +24,8 @@ export class TelemetryEventRelay {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async init() {
@@ -29,6 +38,11 @@ export class TelemetryEventRelay {
 
 	private setupHandlers() {
 		this.eventService.on('server-started', async () => await this.serverStarted());
+
+		this.eventService.on(
+			'workflow-post-execute',
+			async (event) => await this.workflowExecuted(event),
+		);
 
 		this.eventService.on('team-project-updated', (event) => this.teamProjectUpdated(event));
 		this.eventService.on('team-project-deleted', (event) => this.teamProjectDeleted(event));
@@ -496,5 +510,145 @@ export class TelemetryEventRelay {
 				earliest_workflow_created: firstWorkflow?.createdAt,
 			}),
 		]);
+	}
+
+	// eslint-disable-next-line complexity
+	private async workflowExecuted({ telemetry }: Event['workflow-post-execute']) {
+		const { workflow, runData, userId } = telemetry;
+
+		if (!workflow.id) {
+			return;
+		}
+
+		if (runData?.status === 'waiting') {
+			// No need to send telemetry or logs when the workflow hasn't finished yet.
+			return;
+		}
+
+		const promises = [];
+
+		const telemetryProperties: IExecutionTrackProperties = {
+			workflow_id: workflow.id,
+			is_manual: false,
+			version_cli: N8N_VERSION,
+			success: false,
+		};
+
+		if (userId) {
+			telemetryProperties.user_id = userId;
+		}
+
+		if (runData?.data.resultData.error?.message?.includes('canceled')) {
+			runData.status = 'canceled';
+		}
+
+		telemetryProperties.success = !!runData?.finished;
+
+		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
+		const executionStatus: ExecutionStatus = runData
+			? determineFinalExecutionStatus(runData)
+			: 'unknown';
+
+		if (runData !== undefined) {
+			telemetryProperties.execution_mode = runData.mode;
+			telemetryProperties.is_manual = runData.mode === 'manual';
+
+			let nodeGraphResult: INodesGraphResult | null = null;
+
+			if (!telemetryProperties.success && runData?.data.resultData.error) {
+				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				let errorNodeName =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.name
+						: undefined;
+				telemetryProperties.error_node_type =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined;
+
+				if (runData.data.resultData.lastNodeExecuted) {
+					const lastNode = TelemetryHelpers.getNodeTypeForName(
+						workflow,
+						runData.data.resultData.lastNodeExecuted,
+					);
+
+					if (lastNode !== undefined) {
+						telemetryProperties.error_node_type = lastNode.type;
+						errorNodeName = lastNode.name;
+					}
+				}
+
+				if (telemetryProperties.is_manual) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
+					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+
+					if (errorNodeName) {
+						telemetryProperties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
+					}
+				}
+			}
+
+			if (telemetryProperties.is_manual) {
+				if (!nodeGraphResult) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+				}
+
+				let userRole: 'owner' | 'sharee' | undefined = undefined;
+				if (userId) {
+					const role = await this.sharedWorkflowRepository.findSharingRole(userId, workflow.id);
+					if (role) {
+						userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
+					}
+				}
+
+				const manualExecEventProperties: ITelemetryTrackProperties = {
+					user_id: userId,
+					workflow_id: workflow.id,
+					status: executionStatus,
+					executionStatus: runData?.status ?? 'unknown',
+					error_message: telemetryProperties.error_message as string,
+					error_node_type: telemetryProperties.error_node_type,
+					node_graph_string: telemetryProperties.node_graph_string as string,
+					error_node_id: telemetryProperties.error_node_id as string,
+					webhook_domain: null,
+					sharing_role: userRole,
+				};
+
+				if (!manualExecEventProperties.node_graph_string) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+				}
+
+				if (runData.data.startData?.destinationNode) {
+					const telemetryPayload = {
+						...manualExecEventProperties,
+						node_type: TelemetryHelpers.getNodeTypeForName(
+							workflow,
+							runData.data.startData?.destinationNode,
+						)?.type,
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+					};
+
+					promises.push(this.telemetry.track('Manual node exec finished', telemetryPayload));
+				} else {
+					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+							?.json as { headers?: { origin?: string } };
+						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							manualExecEventProperties.webhook_domain = pslGet(
+								execJson.headers.origin.replace(/^https?:\/\//, ''),
+							);
+						}
+					});
+
+					promises.push(
+						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
+					);
+				}
+			}
+		}
+
+		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
 }

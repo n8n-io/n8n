@@ -121,10 +121,10 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPostExecute(event: Event['workflow-post-execute']) {
+	private workflowPostExecute({ audit }: Event['workflow-post-execute']) {
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.success',
-			payload: event,
+			payload: audit,
 		});
 	}
 

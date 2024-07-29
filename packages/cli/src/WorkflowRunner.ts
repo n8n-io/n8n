@@ -160,19 +160,20 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
-					void Container.get(InternalHooks).onWorkflowPostExecute(
-						executionId,
-						data.workflowData,
-						executionData,
-						data.userId,
-					);
 					this.eventService.emit('workflow-post-execute', {
-						workflowId: data.workflowData.id,
-						workflowName: data.workflowData.name,
-						executionId,
-						success: executionData?.status === 'success',
-						isManual: data.executionMode === 'manual',
-						userId: data.userId,
+						audit: {
+							workflowId: data.workflowData.id,
+							workflowName: data.workflowData.name,
+							executionId,
+							success: executionData?.status === 'success',
+							isManual: data.executionMode === 'manual',
+							userId: data.userId,
+						},
+						telemetry: {
+							workflow: data.workflowData,
+							runData: executionData,
+							userId: data.userId,
+						},
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {

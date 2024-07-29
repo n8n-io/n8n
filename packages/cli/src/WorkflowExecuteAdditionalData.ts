@@ -646,13 +646,18 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
 				eventService.emit('workflow-post-execute', {
-					workflowId: workflow.id,
-					workflowName: workflow.name,
-					executionId,
-					success: runData.status === 'success',
-					isManual: runData.mode === 'manual',
+					audit: {
+						workflowId: workflow.id,
+						workflowName: workflow.name,
+						executionId,
+						success: runData.status === 'success',
+						isManual: runData.mode === 'manual',
+					},
+					telemetry: {
+						workflow,
+						runData,
+					},
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -934,14 +939,20 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 	eventService.emit('workflow-post-execute', {
-		workflowId: workflowData.id,
-		workflowName: workflowData.name,
-		executionId,
-		success: data.status === 'success',
-		isManual: data.mode === 'manual',
-		userId: additionalData.userId,
+		audit: {
+			workflowId: workflowData.id,
+			workflowName: workflowData.name,
+			executionId,
+			success: data.status === 'success',
+			isManual: data.mode === 'manual',
+			userId: additionalData.userId,
+		},
+		telemetry: {
+			workflow: workflowData,
+			runData: data,
+			userId: additionalData.userId,
+		},
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
