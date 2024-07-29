@@ -115,19 +115,7 @@ onBeforeRouteLeave(async (to, _, next) => {
 		return;
 	}
 
-	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next, {
-		async confirm() {
-			const saved = await workflowHelpers.saveCurrentWorkflow({}, false);
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-			uiStore.stateIsDirty = false;
-			return true;
-		},
-		async cancel() {
-			uiStore.stateIsDirty = false;
-		},
-	});
+	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next);
 });
 </script>
 
