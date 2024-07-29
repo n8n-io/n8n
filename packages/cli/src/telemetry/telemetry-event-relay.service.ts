@@ -41,7 +41,7 @@ export class TelemetryEventRelay {
 
 		this.eventService.on(
 			'workflow-post-execute',
-			async (event) => await this.workflowExecuted(event),
+			async (event) => await this.workflowPostExecute(event),
 		);
 
 		this.eventService.on('team-project-updated', (event) => this.teamProjectUpdated(event));
@@ -513,7 +513,8 @@ export class TelemetryEventRelay {
 	}
 
 	// eslint-disable-next-line complexity
-	private async workflowExecuted({ telemetry }: Event['workflow-post-execute']) {
+	private async workflowPostExecute({ telemetry }: Event['workflow-post-execute']) {
+		console.log('=======================');
 		const { workflow, runData, userId } = telemetry;
 
 		if (!workflow.id) {
@@ -648,6 +649,8 @@ export class TelemetryEventRelay {
 				}
 			}
 		}
+
+		console.log('telemetryProperties', telemetryProperties);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
