@@ -6,11 +6,19 @@ import { UserService } from '@/services/user.service';
 import { UrlService } from '@/services/url.service';
 import { mockInstance } from '../../shared/mocking';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { GlobalConfig } from '@n8n/config';
 
 describe('UserService', () => {
-	const urlService = new UrlService();
+	const globalConfig = mockInstance(GlobalConfig, {
+		host: 'localhost',
+		path: '/',
+		port: 5678,
+		listen_address: '0.0.0.0',
+		protocol: 'http',
+	});
+	const urlService = new UrlService(globalConfig);
 	const userRepository = mockInstance(UserRepository);
-	const userService = new UserService(mock(), userRepository, mock(), urlService);
+	const userService = new UserService(mock(), userRepository, mock(), urlService, mock());
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
