@@ -66,6 +66,19 @@ export class TelemetryEventRelay {
 		this.eventService.on('community-package-deleted', (event) => {
 			this.communityPackageDeleted(event);
 		});
+
+		this.eventService.on('credentials-created', (event) => {
+			this.credentialsCreated(event);
+		});
+		this.eventService.on('credentials-shared', (event) => {
+			this.credentialsShared(event);
+		});
+		this.eventService.on('credentials-updated', (event) => {
+			this.credentialsUpdated(event);
+		});
+		this.eventService.on('credentials-deleted', (event) => {
+			this.credentialsDeleted(event);
+		});
 		this.eventService.on('ldap-general-sync-finished', (event) => {
 			this.ldapGeneralSyncFinished(event);
 		});
@@ -303,6 +316,56 @@ export class TelemetryEventRelay {
 			package_node_names: packageNodeNames,
 			package_author: packageAuthor,
 			package_author_email: packageAuthorEmail,
+		});
+	}
+
+	private credentialsCreated({
+		user,
+		credentialType,
+		credentialId,
+		projectId,
+		projectType,
+	}: Event['credentials-created']) {
+		void this.telemetry.track('User created credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+			project_id: projectId,
+			project_type: projectType,
+		});
+	}
+
+	private credentialsShared({
+		user,
+		credentialType,
+		credentialId,
+		userIdSharer,
+		userIdsShareesAdded,
+		shareesRemoved,
+	}: Event['credentials-shared']) {
+		void this.telemetry.track('User updated cred sharing', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+			user_id_sharer: userIdSharer,
+			user_ids_sharees_added: userIdsShareesAdded,
+			sharees_removed: shareesRemoved,
+		});
+	}
+
+	private credentialsUpdated({ user, credentialId, credentialType }: Event['credentials-updated']) {
+		void this.telemetry.track('User updated credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
+	private credentialsDeleted({ user, credentialId, credentialType }: Event['credentials-deleted']) {
+		void this.telemetry.track('User deleted credentials', {
+			user_id: user.id,
+			credential_type: credentialType,
+			credential_id: credentialId,
 		});
 	}
 

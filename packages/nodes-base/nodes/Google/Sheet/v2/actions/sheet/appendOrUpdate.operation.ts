@@ -5,11 +5,12 @@ import type {
 	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type {
-	ISheetUpdateData,
-	SheetProperties,
-	ValueInputOption,
-	ValueRenderOption,
+import {
+	ROW_NUMBER,
+	type ISheetUpdateData,
+	type SheetProperties,
+	type ValueInputOption,
+	type ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
@@ -312,7 +313,7 @@ export async function execute(
 	};
 
 	const addNewColumn = (key: string) => {
-		if (!columnNames.includes(key)) {
+		if (!columnNames.includes(key) && key !== ROW_NUMBER) {
 			newColumns.add(key);
 		}
 	};
