@@ -74,7 +74,6 @@ import { i18n } from '@/plugins/i18n';
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useAssistantStore } from './assistant.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -102,7 +101,6 @@ let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
-	const assistantStore = useAssistantStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
@@ -1202,7 +1200,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			};
 		}
 		workflowExecutionData.value.data!.resultData.runData[pushData.nodeName].push(pushData.data);
-		void assistantStore.onNodeExecution(pushData);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
