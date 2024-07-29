@@ -21,23 +21,15 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip
-				v-if="!credentialPermissions.share && !isHomeTeamProject"
-				:bold="false"
-				class="mb-s"
-			>
+			<n8n-info-tip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
+			</n8n-info-tip>
+			<n8n-info-tip v-else :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
-			</n8n-info-tip>
-			<n8n-info-tip
-				v-if="credentialPermissions.share && !isHomeTeamProject"
-				:bold="false"
-				class="mb-s"
-			>
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
@@ -45,28 +37,9 @@
 				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
-				:static="isHomeTeamProject || !credentialPermissions.share"
+				:static="!credentialPermissions.share"
 				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
-			<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-				<i18n-t keypath="credentials.shareModal.info.members" tag="span">
-					<template #projectName>
-						{{ homeProject?.name }}
-					</template>
-					<template #members>
-						<strong>
-							{{
-								$locale.baseText('credentials.shareModal.info.members.number', {
-									interpolate: {
-										number: String(numberOfMembersInHomeTeamProject),
-									},
-									adjustToNumber: numberOfMembersInHomeTeamProject,
-								})
-							}}
-						</strong>
-					</template>
-				</i18n-t>
-			</n8n-info-tip>
 		</div>
 	</div>
 </template>
@@ -89,8 +62,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature } from '@/constants';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
@@ -134,7 +106,6 @@ export default defineComponent({
 	data() {
 		return {
 			sharedWithProjects: [...(this.credential?.sharedWithProjects ?? [])] as ProjectSharingData[],
-			teamProject: null as Project | null,
 		};
 	},
 	computed: {
@@ -182,7 +153,7 @@ export default defineComponent({
 			});
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects.filter(
+			return this.projectsStore.projects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
 					project.id !== this.credentialDataHomeProject?.id,
@@ -190,12 +161,6 @@ export default defineComponent({
 		},
 		homeProject(): ProjectSharingData | undefined {
 			return this.credential?.homeProject ?? this.credentialDataHomeProject;
-		},
-		isHomeTeamProject(): boolean {
-			return this.homeProject?.type === ProjectTypes.Team;
-		},
-		numberOfMembersInHomeTeamProject(): number {
-			return this.teamProject?.relations.length ?? 0;
 		},
 		credentialRoleTranslations(): Record<string, string> {
 			return {
@@ -221,10 +186,6 @@ export default defineComponent({
 	},
 	async mounted() {
 		await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
-
-		if (this.homeProject && this.isHomeTeamProject) {
-			this.teamProject = await this.projectsStore.fetchProject(this.homeProject.id);
-		}
 	},
 	methods: {
 		goToUpgrade() {
