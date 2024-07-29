@@ -1,8 +1,6 @@
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
-import os from 'node:os';
 import { get as pslGet } from 'psl';
-import { GlobalConfig } from '@n8n/config';
 import type {
 	ExecutionStatus,
 	INodesGraphResult,
@@ -11,27 +9,23 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
-import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
 import type {
 	ITelemetryUserDeletionData,
 	IWorkflowDb,
 	IExecutionTrackProperties,
 } from '@/Interfaces';
-import { License } from '@/License';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import type { Project } from '@db/entities/Project';
 import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
-import { SharedCredentialsRepository } from './databases/repositories/sharedCredentials.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 /**
@@ -42,16 +36,11 @@ import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 @Service()
 export class InternalHooks {
 	constructor(
-		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowRepository: WorkflowRepository,
 		workflowStatisticsService: WorkflowStatisticsService,
-		private readonly instanceSettings: InstanceSettings,
-		private readonly license: License,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
 		workflowStatisticsService.on(
@@ -66,73 +55,6 @@ export class InternalHooks {
 
 	async init() {
 		await this.telemetry.init();
-	}
-
-	async onServerStarted(): Promise<unknown[]> {
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
-		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
-
-		const info = {
-			version_cli: N8N_VERSION,
-			db_type: this.globalConfig.database.type,
-			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
-			n8n_disable_production_main_process: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
-			system_info: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
-			},
-			execution_variables: {
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			},
-			n8n_deployment_type: config.getEnv('deployment.type'),
-			n8n_binary_data_mode: binaryDataConfig.mode,
-			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
-			ldap_allowed: authenticationMethod === 'ldap',
-			saml_enabled: authenticationMethod === 'saml',
-			license_plan_name: this.license.getPlanName(),
-			license_tenant_id: config.getEnv('license.tenantId'),
-			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		});
-
-		return await Promise.all([
-			this.telemetry.identify(info),
-			this.telemetry.track('Instance started', {
-				...info,
-				earliest_workflow_created: firstWorkflow?.createdAt,
-			}),
-		]);
 	}
 
 	async onFrontendSettingsAPI(pushRef?: string): Promise<void> {
