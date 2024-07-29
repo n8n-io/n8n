@@ -719,7 +719,7 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{
@@ -805,6 +805,13 @@ export class HttpRequestV3 implements INodeType {
 								},
 							],
 							default: 'brackets',
+						},
+						{
+							displayName: 'Lowercase Headers',
+							name: 'lowercaseHeaders',
+							type: 'boolean',
+							default: true,
+							description: 'Whether to lowercase header names',
 						},
 						{
 							displayName: 'Redirects',
@@ -1388,6 +1395,7 @@ export class HttpRequestV3 implements INodeType {
 				allowUnauthorizedCerts,
 				queryParameterArrays,
 				response,
+				lowercaseHeaders,
 			} = this.getNodeParameter('options', itemIndex, {}) as {
 				batching: { batch: { batchSize: number; batchInterval: number } };
 				proxy: string;
@@ -1398,6 +1406,7 @@ export class HttpRequestV3 implements INodeType {
 					response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
 				};
 				redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
+				lowercaseHeaders: boolean;
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -1611,7 +1620,9 @@ export class HttpRequestV3 implements INodeType {
 				}
 				requestOptions.headers = {
 					...requestOptions.headers,
-					...keysToLowercase(additionalHeaders),
+					...(lowercaseHeaders === undefined || lowercaseHeaders
+						? keysToLowercase(additionalHeaders)
+						: additionalHeaders),
 				};
 			}
 

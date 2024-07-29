@@ -71,7 +71,7 @@ export class VariablesService {
 		}
 		this.validateVariable(variable);
 
-		this.eventService.emit('variable-created', { variableType: variable.type });
+		this.eventService.emit('variable-created');
 		const saveResult = await this.variablesRepository.save(
 			{
 				...variable,

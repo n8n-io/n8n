@@ -2,17 +2,8 @@ import path from 'path';
 import convict from 'convict';
 import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
+import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'json-string-array',
-	coerce: (rawStr: string) =>
-		jsonParse<string[]>(rawStr, {
-			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
-		}),
-	validate: ensureStringArray,
-});
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -21,27 +12,6 @@ convict.addFormat({
 });
 
 export const schema = {
-	workflows: {
-		defaultName: {
-			doc: 'Default name for workflow',
-			format: String,
-			default: 'My workflow',
-			env: 'WORKFLOWS_DEFAULT_NAME',
-		},
-		onboardingFlowDisabled: {
-			doc: 'Show onboarding flow in new workflow',
-			format: Boolean,
-			default: false,
-			env: 'N8N_ONBOARDING_FLOW_DISABLED',
-		},
-		callerPolicyDefaultOption: {
-			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
-			default: 'workflowsFromSameOwner',
-			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
-		},
-	},
-
 	executions: {
 		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
@@ -337,40 +307,6 @@ export const schema = {
 		},
 	},
 
-	// How n8n can be reached (Editor & REST-API)
-	path: {
-		format: String,
-		default: '/',
-		arg: 'path',
-		env: 'N8N_PATH',
-		doc: 'Path n8n is deployed to',
-	},
-	host: {
-		format: String,
-		default: 'localhost',
-		arg: 'host',
-		env: 'N8N_HOST',
-		doc: 'Host name n8n can be reached',
-	},
-	port: {
-		format: Number,
-		default: 5678,
-		arg: 'port',
-		env: 'N8N_PORT',
-		doc: 'HTTP port n8n can be reached',
-	},
-	listen_address: {
-		format: String,
-		default: '0.0.0.0',
-		env: 'N8N_LISTEN_ADDRESS',
-		doc: 'IP address n8n should listen on',
-	},
-	protocol: {
-		format: ['http', 'https'] as const,
-		default: 'http',
-		env: 'N8N_PROTOCOL',
-		doc: 'HTTP Protocol via which n8n can be reached',
-	},
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,
@@ -615,35 +551,6 @@ export const schema = {
 		env: 'EXTERNAL_HOOK_FILES',
 	},
 
-	nodes: {
-		include: {
-			doc: 'Nodes to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_INCLUDE',
-		},
-		exclude: {
-			doc: 'Nodes not to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_EXCLUDE',
-		},
-		errorTriggerType: {
-			doc: 'Node Type to use as Error Trigger',
-			format: String,
-			default: 'n8n-nodes-base.errorTrigger',
-			env: 'NODES_ERROR_TRIGGER_TYPE',
-		},
-		communityPackages: {
-			enabled: {
-				doc: 'Allows you to disable the usage of community packages for nodes',
-				format: Boolean,
-				default: true,
-				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
-			},
-		},
-	},
-
 	logs: {
 		level: {
 			doc: 'Log output level',
@@ -706,45 +613,6 @@ export const schema = {
 			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-	},
-
-	externalStorage: {
-		s3: {
-			host: {
-				format: String,
-				default: '',
-				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
-			},
-			bucket: {
-				name: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
-					doc: 'Name of the n8n bucket in S3-compatible external storage',
-				},
-				region: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
-				},
-			},
-			credentials: {
-				accessKey: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
-					doc: 'Access key in S3-compatible external storage',
-				},
-				accessSecret: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
-					doc: 'Access secret in S3-compatible external storage',
-				},
-			},
 		},
 	},
 

@@ -42,7 +42,7 @@ export class UProc implements INodeType {
 				displayName: 'Additional Options',
 				name: 'additionalOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

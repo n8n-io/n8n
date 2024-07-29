@@ -5,6 +5,7 @@ import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 defineOptions({
 	inheritAttrs: false,
@@ -17,9 +18,11 @@ const props = withDefaults(
 		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
 		eventBus?: EventBus;
+		readOnly?: boolean;
 	}>(),
 	{
 		id: 'canvas',
+		eventBus: () => createEventBus(),
 		fallbackNodes: () => [],
 	},
 );
@@ -49,6 +52,7 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 				:nodes="mappedNodes"
 				:connections="mappedConnections"
 				:event-bus="eventBus"
+				:read-only="readOnly"
 				v-bind="$attrs"
 			/>
 		</div>

@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.50.0",
+  "version": "1.51.0",
   "description": "Workflow base code of n8n",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -29,7 +29,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@langchain/core": "^0.2.9",
+    "@langchain/core": "^0.2.18",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "^4.17.21",
     "@types/jmespath": "^0.15.0",

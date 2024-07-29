@@ -9,7 +9,10 @@
 		<div :class="$style.title">
 			<slot name="title" />
 			<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-			<div :class="$style.action">
+			<div
+				v-if="rootView === REGULAR_NODE_CREATOR_VIEW || rootView === TRIGGER_NODE_CREATOR_VIEW"
+				:class="$style.action"
+			>
 				{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 				<n8n-link v-if="rootView === REGULAR_NODE_CREATOR_VIEW" @click="$emit('addHttpNode')">
 					{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}

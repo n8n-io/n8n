@@ -1,5 +1,7 @@
-import type { ICredentialType } from 'n8n-workflow';
+import { type ICredentialType } from 'n8n-workflow';
 import {
+	AGENT_NODE_NAME,
+	AI_TOOL_HTTP_NODE_NAME,
 	GMAIL_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 	NEW_GOOGLE_ACCOUNT_NAME,
@@ -199,6 +201,31 @@ describe('Credentials', () => {
 			.nodeCredentialsSelect()
 			.find('input')
 			.should('have.value', NEW_CREDENTIAL_NAME2);
+	});
+
+	it('should edit credential for non-standard credential type', () => {
+		workflowPage.actions.visit();
+		workflowPage.actions.addNodeToCanvas(AGENT_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(AI_TOOL_HTTP_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		cy.getByTestId('parameter-input-authentication').click();
+		cy.contains('Predefined Credential Type').click();
+		cy.getByTestId('credential-select').click();
+		cy.contains('Adalo API').click();
+		workflowPage.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.actions.fillCredentialsForm();
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters
+			.nodeCredentialsSelect()
+			.find('input')
+			.should('have.value', NEW_CREDENTIAL_NAME);
 	});
 
 	it('should setup generic authentication for HTTP node', () => {

@@ -12,6 +12,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 export function createCanvasNodeData({
 	id = 'node',
 	name = 'Test Node',
+	subtitle = 'Test Node Subtitle',
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
@@ -30,6 +31,7 @@ export function createCanvasNodeData({
 	return {
 		id,
 		name,
+		subtitle,
 		type,
 		typeVersion,
 		execution,
@@ -64,12 +66,20 @@ export function createCanvasNodeProps({
 	id = 'node',
 	label = 'Test Node',
 	selected = false,
+	readOnly = false,
 	data = {},
-}: { id?: string; label?: string; selected?: boolean; data?: Partial<CanvasNodeData> } = {}) {
+}: {
+	id?: string;
+	label?: string;
+	selected?: boolean;
+	readOnly?: boolean;
+	data?: Partial<CanvasNodeData>;
+} = {}) {
 	return {
 		id,
 		label,
 		selected,
+		readOnly,
 		data: createCanvasNodeData(data),
 	};
 }

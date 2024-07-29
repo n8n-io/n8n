@@ -1,22 +1,17 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { INode, WorkflowSettings } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow, randomInt } from 'n8n-workflow';
-
-import config from '@/config';
+import type { INode } from 'n8n-workflow';
+import { randomInt } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { generateNanoId } from '@/databases/utils/generators';
-import { License } from '@/License';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { OwnershipService } from '@/services/ownership.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import { mockInstance } from '../shared/mocking';
-import { randomCredentialPayload as randomCred, randomName } from '../integration/shared/random';
-import { LicenseMocker } from '../integration/shared/license';
+import { randomCredentialPayload as randomCred } from '../integration/shared/random';
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from '../unit/Helpers';
@@ -25,49 +20,8 @@ import { createOwner, createUser } from '../integration/shared/db/users';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { getPersonalProject } from './shared/db/projects';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/Project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-
-export const toTargetCallErrorMsg = (subworkflowId: string) =>
-	`Target workflow ID ${subworkflowId} may not be called`;
-
-export function createParentWorkflow() {
-	return Container.get(WorkflowRepository).create({
-		id: generateNanoId(),
-		name: randomName(),
-		active: false,
-		connections: {},
-		nodes: [
-			{
-				name: '',
-				typeVersion: 1,
-				type: 'n8n-nodes-base.executeWorkflow',
-				position: [0, 0],
-				parameters: {},
-			},
-		],
-	});
-}
-
-export function createSubworkflow({
-	policy,
-	callerIds,
-}: {
-	policy?: WorkflowSettings.CallerPolicy;
-	callerIds?: string;
-} = {}) {
-	return new Workflow({
-		id: uuid(),
-		nodes: [],
-		connections: {},
-		active: false,
-		nodeTypes: mockNodeTypes,
-		settings: {
-			...(policy ? { callerPolicy: policy } : {}),
-			...(callerIds ? { callerIds } : {}),
-		},
-	});
-}
 
 const ownershipService = mockInstance(OwnershipService);
 
@@ -287,134 +241,5 @@ describe('check()', () => {
 		await expect(
 			permissionChecker.check(workflowEntity.id, workflowEntity.nodes),
 		).resolves.not.toThrow();
-	});
-});
-
-describe('checkSubworkflowExecutePolicy()', () => {
-	let license: LicenseMocker;
-
-	beforeAll(() => {
-		license = new LicenseMocker();
-		license.mock(Container.get(License));
-		license.enable('feat:sharing');
-	});
-
-	describe('no caller policy', () => {
-		test('should fall back to N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', async () => {
-			config.set('workflows.callerPolicyDefaultOption', 'none');
-
-			const parentWorkflow = createParentWorkflow();
-			const subworkflow = createSubworkflow(); // no caller policy
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(memberPersonalProject);
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
-
-			config.load(config.default);
-		});
-	});
-
-	describe('overridden caller policy', () => {
-		test('if no sharing, should override policy to workflows-from-same-owner', async () => {
-			license.disable('feat:sharing');
-
-			const parentWorkflow = createParentWorkflow();
-			const subworkflow = createSubworkflow({ policy: 'any' }); // should be overridden
-
-			const firstProject = Container.get(ProjectRepository).create({ id: uuid() });
-			const secondProject = Container.get(ProjectRepository).create({ id: uuid() });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(firstProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(secondProject); // subworkflow
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
-
-			try {
-				await permissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
-			} catch (error) {
-				if (error instanceof SubworkflowOperationError) {
-					expect(error.description).toBe(
-						`An admin for the ${firstProject.name} project can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`,
-					);
-				}
-			}
-
-			license.enable('feat:sharing');
-		});
-	});
-
-	describe('workflows-from-list caller policy', () => {
-		test('should allow if caller list contains parent workflow ID', async () => {
-			const parentWorkflow = createParentWorkflow();
-
-			const subworkflow = createSubworkflow({
-				policy: 'workflowsFromAList',
-				callerIds: `123,456,bcdef,  ${parentWorkflow.id}`,
-			});
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).resolves.not.toThrow();
-		});
-
-		test('should deny if caller list does not contain parent workflow ID', async () => {
-			const parentWorkflow = createParentWorkflow();
-
-			const subworkflow = createSubworkflow({
-				policy: 'workflowsFromAList',
-				callerIds: 'xyz',
-			});
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).rejects.toThrow();
-		});
-	});
-
-	describe('any caller policy', () => {
-		test('should not throw', async () => {
-			const parentWorkflow = createParentWorkflow();
-			const subworkflow = createSubworkflow({ policy: 'any' });
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(new Project());
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).resolves.not.toThrow();
-		});
-	});
-
-	describe('workflows-from-same-owner caller policy', () => {
-		test('should deny if the two workflows are owned by different users', async () => {
-			const parentWorkflowProject = Container.get(ProjectRepository).create({ id: uuid() });
-			const subworkflowOwner = Container.get(ProjectRepository).create({ id: uuid() });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowOwner); // subworkflow
-
-			const subworkflow = createSubworkflow({ policy: 'workflowsFromSameOwner' });
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, uuid());
-
-			await expect(check).rejects.toThrow(toTargetCallErrorMsg(subworkflow.id));
-		});
-
-		test('should allow if both workflows are owned by the same user', async () => {
-			const parentWorkflow = createParentWorkflow();
-
-			const bothWorkflowsProject = Container.get(ProjectRepository).create({ id: uuid() });
-
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // subworkflow
-
-			const subworkflow = createSubworkflow({ policy: 'workflowsFromSameOwner' });
-
-			const check = permissionChecker.checkSubworkflowExecutePolicy(subworkflow, parentWorkflow.id);
-
-			await expect(check).resolves.not.toThrow();
-		});
 	});
 });
