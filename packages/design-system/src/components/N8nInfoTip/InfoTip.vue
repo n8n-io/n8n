@@ -23,7 +23,7 @@
 				</span>
 			</template>
 		</N8nTooltip>
-		<span v-else :class="$style.iconText" :style="{ color: iconData.color }">
+		<span v-else :class="$style.iconText">
 			<N8nIcon :icon="iconData.icon" />
 			<span>
 				<slot />
