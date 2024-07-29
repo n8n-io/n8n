@@ -2786,22 +2786,28 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 			nodeData: {
 				Set1: [
 					[
-						{
-							value1: 1,
-						},
+						[
+							{
+								value1: 1,
+							},
+						],
 					],
 				],
 				Set2: [
 					[
-						{
-							value1: 1,
-							value2: 2,
-						},
+						[
+							{
+								value1: 1,
+								value2: 2,
+							},
+						],
 					],
 					[
-						{
-							value2: 2,
-						},
+						[
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 			},
@@ -3065,74 +3071,90 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 			nodeData: {
 				Set1: [
 					[
-						{
-							value1: 1,
-						},
+						[
+							{
+								value1: 1,
+							},
+						],
 					],
 				],
 				Set2: [
 					[
-						{
-							value2: 2,
-						},
+						[
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 				Set3: [
 					[
-						{
-							value1: 1,
-							value3: 3,
-						},
+						[
+							{
+								value1: 1,
+								value3: 3,
+							},
+						],
 					],
 				],
 				Set4: [
 					[
-						{
-							value1: 1,
-							value3: 3,
-							value4: 4,
-						},
+						[
+							{
+								value1: 1,
+								value3: 3,
+								value4: 4,
+							},
+						],
 					],
 				],
 				Merge1: [
 					[
-						{
-							value1: 1,
-						},
-						{
-							value2: 2,
-						},
+						[
+							{
+								value1: 1,
+							},
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 				Merge2: [
 					[
-						{
-							value2: 2,
-						},
+						[
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 				Merge3: [
 					[
-						{
-							value1: 1,
-							value3: 3,
-							value4: 4,
-						},
-						{
-							value2: 2,
-						},
+						[
+							{
+								value1: 1,
+								value3: 3,
+								value4: 4,
+							},
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 				Merge4: [
 					[
-						{
-							value1: 1,
-							value3: 3,
-							value4: 4,
-						},
-						{
-							value2: 2,
-						},
+						[
+							{
+								value1: 1,
+								value3: 3,
+								value4: 4,
+							},
+							{
+								value2: 2,
+							},
+						],
 					],
 				],
 			},
@@ -3903,113 +3925,143 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 				'Merge2',
 			],
 			nodeData: {
-				Start: [[{}]],
+				Start: [[[{}]]],
 				Set1: [
 					[
-						{
-							counter: 1,
-						},
+						[
+							{
+								counter: 1,
+							},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+						],
 					],
 					[
-						{
-							counter: 3,
-						},
+						[
+							{
+								counter: 3,
+							},
+						],
 					],
 				],
 				Set: [
 					[
-						{
-							counter: 1,
-						},
+						[
+							{
+								counter: 1,
+							},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+						],
 					],
 					[
-						{
-							counter: 3,
-						},
+						[
+							{
+								counter: 3,
+							},
+						],
 					],
 				],
 				IF1: [
 					[
-						{
-							counter: 1,
-						},
+						[
+							{
+								counter: 1,
+							},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+						],
 					],
-					[],
+					[[]],
 				],
 				IF: [
 					[
-						{
-							counter: 1,
-						},
+						[
+							{
+								counter: 1,
+							},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+						],
 					],
-					[],
+					[[]],
 				],
 				Merge1: [
 					[
-						{
-							counter: 1,
-						},
-						{
-							counter: 1,
-						},
+						[
+							{
+								counter: 1,
+							},
+							{
+								counter: 1,
+							},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+							{
+								counter: 2,
+							},
+						],
 					],
 				],
 				Merge: [
 					[
-						{
-							counter: 3,
-						},
-						{},
+						[
+							{
+								counter: 3,
+							},
+							{},
+						],
 					],
 				],
 				Merge2: [
 					[
-						{
-							counter: 1,
-						},
-						{
-							counter: 1,
-						},
-						{
-							counter: 3,
-						},
-						{},
+						[
+							{
+								counter: 1,
+							},
+							{
+								counter: 1,
+							},
+							{
+								counter: 3,
+							},
+							{},
+						],
 					],
 					[
-						{
-							counter: 2,
-						},
-						{
-							counter: 2,
-						},
+						[
+							{
+								counter: 2,
+							},
+							{
+								counter: 2,
+							},
+						],
 					],
 				],
 			},
@@ -4159,9 +4211,11 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 			nodeData: {
 				Merge: [
 					[
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 			},
@@ -4535,62 +4589,74 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 			nodeData: {
 				Merge1: [
 					[
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 				Merge2: [
 					[
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 				Merge4: [
 					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 				Merge5: [
 					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 				Merge6: [
 					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 				Merge7: [
 					[
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
-						{
-							test: 'a',
-						},
+						[
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+							{
+								test: 'a',
+							},
+						],
 					],
 				],
 			},
