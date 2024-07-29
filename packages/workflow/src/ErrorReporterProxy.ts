@@ -11,7 +11,7 @@ const instance: ErrorReporter = {
 			let e = error;
 			do {
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
+				Logger.error(`${e.constructor.name}: ${e.message}\n${e.stack}`, meta);
 				e = e.cause as Error;
 			} while (e);
 		}
