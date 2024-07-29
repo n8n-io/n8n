@@ -1214,7 +1214,7 @@ export class WorkflowExecute {
 											}
 										}
 
-										nodeSuccessData[outputIndex] = [...successItems];
+										nodeSuccessData[outputIndex] = successItems;
 									}
 
 									nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
