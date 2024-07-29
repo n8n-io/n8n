@@ -8,6 +8,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
@@ -595,6 +596,10 @@ export function useNodeHelpers() {
 
 		if (!data) {
 			return [];
+		}
+
+		if (node?.type === SPLIT_IN_BATCHES_NODE_TYPE) {
+			outputIndex = 0;
 		}
 
 		return getInputData(data, outputIndex, connectionType);
