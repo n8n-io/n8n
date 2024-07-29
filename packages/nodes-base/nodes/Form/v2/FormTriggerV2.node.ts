@@ -116,17 +116,6 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				{
-					displayName: 'Custom Attribution',
-					name: 'customAttribution',
-					type: 'string',
-					placeholder: 'e.g. <svg> ...</svg>',
-					description: "HTML code that will be shown at the bottom of the form instead n8n's logo",
-					default: '',
-					typeOptions: {
-						rows: 2,
-					},
-				},
-				{
 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 					displayName: 'Append n8n Attribution',
 					name: 'appendAttribution',
