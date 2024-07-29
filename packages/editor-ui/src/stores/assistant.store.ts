@@ -468,5 +468,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		sendMessage,
 		applyCodeDiff,
 		undoCodeDiff,
+		resetAssistantChat,
 	};
 });

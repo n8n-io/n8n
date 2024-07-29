@@ -128,4 +128,3 @@ const onClick = () => {
 	margin-bottom: -1px; // center icon to align with text
 }
 </style>
-../AskAssistantText/AssistantText.vue../AskAssistantIcon/AssistantIcon.vue

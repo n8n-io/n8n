@@ -22,6 +22,7 @@ import { useAssistantStore } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -108,6 +109,11 @@ const prepareRawMessages = computed(() => {
 		returnData.push(message);
 	});
 	return returnData;
+});
+
+const isAskAssistantAvailable = computed(() => {
+	const isCustomNode = props.error.node?.type === undefined || isCommunityPackageName(props.error.node);
+	return assistantStore.canShowAssistantButtons && !isCustomNode;
 });
 
 const assistantAlreadyAsked = computed(() => {
@@ -435,7 +441,7 @@ async function onAskAssistantClick() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
-			<div v-if="assistantStore.canShowAssistantButtons" class="node-error-view__assistant-button">
+			<div v-if="isAskAssistantAvailable" class="node-error-view__assistant-button">
 				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 			</div>
 		</div>
