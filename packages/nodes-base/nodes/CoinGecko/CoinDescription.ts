@@ -394,7 +394,7 @@ export const coinFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -555,7 +555,7 @@ export const coinFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -608,7 +608,7 @@ export const coinFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

@@ -22,7 +22,7 @@ const properties: INodeProperties[] = [
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				...memberRLC,
