@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { hackerNewsApiRequest, hackerNewsApiRequestAllItems } from './GenericFunctions';
 
@@ -23,7 +23,7 @@ export class HackerNews implements INodeType {
 			name: 'Hacker News',
 		},
 		inputs: ['main'],
-		outputs: ['main'],
+		outputs: ['main', NodeConnectionType.AiTool],
 		properties: [
 			// ----------------------------------
 			//         Resources
@@ -278,6 +278,7 @@ export class HackerNews implements INodeType {
 					if (operation === 'getAll') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const keyword = additionalFields.keyword as string;
+						console.log("🚀 ~ HackerNews ~ execute ~ keyword:", keyword)
 						const tags = additionalFields.tags as string[];
 
 						qs = {

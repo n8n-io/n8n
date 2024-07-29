@@ -3,15 +3,18 @@ import type {
 	EventNamesAiNodesType,
 	IDataObject,
 	IExecuteFunctions,
+	INodeParameters,
+	INodeType,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
-import { DynamicTool, type Tool } from '@langchain/core/tools';
+import { DynamicStructuredTool, DynamicTool, type Tool } from '@langchain/core/tools';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import { z } from 'zod';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -178,6 +181,143 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
+function isINode(obj: unknown): obj is INodeType {
+	return typeof obj === 'object' && obj !== null && 'execute' in obj;
+}
+
+type NestedObject = { [key: string]: any };
+
+function encodeDotNotation(key: string): string {
+	// __value replace to get complicated params working
+	return key.replace(/\./g, '__').replace('__value', '');
+}
+
+function decodeDotNotation(key: string): string {
+	return key.replace(/__/g, '.');
+}
+
+function traverseObject(
+	obj: NestedObject,
+	path: string[] = [],
+	results: Map<string, string> = new Map(),
+): Map<string, string> {
+	for (const [key, value] of Object.entries(obj)) {
+		const currentPath = [...path, key];
+		const fullPath = currentPath.join('.');
+
+		if (typeof value === 'string' && value.startsWith("={{ '__PLACEHOLDER")) {
+			results.set(encodeDotNotation(fullPath), value);
+		} else if (Array.isArray(value)) {
+			traverseArray(value, currentPath, results);
+		} else if (typeof value === 'object' && value !== null) {
+			traverseObject(value, currentPath, results);
+		}
+	}
+
+	return results;
+}
+
+function traverseArray(arr: any[], path: string[], results: Map<string, string>): void {
+	arr.forEach((item, index) => {
+		const currentPath = [...path, index.toString()];
+		const fullPath = currentPath.join('.');
+
+		if (typeof item === 'string' && item.startsWith("={{ '__PLACEHOLDER")) {
+			results.set(encodeDotNotation(fullPath), item);
+		} else if (Array.isArray(item)) {
+			traverseArray(item, currentPath, results);
+		} else if (typeof item === 'object' && item !== null) {
+			traverseObject(item, currentPath, results);
+		}
+	});
+}
+
+function buildStructureFromMatches(
+	baseKey: string,
+	matchingKeys: string[],
+	values: Record<string, string>,
+): any {
+	const result: any = {};
+
+	for (const matchingKey of matchingKeys) {
+		const decodedKey = decodeDotNotation(matchingKey);
+		const remainingPath = decodedKey
+			.slice(baseKey.length)
+			.split('.')
+			.filter((k) => k !== '');
+		let current = result;
+
+		for (let i = 0; i < remainingPath.length - 1; i++) {
+			if (!(remainingPath[i] in current)) {
+				current[remainingPath[i]] = {};
+			}
+			current = current[remainingPath[i]];
+		}
+
+		const lastKey = remainingPath[remainingPath.length - 1];
+		current[lastKey ?? matchingKey] = values[matchingKey];
+	}
+
+	return Object.keys(result).length === 0 ? values[encodeDotNotation(baseKey)] : result;
+}
+
+function extractPlaceholderDescription(value: string): string {
+	const match = value.match(/{{ '__PLACEHOLDER:\s*(.+?)\s*' }}/);
+	return match ? match[1] : 'No description provided';
+}
+
+function convertNodeToTool(
+	node: INodeType,
+	ctx: IExecuteFunctions,
+	nodeParameters: INodeParameters,
+) {
+	const placeholderValues = traverseObject(nodeParameters);
+
+	// Generate Zod schema
+	const schemaObj: { [key: string]: z.ZodString } = {};
+	for (const [key, value] of placeholderValues.entries()) {
+		const description = extractPlaceholderDescription(value);
+
+		schemaObj[key] = z.string().describe(description);
+	}
+	const schema = z.object(schemaObj);
+
+	const tool = new DynamicStructuredTool({
+		name: node.description.name,
+		description: node.description.description,
+		schema,
+		func: async (args: z.infer<typeof schema>) => {
+			const originalGetNodeParameter = ctx.getNodeParameter;
+			ctx.getNodeParameter = (key: string, index: number, defaultValue?: any, options?: any) => {
+				const encodedKey = encodeDotNotation(key);
+				// Check if the full key or any more specific key is a placeholder
+				const matchingKeys = Array.from(placeholderValues.keys()).filter((k) =>
+					k.startsWith(encodedKey),
+				);
+
+				if (matchingKeys.length > 0) {
+					// If there are matching keys, build the structure using args
+					const res = buildStructureFromMatches(encodedKey, matchingKeys, args);
+					return res?.[decodeDotNotation(key)] ?? res;
+				}
+
+				// If no placeholder is found, use the original function
+				return originalGetNodeParameter(key, index, defaultValue, options);
+			};
+
+			ctx.addInputData(NodeConnectionType.AiTool, [[{ json: args }]]);
+			// @ts-ignore
+			const result = await node.execute.call(ctx);
+			// @ts-ignore
+			const mappedResults = result[0].flatMap((item: any) => item.json);
+			ctx.addOutputData(NodeConnectionType.AiTool, 0, [[{ json: { response: mappedResults } }]]);
+			return JSON.stringify(mappedResults);
+		},
+	});
+
+	return tool;
+}
+
 export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
@@ -198,6 +338,26 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 		}
 		seenNames.add(name);
 	}
+	const finalTools = [];
 
-	return connectedTools;
+	for (const tool of connectedTools) {
+		// @ts-ignore
+		if (isINode(tool?.nodeType)) {
+			// @ts-ignore
+			const convertedNode = convertNodeToTool(
+				// @ts-ignore
+				tool.nodeType,
+				// @ts-ignore
+				tool.context,
+				// @ts-ignore
+				tool.connectedNode.parameters,
+			);
+			// @ts-ignore
+			finalTools.push(convertedNode);
+		} else {
+			finalTools.push(tool);
+		}
+	}
+
+	return finalTools;
 };

@@ -38,7 +38,7 @@ export class SlackV2 implements INodeType {
 				name: 'Slack',
 			},
 			inputs: ['main'],
-			outputs: ['main'],
+			outputs: ['main', 'ai_tool'],
 			credentials: [
 				{
 					name: 'slackApi',

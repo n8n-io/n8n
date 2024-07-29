@@ -219,6 +219,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (hideTools !== 'hide') {
 		const enforceUniqueNames = nodeVersion > 1;
+		// @ts-ignore
 		externalTools = await getConnectedTools(this, enforceUniqueNames);
 	}
 

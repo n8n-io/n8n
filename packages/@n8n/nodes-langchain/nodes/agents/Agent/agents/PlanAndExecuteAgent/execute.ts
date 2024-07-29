@@ -38,6 +38,7 @@ export async function planAndExecuteAgentExecute(
 
 	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
 		llm: model,
+		// @ts-ignore
 		tools,
 		humanMessageTemplate: options.humanMessageTemplate,
 	});
