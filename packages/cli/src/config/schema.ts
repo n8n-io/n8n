@@ -307,19 +307,6 @@ export const schema = {
 		},
 	},
 
-	// How n8n can be reached (Editor & REST-API)
-	listen_address: {
-		format: String,
-		default: '0.0.0.0',
-		env: 'N8N_LISTEN_ADDRESS',
-		doc: 'IP address n8n should listen on',
-	},
-	protocol: {
-		format: ['http', 'https'] as const,
-		default: 'http',
-		env: 'N8N_PROTOCOL',
-		doc: 'HTTP Protocol via which n8n can be reached',
-	},
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,

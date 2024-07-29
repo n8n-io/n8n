@@ -28,8 +28,7 @@ export class UrlService {
 	}
 
 	private generateBaseUrl(): string {
-		const protocol = config.getEnv('protocol');
-		const { path, port, host } = this.globalConfig;
+		const { path, port, host, protocol } = this.globalConfig;
 
 		if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
 			return `${protocol}://${host}${path}`;
