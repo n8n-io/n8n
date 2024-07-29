@@ -72,6 +72,7 @@ export declare namespace WorkflowRequest {
 			workflowId?: number;
 			active: boolean;
 			name?: string;
+			projectId?: string;
 		}
 	>;
 

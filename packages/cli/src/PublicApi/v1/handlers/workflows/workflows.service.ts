@@ -52,7 +52,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
+	project: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
 	return await Db.transaction(async (transactionManager) => {
@@ -64,7 +64,7 @@ export async function createWorkflow(
 		Object.assign(newSharedWorkflow, {
 			role,
 			user,
-			project: personalProject,
+			project,
 			workflow: savedWorkflow,
 		});
 		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
@@ -91,8 +91,19 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return await Container.get(WorkflowRepository).remove(workflow);
 }
 
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
+export async function updateWorkflow(
+	workflowId: string,
+	updateData: WorkflowEntity,
+	projectId?: string,
+	role?: WorkflowSharingRole,
+) {
+	// @debt: We are using PUT for partial update instead of PATCH
+	if (!projectId) return await Container.get(WorkflowRepository).update(workflowId, updateData);
+
+	return await Db.transaction(async (tx) => {
+		await tx.update(WorkflowEntity, workflowId, updateData);
+		await tx.update(SharedWorkflow, { workflowId }, { projectId, role });
+	});
 }
 
 export function parseTagNames(tags: string): string[] {

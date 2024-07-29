@@ -33,11 +33,17 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/eventbus/event.service';
+import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
 
 export = {
 	createWorkflow: [
-		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
+		async (
+			req: WorkflowRequest.Create & { body: { projectId?: string; role?: WorkflowSharingRole } },
+			res: express.Response,
+		): Promise<express.Response> => {
 			const workflow = req.body;
+			const userId = req.user.id;
+			const { projectId, role } = req.body;
 
 			workflow.active = false;
 			workflow.versionId = uuid();
@@ -46,10 +52,18 @@ export = {
 
 			addNodeIds(workflow);
 
-			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-				req.user.id,
+			const projectRepository = Container.get(ProjectRepository);
+
+			const project = projectId
+				? await projectRepository.getProjectForUserOrFail(projectId, userId)
+				: await projectRepository.getPersonalProjectForUserOrFail(userId);
+
+			const createdWorkflow = await createWorkflow(
+				workflow,
+				req.user,
+				project,
+				role ?? 'workflow:owner',
 			);
-			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,
@@ -112,7 +126,7 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name } = req.query;
+			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -143,6 +157,10 @@ export = {
 				if (options.workflowIds) {
 					const workflowIds = options.workflowIds;
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
+				}
+
+				if (projectId) {
+					workflows = workflows.filter((w) => w.projectId === projectId);
 				}
 
 				if (!workflows.length) {
@@ -180,10 +198,14 @@ export = {
 	],
 	updateWorkflow: [
 		projectScope('workflow:update', 'workflow'),
-		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
+		async (
+			req: WorkflowRequest.Update & { body: { projectId: string; role?: WorkflowSharingRole } },
+			res: express.Response,
+		): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
-			Object.assign(updateData, req.body);
+			const { projectId, ...rest } = req.body;
+			Object.assign(updateData, rest);
 			updateData.id = id;
 			updateData.versionId = uuid();
 
@@ -194,7 +216,7 @@ export = {
 			);
 
 			if (!workflow) {
-				// user trying to access a workflow they do not own
+				// user trying to access a workflow they do not have access to
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -211,7 +233,7 @@ export = {
 			}
 
 			try {
-				await updateWorkflow(workflow.id, updateData);
+				await updateWorkflow(workflow.id, updateData, projectId);
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
