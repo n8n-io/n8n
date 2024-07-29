@@ -427,6 +427,10 @@ export class RespondToWebhook implements INodeType {
 				statusCode,
 			};
 
+			items[0].json.body = responseBody;
+			items[0].json.headers = { ...(items[0].json.headers as object), ...headers };
+			items[0].json.statusCode = response.statusCode;
+
 			this.sendResponse(response);
 		} catch (error) {
 			if (this.continueOnFail(error)) {
