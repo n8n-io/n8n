@@ -475,17 +475,7 @@
 				const type = input.type;
 
 				if (type === 'email' && value !== '') {
-					const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    			const isValidEmail = regex.test(value);
-
-					if (!isValidEmail) {
-						errorElement.textContent = 'Enter a valid email address in this field';
-						errorElement.classList.add('error-show');
-						return false;
-					} else {
-						errorElement.classList.remove('error-show');
-						return true;
-					}
+					return validateEmailInput(input, errorElement);
 				} else if (type === 'number' && value !== '') {
 					if (isNaN(value)) {
 						errorElement.textContent = 'Enter only numbers in this field';
@@ -496,12 +486,35 @@
 						return true;
 					}
 				} else if (value === '') {
+					errorElement.textContent = 'This field is required';
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
 					errorElement.classList.remove('error-show');
 					return true;
 				}
+			}
+
+			function validateEmailInput(input, errorElement) {
+				const value = input.value.trim();
+
+				if (value !== '') {
+					const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    			const isValidEmail = regex.test(value);
+
+					if (!isValidEmail) {
+						errorElement.textContent = 'Enter a valid email address in this field';
+						errorElement.classList.add('error-show');
+						return false;
+					} else {
+						errorElement.textContent = 'This field is required';
+						errorElement.classList.remove('error-show');
+						return true;
+					}
+				}
+
+				errorElement.classList.remove('error-show');
+				return true;
 			}
 
 			function getSelectedValues(input) {
@@ -541,6 +554,7 @@
     	});
 
 			const requiredInputs = document.querySelectorAll('.form-required:not(label)');
+			const emailInputs = document.querySelectorAll("input[type=email]");
 
 			requiredInputs.forEach((input) => {
 				const errorSelector = `.error-${input.id}`;
@@ -560,9 +574,27 @@
 				}
 			});
 
+			emailInputs.forEach(function (input) {
+				const errorSelector = `.error-${input.id}`;
+				const error = document.querySelector(errorSelector);
+
+        input.addEventListener("input", function(event) {
+					validateEmailInput(input, error);
+        });
+    	});
+
 			form.addEventListener('submit', (e) => {
 				const valid = [];
 				e.preventDefault();
+
+				emailInputs.forEach(function (input) {
+					if(input.value === '') {
+						return;
+					}
+					const errorSelector = `.error-${input.id}`;
+					const error = document.querySelector(errorSelector);
+					valid.push(validateEmailInput(input, error));
+				});
 
 				requiredInputs.forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
