@@ -16,7 +16,7 @@ export type FormTriggerInput = {
 	isTextarea?: boolean;
 	isFileInput?: boolean;
 	isInput?: boolean;
-	labbel: string;
+	label: string;
 	defaultValue?: string;
 	id: string;
 	errorId: string;

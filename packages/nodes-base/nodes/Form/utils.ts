@@ -15,7 +15,7 @@ import { validateWebhookAuthentication } from '../Webhook/utils';
 import { DateTime } from 'luxon';
 import isbot from 'isbot';
 
-function prepareFormData({
+export function prepareFormData({
 	formTitle,
 	formDescription,
 	formSubmittedText,
