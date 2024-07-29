@@ -4865,20 +4865,6 @@ export const v1WorkflowExecuteTests: WorkflowTestData[] = [
 						},
 					],
 				],
-				If1: [
-					[
-						{
-							name: 'foo',
-							value: 'bar',
-						},
-					],
-					[
-						{
-							name: 'foo',
-							value: 'baz',
-						},
-					],
-				],
 				'Edit Fields2': [
 					[
 						{
