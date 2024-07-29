@@ -1,4 +1,3 @@
-import { EventEmitter } from 'node:events';
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
@@ -6,9 +5,15 @@ import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import { TypedEmitter } from '@/TypedEmitter';
+
+interface Events {
+	'leader-stepdown': never;
+	'leader-takeover': never;
+}
 
 @Service()
-export class MultiMainSetup extends EventEmitter {
+export class MultiMainSetup extends TypedEmitter<Events> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisPublisher: RedisServicePubSubPublisher,
