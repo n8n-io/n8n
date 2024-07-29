@@ -1464,6 +1464,7 @@ export namespace MultiPartFormData {
 		mimetype?: string;
 		originalFilename?: string;
 		newFilename: string;
+		size?: number;
 	}
 
 	export type Request = express.Request<
