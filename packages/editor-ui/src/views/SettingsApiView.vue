@@ -232,10 +232,6 @@ export default defineComponent({
 	position: relative;
 }
 
-.warning-copy {
-	margin-bottom: var(--spacing-s);
-}
-
 .delete {
 	position: absolute;
 	display: inline-block;
