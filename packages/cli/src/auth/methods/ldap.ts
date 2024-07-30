@@ -51,7 +51,7 @@ export const handleLdapLogin = async (
 			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
 			const user = await createLdapUserOnLocalDb(ldapAttributesValues, ldapId);
-			void Container.get(InternalHooks).onUserSignup(user, {
+			Container.get(InternalHooks).onUserSignup(user, {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});

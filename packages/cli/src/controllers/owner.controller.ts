@@ -85,7 +85,7 @@ export class OwnerController {
 
 		this.authService.issueCookie(res, owner, req.browserId);
 
-		void this.internalHooks.onInstanceOwnerSetup({ user_id: owner.id });
+		this.internalHooks.onInstanceOwnerSetup({ user_id: owner.id });
 
 		return await this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}

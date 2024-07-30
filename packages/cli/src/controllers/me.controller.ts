@@ -101,7 +101,7 @@ export class MeController {
 		this.authService.issueCookie(res, user, req.browserId);
 
 		const fieldsChanged = Object.keys(payload);
-		void this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
+		this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
 		this.eventService.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
@@ -151,7 +151,7 @@ export class MeController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
+		this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
@@ -186,7 +186,7 @@ export class MeController {
 
 		this.logger.info('User survey updated successfully', { userId: req.user.id });
 
-		void this.internalHooks.onPersonalizationSurveySubmitted(req.user.id, personalizationAnswers);
+		this.internalHooks.onPersonalizationSurveySubmitted(req.user.id, personalizationAnswers);
 
 		return { success: true };
 	}

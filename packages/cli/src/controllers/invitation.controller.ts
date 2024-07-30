@@ -168,7 +168,7 @@ export class InvitationController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserSignup(updatedUser, {
+		this.internalHooks.onUserSignup(updatedUser, {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
 		});
