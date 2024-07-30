@@ -126,7 +126,7 @@ export class QuickChart implements INodeType {
 				displayName: 'Chart Options',
 				name: 'chartOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -207,7 +207,7 @@ export class QuickChart implements INodeType {
 				displayName: 'Dataset Options',
 				name: 'datasetOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

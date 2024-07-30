@@ -28,6 +28,9 @@ export const formDescription: INodeProperties = {
 	placeholder: "e.g. We'll get back to you soon",
 	description:
 		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
+	typeOptions: {
+		rows: 2,
+	},
 };
 
 export const formFields: INodeProperties = {
@@ -70,6 +73,14 @@ export const formFields: INodeProperties = {
 							value: 'dropdown',
 						},
 						{
+							name: 'Email',
+							value: 'email',
+						},
+						{
+							name: 'File',
+							value: 'file',
+						},
+						{
 							name: 'Number',
 							value: 'number',
 						},
@@ -87,6 +98,17 @@ export const formFields: INodeProperties = {
 						},
 					],
 					required: true,
+				},
+				{
+					displayName: 'Placeholder',
+					name: 'placeholder',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['dropdown', 'date', 'file'],
+						},
+					},
 				},
 				{
 					displayName: 'Field Options',
@@ -130,6 +152,48 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
+						},
+					},
+				},
+				{
+					displayName: 'Multiple Files',
+					name: 'multipleFiles',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether to allow the user to select multiple files from the file input or just one',
+					displayOptions: {
+						show: {
+							fieldType: ['file'],
+						},
+					},
+				},
+				{
+					displayName: 'Accept File Types',
+					name: 'acceptFileTypes',
+					type: 'string',
+					default: '',
+					description: 'List of file types that can be uploaded, separated by commas',
+					hint: 'Leave empty to allow all file types',
+					placeholder: 'e.g. .jpg, .png',
+					displayOptions: {
+						show: {
+							fieldType: ['file'],
+						},
+					},
+				},
+				{
+					displayName: 'Format Date As',
+					name: 'formatDate',
+					type: 'string',
+					default: '',
+					description:
+						'Returns a string representation of this field formatted according to the specified format string. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
+					placeholder: 'e.g. dd/mm/yyyy',
+					hint: 'Leave empty to use the default format',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
 						},
 					},
 				},
@@ -191,7 +255,7 @@ export const respondWithOptions: INodeProperties = {
 	displayName: 'Form Response',
 	name: 'respondWithOptions',
 	type: 'fixedCollection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: { values: { respondWith: 'text' } },
 	options: [
 		{
