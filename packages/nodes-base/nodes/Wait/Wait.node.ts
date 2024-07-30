@@ -304,7 +304,7 @@ export class Wait extends Webhook {
 			},
 			{
 				displayName: 'Authentication',
-				name: 'authentication',
+				name: 'incomingAuthentication',
 				type: 'options',
 				options: [
 					{
