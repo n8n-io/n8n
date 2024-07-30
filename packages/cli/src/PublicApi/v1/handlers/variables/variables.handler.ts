@@ -22,6 +22,7 @@ export = {
 		},
 	],
 	deleteVariable: [
+		isLicensed('feat:variables'),
 		globalScope('variable:delete'),
 		async (req: Delete, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);

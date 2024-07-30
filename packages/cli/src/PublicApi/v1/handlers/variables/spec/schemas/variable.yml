@@ -9,7 +9,6 @@ properties:
     readOnly: true
   key:
     type: string
-    readOnly: true
   value:
     type: string
     example: test

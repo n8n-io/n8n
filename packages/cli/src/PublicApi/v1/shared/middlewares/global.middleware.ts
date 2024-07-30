@@ -10,7 +10,7 @@ import { decodeCursor } from '../services/pagination.service';
 import type { Scope } from '@n8n/permissions';
 import { userHasScope } from '@/permissions/checkAccess';
 import type { BooleanLicenseFeature } from '@/Interfaces';
-import { URL_PRICING_PAGE } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
@@ -93,8 +93,6 @@ export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
 		if (Container.get(License).isFeatureEnabled(feature)) return next();
 
-		return res
-			.status(403)
-			.json({ message: `This endpoint requires a valid license. See: ${URL_PRICING_PAGE}` });
+		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
 	};
 };
