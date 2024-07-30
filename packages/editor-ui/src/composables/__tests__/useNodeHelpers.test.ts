@@ -5,8 +5,6 @@ import { createTestNode } from '@/__tests__/mocks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 
-const { isCustomApiCallSelected } = useNodeHelpers();
-
 vi.mock('@/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn(),
 }));
@@ -25,7 +23,7 @@ describe('useNodeHelpers()', () => {
 			const nodeValues = {
 				parameters: { resource: CUSTOM_API_CALL_KEY },
 			};
-			expect(isCustomApiCallSelected(nodeValues)).toBe(true);
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
 		});
 
 		test('should return `true` when operation includes `CUSTOM_API_CALL_KEY`', () => {
@@ -34,7 +32,7 @@ describe('useNodeHelpers()', () => {
 					operation: CUSTOM_API_CALL_KEY,
 				},
 			};
-			expect(isCustomApiCallSelected(nodeValues)).toBe(true);
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(true);
 		});
 
 		test('should return `false` when neither resource nor operation includes `CUSTOM_API_CALL_KEY`', () => {
@@ -44,7 +42,7 @@ describe('useNodeHelpers()', () => {
 					operation: 'get',
 				},
 			};
-			expect(isCustomApiCallSelected(nodeValues)).toBe(false);
+			expect(useNodeHelpers().isCustomApiCallSelected(nodeValues)).toBe(false);
 		});
 	});
 
