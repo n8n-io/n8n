@@ -1125,7 +1125,6 @@ export class WorkflowExecute {
 									);
 
 									const errorItems: INodeExecutionData[] = [];
-									const successItems: INodeExecutionData[] = [];
 									const closeFunctions: CloseFunction[] = [];
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
@@ -1150,8 +1149,10 @@ export class WorkflowExecute {
 										outputIndex < mainOutputTypes.length - 1;
 										outputIndex++
 									) {
-										successItems.length = 0;
-										const items = nodeSuccessData.length ? nodeSuccessData[0] : [];
+										const successItems: INodeExecutionData[] = [];
+										const items = nodeSuccessData[outputIndex]?.length
+											? nodeSuccessData[outputIndex]
+											: [];
 
 										while (items.length) {
 											const item = items.pop();

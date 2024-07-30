@@ -169,7 +169,7 @@ export const taskFields: INodeProperties[] = [
 		displayName: 'Options',
 		type: 'collection',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -303,7 +303,7 @@ export const taskFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		type: 'collection',
 		default: {},
 		displayOptions: {

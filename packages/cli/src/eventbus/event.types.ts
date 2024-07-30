@@ -15,6 +15,8 @@ export type UserLike = {
  * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
  */
 export type Event = {
+	'server-started': {};
+
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;

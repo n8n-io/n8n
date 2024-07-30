@@ -109,6 +109,16 @@ export async function execute(
 			}
 		}
 
+		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+			let nextValueIndex = values.length + 1;
+			const literals = query.match(/'\$[0-9]+'/g) ?? [];
+			for (const literal of literals) {
+				query = query.replace(literal, `$${nextValueIndex}`);
+				values.push(literal.replace(/'/g, ''));
+				nextValueIndex++;
+			}
+		}
+
 		queries.push({ query, values });
 	}
 
