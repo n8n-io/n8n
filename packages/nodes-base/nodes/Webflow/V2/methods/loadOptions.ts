@@ -1,9 +1,9 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { webflowApiRequest } from '../transport';
+import { webflowApiRequest } from '../../GenericFunctions';
 
 export async function getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await webflowApiRequest.call(this, 'GET', '/sites');
+	const response = await webflowApiRequest.call(this, 'GET', '/v2/sites');
 
 	for (const site of response.body.sites) {
 		returnData.push({
@@ -16,7 +16,7 @@ export async function getSites(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const siteId = this.getCurrentNodeParameter('siteId');
-	const response = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/collections`);
+	const response = await webflowApiRequest.call(this, 'GET', `/v2/sites/${siteId}/collections`);
 
 	for (const collection of response.body.collections) {
 		returnData.push({
@@ -29,7 +29,7 @@ export async function getCollections(this: ILoadOptionsFunctions): Promise<INode
 export async function getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const collectionId = this.getCurrentNodeParameter('collectionId');
-	const response = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}`);
+	const response = await webflowApiRequest.call(this, 'GET', `/v2/collections/${collectionId}`);
 
 	for (const field of response.body.fields) {
 		returnData.push({

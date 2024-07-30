@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
-import { webflowApiRequest } from '../../transport';
+import { webflowApiRequest } from '../../../GenericFunctions';
 
 const properties: INodeProperties[] = [
 	{
@@ -66,7 +66,7 @@ export async function execute(
 			responseData = await webflowApiRequest.call(
 				this,
 				'GET',
-				`/collections/${collectionId}/items/${itemId}`,
+				`/v2/collections/${collectionId}/items/${itemId}`,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(

@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { webflowApiRequest, webflowApiRequestAllItems } from './GenericFunctions';
+import { webflowApiRequest, webflowApiRequestAllItems } from '../GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 

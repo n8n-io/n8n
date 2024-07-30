@@ -17,21 +17,9 @@ export async function webflowApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken');
-	let credentialsType = '';
-
-	if (authenticationMethod === 'accessToken') {
-		credentialsType = 'webflowApi';
-	}
-
-	if (authenticationMethod === 'oAuth2') {
-		credentialsType = 'webflowOAuth2Api';
-	}
+	let credentialsType = 'webflowOAuth2Api';
 
 	let options: IRequestOptions = {
-		headers: {
-			'accept-version': '1.0.0',
-		},
 		method,
 		qs,
 		body,
@@ -39,6 +27,17 @@ export async function webflowApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
+
+	// Keep support for v1 node
+	if (this.getNode().typeVersion === 1) {
+		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken');
+		if (authenticationMethod === 'accessToken') {
+			credentialsType = 'webflowApi';
+		}
+		options.headers = { 'accept-version': '1.0.0' };
+	} else {
+		options.resolveWithFullResponse = true;
+	}
 
 	if (Object.keys(options.qs as IDataObject).length === 0) {
 		delete options.qs;
