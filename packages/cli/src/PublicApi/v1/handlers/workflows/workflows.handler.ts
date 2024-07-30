@@ -42,8 +42,6 @@ export = {
 			res: express.Response,
 		): Promise<express.Response> => {
 			const { projectId, role, ...rest } = req.body;
-			const workflow = rest as WorkflowEntity;
-			const userId = req.user.id;
 
 			if ((projectId && !role) || (!projectId && role)) {
 				return res.status(400).json({
@@ -52,6 +50,8 @@ export = {
 				});
 			}
 
+			const workflow = rest as WorkflowEntity;
+			const userId = req.user.id;
 			workflow.active = false;
 			workflow.versionId = uuid();
 
@@ -212,15 +212,16 @@ export = {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			const { projectId, role, ...rest } = req.body;
-			Object.assign(updateData, rest);
-			updateData.id = id;
-			updateData.versionId = uuid();
 
 			if ((projectId && !role) || (!projectId && role)) {
 				return res.status(400).json({
 					message: "When updating a workflow's project, please specify both projectId and role",
 				});
 			}
+
+			Object.assign(updateData, rest);
+			updateData.id = id;
+			updateData.versionId = uuid();
 
 			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
 				id,
