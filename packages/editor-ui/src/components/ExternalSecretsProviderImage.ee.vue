@@ -7,6 +7,7 @@ import doppler from '../assets/images/doppler.webp';
 import vault from '../assets/images/hashicorp.webp';
 import awsSecretsManager from '../assets/images/aws-secrets-manager.svg';
 import azureKeyVault from '../assets/images/azure-key-vault.svg';
+import gcpSecretsManager from '../assets/images/gcp-secrets-manager.svg';
 
 const props = defineProps<{
 	provider: ExternalSecretsProvider;
@@ -20,6 +21,7 @@ const image = computed(
 			vault,
 			awsSecretsManager,
 			azureKeyVault,
+			gcpSecretsManager,
 		})[props.provider.name],
 );
 </script>
