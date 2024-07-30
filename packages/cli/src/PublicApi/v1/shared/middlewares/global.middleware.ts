@@ -89,9 +89,9 @@ export const validLicenseWithUserQuota = (
 	return next();
 };
 
-export const isLicensed = (licenseFeature: BooleanLicenseFeature) => {
+export const isLicensed = (feature: BooleanLicenseFeature) => {
 	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-		if (Container.get(License).isFeatureEnabled(licenseFeature)) return next();
+		if (Container.get(License).isFeatureEnabled(feature)) return next();
 
 		return res
 			.status(403)
