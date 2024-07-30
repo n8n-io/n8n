@@ -1,29 +1,48 @@
-import { EventEmitter } from 'events';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type WorkflowStatisticsEvents = {
+	nodeFetchedData: { workflowId: string; node: INode };
+	workflowExecutionCompleted: { workflowData: IWorkflowBase; fullRunData: IRun };
+	'telemetry.onFirstProductionWorkflowSuccess': {
+		project_id: string;
+		workflow_id: string;
+		user_id: string;
+	};
+	'telemetry.onFirstWorkflowDataLoad': {
+		user_id: string;
+		project_id: string;
+		workflow_id: string;
+		node_type: string;
+		node_id: string;
+	};
+};
 
 @Service()
-export class WorkflowStatisticsService extends EventEmitter {
+export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEvents> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly userService: UserService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
 
 		this.on(
 			'nodeFetchedData',
-			async (workflowId, node) => await this.nodeFetchedData(workflowId, node),
+			async ({ workflowId, node }) => await this.nodeFetchedData(workflowId, node),
 		);
 		this.on(
 			'workflowExecutionCompleted',
-			async (workflowData, runData) => await this.workflowExecutionCompleted(workflowData, runData),
+			async ({ workflowData, fullRunData }) =>
+				await this.workflowExecutionCompleted(workflowData, fullRunData),
 		);
 	}
 
@@ -49,18 +68,18 @@ export class WorkflowStatisticsService extends EventEmitter {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
-				const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 				if (project.type === 'personal') {
-					const owner = await Container.get(OwnershipService).getProjectOwnerCached(project.id);
+					const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
 					const metrics = {
 						project_id: project.id,
 						workflow_id: workflowId,
-						user_id: owner?.id,
+						user_id: owner!.id,
 					};
 
 					if (owner && !owner.settings?.userActivated) {
-						await Container.get(UserService).updateSettings(owner.id, {
+						await this.userService.updateSettings(owner.id, {
 							firstSuccessfulWorkflowId: workflowId,
 							userActivated: true,
 							userActivatedAt: runData.startedAt.getTime(),
@@ -90,7 +109,7 @@ export class WorkflowStatisticsService extends EventEmitter {
 		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
 		let metrics = {
-			user_id: owner?.id,
+			user_id: owner!.id,
 			project_id: project.id,
 			workflow_id: workflowId,
 			node_type: node.type,
@@ -110,30 +129,4 @@ export class WorkflowStatisticsService extends EventEmitter {
 		// Send metrics to posthog
 		this.emit('telemetry.onFirstWorkflowDataLoad', metrics);
 	}
-}
-
-export declare interface WorkflowStatisticsService {
-	on(
-		event: 'nodeFetchedData',
-		listener: (workflowId: string | undefined | null, node: INode) => void,
-	): this;
-	on(
-		event: 'workflowExecutionCompleted',
-		listener: (workflowData: IWorkflowBase, runData: IRun) => void,
-	): this;
-	on(
-		event: 'telemetry.onFirstProductionWorkflowSuccess',
-		listener: (metrics: { user_id: string; workflow_id: string }) => void,
-	): this;
-	on(
-		event: 'telemetry.onFirstWorkflowDataLoad',
-		listener: (metrics: {
-			user_id: string;
-			workflow_id: string;
-			node_type: string;
-			node_id: string;
-			credential_type?: string;
-			credential_id?: string;
-		}) => void,
-	): this;
 }

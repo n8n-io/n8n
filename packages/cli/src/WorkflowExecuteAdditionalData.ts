@@ -525,17 +525,16 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					workflowStatisticsService.emit(
-						'workflowExecutionCompleted',
-						this.workflowData,
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
 						fullRunData,
-					);
+					});
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
@@ -636,11 +635,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					workflowStatisticsService.emit(
-						'workflowExecutionCompleted',
-						this.workflowData,
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
 						fullRunData,
-					);
+					});
 				}
 			},
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
@@ -676,7 +674,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
