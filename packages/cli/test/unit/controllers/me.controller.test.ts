@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
 import type { PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import { MeController } from '@/controllers/me.controller';
+import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
@@ -223,7 +223,7 @@ describe('MeController', () => {
 	describe('API Key methods', () => {
 		let req: AuthenticatedRequest;
 		beforeAll(() => {
-			req = mock({ user: mock<Partial<User>>({ id: '123', apiKey: 'test-key' }) });
+			req = mock({ user: mock<Partial<User>>({ id: '123', apiKey: `${API_KEY_PREFIX}test-key` }) });
 		});
 
 		describe('createAPIKey', () => {
@@ -234,9 +234,9 @@ describe('MeController', () => {
 		});
 
 		describe('getAPIKey', () => {
-			it('should return the users api key', async () => {
+			it('should return the users api key redacted', async () => {
 				const { apiKey } = await controller.getAPIKey(req);
-				expect(apiKey).toEqual(req.user.apiKey);
+				expect(apiKey).not.toEqual(req.user.apiKey);
 			});
 		});
 

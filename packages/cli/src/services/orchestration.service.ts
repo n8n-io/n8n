@@ -43,15 +43,12 @@ export class OrchestrationService {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	/**
-	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
-	 */
 	get isLeader() {
-		return config.getEnv('multiMainSetup.instanceType') === 'leader';
+		return config.getEnv('instanceRole') === 'leader';
 	}
 
 	get isFollower() {
-		return config.getEnv('multiMainSetup.instanceType') !== 'leader';
+		return config.getEnv('instanceRole') !== 'leader';
 	}
 
 	sanityCheck() {
@@ -66,7 +63,7 @@ export class OrchestrationService {
 		if (this.isMultiMainSetupEnabled) {
 			await this.multiMainSetup.init();
 		} else {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 		}
 
 		this.isInitialized = true;
