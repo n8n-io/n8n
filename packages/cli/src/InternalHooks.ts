@@ -41,6 +41,9 @@ export class InternalHooks {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		workflowStatisticsService: WorkflowStatisticsService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
+		// Can't use @ts-expect-error because only dev time tsconfig considers this as an error, but not build time
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore - needed until we decouple telemetry
 		private readonly _eventBus: MessageEventBus, // needed until we decouple telemetry
 	) {
 		workflowStatisticsService.on('telemetry.onFirstProductionWorkflowSuccess', (metrics) =>
