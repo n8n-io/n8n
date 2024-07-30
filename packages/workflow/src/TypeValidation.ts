@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import isObject from 'lodash/isObject';
 import { ApplicationError } from './errors';
+import { jsonParse } from './utils';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -135,7 +136,8 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		const o = JSON.parse(String(value)) as object;
+		const o = jsonParse<object>(String(value), { acceptJSObject: true });
+
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}

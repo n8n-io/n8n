@@ -102,11 +102,11 @@
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
-					<SetupWorkflowCredentialsButton />
+					<LazySetupWorkflowCredentialsButton />
 				</div>
 			</Suspense>
 			<Suspense>
-				<NodeCreation
+				<LazyNodeCreation
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
@@ -115,7 +115,7 @@
 				/>
 			</Suspense>
 			<Suspense>
-				<CanvasControls />
+				<LazyCanvasControls />
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
@@ -390,13 +390,13 @@ interface AddNodeOptions {
 	name?: string;
 }
 
-const NodeCreation = defineAsyncComponent(
+const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
 );
-const CanvasControls = defineAsyncComponent(
+const LazyCanvasControls = defineAsyncComponent(
 	async () => await import('@/components/CanvasControls.vue'),
 );
-const SetupWorkflowCredentialsButton = defineAsyncComponent(
+const LazySetupWorkflowCredentialsButton = defineAsyncComponent(
 	async () =>
 		await import('@/components/SetupWorkflowCredentialsButton/SetupWorkflowCredentialsButton.vue'),
 );
@@ -409,65 +409,10 @@ export default defineComponent({
 		Sticky,
 		CanvasAddButton,
 		KeyboardShortcutTooltip,
-		NodeCreation,
-		CanvasControls,
+		LazyNodeCreation,
+		LazyCanvasControls,
 		ContextMenu,
-		SetupWorkflowCredentialsButton,
-	},
-	async beforeRouteLeave(to, from, next) {
-		if (
-			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
-			from.name === VIEWS.TEMPLATE_IMPORT ||
-			(getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-		) {
-			next();
-			return;
-		}
-		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
-			const confirmModal = await this.confirm(
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.cancelButtonText',
-					),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
-				if (saved) {
-					await this.npsSurveyStore.fetchPromptsData();
-				}
-				this.uiStore.stateIsDirty = false;
-
-				if (from.name === VIEWS.NEW_WORKFLOW) {
-					// Replace the current route with the new workflow route
-					// before navigating to the new route when saving new workflow.
-					await this.$router.replace({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.currentWorkflow },
-					});
-
-					await this.$router.push(to);
-				} else {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.resetWorkspace();
-				this.uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
+		LazySetupWorkflowCredentialsButton,
 	},
 	setup() {
 		const nodeViewRootRef = ref<HTMLElement | null>(null);
@@ -1389,7 +1334,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			await this.workflowHelpers.initState(workflow);
+			this.workflowHelpers.initState(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({

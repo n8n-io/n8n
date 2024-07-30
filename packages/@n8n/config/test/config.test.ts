@@ -17,7 +17,12 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig = {
+	const defaultConfig: GlobalConfig = {
+		path: '/',
+		host: 'localhost',
+		port: 5678,
+		listen_address: '0.0.0.0',
+		protocol: 'http',
 		database: {
 			logging: {
 				enabled: false,
@@ -56,7 +61,6 @@ describe('GlobalConfig', () => {
 			tablePrefix: '',
 			type: 'sqlite',
 		},
-
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
@@ -88,6 +92,59 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		eventBus: {
+			checkUnsentInterval: 0,
+			crashRecoveryMode: 'extensive',
+			logWriter: {
+				keepLogCount: 3,
+				logBaseName: 'n8nEventLog',
+				maxFileSizeInKB: 10240,
+			},
+		},
+		externalSecrets: {
+			preferGet: false,
+			updateInterval: 300,
+		},
+		nodes: {
+			communityPackages: {
+				enabled: true,
+			},
+			errorTriggerType: 'n8n-nodes-base.errorTrigger',
+			include: [],
+			exclude: [],
+		},
+		publicApi: {
+			disabled: false,
+			path: 'api',
+			swaggerUiDisabled: false,
+		},
+		templates: {
+			enabled: true,
+			host: 'https://api.n8n.io/api/',
+		},
+		versionNotifications: {
+			enabled: true,
+			endpoint: 'https://api.n8n.io/api/versions/',
+			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
+		},
+		externalStorage: {
+			s3: {
+				host: '',
+				bucket: {
+					name: '',
+					region: '',
+				},
+				credentials: {
+					accessKey: '',
+					accessSecret: '',
+				},
+			},
+		},
+		workflows: {
+			defaultName: 'My workflow',
+			onboardingFlowDisabled: false,
+			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
@@ -102,6 +159,7 @@ describe('GlobalConfig', () => {
 			DB_POSTGRESDB_HOST: 'some-host',
 			DB_POSTGRESDB_USER: 'n8n',
 			DB_TABLE_PREFIX: 'test_',
+			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({
@@ -118,11 +176,15 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 			},
+			nodes: {
+				...defaultConfig.nodes,
+				include: ['n8n-nodes-base.hackerNews'],
+			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
-	it('should use values from env variables when defined and convert them to the correct type', () => {
+	it('should read values from files using _FILE env variables', () => {
 		const passwordFile = '/path/to/postgres/password';
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,

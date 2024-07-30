@@ -1,22 +1,43 @@
-import {
-	NodeOperationError,
-	jsonParse,
-	type IDataObject,
-	type IWebhookFunctions,
+import type {
+	INodeExecutionData,
+	MultiPartFormData,
+	IDataObject,
+	IWebhookFunctions,
 } from 'n8n-workflow';
-import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-export const prepareFormData = (
-	formTitle: string,
-	formDescription: string,
-	formSubmittedText: string | undefined,
-	redirectUrl: string | undefined,
-	formFields: FormField[],
-	testRun: boolean,
-	instanceId?: string,
-	useResponseData?: boolean,
+import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
+
+import { WebhookAuthorizationError } from '../Webhook/error';
+import { validateWebhookAuthentication } from '../Webhook/utils';
+
+import { DateTime } from 'luxon';
+import isbot from 'isbot';
+
+export function prepareFormData({
+	formTitle,
+	formDescription,
+	formSubmittedText,
+	redirectUrl,
+	formFields,
+	testRun,
+	query,
+	instanceId,
+	useResponseData,
 	appendAttribution = true,
-) => {
+}: {
+	formTitle: string;
+	formDescription: string;
+	formSubmittedText: string | undefined;
+	redirectUrl: string | undefined;
+	formFields: FormField[];
+	testRun: boolean;
+	query: IDataObject;
+	instanceId?: string;
+	useResponseData?: boolean;
+	appendAttribution?: boolean;
+}) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -49,13 +70,15 @@ export const prepareFormData = (
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect } = field;
+		const { fieldType, requiredField, multiselect, placeholder } = field;
 
 		const input: IDataObject = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
+			defaultValue: query[field.fieldLabel] ?? '',
+			placeholder,
 		};
 
 		if (multiselect) {
@@ -65,6 +88,10 @@ export const prepareFormData = (
 					id: `option${i}`,
 					label: e.option,
 				})) ?? [];
+		} else if (fieldType === 'file') {
+			input.isFileInput = true;
+			input.acceptFileTypes = field.acceptFileTypes;
+			input.multipleFiles = field.multipleFiles ? 'multiple' : '';
 		} else if (fieldType === 'dropdown') {
 			input.isSelect = true;
 			const fieldOptions = field.fieldOptions?.values ?? [];
@@ -73,14 +100,14 @@ export const prepareFormData = (
 			input.isTextarea = true;
 		} else {
 			input.isInput = true;
-			input.type = fieldType as 'text' | 'number' | 'date';
+			input.type = fieldType as 'text' | 'number' | 'date' | 'email';
 		}
 
 		formData.formFields.push(input as FormTriggerInput);
 	}
 
 	return formData;
-};
+}
 
 const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
@@ -114,6 +141,36 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 };
 
 export async function formWebhook(context: IWebhookFunctions) {
+	const nodeVersion = context.getNode().typeVersion;
+	const options = context.getNodeParameter('options', {}) as {
+		ignoreBots?: boolean;
+		respondWithOptions?: {
+			values: {
+				respondWith: 'text' | 'redirect';
+				formSubmittedText: string;
+				redirectUrl: string;
+			};
+		};
+		formSubmittedText?: string;
+		useWorkflowTimezone?: boolean;
+		appendAttribution?: boolean;
+	};
+	const res = context.getResponseObject();
+	const req = context.getRequestObject();
+
+	try {
+		if (options.ignoreBots && isbot(req.headers['user-agent']))
+			throw new WebhookAuthorizationError(403);
+		await validateWebhookAuthentication(context, FORM_TRIGGER_AUTHENTICATION_PROPERTY);
+	} catch (error) {
+		if (error instanceof WebhookAuthorizationError) {
+			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+			res.end(error.message);
+			return { noWebhookResponse: true };
+		}
+		throw error;
+	}
+
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
 	const method = context.getRequestObject().method;
@@ -123,10 +180,11 @@ export async function formWebhook(context: IWebhookFunctions) {
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const formDescription = (context.getNodeParameter('formDescription', '') as string)
+			.replace(/\\n/g, '\n')
+			.replace(/<br>/g, '\n');
 		const instanceId = context.getInstanceId();
 		const responseMode = context.getNodeParameter('responseMode', '') as string;
-		const options = context.getNodeParameter('options', {}) as IDataObject;
 
 		let formSubmittedText;
 		let redirectUrl;
@@ -150,19 +208,21 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		const useResponseData = responseMode === 'responseNode';
 
-		const data = prepareFormData(
+		const query = context.getRequestObject().query as IDataObject;
+
+		const data = prepareFormData({
 			formTitle,
 			formDescription,
 			formSubmittedText,
 			redirectUrl,
 			formFields,
-			mode === 'test',
+			testRun: mode === 'test',
+			query,
 			instanceId,
 			useResponseData,
 			appendAttribution,
-		);
+		});
 
-		const res = context.getResponseObject();
 		res.render('form-trigger', data);
 		return {
 			noWebhookResponse: true,
@@ -170,13 +230,64 @@ export async function formWebhook(context: IWebhookFunctions) {
 	}
 
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
+	const files = (context.getBodyData().files as IDataObject) ?? {};
 
-	const returnData: IDataObject = {};
+	const returnItem: INodeExecutionData = {
+		json: {},
+	};
+	if (files && Object.keys(files).length) {
+		returnItem.binary = {};
+	}
+
+	for (const key of Object.keys(files)) {
+		const processFiles: MultiPartFormData.File[] = [];
+		let multiFile = false;
+		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
+
+		if (Array.isArray(filesInput)) {
+			bodyData[key] = filesInput.map((file) => ({
+				filename: file.originalFilename,
+				mimetype: file.mimetype,
+				size: file.size,
+			}));
+			processFiles.push(...filesInput);
+			multiFile = true;
+		} else {
+			bodyData[key] = {
+				filename: filesInput.originalFilename,
+				mimetype: filesInput.mimetype,
+				size: filesInput.size,
+			};
+			processFiles.push(filesInput);
+		}
+
+		const entryIndex = Number(key.replace(/field-/g, ''));
+		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+
+		let fileCount = 0;
+		for (const file of processFiles) {
+			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+			if (multiFile) {
+				binaryPropertyName += `_${fileCount++}`;
+			}
+
+			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+				file.filepath,
+				file.originalFilename ?? file.newFilename,
+				file.mimetype,
+			);
+		}
+	}
+
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
 		let value = bodyData[key] ?? null;
 
-		if (value === null) returnData[field.fieldLabel] = null;
+		if (value === null) {
+			returnItem.json[field.fieldLabel] = null;
+			continue;
+		}
 
 		if (field.fieldType === 'number') {
 			value = Number(value);
@@ -187,16 +298,31 @@ export async function formWebhook(context: IWebhookFunctions) {
 		if (field.multiselect && typeof value === 'string') {
 			value = jsonParse(value);
 		}
+		if (field.fieldType === 'date' && value && field.formatDate !== '') {
+			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		}
+		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
+			value = [value];
+		}
 
-		returnData[field.fieldLabel] = value;
+		returnItem.json[field.fieldLabel] = value;
 	}
-	returnData.submittedAt = new Date().toISOString();
-	returnData.formMode = mode;
+
+	let { useWorkflowTimezone } = options;
+
+	if (useWorkflowTimezone === undefined && nodeVersion > 2) {
+		useWorkflowTimezone = true;
+	}
+
+	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
+	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+
+	returnItem.json.formMode = mode;
 
 	const webhookResponse: IDataObject = { status: 200 };
 
 	return {
 		webhookResponse,
-		workflowData: [context.helpers.returnJsonArray(returnData)],
+		workflowData: [[returnItem]],
 	};
 }

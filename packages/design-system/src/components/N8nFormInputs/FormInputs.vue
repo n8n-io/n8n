@@ -64,6 +64,12 @@ function onValidate(name: string, isValid: boolean) {
 	};
 }
 
+function getValues() {
+	return { ...values };
+}
+
+defineExpose({ getValues });
+
 function onSubmit() {
 	showValidationWarnings.value = true;
 

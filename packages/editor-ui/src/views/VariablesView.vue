@@ -121,7 +121,7 @@ function resetNewVariablesList() {
 const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
 	id: data.id,
 	key: data.name,
-	value: 'value' in data ? data.value : '',
+	value: 'value' in data ? data.value ?? '' : '',
 });
 
 const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
