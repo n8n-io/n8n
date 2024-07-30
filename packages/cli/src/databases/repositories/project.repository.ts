@@ -25,15 +25,6 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
-	/**
-	 * Return the project with the given ID if the user has access to it.
-	 */
-	async getProjectForUserOrFail(projectId: string, userId: string) {
-		return await this.findOneOrFail({
-			where: { id: projectId, projectRelations: { userId } },
-		});
-	}
-
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: [
