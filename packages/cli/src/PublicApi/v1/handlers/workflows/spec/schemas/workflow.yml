@@ -46,9 +46,3 @@ properties:
     items:
       $ref: '../../../tags/spec/schemas/tag.yml'
     readOnly: true
-  projectId:
-    type: string
-    example: VmwOO9HeTEj20kxM
-  role:
-    type: string
-    example: workflow:owner
