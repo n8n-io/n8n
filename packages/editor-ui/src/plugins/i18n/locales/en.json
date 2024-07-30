@@ -2464,7 +2464,7 @@
 	"projects.settings.role.upgrade.title": "Upgrade to unlock additional roles",
 	"projects.settings.role.upgrade.message": "You're currently limited to {limit} on the {planName} plan and can only assign the admin role to users within this project. To create more projects and unlock additional roles, upgrade your plan.",
 	"projects.sharing.noMatchingProjects": "There are no available projects",
-	"projects.sharing.noMatchingUsers": "No matching users",
+	"projects.sharing.noMatchingUsers": "No matching users or projects",
 	"projects.sharing.placeholder": "Add projects...",
 	"projects.sharing.placeholder.single": "Select project",
 	"projects.error.title": "Project error",
