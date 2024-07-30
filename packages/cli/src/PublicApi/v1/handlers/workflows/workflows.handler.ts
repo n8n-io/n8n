@@ -33,6 +33,8 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/eventbus/event.service';
+import { z } from 'zod';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 export = {
 	createWorkflow: [
@@ -65,6 +67,20 @@ export = {
 			});
 
 			return res.json(createdWorkflow);
+		},
+	],
+	transferWorkflow: [
+		projectScope('workflow:move', 'workflow'),
+		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+			await Container.get(EnterpriseWorkflowService).transferOne(
+				req.user,
+				req.params.workflowId,
+				body.destinationProjectId,
+			);
+
+			res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
