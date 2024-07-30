@@ -9,6 +9,8 @@ import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 import type { Scope } from '@n8n/permissions';
 import { userHasScope } from '@/permissions/checkAccess';
+import type { BooleanLicenseFeature } from '@/Interfaces';
+import { URL_PRICING_PAGE } from '@/constants';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
@@ -85,4 +87,14 @@ export const validLicenseWithUserQuota = (
 	}
 
 	return next();
+};
+
+export const isLicensed = (licenseFeature: BooleanLicenseFeature) => {
+	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+		if (Container.get(License).isFeatureEnabled(licenseFeature)) return next();
+
+		return res
+			.status(403)
+			.json({ message: `This endpoint requires a valid license. See: ${URL_PRICING_PAGE}` });
+	};
 };

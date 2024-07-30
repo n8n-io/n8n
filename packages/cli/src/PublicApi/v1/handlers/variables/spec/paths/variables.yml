@@ -6,7 +6,7 @@ post:
   summary: Create a variable
   description: Create a variable in your instance.
   requestBody:
-    description: Created variable object.
+    description: Payload for variable to create.
     content:
       application/json:
         schema:
@@ -14,15 +14,9 @@ post:
     required: true
   responses:
     '201':
-      description: A variable object
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/variable.yml'
+      description: Operation successful.
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
-    '409':
-      $ref: '../../../../shared/spec/responses/conflict.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
 get:
