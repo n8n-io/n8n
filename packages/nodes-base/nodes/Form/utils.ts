@@ -141,7 +141,7 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 };
 
 export async function formWebhook(context: IWebhookFunctions) {
-	const nodeVersion = context.getNode().typeVersion;
+	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
 		respondWithOptions?: {
@@ -159,8 +159,9 @@ export async function formWebhook(context: IWebhookFunctions) {
 	const req = context.getRequestObject();
 
 	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent']))
+		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
+		}
 		await validateWebhookAuthentication(context, FORM_TRIGGER_AUTHENTICATION_PROPERTY);
 	} catch (error) {
 		if (error instanceof WebhookAuthorizationError) {
@@ -310,7 +311,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 	let { useWorkflowTimezone } = options;
 
-	if (useWorkflowTimezone === undefined && nodeVersion > 2) {
+	if (useWorkflowTimezone === undefined && node.typeVersion > 2) {
 		useWorkflowTimezone = true;
 	}
 
