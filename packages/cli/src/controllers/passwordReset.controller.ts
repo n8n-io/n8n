@@ -120,7 +120,7 @@ export class PasswordResetController {
 				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
-			void this.internalHooks.onEmailFailed({
+			this.internalHooks.onEmailFailed({
 				user,
 				message_type: 'Reset password',
 				public_api: false,
@@ -132,13 +132,13 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
-		void this.internalHooks.onUserTransactionalEmail({
+		this.internalHooks.onUserTransactionalEmail({
 			user_id: id,
 			message_type: 'Reset password',
 			public_api: false,
 		});
 
-		void this.internalHooks.onUserPasswordResetRequestClick({ user });
+		this.internalHooks.onUserPasswordResetRequestClick({ user });
 		this.eventService.emit('user-password-reset-request-click', { user });
 	}
 
@@ -171,7 +171,7 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		void this.internalHooks.onUserPasswordResetEmailClick({ user });
+		this.internalHooks.onUserPasswordResetEmailClick({ user });
 		this.eventService.emit('user-password-reset-email-click', { user });
 	}
 
@@ -215,13 +215,13 @@ export class PasswordResetController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		void this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
+		this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 
 		// if this user used to be an LDAP users
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
-			void this.internalHooks.onUserSignup(user, {
+			this.internalHooks.onUserSignup(user, {
 				user_type: 'email',
 				was_disabled_ldap_user: true,
 			});
