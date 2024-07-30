@@ -38,23 +38,6 @@ export type Event = {
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
 	};
 
-	'workflow-post-execute': {
-		audit: {
-			executionId: string;
-			success: boolean;
-			userId?: string;
-			workflowId: string;
-			isManual: boolean;
-			workflowName: string;
-			metadata?: Record<string, string>;
-		};
-		telemetry: {
-			workflow: IWorkflowBase;
-			runData?: IRun;
-			userId?: string;
-		};
-	};
-
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
@@ -316,5 +299,22 @@ export type Event = {
 	'public-api-key-deleted': {
 		user: UserLike; // audit and telemetry
 		publicApi: boolean; // telemetry only
+	};
+
+	'workflow-post-execute': {
+		// audit and telemetry
+		userId?: string;
+
+		// audit only
+		executionId: string;
+		success: boolean;
+		workflowId: string;
+		isManual: boolean;
+		workflowName: string;
+		metadata?: Record<string, string>;
+
+		// telemetry only
+		workflow: IWorkflowBase;
+		runData?: IRun;
 	};
 };

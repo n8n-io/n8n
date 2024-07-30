@@ -511,9 +511,7 @@ export class TelemetryEventRelay {
 	}
 
 	// eslint-disable-next-line complexity
-	private async workflowPostExecute({ telemetry }: Event['workflow-post-execute']) {
-		const { workflow, runData, userId } = telemetry;
-
+	private async workflowPostExecute({ workflow, runData, userId }: Event['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}

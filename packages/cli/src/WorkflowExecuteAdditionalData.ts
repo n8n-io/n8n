@@ -645,17 +645,13 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				const { executionId, workflowData: workflow } = this;
 
 				eventService.emit('workflow-post-execute', {
-					audit: {
-						workflowId: workflow.id,
-						workflowName: workflow.name,
-						executionId,
-						success: runData.status === 'success',
-						isManual: runData.mode === 'manual',
-					},
-					telemetry: {
-						workflow,
-						runData,
-					},
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					executionId,
+					success: runData.status === 'success',
+					isManual: runData.mode === 'manual',
+					workflow,
+					runData,
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -938,19 +934,14 @@ async function executeWorkflow(
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
 	eventService.emit('workflow-post-execute', {
-		audit: {
-			workflowId: workflowData.id,
-			workflowName: workflowData.name,
-			executionId,
-			success: data.status === 'success',
-			isManual: data.mode === 'manual',
-			userId: additionalData.userId,
-		},
-		telemetry: {
-			workflow: workflowData,
-			runData: data,
-			userId: additionalData.userId,
-		},
+		workflowId: workflowData.id,
+		workflowName: workflowData.name,
+		executionId,
+		success: data.status === 'success',
+		isManual: data.mode === 'manual',
+		userId: additionalData.userId,
+		workflow: workflowData,
+		runData: data,
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here

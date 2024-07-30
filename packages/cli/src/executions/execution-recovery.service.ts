@@ -280,24 +280,20 @@ export class ExecutionRecoveryService {
 		execution.data ??= { resultData: { runData: {} } };
 
 		this.eventService.emit('workflow-post-execute', {
-			audit: {
-				workflowId: execution.workflowData.id,
-				workflowName: execution.workflowData.name,
-				executionId: execution.id,
-				success: execution.status === 'success',
-				isManual: execution.mode === 'manual',
-			},
-			telemetry: {
-				workflow: execution.workflowData,
-				runData: {
-					data: execution.data,
-					finished: false,
-					mode: execution.mode,
-					waitTill: execution.waitTill,
-					startedAt: execution.startedAt,
-					stoppedAt: execution.stoppedAt,
-					status: execution.status,
-				},
+			workflowId: execution.workflowData.id,
+			workflowName: execution.workflowData.name,
+			executionId: execution.id,
+			success: execution.status === 'success',
+			isManual: execution.mode === 'manual',
+			workflow: execution.workflowData,
+			runData: {
+				data: execution.data,
+				finished: false,
+				mode: execution.mode,
+				waitTill: execution.waitTill,
+				startedAt: execution.startedAt,
+				stoppedAt: execution.stoppedAt,
+				status: execution.status,
 			},
 		});
 

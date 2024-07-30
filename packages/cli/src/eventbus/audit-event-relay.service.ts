@@ -121,10 +121,26 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPostExecute({ audit }: Event['workflow-post-execute']) {
+	private workflowPostExecute({
+		userId,
+		executionId,
+		success,
+		workflowId,
+		isManual,
+		workflowName,
+		metadata,
+	}: Event['workflow-post-execute']) {
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.success',
-			payload: audit,
+			payload: {
+				userId,
+				executionId,
+				success,
+				workflowId,
+				isManual,
+				workflowName,
+				metadata,
+			},
 		});
 	}
 
