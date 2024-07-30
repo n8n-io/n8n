@@ -199,15 +199,21 @@ export = {
 	updateWorkflow: [
 		projectScope('workflow:update', 'workflow'),
 		async (
-			req: WorkflowRequest.Update & { body: { projectId: string; role?: WorkflowSharingRole } },
+			req: WorkflowRequest.Update & { body: { projectId?: string; role?: WorkflowSharingRole } },
 			res: express.Response,
 		): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
-			const { projectId, ...rest } = req.body;
+			const { projectId, role, ...rest } = req.body;
 			Object.assign(updateData, rest);
 			updateData.id = id;
 			updateData.versionId = uuid();
+
+			if ((projectId && !role) || (!projectId && role)) {
+				return res.status(400).json({
+					message: "When updating a workflow's project, please specify both projectId and role",
+				});
+			}
 
 			const workflow = await Container.get(SharedWorkflowRepository).findWorkflowForUser(
 				id,
@@ -233,7 +239,7 @@ export = {
 			}
 
 			try {
-				await updateWorkflow(workflow.id, updateData, projectId);
+				await updateWorkflow(workflow.id, updateData, projectId, role);
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });

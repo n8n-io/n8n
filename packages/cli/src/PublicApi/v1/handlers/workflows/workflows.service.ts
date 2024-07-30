@@ -97,8 +97,9 @@ export async function updateWorkflow(
 	projectId?: string,
 	role?: WorkflowSharingRole,
 ) {
-	// @debt: We are using PUT for partial update instead of PATCH
-	if (!projectId) return await Container.get(WorkflowRepository).update(workflowId, updateData);
+	if (!projectId && !role) {
+		return await Container.get(WorkflowRepository).update(workflowId, updateData);
+	}
 
 	return await Db.transaction(async (tx) => {
 		await tx.update(WorkflowEntity, workflowId, updateData);
