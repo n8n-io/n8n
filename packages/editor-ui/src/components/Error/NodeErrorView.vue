@@ -112,7 +112,8 @@ const prepareRawMessages = computed(() => {
 });
 
 const isAskAssistantAvailable = computed(() => {
-	const isCustomNode = props.error.node?.type === undefined || isCommunityPackageName(props.error.node);
+	const isCustomNode =
+		props.error.node?.type === undefined || isCommunityPackageName(props.error.node);
 	return assistantStore.canShowAssistantButtons && !isCustomNode;
 });
 
