@@ -45,6 +45,7 @@ import {
 	NodeExecutionOutput,
 	sleep,
 	OBFUSCATED_ERROR_MESSAGE,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1317,6 +1318,25 @@ export class WorkflowExecute {
 							break;
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+
+							let toReport: Error | undefined;
+							if (error instanceof ApplicationError) {
+								// Report any unhandled errors that were wrapped in by one of our error classes
+								if (error.cause instanceof Error) toReport = error.cause;
+							} else {
+								// Report any unhandled and non-wrapped errors to Sentry
+								toReport = error;
+							}
+							if (toReport) {
+								ErrorReporterProxy.error(toReport, {
+									extra: {
+										nodeName: executionNode.name,
+										nodeType: executionNode.type,
+										nodeVersion: executionNode.typeVersion,
+										workflowId: workflow.id,
+									},
+								});
+							}
 
 							const message =
 								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
