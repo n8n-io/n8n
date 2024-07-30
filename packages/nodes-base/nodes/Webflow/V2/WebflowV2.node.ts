@@ -4,8 +4,8 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { getSites, getCollections, getFields } from '../GenericFunctions';
 import { versionDescription } from './actions/versionDescription';
-import { loadOptions } from './methods';
 import { router } from './actions/router';
 
 export class WebflowV2 implements INodeType {
@@ -19,7 +19,11 @@ export class WebflowV2 implements INodeType {
 	}
 
 	methods = {
-		loadOptions,
+		loadOptions: {
+			getSites,
+			getCollections,
+			getFields,
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {

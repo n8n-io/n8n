@@ -115,7 +115,7 @@ export async function execute(
 			responseData = await webflowApiRequest.call(
 				this,
 				'POST',
-				`/v2/collections/${collectionId}/items`,
+				`/collections/${collectionId}/items`,
 				body,
 				{ live },
 			);

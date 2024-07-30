@@ -124,7 +124,7 @@ export async function execute(
 			responseData = await webflowApiRequest.call(
 				this,
 				'PATCH',
-				`/v2/collections/${collectionId}/items/${itemId}`,
+				`/collections/${collectionId}/items/${itemId}`,
 				body,
 				{ live },
 			);

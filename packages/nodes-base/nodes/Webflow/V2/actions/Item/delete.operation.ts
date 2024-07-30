@@ -66,7 +66,7 @@ export async function execute(
 			let responseData = await webflowApiRequest.call(
 				this,
 				'DELETE',
-				`/v2/collections/${collectionId}/items/${itemId}`,
+				`/collections/${collectionId}/items/${itemId}`,
 			);
 
 			if (responseData.statusCode === 204) {

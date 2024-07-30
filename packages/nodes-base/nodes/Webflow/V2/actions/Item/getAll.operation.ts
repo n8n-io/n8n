@@ -84,7 +84,7 @@ export async function execute(
 				responseData = await webflowApiRequestAllItems.call(
 					this,
 					'GET',
-					`/v2/collections/${collectionId}/items`,
+					`/collections/${collectionId}/items`,
 					{},
 				);
 			} else {
@@ -92,7 +92,7 @@ export async function execute(
 				responseData = await webflowApiRequest.call(
 					this,
 					'GET',
-					`/v2/collections/${collectionId}/items`,
+					`/collections/${collectionId}/items`,
 					{},
 					qs,
 				);

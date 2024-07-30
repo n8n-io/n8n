@@ -1,15 +1,19 @@
 import type {
 	IExecuteFunctions,
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { webflowApiRequest, webflowApiRequestAllItems } from '../GenericFunctions';
+import {
+	webflowApiRequest,
+	webflowApiRequestAllItems,
+	getSites,
+	getCollections,
+	getFields,
+} from '../GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 
@@ -85,49 +89,9 @@ export class WebflowV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const sites = await webflowApiRequest.call(this, 'GET', '/sites');
-				for (const site of sites) {
-					returnData.push({
-						name: site.name,
-						value: site._id,
-					});
-				}
-				return returnData;
-			},
-			async getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const siteId = this.getCurrentNodeParameter('siteId');
-				const collections = await webflowApiRequest.call(
-					this,
-					'GET',
-					`/sites/${siteId}/collections`,
-				);
-				for (const collection of collections) {
-					returnData.push({
-						name: collection.name,
-						value: collection._id,
-					});
-				}
-				return returnData;
-			},
-			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const collectionId = this.getCurrentNodeParameter('collectionId');
-				const { fields } = await webflowApiRequest.call(
-					this,
-					'GET',
-					`/collections/${collectionId}`,
-				);
-				for (const field of fields) {
-					returnData.push({
-						name: `${field.name} (${field.type}) ${field.required ? ' (required)' : ''}`,
-						value: field.slug,
-					});
-				}
-				return returnData;
-			},
+			getSites,
+			getCollections,
+			getFields,
 		},
 	};
 
