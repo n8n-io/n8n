@@ -1,14 +1,16 @@
 import { recreateNodeExecutionStack } from '@/utils-2';
-import { createNodeData, defaultWorkflowParameter, toITaskData } from './helpers';
-import { DirectedGraph, findSubgraph2, StartNodeData } from '@/utils';
-import type { IPinData, IRunData } from 'n8n-workflow';
+import { createNodeData, toITaskData } from './helpers';
+import type { StartNodeData } from '@/utils';
+import { DirectedGraph, findSubgraph2 } from '@/utils';
+import { type IPinData, type IRunData } from 'n8n-workflow';
+import { AssertionError } from 'assert';
 
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
 // If you update the tests please update the diagrams as well.
 //
 // Map
-// 0  means the output has no data.
-// 1  means the output has data.
+// 0  means the output has no run data.
+// 1  means the output has run data.
 // ►► denotes the node that the user wants to execute to.
 // XX denotes that the node is disabled
 
@@ -17,7 +19,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  ┌───────┐       ┌────┐
 	//  │Trigger│1─────►│Node│
 	//  └───────┘       └────┘
-	test('simple', () => {
+	test('all nodes except destination node have data', () => {
 		//
 		// ARRANGE
 		//
@@ -28,12 +30,10 @@ describe('recreateNodeExecutionStack', () => {
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
 
-		const workflow = findSubgraph2(graph, node, trigger).toWorkflow({
-			...defaultWorkflowParameter,
-		});
+		const workflow = findSubgraph2(graph, node, trigger);
 		const startNodes: StartNodeData[] = [
 			{
-				node: node,
+				node,
 				sourceData: {
 					previousNode: trigger,
 					previousNodeRun: 0,
@@ -50,7 +50,7 @@ describe('recreateNodeExecutionStack', () => {
 		// ACT
 		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node.name, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
 		//
 		// ASSERT
@@ -58,15 +58,7 @@ describe('recreateNodeExecutionStack', () => {
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
-				node: {
-					disabled: false,
-					id: 'uuid-1234',
-					name: 'node',
-					parameters: {},
-					position: [100, 100],
-					type: 'test.set',
-					typeVersion: 1,
-				},
+				node,
 				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
 			},
 		]);
@@ -87,7 +79,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  ┌───────┐       ┌────┐
 	//  │Trigger│0─────►│Node│
 	//  └───────┘       └────┘
-	test('simple', () => {
+	test('no nodes have data', () => {
 		//
 		// ARRANGE
 		//
@@ -96,8 +88,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		const workflow = new DirectedGraph()
 			.addNodes(trigger, node)
-			.addConnections({ from: trigger, to: node })
-			.toWorkflow({ ...defaultWorkflowParameter });
+			.addConnections({ from: trigger, to: node });
 		const startNodes: StartNodeData[] = [{ node: trigger }];
 		const runData: IRunData = {};
 		const pinData: IPinData = {};
@@ -106,7 +97,7 @@ describe('recreateNodeExecutionStack', () => {
 		// ACT
 		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node.name, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
 		//
 		// ASSERT
@@ -115,15 +106,7 @@ describe('recreateNodeExecutionStack', () => {
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: {} }]] },
-				node: {
-					disabled: false,
-					id: 'uuid-1234',
-					name: 'trigger',
-					parameters: {},
-					position: [100, 100],
-					type: 'test.set',
-					typeVersion: 1,
-				},
+				node: trigger,
 				source: null,
 			},
 		]);
@@ -136,7 +119,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  ┌───────┐       ┌────┐
 	//  │Trigger│1─────►│Node│
 	//  └───────┘       └────┘
-	test('pinned data', () => {
+	test('node before destination node has pinned data', () => {
 		//
 		// ARRANGE
 		//
@@ -145,8 +128,7 @@ describe('recreateNodeExecutionStack', () => {
 
 		const workflow = new DirectedGraph()
 			.addNodes(trigger, node)
-			.addConnections({ from: trigger, to: node })
-			.toWorkflow({ ...defaultWorkflowParameter });
+			.addConnections({ from: trigger, to: node });
 		const startNodes: StartNodeData[] = [
 			{
 				node,
@@ -162,7 +144,7 @@ describe('recreateNodeExecutionStack', () => {
 		// ACT
 		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node.name, runData, pinData);
+			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
 		//
 		// ASSERT
@@ -171,15 +153,7 @@ describe('recreateNodeExecutionStack', () => {
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
-				node: {
-					disabled: false,
-					id: 'uuid-1234',
-					name: 'node',
-					parameters: {},
-					position: [100, 100],
-					type: 'test.set',
-					typeVersion: 1,
-				},
+				node,
 				source: {
 					main: [{ previousNode: trigger.name, previousNodeRun: 0, previousNodeOutput: 0 }],
 				},
@@ -192,18 +166,57 @@ describe('recreateNodeExecutionStack', () => {
 
 	//                 XX            ►►
 	//  ┌───────┐      ┌─────┐       ┌─────┐
-	//  │Trigger│1─┬──►│Node1│──┬───►│Node3│
-	//  └───────┘  │   └─────┘  │    └─────┘
-	//             │            │
-	//             │   ┌─────┐  │
-	//             └──►│Node2│1─┘
-	//                 └─────┘
-	test('disabled nodes', () => {
+	//  │Trigger│1────►│Node1│──────►│Node2│
+	//  └───────┘      └─────┘       └─────┘
+	test('throws if a disabled node is found', () => {
 		//
 		// ARRANGE
 		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1', disabled: true });
+		const node2 = createNodeData({ name: 'node2' });
+
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2)
+			.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 });
+
+		const startNodes: StartNodeData[] = [
+			{
+				node: node2,
+				sourceData: {
+					previousNode: node1,
+					previousNodeRun: 0,
+					previousNodeOutput: 0,
+				},
+			},
+		];
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+		};
+		const pinData = {};
+
+		//
+		// ACT & ASSERT
+		//
+		expect(() =>
+			recreateNodeExecutionStack(graph, startNodes, node2, runData, pinData),
+		).toThrowError(AssertionError);
+	});
+
+	//                               ►►
+	//  ┌───────┐      ┌─────┐       ┌─────┐
+	//  │Trigger│1─┬──►│Node1│1─┬───►│Node3│
+	//  └───────┘  │   └─────┘  │    └─────┘
+	//             │            │
+	//             │   ┌─────┐  │
+	//             └──►│Node2│1─┘
+	//                 └─────┘
+	test('multiple incoming connections', () => {
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
 		const node3 = createNodeData({ name: 'node3' });
 
@@ -216,14 +229,11 @@ describe('recreateNodeExecutionStack', () => {
 				{ from: node2, to: node3 },
 			);
 
-		const workflow = findSubgraph2(graph, node3, trigger).toWorkflow({
-			...defaultWorkflowParameter,
-		});
 		const startNodes: StartNodeData[] = [
 			{
 				node: node3,
 				sourceData: {
-					previousNode: trigger,
+					previousNode: node1,
 					previousNodeRun: 0,
 					previousNodeOutput: 0,
 				},
@@ -239,8 +249,8 @@ describe('recreateNodeExecutionStack', () => {
 		];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
 			[node2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[node3.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
 		const pinData = {};
 
@@ -248,7 +258,7 @@ describe('recreateNodeExecutionStack', () => {
 		// ACT
 		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(workflow, startNodes, node2.name, runData, pinData);
+			recreateNodeExecutionStack(graph, startNodes, node2, runData, pinData);
 
 		//
 		// ASSERT
@@ -257,28 +267,12 @@ describe('recreateNodeExecutionStack', () => {
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
-				node: {
-					disabled: false,
-					id: 'uuid-1234',
-					name: 'node3',
-					parameters: {},
-					position: [100, 100],
-					type: 'test.set',
-					typeVersion: 1,
-				},
-				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+				node: node3,
+				source: { main: [{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 }] },
 			},
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
-				node: {
-					disabled: false,
-					id: 'uuid-1234',
-					name: 'node3',
-					parameters: {},
-					position: [100, 100],
-					type: 'test.set',
-					typeVersion: 1,
-				},
+				node: node3,
 				source: { main: [{ previousNode: 'node2', previousNodeOutput: 0, previousNodeRun: 0 }] },
 			},
 		]);

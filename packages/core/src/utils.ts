@@ -431,7 +431,7 @@ export function findCycles(_workflow: Workflow) {
 	return [];
 }
 
-type Connection = {
+export type Connection = {
 	from: INode;
 	to: INode;
 	type: NodeConnectionType;
