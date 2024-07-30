@@ -19,11 +19,7 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip
-					v-if="!workflowPermissions.share"
-					:bold="false"
-					class="mb-s"
-				>
+				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -124,7 +120,6 @@ import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
-import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
 
