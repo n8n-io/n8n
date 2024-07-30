@@ -190,7 +190,7 @@ async function onExecutionStop(id: string) {
 	}
 }
 
-async function onExecutionDelete(id?: string) {
+async function onExecutionDelete(id: string) {
 	loading.value = true;
 	try {
 		const executionIndex = executions.value.findIndex((e: ExecutionSummary) => e.id === id);
