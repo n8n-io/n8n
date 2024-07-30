@@ -14,14 +14,14 @@ import type {
 import { TIME } from '@/constants';
 import { TypedEmitter } from '@/TypedEmitter';
 
-interface Events {
+type CacheEvents = {
 	'metrics.cache.hit': never;
 	'metrics.cache.miss': never;
 	'metrics.cache.update': never;
-}
+};
 
 @Service()
-export class CacheService extends TypedEmitter<Events> {
+export class CacheService extends TypedEmitter<CacheEvents> {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {

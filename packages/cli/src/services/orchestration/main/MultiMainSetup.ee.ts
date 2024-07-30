@@ -7,13 +7,13 @@ import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSub
 import { RedisClientService } from '@/services/redis/redis-client.service';
 import { TypedEmitter } from '@/TypedEmitter';
 
-interface Events {
+type MultiMainEvents = {
 	'leader-stepdown': never;
 	'leader-takeover': never;
-}
+};
 
 @Service()
-export class MultiMainSetup extends TypedEmitter<Events> {
+export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisPublisher: RedisServicePubSubPublisher,

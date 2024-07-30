@@ -1,14 +1,14 @@
 import { Service } from 'typedi';
 import { TypedEmitter } from '@/TypedEmitter';
 
-interface Events {
+type ConcurrencyEvents = {
 	'execution-throttled': { executionId: string };
 	'execution-released': string;
 	'concurrency-check': { capacity: number };
-}
+};
 
 @Service()
-export class ConcurrencyQueue extends TypedEmitter<Events> {
+export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 	private readonly queue: Array<{
 		executionId: string;
 		resolve: () => void;

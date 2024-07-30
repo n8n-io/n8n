@@ -7,7 +7,7 @@ import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
 import { TypedEmitter } from '@/TypedEmitter';
 
-interface Events {
+type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
 	workflowExecutionCompleted: { workflowData: IWorkflowBase; fullRunData: IRun };
 	'telemetry.onFirstProductionWorkflowSuccess': {
@@ -22,10 +22,10 @@ interface Events {
 		node_type: string;
 		node_id: string;
 	};
-}
+};
 
 @Service()
-export class WorkflowStatisticsService extends TypedEmitter<Events> {
+export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEvents> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: WorkflowStatisticsRepository,
