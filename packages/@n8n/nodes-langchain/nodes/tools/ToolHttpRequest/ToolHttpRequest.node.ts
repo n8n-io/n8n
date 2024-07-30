@@ -9,16 +9,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
-import { DynamicTool } from '@langchain/core/tools';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import {
 	configureHttpRequestFunction,
 	configureResponseOptimizer,
 	extractParametersFromText,
-	prepareToolDescription,
 	configureToolFunction,
 	updateParametersAndOptions,
+	makeToolInputSchema,
 } from './utils';
 
 import {
@@ -31,6 +30,7 @@ import {
 } from './descriptions';
 
 import type { PlaceholderDefinition, ToolParameter } from './interfaces';
+import { N8nTool } from '../../../utils/N8nTool';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -394,9 +394,12 @@ export class ToolHttpRequest implements INodeType {
 			optimizeResponse,
 		);
 
-		const description = prepareToolDescription(toolDescription, toolParameters);
+		// const description = prepareToolDescription(toolDescription, toolParameters);
+		// const tool = new DynamicTool({ name, description, func });
 
-		const tool = new DynamicTool({ name, description, func });
+		const schema = makeToolInputSchema(toolParameters);
+
+		const tool = new N8nTool(this, { name, description: toolDescription, func, schema });
 
 		return {
 			response: tool,
