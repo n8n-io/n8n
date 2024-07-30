@@ -97,11 +97,13 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		if ('resource' in parameters && 'operation' in parameters) {
+		if ('resource' in parameters || 'operation' in parameters) {
 			const { resource, operation } = parameters;
-			if (!isString(resource) || !isString(operation)) return false;
 
-			return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return (
+				(isString(resource) && resource.includes(CUSTOM_API_CALL_KEY)) ||
+				(isString(operation) && operation.includes(CUSTOM_API_CALL_KEY))
+			);
 		}
 
 		return false;
