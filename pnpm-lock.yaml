@@ -608,6 +608,9 @@ importers:
       '@azure/keyvault-secrets':
         specifier: ^4.8.0
         version: 4.8.0
+      '@google-cloud/secret-manager':
+        specifier: ^5.6.0
+        version: 5.6.0(encoding@0.1.13)
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -3360,6 +3363,10 @@ packages:
     resolution: {integrity: sha512-uWJJf6S2PJL7oZ4ezv16aZl9+IJqPo5GzUv1pZ3/qRiMj13p0ylEgX1+LxBpX71eEPKTwMHoJV2IBBe3EAq7Xw==}
     engines: {node: '>=14.0.0'}
 
+  '@google-cloud/secret-manager@5.6.0':
+    resolution: {integrity: sha512-0daW/OXQEVc6VQKPyJTQNyD+563I/TYQ7GCQJx4dq3lB666R9FUPvqHx9b/o/qQtZ5pfuoCbGZl3krpxgTSW8Q==}
+    engines: {node: '>=14.0.0'}
+
   '@google-cloud/storage@6.11.0':
     resolution: {integrity: sha512-p5VX5K2zLTrMXlKdS1CiQNkKpygyn7CBFm5ZvfhVj6+7QUsjWvYx9YDMkYXdarZ6JDt4cxiu451y9QUIH82ZTw==}
     engines: {node: '>=12'}
@@ -3375,11 +3382,6 @@ packages:
   '@grpc/grpc-js@1.10.8':
     resolution: {integrity: sha512-vYVqYzHicDqyKB+NQhAc54I1QWCBLCrYG6unqOIcBTHx+7x8C9lcoLj3KVJXs2VB4lUbpWY+Kk9NipcbXYWmvg==}
     engines: {node: '>=12.10.0'}
-
-  '@grpc/proto-loader@0.7.10':
-    resolution: {integrity: sha512-CAqDfoaQ8ykFd9zqBDn4k6iWT9loLAlc2ETmDFS9JCD70gDcnA4L3AFEo2iV7KyAtAAHFW9ftq1Fz+Vsgq80RQ==}
-    engines: {node: '>=6'}
-    hasBin: true
 
   '@grpc/proto-loader@0.7.13':
     resolution: {integrity: sha512-AiXO/bfe9bmxBjxxtYxFAXGZvMaN5s8kO+jBHAJCON8rJoB5YS/D6X7ZNc6XQkuHNmyl4CYaMI1fJ/Gn27RGGw==}
@@ -15843,6 +15845,13 @@ snapshots:
       - encoding
       - supports-color
 
+  '@google-cloud/secret-manager@5.6.0(encoding@0.1.13)':
+    dependencies:
+      google-gax: 4.3.4(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
   '@google-cloud/storage@6.11.0(encoding@0.1.13)':
     dependencies:
       '@google-cloud/paginator': 3.0.7
@@ -15874,13 +15883,6 @@ snapshots:
     dependencies:
       '@grpc/proto-loader': 0.7.13
       '@js-sdsl/ordered-map': 4.4.2
-
-  '@grpc/proto-loader@0.7.10':
-    dependencies:
-      lodash.camelcase: 4.3.0
-      long: 5.2.3
-      protobufjs: 7.3.0
-      yargs: 17.7.2
 
   '@grpc/proto-loader@0.7.13':
     dependencies:
@@ -21305,7 +21307,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21330,7 +21332,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21350,7 +21352,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21880,7 +21882,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22221,7 +22223,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -22255,7 +22257,7 @@ snapshots:
   google-gax@4.3.4(encoding@0.1.13):
     dependencies:
       '@grpc/grpc-js': 1.10.8
-      '@grpc/proto-loader': 0.7.10
+      '@grpc/proto-loader': 0.7.13
       '@types/long': 4.0.2
       abort-controller: 3.0.0
       duplexify: 4.1.2
@@ -24914,7 +24916,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25826,7 +25828,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -26200,7 +26202,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7

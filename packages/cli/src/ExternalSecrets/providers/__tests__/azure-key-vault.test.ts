@@ -37,7 +37,7 @@ describe('AzureKeyVault', () => {
 					yield { name: 'secret1' };
 					yield { name: 'secret2' };
 					yield { name: 'secret3' }; // no value
-					yield { name: '#@&' }; // invalid name
+					yield { name: '#@&' }; // unsupported name
 				},
 			}));
 
@@ -65,6 +65,6 @@ describe('AzureKeyVault', () => {
 		expect(azureKeyVault.getSecret('secret1')).toBe('value1');
 		expect(azureKeyVault.getSecret('secret2')).toBe('value2');
 		expect(azureKeyVault.getSecret('secret3')).toBeUndefined(); // no value
-		expect(azureKeyVault.getSecret('#@&')).toBeUndefined(); // invalid name
+		expect(azureKeyVault.getSecret('#@&')).toBeUndefined(); // unsupported name
 	});
 });
