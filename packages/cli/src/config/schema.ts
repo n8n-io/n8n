@@ -883,12 +883,13 @@ export const schema = {
 		},
 	},
 
+	instanceRole: {
+		doc: 'Always `leader` in single-main setup. `leader` or `follower` in multi-main setup.',
+		format: ['unset', 'leader', 'follower'] as const,
+		default: 'unset', // only until Start.initOrchestration
+	},
+
 	multiMainSetup: {
-		instanceType: {
-			doc: 'Type of instance in multi-main setup',
-			format: ['unset', 'leader', 'follower'] as const,
-			default: 'unset', // only until first leader key check
-		},
 		enabled: {
 			doc: 'Whether to enable multi-main setup for queue mode (license required)',
 			format: Boolean,
