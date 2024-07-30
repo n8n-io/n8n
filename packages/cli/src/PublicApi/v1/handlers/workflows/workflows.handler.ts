@@ -151,15 +151,18 @@ export = {
 						nextCursor: null,
 					});
 				}
+
 				const workflowsIds = workflows.map((wf) => wf.id);
 				where.id = In(workflowsIds);
 			}
+
 			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
 				where,
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
+
 			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
