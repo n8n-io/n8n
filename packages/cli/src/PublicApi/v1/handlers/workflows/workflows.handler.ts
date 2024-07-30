@@ -33,25 +33,12 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/eventbus/event.service';
-import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
 
 export = {
 	createWorkflow: [
-		async (
-			req: WorkflowRequest.Create & { body: { projectId?: string; role?: WorkflowSharingRole } },
-			res: express.Response,
-		): Promise<express.Response> => {
-			const { projectId, role, ...rest } = req.body;
+		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
+			const workflow = req.body;
 
-			if ((projectId && !role) || (!projectId && role)) {
-				return res.status(400).json({
-					message:
-						'When creating a workflow and specifying s project, please specify both projectId and role',
-				});
-			}
-
-			const workflow = rest as WorkflowEntity;
-			const userId = req.user.id;
 			workflow.active = false;
 			workflow.versionId = uuid();
 
@@ -59,18 +46,10 @@ export = {
 
 			addNodeIds(workflow);
 
-			const projectRepository = Container.get(ProjectRepository);
-
-			const project = projectId
-				? await projectRepository.getProjectForUserOrFail(projectId, userId)
-				: await projectRepository.getPersonalProjectForUserOrFail(userId);
-
-			const createdWorkflow = await createWorkflow(
-				workflow,
-				req.user,
-				project,
-				role ?? 'workflow:owner',
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				req.user.id,
 			);
+			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,
@@ -139,7 +118,6 @@ export = {
 				...(active !== undefined && { active }),
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
-
 			if (['global:owner', 'global:admin'].includes(req.user.role)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
@@ -149,18 +127,15 @@ export = {
 				}
 			} else {
 				const options: { workflowIds?: string[] } = {};
-
 				if (tags) {
 					options.workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
 					);
 				}
-
 				let workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
 					req.user,
 					['workflow:read'],
 				);
-
 				if (options.workflowIds) {
 					const workflowIds = options.workflowIds;
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
@@ -176,18 +151,15 @@ export = {
 						nextCursor: null,
 					});
 				}
-
 				const workflowsIds = workflows.map((wf) => wf.id);
 				where.id = In(workflowsIds);
 			}
-
 			const [workflows, count] = await Container.get(WorkflowRepository).findAndCount({
 				skip: offset,
 				take: limit,
 				where,
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
-
 			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
@@ -205,21 +177,10 @@ export = {
 	],
 	updateWorkflow: [
 		projectScope('workflow:update', 'workflow'),
-		async (
-			req: WorkflowRequest.Update & { body: { projectId?: string; role?: WorkflowSharingRole } },
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
-			const { projectId, role, ...rest } = req.body;
-
-			if ((projectId && !role) || (!projectId && role)) {
-				return res.status(400).json({
-					message: "When updating a workflow's project, please specify both projectId and role",
-				});
-			}
-
-			Object.assign(updateData, rest);
+			Object.assign(updateData, req.body);
 			updateData.id = id;
 			updateData.versionId = uuid();
 
@@ -230,7 +191,7 @@ export = {
 			);
 
 			if (!workflow) {
-				// user trying to access a workflow they do not have access to
+				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -247,7 +208,7 @@ export = {
 			}
 
 			try {
-				await updateWorkflow(workflow.id, updateData, projectId, role);
+				await updateWorkflow(workflow.id, updateData);
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });

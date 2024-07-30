@@ -728,8 +728,6 @@ describe('POST /workflows', () => {
 				timezone: 'America/New_York',
 				executionOrder: 'v1',
 			},
-			projectId: memberPersonalProject.id,
-			role: 'workflow:owner',
 		};
 
 		const response = await authMemberAgent.post('/workflows').send(payload);
@@ -969,8 +967,6 @@ describe('PUT /workflows/:id', () => {
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
 			},
-			projectId: memberPersonalProject.id,
-			role: 'workflow:owner',
 		};
 
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
