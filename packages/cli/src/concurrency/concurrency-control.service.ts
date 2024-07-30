@@ -55,7 +55,7 @@ export class ConcurrencyControlService {
 
 		this.productionQueue.on('concurrency-check', ({ capacity }) => {
 			if (this.shouldReport(capacity)) {
-				void this.telemetry.track('User hit concurrency limit', {
+				this.telemetry.track('User hit concurrency limit', {
 					threshold: CLOUD_TEMP_PRODUCTION_LIMIT - capacity,
 				});
 			}
