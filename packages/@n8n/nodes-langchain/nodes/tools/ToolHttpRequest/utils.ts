@@ -784,7 +784,7 @@ function makeParameterZodSchema(parameter: ToolParameter) {
 	} else if (parameter.type === 'boolean') {
 		schema = z.boolean();
 	} else if (parameter.type === 'json') {
-		schema = z.string();
+		schema = z.record(z.any());
 	} else {
 		schema = z.unknown();
 	}
