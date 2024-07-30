@@ -2,6 +2,7 @@ import CanvasNodeDisabledStrikeThrough from '@/components/canvas/elements/nodes/
 import { createComponentRenderer } from '@/__tests__/render';
 import { NodeConnectionType } from 'n8n-workflow';
 import { createCanvasNodeProvide } from '@/__tests__/data';
+import { CanvasConnectionMode } from '@/types';
 
 const renderComponent = createComponentRenderer(CanvasNodeDisabledStrikeThrough);
 
@@ -13,12 +14,12 @@ describe('CanvasNodeDisabledStrikeThrough', () => {
 					...createCanvasNodeProvide({
 						data: {
 							connections: {
-								input: {
+								[CanvasConnectionMode.Input]: {
 									[NodeConnectionType.Main]: [
 										[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
 									],
 								},
-								output: {
+								[CanvasConnectionMode.Output]: {
 									[NodeConnectionType.Main]: [
 										[{ node: 'node', type: NodeConnectionType.Main, index: 0 }],
 									],

@@ -217,7 +217,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
@@ -660,8 +660,8 @@ export default defineComponent({
 		isContextMenuOpen(): boolean {
 			return (
 				this.contextMenu.isOpen.value &&
-				this.contextMenu.target.value.source === 'node-button' &&
-				this.contextMenu.target.value.node.name === this.data?.name
+				this.contextMenu.target.value?.source === 'node-button' &&
+				this.contextMenu.target.value.nodeId === this.data?.id
 			);
 		},
 		iconNodeType() {
@@ -861,9 +861,9 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
-		openContextMenu(event: MouseEvent, source: ContextMenuTarget['source']) {
+		openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-click') {
 			if (this.data) {
-				this.contextMenu.open(event, { source, node: this.data });
+				this.contextMenu.open(event, { source, nodeId: this.data.id });
 			}
 		},
 	},

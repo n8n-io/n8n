@@ -34,7 +34,11 @@ export class NodeOperationError extends NodeError {
 			error.messages.forEach((message) => this.addToMessages(message));
 		}
 
-		if (obfuscateErrorMessage) this.message = OBFUSCATED_ERROR_MESSAGE;
+		if (obfuscateErrorMessage && !options.description) {
+			const originalMessage = typeof error === 'string' ? error : (error.message as string);
+			this.addToMessages(originalMessage);
+			this.message = OBFUSCATED_ERROR_MESSAGE;
+		}
 		if (options.message) this.message = options.message;
 		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;

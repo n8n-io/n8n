@@ -14,6 +14,7 @@ import {
 	faArrowDown,
 	faAt,
 	faBan,
+	faBalanceScaleLeft,
 	faBars,
 	faBolt,
 	faBook,
@@ -129,6 +130,7 @@ import {
 	faSync,
 	faSyncAlt,
 	faTable,
+	faTags,
 	faTasks,
 	faTerminal,
 	faThLarge,
@@ -180,6 +182,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faArrowDown);
 		addIcon(faAt);
 		addIcon(faBan);
+		addIcon(faBalanceScaleLeft);
 		addIcon(faBars);
 		addIcon(faBolt);
 		addIcon(faBook);
@@ -300,6 +303,7 @@ export const FontAwesomePlugin: Plugin = {
 		addIcon(faSync);
 		addIcon(faSyncAlt);
 		addIcon(faTable);
+		addIcon(faTags);
 		addIcon(faTasks);
 		addIcon(faTerminal);
 		addIcon(faThLarge);

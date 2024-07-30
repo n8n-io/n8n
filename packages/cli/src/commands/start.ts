@@ -33,7 +33,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -124,7 +124,7 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
+		const n8nPath = Container.get(GlobalConfig).path;
 		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
@@ -184,10 +184,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (
-			!config.getEnv('license.autoRenewEnabled') &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader'
-		) {
+		if (!config.getEnv('license.autoRenewEnabled') && config.getEnv('instanceRole') === 'leader') {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -211,7 +208,7 @@ export class Start extends BaseCommand {
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 			return;
 		}
 
@@ -252,16 +249,15 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
+		const globalConfig = Container.get(GlobalConfig);
 
-		if (areCommunityPackagesEnabled) {
+		if (globalConfig.nodes.communityPackages.enabled) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
 		}
 
-		const globalConfig = Container.get(GlobalConfig);
 		const { type: dbType } = globalConfig.database;
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
@@ -284,7 +280,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const port = config.getEnv('port');
+			const { port } = Container.get(GlobalConfig);
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
@@ -378,7 +374,7 @@ export class Start extends BaseCommand {
 				projectId: project.id,
 			};
 
-			Container.get(EventRelay).emit('execution-started-during-bootup', {
+			Container.get(EventService).emit('execution-started-during-bootup', {
 				executionId: execution.id,
 			});
 

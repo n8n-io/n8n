@@ -1,22 +1,33 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
-import type { Connection, EdgeProps } from '@vue-flow/core';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
-import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { computed, useCssModule } from 'vue';
 import type { CanvasConnectionData } from '@/types';
+import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import type { Connection, EdgeProps } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
+import { NodeConnectionType } from 'n8n-workflow';
+import { computed, useCssModule } from 'vue';
+import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
+import { getCustomPath } from './utils/edgePath';
 
 const emit = defineEmits<{
+	add: [connection: Connection];
 	delete: [connection: Connection];
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	readOnly?: boolean;
 	hovered?: boolean;
 };
 
 const props = defineProps<CanvasEdgeProps>();
 
 const $style = useCssModule();
+
+const connectionType = computed(() =>
+	isValidNodeConnectionType(props.data.source.type)
+		? props.data.source.type
+		: NodeConnectionType.Main,
+);
 
 const isFocused = computed(() => props.selected || props.hovered);
 
@@ -42,7 +53,7 @@ const edgeStyle = computed(() => ({
 }));
 
 const edgeLabel = computed(() => {
-	if (isFocused.value) {
+	if (isFocused.value && !props.readOnly) {
 		return '';
 	}
 
@@ -56,8 +67,9 @@ const edgeLabelStyle = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => {
+	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
 	};
 });
 
@@ -68,16 +80,7 @@ const edgeToolbarClasses = computed(() => ({
 	nopan: true,
 }));
 
-const path = computed(() =>
-	getBezierPath({
-		sourceX: props.sourceX,
-		sourceY: props.sourceY,
-		sourcePosition: props.sourcePosition,
-		targetX: props.targetX,
-		targetY: props.targetY,
-		targetPosition: props.targetPosition,
-	}),
-);
+const path = computed(() => getCustomPath(props));
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -85,6 +88,10 @@ const connection = computed<Connection>(() => ({
 	sourceHandle: props.sourceHandleId,
 	targetHandle: props.targetHandleId,
 }));
+
+function onAdd() {
+	emit('add', connection.value);
+}
 
 function onDelete() {
 	emit('delete', connection.value);
@@ -104,8 +111,15 @@ function onDelete() {
 		:label-style="edgeLabelStyle"
 		:label-show-bg="false"
 	/>
-	<EdgeLabelRenderer>
-		<CanvasEdgeToolbar :class="edgeToolbarClasses" :style="edgeToolbarStyle" @delete="onDelete" />
+
+	<EdgeLabelRenderer v-if="!readOnly">
+		<CanvasEdgeToolbar
+			:type="connectionType"
+			:class="edgeToolbarClasses"
+			:style="edgeToolbarStyle"
+			@add="onAdd"
+			@delete="onDelete"
+		/>
 	</EdgeLabelRenderer>
 </template>
 

@@ -59,6 +59,7 @@ import { MakeExecutionStatusNonNullable1714133768521 } from '../common/171413376
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { RefactorExecutionIndices1717498465932 } from '../common/1717498465932-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
+import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -121,4 +122,5 @@ export const postgresMigrations: Migration[] = [
 	AddActivatedAtUserSetting1717498465931,
 	RefactorExecutionIndices1717498465932,
 	AddConstraintToExecutionMetadata1720101653148,
+	FixExecutionMetadataSequence1721377157740,
 ];

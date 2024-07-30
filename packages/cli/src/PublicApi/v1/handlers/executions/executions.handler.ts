@@ -78,7 +78,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedExecution({
+			Container.get(InternalHooks).onUserRetrievedExecution({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -129,7 +129,7 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
+			Container.get(InternalHooks).onUserRetrievedAllExecutions({
 				user_id: req.user.id,
 				public_api: true,
 			});
