@@ -41,9 +41,16 @@ export = {
 			req: WorkflowRequest.Create & { body: { projectId?: string; role?: WorkflowSharingRole } },
 			res: express.Response,
 		): Promise<express.Response> => {
-			const workflow = req.body;
+			const { projectId, role, ...rest } = req.body;
+			const workflow = rest as WorkflowEntity;
 			const userId = req.user.id;
-			const { projectId, role } = req.body;
+
+			if ((projectId && !role) || (!projectId && role)) {
+				return res.status(400).json({
+					message:
+						'When creating a workflow and specifying s project, please specify both projectId and role',
+				});
+			}
 
 			workflow.active = false;
 			workflow.versionId = uuid();
