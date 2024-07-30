@@ -178,6 +178,8 @@ function addItemIndexSuffix(message: string): string {
 }
 
 function getErrorMessage(): string {
+	if ('obfuscate' in props.error) return i18n.baseText('nodeErrorView.showMessage.obfuscate');
+
 	let message = '';
 
 	const isSubNodeError =
