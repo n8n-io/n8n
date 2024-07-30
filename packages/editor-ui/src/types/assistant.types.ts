@@ -90,6 +90,13 @@ export namespace ChatRequest {
 		eventName: 'end-session';
 	}
 
+	interface AgentChatMessage {
+		role: 'assistant';
+		type: 'agent-suggestion';
+		title: string;
+		text: string;
+	}
+
 	// export type MessageResponse = (
 	// 	| AssistantChatMessage
 	// 	| CodeDiffMessage
@@ -100,7 +107,7 @@ export namespace ChatRequest {
 	// };
 
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage) & {
+		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;

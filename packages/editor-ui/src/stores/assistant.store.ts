@@ -143,6 +143,17 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					eventName: msg.eventName,
 					read: true,
 				});
+			} else if (msg.type === 'agent-suggestion') {
+				messages.push({
+					id,
+					suggestionId: id,
+					type: 'agent-suggestion',
+					role: 'assistant',
+					title: msg.title,
+					content: msg.text,
+					quickReplies: msg.quickReplies,
+					read,
+				});
 			}
 		});
 		chatMessages.value = messages;

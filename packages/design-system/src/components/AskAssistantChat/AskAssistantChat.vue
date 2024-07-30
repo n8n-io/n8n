@@ -142,6 +142,13 @@ function renderMarkdown(content: string) {
 							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
+					<div
+						v-else-if="message.type === 'agent-suggestion'"
+						:class="$style['suggestion-container']"
+					>
+						<h3 :class="$style['suggestion-title']">{{ message.title }}</h3>
+						<div :class="$style['suggestion-text']" v-html="renderMarkdown(message.content)"></div>
+					</div>
 					<div v-else-if="isEndOfSessionEvent(message)" :class="$style.endOfSessionText">
 						<span>
 							{{ t('assistantChat.sessionEndMessage.1') }}
@@ -369,6 +376,11 @@ function renderMarkdown(content: string) {
 	p {
 		display: inline;
 	}
+
+	ul, ol {
+		list-style-position: inside;
+		margin: 12px 0 12px 12px;
+	}
 }
 
 .endOfSessionText {
@@ -388,6 +400,28 @@ function renderMarkdown(content: string) {
 
 	* {
 		cursor: not-allowed;
+	}
+}
+
+.suggestion-container {
+	background-color: var(--color-foreground-xlight);
+	border: 1px solid var(--color-background-medium);
+	border-radius: var(--border-radius-base);
+
+	.suggestion-title,
+	.suggestion-text {
+		padding: var(--spacing-2xs);
+
+		ol,
+		ul {
+			margin: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-xs);
+		}
+	}
+
+	.suggestion-title {
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-bold);
+		border-bottom: var(--border-width-base) var(--border-style-base) var(--color-background-medium);
 	}
 }
 </style>

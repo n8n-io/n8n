@@ -40,11 +40,24 @@ export namespace ChatUI {
 		content: string;
 	}
 
+	export interface AgentSuggestionMessage {
+		role: 'assistant';
+		type: 'agent-suggestion';
+		title: string;
+		content: string;
+		suggestionId: string;
+	}
+
 	type MessagesWithReplies = (TextMessage | CodeDiffMessage | SummaryBlock) & {
 		quickReplies?: QuickReply[];
 	};
 
-	export type AssistantMessage = (MessagesWithReplies | ErrorMessage | EndSessionMessage) & {
+	export type AssistantMessage = (
+		| MessagesWithReplies
+		| ErrorMessage
+		| EndSessionMessage
+		| AgentSuggestionMessage
+	) & {
 		id: string;
 		read: boolean;
 	};
