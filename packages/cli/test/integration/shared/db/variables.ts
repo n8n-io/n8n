@@ -7,6 +7,6 @@ export async function createVariable(key = randomString(5), value = randomString
 	return await Container.get(VariablesRepository).save({ id: generateNanoId(), key, value });
 }
 
-export async function getVariable(id: string) {
+export async function getVariableOrFail(id: string) {
 	return await Container.get(VariablesRepository).findOneOrFail({ where: { id } });
 }

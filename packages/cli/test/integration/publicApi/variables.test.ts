@@ -1,6 +1,6 @@
 import { setupTestServer } from '@test-integration/utils';
 import { createOwner } from '@test-integration/db/users';
-import { createVariable, getVariable } from '@test-integration/db/variables';
+import { createVariable, getVariableOrFail } from '@test-integration/db/variables';
 import * as testDb from '../shared/testDb';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
@@ -86,7 +86,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
-			await expect(getVariable(response.body.id)).resolves.toEqual(
+			await expect(getVariableOrFail(response.body.id)).resolves.toEqual(
 				expect.objectContaining(variablePayload),
 			);
 		});
@@ -137,7 +137,7 @@ describe('Variables in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(204);
-			await expect(getVariable(variable.id)).rejects.toThrow();
+			await expect(getVariableOrFail(variable.id)).rejects.toThrow();
 		});
 
 		it('if not licensed, should reject', async () => {
