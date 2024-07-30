@@ -4452,6 +4452,9 @@ export default defineComponent({
 			const lastNodeType = this.nodeTypesStore.getNodeType(lastAddedNode.type);
 			const isSubNode = NodeHelpers.isSubNodeType(lastNodeType);
 
+			// When adding a sub-node and there's more than one node added at the time, it must mean that it's
+			// connected to a root node, so we adjust the position of the sub-node to make it appear in the correct
+			// in relation to the root node
 			if (isSubNode && nodes.length > 1) {
 				this.onMoveNode({
 					nodeName: lastAddedNode.name,
