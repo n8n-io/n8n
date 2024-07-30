@@ -359,6 +359,7 @@ export async function executeWebhook(
 				additionalData,
 				NodeExecuteFunctions,
 				executionMode,
+				runExecutionData ?? null,
 			);
 			Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
 				workflowId: workflow.id,
