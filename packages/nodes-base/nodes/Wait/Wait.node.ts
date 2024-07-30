@@ -458,7 +458,7 @@ export class Wait extends Webhook {
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return await formWebhook(context);
+		if (resume === 'form') return await formWebhook(context, this.authPropertyName);
 		return await super.webhook(context);
 	}
 

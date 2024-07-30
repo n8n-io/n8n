@@ -140,14 +140,10 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	}
 };
 
-const authProperty = (nodeType: string) => {
-	if (nodeType === 'n8n-nodes-base.wait') {
-		return 'incomingAuthentication';
-	}
-	return FORM_TRIGGER_AUTHENTICATION_PROPERTY;
-};
-
-export async function formWebhook(context: IWebhookFunctions) {
+export async function formWebhook(
+	context: IWebhookFunctions,
+	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+) {
 	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
@@ -169,7 +165,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		await validateWebhookAuthentication(context, authProperty(node.type));
+		await validateWebhookAuthentication(context, authProperty);
 	} catch (error) {
 		if (error instanceof WebhookAuthorizationError) {
 			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
