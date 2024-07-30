@@ -72,7 +72,7 @@ describe('Variables in Public API', () => {
 			 */
 			testServer.license.enable('feat:variables');
 			const owner = await createOwner({ withApiKey: true });
-			const variablePaylod = { key: 'key', value: 'value' };
+			const variablePayload = { key: 'key', value: 'value' };
 
 			/**
 			 * Act
@@ -80,14 +80,14 @@ describe('Variables in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post('/variables')
-				.send(variablePaylod);
+				.send(variablePayload);
 
 			/**
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
 			await expect(getVariable(response.body.id)).resolves.toEqual(
-				expect.objectContaining(variablePaylod),
+				expect.objectContaining(variablePayload),
 			);
 		});
 
