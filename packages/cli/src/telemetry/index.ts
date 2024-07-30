@@ -171,8 +171,13 @@ export class Telemetry {
 
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		await this.track('User instance stopped');
-		void Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+
+		// Send the stopped event and make sure it gets flushed right away
+		await Promise.all([
+			this.track('User instance stopped'),
+			this.postHog.stop(),
+			this.rudderStack?.flush(),
+		]);
 	}
 
 	async identify(traits?: {
@@ -201,28 +206,28 @@ export class Telemetry {
 	): Promise<void> {
 		const { instanceId } = this.instanceSettings;
 		return await new Promise<void>((resolve) => {
-			if (this.rudderStack) {
-				const { user_id } = properties;
-				const updatedProperties = {
-					...properties,
-					instance_id: instanceId,
-					version_cli: N8N_VERSION,
-				};
-
-				const payload = {
-					userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
-					event: eventName,
-					properties: updatedProperties,
-				};
-
-				if (withPostHog) {
-					this.postHog?.track(payload);
-				}
-
-				return this.rudderStack.track(payload, resolve);
+			if (!this.rudderStack) {
+				return resolve();
 			}
 
-			return resolve();
+			const { user_id } = properties;
+			const updatedProperties = {
+				...properties,
+				instance_id: instanceId,
+				version_cli: N8N_VERSION,
+			};
+
+			const payload = {
+				userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
+				event: eventName,
+				properties: updatedProperties,
+			};
+
+			if (withPostHog) {
+				this.postHog?.track(payload);
+			}
+
+			return this.rudderStack.track(payload, resolve);
 		});
 	}
 
