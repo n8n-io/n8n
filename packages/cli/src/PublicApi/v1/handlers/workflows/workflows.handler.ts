@@ -118,6 +118,7 @@ export = {
 				...(active !== undefined && { active }),
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
+
 			if (['global:owner', 'global:admin'].includes(req.user.role)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
@@ -127,15 +128,18 @@ export = {
 				}
 			} else {
 				const options: { workflowIds?: string[] } = {};
+
 				if (tags) {
 					options.workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
 					);
 				}
+
 				let workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
 					req.user,
 					['workflow:read'],
 				);
+
 				if (options.workflowIds) {
 					const workflowIds = options.workflowIds;
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
