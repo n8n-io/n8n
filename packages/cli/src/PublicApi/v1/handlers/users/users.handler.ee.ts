@@ -11,6 +11,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 export = {
 	getUser: [
@@ -43,12 +44,17 @@ export = {
 		validCursor,
 		globalScope(['user:list', 'user:read']),
 		async (req: UserRequest.Get, res: express.Response) => {
-			const { offset = 0, limit = 100, includeRole = false } = req.query;
+			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
+
+			const _in = projectId
+				? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(projectId)
+				: undefined;
 
 			const [users, count] = await getAllUsersAndCount({
 				includeRole,
 				limit,
 				offset,
+				in: _in,
 			});
 
 			const telemetryData = {

@@ -29,6 +29,7 @@ export declare namespace ExecutionRequest {
 			includeData?: boolean;
 			workflowId?: string;
 			lastId?: string;
+			projectId?: string;
 		}
 	>;
 
