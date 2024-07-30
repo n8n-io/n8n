@@ -53,7 +53,7 @@ export class ConcurrencyControlService {
 
 		this.isEnabled = true;
 
-		this.productionQueue.on('concurrency-check', ({ capacity }: { capacity: number }) => {
+		this.productionQueue.on('concurrency-check', ({ capacity }) => {
 			if (this.shouldReport(capacity)) {
 				void this.telemetry.track('User hit concurrency limit', {
 					threshold: CLOUD_TEMP_PRODUCTION_LIMIT - capacity,
@@ -61,12 +61,12 @@ export class ConcurrencyControlService {
 			}
 		});
 
-		this.productionQueue.on('execution-throttled', ({ executionId }: { executionId: string }) => {
+		this.productionQueue.on('execution-throttled', ({ executionId }) => {
 			this.log('Execution throttled', { executionId });
 			this.eventService.emit('execution-throttled', { executionId });
 		});
 
-		this.productionQueue.on('execution-released', async (executionId: string) => {
+		this.productionQueue.on('execution-released', async (executionId) => {
 			this.log('Execution released', { executionId });
 			await this.executionRepository.resetStartedAt(executionId);
 		});
