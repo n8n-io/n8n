@@ -66,7 +66,7 @@ export class CalendlyTrigger implements INodeType {
 						value: 'apiKey',
 					},
 				],
-				default: 'oAuth2',
+				default: 'apiKey',
 			},
 			{
 				displayName: 'Scope',
