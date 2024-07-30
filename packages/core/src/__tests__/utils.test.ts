@@ -451,6 +451,51 @@ describe('findStartNodes', () => {
 			},
 		});
 	});
+
+	//                              ►►
+	//┌───────┐       ┌─────┐      ┌─────┐
+	//│Trigger│1──┬───┤Node1│1──┬──┤Node2│
+	//└───────┘   │   └─────┘   │  └─────┘
+	//            │             │
+	//            └─────────────┘
+	test('terminates when called with graph that contains cycles', () => {
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: node1, to: node1 },
+				{ from: node1, to: node2 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
+		};
+		const pinData: IPinData = {};
+
+		//
+		// ACT
+		//
+		const startNodes = findStartNodes(graph, trigger, node2, runData, pinData);
+
+		//
+		// ASSERT
+		//
+		expect(startNodes).toHaveLength(1);
+		expect(startNodes).toContainEqual({
+			node: node2,
+			sourceData: {
+				previousNode: node1,
+				previousNodeRun: 0,
+				previousNodeOutput: 0,
+			},
+		});
+	});
 });
 
 describe('findSubgraph', () => {
@@ -565,6 +610,106 @@ describe('findSubgraph2', () => {
 			new DirectedGraph().addNodes(node1, node3).addConnections({ from: node1, to: node3 }),
 		);
 	});
+
+	//                              ►►
+	//┌───────┐       ┌─────┐      ┌─────┐
+	//│Trigger├───┬───┤Node1├───┬──┤Node2│
+	//└───────┘   │   └─────┘   │  └─────┘
+	//            │             │
+	//            └─────────────┘
+	test('terminates when called with graph that contains cycles', () => {
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: node1, to: node1 },
+				{ from: node1, to: node2 },
+			);
+
+		//
+		// ACT
+		//
+		const subgraph = findSubgraph2(graph, node2, trigger);
+
+		//
+		// ASSERT
+		//
+		expect(subgraph).toEqual(graph);
+	});
+
+	//                ►►
+	//  ┌───────┐     ┌─────┐
+	//  │Trigger├───┬─┤Node1│
+	//  └───────┘   │ └─────┘
+	//              │
+	//  ┌─────┐     │
+	//  │Node2├─────┘
+	//  └─────┘
+	test('terminates when called with graph that contains cycles', () => {
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2)
+			.addConnections({ from: trigger, to: node1 }, { from: node2, to: node1 });
+
+		//
+		// ACT
+		//
+		const subgraph = findSubgraph2(graph, node1, trigger);
+
+		//
+		// ASSERT
+		//
+		expect(subgraph).toEqual(
+			new DirectedGraph().addNodes(trigger, node1).addConnections({ from: trigger, to: node1 }),
+		);
+	});
+
+	//                               ►►
+	//  ┌───────┐    ┌───────────┐   ┌───────────┐
+	//  │Trigger├─┬─►│Destination├───┤AnotherNode├───┐
+	//  └───────┘ │  └───────────┘   └───────────┘   │
+	//            │                                  │
+	//            └──────────────────────────────────┘
+	test('terminates if the destination node is part of a cycle', () => {
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
+		const anotherNode = createNodeData({ name: 'anotherNode' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, destination, anotherNode)
+			.addConnections(
+				{ from: trigger, to: destination },
+				{ from: destination, to: anotherNode },
+				{ from: anotherNode, to: destination },
+			);
+
+		//
+		// ACT
+		//
+		const subgraph = findSubgraph2(graph, destination, trigger);
+
+		//
+		// ASSERT
+		//
+		expect(subgraph).toEqual(
+			new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination }),
+		);
+	});
 });
 
 describe('DirectedGraph', () => {
@@ -631,6 +776,41 @@ describe('DirectedGraph', () => {
 				to,
 				inputIndex: 0,
 				outputIndex: 1,
+				type: NodeConnectionType.Main,
+			});
+		});
+
+		test('terminates if the graph has cycles', () => {
+			//
+			// ARRANGE
+			//
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const graph = new DirectedGraph()
+				.addNodes(node1, node2)
+				.addConnections({ from: node1, to: node2 }, { from: node2, to: node2 });
+
+			//
+			// ACT
+			//
+			const children = graph.getChildren(node1);
+
+			//
+			// ASSERT
+			//
+			expect(children).toHaveLength(2);
+			expect(children).toContainEqual({
+				from: node1,
+				to: node2,
+				inputIndex: 0,
+				outputIndex: 0,
+				type: NodeConnectionType.Main,
+			});
+			expect(children).toContainEqual({
+				from: node2,
+				to: node2,
+				inputIndex: 0,
+				outputIndex: 0,
 				type: NodeConnectionType.Main,
 			});
 		});

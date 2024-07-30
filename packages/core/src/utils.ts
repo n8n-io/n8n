@@ -39,6 +39,7 @@ function findSubgraph2Recursive(
 ) {
 	//console.log('currentBranch', currentBranch);
 
+	// If the current node is the chosen ‘trigger keep this branch.
 	if (current === trigger) {
 		console.log(`${current.name}: is trigger`);
 		for (const connection of currentBranch) {
@@ -51,21 +52,22 @@ function findSubgraph2Recursive(
 
 	let parentConnections = graph.getDirectParents(current);
 
+	// If the current node has no parents, don’t keep this branch.
 	if (parentConnections.length === 0) {
 		console.log(`${current.name}: no parents`);
 		return;
 	}
 
+	// If the current node is the destination node again, don’t keep this branch.
 	const isCycleWithDestinationNode =
 		current === destinationNode && currentBranch.some((c) => c.to === destinationNode);
-
 	if (isCycleWithDestinationNode) {
 		console.log(`${current.name}: isCycleWithDestinationNode`);
 		return;
 	}
 
+	// If the current node was already visited, keep this branch.
 	const isCycleWithCurrentNode = currentBranch.some((c) => c.to === current);
-
 	if (isCycleWithCurrentNode) {
 		console.log(`${current.name}: isCycleWithCurrentNode`);
 		// TODO: write function that adds nodes when adding connections
@@ -76,6 +78,10 @@ function findSubgraph2Recursive(
 		return;
 	}
 
+	// If the current node is disabled, don’t keep this node, but keep the
+	// branch.
+	// Take every incoming connection and connect it to every node that is
+	// connected to the current node’s first output
 	if (current.disabled) {
 		console.log(`${current.name}: is disabled`);
 		const incomingConnections = graph.getDirectParents(current);
@@ -101,6 +107,7 @@ function findSubgraph2Recursive(
 		}
 	}
 
+	// Recurse on each parent.
 	for (const parentConnection of parentConnections) {
 		findSubgraph2Recursive(graph, destinationNode, parentConnection.from, trigger, newGraph, [
 			...currentBranch,
@@ -328,10 +335,13 @@ function findStartNodesRecursive(
 	runData: IRunData,
 	pinData: IPinData,
 	startNodes: Map<Key, StartNodeData>,
+	seen: Set<INode>,
 	source?: ISourceData,
 ) {
 	const nodeIsDirty = isDirty(current, runData, pinData);
 
+	// If the current node is dirty stop following this branch, we found a start
+	// node.
 	if (nodeIsDirty) {
 		startNodes.set(makeKey(source, current), {
 			node: current,
@@ -340,51 +350,38 @@ function findStartNodesRecursive(
 		return startNodes;
 	}
 
+	// If the current node is the destination node stop following this branch, we
+	// found a start node.
 	if (current === destination) {
 		startNodes.set(makeKey(source, current), { node: current, sourceData: source });
 		return startNodes;
 	}
 
+	// If we detect a cycle stop following the branch, there is no start node on
+	// this branch.
+	if (seen.has(current)) {
+		return startNodes;
+	}
+
+	// Recurse with every direct child that is part of the sub graph.
 	const outGoingConnections = graph.getDirectChildren(current);
-
 	for (const outGoingConnection of outGoingConnections) {
-		// NOTE: can't use `Workflow.getNodeConnectionIndexes` here, because it
-		// only returns the first connection it finds. But I need all connections.
-		//const nodeConnection = workflow.getNodeConnectionIndexes(child.name, current.name);
-		//a.ok(nodeConnection, `Child(${child.name}) and parent(${current.name}) are not connected.`);
-
 		const nodeRunData = getIncomingData(
 			runData,
 			outGoingConnection.from.name,
-			// // NOTE: I don't support multiple runs for now.
+			// NOTE: It's always 0 until I fix the bug that removes the run data for
+			// old runs. The FE only sends data for one run for each node.
 			0,
 			outGoingConnection.type,
 			outGoingConnection.outputIndex,
 		);
-		const hasRunData =
-			nodeRunData === null || nodeRunData === undefined || nodeRunData.length === 0;
 
-		if (hasRunData) {
+		// If the node has multiple outputs, only follow the outputs that have run data.
+		const hasNoRunData =
+			nodeRunData === null || nodeRunData === undefined || nodeRunData.length === 0;
+		if (hasNoRunData) {
 			continue;
 		}
-
-		//if (child.sourceData) {
-		//	const nodeRunData = getIncomingData(
-		//		runData,
-		//		child.sourceData.previousNode.name,
-		//		child.sourceData.previousNodeRun,
-		//		NodeConnectionType.Main,
-		//		child.sourceData.previousNodeOutput,
-		//	);
-		//	const hasRunData =
-		//		nodeRunData === null || nodeRunData === undefined || nodeRunData.length === 0;
-		//
-		//	if (hasRunData) {
-		//		continue;
-		//	}
-		//}
-
-		//a.ok(child.sourceData, `Child(${child.node.name}) has no sourceDate.`);
 
 		findStartNodesRecursive(
 			graph,
@@ -393,13 +390,12 @@ function findStartNodesRecursive(
 			runData,
 			pinData,
 			startNodes,
+			new Set(seen).add(current),
 			{
 				previousNode: current,
 				// NOTE: It's always 0 until I fix the bug that removes the run data for
 				// old runs. The FE only sends data for one run for each node.
 				previousNodeRun: 0,
-				// FIXME: Reimplement getChildNodes so I can keep track of which output
-				// was used to get to this child.
 				previousNodeOutput: outGoingConnection.outputIndex,
 			},
 		);
@@ -422,6 +418,7 @@ export function findStartNodes(
 		runData,
 		pinData,
 		new Map(),
+		new Set(),
 	);
 	return [...startNodes.values()];
 }
@@ -519,10 +516,23 @@ export class DirectedGraph {
 		return directChildren;
 	}
 
-	getChildren(node: INode): Connection[] {
+	private getChildrenRecursive(node: INode, seen: Set<INode>): Connection[] {
+		if (seen.has(node)) {
+			return [];
+		}
+
 		const directChildren = this.getDirectChildren(node);
 
-		return [...directChildren, ...directChildren.flatMap((child) => this.getChildren(child.to))];
+		return [
+			...directChildren,
+			...directChildren.flatMap((child) =>
+				this.getChildrenRecursive(child.to, new Set(seen).add(node)),
+			),
+		];
+	}
+
+	getChildren(node: INode): Connection[] {
+		return this.getChildrenRecursive(node, new Set());
 	}
 
 	getDirectParents(node: INode) {
