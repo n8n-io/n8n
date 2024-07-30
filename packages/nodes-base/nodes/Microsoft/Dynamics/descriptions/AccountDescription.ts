@@ -130,7 +130,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -208,7 +208,7 @@ export const accountFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

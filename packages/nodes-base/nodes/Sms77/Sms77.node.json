@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/sms77"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/sms77/"
 			}
 		],
 		"primaryDocumentation": [

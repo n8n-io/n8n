@@ -551,7 +551,7 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Icon Type',
@@ -1019,7 +1019,7 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Icon Type',

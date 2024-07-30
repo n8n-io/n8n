@@ -10,7 +10,7 @@ jest.mock('../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
+		googleBigQueryApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
 			if (
 				resource ===
 					'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json' &&
@@ -56,13 +56,13 @@ describe('Test Google BigQuery V2, insert define manually', () => {
 	const testNode = async (testData: WorkflowTestData, types: INodeTypes) => {
 		const { result } = await executeWorkflow(testData, types);
 
-		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.googleApiRequest).toHaveBeenCalledWith(
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json',
 			{},
 		);
-		expect(transport.googleApiRequest).toHaveBeenCalledWith(
+		expect(transport.googleBigQueryApiRequest).toHaveBeenCalledWith(
 			'POST',
 			'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json/insertAll',
 			{

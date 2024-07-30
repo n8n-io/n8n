@@ -2,6 +2,8 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from '@/Interfaces';
 import { NodeApiError } from '@/errors/node-api.error';
 import { NodeOperationError } from '@/errors/node-operation.error';
+import { ApplicationError } from '@/errors/application.error';
+import { OBFUSCATED_ERROR_MESSAGE } from '@/Constants';
 
 describe('NodeError', () => {
 	const node = mock<INode>();
@@ -14,5 +16,46 @@ describe('NodeError', () => {
 
 		expect(wrapped1).toEqual(apiError);
 		expect(wrapped2).toEqual(opsError);
+	});
+
+	it('should obfuscate errors not processed by n8n', () => {
+		const error = new Error('Original error message');
+		const nodeOpError = new NodeOperationError(node, error);
+
+		expect(nodeOpError.message).toBe(OBFUSCATED_ERROR_MESSAGE);
+		expect(nodeOpError.messages).toContain('Original error message');
+	});
+
+	it('should not obfuscate errors processed by n8n', () => {
+		const appError = new ApplicationError('Processed error message');
+		const nodeOpError = new NodeOperationError(node, appError);
+
+		expect(nodeOpError.message).toBe('Processed error message');
+		expect(nodeOpError.messages).not.toContain('Processed error message');
+	});
+
+	it('should not obfuscate string errors', () => {
+		const errorMessage = 'String error message';
+		const nodeOpError = new NodeOperationError(node, errorMessage);
+
+		expect(nodeOpError.message).toBe(errorMessage);
+		expect(nodeOpError.messages).toHaveLength(0);
+	});
+
+	it('should not obfuscate error if description provided', () => {
+		const error = new Error('Initial error message');
+		const options = { description: 'Error description' };
+		const nodeOpError = new NodeOperationError(node, error, options);
+
+		expect(nodeOpError.message).toBe('Initial error message');
+	});
+
+	it('should respect provided options for message and description', () => {
+		const error = new Error('Initial error message');
+		const options = { message: 'Overridden message', description: 'Error description' };
+		const nodeOpError = new NodeOperationError(node, error, options);
+
+		expect(nodeOpError.message).toBe('Overridden message');
+		expect(nodeOpError.description).toBe('Error description');
 	});
 });
