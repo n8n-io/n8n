@@ -253,7 +253,7 @@ export class UsersController {
 			await trx.delete(User, { id: userToDelete.id });
 		});
 
-		void this.internalHooks.onUserDeletion({
+		this.internalHooks.onUserDeletion({
 			user: req.user,
 			telemetryData,
 			publicApi: false,
@@ -294,7 +294,7 @@ export class UsersController {
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });
 
-		void this.internalHooks.onUserRoleChange({
+		this.internalHooks.onUserRoleChange({
 			user: req.user,
 			target_user_id: targetUser.id,
 			target_user_new_role: ['global', payload.newRoleName].join(' '),

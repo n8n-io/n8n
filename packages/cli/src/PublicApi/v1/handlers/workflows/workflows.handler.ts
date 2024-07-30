@@ -33,6 +33,8 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/eventbus/event.service';
+import { z } from 'zod';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 export = {
 	createWorkflow: [
@@ -58,13 +60,27 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
+			Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
 			});
 
 			return res.json(createdWorkflow);
+		},
+	],
+	transferWorkflow: [
+		projectScope('workflow:move', 'workflow'),
+		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+			await Container.get(EnterpriseWorkflowService).transferOne(
+				req.user,
+				req.params.workflowId,
+				body.destinationProjectId,
+			);
+
+			res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
@@ -101,7 +117,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedWorkflow({
+			Container.get(InternalHooks).onUserRetrievedWorkflow({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -112,7 +128,7 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name } = req.query;
+			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -145,6 +161,10 @@ export = {
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
 				}
 
+				if (projectId) {
+					workflows = workflows.filter((w) => w.projectId === projectId);
+				}
+
 				if (!workflows.length) {
 					return res.status(200).json({
 						data: [],
@@ -163,7 +183,7 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
+			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
 			});

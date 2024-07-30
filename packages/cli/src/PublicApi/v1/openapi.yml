@@ -30,6 +30,8 @@ tags:
     description: Operations about tags
   - name: SourceControl
     description: Operations about source control
+  - name: Variables
+    description: Operations about variables
 
 paths:
   /audit:
@@ -56,6 +58,8 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/transfer:
+    $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:
@@ -64,6 +68,10 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /source-control/pull:
     $ref: './handlers/sourceControl/spec/paths/sourceControl.yml'
+  /variables:
+    $ref: './handlers/variables/spec/paths/variables.yml'
+  /variables/{id}:
+    $ref: './handlers/variables/spec/paths/variables.id.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

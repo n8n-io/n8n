@@ -104,7 +104,7 @@ export class TelemetryEventRelay {
 	}
 
 	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
-		void this.telemetry.track('Project settings updated', {
+		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
 			// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -120,7 +120,7 @@ export class TelemetryEventRelay {
 		removalType,
 		targetProjectId,
 	}: Event['team-project-deleted']) {
-		void this.telemetry.track('User deleted project', {
+		this.telemetry.track('User deleted project', {
 			user_id: userId,
 			role,
 			project_id: projectId,
@@ -130,7 +130,7 @@ export class TelemetryEventRelay {
 	}
 
 	private teamProjectCreated({ userId, role }: Event['team-project-created']) {
-		void this.telemetry.track('User created project', {
+		this.telemetry.track('User created project', {
 			user_id: userId,
 			role,
 		});
@@ -142,7 +142,7 @@ export class TelemetryEventRelay {
 		repoType,
 		connected,
 	}: Event['source-control-settings-updated']) {
-		void this.telemetry.track('User updated source control settings', {
+		this.telemetry.track('User updated source control settings', {
 			branch_name: branchName,
 			read_only_instance: readOnlyInstance,
 			repo_type: repoType,
@@ -155,7 +155,7 @@ export class TelemetryEventRelay {
 		workflowConflicts,
 		credConflicts,
 	}: Event['source-control-user-started-pull-ui']) {
-		void this.telemetry.track('User started pull via UI', {
+		this.telemetry.track('User started pull via UI', {
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
@@ -165,7 +165,7 @@ export class TelemetryEventRelay {
 	private sourceControlUserFinishedPullUi({
 		workflowUpdates,
 	}: Event['source-control-user-finished-pull-ui']) {
-		void this.telemetry.track('User finished pull via UI', {
+		this.telemetry.track('User finished pull via UI', {
 			workflow_updates: workflowUpdates,
 		});
 	}
@@ -178,7 +178,7 @@ export class TelemetryEventRelay {
 			workflow_updates: workflowUpdates,
 			forced,
 		});
-		void this.telemetry.track('User pulled via API', {
+		this.telemetry.track('User pulled via API', {
 			workflow_updates: workflowUpdates,
 			forced,
 		});
@@ -191,7 +191,7 @@ export class TelemetryEventRelay {
 		credsEligibleWithConflicts,
 		variablesEligible,
 	}: Event['source-control-user-started-push-ui']) {
-		void this.telemetry.track('User started push via UI', {
+		this.telemetry.track('User started push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
 			creds_eligible: credsEligible,
@@ -206,7 +206,7 @@ export class TelemetryEventRelay {
 		credsPushed,
 		variablesPushed,
 	}: Event['source-control-user-finished-push-ui']) {
-		void this.telemetry.track('User finished push via UI', {
+		this.telemetry.track('User finished push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
@@ -215,13 +215,13 @@ export class TelemetryEventRelay {
 	}
 
 	private licenseRenewalAttempted({ success }: Event['license-renewal-attempted']) {
-		void this.telemetry.track('Instance attempted to refresh license', {
+		this.telemetry.track('Instance attempted to refresh license', {
 			success,
 		});
 	}
 
 	private variableCreated() {
-		void this.telemetry.track('User created variable');
+		this.telemetry.track('User created variable');
 	}
 
 	private externalSecretsProviderSettingsSaved({
@@ -231,7 +231,7 @@ export class TelemetryEventRelay {
 		isNew,
 		errorMessage,
 	}: Event['external-secrets-provider-settings-saved']) {
-		void this.telemetry.track('User updated external secrets settings', {
+		this.telemetry.track('User updated external secrets settings', {
 			user_id: userId,
 			vault_type: vaultType,
 			is_valid: isValid,
@@ -241,7 +241,7 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiInvoked({ userId, path, method, apiVersion }: Event['public-api-invoked']) {
-		void this.telemetry.track('User invoked API', {
+		this.telemetry.track('User invoked API', {
 			user_id: userId,
 			path,
 			method,
@@ -252,7 +252,7 @@ export class TelemetryEventRelay {
 	private publicApiKeyCreated(event: Event['public-api-key-created']) {
 		const { user, publicApi } = event;
 
-		void this.telemetry.track('API key created', {
+		this.telemetry.track('API key created', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
@@ -261,7 +261,7 @@ export class TelemetryEventRelay {
 	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
 		const { user, publicApi } = event;
 
-		void this.telemetry.track('API key deleted', {
+		this.telemetry.track('API key deleted', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
@@ -278,7 +278,7 @@ export class TelemetryEventRelay {
 		packageAuthorEmail,
 		failureReason,
 	}: Event['community-package-installed']) {
-		void this.telemetry.track('cnr package install finished', {
+		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
 			input_string: inputString,
 			package_name: packageName,
@@ -300,7 +300,7 @@ export class TelemetryEventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 	}: Event['community-package-updated']) {
-		void this.telemetry.track('cnr package updated', {
+		this.telemetry.track('cnr package updated', {
 			user_id: user.id,
 			package_name: packageName,
 			package_version_current: packageVersionCurrent,
@@ -319,7 +319,7 @@ export class TelemetryEventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 	}: Event['community-package-deleted']) {
-		void this.telemetry.track('cnr package deleted', {
+		this.telemetry.track('cnr package deleted', {
 			user_id: user.id,
 			package_name: packageName,
 			package_version: packageVersion,
@@ -336,7 +336,7 @@ export class TelemetryEventRelay {
 		projectId,
 		projectType,
 	}: Event['credentials-created']) {
-		void this.telemetry.track('User created credentials', {
+		this.telemetry.track('User created credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -353,7 +353,7 @@ export class TelemetryEventRelay {
 		userIdsShareesAdded,
 		shareesRemoved,
 	}: Event['credentials-shared']) {
-		void this.telemetry.track('User updated cred sharing', {
+		this.telemetry.track('User updated cred sharing', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -364,7 +364,7 @@ export class TelemetryEventRelay {
 	}
 
 	private credentialsUpdated({ user, credentialId, credentialType }: Event['credentials-updated']) {
-		void this.telemetry.track('User updated credentials', {
+		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -372,7 +372,7 @@ export class TelemetryEventRelay {
 	}
 
 	private credentialsDeleted({ user, credentialId, credentialType }: Event['credentials-deleted']) {
-		void this.telemetry.track('User deleted credentials', {
+		this.telemetry.track('User deleted credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -385,7 +385,7 @@ export class TelemetryEventRelay {
 		usersSynced,
 		error,
 	}: Event['ldap-general-sync-finished']) {
-		void this.telemetry.track('Ldap general sync finished', {
+		this.telemetry.track('Ldap general sync finished', {
 			type,
 			succeeded,
 			users_synced: usersSynced,
@@ -407,7 +407,7 @@ export class TelemetryEventRelay {
 		loginLabel,
 		loginEnabled,
 	}: Event['ldap-settings-updated']) {
-		void this.telemetry.track('User updated Ldap settings', {
+		this.telemetry.track('User updated Ldap settings', {
 			user_id: userId,
 			loginIdAttribute,
 			firstNameAttribute,
@@ -424,11 +424,11 @@ export class TelemetryEventRelay {
 	}
 
 	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
-		void this.telemetry.track('Ldap login sync failed', { error });
+		this.telemetry.track('Ldap login sync failed', { error });
 	}
 
 	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
-		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
+		this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
 
 	private async serverStarted() {
@@ -489,12 +489,10 @@ export class TelemetryEventRelay {
 			where: {},
 		});
 
-		void Promise.all([
-			this.telemetry.identify(info),
-			this.telemetry.track('Instance started', {
-				...info,
-				earliest_workflow_created: firstWorkflow?.createdAt,
-			}),
-		]);
+		this.telemetry.identify(info);
+		this.telemetry.track('Instance started', {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+		});
 	}
 }

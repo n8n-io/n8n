@@ -146,7 +146,7 @@ describe('Orchestration Service', () => {
 
 	describe('shouldAddWebhooks', () => {
 		beforeEach(() => {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 		});
 		test('should return true for init', () => {
 			// We want to ensure that webhooks are populated on init
@@ -169,7 +169,7 @@ describe('Orchestration Service', () => {
 		});
 
 		test('should return false for update or activate when not leader', () => {
-			config.set('multiMainSetup.instanceType', 'follower');
+			config.set('instanceRole', 'follower');
 			const modes = ['update', 'activate'] as WorkflowActivateMode[];
 			for (const mode of modes) {
 				const result = os.shouldAddWebhooks(mode);
