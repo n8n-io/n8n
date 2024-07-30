@@ -48,7 +48,7 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	beforeEach(() => {
-		config.set('multiMainSetup.instanceType', 'leader');
+		config.set('instanceRole', 'leader');
 	});
 
 	afterEach(async () => {
@@ -130,7 +130,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Arrange
 				 */
-				config.set('multiMainSetup.instanceType', 'follower');
+				config.set('instanceRole', 'follower');
 				// @ts-expect-error Private method
 				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');

@@ -332,7 +332,7 @@ export class ExecutionRecoveryService {
 	private shouldScheduleQueueRecovery() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader' &&
+			config.getEnv('instanceRole') === 'leader' &&
 			!this.isShuttingDown
 		);
 	}
