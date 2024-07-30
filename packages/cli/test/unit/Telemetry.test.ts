@@ -15,11 +15,6 @@ describe('Telemetry', () => {
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
 	const mockRudderStack = mock<RudderStack>();
-	mockRudderStack.track.mockImplementation(function (_, cb) {
-		cb?.();
-
-		return this;
-	});
 
 	let telemetry: Telemetry;
 	const instanceId = 'Telemetry unit test';
