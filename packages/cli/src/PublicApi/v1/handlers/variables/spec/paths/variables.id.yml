@@ -1,0 +1,20 @@
+delete:
+  x-eov-operation-id: deleteVariable
+  x-eov-operation-handler: v1/handlers/variables/variables.handler
+  tags:
+    - Variables
+  summary: Delete a variable
+  description: Delete a variable from your instance.
+  parameters:
+    - $ref: '../schemas/parameters/variableId.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/variable.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

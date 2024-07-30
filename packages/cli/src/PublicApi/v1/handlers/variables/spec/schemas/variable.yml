@@ -1,0 +1,18 @@
+type: object
+additionalProperties: false
+required:
+  - key
+  - value
+properties:
+  id:
+    type: string
+    readOnly: true
+  key:
+    type: string
+    readOnly: true
+  value:
+    type: string
+    example: test
+  type:
+    type: string
+    readOnly: true
