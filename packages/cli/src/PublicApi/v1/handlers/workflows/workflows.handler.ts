@@ -79,7 +79,7 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
+			Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
@@ -122,7 +122,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedWorkflow({
+			Container.get(InternalHooks).onUserRetrievedWorkflow({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -188,7 +188,7 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
+			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
 			});

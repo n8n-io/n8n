@@ -244,7 +244,7 @@ export class FrontendService {
 	}
 
 	getSettings(pushRef?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(pushRef);
+		this.internalHooks.onFrontendSettingsAPI(pushRef);
 
 		const restEndpoint = config.getEnv('endpoints.rest');
 
