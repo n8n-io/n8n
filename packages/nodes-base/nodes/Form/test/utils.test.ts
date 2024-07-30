@@ -49,7 +49,6 @@ describe('FormTrigger, formWebhook', () => {
 
 		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: true,
-			customAttribution: undefined,
 			formDescription: 'Test Description',
 			formFields: [
 				{
@@ -247,7 +246,6 @@ describe('FormTrigger, prepareFormData', () => {
 			],
 			useResponseData: true,
 			appendAttribution: true,
-			customAttribution: undefined,
 			redirectUrl: 'https://example.com/thank-you',
 		});
 	});
@@ -293,7 +291,6 @@ describe('FormTrigger, prepareFormData', () => {
 			],
 			useResponseData: undefined,
 			appendAttribution: true,
-			customAttribution: undefined,
 		});
 	});
 
