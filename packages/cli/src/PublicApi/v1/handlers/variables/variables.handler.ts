@@ -5,10 +5,11 @@ import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/g
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import type { Response } from 'express';
 import type { VariablesRequest } from '@/requests';
+import type { PaginatedRequest } from '@/PublicApi/types';
 
 type Create = VariablesRequest.Create;
 type Delete = VariablesRequest.Delete;
-type GetAll = VariablesRequest.PublicApiGetAll;
+type GetAll = PaginatedRequest;
 
 export = {
 	createVariable: [
