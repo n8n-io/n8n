@@ -1,17 +1,18 @@
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	EventNamesAiNodesType,
 	IDataObject,
 	IExecuteFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
-import { DynamicTool, type Tool } from '@langchain/core/tools';
+import type { Tool } from '@langchain/core/tools';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import { N8nTool } from './N8nTool';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -178,7 +179,51 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+// function convertToSimpleTool(ctx: IExecuteFunctions, tool: DynamicStructuredTool): DynamicTool {
+// 	const name = tool.name;
+// 	const description = tool.description;
+// 	const func = tool.func;
+//
+// 	const parser = new StructuredOutputParser(tool.schema);
+//
+// 	const formattingInstructions = parser.getFormatInstructions();
+//
+// 	const wrappedFunc = async function (query: string) {
+// 		console.log('TOOL CALLED');
+//
+// 		try {
+// 			const parsedQuery = await parser.parse(query);
+//
+// 			console.log({ parsedQuery });
+//
+// 			const result = await func(parsedQuery);
+//
+// 			console.log(result);
+// 			return result;
+// 		} catch (e) {
+// 			console.log(query);
+// 			// const result = await func(JSON.parse(query));
+//
+// 			console.log(result);
+// 			console.log(e);
+//
+// 			return e.toString();
+// 		}
+// 	};
+//
+// 	return new DynamicTool({
+// 		name,
+// 		description:
+// 			description + '\n\n' + formattingInstructions.replace(/\{/g, '{{').replace(/\}/g, '}}'),
+// 		func: wrappedFunc,
+// 	});
+// }
+
+export const getConnectedTools = async (
+	ctx: IExecuteFunctions,
+	enforceUniqueNames: boolean,
+	convertStructuredTool: boolean = true,
+) => {
 	const connectedTools =
 		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 
@@ -186,8 +231,12 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 
 	const seenNames = new Set<string>();
 
+	const finalTools = [];
+
 	for (const tool of connectedTools) {
-		if (!(tool instanceof DynamicTool)) continue;
+		// console.log({ tool });
+
+		// if (!(tool instanceof DynamicTool)) continue;
 
 		const { name } = tool;
 		if (seenNames.has(name)) {
@@ -197,7 +246,13 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 			);
 		}
 		seenNames.add(name);
+
+		if (convertStructuredTool && tool instanceof N8nTool) {
+			finalTools.push(tool.asDynamicTool());
+		} else {
+			finalTools.push(tool);
+		}
 	}
 
-	return connectedTools;
+	return finalTools;
 };
