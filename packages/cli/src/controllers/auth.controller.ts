@@ -179,7 +179,7 @@ export class AuthController {
 			throw new BadRequestError('Invalid request');
 		}
 
-		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+		this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
 		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;
