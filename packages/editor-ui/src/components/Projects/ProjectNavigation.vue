@@ -116,7 +116,7 @@ onMounted(async () => {
 		<hr
 			v-if="
 				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectsAvailable)
 			"
 			class="mt-m mb-m"
 		/>
@@ -137,7 +137,7 @@ onMounted(async () => {
 		</ElMenu>
 		<N8nTooltip placement="right" :disabled="projectsStore.canCreateProjects">
 			<ElMenu
-				v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable"
+				v-if="projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectsAvailable"
 				:collapse="props.collapsed"
 				class="pl-xs pr-xs"
 			>
@@ -171,7 +171,7 @@ onMounted(async () => {
 		<hr
 			v-if="
 				displayProjects.length ||
-				(projectsStore.hasPermissionToCreateProjects && projectsStore.teamProjectsAvailable)
+				(projectsStore.hasPermissionToCreateProjects && projectsStore.isTeamProjectsAvailable)
 			"
 			class="mt-m mb-m"
 		/>
