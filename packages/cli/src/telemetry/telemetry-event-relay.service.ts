@@ -444,9 +444,8 @@ export class TelemetryEventRelay {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
-			n8n_disable_production_main_process: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
+			n8n_disable_production_main_process:
+				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
 			system_info: {
 				os: {
 					type: os.type(),
