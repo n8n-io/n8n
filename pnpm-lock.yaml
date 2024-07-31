@@ -1061,8 +1061,8 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3(@fortawesome/fontawesome-svg-core@1.2.36)(vue@3.4.21(typescript@5.5.2))
       element-plus:
-        specifier: ^2.4.3
-        version: 2.7.8(vue@3.4.21(typescript@5.5.2))
+        specifier: 2.4.3
+        version: 2.4.3(vue@3.4.21(typescript@5.5.2))
       markdown-it:
         specifier: ^13.0.1
         version: 13.0.1
@@ -7434,8 +7434,8 @@ packages:
   electron-to-chromium@1.4.703:
     resolution: {integrity: sha512-094ZZC4nHXPKl/OwPinSMtLN9+hoFkdfQGKnvXbY+3WEAYtVDpz9UhJIViiY6Zb8agvqxiaJzNG9M+pRZWvSZw==}
 
-  element-plus@2.7.8:
-    resolution: {integrity: sha512-h6dx2XihAbQaud0v+6O7Fy0b0G3YNplNVH7QnK3csTcvQd4y4raiyMRQpf9EKbRbTMdNrFsqAZrs9ok9DMcJHg==}
+  element-plus@2.4.3:
+    resolution: {integrity: sha512-b3q26j+lM4SBqiyzw8HybybGnP2pk4MWgrnzzzYW5qKQUgV6EG1Zg7nMCfgCVccI8tNvZoTiUHb2mFaiB9qT8w==}
     peerDependencies:
       vue: ^3.2.0
 
@@ -20973,7 +20973,7 @@ snapshots:
 
   electron-to-chromium@1.4.703: {}
 
-  element-plus@2.7.8(vue@3.4.21(typescript@5.5.2)):
+  element-plus@2.4.3(vue@3.4.21(typescript@5.5.2)):
     dependencies:
       '@ctrl/tinycolor': 3.6.0
       '@element-plus/icons-vue': 2.3.1(vue@3.4.21(typescript@5.5.2))
