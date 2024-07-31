@@ -256,6 +256,10 @@ export async function executeWebhook(
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
+	if (executionId) {
+		additionalData.executionId = executionId;
+	}
+
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
