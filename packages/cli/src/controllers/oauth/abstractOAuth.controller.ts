@@ -71,8 +71,8 @@ export abstract class AbstractOAuthController {
 		return credential;
 	}
 
-	protected async getAdditionalData(user: User) {
-		return await WorkflowExecuteAdditionalData.getBase(user.id);
+	protected async getAdditionalData() {
+		return await WorkflowExecuteAdditionalData.getBase();
 	}
 
 	protected async getDecryptedData(
