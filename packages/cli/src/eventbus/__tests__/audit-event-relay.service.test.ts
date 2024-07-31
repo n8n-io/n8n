@@ -2,12 +2,13 @@ import { mock } from 'jest-mock-extended';
 import { AuditEventRelay } from '../audit-event-relay.service';
 import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { Event } from '../event.types';
-import type { EventService } from '../event.service';
+import { EventService } from '../event.service';
 
 describe('AuditorService', () => {
 	const eventBus = mock<MessageEventBus>();
-	const eventService = mock<EventService>();
+	const eventService = new EventService();
 	const auditor = new AuditEventRelay(eventService, eventBus);
+	auditor.init();
 
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -78,6 +79,52 @@ describe('AuditorService', () => {
 					globalRole: 'some-other-role',
 				},
 			},
+		});
+	});
+
+	it('should log on `workflow-post-execute` for successful execution', () => {
+		const payload = {
+			executionId: 'some-id',
+			success: true,
+			userId: 'some-id',
+			workflowId: 'some-id',
+			isManual: true,
+			workflowName: 'some-name',
+			metadata: {},
+			lastNodeExecuted: 'some-node',
+			errorNodeType: 'some-type',
+			errorMessage: 'some-message',
+		};
+
+		eventService.emit('workflow-post-execute', payload);
+
+		const { lastNodeExecuted: _, errorNodeType: __, errorMessage: ___, ...rest } = payload;
+
+		expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+			eventName: 'n8n.workflow.success',
+			payload: rest,
+		});
+	});
+
+	it('should handle `workflow-post-execute` event for unsuccessful execution', () => {
+		const payload = {
+			executionId: 'some-id',
+			success: false,
+			userId: 'some-id',
+			workflowId: 'some-id',
+			isManual: true,
+			workflowName: 'some-name',
+			metadata: {},
+			lastNodeExecuted: 'some-node',
+			errorNodeType: 'some-type',
+			errorMessage: 'some-message',
+		};
+
+		eventService.emit('workflow-post-execute', payload);
+
+		expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
+			eventName: 'n8n.workflow.failed',
+			payload,
 		});
 	});
 });

@@ -121,10 +121,37 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPostExecute(event: Event['workflow-post-execute']) {
+	private workflowPostExecute({
+		executionId,
+		success,
+		userId,
+		workflowId,
+		isManual,
+		workflowName,
+		metadata,
+		lastNodeExecuted,
+		errorNodeType,
+		errorMessage,
+	}: Event['workflow-post-execute']) {
+		const payload: Event['workflow-post-execute'] = {
+			executionId,
+			success,
+			userId,
+			workflowId,
+			isManual,
+			workflowName,
+			metadata,
+		};
+
+		if (!success) {
+			payload.lastNodeExecuted = lastNodeExecuted;
+			payload.errorNodeType = errorNodeType;
+			payload.errorMessage = errorMessage;
+		}
+
 		void this.eventBus.sendWorkflowEvent({
-			eventName: 'n8n.workflow.success',
-			payload: event,
+			eventName: success ? 'n8n.workflow.success' : 'n8n.workflow.failed',
+			payload,
 		});
 	}
 

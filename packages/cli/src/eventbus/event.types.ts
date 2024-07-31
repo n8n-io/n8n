@@ -46,6 +46,11 @@ export type Event = {
 		isManual: boolean;
 		workflowName: string;
 		metadata?: Record<string, string>;
+
+		// failed case
+		lastNodeExecuted?: string;
+		errorNodeType?: string;
+		errorMessage?: string;
 	};
 
 	'node-pre-execute': {
