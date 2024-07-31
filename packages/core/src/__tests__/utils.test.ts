@@ -498,54 +498,6 @@ describe('findStartNodes', () => {
 	});
 });
 
-describe('findSubgraph', () => {
-	test('simple', () => {
-		const from = createNodeData({ name: 'From' });
-		const to = createNodeData({ name: 'To' });
-
-		const graph = new Workflow({
-			nodes: [from, to],
-			connections: toIConnections([{ from, to }]),
-			active: false,
-			nodeTypes,
-		});
-
-		const subgraph = findSubgraph(graph, to);
-
-		expect(subgraph).toHaveLength(2);
-		expect(subgraph).toContainEqual(to);
-		expect(subgraph).toContainEqual(from);
-	});
-
-	//
-	//  ┌────┐         ┌────┐
-	//  │    │O───────►│    │
-	//  │ if │         │noOp│
-	//  │    │O───────►│    │
-	//  └────┘         └────┘
-	//
-	test('multiple connections', () => {
-		const ifNode = createNodeData({ name: 'If' });
-		const noOp = createNodeData({ name: 'noOp' });
-
-		const workflow = new Workflow({
-			nodes: [ifNode, noOp],
-			connections: toIConnections([
-				{ from: ifNode, to: noOp, outputIndex: 0 },
-				{ from: ifNode, to: noOp, outputIndex: 1 },
-			]),
-			active: false,
-			nodeTypes,
-		});
-
-		const subgraph = findSubgraph(workflow, noOp);
-
-		expect(subgraph).toHaveLength(2);
-		expect(subgraph).toContainEqual(noOp);
-		expect(subgraph).toContainEqual(ifNode);
-	});
-});
-
 describe('findSubgraph2', () => {
 	test('simple', () => {
 		const from = createNodeData({ name: 'From' });

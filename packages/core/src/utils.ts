@@ -9,26 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 
-export function findSubgraph(workflow: Workflow, destinationNode: INode): INode[] {
-	const result = workflow
-		.getParentNodes(destinationNode.name)
-		.reduce(
-			([set], name) => {
-				set.add(name);
-				return [set];
-			},
-			[new Set<string>()],
-		)
-		.flatMap((set) => [...set])
-		.map((name) => workflow.getNode(name))
-		.filter((node) => node !== null)
-		.filter((node) => !node.disabled);
-
-	result.push(destinationNode);
-
-	return result;
-}
-
 function findSubgraph2Recursive(
 	graph: DirectedGraph,
 	destinationNode: INode,
@@ -273,34 +253,34 @@ export interface StartNodeData {
 	sourceData?: ISourceData;
 }
 
-export function getDirectChildren(workflow: Workflow, parent: INode): StartNodeData[] {
-	const directChildren: StartNodeData[] = [];
-
-	for (const [_connectionGroupName, inputs] of Object.entries(
-		workflow.connectionsBySourceNode[parent.name] ?? {},
-	)) {
-		for (const [outputIndex, connections] of inputs.entries()) {
-			for (const connection of connections) {
-				const node = workflow.getNode(connection.node);
-
-				a.ok(node, `Node(${connection.node}) does not exist in workflow.`);
-
-				directChildren.push({
-					node,
-					sourceData: {
-						previousNode: parent,
-						previousNodeOutput: outputIndex,
-						// TODO: I don't have this here. This part is working without run
-						// data, so there are not runs.
-						previousNodeRun: 0,
-					},
-				});
-			}
-		}
-	}
-
-	return directChildren;
-}
+//export function getDirectChildren(workflow: Workflow, parent: INode): StartNodeData[] {
+//	const directChildren: StartNodeData[] = [];
+//
+//	for (const [_connectionGroupName, inputs] of Object.entries(
+//		workflow.connectionsBySourceNode[parent.name] ?? {},
+//	)) {
+//		for (const [outputIndex, connections] of inputs.entries()) {
+//			for (const connection of connections) {
+//				const node = workflow.getNode(connection.node);
+//
+//				a.ok(node, `Node(${connection.node}) does not exist in workflow.`);
+//
+//				directChildren.push({
+//					node,
+//					sourceData: {
+//						previousNode: parent,
+//						previousNodeOutput: outputIndex,
+//						// TODO: I don't have this here. This part is working without run
+//						// data, so there are not runs.
+//						previousNodeRun: 0,
+//					},
+//				});
+//			}
+//		}
+//	}
+//
+//	return directChildren;
+//}
 
 export function getIncomingData(
 	runData: IRunData,
