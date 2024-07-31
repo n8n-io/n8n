@@ -175,7 +175,7 @@ export class InternalHooks {
 			runData.status = 'canceled';
 		}
 
-		telemetryProperties.success = !!runData?.finished; // xyz
+		telemetryProperties.success = !!runData?.finished;
 
 		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
 		const executionStatus: ExecutionStatus = runData
