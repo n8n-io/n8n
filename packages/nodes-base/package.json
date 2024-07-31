@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.52.0",
+  "version": "1.53.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -52,6 +52,7 @@
       "dist/credentials/BubbleApi.credentials.js",
       "dist/credentials/CalApi.credentials.js",
       "dist/credentials/CalendlyApi.credentials.js",
+      "dist/credentials/CalendlyOAuth2Api.credentials.js",
       "dist/credentials/CarbonBlackApi.credentials.js",
       "dist/credentials/ChargebeeApi.credentials.js",
       "dist/credentials/CircleCiApi.credentials.js",
@@ -829,7 +830,7 @@
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "@n8n/imap": "workspace:*",
-    "@n8n/vm2": "3.9.20",
+    "@n8n/vm2": "3.9.24",
     "amqplib": "0.10.3",
     "alasql": "^4.4.0",
     "aws4": "1.11.0",
