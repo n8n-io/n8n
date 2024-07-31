@@ -19,10 +19,10 @@ export class AiTransform implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AI Transform',
 		name: 'aiTransform',
-		icon: 'file:sparkles.svg',
+		icon: 'file:aitransform.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Modify data by writing a prompt',
+		description: 'Modify data based on instructions written in plain english',
 		defaults: {
 			name: 'AI Transform',
 		},
@@ -35,9 +35,12 @@ export class AiTransform implements INodeType {
 				name: 'generate',
 				type: 'button',
 				default: '',
-				placeholder: 'Describe how you want to transform your data and click Generate',
+				description:
+					"Provide instructions on how you want to transform the data, then click 'Generate code'",
+				placeholder:
+					"Example: Merge 'firstname' and 'lastname' into a field 'details.name' and sort by 'email'",
 				typeOptions: {
-					buttonLabel: 'Generate Code',
+					buttonLabel: 'Generate code',
 					buttonHasInputField: true,
 					buttonInputFieldMaxLength: 500,
 					action: {
@@ -48,7 +51,7 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
-				displayName: 'Code',
+				displayName: 'Transformation Code',
 				name: 'jsCode',
 				type: 'string',
 				typeOptions: {
@@ -58,9 +61,11 @@ export class AiTransform implements INodeType {
 					editorIsReadOnly: true,
 				},
 				default:
-					"// Enter some text to 'Instructions' and click 'Generate Code' button\n\nreturn [];",
+					"// Enter some text to 'Instructions' and click 'Generate code' button\n\nreturn [];",
+				description:
+					'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
 				noDataExpression: true,
-				hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
+				// hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
 				displayOptions: {
 					hide: {
 						generate: [{ _cnd: { eq: '' } }],
@@ -68,7 +73,8 @@ export class AiTransform implements INodeType {
 				},
 			},
 			{
-				displayName: "Enter some text to 'Instructions' and click 'Generate Code' button",
+				displayName:
+					"Click on 'Test step' to run the transformation code. Further executions will use the generated code (and not invoke AI again).",
 				name: 'hint',
 				type: 'notice',
 				default: '',
