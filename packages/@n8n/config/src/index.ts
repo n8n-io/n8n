@@ -10,6 +10,7 @@ import { EventBusConfig } from './configs/event-bus';
 import { NodesConfig } from './configs/nodes';
 import { ExternalStorageConfig } from './configs/external-storage';
 import { WorkflowsConfig } from './configs/workflows';
+import { EndpointsConfig } from './configs/endpoints';
 
 @Config
 class UserManagementConfig {
@@ -71,4 +72,7 @@ export class GlobalConfig {
 	/** HTTP Protocol via which n8n can be reached */
 	@Env('N8N_PROTOCOL')
 	readonly protocol: 'http' | 'https' = 'http';
+
+	@Nested
+	readonly endpoints: EndpointsConfig;
 }
