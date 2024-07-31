@@ -173,6 +173,7 @@ export class WorkflowRunner {
 						success: executionData?.status === 'success',
 						isManual: data.executionMode === 'manual',
 						userId: data.userId,
+						runData: executionData,
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {
