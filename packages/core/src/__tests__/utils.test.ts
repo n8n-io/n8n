@@ -352,8 +352,8 @@ describe('findStartNodes', () => {
 		const graph = new DirectedGraph()
 			.addNodes(trigger, node)
 			.addConnections(
-				{ from: trigger, to: node, outputIndex: 0, inputIndex: 0 },
-				{ from: trigger, to: node, outputIndex: 1, inputIndex: 1 },
+				{ from: trigger, to: node, inputIndex: 0, outputIndex: 0 },
+				{ from: trigger, to: node, inputIndex: 1, outputIndex: 1 },
 			);
 
 		const startNodes = findStartNodes(graph, trigger, node, {
@@ -386,8 +386,8 @@ describe('findStartNodes', () => {
 		const graph = new DirectedGraph()
 			.addNodes(ifNode, merge)
 			.addConnections(
-				{ from: ifNode, to: merge, outputIndex: 0, inputIndex: 0 },
-				{ from: ifNode, to: merge, outputIndex: 1, inputIndex: 1 },
+				{ from: ifNode, to: merge, inputIndex: 0, outputIndex: 0 },
+				{ from: ifNode, to: merge, inputIndex: 1, outputIndex: 1 },
 			);
 
 		const startNodes = findStartNodes(graph, ifNode, merge, {
@@ -414,18 +414,18 @@ describe('findStartNodes', () => {
 	//  The merge node gets data on both inputs, so the it should be in the start
 	//  nodes twice.
 	test('multiple connections with both having data', () => {
-		const ifNode = createNodeData({ name: 'if' });
-		const merge = createNodeData({ name: 'merge' });
+		const trigger = createNodeData({ name: 'trigger' });
+		const node = createNodeData({ name: 'node' });
 
 		const graph = new DirectedGraph()
-			.addNodes(ifNode, merge)
+			.addNodes(trigger, node)
 			.addConnections(
-				{ from: ifNode, to: merge, outputIndex: 0 },
-				{ from: ifNode, to: merge, outputIndex: 1 },
+				{ from: trigger, to: node, inputIndex: 0, outputIndex: 0 },
+				{ from: trigger, to: node, inputIndex: 1, outputIndex: 1 },
 			);
 
-		const startNodes = findStartNodes(graph, ifNode, merge, {
-			[ifNode.name]: [
+		const startNodes = findStartNodes(graph, trigger, node, {
+			[trigger.name]: [
 				toITaskData([
 					{ data: { value: 1 }, outputIndex: 0 },
 					{ data: { value: 1 }, outputIndex: 1 },
@@ -435,13 +435,14 @@ describe('findStartNodes', () => {
 
 		expect(startNodes).toHaveLength(2);
 		expect(startNodes).toContainEqual({
-			node: merge,
+			node,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: trigger,
 				previousNodeRun: 0,
 				previousNodeOutput: 0,
 			},
 		});
+	});
 		expect(startNodes).toContainEqual({
 			node: merge,
 			sourceData: {
