@@ -175,7 +175,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 		});
 
-		return sharedWorkflows.map((sw) => sw.workflow);
+		return sharedWorkflows.map((sw) => ({ ...sw.workflow, projectId: sw.projectId }));
 	}
 
 	/**

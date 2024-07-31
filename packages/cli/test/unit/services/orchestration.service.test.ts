@@ -33,7 +33,7 @@ function setDefaultConfig() {
 	config.set('generic.instanceType', 'main');
 }
 
-const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
+const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 	senderId: 'test',
 	workerId: 'test',
 	command: 'restartEventBus',
@@ -88,7 +88,7 @@ describe('Orchestration Service', () => {
 
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
-			JSON.stringify(workerRestartEventbusResponse),
+			JSON.stringify(workerRestartEventBusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
 	});
@@ -108,7 +108,7 @@ describe('Orchestration Service', () => {
 
 	test('should reject command messages from itself', async () => {
 		const response = await handleCommandMessageMain(
-			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
+			JSON.stringify({ ...workerRestartEventBusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
@@ -141,7 +141,7 @@ describe('Orchestration Service', () => {
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
-		expect(res2!.payload!.result).toEqual('debounced');
+		expect((res2!.payload as { result: string }).result).toEqual('debounced');
 	});
 
 	describe('shouldAddWebhooks', () => {
