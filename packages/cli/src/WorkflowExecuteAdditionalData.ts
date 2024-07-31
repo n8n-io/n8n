@@ -1002,23 +1002,19 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
-	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
-
-	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
-	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
+	const globalConfig = Container.get(GlobalConfig);
 
 	const variables = await WorkflowHelpers.getVariables();
 
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
-		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
+		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: urlBaseWebhook,
-		formWaitingBaseUrl,
-		webhookBaseUrl,
-		webhookWaitingBaseUrl,
-		webhookTestBaseUrl,
+		formWaitingBaseUrl: globalConfig.endpoints.formWaiting,
+		webhookBaseUrl: globalConfig.endpoints.webhook,
+		webhookWaitingBaseUrl: globalConfig.endpoints.webhookWaiting,
+		webhookTestBaseUrl: globalConfig.endpoints.webhookTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
