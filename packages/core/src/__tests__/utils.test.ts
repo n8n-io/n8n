@@ -2,17 +2,16 @@
 // If you update the tests please update the diagrams as well.
 //
 // Map
-// 0  means the output has no data.
-// 1  means the output has data.
-// ►► denotes the node that the user wants to execute to.
+// 0  means the output has no run data
+// 1  means the output has run data
+// ►► denotes the node that the user wants to execute to
 // XX denotes that the node is disabled
-//
-// TODO: rename all nodes to generic names, don't use if, merge, etc.
+// PD denotes that the node has pinned data
 
 import type { IConnections, INode, IPinData, IRunData } from 'n8n-workflow';
-import { NodeConnectionType, Workflow } from 'n8n-workflow';
-import { DirectedGraph, findStartNodes, findSubgraph, findSubgraph2, isDirty } from '../utils';
-import { createNodeData, toITaskData, nodeTypes, defaultWorkflowParameter } from './helpers';
+import { NodeConnectionType } from 'n8n-workflow';
+import { DirectedGraph, findStartNodes, findSubgraph2, isDirty } from '../utils';
+import { createNodeData, toITaskData, defaultWorkflowParameter } from './helpers';
 
 test('toITaskData', function () {
 	expect(toITaskData([{ data: { value: 1 } }])).toEqual({
@@ -162,189 +161,225 @@ describe('isDirty', () => {
 });
 
 describe('findStartNodes', () => {
-	test('simple', () => {
+	//   ►►
+	//  ┌───────┐
+	//  │trigger│
+	//  └───────┘
+	test('finds the start node if there is only a trigger', () => {
 		const node = createNodeData({ name: 'Basic Node' });
-
 		const graph = new DirectedGraph().addNode(node);
 
-		expect(findStartNodes(graph, node, node)).toStrictEqual([{ node, sourceData: undefined }]);
+		const startNodes = findStartNodes(graph, node, node);
+
+		expect(startNodes).toHaveLength(1);
+		expect(startNodes).toContainEqual({ node, sourceData: undefined });
 	});
 
-	test('less simple', () => {
-		const node1 = createNodeData({ name: 'Basic Node 1' });
-		const node2 = createNodeData({ name: 'Basic Node 2' });
-
+	//                 ►►
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
+	test('finds the start node in a simple graph', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
 		const graph = new DirectedGraph()
-			.addNodes(node1, node2)
-			.addConnection({ from: node1, to: node2 });
+			.addNodes(trigger, destination)
+			.addConnection({ from: trigger, to: destination });
 
-		expect(findStartNodes(graph, node1, node2)).toStrictEqual([
-			{ node: node1, sourceData: undefined },
-		]);
+		// if the trigger has no run data
+		{
+			const startNodes = findStartNodes(graph, trigger, destination);
 
-		const runData: IRunData = {
-			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
-		};
+			expect(startNodes).toHaveLength(1);
+			expect(startNodes).toContainEqual({ node: trigger, sourceData: undefined });
+		}
 
-		expect(findStartNodes(graph, node1, node2, runData)).toStrictEqual([
-			{
-				node: node2,
-				sourceData: { previousNode: node1, previousNodeOutput: 0, previousNodeRun: 0 },
-			},
-		]);
+		// if the trigger has run data
+		{
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+
+			const startNodes = findStartNodes(graph, trigger, destination, runData);
+
+			expect(startNodes).toHaveLength(1);
+			expect(startNodes).toContainEqual({
+				node: destination,
+				sourceData: { previousNode: trigger, previousNodeOutput: 0, previousNodeRun: 0 },
+			});
+		}
 	});
 
-	//
-	//  ┌────┐
-	//  │    │1───┐    ┌────┐
-	//  │ if │    ├───►│noOp│
-	//  │    │1───┘    └────┘
-	//  └────┘
-	//
-	//  All nodes have run data. `findStartNodes` should return noOp twice
+	//  ┌───────┐       ►►
+	//  │       │1──┐  ┌────┐
+	//  │trigger│   ├─►│node│
+	//  │       │1──┘  └────┘
+	//  └───────┘
+	//  All nodes have run data. `findStartNodes` should return node twice
 	//  because it has 2 input connections.
 	test('multiple outputs', () => {
-		const ifNode = createNodeData({ name: 'If' });
-		const noOp = createNodeData({ name: 'NoOp' });
-
+		//
+		// ARRANGE
+		//
+		const trigger = createNodeData({ name: 'trigger' });
+		const node = createNodeData({ name: 'node' });
 		const graph = new DirectedGraph()
-			.addNodes(ifNode, noOp)
+			.addNodes(trigger, node)
 			.addConnections(
-				{ from: ifNode, to: noOp, outputIndex: 0, inputIndex: 0 },
-				{ from: ifNode, to: noOp, outputIndex: 1, inputIndex: 0 },
+				{ from: trigger, to: node, outputIndex: 0, inputIndex: 0 },
+				{ from: trigger, to: node, outputIndex: 1, inputIndex: 0 },
 			);
-
 		const runData: IRunData = {
-			[ifNode.name]: [
+			[trigger.name]: [
 				toITaskData([
 					{ data: { value: 1 }, outputIndex: 0 },
 					{ data: { value: 1 }, outputIndex: 1 },
 				]),
 			],
-			[noOp.name]: [toITaskData([{ data: { value: 1 } }])],
+			[node.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
 
-		const startNodes = findStartNodes(graph, ifNode, noOp, runData);
+		//
+		// ACT
+		//
+		const startNodes = findStartNodes(graph, trigger, node, runData);
 
+		//
+		// ASSERT
+		//
 		expect(startNodes).toHaveLength(2);
 		expect(startNodes).toContainEqual({
-			node: noOp,
+			node,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: trigger,
 				previousNodeOutput: 0,
 				previousNodeRun: 0,
 			},
 		});
 		expect(startNodes).toContainEqual({
-			node: noOp,
+			node,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: trigger,
 				previousNodeOutput: 1,
 				previousNodeRun: 0,
 			},
 		});
 	});
 
-	test('medium', () => {
-		const trigger = createNodeData({ name: 'Trigger' });
-		const ifNode = createNodeData({ name: 'If' });
-		const merge1 = createNodeData({ name: 'Merge1' });
-		const merge2 = createNodeData({ name: 'Merge2' });
-		const noOp = createNodeData({ name: 'NoOp' });
-
+	//             ┌─────┐              ┌─────┐          ►►
+	//┌───────┐    │     ├────┬────────►│     │         ┌─────┐
+	//│trigger├───►│node1│    │         │node2├────┬───►│node4│
+	//└───────┘    │     ├────┼────┬───►│     │    │    └─────┘
+	//             └─────┘    │    │    └─────┘    │
+	//                        │    │               │
+	//                        │    │               │
+	//                        │    │               │
+	//                        │    │    ┌─────┐    │
+	//                        │    └───►│     │    │
+	//                        │         │node3├────┘
+	//                        └────────►│     │
+	//                                  └─────┘
+	test('complex example with multiple outputs and inputs', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const node3 = createNodeData({ name: 'node3' });
+		const node4 = createNodeData({ name: 'node4' });
 		const graph = new DirectedGraph()
-			.addNodes(trigger, ifNode, merge1, merge2, noOp)
+			.addNodes(trigger, node1, node2, node3, node4)
 			.addConnections(
-				{ from: trigger, to: ifNode },
-				{ from: ifNode, to: merge1, outputIndex: 0, inputIndex: 0 },
-				{ from: ifNode, to: merge1, outputIndex: 1, inputIndex: 1 },
-				{ from: ifNode, to: merge2, outputIndex: 0, inputIndex: 1 },
-				{ from: ifNode, to: merge2, outputIndex: 1, inputIndex: 0 },
-				{ from: merge1, to: noOp },
-				{ from: merge2, to: noOp },
+				{ from: trigger, to: node1 },
+				{ from: node1, to: node2, outputIndex: 0, inputIndex: 0 },
+				{ from: node1, to: node2, outputIndex: 1, inputIndex: 1 },
+				{ from: node1, to: node3, outputIndex: 0, inputIndex: 1 },
+				{ from: node1, to: node3, outputIndex: 1, inputIndex: 0 },
+				{ from: node2, to: node4 },
+				{ from: node3, to: node4 },
 			);
 
-		// no run data means the trigger is the start node
-		expect(findStartNodes(graph, trigger, noOp)).toEqual([
-			{ node: trigger, sourceData: undefined },
-		]);
+		{
+			const startNodes = findStartNodes(graph, trigger, node4);
+			expect(startNodes).toHaveLength(1);
+			// no run data means the trigger is the start node
+			expect(startNodes).toContainEqual({ node: trigger, sourceData: undefined });
+		}
 
-		const runData: IRunData = {
-			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
-			[ifNode.name]: [toITaskData([{ data: { value: 1 } }])],
-			[merge1.name]: [toITaskData([{ data: { value: 1 } }])],
-			[merge2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[noOp.name]: [toITaskData([{ data: { value: 1 } }])],
-		};
+		{
+			// run data for everything
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node1.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node2.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node3.name]: [toITaskData([{ data: { value: 1 } }])],
+				[node4.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
 
-		const startNodes = findStartNodes(graph, trigger, noOp, runData);
-		expect(startNodes).toHaveLength(2);
+			const startNodes = findStartNodes(graph, trigger, node4, runData);
+			expect(startNodes).toHaveLength(2);
 
-		// run data for everything
-		expect(startNodes).toContainEqual({
-			node: noOp,
-			sourceData: {
-				previousNode: merge1,
-				previousNodeOutput: 0,
-				previousNodeRun: 0,
-			},
-		});
+			expect(startNodes).toContainEqual({
+				node: node4,
+				sourceData: {
+					previousNode: node2,
+					previousNodeOutput: 0,
+					previousNodeRun: 0,
+				},
+			});
 
-		expect(startNodes).toContainEqual({
-			node: noOp,
-			sourceData: {
-				previousNode: merge2,
-				previousNodeOutput: 0,
-				previousNodeRun: 0,
-			},
-		});
+			expect(startNodes).toContainEqual({
+				node: node4,
+				sourceData: {
+					previousNode: node3,
+					previousNodeOutput: 0,
+					previousNodeRun: 0,
+				},
+			});
+		}
 	});
 
-	//
-	//  ┌────┐         ┌─────┐
-	//  │    │1───────►│     │
-	//  │ if │         │merge│O
-	//  │    │O───────►│     │
-	//  └────┘         └─────┘
-	//
+	//                     ►►
+	//  ┌───────┐1        ┌────┐
+	//  │       ├────────►│    │
+	//  │trigger│         │node│
+	//  │       ├────────►│    │
+	//  └───────┘0        └────┘
 	//  The merge node only gets data on one input, so the it should only be once
 	//  in the start nodes
-	test('multiple connections', () => {
-		const ifNode = createNodeData({ name: 'if' });
-		const merge = createNodeData({ name: 'merge' });
+	test('multiple connections with the first one having data', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const node = createNodeData({ name: 'node' });
 
 		const graph = new DirectedGraph()
-			.addNodes(ifNode, merge)
+			.addNodes(trigger, node)
 			.addConnections(
-				{ from: ifNode, to: merge, outputIndex: 0, inputIndex: 0 },
-				{ from: ifNode, to: merge, outputIndex: 1, inputIndex: 1 },
+				{ from: trigger, to: node, outputIndex: 0, inputIndex: 0 },
+				{ from: trigger, to: node, outputIndex: 1, inputIndex: 1 },
 			);
 
-		const startNodes = findStartNodes(graph, ifNode, merge, {
-			[ifNode.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+		const startNodes = findStartNodes(graph, trigger, node, {
+			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
 		});
 
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
-			node: merge,
+			node,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: trigger,
 				previousNodeRun: 0,
 				previousNodeOutput: 0,
 			},
 		});
 	});
 
-	//
-	//  ┌────┐         ┌─────┐
-	//  │    │0───────►│     │
-	//  │ if │         │merge│O
-	//  │    │1───────►│     │
-	//  └────┘         └─────┘
-	//
+	//                     ►►
+	//  ┌───────┐0        ┌────┐
+	//  │       ├────────►│    │
+	//  │trigger│         │node│
+	//  │       ├────────►│    │
+	//  └───────┘1        └────┘
 	//  The merge node only gets data on one input, so the it should only be once
 	//  in the start nodes
-	test('multiple connections', () => {
+	test('multiple connections with the second one having data', () => {
 		const ifNode = createNodeData({ name: 'if' });
 		const merge = createNodeData({ name: 'merge' });
 
@@ -370,15 +405,15 @@ describe('findStartNodes', () => {
 		});
 	});
 
-	//  ┌────┐         ┌─────┐
-	//  │    │1───────►│     │
-	//  │ if │         │merge│O
-	//  │    │1───────►│     │
-	//  └────┘         └─────┘
-	//
+	//                     ►►
+	//  ┌───────┐1        ┌────┐
+	//  │       ├────────►│    │
+	//  │trigger│         │node│
+	//  │       ├────────►│    │
+	//  └───────┘1        └────┘
 	//  The merge node gets data on both inputs, so the it should be in the start
 	//  nodes twice.
-	test('multiple connections', () => {
+	test('multiple connections with both having data', () => {
 		const ifNode = createNodeData({ name: 'if' });
 		const merge = createNodeData({ name: 'merge' });
 
@@ -417,35 +452,35 @@ describe('findStartNodes', () => {
 		});
 	});
 
-	//                                   ►
-	//  ┌───────┐        ┌────┐         ┌─────┐
-	//  │       │        │    │0───────►│     │
-	//  │Trigger│1──────►│ if │         │merge│
-	//  │       │        │    │1───────►│     │
-	//  └───────┘        └────┘         └─────┘
+	//                                    ►►
+	//  ┌───────┐        ┌─────┐0        ┌─────┐
+	//  │       │1       │     ├────────►│     │
+	//  │trigger├───────►│node1│         │node2│
+	//  │       │        │     ├────────►│     │
+	//  └───────┘        └─────┘1        └─────┘
 	test('multiple connections with trigger', () => {
 		const trigger = createNodeData({ name: 'trigger' });
-		const ifNode = createNodeData({ name: 'if' });
-		const merge = createNodeData({ name: 'merge' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
 
 		const graph = new DirectedGraph()
-			.addNodes(trigger, ifNode, merge)
+			.addNodes(trigger, node1, node2)
 			.addConnections(
-				{ from: trigger, to: ifNode },
-				{ from: ifNode, to: merge, outputIndex: 0 },
-				{ from: ifNode, to: merge, outputIndex: 1 },
+				{ from: trigger, to: node1 },
+				{ from: node1, to: node2, outputIndex: 0 },
+				{ from: node1, to: node2, outputIndex: 1 },
 			);
 
-		const startNodes = findStartNodes(graph, ifNode, merge, {
+		const startNodes = findStartNodes(graph, node1, node2, {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
-			[ifNode.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+			[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
 		});
 
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
-			node: merge,
+			node: node2,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: node1,
 				previousNodeRun: 0,
 				previousNodeOutput: 1,
 			},
@@ -453,8 +488,8 @@ describe('findStartNodes', () => {
 	});
 
 	//                              ►►
-	//┌───────┐       ┌─────┐      ┌─────┐
-	//│Trigger│1──┬───┤Node1│1──┬──┤Node2│
+	//┌───────┐1      ┌─────┐1     ┌─────┐
+	//│Trigger├───┬──►│Node1├───┬─►│Node2│
 	//└───────┘   │   └─────┘   │  └─────┘
 	//            │             │
 	//            └─────────────┘
@@ -499,22 +534,29 @@ describe('findStartNodes', () => {
 });
 
 describe('findSubgraph2', () => {
+	//                 ►►
+	//  ┌───────┐     ┌───────────┐
+	//  │trigger├────►│destination│
+	//  └───────┘     └───────────┘
 	test('simple', () => {
-		const from = createNodeData({ name: 'From' });
-		const to = createNodeData({ name: 'To' });
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
 
-		const graph = new DirectedGraph().addNodes(from, to).addConnections({ from, to });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, destination)
+			.addConnections({ from: trigger, to: destination });
 
-		const subgraph = findSubgraph2(graph, to, from);
+		const subgraph = findSubgraph2(graph, destination, trigger);
 
 		expect(subgraph).toEqual(graph);
 	});
 
-	//  ┌────┐         ┌────┐
-	//  │    │O───────►│    │
-	//  │ if │         │noOp│
-	//  │    │O───────►│    │
-	//  └────┘         └────┘
+	//                     ►►
+	//  ┌───────┐         ┌───────────┐
+	//  │       ├────────►│           │
+	//  │trigger│         │destination│
+	//  │       ├────────►│           │
+	//  └───────┘         └───────────┘
 	test('multiple connections', () => {
 		const ifNode = createNodeData({ name: 'If' });
 		const noOp = createNodeData({ name: 'noOp' });
@@ -531,44 +573,60 @@ describe('findSubgraph2', () => {
 		expect(subgraph).toEqual(graph);
 	});
 
+	//                     ►►
+	//  ┌───────┐         ┌───────────┐
+	//  │       ├────────►│           │      ┌────┐
+	//  │trigger│         │destination├─────►│node│
+	//  │       ├────────►│           │      └────┘
+	//  └───────┘         └───────────┘
 	test('disregard nodes after destination', () => {
-		const node1 = createNodeData({ name: 'node1' });
-		const node2 = createNodeData({ name: 'node2' });
-		const node3 = createNodeData({ name: 'node3' });
+		const trigger = createNodeData({ name: 'trigger' });
+		const destination = createNodeData({ name: 'destination' });
+		const node = createNodeData({ name: 'node' });
 
 		const graph = new DirectedGraph()
-			.addNodes(node1, node2, node3)
-			.addConnections({ from: node1, to: node2 }, { from: node2, to: node3 });
+			.addNodes(trigger, destination, node)
+			.addConnections({ from: trigger, to: destination }, { from: destination, to: node });
 
-		const subgraph = findSubgraph2(graph, node2, node1);
+		const subgraph = findSubgraph2(graph, destination, trigger);
 
 		expect(subgraph).toEqual(
-			new DirectedGraph().addNodes(node1, node2).addConnections({ from: node1, to: node2 }),
+			new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination }),
 		);
 	});
 
+	//                     XX
+	//  ┌───────┐         ┌────────┐       ►►
+	//  │       ├────────►│        │      ┌───────────┐
+	//  │trigger│         │disabled├─────►│destination│
+	//  │       ├────────►│        │      └───────────┘
+	//  └───────┘         └────────┘
 	test('skip disabled nodes', () => {
-		const node1 = createNodeData({ name: 'node1' });
-		const node2 = createNodeData({ name: 'node2', disabled: true });
-		const node3 = createNodeData({ name: 'node3' });
+		const trigger = createNodeData({ name: 'trigger' });
+		const disabled = createNodeData({ name: 'disabled', disabled: true });
+		const destination = createNodeData({ name: 'destination' });
 
 		const graph = new DirectedGraph()
-			.addNodes(node1, node2, node3)
-			.addConnections({ from: node1, to: node2 }, { from: node2, to: node3 });
+			.addNodes(trigger, disabled, destination)
+			.addConnections({ from: trigger, to: disabled }, { from: disabled, to: destination });
 
-		const subgraph = findSubgraph2(graph, node3, node1);
+		const subgraph = findSubgraph2(graph, destination, trigger);
 
 		expect(subgraph).toEqual(
-			new DirectedGraph().addNodes(node1, node3).addConnections({ from: node1, to: node3 }),
+			new DirectedGraph()
+				.addNodes(trigger, destination)
+				.addConnections({ from: trigger, to: destination }),
 		);
 	});
 
-	//                              ►►
-	//┌───────┐       ┌─────┐      ┌─────┐
-	//│Trigger├───┬───┤Node1├───┬──┤Node2│
-	//└───────┘   │   └─────┘   │  └─────┘
-	//            │             │
-	//            └─────────────┘
+	//                                ►►
+	//  ┌───────┐       ┌─────┐      ┌─────┐
+	//  │Trigger├───┬──►│Node1├───┬─►│Node2│
+	//  └───────┘   │   └─────┘   │  └─────┘
+	//              │             │
+	//              └─────────────┘
 	test('terminates when called with graph that contains cycles', () => {
 		//
 		// ARRANGE
@@ -597,11 +655,11 @@ describe('findSubgraph2', () => {
 
 	//                ►►
 	//  ┌───────┐     ┌─────┐
-	//  │Trigger├───┬─┤Node1│
-	//  └───────┘   │ └─────┘
-	//              │
-	//  ┌─────┐     │
-	//  │Node2├─────┘
+	//  │Trigger├──┬─►│Node1│
+	//  └───────┘  │  └─────┘
+	//             │
+	//  ┌─────┐    │
+	//  │Node2├────┘
 	//  └─────┘
 	test('terminates when called with graph that contains cycles', () => {
 		//
@@ -629,7 +687,7 @@ describe('findSubgraph2', () => {
 
 	//                               ►►
 	//  ┌───────┐    ┌───────────┐   ┌───────────┐
-	//  │Trigger├─┬─►│Destination├───┤AnotherNode├───┐
+	//  │Trigger├─┬─►│Destination├──►│AnotherNode├───┐
 	//  └───────┘ │  └───────────┘   └───────────┘   │
 	//            │                                  │
 	//            └──────────────────────────────────┘
@@ -665,6 +723,11 @@ describe('findSubgraph2', () => {
 });
 
 describe('DirectedGraph', () => {
+	//     ┌─────┐    ┌─────┐   ┌─────┐
+	//  ┌─►│node1├───►│node2├──►│node3├─┐
+	//  │  └─────┘    └─────┘   └─────┘ │
+	//  │                               │
+	//  └───────────────────────────────┘
 	test('roundtrip', () => {
 		const node1 = createNodeData({ name: 'Node1' });
 		const node2 = createNodeData({ name: 'Node2' });
@@ -684,15 +747,12 @@ describe('DirectedGraph', () => {
 	});
 
 	describe('getChildren', () => {
-		//
 		//  ┌─────┐       ┌─────┐
-		//  │Node1│O─────►│Node1│
+		//  │node1├──────►│node2│
 		//  └─────┘       └─────┘
-		//
 		test('simple', () => {
 			const from = createNodeData({ name: 'Node1' });
 			const to = createNodeData({ name: 'Node2' });
-
 			const graph = new DirectedGraph().addNodes(from, to).addConnections({ from, to });
 
 			const children = graph.getChildren(from);
@@ -705,11 +765,14 @@ describe('DirectedGraph', () => {
 				type: NodeConnectionType.Main,
 			});
 		});
-
+		//  ┌─────┐
+		//  │     ├────┐  ┌─────┐
+		//  │node1│    ├─►│node2│
+		//  │     ├────┘  └─────┘
+		//  └─────┘
 		test('medium', () => {
 			const from = createNodeData({ name: 'Node1' });
 			const to = createNodeData({ name: 'Node2' });
-
 			const graph = new DirectedGraph()
 				.addNodes(from, to)
 				.addConnections({ from, to, outputIndex: 0 }, { from, to, outputIndex: 1 });
@@ -732,6 +795,11 @@ describe('DirectedGraph', () => {
 			});
 		});
 
+		//     ┌─────┐       ┌─────┐
+		//  ┌─►│node1├──────►│node2├──┐
+		//  │  └─────┘       └─────┘  │
+		//  │                         │
+		//  └─────────────────────────┘
 		test('terminates if the graph has cycles', () => {
 			//
 			// ARRANGE

@@ -1,3 +1,13 @@
+// NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
+// If you update the tests please update the diagrams as well.
+//
+// Map
+// 0  means the output has no run data
+// 1  means the output has run data
+// ►► denotes the node that the user wants to execute to
+// XX denotes that the node is disabled
+// PD denotes that the node has pinned data
+
 import { recreateNodeExecutionStack } from '@/utils-2';
 import { createNodeData, toITaskData } from './helpers';
 import type { StartNodeData } from '@/utils';
@@ -5,19 +15,10 @@ import { DirectedGraph, findSubgraph2 } from '@/utils';
 import { type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
 
-// NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
-// If you update the tests please update the diagrams as well.
-//
-// Map
-// 0  means the output has no run data.
-// 1  means the output has run data.
-// ►► denotes the node that the user wants to execute to.
-// XX denotes that the node is disabled
-
 describe('recreateNodeExecutionStack', () => {
-	//                  ►►
-	//  ┌───────┐       ┌────┐
-	//  │Trigger│1─────►│Node│
+	//                   ►►
+	//  ┌───────┐1      ┌────┐
+	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('all nodes except destination node have data', () => {
 		//
@@ -75,9 +76,9 @@ describe('recreateNodeExecutionStack', () => {
 		});
 	});
 
-	//                  ►►
-	//  ┌───────┐       ┌────┐
-	//  │Trigger│0─────►│Node│
+	//                   ►►
+	//  ┌───────┐0      ┌────┐
+	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('no nodes have data', () => {
 		//
@@ -115,9 +116,9 @@ describe('recreateNodeExecutionStack', () => {
 		expect(waitingExecutionSource).toEqual({ node: { '0': { main: [null] } } });
 	});
 
-	//  PD              ►►
-	//  ┌───────┐       ┌────┐
-	//  │Trigger│1─────►│Node│
+	//  PinData          ►►
+	//  ┌───────┐1      ┌────┐
+	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('node before destination node has pinned data', () => {
 		//
@@ -164,9 +165,9 @@ describe('recreateNodeExecutionStack', () => {
 		expect(waitingExecutionSource).toEqual({ node: { '0': { main: [null] } } });
 	});
 
-	//                 XX            ►►
-	//  ┌───────┐      ┌─────┐       ┌─────┐
-	//  │Trigger│1────►│Node1│──────►│Node2│
+	//                  XX            ►►
+	//  ┌───────┐1     ┌─────┐       ┌─────┐
+	//  │Trigger├─────►│Node1├──────►│Node2│
 	//  └───────┘      └─────┘       └─────┘
 	test('throws if a disabled node is found', () => {
 		//
@@ -203,13 +204,13 @@ describe('recreateNodeExecutionStack', () => {
 		).toThrowError(AssertionError);
 	});
 
-	//                               ►►
-	//  ┌───────┐      ┌─────┐       ┌─────┐
-	//  │Trigger│1─┬──►│Node1│1─┬───►│Node3│
+	//                                ►►
+	//  ┌───────┐1     ┌─────┐1      ┌─────┐
+	//  │Trigger├──┬──►│Node1├──┬───►│Node3│
 	//  └───────┘  │   └─────┘  │    └─────┘
 	//             │            │
-	//             │   ┌─────┐  │
-	//             └──►│Node2│1─┘
+	//             │   ┌─────┐1 │
+	//             └──►│Node2├──┘
 	//                 └─────┘
 	test('multiple incoming connections', () => {
 		//
