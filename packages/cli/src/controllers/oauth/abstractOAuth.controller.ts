@@ -6,7 +6,6 @@ import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } f
 import { jsonParse, ApplicationError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -119,7 +118,7 @@ export abstract class AbstractOAuthController {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	protected createCsrfState(credentialsId: string): [string, string] {
+	createCsrfState(credentialsId: string): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfStateParam = {
