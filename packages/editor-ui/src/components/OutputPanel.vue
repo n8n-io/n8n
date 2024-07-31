@@ -184,26 +184,12 @@ const pinnedData = usePinnedData(activeNode, {
 
 // Data
 
-const initialOutputMode = computed<OutputType>(() => {
-	const hasError =
-		workflowRunData.value &&
-		node.value &&
-		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError);
-
-	return hasError ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
-});
-
 const outputMode = ref<OutputType>(OUTPUT_TYPE.REGULAR);
 const outputTypes = ref([
 	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
 	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 ]);
 const runDataRef = ref<RunDataRef>(null);
-
-// Set the initial output mode when the component is mounted
-onMounted(() => {
-	outputMode.value = initialOutputMode.value;
-});
 
 // Computed
 
@@ -226,6 +212,16 @@ const hasAiMetadata = computed(() => {
 		return !!resultData[resultData.length - 1].metadata;
 	}
 	return false;
+});
+
+// Determine the initial output mode to logs if the node has an error and the logs are available
+const initialOutputMode = computed<OutputType>(() => {
+	const hasError =
+		workflowRunData.value &&
+		node.value &&
+		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError);
+
+	return Boolean(hasError) && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
 });
 
 const isNodeRunning = computed(() => {
@@ -365,6 +361,11 @@ const onUpdateOutputMode = (outputMode: OutputType) => {
 		ndvEventBus.emit('setPositionByName', 'initial');
 	}
 };
+
+// Set the initial output mode when the component is mounted
+onMounted(() => {
+	outputMode.value = initialOutputMode.value;
+});
 
 const activatePane = () => {
 	emit('activatePane');
