@@ -397,13 +397,7 @@ export class WorkflowExecute {
 			// Initialize the nodeExecutionStack and waitingExecution with
 			// the data from runData
 			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-				recreateNodeExecutionStack(
-					subgraph.toWorkflow({ ...workflow }),
-					startNodes,
-					destinationNode.name,
-					runData,
-					pinData ?? {},
-				);
+				recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
 
 			//console.log(JSON.stringify(nodeExecutionStack, null, 2));
 
