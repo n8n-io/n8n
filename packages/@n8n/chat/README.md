@@ -261,7 +261,7 @@ body,
 
 ## License
 n8n Chat is [fair-code](https://faircode.io) distributed under the
-[**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
+[**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/LICENSE.md).
 
 Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
 
