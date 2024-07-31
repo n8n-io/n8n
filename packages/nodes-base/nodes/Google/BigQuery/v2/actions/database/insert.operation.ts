@@ -8,7 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
-import { googleApiRequest } from '../../transport';
+import { googleBigQueryApiRequest } from '../../transport';
 import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
@@ -89,7 +89,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -178,7 +178,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	const schema = (
-		await googleApiRequest.call(
+		await googleBigQueryApiRequest.call(
 			this,
 			'GET',
 			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
@@ -230,7 +230,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const batch = rows.slice(i, i + batchSize);
 		body.rows = batch;
 
-		const responseData = await googleApiRequest.call(
+		const responseData = await googleBigQueryApiRequest.call(
 			this,
 			'POST',
 			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,

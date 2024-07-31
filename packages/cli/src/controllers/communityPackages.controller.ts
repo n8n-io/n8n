@@ -9,7 +9,6 @@ import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } fro
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -37,7 +36,6 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 export class CommunityPackagesController {
 	constructor(
 		private readonly push: Push,
-		private readonly internalHooks: InternalHooks,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 	) {}

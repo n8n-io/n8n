@@ -1,5 +1,3 @@
-import EventEmitter from 'node:events';
-
 import Container, { Service } from 'typedi';
 import { caching } from 'cache-manager';
 import { ApplicationError, jsonStringify } from 'n8n-workflow';
@@ -10,14 +8,20 @@ import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refr
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
-	CacheEvent,
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
 import { TIME } from '@/constants';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type CacheEvents = {
+	'metrics.cache.hit': never;
+	'metrics.cache.miss': never;
+	'metrics.cache.update': never;
+};
 
 @Service()
-export class CacheService extends EventEmitter {
+export class CacheService extends TypedEmitter<CacheEvents> {
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
@@ -64,10 +68,6 @@ export class CacheService extends EventEmitter {
 
 	async reset() {
 		await this.cache.store.reset();
-	}
-
-	emit(event: CacheEvent, ...args: unknown[]) {
-		return super.emit(event, ...args);
 	}
 
 	isRedis() {

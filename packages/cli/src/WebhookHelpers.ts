@@ -360,11 +360,10 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
-			Container.get(WorkflowStatisticsService).emit(
-				'nodeFetchedData',
-				workflow.id,
-				workflowStartNode,
-			);
+			Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
+				workflowId: workflow.id,
+				node: workflowStartNode,
+			});
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';

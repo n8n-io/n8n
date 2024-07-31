@@ -74,7 +74,7 @@ export class AzureKeyVault implements SecretsProvider {
 			const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
 			this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
 			this.state = 'connected';
-		} catch (error) {
+		} catch {
 			this.state = 'error';
 		}
 	}
@@ -86,7 +86,7 @@ export class AzureKeyVault implements SecretsProvider {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
 		} catch (error: unknown) {
-			return [false, error instanceof Error ? error.message : 'unknown error'];
+			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
 

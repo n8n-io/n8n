@@ -307,40 +307,6 @@ export const schema = {
 		},
 	},
 
-	// How n8n can be reached (Editor & REST-API)
-	path: {
-		format: String,
-		default: '/',
-		arg: 'path',
-		env: 'N8N_PATH',
-		doc: 'Path n8n is deployed to',
-	},
-	host: {
-		format: String,
-		default: 'localhost',
-		arg: 'host',
-		env: 'N8N_HOST',
-		doc: 'Host name n8n can be reached',
-	},
-	port: {
-		format: Number,
-		default: 5678,
-		arg: 'port',
-		env: 'N8N_PORT',
-		doc: 'HTTP port n8n can be reached',
-	},
-	listen_address: {
-		format: String,
-		default: '0.0.0.0',
-		env: 'N8N_LISTEN_ADDRESS',
-		doc: 'IP address n8n should listen on',
-	},
-	protocol: {
-		format: ['http', 'https'] as const,
-		default: 'http',
-		env: 'N8N_PROTOCOL',
-		doc: 'HTTP Protocol via which n8n can be reached',
-	},
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,
@@ -917,12 +883,13 @@ export const schema = {
 		},
 	},
 
+	instanceRole: {
+		doc: 'Always `leader` in single-main setup. `leader` or `follower` in multi-main setup.',
+		format: ['unset', 'leader', 'follower'] as const,
+		default: 'unset', // only until Start.initOrchestration
+	},
+
 	multiMainSetup: {
-		instanceType: {
-			doc: 'Type of instance in multi-main setup',
-			format: ['unset', 'leader', 'follower'] as const,
-			default: 'unset', // only until first leader key check
-		},
 		enabled: {
 			doc: 'Whether to enable multi-main setup for queue mode (license required)',
 			format: Boolean,

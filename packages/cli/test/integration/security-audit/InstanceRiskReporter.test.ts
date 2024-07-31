@@ -14,6 +14,7 @@ import config from '@/config';
 import { generateNanoId } from '@db/utils/generators';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
+import { NodeConnectionType } from 'n8n-workflow';
 
 let securityAuditService: SecurityAuditService;
 
@@ -156,7 +157,7 @@ test('should not report webhooks validated by direct children', async () => {
 						[
 							{
 								node: 'My Node',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
