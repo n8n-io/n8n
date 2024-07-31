@@ -719,7 +719,7 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{

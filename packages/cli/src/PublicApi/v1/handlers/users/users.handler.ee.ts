@@ -33,7 +33,7 @@ export = {
 				public_api: true,
 			};
 
-			void Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
+			Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
 
 			return res.json(clean(user, { includeRole }));
 		},
@@ -56,7 +56,7 @@ export = {
 				public_api: true,
 			};
 
-			void Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
+			Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
 
 			return res.json({
 				data: clean(users, { includeRole }),

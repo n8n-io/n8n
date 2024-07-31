@@ -20,6 +20,6 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "axios": "1.6.7"
+    "axios": "catalog:"
   }
 }

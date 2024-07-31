@@ -118,7 +118,7 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		description: 'Add query options',
 		options: [
 			{
@@ -240,7 +240,7 @@ export const nodeProperties: INodeProperties[] = [
 				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

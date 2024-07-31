@@ -124,7 +124,7 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
+		const n8nPath = Container.get(GlobalConfig).path;
 		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
@@ -184,10 +184,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (
-			!config.getEnv('license.autoRenewEnabled') &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader'
-		) {
+		if (!config.getEnv('license.autoRenewEnabled') && config.getEnv('instanceRole') === 'leader') {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -211,7 +208,7 @@ export class Start extends BaseCommand {
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 			return;
 		}
 
@@ -283,7 +280,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const port = config.getEnv('port');
+			const { port } = Container.get(GlobalConfig);
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
