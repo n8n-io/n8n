@@ -20,6 +20,8 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '@test/mocking';
 import { Telemetry } from '@/telemetry';
+import { createTeamProject } from '@test-integration/db/projects';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 let owner: User;
 let user1: User;
@@ -445,6 +447,36 @@ describe('GET /executions', () => {
 			expect(workflowId).toBe(workflow.id);
 			expect(waitTill).toBeNull();
 		}
+	});
+
+	test('should return executions filtered by project ID', async () => {
+		/**
+		 * Arrange
+		 */
+		const firstProject = await createTeamProject();
+		const secondProject = await createTeamProject();
+		const firstWorkflow = await createWorkflow({}, firstProject);
+		const secondWorkflow = await createWorkflow({}, secondProject);
+		const firstExecution = await createExecution({}, firstWorkflow);
+		const secondExecution = await createExecution({}, firstWorkflow);
+		await createExecution({}, secondWorkflow);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.get('/executions').query({
+			projectId: firstProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
+			expect.arrayContaining([firstExecution.id, secondExecution.id]),
+		);
 	});
 
 	test('owner should retrieve all executions regardless of ownership', async () => {
