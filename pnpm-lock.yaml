@@ -390,8 +390,8 @@ importers:
         specifier: 0.3.20-10
         version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
-        specifier: 3.9.20
-        version: 3.9.20
+        specifier: 3.9.24
+        version: 3.9.24
       '@pinecone-database/pinecone':
         specifier: 3.0.0
         version: 3.0.0
@@ -1448,8 +1448,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/imap
       '@n8n/vm2':
-        specifier: 3.9.20
-        version: 3.9.20
+        specifier: 3.9.24
+        version: 3.9.24
       alasql:
         specifier: ^4.4.0
         version: 4.4.0(encoding@0.1.13)
@@ -4211,9 +4211,9 @@ packages:
       typeorm-aurora-data-api-driver:
         optional: true
 
-  '@n8n/vm2@3.9.20':
-    resolution: {integrity: sha512-qk2oJYkuFRVSTxoro4obX/sv/wT1pViZjHh/isjOvFB93D52QIg3TCjMPsHOfHTmkxCKJffjLrUvjIwvWzSMCQ==}
-    engines: {node: '>=18.10', pnpm: '>=8.6.12'}
+  '@n8n/vm2@3.9.24':
+    resolution: {integrity: sha512-O4z67yVgUs2FHkcw3vbGnxdC1EglpzOj966kPkK4gtW+ZmTTFRfEB+2Ehq6PMthgg/Ou5JCLSR3wvQIZFFt4Pg==}
+    engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
   '@n8n_io/license-sdk@2.13.0':
@@ -5998,10 +5998,6 @@ packages:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  acorn-walk@8.2.0:
-    resolution: {integrity: sha512-k+iyHEuPgSw6SbuDpGQM+06HQUa04DZ3o+F6CSzXMvvI5KMvnaEqXe+YVe555R9nn6GPt404fos4wcgpw12SDA==}
-    engines: {node: '>=0.4.0'}
 
   acorn-walk@8.3.2:
     resolution: {integrity: sha512-cjkyv4OtNCIeqhHrfS81QWXoCBPExR/J62oyEqepVw8WaQeSqpW2uhuLPh1m9eWhDuOo/jUXVTlifvesOWp/4A==}
@@ -16720,10 +16716,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/vm2@3.9.20':
+  '@n8n/vm2@3.9.24':
     dependencies:
-      acorn: 8.11.2
-      acorn-walk: 8.2.0
+      acorn: 8.12.1
+      acorn-walk: 8.3.2
 
   '@n8n_io/license-sdk@2.13.0':
     dependencies:
@@ -19367,14 +19363,12 @@ snapshots:
 
   acorn-globals@7.0.1:
     dependencies:
-      acorn: 8.11.2
+      acorn: 8.12.1
       acorn-walk: 8.3.2
 
   acorn-jsx@5.3.2(acorn@8.11.2):
     dependencies:
       acorn: 8.11.2
-
-  acorn-walk@8.2.0: {}
 
   acorn-walk@8.3.2: {}
 
@@ -21307,7 +21301,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21332,7 +21326,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21352,7 +21346,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21882,7 +21876,7 @@ snapshots:
 
   follow-redirects@1.15.6(debug@3.2.7):
     optionalDependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
 
   follow-redirects@1.15.6(debug@4.3.4):
     optionalDependencies:
@@ -22223,7 +22217,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -23353,7 +23347,7 @@ snapshots:
   jsdom@20.0.2:
     dependencies:
       abab: 2.0.6
-      acorn: 8.11.2
+      acorn: 8.12.1
       acorn-globals: 7.0.1
       cssom: 0.5.0
       cssstyle: 2.3.0
@@ -24209,7 +24203,7 @@ snapshots:
 
   mlly@1.4.2:
     dependencies:
-      acorn: 8.11.2
+      acorn: 8.12.1
       pathe: 1.1.2
       pkg-types: 1.0.3
       ufo: 1.3.2
@@ -24916,7 +24910,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -25828,7 +25822,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -26202,7 +26196,7 @@ snapshots:
       binascii: 0.0.2
       bn.js: 5.2.1
       browser-request: 0.3.3
-      debug: 3.2.7(supports-color@8.1.1)
+      debug: 3.2.7(supports-color@5.5.0)
       expand-tilde: 2.0.2
       extend: 3.0.2
       fast-xml-parser: 4.2.7
@@ -27190,7 +27184,7 @@ snapshots:
 
   unplugin@1.0.1:
     dependencies:
-      acorn: 8.11.2
+      acorn: 8.12.1
       chokidar: 3.5.2
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.5.0
@@ -27204,7 +27198,7 @@ snapshots:
 
   unplugin@1.5.1:
     dependencies:
-      acorn: 8.11.2
+      acorn: 8.12.1
       chokidar: 3.5.2
       webpack-sources: 3.2.3
       webpack-virtual-modules: 0.6.1
