@@ -23,6 +23,7 @@ import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
+import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -42,6 +43,8 @@ export abstract class BaseCommand extends Command {
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
 
 	protected license: License;
+
+	private globalConfig = Container.get(GlobalConfig);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -78,8 +81,7 @@ export abstract class BaseCommand extends Command {
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		const globalConfig = Container.get(GlobalConfig);
-		const { type: dbType } = globalConfig.database;
+		const { type: dbType } = this.globalConfig.database;
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
@@ -111,6 +113,7 @@ export abstract class BaseCommand extends Command {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();
+		await Container.get(TelemetryEventRelay).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
@@ -197,18 +200,13 @@ export abstract class BaseCommand extends Command {
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
-		const host = config.getEnv('externalStorage.s3.host');
+		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
 
 		if (host === '') {
 			throw new ApplicationError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
-
-		const bucket = {
-			name: config.getEnv('externalStorage.s3.bucket.name'),
-			region: config.getEnv('externalStorage.s3.bucket.region'),
-		};
 
 		if (bucket.name === '') {
 			throw new ApplicationError(
@@ -221,11 +219,6 @@ export abstract class BaseCommand extends Command {
 				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
 			);
 		}
-
-		const credentials = {
-			accessKey: config.getEnv('externalStorage.s3.credentials.accessKey'),
-			accessSecret: config.getEnv('externalStorage.s3.credentials.accessSecret'),
-		};
 
 		if (credentials.accessKey === '') {
 			throw new ApplicationError(

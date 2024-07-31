@@ -11,7 +11,6 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -45,6 +44,7 @@ import {
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
+import { EventService } from '@/eventbus/event.service';
 
 @Service()
 export class LdapService {
@@ -56,9 +56,9 @@ export class LdapService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cipher: Cipher,
+		private readonly eventService: EventService,
 	) {}
 
 	async init() {
@@ -257,9 +257,7 @@ export class LdapService {
 			);
 		} catch (e) {
 			if (e instanceof Error) {
-				void this.internalHooks.onLdapLoginSyncFailed({
-					error: e.message,
-				});
+				this.eventService.emit('ldap-login-sync-failed', { error: e.message });
 				this.logger.error('LDAP - Error during search', { message: e.message });
 			}
 			return undefined;
@@ -383,10 +381,10 @@ export class LdapService {
 			error: errorMessage,
 		});
 
-		void this.internalHooks.onLdapSyncFinished({
+		this.eventService.emit('ldap-general-sync-finished', {
 			type: !this.syncTimer ? 'scheduled' : `manual_${mode}`,
 			succeeded: true,
-			users_synced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,
+			usersSynced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,
 			error: errorMessage,
 		});
 

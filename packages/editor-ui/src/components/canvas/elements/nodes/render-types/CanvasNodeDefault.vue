@@ -7,12 +7,18 @@ import CanvasNodeStatusIcons from '@/components/canvas/elements/nodes/render-typ
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS } from '@/constants';
 import { N8nTooltip } from 'n8n-design-system';
+import type { CanvasNodeDefaultRender } from '@/types';
 
 const $style = useCssModule();
 const i18n = useI18n();
 
+const emit = defineEmits<{
+	'open:contextmenu': [event: MouseEvent];
+}>();
+
 const {
 	label,
+	subtitle,
 	inputs,
 	outputs,
 	connections,
@@ -22,13 +28,15 @@ const {
 	executionRunning,
 	hasRunData,
 	hasIssues,
-	renderOptions,
+	render,
 } = useCanvasNode();
 const { mainOutputs, nonMainInputs, requiredNonMainInputs } = useNodeConnections({
 	inputs,
 	outputs,
 	connections,
 });
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const classes = computed(() => {
 	return {
@@ -76,10 +84,14 @@ const dataTestId = computed(() => {
 
 	return `canvas-${type}-node`;
 });
+
+function openContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
 </script>
 
 <template>
-	<div :class="classes" :style="styles" :data-test-id="dataTestId">
+	<div :class="classes" :style="styles" :data-test-id="dataTestId" @contextmenu="openContextMenu">
 		<slot />
 		<N8nTooltip v-if="renderOptions.trigger" placement="bottom">
 			<template #content>
@@ -91,17 +103,20 @@ const dataTestId = computed(() => {
 		</N8nTooltip>
 		<CanvasNodeStatusIcons :class="$style.statusIcons" />
 		<CanvasNodeDisabledStrikeThrough v-if="isDisabled" />
-		<div v-if="label" :class="$style.label">
-			{{ label }}
-			<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+		<div :class="$style.description">
+			<div v-if="label" :class="$style.label">
+				{{ label }}
+				<div v-if="isDisabled">({{ i18n.baseText('node.disabled') }})</div>
+			</div>
+			<div v-if="subtitle" :class="$style.subtitle">{{ subtitle }}</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .node {
-	--canvas-node--height: calc(96px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
-	--canvas-node--width: 96px;
+	--canvas-node--height: calc(100px + max(0, var(--canvas-node--main-output-count, 1) - 4) * 48px);
+	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
 	--configurable-node--input-width: 64px;
@@ -143,13 +158,13 @@ const dataTestId = computed(() => {
 	}
 
 	&.configurable {
-		--canvas-node--height: 96px;
+		--canvas-node--height: 100px;
 		--canvas-node--width: calc(
 			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
 
-		.label {
+		.description {
 			top: unset;
 			position: relative;
 			margin-left: var(--spacing-s);
@@ -194,14 +209,30 @@ const dataTestId = computed(() => {
 	}
 }
 
-.label {
+.description {
 	top: 100%;
 	position: absolute;
-	font-size: var(--font-size-m);
-	text-align: center;
 	width: 100%;
 	min-width: 200px;
 	margin-top: var(--spacing-2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
+	align-items: center;
+}
+
+.label {
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-compact);
+	text-align: center;
+}
+
+.subtitle {
+	color: var(--color-text-light);
+	font-size: var(--font-size-xs);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .statusIcons {

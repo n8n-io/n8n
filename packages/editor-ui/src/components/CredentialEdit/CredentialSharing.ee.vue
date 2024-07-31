@@ -156,7 +156,7 @@ export default defineComponent({
 			];
 		},
 		isSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);

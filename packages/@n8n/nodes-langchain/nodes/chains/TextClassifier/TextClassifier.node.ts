@@ -34,6 +34,7 @@ export class TextClassifier implements INodeType {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
 		icon: 'fa:tags',
+		iconColor: 'black',
 		group: ['transform'],
 		version: 1,
 		description: 'Classify your text into distinct categories',
@@ -45,7 +46,7 @@ export class TextClassifier implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.text-classifier/',
 					},
 				],
 			},
@@ -202,20 +203,27 @@ export class TextClassifier implements INodeType {
 			discard: 'If there is not a very fitting category, select none of the categories.',
 		}[fallback];
 
-		const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-			`${options.systemPromptTemplate ?? SYSTEM_PROMPT_TEMPLATE}
-{format_instructions}
-${multiClassPrompt}
-${fallbackPrompt}`,
-		);
-
 		const returnData: INodeExecutionData[][] = Array.from(
 			{ length: categories.length + (fallback === 'other' ? 1 : 0) },
 			(_) => [],
 		);
 		for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
+			const item = items[itemIdx];
+			item.pairedItem = { item: itemIdx };
 			const input = this.getNodeParameter('inputText', itemIdx) as string;
 			const inputPrompt = new HumanMessage(input);
+
+			const systemPromptTemplateOpt = this.getNodeParameter(
+				'options.systemPromptTemplate',
+				itemIdx,
+			) as string;
+			const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
+				`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+{format_instructions}
+${multiClassPrompt}
+${fallbackPrompt}`,
+			);
+
 			const messages = [
 				await systemPromptTemplate.format({
 					categories: categories.map((cat) => cat.category).join(', '),
@@ -226,13 +234,27 @@ ${fallbackPrompt}`,
 			const prompt = ChatPromptTemplate.fromMessages(messages);
 			const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(this));
 
-			const output = await chain.invoke(messages);
-			categories.forEach((cat, idx) => {
-				if (output[cat.category]) returnData[idx].push(items[itemIdx]);
-			});
-			if (fallback === 'other' && output.fallback)
-				returnData[returnData.length - 1].push(items[itemIdx]);
+			try {
+				const output = await chain.invoke(messages);
+
+				categories.forEach((cat, idx) => {
+					if (output[cat.category]) returnData[idx].push(item);
+				});
+				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					returnData[0].push({
+						json: { error: error.message },
+						pairedItem: { item: itemIdx },
+					});
+
+					continue;
+				}
+
+				throw error;
+			}
 		}
+
 		return returnData;
 	}
 }

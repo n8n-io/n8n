@@ -154,7 +154,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -275,7 +275,10 @@ export async function execute(
 		//if no trailing empty row exists in the sheet update operation will fail
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 
-		const lastRow = (sheetData ?? []).length + 1;
+		// if sheetData is undefined it means that the sheet was empty
+		// we did add row with column names in the first row (autoMapInputData)
+		// to account for that length has to be 1 and we append data in the next row
+		const lastRow = (sheetData ?? [{}]).length + 1;
 
 		await sheet.appendSheetData({
 			inputData,

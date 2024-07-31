@@ -293,14 +293,13 @@ export const useExpressionEditor = ({
 				// e.g. credential modal
 				result.resolved = Expression.resolveWithoutWorkflow(resolvable, toValue(additionalData));
 			} else {
-				let opts;
+				let opts: Record<string, unknown> = { additionalKeys: toValue(additionalData) };
 				if (ndvStore.isInputParentOfActiveNode) {
 					opts = {
 						targetItem: target ?? undefined,
 						inputNodeName: ndvStore.ndvInputNodeName,
 						inputRunIndex: ndvStore.ndvInputRunIndex,
 						inputBranchIndex: ndvStore.ndvInputBranchIndex,
-						additionalKeys: toValue(additionalData),
 					};
 				}
 				result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);

@@ -4,7 +4,7 @@ import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import { Logger } from '@/Logger';
-import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { preferGet } from '../externalSecretsHelper.ee';
 import { Container } from 'typedi';
 
@@ -85,13 +85,7 @@ interface VaultSecretList {
 
 export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
-		{
-			displayName:
-				'Need help filling out these fields? <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">Open docs</a>',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
+		DOCS_HELP_NOTICE,
 		{
 			displayName: 'Vault URL',
 			name: 'url',

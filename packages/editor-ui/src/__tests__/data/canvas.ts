@@ -1,16 +1,24 @@
-import { CanvasNodeKey } from '@/constants';
+import { CanvasNodeHandleKey, CanvasNodeKey } from '@/constants';
 import { ref } from 'vue';
-import type { CanvasNode, CanvasNodeData } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import type {
+	CanvasNode,
+	CanvasNodeData,
+	CanvasNodeHandleInjectionData,
+	CanvasNodeInjectionData,
+} from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export function createCanvasNodeData({
 	id = 'node',
+	name = 'Test Node',
+	subtitle = 'Test Node Subtitle',
 	type = 'test',
 	typeVersion = 1,
 	disabled = false,
 	inputs = [],
 	outputs = [],
-	connections = { input: {}, output: {} },
+	connections = { [CanvasConnectionMode.Input]: {}, [CanvasConnectionMode.Output]: {} },
 	execution = { running: false },
 	issues = { items: [], visible: false },
 	pinnedData = { count: 0, visible: false },
@@ -21,13 +29,15 @@ export function createCanvasNodeData({
 	},
 }: Partial<CanvasNodeData> = {}): CanvasNodeData {
 	return {
+		id,
+		name,
+		subtitle,
+		type,
+		typeVersion,
 		execution,
 		issues,
 		pinnedData,
 		runData,
-		id,
-		type,
-		typeVersion,
 		disabled,
 		inputs,
 		outputs,
@@ -56,12 +66,20 @@ export function createCanvasNodeProps({
 	id = 'node',
 	label = 'Test Node',
 	selected = false,
+	readOnly = false,
 	data = {},
-}: { id?: string; label?: string; selected?: boolean; data?: Partial<CanvasNodeData> } = {}) {
+}: {
+	id?: string;
+	label?: string;
+	selected?: boolean;
+	readOnly?: boolean;
+	data?: Partial<CanvasNodeData>;
+} = {}) {
 	return {
 		id,
 		label,
 		selected,
+		readOnly,
 		data: createCanvasNodeData(data),
 	};
 }
@@ -71,7 +89,12 @@ export function createCanvasNodeProvide({
 	label = 'Test Node',
 	selected = false,
 	data = {},
-}: { id?: string; label?: string; selected?: boolean; data?: Partial<CanvasNodeData> } = {}) {
+}: {
+	id?: string;
+	label?: string;
+	selected?: boolean;
+	data?: Partial<CanvasNodeData>;
+} = {}) {
 	const props = createCanvasNodeProps({ id, label, selected, data });
 	return {
 		[`${CanvasNodeKey}`]: {
@@ -79,7 +102,28 @@ export function createCanvasNodeProvide({
 			label: ref(props.label),
 			selected: ref(props.selected),
 			data: ref(props.data),
-		},
+		} satisfies CanvasNodeInjectionData,
+	};
+}
+
+export function createCanvasHandleProvide({
+	label = 'Handle',
+	mode = CanvasConnectionMode.Input,
+	type = NodeConnectionType.Main,
+	connected = false,
+}: {
+	label?: string;
+	mode?: CanvasConnectionMode;
+	type?: NodeConnectionType;
+	connected?: boolean;
+} = {}) {
+	return {
+		[`${CanvasNodeHandleKey}`]: {
+			label: ref(label),
+			mode: ref(mode),
+			type: ref(type),
+			connected: ref(connected),
+		} satisfies CanvasNodeHandleInjectionData,
 	};
 }
 

@@ -42,7 +42,8 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
+import { GlobalConfig } from '@n8n/config';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -66,7 +67,8 @@ export class WorkflowsController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	@Post('/')
@@ -177,8 +179,8 @@ export class WorkflowsController {
 		delete savedWorkflowWithMetaData.shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
-		this.eventRelay.emit('workflow-created', { user: req.user, workflow: newWorkflow });
+		this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
+		this.eventService.emit('workflow-created', { user: req.user, workflow: newWorkflow });
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -204,12 +206,12 @@ export class WorkflowsController {
 
 	@Get('/new')
 	async getNewName(req: WorkflowRequest.NewName) {
-		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');
+		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
 
 		const onboardingFlowEnabled =
-			!config.getEnv('workflows.onboardingFlowDisabled') &&
+			!this.globalConfig.workflows.onboardingFlowDisabled &&
 			!req.user.settings?.isOnboarded &&
 			(await this.userOnboardingService.isBelowThreshold(req.user));
 
@@ -452,7 +454,7 @@ export class WorkflowsController {
 			newShareeIds = toShare;
 		});
 
-		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
+		this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
 		const projectsRelations = await this.projectRelationRepository.findBy({
 			projectId: In(newShareeIds),

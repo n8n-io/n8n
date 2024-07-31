@@ -1,10 +1,8 @@
 <template>
 	<PageViewLayout>
 		<template #header> <slot name="header" /> </template>
-		<div v-if="loading">
-			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
-			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
-			<n8n-loading :class="$style['card-loading']" variant="custom" />
+		<div v-if="loading" class="resource-list-loading">
+			<n8n-loading :rows="25" :shrink-last="false" />
 		</div>
 		<template v-else>
 			<div v-if="resources.length === 0">
@@ -164,7 +162,7 @@ import type { Scope } from '@n8n/permissions';
 export type IResource = {
 	id: string;
 	name: string;
-	value: string;
+	value?: string;
 	key?: string;
 	updatedAt?: string;
 	createdAt?: string;
@@ -245,6 +243,11 @@ export default defineComponent({
 				itemSize: 80,
 			}),
 		},
+		loading: {
+			type: Boolean,
+			required: false,
+			default: true,
+		},
 	},
 	emits: ['update:filters', 'click:add', 'sort'],
 	setup(props, { emit }) {
@@ -254,7 +257,6 @@ export default defineComponent({
 		const usersStore = useUsersStore();
 		const telemetry = useTelemetry();
 
-		const loading = ref(true);
 		const sortBy = ref(props.sortOptions[0]);
 		const hasFilters = ref(false);
 		const filtersModel = ref(props.filters);
@@ -435,6 +437,20 @@ export default defineComponent({
 		);
 
 		watch(
+			() => filtersModel.value.tags,
+			() => {
+				sendFiltersTelemetry('tags');
+			},
+		);
+
+		watch(
+			() => filtersModel.value.type,
+			() => {
+				sendFiltersTelemetry('type');
+			},
+		);
+
+		watch(
 			() => filtersModel.value.search,
 			() => callDebounced(sendFiltersTelemetry, { debounceTime: 1000, trailing: true }, 'search'),
 		);
@@ -456,7 +472,6 @@ export default defineComponent({
 
 		onMounted(async () => {
 			await props.initialize();
-			loading.value = false;
 			await nextTick();
 
 			focusSearchInput();
@@ -467,7 +482,6 @@ export default defineComponent({
 		});
 
 		return {
-			loading,
 			i18n,
 			search,
 			usersStore,
@@ -525,15 +539,48 @@ export default defineComponent({
 	white-space: nowrap;
 }
 
-.header-loading {
-	height: 36px;
-}
-
-.card-loading {
-	height: 69px;
-}
-
 .datatable {
 	padding-bottom: var(--spacing-s);
+}
+</style>
+
+<style lang="scss" scoped>
+.resource-list-loading {
+	position: relative;
+	height: 0;
+	width: 100%;
+	overflow: hidden;
+	/*
+	Show the loading skeleton only if the loading takes longer than 300ms
+	*/
+	animation: 0.01s linear 0.3s forwards changeVisibility;
+	:deep(.el-skeleton) {
+		position: absolute;
+		height: 100%;
+		width: 100%;
+		overflow: hidden;
+
+		> div {
+			> div:first-child {
+				.el-skeleton__item {
+					height: 42px;
+					margin: 0;
+				}
+			}
+		}
+
+		.el-skeleton__item {
+			height: 69px;
+		}
+	}
+}
+
+@keyframes changeVisibility {
+	from {
+		height: 0;
+	}
+	to {
+		height: 100%;
+	}
 }
 </style>

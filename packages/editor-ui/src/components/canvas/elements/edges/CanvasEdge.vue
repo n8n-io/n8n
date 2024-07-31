@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
-import type { Connection, EdgeProps } from '@vue-flow/core';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@vue-flow/core';
-import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
-import { computed, useCssModule } from 'vue';
 import type { CanvasConnectionData } from '@/types';
-import { NodeConnectionType } from 'n8n-workflow';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import type { Connection, EdgeProps } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
+import { NodeConnectionType } from 'n8n-workflow';
+import { computed, useCssModule } from 'vue';
+import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
+import { getCustomPath } from './utils/edgePath';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>();
 
 export type CanvasEdgeProps = EdgeProps<CanvasConnectionData> & {
+	readOnly?: boolean;
 	hovered?: boolean;
 };
 
@@ -51,7 +53,7 @@ const edgeStyle = computed(() => ({
 }));
 
 const edgeLabel = computed(() => {
-	if (isFocused.value) {
+	if (isFocused.value && !props.readOnly) {
 		return '';
 	}
 
@@ -65,8 +67,9 @@ const edgeLabelStyle = computed(() => ({
 }));
 
 const edgeToolbarStyle = computed(() => {
+	const [, labelX, labelY] = path.value;
 	return {
-		transform: `translate(-50%, -50%) translate(${path.value[1]}px,${path.value[2]}px)`,
+		transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
 	};
 });
 
@@ -77,16 +80,7 @@ const edgeToolbarClasses = computed(() => ({
 	nopan: true,
 }));
 
-const path = computed(() =>
-	getBezierPath({
-		sourceX: props.sourceX,
-		sourceY: props.sourceY,
-		sourcePosition: props.sourcePosition,
-		targetX: props.targetX,
-		targetY: props.targetY,
-		targetPosition: props.targetPosition,
-	}),
-);
+const path = computed(() => getCustomPath(props));
 
 const connection = computed<Connection>(() => ({
 	source: props.source,
@@ -117,7 +111,8 @@ function onDelete() {
 		:label-style="edgeLabelStyle"
 		:label-show-bg="false"
 	/>
-	<EdgeLabelRenderer>
+
+	<EdgeLabelRenderer v-if="!readOnly">
 		<CanvasEdgeToolbar
 			:type="connectionType"
 			:class="edgeToolbarClasses"

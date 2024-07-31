@@ -24,7 +24,7 @@
 				@click.left="mouseLeftClick"
 				@contextmenu="onContextMenu"
 			>
-				<n8n-sticky
+				<N8nResizeableSticky
 					v-if="node"
 					:id="node.id"
 					:model-value="node.parameters.content"
@@ -58,19 +58,21 @@
 					<font-awesome-icon icon="trash" />
 				</div>
 				<n8n-popover
+					v-on-click-outside="() => setColorPopoverVisible(false)"
 					effect="dark"
-					:popper-style="{ width: '208px' }"
 					trigger="click"
 					placement="top"
+					:popper-style="{ width: '208px' }"
+					:visible="isColorPopoverVisible"
 					@show="onShowPopover"
 					@hide="onHidePopover"
 				>
 					<template #reference>
 						<div
-							ref="colorPopoverTrigger"
 							class="option"
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
+							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
 						>
 							<font-awesome-icon icon="palette" />
 						</div>
@@ -174,15 +176,19 @@ export default defineComponent({
 	setup(props, { emit }) {
 		const deviceSupport = useDeviceSupport();
 		const toast = useToast();
-		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
+		const isColorPopoverVisible = ref(false);
 		const setForceActions = (value: boolean) => {
 			forceActions.value = value;
 		};
+		const setColorPopoverVisible = (value: boolean) => {
+			isColorPopoverVisible.value = value;
+		};
+
 		const contextMenu = useContextMenu((action) => {
 			if (action === 'change_color') {
 				setForceActions(true);
-				colorPopoverTrigger.value?.click();
+				setColorPopoverVisible(true);
 			}
 		});
 
@@ -197,11 +203,12 @@ export default defineComponent({
 		return {
 			deviceSupport,
 			toast,
-			colorPopoverTrigger,
 			contextMenu,
 			forceActions,
 			...nodeBase,
 			setForceActions,
+			isColorPopoverVisible,
+			setColorPopoverVisible,
 		};
 	},
 	data() {
@@ -416,7 +423,7 @@ export default defineComponent({
 		},
 		onContextMenu(e: MouseEvent): void {
 			if (this.node && !this.isActive) {
-				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+				this.contextMenu.open(e, { source: 'node-right-click', nodeId: this.node.id });
 			} else {
 				e.stopPropagation();
 			}

@@ -145,8 +145,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'metrics':
-						const { MetricsService } = await import('@/services/metrics.service');
-						await Container.get(MetricsService).configureMetrics(app);
+						const { PrometheusMetricsService } = await import(
+							'@/metrics/prometheus-metrics.service'
+						);
+						await Container.get(PrometheusMetricsService).init(app);
 						break;
 
 					case 'eventBus':

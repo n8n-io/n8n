@@ -13,9 +13,12 @@ import type {
 	CanvasConnectionData,
 	CanvasConnectionPort,
 	CanvasNode,
+	CanvasNodeAddNodesRender,
 	CanvasNodeData,
+	CanvasNodeDefaultRender,
+	CanvasNodeStickyNoteRender,
 } from '@/types';
-import { CanvasNodeRenderType } from '@/types';
+import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
@@ -30,8 +33,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import { WAIT_TIME_UNLIMITED } from '@/constants';
+import { CUSTOM_API_CALL_KEY, STICKY_NODE_TYPE, WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
+import { MarkerType } from '@vue-flow/core';
+import { useNodeHelpers } from './useNodeHelpers';
 
 export function useCanvasMapping({
 	nodes,
@@ -45,40 +50,80 @@ export function useCanvasMapping({
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const nodeHelpers = useNodeHelpers();
 
-	const renderTypeByNodeType = computed(
+	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
+		return {
+			type: CanvasNodeRenderType.StickyNote,
+			options: {
+				width: node.parameters.width as number,
+				height: node.parameters.height as number,
+				color: node.parameters.color as number,
+				content: node.parameters.content as string,
+			},
+		};
+	}
+
+	function createAddNodesRenderType(): CanvasNodeAddNodesRender {
+		return {
+			type: CanvasNodeRenderType.AddNodes,
+			options: {},
+		};
+	}
+
+	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		return {
+			type: CanvasNodeRenderType.Default,
+			options: {
+				trigger: nodeTypesStore.isTriggerNode(node.type),
+				configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
+				configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+			},
+		};
+	}
+
+	const renderTypeByNodeId = computed(
 		() =>
 			nodes.value.reduce<Record<string, CanvasNodeData['render']>>((acc, node) => {
-				// @TODO Add support for sticky notes here
 				switch (node.type) {
+					case `${CanvasNodeRenderType.StickyNote}`:
+						acc[node.id] = createStickyNoteRenderType(node);
+						break;
 					case `${CanvasNodeRenderType.AddNodes}`:
-						acc[node.type] = {
-							type: CanvasNodeRenderType.AddNodes,
-							options: {},
-						};
+						acc[node.id] = createAddNodesRenderType();
 						break;
 					default:
-						acc[node.type] = {
-							type: CanvasNodeRenderType.Default,
-							options: {
-								trigger: nodeTypesStore.isTriggerNode(node.type),
-								configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
-								configurable: nodeTypesStore.isConfigurableNode(
-									workflowObject.value,
-									node,
-									node.type,
-								),
-							},
-						};
+						acc[node.id] = createDefaultNodeRenderType(node);
 				}
 
 				return acc;
 			}, {}) ?? {},
 	);
 
+	const nodeSubtitleById = computed(() => {
+		return nodes.value.reduce<Record<string, string>>((acc, node) => {
+			try {
+				const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeTypeDescription) {
+					return acc;
+				}
+
+				const nodeSubtitle =
+					nodeHelpers.getNodeSubtitle(node, nodeTypeDescription, workflowObject.value) ?? '';
+				if (nodeSubtitle.includes(CUSTOM_API_CALL_KEY)) {
+					return acc;
+				}
+
+				acc[node.id] = nodeSubtitle;
+			} catch (e) {}
+
+			return acc;
+		}, {});
+	});
+
 	const nodeInputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
-			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type);
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
 
 			acc[node.id] =
@@ -89,6 +134,7 @@ export function useCanvasMapping({
 								workflowObjectNode,
 								nodeTypeDescription,
 							),
+							nodeTypeDescription.inputNames ?? [],
 						)
 					: [];
 
@@ -98,7 +144,7 @@ export function useCanvasMapping({
 
 	const nodeOutputsById = computed(() =>
 		nodes.value.reduce<Record<string, CanvasConnectionPort[]>>((acc, node) => {
-			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type);
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			const workflowObjectNode = workflowObject.value.getNode(node.name);
 
 			acc[node.id] =
@@ -109,6 +155,7 @@ export function useCanvasMapping({
 								workflowObjectNode,
 								nodeTypeDescription,
 							),
+							nodeTypeDescription.outputNames ?? [],
 						)
 					: [];
 
@@ -192,8 +239,11 @@ export function useCanvasMapping({
 			const lastNodeExecuted = workflowExecution?.data?.resultData?.lastNodeExecuted;
 
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {
-				if (node.name === workflowExecution.data?.resultData?.lastNodeExecuted) {
-					const waitDate = new Date(workflowExecution.waitTill as Date);
+				if (
+					node.name === workflowExecution.data?.resultData?.lastNodeExecuted &&
+					workflowExecution.waitTill
+				) {
+					const waitDate = new Date(workflowExecution.waitTill);
 
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
 						acc[node.id] = i18n.baseText(
@@ -214,6 +264,20 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const additionalNodePropertiesById = computed(() => {
+		return nodes.value.reduce<Record<string, Partial<CanvasNode>>>((acc, node) => {
+			if (node.type === STICKY_NODE_TYPE) {
+				acc[node.id] = {
+					style: {
+						zIndex: -1,
+					},
+				};
+			}
+
+			return acc;
+		}, {});
+	});
+
 	const mappedNodes = computed<CanvasNode[]>(() => [
 		...nodes.value.map<CanvasNode>((node) => {
 			const inputConnections = workflowObject.value.connectionsByDestinationNode[node.name] ?? {};
@@ -221,14 +285,16 @@ export function useCanvasMapping({
 
 			const data: CanvasNodeData = {
 				id: node.id,
+				name: node.name,
+				subtitle: nodeSubtitleById.value[node.id] ?? '',
 				type: node.type,
 				typeVersion: node.typeVersion,
 				disabled: !!node.disabled,
 				inputs: nodeInputsById.value[node.id] ?? [],
 				outputs: nodeOutputsById.value[node.id] ?? [],
 				connections: {
-					input: inputConnections,
-					output: outputConnections,
+					[CanvasConnectionMode.Input]: inputConnections,
+					[CanvasConnectionMode.Output]: outputConnections,
 				},
 				issues: {
 					items: nodeIssuesById.value[node.id],
@@ -247,7 +313,7 @@ export function useCanvasMapping({
 					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
 					visible: !!nodeExecutionRunDataById.value[node.id],
 				},
-				render: renderTypeByNodeType.value[node.type] ?? { type: 'default', options: {} },
+				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
 			};
 
 			return {
@@ -256,6 +322,7 @@ export function useCanvasMapping({
 				type: 'canvas-node',
 				position: { x: node.position[0], y: node.position[1] },
 				data,
+				...additionalNodePropertiesById.value[node.id],
 			};
 		}),
 	]);
@@ -273,6 +340,7 @@ export function useCanvasMapping({
 					type,
 					label,
 					animated: data.status === 'running',
+					markerEnd: MarkerType.ArrowClosed,
 				};
 			},
 		);
