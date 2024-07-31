@@ -147,11 +147,11 @@ describe('GlobalConfig', () => {
 		},
 		endpoints: {
 			metrics: {
-				enable: true,
+				enable: false,
 				prefix: 'n8n_',
 				includeWorkflowIdLabel: false,
 				includeDefaultMetrics: true,
-				includeMessageEventBusMetrics: true,
+				includeMessageEventBusMetrics: false,
 				includeNodeTypeLabel: false,
 				includeCacheMetrics: false,
 				includeApiEndpoints: false,
@@ -177,7 +177,12 @@ describe('GlobalConfig', () => {
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual(defaultConfig);
+
+		// deepCopy for diff to show plain objects
+		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+		const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
