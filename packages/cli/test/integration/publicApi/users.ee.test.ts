@@ -91,17 +91,23 @@ describe('With license unlimited quota:users', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
-			const firstMember = await createUser({ role: 'global:member' });
-			const secondMember = await createUser({ role: 'global:member' });
-			const thirdMember = await createUser({ role: 'global:member' });
+			const [owner, firstMember, secondMember, thirdMember] = await Promise.all([
+				createOwner({ withApiKey: true }),
+				createUser({ role: 'global:member' }),
+				createUser({ role: 'global:member' }),
+				createUser({ role: 'global:member' }),
+			]);
 
-			const firstProject = await createTeamProject();
-			const secondProject = await createTeamProject();
+			const [firstProject, secondProject] = await Promise.all([
+				createTeamProject(),
+				createTeamProject(),
+			]);
 
-			await linkUserToProject(firstMember, firstProject, 'project:admin');
-			await linkUserToProject(secondMember, firstProject, 'project:viewer');
-			await linkUserToProject(thirdMember, secondProject, 'project:admin');
+			await Promise.all([
+				linkUserToProject(firstMember, firstProject, 'project:admin'),
+				linkUserToProject(secondMember, firstProject, 'project:viewer'),
+				linkUserToProject(thirdMember, secondProject, 'project:admin'),
+			]);
 
 			/**
 			 * Act

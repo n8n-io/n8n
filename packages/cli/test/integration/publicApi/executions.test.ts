@@ -453,13 +453,19 @@ describe('GET /executions', () => {
 		/**
 		 * Arrange
 		 */
-		const firstProject = await createTeamProject();
-		const secondProject = await createTeamProject();
-		const firstWorkflow = await createWorkflow({}, firstProject);
-		const secondWorkflow = await createWorkflow({}, secondProject);
-		const firstExecution = await createExecution({}, firstWorkflow);
-		const secondExecution = await createExecution({}, firstWorkflow);
-		await createExecution({}, secondWorkflow);
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject(),
+			createTeamProject(),
+		]);
+		const [firstWorkflow, secondWorkflow] = await Promise.all([
+			createWorkflow({}, firstProject),
+			createWorkflow({}, secondProject),
+		]);
+		const [firstExecution, secondExecution, _] = await Promise.all([
+			createExecution({}, firstWorkflow),
+			createExecution({}, firstWorkflow),
+			createExecution({}, secondWorkflow),
+		]);
 
 		/**
 		 * Act
