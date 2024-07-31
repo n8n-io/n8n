@@ -2160,6 +2160,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	partialExecutionVersion?: string;
 }
 
 export interface ExecuteWorkflowOptions {

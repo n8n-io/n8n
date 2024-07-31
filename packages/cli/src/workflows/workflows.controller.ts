@@ -405,6 +405,7 @@ export class WorkflowsController {
 			req.body,
 			req.user,
 			req.headers['push-ref'] as string,
+			req.query.partialExecutionVersion,
 		);
 	}
 
