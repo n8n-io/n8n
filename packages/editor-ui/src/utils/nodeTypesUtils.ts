@@ -21,7 +21,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import type {
+	AssignmentCollectionValue,
 	IDataObject,
+	INode,
 	INodeCredentialDescription,
 	INodeExecutionData,
 	INodeProperties,
@@ -496,3 +498,63 @@ export const getNodeIconColor = (
 	}
 	return nodeType?.defaults?.color?.toString();
 };
+
+/**
+	Regular expression to extract the node names from the expressions in the template.
+	Example: $(expression) => expression
+*/
+const entityRegex = /\$\((['"])(.*?)\1\)/g;
+
+/**
+ * Extract the node names from the expressions in the template.
+ */
+function extractNodeNames(template: string): string[] {
+	let matches;
+	const nodeNames: string[] = [];
+	while ((matches = entityRegex.exec(template)) !== null) {
+		nodeNames.push(matches[2]);
+	}
+	return nodeNames;
+}
+
+/**
+ * Extract the node names from the expressions in the node parameters.
+ */
+export function getReferencedNodes(node: INode): string[] {
+	const referencedNodes: string[] = [];
+	if (!node) {
+		return referencedNodes;
+	}
+	// Special case for code node
+	if (node.type === 'n8n-nodes-base.set' && node.parameters.assignments) {
+		const assignments = node.parameters.assignments as AssignmentCollectionValue;
+		if (assignments.assignments?.length) {
+			assignments.assignments.forEach((assignment) => {
+				if (assignment.name && assignment.value && String(assignment.value).startsWith('=')) {
+					const nodeNames = extractNodeNames(String(assignment.value));
+					if (nodeNames.length) {
+						referencedNodes.push(...nodeNames);
+					}
+				}
+			});
+		}
+	} else {
+		Object.values(node.parameters).forEach((value) => {
+			if (!value) {
+				return;
+			}
+			let strValue = String(value);
+			// Handle resource locator
+			if (typeof value === 'object' && 'value' in value) {
+				strValue = String(value.value);
+			}
+			if (strValue.startsWith('=')) {
+				const nodeNames = extractNodeNames(strValue);
+				if (nodeNames.length) {
+					referencedNodes.push(...nodeNames);
+				}
+			}
+		});
+	}
+	return referencedNodes;
+}

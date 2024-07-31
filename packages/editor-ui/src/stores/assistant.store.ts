@@ -15,6 +15,9 @@ import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { executionDataToJson, getMainAuthField, getNodeAuthOptions, getReferencedNodes } from '@/utils/nodeTypesUtils';
+import { useNodeTypesStore } from './nodeTypes.store';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -255,6 +258,36 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
 
+		// Get all referenced nodes and their schemas
+		const referencedNodeNames = getReferencedNodes(context.node);
+		const schemas = referencedNodeNames.map((name) => {
+			const node = workflowsStore.getNodeByName(name);
+			if (!node) {
+				return {
+					node_name: name,
+					schema: {},
+				};
+			}
+			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+			const schema = getSchemaForExecutionData(
+				executionDataToJson(getInputDataWithPinned(node)),
+				true,
+			);
+			return {
+				node_name: node.name,
+				schema,
+			};
+		});
+
+		// Get node credentials details for the ai assistant
+		const nodeType = useNodeTypesStore().getNodeType(context.node.type);
+		let authType = undefined;
+		if (nodeType) {
+			const authField = getMainAuthField(nodeType);
+			const credentialInUse = context.node.parameters[authField?.name ?? ''];
+			const availableAuthOptions = getNodeAuthOptions(nodeType);
+			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
+		}
 		addEmptyAssistantMessage(id);
 		openChat();
 
@@ -270,7 +303,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					},
 					error: context.error,
 					node: context.node,
-					// TODO: Add executionSchema
+					referencedNodesData: schemas,
+					authType,
 				},
 			},
 			(msg) => onEachStreamingMessage(msg, id),

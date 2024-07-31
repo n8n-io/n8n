@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
 	interface NodeExecutionSchema {
@@ -29,6 +29,8 @@ export namespace ChatRequest {
 		user: {
 			firstName: string;
 		};
+		referencedNodesData?: Array<{ node_name: string; schema: IDataObject }>;
+		authType?: { name: string; value: string };
 	}
 
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
