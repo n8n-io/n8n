@@ -195,13 +195,21 @@ export class AwsLambda implements INodeType {
 
 					throw new NodeApiError(this.getNode(), responseData as JsonObject);
 				} else {
-					returnData.push({
-						result: responseData,
-					} as IDataObject);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({
+							result: responseData,
+						}),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail(error)) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as JsonObject).message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 					continue;
 				}
 				throw error;
