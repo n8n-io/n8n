@@ -98,7 +98,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: now, stoppedAt: now }],
 			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
@@ -191,7 +190,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: yesterday, stoppedAt: yesterday }],
 			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],

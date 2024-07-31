@@ -525,17 +525,16 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					workflowStatisticsService.emit(
-						'workflowExecutionCompleted',
-						this.workflowData,
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
 						fullRunData,
-					);
+					});
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
@@ -636,11 +635,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					workflowStatisticsService.emit(
-						'workflowExecutionCompleted',
-						this.workflowData,
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
 						fullRunData,
-					);
+					});
 				}
 			},
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
@@ -653,6 +651,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					executionId,
 					success: runData.status === 'success',
 					isManual: runData.mode === 'manual',
+					runData,
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -676,7 +675,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				workflowStatisticsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
@@ -942,6 +941,7 @@ async function executeWorkflow(
 		success: data.status === 'success',
 		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
+		runData: data,
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here

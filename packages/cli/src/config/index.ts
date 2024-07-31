@@ -96,9 +96,10 @@ config.validate({
 });
 const userManagement = config.get('userManagement');
 if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
-	console.warn(
-		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
-	);
+	if (!inTest)
+		console.warn(
+			'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
+		);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }

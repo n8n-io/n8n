@@ -40,12 +40,12 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "change-case": "^4.1.1",
-    "fast-glob": "^3.2.5",
+    "fast-glob": "catalog:",
     "inquirer": "^7.0.1",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "replace-in-file": "^6.0.0",
     "tmp-promise": "^3.0.3",
-    "typedi": "^0.10.0"
+    "typedi": "catalog:"
   }
 }

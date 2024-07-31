@@ -296,6 +296,7 @@ export class ExecutionRecoveryService {
 			executionId: execution.id,
 			success: execution.status === 'success',
 			isManual: execution.mode === 'manual',
+			runData: execution,
 		});
 
 		const externalHooks = getWorkflowHooksMain(
@@ -332,7 +333,7 @@ export class ExecutionRecoveryService {
 	private shouldScheduleQueueRecovery() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader' &&
+			config.getEnv('instanceRole') === 'leader' &&
 			!this.isShuttingDown
 		);
 	}

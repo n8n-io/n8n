@@ -112,7 +112,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
+			Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -120,7 +120,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
+			Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -171,7 +171,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
+			Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Credentials shared',
 				public_api: false,
@@ -179,7 +179,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
+			Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Credentials shared',
 				public_api: false,

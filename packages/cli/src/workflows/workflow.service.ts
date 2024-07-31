@@ -282,7 +282,7 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
-		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		this.eventService.emit('workflow-deleted', { user, workflowId });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
