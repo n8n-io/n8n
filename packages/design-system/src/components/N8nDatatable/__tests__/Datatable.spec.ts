@@ -1,6 +1,7 @@
 import { render } from '@testing-library/vue';
 import N8nDatatable from '../Datatable.vue';
 import { rows, columns } from './data';
+import { removeDynamicAttributes } from 'n8n-design-system/utils';
 
 const stubs = [
 	'n8n-option',
@@ -28,6 +29,7 @@ describe('components', () => {
 				},
 			});
 
+			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.container.querySelectorAll('thead tr').length).toEqual(1);
 			expect(wrapper.container.querySelectorAll('tbody tr').length).toEqual(rowsPerPage);
 			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
