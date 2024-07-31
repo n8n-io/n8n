@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
@@ -215,7 +215,7 @@ const hasAiMetadata = computed(() => {
 });
 
 // Determine the initial output mode to logs if the node has an error and the logs are available
-const initialOutputMode = computed<OutputType>(() => {
+const defaultOutputMode = computed<OutputType>(() => {
 	const hasError =
 		workflowRunData.value &&
 		node.value &&
@@ -364,7 +364,16 @@ const onUpdateOutputMode = (outputMode: OutputType) => {
 
 // Set the initial output mode when the component is mounted
 onMounted(() => {
-	outputMode.value = initialOutputMode.value;
+	outputMode.value = defaultOutputMode.value;
+});
+
+// In case the output panel was opened when the node has not run yet,
+// defaultOutputMode will be "regular" at the time of mounting.
+// This is why we need to watch the defaultOutputMode and change the outputMode to "logs" if the node has run and criteria are met.
+watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
+	if (newValue === OUTPUT_TYPE.LOGS && oldValue === OUTPUT_TYPE.REGULAR && hasNodeRun.value) {
+		outputMode.value = defaultOutputMode.value;
+	}
 });
 
 const activatePane = () => {
