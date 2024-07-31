@@ -653,6 +653,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					executionId,
 					success: runData.status === 'success',
 					isManual: runData.mode === 'manual',
+					runData,
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -942,6 +943,7 @@ async function executeWorkflow(
 		success: data.status === 'success',
 		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
+		runData: data,
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here

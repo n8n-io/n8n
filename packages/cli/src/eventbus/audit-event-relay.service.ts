@@ -122,9 +122,28 @@ export class AuditEventRelay {
 	}
 
 	private workflowPostExecute(event: Event['workflow-post-execute']) {
+		const { runData, ...rest } = event;
+
+		if (event.success) {
+			void this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.success',
+				payload: rest,
+			});
+
+			return;
+		}
+
 		void this.eventBus.sendWorkflowEvent({
-			eventName: 'n8n.workflow.success',
-			payload: event,
+			eventName: 'n8n.workflow.failed',
+			payload: {
+				...rest,
+				lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+				errorNodeType:
+					runData?.data.resultData.error && 'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined,
+				errorMessage: runData?.data.resultData.error?.message.toString(),
+			},
 		});
 	}
 
