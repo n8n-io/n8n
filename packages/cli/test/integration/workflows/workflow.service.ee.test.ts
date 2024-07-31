@@ -30,6 +30,8 @@ describe('EnterpriseWorkflowService', () => {
 			Container.get(CredentialsRepository),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
 		);
 	});
 

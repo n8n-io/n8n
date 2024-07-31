@@ -20,7 +20,10 @@ const executionRepository = mock<ExecutionRepository>({
 	createNewExecution,
 });
 
-const concurrencyControl = mockInstance(ConcurrencyControlService, { isEnabled: false });
+const concurrencyControl = mockInstance(ConcurrencyControlService, {
+	// @ts-expect-error Private property
+	isEnabled: false,
+});
 
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
