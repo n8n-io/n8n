@@ -145,6 +145,33 @@ describe('GlobalConfig', () => {
 			onboardingFlowDisabled: false,
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 		},
+		endpoints: {
+			metrics: {
+				enable: true,
+				prefix: 'n8n_',
+				includeWorkflowIdLabel: false,
+				includeDefaultMetrics: true,
+				includeMessageEventBusMetrics: true,
+				includeNodeTypeLabel: false,
+				includeCacheMetrics: false,
+				includeApiEndpoints: false,
+				includeApiPathLabel: false,
+				includeApiMethodLabel: false,
+				includeCredentialTypeLabel: false,
+				includeApiStatusCodeLabel: false,
+			},
+			additionalNonUIRoutes: '',
+			disableProductionWebhooksOnMainProcess: false,
+			disableUi: false,
+			form: 'form',
+			formTest: 'form-test',
+			formWaiting: 'form-waiting',
+			payloadSizeMax: 16,
+			rest: 'rest',
+			webhook: 'webhook',
+			webhookTest: 'webhook-test',
+			webhookWaiting: 'webhook-waiting',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
