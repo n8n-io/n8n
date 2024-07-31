@@ -1,5 +1,5 @@
 import type { Schema } from '@/Interface';
-import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
+import type { INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
 	interface NodeExecutionSchema {
@@ -7,7 +7,7 @@ export namespace ChatRequest {
 		schema: Schema;
 	}
 
-	interface WorkflowContext {
+	export interface WorkflowContext {
 		executionSchema?: NodeExecutionSchema[];
 	}
 
@@ -29,7 +29,6 @@ export namespace ChatRequest {
 		user: {
 			firstName: string;
 		};
-		referencedNodesData?: Array<{ node_name: string; schema: IDataObject }>;
 		authType?: { name: string; value: string };
 	}
 
