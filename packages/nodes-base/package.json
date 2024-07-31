@@ -52,6 +52,7 @@
       "dist/credentials/BubbleApi.credentials.js",
       "dist/credentials/CalApi.credentials.js",
       "dist/credentials/CalendlyApi.credentials.js",
+      "dist/credentials/CalendlyOAuth2Api.credentials.js",
       "dist/credentials/CarbonBlackApi.credentials.js",
       "dist/credentials/ChargebeeApi.credentials.js",
       "dist/credentials/CircleCiApi.credentials.js",
