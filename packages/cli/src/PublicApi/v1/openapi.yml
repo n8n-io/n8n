@@ -32,6 +32,8 @@ tags:
     description: Operations about source control
   - name: Variables
     description: Operations about variables
+  - name: Projects
+    description: Operations about projects
 
 paths:
   /audit:
@@ -72,6 +74,10 @@ paths:
     $ref: './handlers/variables/spec/paths/variables.yml'
   /variables/{id}:
     $ref: './handlers/variables/spec/paths/variables.id.yml'
+  /projects:
+    $ref: './handlers/projects/spec/paths/projects.yml'
+  /projects/{projectId}:
+    $ref: './handlers/projects/spec/paths/projects.projectId.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'
