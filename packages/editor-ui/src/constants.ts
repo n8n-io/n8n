@@ -669,10 +669,17 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '021_ai_debug_helper',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
+	AI_ASSISTANT_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
