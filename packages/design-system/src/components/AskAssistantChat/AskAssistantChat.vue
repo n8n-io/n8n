@@ -377,7 +377,8 @@ function renderMarkdown(content: string) {
 		display: inline;
 	}
 
-	ul, ol {
+	ul,
+	ol {
 		list-style-position: inside;
 		margin: 12px 0 12px 12px;
 	}

@@ -48,7 +48,12 @@ export namespace ChatUI {
 		suggestionId: string;
 	}
 
-	type MessagesWithReplies = (TextMessage | CodeDiffMessage | SummaryBlock) & {
+	type MessagesWithReplies = (
+		| TextMessage
+		| CodeDiffMessage
+		| SummaryBlock
+		| AgentSuggestionMessage
+	) & {
 		quickReplies?: QuickReply[];
 	};
 

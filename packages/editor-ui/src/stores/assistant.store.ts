@@ -16,7 +16,12 @@ import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
-import { executionDataToJson, getMainAuthField, getNodeAuthOptions, getReferencedNodes } from '@/utils/nodeTypesUtils';
+import {
+	executionDataToJson,
+	getMainAuthField,
+	getNodeAuthOptions,
+	getReferencedNodes,
+} from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 
 const MAX_CHAT_WIDTH = 425;
