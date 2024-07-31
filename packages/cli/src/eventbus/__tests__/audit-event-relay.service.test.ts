@@ -3,6 +3,7 @@ import { AuditEventRelay } from '../audit-event-relay.service';
 import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { Event } from '../event.types';
 import { EventService } from '../event.service';
+import type { INode, IRun } from 'n8n-workflow';
 
 describe('AuditorService', () => {
 	const eventBus = mock<MessageEventBus>();
@@ -83,7 +84,7 @@ describe('AuditorService', () => {
 	});
 
 	it('should log on `workflow-post-execute` for successful execution', () => {
-		const payload = {
+		const payload = mock<Event['workflow-post-execute']>({
 			executionId: 'some-id',
 			success: true,
 			userId: 'some-id',
@@ -91,14 +92,12 @@ describe('AuditorService', () => {
 			isManual: true,
 			workflowName: 'some-name',
 			metadata: {},
-			lastNodeExecuted: 'some-node',
-			errorNodeType: 'some-type',
-			errorMessage: 'some-message',
-		};
+			runData: mock<IRun>({ data: { resultData: {} } }),
+		});
 
 		eventService.emit('workflow-post-execute', payload);
 
-		const { lastNodeExecuted: _, errorNodeType: __, errorMessage: ___, ...rest } = payload;
+		const { runData: _, ...rest } = payload;
 
 		expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 			eventName: 'n8n.workflow.success',
@@ -107,7 +106,21 @@ describe('AuditorService', () => {
 	});
 
 	it('should handle `workflow-post-execute` event for unsuccessful execution', () => {
-		const payload = {
+		const runData = mock<IRun>({
+			data: {
+				resultData: {
+					lastNodeExecuted: 'some-node',
+					// @ts-expect-error Partial mock
+					error: {
+						node: mock<INode>({ type: 'some-type' }),
+						message: 'some-message',
+					},
+					errorMessage: 'some-message',
+				},
+			},
+		}) as unknown as IRun;
+
+		const event = {
 			executionId: 'some-id',
 			success: false,
 			userId: 'some-id',
@@ -115,16 +128,21 @@ describe('AuditorService', () => {
 			isManual: true,
 			workflowName: 'some-name',
 			metadata: {},
-			lastNodeExecuted: 'some-node',
-			errorNodeType: 'some-type',
-			errorMessage: 'some-message',
+			runData,
 		};
 
-		eventService.emit('workflow-post-execute', payload);
+		eventService.emit('workflow-post-execute', event);
+
+		const { runData: _, ...rest } = event;
 
 		expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 			eventName: 'n8n.workflow.failed',
-			payload,
+			payload: {
+				...rest,
+				lastNodeExecuted: 'some-node',
+				errorNodeType: 'some-type',
+				errorMessage: 'some-message',
+			},
 		});
 	});
 });

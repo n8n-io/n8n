@@ -173,12 +173,7 @@ export class WorkflowRunner {
 						success: executionData?.status === 'success',
 						isManual: data.executionMode === 'manual',
 						userId: data.userId,
-						lastNodeExecuted: executionData?.data.resultData.lastNodeExecuted,
-						errorNodeType:
-							executionData?.data.resultData.error && 'node' in executionData?.data.resultData.error
-								? executionData?.data.resultData.error.node?.type
-								: undefined,
-						errorMessage: executionData?.data.resultData.error?.message.toString(),
+						runData: executionData,
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {

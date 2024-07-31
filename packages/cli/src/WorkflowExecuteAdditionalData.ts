@@ -651,12 +651,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					executionId,
 					success: runData.status === 'success',
 					isManual: runData.mode === 'manual',
-					lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-					errorNodeType:
-						runData?.data.resultData.error && 'node' in runData?.data.resultData.error
-							? runData?.data.resultData.error.node?.type
-							: undefined,
-					errorMessage: runData?.data.resultData.error?.message.toString(),
+					runData,
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -946,12 +941,7 @@ async function executeWorkflow(
 		success: data.status === 'success',
 		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
-		lastNodeExecuted: data?.data.resultData.lastNodeExecuted,
-		errorNodeType:
-			data?.data.resultData.error && 'node' in data?.data.resultData.error
-				? data?.data.resultData.error.node?.type
-				: undefined,
-		errorMessage: data?.data.resultData.error?.message.toString(),
+		runData: data,
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here

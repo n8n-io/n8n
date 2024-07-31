@@ -296,12 +296,7 @@ export class ExecutionRecoveryService {
 			executionId: execution.id,
 			success: execution.status === 'success',
 			isManual: execution.mode === 'manual',
-			lastNodeExecuted: execution.data.resultData.lastNodeExecuted,
-			errorNodeType:
-				execution.data.resultData.error && 'node' in execution.data.resultData.error
-					? execution.data.resultData.error.node?.type
-					: undefined,
-			errorMessage: execution.data.resultData.error?.message.toString(),
+			runData: execution,
 		});
 
 		const externalHooks = getWorkflowHooksMain(
