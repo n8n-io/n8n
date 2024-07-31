@@ -46,6 +46,12 @@ module.exports = {
 			},
 		},
 		{
+			files: ['./test/**/*.ts'],
+			rules: {
+				'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
+			},
+		},
+		{
 			files: ['./src/decorators/**/*.ts'],
 			rules: {
 				'@typescript-eslint/ban-types': [
