@@ -35,7 +35,7 @@
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="!workflowPermissions.share"
-							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+							:placeholder="sharingSelectPlaceholder"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
 						/>
@@ -212,6 +212,11 @@ export default defineComponent({
 				scopes,
 				licensed,
 			}));
+		},
+		sharingSelectPlaceholder() {
+			return this.projectsStore.teamProjects.length
+				? this.$locale.baseText('projects.sharing.select.placeholder.project')
+				: this.$locale.baseText('projects.sharing.select.placeholder.user');
 		},
 	},
 	watch: {

@@ -3,7 +3,7 @@
 		:name="modalName"
 		:title="title"
 		:center="true"
-		width="460px"
+		width="520"
 		:event-bus="modalBus"
 		@enter="onSubmit"
 	>

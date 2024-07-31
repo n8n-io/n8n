@@ -38,7 +38,7 @@
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
-				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+				:placeholder="sharingSelectPlaceholder"
 			/>
 		</div>
 	</div>
@@ -174,6 +174,11 @@ export default defineComponent({
 				scopes,
 				licensed,
 			}));
+		},
+		sharingSelectPlaceholder() {
+			return this.projectsStore.teamProjects.length
+				? this.$locale.baseText('projects.sharing.select.placeholder.project')
+				: this.$locale.baseText('projects.sharing.select.placeholder.user');
 		},
 	},
 	watch: {
