@@ -572,6 +572,16 @@ export function useNodeHelpers() {
 		paneType: NodePanelType = 'output',
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
+		//TODO: check if this needs to be fixed in different place
+		if (
+			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
+			paneType === 'input' &&
+			runIndex !== 0 &&
+			outputIndex !== 0
+		) {
+			runIndex = runIndex - 1;
+		}
+
 		if (node === null) {
 			return [];
 		}
@@ -598,10 +608,6 @@ export function useNodeHelpers() {
 
 		if (!data) {
 			return [];
-		}
-
-		if (node?.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-			outputIndex = 0;
 		}
 
 		return getInputData(data, outputIndex, connectionType);
