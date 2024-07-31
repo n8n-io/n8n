@@ -16,7 +16,6 @@ const props = defineProps<{
 	loading: boolean;
 	workflow?: IWorkflowDb;
 	executions: ExecutionSummary[];
-	filters: ExecutionFilterType;
 	execution: ExecutionSummary | null;
 	loadingMore: boolean;
 }>();

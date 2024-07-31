@@ -112,6 +112,9 @@ function onRetryExecution(payload: { execution: ExecutionSummary; command: strin
 }
 
 function onFilterChanged(filter: ExecutionFilterType) {
+	autoScrollDeps.value.activeExecutionSet = false;
+	autoScrollDeps.value.scroll = true;
+	mountedItems.value = [];
 	emit('filterUpdated', filter);
 }
 
