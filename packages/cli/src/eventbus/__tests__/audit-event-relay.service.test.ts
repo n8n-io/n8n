@@ -5,7 +5,7 @@ import type { Event } from '../event.types';
 import { EventService } from '../event.service';
 import type { INode, IRun } from 'n8n-workflow';
 
-describe('AuditorService', () => {
+describe('AuditEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = new EventService();
 	const auditor = new AuditEventRelay(eventService, eventBus);
@@ -15,8 +15,8 @@ describe('AuditorService', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should handle `user-deleted` event', () => {
-		const arg: Event['user-deleted'] = {
+	it('should log on `user-deleted` event', () => {
+		const event: Event['user-deleted'] = {
 			user: {
 				id: '123',
 				email: 'john@n8n.io',
@@ -26,8 +26,7 @@ describe('AuditorService', () => {
 			},
 		};
 
-		// @ts-expect-error Private method
-		auditor.userDeleted(arg);
+		eventService.emit('user-deleted', event);
 
 		expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 			eventName: 'n8n.audit.user.deleted',
@@ -41,8 +40,8 @@ describe('AuditorService', () => {
 		});
 	});
 
-	it('should handle `user-invite-email-click` event', () => {
-		const arg: Event['user-invite-email-click'] = {
+	it('should log on `user-invite-email-click` event', () => {
+		const event: Event['user-invite-email-click'] = {
 			inviter: {
 				id: '123',
 				email: 'john@n8n.io',
@@ -59,8 +58,7 @@ describe('AuditorService', () => {
 			},
 		};
 
-		// @ts-expect-error Private method
-		auditor.userInviteEmailClick(arg);
+		eventService.emit('user-invite-email-click', event);
 
 		expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 			eventName: 'n8n.audit.user.invitation.accepted',
