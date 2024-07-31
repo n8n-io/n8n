@@ -262,8 +262,11 @@ describe('PUT /credentials/:id/transfer', () => {
 		/**
 		 * Arrange
 		 */
-		const firstProject = await createTeamProject('first-project', owner);
-		const secondProject = await createTeamProject('second-project', owner);
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('first-project', owner),
+			createTeamProject('second-project', owner),
+		]);
+
 		const credentials = await createCredentials(
 			{ name: 'Test', type: 'test', data: '' },
 			firstProject,
