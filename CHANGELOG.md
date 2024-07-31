@@ -1,3 +1,13 @@
+## [1.52.2](https://github.com/n8n-io/n8n/compare/n8n@1.52.1...n8n@1.52.2) (2024-07-31)
+
+
+### Bug Fixes
+
+* **core:** Restore log event `n8n.workflow.failed` ([#10253](https://github.com/n8n-io/n8n/issues/10253)) ([70aa8fd](https://github.com/n8n-io/n8n/commit/70aa8fd47ac6cd8fc4a9457d233d07f409584c4b))
+* **editor:** Fix workflow execution list scrolling after filter change ([#10226](https://github.com/n8n-io/n8n/issues/10226)) ([c2e37cb](https://github.com/n8n-io/n8n/commit/c2e37cb0c15df2a788397fd2d8435d06cbf31154))
+
+
+
 ## [1.52.1](https://github.com/n8n-io/n8n/compare/n8n@1.52.0...n8n@1.52.1) (2024-07-26)
 
 
