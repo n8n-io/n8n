@@ -8,6 +8,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
@@ -571,6 +572,16 @@ export function useNodeHelpers() {
 		paneType: NodePanelType = 'output',
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
+		//TODO: check if this needs to be fixed in different place
+		if (
+			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
+			paneType === 'input' &&
+			runIndex !== 0 &&
+			outputIndex !== 0
+		) {
+			runIndex = runIndex - 1;
+		}
+
 		if (node === null) {
 			return [];
 		}
