@@ -23,6 +23,7 @@ describe('ProjectCardBadge', () => {
 						id: '1',
 					},
 				},
+				resourceType: 'workflow',
 				personalProject: {
 					id: '1',
 				},
@@ -49,6 +50,7 @@ describe('ProjectCardBadge', () => {
 						name,
 					},
 				},
+				resourceType: 'workflow',
 				personalProject: {
 					id: '2',
 				},

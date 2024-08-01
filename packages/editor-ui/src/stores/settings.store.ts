@@ -1,27 +1,15 @@
-import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
-import {
-	getLdapConfig,
-	getLdapSynchronizations,
-	runLdapSync,
-	testLdapConnection,
-	updateLdapConfig,
-} from '@/api/ldap';
-import { getSettings, submitContactInfo } from '@/api/settings';
+import * as publicApiApi from '@/api/api-keys';
+import * as ldapApi from '@/api/ldap';
+import * as settingsApi from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
-import type {
-	EnterpriseEditionFeatureValue,
-	ILdapConfig,
-	IN8nPromptResponse,
-	ISettingsState,
-} from '@/Interface';
+import type { ILdapConfig } from '@/Interface';
 import { STORES, INSECURE_CONNECTION_WARNING } from '@/constants';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
-	LogLevel,
 	IN8nUISettings,
-	ITelemetrySettings,
 	WorkflowSettings,
+	IUserManagementSettings,
 } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -33,379 +21,422 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { i18n } from '@/plugins/i18n';
+import { computed, ref } from 'vue';
 
-export const useSettingsStore = defineStore(STORES.SETTINGS, {
-	state: (): ISettingsState => ({
-		initialized: false,
-		settings: {} as IN8nUISettings,
-		userManagement: {
-			quota: -1,
-			showSetupOnFirstLoad: false,
-			smtpSetup: false,
-			authenticationMethod: UserManagementAuthenticationMethod.Email,
-		},
-		templatesEndpointHealthy: false,
-		api: {
+export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
+	const initialized = ref(false);
+	const settings = ref<IN8nUISettings>({} as IN8nUISettings);
+	const userManagement = ref<IUserManagementSettings>({
+		quota: -1,
+		showSetupOnFirstLoad: false,
+		smtpSetup: false,
+		authenticationMethod: UserManagementAuthenticationMethod.Email,
+	});
+	const templatesEndpointHealthy = ref(false);
+	const api = ref({
+		enabled: false,
+		latestVersion: 0,
+		path: '/',
+		swaggerUi: {
 			enabled: false,
-			latestVersion: 0,
-			path: '/',
-			swaggerUi: {
+		},
+	});
+	const ldap = ref({ loginLabel: '', loginEnabled: false });
+	const saml = ref({ loginLabel: '', loginEnabled: false });
+	const mfa = ref({ enabled: false });
+	const saveDataErrorExecution = ref<WorkflowSettings.SaveDataExecution>('all');
+	const saveDataSuccessExecution = ref<WorkflowSettings.SaveDataExecution>('all');
+	const saveManualExecutions = ref(false);
+	const saveDataProgressExecution = ref(false);
+
+	const isDocker = computed(() => settings.value?.isDocker ?? false);
+
+	const databaseType = computed(() => settings.value?.databaseType);
+
+	const planName = computed(() => settings.value?.license.planName ?? 'Community');
+
+	const consumerId = computed(() => settings.value?.license.consumerId);
+
+	const binaryDataMode = computed(() => settings.value?.binaryDataMode);
+
+	const pruning = computed(() => settings.value?.pruning);
+
+	const security = computed(() => ({
+		blockFileAccessToN8nFiles: settings.value.security.blockFileAccessToN8nFiles,
+		secureCookie: settings.value.authCookie.secure,
+	}));
+
+	const isEnterpriseFeatureEnabled = computed(() => settings.value.enterprise);
+
+	const nodeJsVersion = computed(() => settings.value.nodeJsVersion);
+
+	const concurrency = computed(() => settings.value.concurrency);
+
+	const isPublicApiEnabled = computed(() => api.value.enabled);
+
+	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
+
+	const isPreviewMode = computed(() => settings.value.previewMode);
+
+	const publicApiLatestVersion = computed(() => api.value.latestVersion);
+
+	const publicApiPath = computed(() => api.value.path);
+
+	const isLdapLoginEnabled = computed(() => ldap.value.loginEnabled);
+
+	const ldapLoginLabel = computed(() => ldap.value.loginLabel);
+
+	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
+
+	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
+
+	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
+
+	const isDesktopDeployment = computed(() =>
+		settings.value.deployment?.type.startsWith('desktop_'),
+	);
+
+	const isCloudDeployment = computed(() => settings.value.deployment?.type === 'cloud');
+
+	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
+
+	const isPersonalizationSurveyEnabled = computed(
+		() => settings.value.telemetry?.enabled && settings.value.personalizationSurveyEnabled,
+	);
+
+	const telemetry = computed(() => settings.value.telemetry);
+
+	const logLevel = computed(() => settings.value.logLevel);
+
+	const isTelemetryEnabled = computed(
+		() => settings.value.telemetry && settings.value.telemetry.enabled,
+	);
+
+	const isMfaFeatureEnabled = computed(() => mfa.value.enabled);
+
+	const areTagsEnabled = computed(() =>
+		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
+	);
+
+	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
+
+	const isTemplatesEnabled = computed(() =>
+		Boolean(settings.value.templates && settings.value.templates.enabled),
+	);
+
+	const isTemplatesEndpointReachable = computed(() => templatesEndpointHealthy.value);
+
+	const templatesHost = computed(() => settings.value.templates.host);
+
+	const pushBackend = computed(() => settings.value.pushBackend);
+
+	const isCommunityNodesFeatureEnabled = computed(() => settings.value.communityNodesEnabled);
+
+	const isNpmAvailable = computed(() => settings.value.isNpmAvailable);
+
+	const allowedModules = computed(() => settings.value.allowedModules);
+
+	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
+
+	const isWorkerViewAvailable = computed(() => !!settings.value.enterprise?.workerView);
+
+	const workflowCallerPolicyDefaultOption = computed(
+		() => settings.value.workflowCallerPolicyDefaultOption,
+	);
+
+	const isDefaultAuthenticationSaml = computed(
+		() => userManagement.value.authenticationMethod === UserManagementAuthenticationMethod.Saml,
+	);
+
+	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
+
+	const isBelowUserQuota = computed(
+		() =>
+			userManagement.value.quota === -1 ||
+			userManagement.value.quota > useUsersStore().allUsers.length,
+	);
+
+	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
+
+	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const setSettings = (newSettings: IN8nUISettings) => {
+		settings.value = newSettings;
+		userManagement.value = newSettings.userManagement;
+		if (userManagement.value) {
+			userManagement.value.showSetupOnFirstLoad =
+				!!settings.value.userManagement.showSetupOnFirstLoad;
+		}
+		api.value = settings.value.publicApi;
+		if (settings.value.sso?.ldap) {
+			ldap.value.loginEnabled = settings.value.sso.ldap.loginEnabled;
+			ldap.value.loginLabel = settings.value.sso.ldap.loginLabel;
+		}
+		if (settings.value.sso?.saml) {
+			saml.value.loginEnabled = settings.value.sso.saml.loginEnabled;
+			saml.value.loginLabel = settings.value.sso.saml.loginLabel;
+		}
+
+		mfa.value.enabled = settings.value.mfa?.enabled;
+
+		if (settings.value.enterprise?.showNonProdBanner) {
+			useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
+		}
+
+		if (settings.value.versionCli) {
+			useRootStore().setVersionCli(settings.value.versionCli);
+		}
+
+		if (
+			settings.value.authCookie.secure &&
+			location.protocol === 'http:' &&
+			!['localhost', '127.0.0.1'].includes(location.hostname)
+		) {
+			document.write(INSECURE_CONNECTION_WARNING);
+			return;
+		}
+
+		const isV1BannerDismissedPermanently = (settings.value.banners?.dismissed || []).includes('V1');
+		if (!isV1BannerDismissedPermanently && settings.value.versionCli.startsWith('1.')) {
+			useUIStore().pushBannerToStack('V1');
+		}
+	};
+
+	const setAllowedModules = (allowedModules: IN8nUISettings['allowedModules']) => {
+		settings.value.allowedModules = allowedModules;
+	};
+
+	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
+		saveDataErrorExecution.value = newValue;
+	};
+
+	const setSaveDataSuccessExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
+		saveDataSuccessExecution.value = newValue;
+	};
+
+	const setSaveManualExecutions = (newValue: boolean) => {
+		saveManualExecutions.value = newValue;
+	};
+
+	const setSaveDataProgressExecution = (newValue: boolean) => {
+		saveDataProgressExecution.value = newValue;
+	};
+
+	const getSettings = async () => {
+		const rootStore = useRootStore();
+		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
+		setSettings(fetchedSettings);
+		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
+		setAllowedModules(fetchedSettings.allowedModules);
+		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
+		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
+		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
+		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
+
+		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
+		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
+		rootStore.setEndpointForm(fetchedSettings.endpointForm);
+		rootStore.setEndpointFormTest(fetchedSettings.endpointFormTest);
+		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
+		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
+		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
+		rootStore.setTimezone(fetchedSettings.timezone);
+		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
+		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setInstanceId(fetchedSettings.instanceId);
+		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		rootStore.setIsNpmAvailable(fetchedSettings.isNpmAvailable);
+		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
+		useVersionsStore().setVersionNotificationSettings(fetchedSettings.versionNotifications);
+	};
+
+	const initialize = async () => {
+		if (initialized.value) {
+			return;
+		}
+
+		const { showToast } = useToast();
+		try {
+			await getSettings();
+
+			ExpressionEvaluatorProxy.setEvaluator(settings.value.expressions.evaluator);
+
+			// Re-compute title since settings are now available
+			useTitleChange().titleReset();
+
+			initialized.value = true;
+		} catch (e) {
+			showToast({
+				title: i18n.baseText('startupError'),
+				message: i18n.baseText('startupError.message'),
+				type: 'error',
+				duration: 0,
+				dangerouslyUseHTMLString: true,
+			});
+
+			throw e;
+		}
+	};
+
+	const stopShowingSetupPage = () => {
+		userManagement.value.showSetupOnFirstLoad = false;
+	};
+
+	const disableTemplates = () => {
+		settings.value = {
+			...settings.value,
+			templates: {
+				...settings.value.templates,
 				enabled: false,
 			},
-		},
-		ldap: {
-			loginLabel: '',
-			loginEnabled: false,
-		},
-		saml: {
-			loginLabel: '',
-			loginEnabled: false,
-		},
-		mfa: {
-			enabled: false,
-		},
-		saveDataErrorExecution: 'all',
-		saveDataSuccessExecution: 'all',
-		saveManualExecutions: false,
-		saveDataProgressExecution: false,
-	}),
-	getters: {
-		isDocker(): boolean {
-			return this.settings.isDocker;
-		},
-		databaseType(): 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb' {
-			return this.settings.databaseType;
-		},
-		planName(): string {
-			return this.settings.license.planName ?? 'Community';
-		},
-		consumerId(): string {
-			return this.settings.license.consumerId;
-		},
-		binaryDataMode(): 'default' | 'filesystem' | 's3' {
-			return this.settings.binaryDataMode;
-		},
-		pruning(): { isEnabled: boolean; maxAge: number; maxCount: number } {
-			return this.settings.pruning;
-		},
-		security(): {
-			blockFileAccessToN8nFiles: boolean;
-			secureCookie: boolean;
-		} {
-			return {
-				blockFileAccessToN8nFiles: this.settings.security.blockFileAccessToN8nFiles,
-				secureCookie: this.settings.authCookie.secure,
-			};
-		},
-		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeatureValue): boolean =>
-				Boolean(this.settings.enterprise?.[feature]);
-		},
+		};
+	};
 
-		versionCli(): string {
-			return this.settings.versionCli;
-		},
-		nodeJsVersion(): string {
-			return this.settings.nodeJsVersion;
-		},
-		concurrency(): number {
-			return this.settings.concurrency;
-		},
-		isPublicApiEnabled(): boolean {
-			return this.api.enabled;
-		},
-		isSwaggerUIEnabled(): boolean {
-			return this.api.swaggerUi.enabled;
-		},
-		isPreviewMode(): boolean {
-			return this.settings.previewMode;
-		},
-		publicApiLatestVersion(): number {
-			return this.api.latestVersion;
-		},
-		publicApiPath(): string {
-			return this.api.path;
-		},
-		isLdapLoginEnabled(): boolean {
-			return this.ldap.loginEnabled;
-		},
-		ldapLoginLabel(): string {
-			return this.ldap.loginLabel;
-		},
-		isSamlLoginEnabled(): boolean {
-			return this.saml.loginEnabled;
-		},
-		samlLoginLabel(): string {
-			return this.saml.loginLabel;
-		},
-		showSetupPage(): boolean {
-			return this.userManagement.showSetupOnFirstLoad === true;
-		},
-		deploymentType(): string {
-			return this.settings.deployment?.type || 'default';
-		},
-		isDesktopDeployment(): boolean {
-			if (!this.settings.deployment) {
-				return false;
-			}
-			return this.settings.deployment?.type.startsWith('desktop_');
-		},
-		isCloudDeployment(): boolean {
-			return this.settings.deployment?.type === 'cloud';
-		},
-		isSmtpSetup(): boolean {
-			return this.userManagement.smtpSetup;
-		},
-		isPersonalizationSurveyEnabled(): boolean {
-			return (
-				this.settings.telemetry &&
-				this.settings.telemetry.enabled &&
-				this.settings.personalizationSurveyEnabled
+	const submitContactInfo = async (email: string) => {
+		try {
+			const usersStore = useUsersStore();
+			return await settingsApi.submitContactInfo(
+				settings.value.instanceId,
+				usersStore.currentUserId || '',
+				email,
 			);
-		},
-		telemetry(): ITelemetrySettings {
-			return this.settings.telemetry;
-		},
-		logLevel(): LogLevel {
-			return this.settings.logLevel;
-		},
-		isTelemetryEnabled(): boolean {
-			return this.settings.telemetry && this.settings.telemetry.enabled;
-		},
-		isMfaFeatureEnabled(): boolean {
-			return this.settings?.mfa?.enabled;
-		},
-		areTagsEnabled(): boolean {
-			return this.settings.workflowTagsDisabled !== undefined
-				? !this.settings.workflowTagsDisabled
-				: true;
-		},
-		isHiringBannerEnabled(): boolean {
-			return this.settings.hiringBannerEnabled;
-		},
-		isTemplatesEnabled(): boolean {
-			return Boolean(this.settings.templates && this.settings.templates.enabled);
-		},
-		isTemplatesEndpointReachable(): boolean {
-			return this.templatesEndpointHealthy;
-		},
-		templatesHost(): string {
-			return this.settings.templates.host;
-		},
-		pushBackend(): IN8nUISettings['pushBackend'] {
-			return this.settings.pushBackend;
-		},
-		isCommunityNodesFeatureEnabled(): boolean {
-			return this.settings.communityNodesEnabled;
-		},
-		isNpmAvailable(): boolean {
-			return this.settings.isNpmAvailable;
-		},
-		allowedModules(): { builtIn?: string[]; external?: string[] } {
-			return this.settings.allowedModules;
-		},
-		isQueueModeEnabled(): boolean {
-			return this.settings.executionMode === 'queue';
-		},
-		isWorkerViewAvailable(): boolean {
-			return !!this.settings.enterprise?.workerView;
-		},
-		workflowCallerPolicyDefaultOption(): WorkflowSettings.CallerPolicy {
-			return this.settings.workflowCallerPolicyDefaultOption;
-		},
-		isDefaultAuthenticationSaml(): boolean {
-			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
-		},
-		permanentlyDismissedBanners(): string[] {
-			return this.settings.banners?.dismissed ?? [];
-		},
-		isBelowUserQuota(): boolean {
-			const userStore = useUsersStore();
-			return (
-				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
-			);
-		},
-		isDevRelease(): boolean {
-			return this.settings.releaseChannel === 'dev';
-		},
-	},
-	actions: {
-		async initialize() {
-			if (this.initialized) {
-				return;
-			}
+		} catch (error) {
+			return;
+		}
+	};
 
-			const { showToast } = useToast();
-			try {
-				await this.getSettings();
+	const testTemplatesEndpoint = async () => {
+		const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
+		await Promise.race([testHealthEndpoint(templatesHost.value), timeout]);
+		templatesEndpointHealthy.value = true;
+	};
 
-				ExpressionEvaluatorProxy.setEvaluator(this.settings.expressions.evaluator);
+	const getApiKey = async () => {
+		const rootStore = useRootStore();
+		const { apiKey } = await publicApiApi.getApiKey(rootStore.restApiContext);
+		return apiKey;
+	};
 
-				// Re-compute title since settings are now available
-				useTitleChange().titleReset();
+	const createApiKey = async () => {
+		const rootStore = useRootStore();
+		const { apiKey } = await publicApiApi.createApiKey(rootStore.restApiContext);
+		return apiKey;
+	};
 
-				this.initialized = true;
-			} catch (e) {
-				showToast({
-					title: i18n.baseText('startupError'),
-					message: i18n.baseText('startupError.message'),
-					type: 'error',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
+	const deleteApiKey = async () => {
+		const rootStore = useRootStore();
+		await publicApiApi.deleteApiKey(rootStore.restApiContext);
+	};
 
-				throw e;
-			}
-		},
-		setSettings(settings: IN8nUISettings): void {
-			this.settings = settings;
-			this.userManagement = settings.userManagement;
-			if (this.userManagement) {
-				this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
-			}
-			this.api = settings.publicApi;
-			if (settings.sso?.ldap) {
-				this.ldap.loginEnabled = settings.sso.ldap.loginEnabled;
-				this.ldap.loginLabel = settings.sso.ldap.loginLabel;
-			}
-			if (settings.sso?.saml) {
-				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
-				this.saml.loginLabel = settings.sso.saml.loginLabel;
-			}
-			if (settings.enterprise?.showNonProdBanner) {
-				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
-			}
-			if (settings.versionCli) {
-				useRootStore().setVersionCli(settings.versionCli);
-			}
+	const getLdapConfig = async () => {
+		const rootStore = useRootStore();
+		return await ldapApi.getLdapConfig(rootStore.restApiContext);
+	};
 
-			if (
-				settings.authCookie.secure &&
-				location.protocol === 'http:' &&
-				!['localhost', '127.0.0.1'].includes(location.hostname)
-			) {
-				document.write(INSECURE_CONNECTION_WARNING);
-				return;
-			}
+	const getLdapSynchronizations = async (pagination: { page: number }) => {
+		const rootStore = useRootStore();
+		return await ldapApi.getLdapSynchronizations(rootStore.restApiContext, pagination);
+	};
 
-			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
-			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
-				useUIStore().pushBannerToStack('V1');
-			}
-		},
-		async getSettings(): Promise<void> {
-			const rootStore = useRootStore();
-			const settings = await getSettings(rootStore.restApiContext);
+	const testLdapConnection = async () => {
+		const rootStore = useRootStore();
+		return await ldapApi.testLdapConnection(rootStore.restApiContext);
+	};
 
-			this.setSettings(settings);
-			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			this.setAllowedModules(settings.allowedModules);
-			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
-			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
-			this.setSaveDataProgressExecution(settings.saveExecutionProgress);
-			this.setSaveManualExecutions(settings.saveManualExecutions);
+	const updateLdapConfig = async (ldapConfig: ILdapConfig) => {
+		const rootStore = useRootStore();
+		return await ldapApi.updateLdapConfig(rootStore.restApiContext, ldapConfig);
+	};
 
-			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
-			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
-			rootStore.setEndpointForm(settings.endpointForm);
-			rootStore.setEndpointFormTest(settings.endpointFormTest);
-			rootStore.setEndpointFormWaiting(settings.endpointFormWaiting);
-			rootStore.setEndpointWebhook(settings.endpointWebhook);
-			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
-			rootStore.setTimezone(settings.timezone);
-			rootStore.setExecutionTimeout(settings.executionTimeout);
-			rootStore.setMaxExecutionTimeout(settings.maxExecutionTimeout);
-			rootStore.setVersionCli(settings.versionCli);
-			rootStore.setInstanceId(settings.instanceId);
-			rootStore.setOauthCallbackUrls(settings.oauthCallbackUrls);
-			rootStore.setN8nMetadata(settings.n8nMetadata || {});
-			rootStore.setDefaultLocale(settings.defaultLocale);
-			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-			rootStore.setBinaryDataMode(settings.binaryDataMode);
+	const runLdapSync = async (data: IDataObject) => {
+		const rootStore = useRootStore();
+		return await ldapApi.runLdapSync(rootStore.restApiContext, data);
+	};
 
-			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
-		},
-		stopShowingSetupPage(): void {
-			this.userManagement.showSetupOnFirstLoad = false;
-		},
-		disableTemplates(): void {
-			this.settings = {
-				...this.settings,
-				templates: {
-					...this.settings.templates,
-					enabled: false,
-				},
-			};
-		},
-		setAllowedModules(allowedModules: { builtIn?: string[]; external?: string[] }): void {
-			this.settings.allowedModules = allowedModules;
-		},
-		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
-			try {
-				const usersStore = useUsersStore();
-				return await submitContactInfo(
-					this.settings.instanceId,
-					usersStore.currentUserId || '',
-					email,
-				);
-			} catch (error) {
-				return;
-			}
-		},
-		async testTemplatesEndpoint(): Promise<void> {
-			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
-			await Promise.race([testHealthEndpoint(this.templatesHost), timeout]);
-			this.templatesEndpointHealthy = true;
-		},
-		async getApiKey(): Promise<string | null> {
-			const rootStore = useRootStore();
-			const { apiKey } = await getApiKey(rootStore.restApiContext);
-			return apiKey;
-		},
-		async createApiKey(): Promise<string | null> {
-			const rootStore = useRootStore();
-			const { apiKey } = await createApiKey(rootStore.restApiContext);
-			return apiKey;
-		},
-		async deleteApiKey(): Promise<void> {
-			const rootStore = useRootStore();
-			await deleteApiKey(rootStore.restApiContext);
-		},
-		async getLdapConfig() {
-			const rootStore = useRootStore();
-			return await getLdapConfig(rootStore.restApiContext);
-		},
-		async getLdapSynchronizations(pagination: { page: number }) {
-			const rootStore = useRootStore();
-			return await getLdapSynchronizations(rootStore.restApiContext, pagination);
-		},
-		async testLdapConnection() {
-			const rootStore = useRootStore();
-			return await testLdapConnection(rootStore.restApiContext);
-		},
-		async updateLdapConfig(ldapConfig: ILdapConfig) {
-			const rootStore = useRootStore();
-			return await updateLdapConfig(rootStore.restApiContext, ldapConfig);
-		},
-		async runLdapSync(data: IDataObject) {
-			const rootStore = useRootStore();
-			return await runLdapSync(rootStore.restApiContext, data);
-		},
-		setSaveDataErrorExecution(newValue: WorkflowSettings.SaveDataExecution) {
-			this.saveDataErrorExecution = newValue;
-		},
-		setSaveDataSuccessExecution(newValue: WorkflowSettings.SaveDataExecution) {
-			this.saveDataSuccessExecution = newValue;
-		},
-		setSaveManualExecutions(saveManualExecutions: boolean) {
-			this.saveManualExecutions = saveManualExecutions;
-		},
-		setSaveDataProgressExecution(newValue: boolean) {
-			this.saveDataProgressExecution = newValue;
-		},
-		async getTimezones(): Promise<IDataObject> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
-		},
-	},
+	const getTimezones = async (): Promise<IDataObject> => {
+		const rootStore = useRootStore();
+		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/options/timezones');
+	};
+
+	const reset = () => {
+		settings.value = {} as IN8nUISettings;
+	};
+
+	return {
+		settings,
+		userManagement,
+		templatesEndpointHealthy,
+		api,
+		ldap,
+		saml,
+		mfa,
+		isDocker,
+		isDevRelease,
+		isEnterpriseFeatureEnabled,
+		databaseType,
+		planName,
+		consumerId,
+		binaryDataMode,
+		pruning,
+		security,
+		nodeJsVersion,
+		concurrency,
+		isPublicApiEnabled,
+		isSwaggerUIEnabled,
+		isPreviewMode,
+		publicApiLatestVersion,
+		publicApiPath,
+		isLdapLoginEnabled,
+		ldapLoginLabel,
+		isSamlLoginEnabled,
+		showSetupPage,
+		deploymentType,
+		isDesktopDeployment,
+		isCloudDeployment,
+		isSmtpSetup,
+		isPersonalizationSurveyEnabled,
+		telemetry,
+		logLevel,
+		isTelemetryEnabled,
+		isMfaFeatureEnabled,
+		areTagsEnabled,
+		isHiringBannerEnabled,
+		isTemplatesEnabled,
+		isTemplatesEndpointReachable,
+		templatesHost,
+		pushBackend,
+		isCommunityNodesFeatureEnabled,
+		isNpmAvailable,
+		allowedModules,
+		isQueueModeEnabled,
+		isWorkerViewAvailable,
+		isDefaultAuthenticationSaml,
+		workflowCallerPolicyDefaultOption,
+		permanentlyDismissedBanners,
+		isBelowUserQuota,
+		saveDataErrorExecution,
+		saveDataSuccessExecution,
+		saveManualExecutions,
+		saveDataProgressExecution,
+		isCommunityPlan,
+		reset,
+		testLdapConnection,
+		getLdapConfig,
+		getLdapSynchronizations,
+		updateLdapConfig,
+		runLdapSync,
+		getTimezones,
+		createApiKey,
+		getApiKey,
+		deleteApiKey,
+		testTemplatesEndpoint,
+		submitContactInfo,
+		disableTemplates,
+		stopShowingSetupPage,
+		getSettings,
+		setSettings,
+		initialize,
+	};
 });

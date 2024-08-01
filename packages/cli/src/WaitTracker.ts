@@ -75,21 +75,6 @@ export class WaitTracker {
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
-				if (!(execution.waitTill instanceof Date)) {
-					// n8n expects waitTill to be a date object
-					// but for some reason it's not being converted
-					// we are handling this like this since it seems to address the issue
-					// for some users, as reported by Jon when using a custom image.
-					// Once we figure out why this it not a Date object, we can remove this.
-					ErrorReporter.error('Wait Till is not a date object', {
-						extra: {
-							variableType: typeof execution.waitTill,
-						},
-					});
-					if (typeof execution.waitTill === 'string') {
-						execution.waitTill = new Date(execution.waitTill);
-					}
-				}
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
@@ -101,7 +86,7 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string) {
+	stopExecution(executionId: string) {
 		if (!this.waitingExecutions[executionId]) return;
 
 		clearTimeout(this.waitingExecutions[executionId].timer);

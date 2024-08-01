@@ -14,11 +14,7 @@ describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
-	const mockRudderStack: Pick<RudderStack, 'flush' | 'identify' | 'track'> = {
-		flush: (resolve) => resolve?.(),
-		identify: (data, resolve) => resolve?.(),
-		track: (data, resolve) => resolve?.(),
-	};
+	const mockRudderStack = mock<RudderStack>();
 
 	let telemetry: Telemetry;
 	const instanceId = 'Telemetry unit test';
@@ -26,9 +22,9 @@ describe('Telemetry', () => {
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
 
 	beforeAll(() => {
-		startPulseSpy = jest
-			.spyOn(Telemetry.prototype as any, 'startPulse')
-			.mockImplementation(() => {});
+		// @ts-expect-error Spying on private method
+		startPulseSpy = jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
+
 		jest.useFakeTimers();
 		jest.setSystemTime(testDateTime);
 		config.set('diagnostics.enabled', true);
@@ -49,7 +45,8 @@ describe('Telemetry', () => {
 		await postHog.init();
 
 		telemetry = new Telemetry(mock(), postHog, mock(), instanceSettings, mock());
-		(telemetry as any).rudderStack = mockRudderStack;
+		// @ts-expect-error Assigning to private property
+		telemetry.rudderStack = mockRudderStack;
 	});
 
 	afterEach(async () => {
@@ -79,30 +76,30 @@ describe('Telemetry', () => {
 			payload.is_manual = true;
 			payload.success = true;
 			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = true;
 			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = true;
 			payload.success = false;
 			const execTime3 = fakeJestSystemTime('2022-01-01 14:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = false;
 			const execTime4 = fakeJestSystemTime('2022-01-01 15:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 
@@ -127,9 +124,9 @@ describe('Telemetry', () => {
 			};
 
 			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			let execBuffer = telemetry.getCountsBuffer();
 
@@ -140,9 +137,9 @@ describe('Telemetry', () => {
 
 			payload.error_node_type = 'n8n-nodes-base.node-type';
 			fakeJestSystemTime('2022-01-01 13:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 			fakeJestSystemTime('2022-01-01 12:30:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			execBuffer = telemetry.getCountsBuffer();
 
@@ -163,7 +160,7 @@ describe('Telemetry', () => {
 
 			// successful execution
 			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 
@@ -179,7 +176,7 @@ describe('Telemetry', () => {
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.workflow_id = '2';
 
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 
@@ -198,12 +195,12 @@ describe('Telemetry', () => {
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.workflow_id = '2';
 
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.workflow_id = '1';
 
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 			execBuffer = telemetry.getCountsBuffer();
@@ -225,7 +222,7 @@ describe('Telemetry', () => {
 			const execTime2 = fakeJestSystemTime('2022-01-01 12:00:00');
 			payload.error_node_type = 'custom-package.custom-node';
 			payload.success = false;
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 
@@ -249,7 +246,7 @@ describe('Telemetry', () => {
 			payload.success = false;
 			payload.error_node_type = 'n8n-nodes-base.merge';
 			payload.is_manual = true;
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 
@@ -327,27 +324,27 @@ describe('Telemetry', () => {
 				error_node_type: 'custom-nodes-base.node-type',
 			};
 
-			await telemetry.trackWorkflowExecution(payload);
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = true;
-			await telemetry.trackWorkflowExecution(payload);
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = true;
 			payload.success = false;
-			await telemetry.trackWorkflowExecution(payload);
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = false;
-			await telemetry.trackWorkflowExecution(payload);
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			payload.workflow_id = '2';
-			await telemetry.trackWorkflowExecution(payload);
-			await telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
+			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
 			expect(pulseSpy).toBeCalledTimes(0);

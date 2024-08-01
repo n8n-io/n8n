@@ -26,10 +26,11 @@ export class InfisicalProvider implements SecretsProvider {
 	properties: INodeProperties[] = [
 		{
 			displayName:
-				'Need help filling out these fields? <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">Open docs</a>',
+				'<h2>Important information about our infisical integration</h2><br>From the <b>30th July, 2024</b>, we will no longer be supporting new connections to inifiscal secrets vault using service tokens. Existing service tokens will remain usable until <b>July, 2025</b>. After that period, we will be removing support for Infisical from our external secrets integrations. You can find out more information about this change on <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">our docs</a>',
 			name: 'notice',
 			type: 'notice',
 			default: '',
+			noDataExpression: true,
 		},
 		{
 			displayName: 'Service Token',

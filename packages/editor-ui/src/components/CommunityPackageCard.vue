@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.cardContainer">
+	<div :class="$style.cardContainer" data-test-id="community-package-card">
 		<div v-if="loading" :class="$style.cardSkeleton">
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />

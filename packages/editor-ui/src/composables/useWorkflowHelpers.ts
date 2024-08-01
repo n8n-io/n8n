@@ -1,5 +1,6 @@
 import {
 	HTTP_REQUEST_NODE_TYPE,
+	MODAL_CANCEL,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -65,17 +66,23 @@ import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useProjectsStore } from '@/stores/projects.store';
 import { useTagsStore } from '@/stores/tags.store';
+import useWorkflowsEEStore from '@/stores/workflows.ee.store';
+import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import type { NavigationGuardNext } from 'vue-router';
+
+type ResolveParameterOptions = {
+	targetItem?: TargetItem;
+	inputNodeName?: string;
+	inputRunIndex?: number;
+	inputBranchIndex?: number;
+	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
+	isForCredential?: boolean;
+	contextNodeName?: string;
+};
 
 export function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-	opts: {
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-		isForCredential?: boolean;
-	} = {},
+	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
@@ -116,7 +123,9 @@ export function resolveParameter<T = IDataObject>(
 	}
 
 	const inputName = NodeConnectionType.Main;
-	const activeNode = useNDVStore().activeNode;
+
+	const activeNode =
+		useNDVStore().activeNode ?? useWorkflowsStore().getNodeByName(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -439,6 +448,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const projectsStore = useProjectsStore();
@@ -636,6 +646,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
+		nodeName?: string,
 	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
@@ -644,7 +655,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			return resolveExpression(
 				webhookData[key] as string,
 				undefined,
-				undefined,
+				{ contextNodeName: nodeName },
 				stringify,
 			) as string;
 		} catch (e) {
@@ -670,9 +681,14 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path');
+		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name);
 		const isFullPath =
-			(getWebhookExpressionValue(webhookData, 'isFullPath') as unknown as boolean) || false;
+			(getWebhookExpressionValue(
+				webhookData,
+				'isFullPath',
+				true,
+				node.name,
+			) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -680,15 +696,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
-		opts: {
-			targetItem?: TargetItem;
-			inputNodeName?: string;
-			inputRunIndex?: number;
-			inputBranchIndex?: number;
-			c?: number;
-			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
-			isForCredential?: boolean;
-		} = {},
+		opts: ResolveParameterOptions & { c?: number } = {},
 		stringifyObject = true,
 	) {
 		const parameters = {
@@ -1050,12 +1058,54 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 	}
 
-	async function initState(workflowData: IWorkflowDb, set = false): Promise<void> {
-		workflowsStore.addWorkflow(workflowData);
-		if (set) {
-			workflowsStore.setWorkflow(workflowData);
-		}
+	async function promptSaveUnsavedWorkflowChanges(
+		next: NavigationGuardNext,
+		{
+			confirm = async () => true,
+			cancel = async () => {},
+		}: {
+			confirm?: () => Promise<boolean>;
+			cancel?: () => Promise<void>;
+		} = {},
+	) {
+		if (uiStore.stateIsDirty) {
+			const npsSurveyStore = useNpsSurveyStore();
 
+			const confirmModal = await message.confirm(
+				i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+				{
+					title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+					type: 'warning',
+					confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+					showClose: true,
+				},
+			);
+
+			if (confirmModal === MODAL_CONFIRM) {
+				const saved = await saveCurrentWorkflow({}, false);
+				if (saved) {
+					await npsSurveyStore.fetchPromptsData();
+				}
+				uiStore.stateIsDirty = false;
+
+				const goToNext = await confirm();
+				if (goToNext) {
+					next();
+				}
+			} else if (confirmModal === MODAL_CANCEL) {
+				await cancel();
+
+				uiStore.stateIsDirty = false;
+				next();
+			}
+		} else {
+			next();
+		}
+	}
+
+	function initState(workflowData: IWorkflowDb) {
+		workflowsStore.addWorkflow(workflowData);
 		workflowsStore.setActive(workflowData.active || false);
 		workflowsStore.setWorkflowId(workflowData.id);
 		workflowsStore.setWorkflowName({
@@ -1066,6 +1116,17 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
+
+		if (workflowData.usedCredentials) {
+			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
+		}
+
+		if (workflowData.sharedWithProjects) {
+			workflowsEEStore.setWorkflowSharedWith({
+				workflowId: workflowData.id,
+				sharedWithProjects: workflowData.sharedWithProjects,
+			});
+		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = tags.map((tag) => tag.id);
@@ -1095,6 +1156,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		removeForeignCredentialsFromWorkflow,
 		getWorkflowProjectRole,
+		promptSaveUnsavedWorkflowChanges,
 		initState,
 	};
 }

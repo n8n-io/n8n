@@ -752,7 +752,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -774,7 +774,7 @@ export const alertFields: INodeProperties[] = [
 			},
 		},
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

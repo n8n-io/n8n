@@ -26,6 +26,20 @@ export class CalendlyTrigger implements INodeType {
 			{
 				name: 'calendlyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiKey'],
+					},
+				},
+			},
+			{
+				name: 'calendlyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -37,6 +51,23 @@ export class CalendlyTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'API Key or Personal Access Token',
+						value: 'apiKey',
+					},
+				],
+				default: 'apiKey',
+			},
 			{
 				displayName: 'Scope',
 				name: 'scope',
@@ -86,9 +117,8 @@ export class CalendlyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string;
-				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 
-				const authenticationType = getAuthenticationType(apiKey);
+				const authenticationType = await getAuthenticationType.call(this);
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {
@@ -149,9 +179,8 @@ export class CalendlyTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string;
-				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 
-				const authenticationType = getAuthenticationType(apiKey);
+				const authenticationType = await getAuthenticationType.call(this);
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {
@@ -201,8 +230,7 @@ export class CalendlyTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
-				const authenticationType = getAuthenticationType(apiKey);
+				const authenticationType = await getAuthenticationType.call(this);
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {

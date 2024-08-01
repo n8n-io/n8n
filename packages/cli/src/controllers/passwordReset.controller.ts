@@ -21,7 +21,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/eventbus/event.service';
 
 @RestController()
 export class PasswordResetController {
@@ -37,7 +37,7 @@ export class PasswordResetController {
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -120,26 +120,26 @@ export class PasswordResetController {
 				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
-			void this.internalHooks.onEmailFailed({
+			this.internalHooks.onEmailFailed({
 				user,
 				message_type: 'Reset password',
 				public_api: false,
 			});
-			this.eventRelay.emit('email-failed', { user, messageType: 'Reset password' });
+			this.eventService.emit('email-failed', { user, messageType: 'Reset password' });
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}
 		}
 
 		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
-		void this.internalHooks.onUserTransactionalEmail({
+		this.internalHooks.onUserTransactionalEmail({
 			user_id: id,
 			message_type: 'Reset password',
 			public_api: false,
 		});
 
-		void this.internalHooks.onUserPasswordResetRequestClick({ user });
-		this.eventRelay.emit('user-password-reset-request-click', { user });
+		this.internalHooks.onUserPasswordResetRequestClick({ user });
+		this.eventService.emit('user-password-reset-request-click', { user });
 	}
 
 	/**
@@ -171,8 +171,8 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		void this.internalHooks.onUserPasswordResetEmailClick({ user });
-		this.eventRelay.emit('user-password-reset-email-click', { user });
+		this.internalHooks.onUserPasswordResetEmailClick({ user });
+		this.eventService.emit('user-password-reset-email-click', { user });
 	}
 
 	/**
@@ -215,17 +215,17 @@ export class PasswordResetController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		void this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
-		this.eventRelay.emit('user-updated', { user, fieldsChanged: ['password'] });
+		this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
+		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 
 		// if this user used to be an LDAP users
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
-			void this.internalHooks.onUserSignup(user, {
+			this.internalHooks.onUserSignup(user, {
 				user_type: 'email',
 				was_disabled_ldap_user: true,
 			});
-			this.eventRelay.emit('user-signed-up', { user });
+			this.eventService.emit('user-signed-up', { user });
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);

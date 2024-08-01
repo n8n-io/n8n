@@ -58,6 +58,7 @@ import {
 	STARTING_NODE_TYPES,
 } from './Constants';
 import { ApplicationError } from './errors/application.error';
+import { getGlobalState } from './GlobalState';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
@@ -93,6 +94,8 @@ export class Workflow {
 	active: boolean;
 
 	settings: IWorkflowSettings;
+
+	readonly timezone: string;
 
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
@@ -151,6 +154,7 @@ export class Workflow {
 		});
 
 		this.settings = parameters.settings || {};
+		this.timezone = this.settings.timezone ?? getGlobalState().defaultTimezone;
 
 		this.expression = new Expression(this);
 	}
@@ -1233,6 +1237,7 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData | null,
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
@@ -1254,6 +1259,7 @@ export class Workflow {
 			mode,
 			webhookData,
 			closeFunctions,
+			runExecutionData,
 		);
 		return nodeType instanceof Node
 			? await nodeType.webhook(context)
@@ -1424,13 +1430,6 @@ export class Workflow {
 					return { data: null };
 				}
 
-				if (triggerResponse.manualTriggerFunction !== undefined) {
-					// If a manual trigger function is defined call it and wait till it did run
-					await triggerResponse.manualTriggerFunction();
-				}
-
-				const response = await triggerResponse.manualTriggerResponse!;
-
 				let closeFunction;
 				if (triggerResponse.closeFunction) {
 					// In manual mode we return the trigger closeFunction. That allows it to be called directly
@@ -1439,7 +1438,17 @@ export class Workflow {
 					// If we would not be able to wait for it to close would it cause problems with "own" mode as the
 					// process would be killed directly after it and so the acknowledge would not have been finished yet.
 					closeFunction = triggerResponse.closeFunction;
+
+					// Manual testing of Trigger nodes creates an execution. If the execution is cancelled, `closeFunction` should be called to cleanup any open connections/consumers
+					abortSignal?.addEventListener('abort', closeFunction);
 				}
+
+				if (triggerResponse.manualTriggerFunction !== undefined) {
+					// If a manual trigger function is defined call it and wait till it did run
+					await triggerResponse.manualTriggerFunction();
+				}
+
+				const response = await triggerResponse.manualTriggerResponse!;
 
 				if (response.length === 0) {
 					return { data: null, closeFunction };

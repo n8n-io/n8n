@@ -119,7 +119,7 @@
 
 				<TextEdit
 					:dialog-visible="textEditDialogVisible"
-					:model-value="modelValue"
+					:model-value="`${modelValue}`"
 					:parameter="parameter"
 					:path="path"
 					:is-read-only="isReadOnly"
@@ -253,7 +253,11 @@
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="editorRows"
-					:disabled="isReadOnly"
+					:disabled="
+						isReadOnly ||
+						remoteParameterOptionsLoading ||
+						remoteParameterOptionsLoadingIssues !== null
+					"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"

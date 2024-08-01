@@ -66,7 +66,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -101,7 +101,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -151,7 +151,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -210,7 +210,7 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -257,7 +257,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -398,7 +398,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -528,7 +528,7 @@ export const memberFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {

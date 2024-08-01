@@ -13,15 +13,20 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	Icon,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { Document } from '@langchain/core/documents';
 import { logWrapper } from '../../../utils/logWrapper';
-import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
+
+type NodeOperationMode = 'insert' | 'load' | 'retrieve' | 'update';
+
+const DEFAULT_OPERATION_MODES: NodeOperationMode[] = ['load', 'insert', 'retrieve'];
 
 interface NodeMeta {
 	displayName: string;
@@ -30,7 +35,9 @@ interface NodeMeta {
 	docsUrl: string;
 	icon: Icon;
 	credentials?: INodeCredentialDescription[];
+	operationModes?: NodeOperationMode[];
 }
+
 interface VectorStoreNodeConstructorArgs {
 	meta: NodeMeta;
 	methods?: {
@@ -42,10 +49,12 @@ interface VectorStoreNodeConstructorArgs {
 			) => Promise<INodeListSearchResult>;
 		};
 	};
+
 	sharedFields: INodeProperties[];
 	insertFields?: INodeProperties[];
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
+	updateFields?: INodeProperties[];
 	populateVectorStore: (
 		context: IExecuteFunctions,
 		embeddings: Embeddings,
@@ -60,15 +69,52 @@ interface VectorStoreNodeConstructorArgs {
 	) => Promise<VectorStore>;
 }
 
-function transformDescriptionForOperationMode(
-	fields: INodeProperties[],
-	mode: 'insert' | 'load' | 'retrieve',
-) {
+function transformDescriptionForOperationMode(fields: INodeProperties[], mode: NodeOperationMode) {
 	return fields.map((field) => ({
 		...field,
 		displayOptions: { show: { mode: [mode] } },
 	}));
 }
+
+function isUpdateSupported(args: VectorStoreNodeConstructorArgs): boolean {
+	return args.meta.operationModes?.includes('update') ?? false;
+}
+
+function getOperationModeOptions(args: VectorStoreNodeConstructorArgs): INodePropertyOptions[] {
+	const enabledOperationModes = args.meta.operationModes ?? DEFAULT_OPERATION_MODES;
+
+	const allOptions = [
+		{
+			name: 'Get Many',
+			value: 'load',
+			description: 'Get many ranked documents from vector store for query',
+			action: 'Get many ranked documents from vector store for query',
+		},
+		{
+			name: 'Insert Documents',
+			value: 'insert',
+			description: 'Insert documents into vector store',
+			action: 'Insert documents into vector store',
+		},
+		{
+			name: 'Retrieve Documents (For Agent/Chain)',
+			value: 'retrieve',
+			description: 'Retrieve documents from vector store to be used with AI nodes',
+			action: 'Retrieve documents from vector store to be used with AI nodes',
+		},
+		{
+			name: 'Update Documents',
+			value: 'update',
+			description: 'Update documents in vector store by ID',
+			action: 'Update documents in vector store by ID',
+		},
+	];
+
+	return allOptions.filter(({ value }) =>
+		enabledOperationModes.includes(value as NodeOperationMode),
+	);
+}
+
 export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 	class VectorStoreNodeType implements INodeType {
 		description: INodeTypeDescription = {
@@ -84,7 +130,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			codex: {
 				categories: ['AI'],
 				subcategories: {
-					AI: ['Vector Stores'],
+					AI: ['Vector Stores', 'Root Nodes'],
 				},
 				resources: {
 					primaryDocumentation: [
@@ -101,11 +147,11 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const mode = parameters?.mode;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
 
-				if (['insert', 'load'].includes(mode)) {
+				if (['insert', 'load', 'update'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
 				}
 
-				if (mode === 'insert') {
+				if (['insert'].includes(mode)) {
 					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
 				}
 				return inputs
@@ -127,26 +173,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					type: 'options',
 					noDataExpression: true,
 					default: 'retrieve',
-					options: [
-						{
-							name: 'Get Many',
-							value: 'load',
-							description: 'Get many ranked documents from vector store for query',
-							action: 'Get many ranked documents from vector store for query',
-						},
-						{
-							name: 'Insert Documents',
-							value: 'insert',
-							description: 'Insert documents into vector store',
-							action: 'Insert documents into vector store',
-						},
-						{
-							name: 'Retrieve Documents (For Agent/Chain)',
-							value: 'retrieve',
-							description: 'Retrieve documents from vector store to be used with AI nodes',
-							action: 'Retrieve documents from vector store to be used with AI nodes',
-						},
-					],
+					options: getOperationModeOptions(args),
 				},
 				{
 					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
@@ -185,15 +212,30 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					},
 				},
+				// ID is always used for update operation
+				{
+					displayName: 'ID',
+					name: 'id',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'ID of an embedding entry',
+					displayOptions: {
+						show: {
+							mode: ['update'],
+						},
+					},
+				},
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
+				...transformDescriptionForOperationMode(args.updateFields ?? [], 'update'),
 			],
 		};
 
 		methods = args.methods;
 
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
+			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
@@ -208,7 +250,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					const filter = getMetadataFiltersValues(this, itemIndex);
 					const vectorStore = await args.getVectorStoreClient(
 						this,
-						// We'll pass filter to similaritySearchVectorWithScore instaed of getVectorStoreClient
+						// We'll pass filter to similaritySearchVectorWithScore instead of getVectorStoreClient
 						undefined,
 						embeddings,
 						itemIndex,
@@ -266,6 +308,60 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
 
 						void logAiEvent(this, 'n8n.ai.vector.store.populated');
+					} catch (error) {
+						throw error;
+					}
+				}
+
+				return [resultData];
+			}
+
+			if (mode === 'update') {
+				if (!isUpdateSupported(args)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Update operation is not implemented for this Vector Store',
+					);
+				}
+
+				const items = this.getInputData();
+
+				const loader = new N8nJsonLoader(this);
+
+				const resultData = [];
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					const itemData = items[itemIndex];
+
+					const documentId = this.getNodeParameter('id', itemIndex, '', {
+						extractValue: true,
+					}) as string;
+
+					const vectorStore = await args.getVectorStoreClient(
+						this,
+						undefined,
+						embeddings,
+						itemIndex,
+					);
+
+					const { processedDocuments, serializedDocuments } = await processDocument(
+						loader,
+						itemData,
+						itemIndex,
+					);
+
+					if (processedDocuments?.length !== 1) {
+						throw new NodeOperationError(this.getNode(), 'Single document per item expected');
+					}
+
+					resultData.push(...serializedDocuments);
+
+					try {
+						// Use ids option to upsert instead of insert
+						await vectorStore.addDocuments(processedDocuments, {
+							ids: [documentId],
+						});
+
+						void logAiEvent(this, 'n8n.ai.vector.store.updated');
 					} catch (error) {
 						throw error;
 					}

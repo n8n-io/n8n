@@ -57,8 +57,9 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
 		workflowRunner,
+		mock(),
+		mock(),
 	);
 
 	describe('runWorkflow()', () => {

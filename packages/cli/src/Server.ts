@@ -1,20 +1,18 @@
 import { Container, Service } from 'typedi';
 import { exec as callbackExec } from 'child_process';
+import { resolve } from 'path';
 import { access as fsAccess } from 'fs/promises';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
-import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
-
-// @ts-expect-error missing types
-import timezones from 'google-timezones-json';
 
 import config from '@/config';
 
 import {
+	CLI_DIR,
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
 	inE2ETests,
@@ -34,7 +32,6 @@ import { isLdapEnabled } from '@/Ldap/helpers.ee';
 import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -67,6 +64,7 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
+import { EventService } from './eventbus/event.service';
 
 const exec = promisify(callbackExec);
 
@@ -82,23 +80,23 @@ export class Server extends AbstractServer {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
+		private readonly eventService: EventService,
 	) {
 		super('main');
 
 		this.testWebhooksEnabled = true;
-		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
+		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
 	}
 
 	async start() {
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
 		}
 
 		this.presetCredentialsLoaded = false;
 
-		const globalConfig = Container.get(GlobalConfig);
-		this.endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
+		this.endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -107,7 +105,7 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Container.get(InternalHooks).onServerStarted();
+		this.eventService.emit('server-started');
 	}
 
 	private async registerAdditionalControllers() {
@@ -121,7 +119,7 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/communityPackages.controller');
 		}
 
@@ -133,7 +131,7 @@ export class Server extends AbstractServer {
 			await import('@/controllers/mfa.controller');
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await import('@/controllers/cta.controller');
 		}
 
@@ -167,9 +165,9 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		if (config.getEnv('endpoints.metrics.enable')) {
-			const { MetricsService } = await import('@/services/metrics.service');
-			await Container.get(MetricsService).configureMetrics(this.app);
+		if (this.globalConfig.endpoints.metrics.enable) {
+			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
+			await Container.get(PrometheusMetricsService).init(this.app);
 		}
 
 		const { frontendService } = this;
@@ -186,7 +184,7 @@ export class Server extends AbstractServer {
 
 		await this.postHogClient.init();
 
-		const publicApiEndpoint = config.getEnv('publicApi.path');
+		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// ----------------------------------------
 		// Public API
@@ -229,11 +227,8 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		// Returns all the available timezones
-		this.app.get(
-			`/${this.restEndpoint}/options/timezones`,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			ResponseHelper.send(async () => timezones),
-		);
+		const tzDataFile = resolve(CLI_DIR, 'dist/timezones.json');
+		this.app.get(`/${this.restEndpoint}/options/timezones`, (_, res) => res.sendFile(tzDataFile));
 
 		// ----------------------------------------
 		// Settings
@@ -310,7 +305,8 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
-			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const isTLSEnabled =
+				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
@@ -334,7 +330,9 @@ export class Server extends AbstractServer {
 
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
+				'favicon.ico',
 				'assets',
+				'static',
 				'types',
 				'healthz',
 				'metrics',
@@ -342,7 +340,7 @@ export class Server extends AbstractServer {
 				this.restEndpoint,
 				this.endpointPresetCredentials,
 				isApiEnabled() ? '' : publicApiEndpoint,
-				...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
+				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
 			const historyApiHandler: express.RequestHandler = (req, res, next) => {
@@ -364,12 +362,20 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			const setCustomCacheHeader = (res: express.Response) => {
+				if (/^\/types\/(nodes|credentials).json$/.test(res.req.url)) {
+					res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+				}
+			};
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, cacheOptions),
-				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
+				express.static(staticCacheDir, {
+					...cacheOptions,
+					setHeaders: setCustomCacheHeader,
+				}),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
