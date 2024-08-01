@@ -19,7 +19,11 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
+				<n8n-info-tip
+					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					:bold="false"
+					class="mb-s"
+				>
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -34,11 +38,30 @@
 							:projects="projects"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
-							:static="!workflowPermissions.share"
-							:placeholder="sharingSelectPlaceholder"
+							:static="isHomeTeamProject || !workflowPermissions.share"
+							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 							@project-added="onProjectAdded"
 							@project-removed="onProjectRemoved"
 						/>
+						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
+								<template #projectName>
+									{{ workflow.homeProject?.name }}
+								</template>
+								<template #members>
+									<strong>
+										{{
+											$locale.baseText('workflows.shareModal.info.members.number', {
+												interpolate: {
+													number: String(numberOfMembersInHomeTeamProject),
+												},
+												adjustToNumber: numberOfMembersInHomeTeamProject,
+											})
+										}}
+									</strong>
+								</template>
+							</i18n-t>
+						</n8n-info-tip>
 					</div>
 					<template #fallback>
 						<n8n-text>
@@ -75,7 +98,11 @@
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ $locale.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
+				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+					{{ $locale.baseText('generic.close') }}
+				</n8n-button>
 				<n8n-button
+					v-else
 					v-show="workflowPermissions.share"
 					:loading="loading"
 					:disabled="!isDirty"
@@ -119,7 +146,8 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
 
@@ -155,6 +183,7 @@ export default defineComponent({
 			modalBus: createEventBus(),
 			sharedWithProjects: [...(workflow.sharedWithProjects || [])] as ProjectSharingData[],
 			EnterpriseEditionFeature,
+			teamProject: null as Project | null,
 		};
 	},
 	computed: {
@@ -171,6 +200,12 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		modalTitle(): string {
+			if (this.isHomeTeamProject) {
+				return this.$locale.baseText('workflows.shareModal.title.static', {
+					interpolate: { projectName: this.workflow.homeProject?.name ?? '' },
+				});
+			}
+
 			return this.$locale.baseText(
 				this.isSharingEnabled
 					? (this.uiStore.contextBasedTranslationKeys.workflows.sharing.title as BaseTextKey)
@@ -196,9 +231,15 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.projects.filter(
+			return this.projectsStore.personalProjects.filter(
 				(project) => project.id !== this.workflow.homeProject?.id,
 			);
+		},
+		isHomeTeamProject(): boolean {
+			return this.workflow.homeProject?.type === ProjectTypes.Team;
+		},
+		numberOfMembersInHomeTeamProject(): number {
+			return this.teamProject?.relations.length ?? 0;
 		},
 		workflowRoleTranslations(): Record<string, string> {
 			return {
@@ -212,11 +253,6 @@ export default defineComponent({
 				scopes,
 				licensed,
 			}));
-		},
-		sharingSelectPlaceholder() {
-			return this.projectsStore.teamProjects.length
-				? this.$locale.baseText('projects.sharing.select.placeholder.project')
-				: this.$locale.baseText('projects.sharing.select.placeholder.user');
 		},
 	},
 	watch: {
@@ -327,6 +363,10 @@ export default defineComponent({
 
 				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					await this.workflowsStore.fetchWorkflow(this.workflow.id);
+				}
+
+				if (this.isHomeTeamProject && this.workflow.homeProject) {
+					this.teamProject = await this.projectsStore.fetchProject(this.workflow.homeProject.id);
 				}
 			}
 
