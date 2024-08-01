@@ -5,9 +5,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 import AskAssistantChat from 'n8n-design-system/components/AskAssistantChat/AskAssistantChat.vue';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const assistantStore = useAssistantStore();
 const usersStore = useUsersStore();
+const telemetry = useTelemetry();
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -24,14 +26,41 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 
 async function onUserMessage(content: string, quickReplyType?: string) {
 	await assistantStore.sendMessage({ text: content, quickReplyType });
+	const isFeedback = quickReplyType === 'all-good' || quickReplyType === 'still-stuck';
+	const isPositive = !isFeedback ? null : quickReplyType === 'all-good';
+	const task = 'error';
+	// TODO: This is not completely correct, we need to remove text messages from the count
+	const solutionCount =
+		task === 'error'
+			? assistantStore.chatMessages.filter((msg) => msg.role === 'assistant').length - 1
+			: null;
+	telemetry.track('User gave feedback', {
+		task: 'error',
+		is_quick_reply: !!quickReplyType,
+		is_feedback: isFeedback,
+		is_positive: isPositive,
+		solution_count: solutionCount,
+		response: content,
+	});
 }
 
 async function onCodeReplace(index: number) {
 	await assistantStore.applyCodeDiff(index);
+	telemetry.track('User clicked solution card action', {
+		action: 'replace_code',
+	});
 }
 
 async function undoCodeDiff(index: number) {
 	await assistantStore.undoCodeDiff(index);
+	telemetry.track('User clicked solution card action', {
+		action: 'undo_code_replace',
+	});
+}
+
+function onClose() {
+	assistantStore.closeChat();
+	telemetry.track('User closed assistant', { source: 'top-toggle' });
 }
 </script>
 
@@ -53,7 +82,7 @@ async function undoCodeDiff(index: number) {
 					:user="user"
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"
-					@close="() => assistantStore.closeChat()"
+					@close="onClose"
 					@message="onUserMessage"
 					@code-replace="onCodeReplace"
 					@code-undo="undoCodeDiff"

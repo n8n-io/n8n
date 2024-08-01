@@ -7,10 +7,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
+const workflowsStore = useWorkflowsStore();
+const telemetry = useTelemetry();
 
 const props = defineProps<{
 	name: string;
@@ -25,6 +29,14 @@ const close = () => {
 
 const startNewSession = async () => {
 	await assistantStore.initErrorHelper(props.data.context);
+	telemetry.track('User opened assistant', {
+		source: 'error',
+		task: 'error',
+		has_existing_session: true,
+		workflow_id: workflowsStore.workflowId,
+		node_type: props.data.context.node.type,
+		error: props.data.context.error,
+	});
 	close();
 };
 </script>

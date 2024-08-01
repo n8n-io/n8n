@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useAssistantStore } from '@/stores/assistant.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import AssistantAvatar from 'n8n-design-system/components/AskAssistantAvatar/AssistantAvatar.vue';
 import AskAssistantButton from 'n8n-design-system/components/AskAssistantButton/AskAssistantButton.vue';
 import { computed } from 'vue';
 
 const assistantStore = useAssistantStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
+const workflowStore = useWorkflowsStore();
 
 const lastUnread = computed(() => {
 	const msg = assistantStore.lastUnread;
@@ -19,9 +23,18 @@ const lastUnread = computed(() => {
 	if (msg?.type === 'code-diff') {
 		return msg.description;
 	}
-
-	return;
+	return '';
 });
+
+const onClick = () => {
+	assistantStore.openChat();
+	telemetry.track('User opened assistant', {
+		source: 'canvas',
+		task: 'placeholder',
+		has_existing_session: !assistantStore.isSessionEnded,
+		workflow_id: workflowStore.workflowId,
+	});
+};
 </script>
 
 <template>
@@ -42,10 +55,7 @@ const lastUnread = computed(() => {
 					<span>{{ i18n.baseText('aiAssistant.name') }}</span>
 				</div>
 			</template>
-			<AskAssistantButton
-				:unread-count="assistantStore.unreadCount"
-				@click="assistantStore.openChat"
-			/>
+			<AskAssistantButton :unread-count="assistantStore.unreadCount" @click="onClick" />
 		</n8n-tooltip>
 	</div>
 </template>

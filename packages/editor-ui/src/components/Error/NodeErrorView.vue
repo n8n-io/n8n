@@ -23,6 +23,8 @@ import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -38,7 +40,9 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
+const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -425,6 +429,14 @@ async function onAskAssistantClick() {
 		return;
 	}
 	await assistantStore.initErrorHelper(errorPayload);
+	telemetry.track('User opened assistant', {
+		source: 'error',
+		task: 'error',
+		has_existing_session: false,
+		workflow_id: workflowsStore.workflowId,
+		node_type: node.type,
+		error: props.error,
+	});
 }
 </script>
 
