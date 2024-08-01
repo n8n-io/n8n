@@ -247,7 +247,7 @@ export class RabbitMQ implements INodeType {
 						operation: ['sendMessage'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Alternate Exchange',

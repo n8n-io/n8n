@@ -68,6 +68,7 @@ export type CanvasNodeStickyNoteRender = {
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
+	subtitle: string;
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
@@ -132,3 +133,5 @@ export interface CanvasNodeHandleInjectionData {
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
+
+export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };

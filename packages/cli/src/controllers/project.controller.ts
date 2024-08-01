@@ -48,7 +48,7 @@ export class ProjectController {
 	@GlobalScope('project:create')
 	// Using admin as all plans that contain projects should allow admins at the very least
 	@Licensed('feat:projectRole:admin')
-	async createProject(req: ProjectRequest.Create): Promise<Project> {
+	async createProject(req: ProjectRequest.Create) {
 		try {
 			const project = await this.projectsService.createTeamProject(req.body.name, req.user);
 
@@ -57,7 +57,16 @@ export class ProjectController {
 				role: req.user.role,
 			});
 
-			return project;
+			return {
+				...project,
+				role: 'project:admin',
+				scopes: [
+					...combineScopes({
+						global: this.roleService.getRoleScopes(req.user.role),
+						project: this.roleService.getRoleScopes('project:admin'),
+					}),
+				],
+			};
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
 				throw new BadRequestError(e.message);

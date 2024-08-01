@@ -33,7 +33,7 @@ function setDefaultConfig() {
 	config.set('generic.instanceType', 'main');
 }
 
-const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
+const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 	senderId: 'test',
 	workerId: 'test',
 	command: 'restartEventBus',
@@ -88,7 +88,7 @@ describe('Orchestration Service', () => {
 
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
-			JSON.stringify(workerRestartEventbusResponse),
+			JSON.stringify(workerRestartEventBusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
 	});
@@ -108,7 +108,7 @@ describe('Orchestration Service', () => {
 
 	test('should reject command messages from itself', async () => {
 		const response = await handleCommandMessageMain(
-			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
+			JSON.stringify({ ...workerRestartEventBusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
@@ -141,12 +141,12 @@ describe('Orchestration Service', () => {
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
-		expect(res2!.payload!.result).toEqual('debounced');
+		expect((res2!.payload as { result: string }).result).toEqual('debounced');
 	});
 
 	describe('shouldAddWebhooks', () => {
 		beforeEach(() => {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 		});
 		test('should return true for init', () => {
 			// We want to ensure that webhooks are populated on init
@@ -169,7 +169,7 @@ describe('Orchestration Service', () => {
 		});
 
 		test('should return false for update or activate when not leader', () => {
-			config.set('multiMainSetup.instanceType', 'follower');
+			config.set('instanceRole', 'follower');
 			const modes = ['update', 'activate'] as WorkflowActivateMode[];
 			for (const mode of modes) {
 				const result = os.shouldAddWebhooks(mode);

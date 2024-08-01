@@ -6,7 +6,6 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
-import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
 
@@ -33,7 +32,6 @@ import { isLdapEnabled } from '@/Ldap/helpers.ee';
 import { AbstractServer } from '@/AbstractServer';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -66,6 +64,7 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
+import { EventService } from './eventbus/event.service';
 
 const exec = promisify(callbackExec);
 
@@ -81,16 +80,16 @@ export class Server extends AbstractServer {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly postHogClient: PostHogClient,
-		private readonly globalConfig: GlobalConfig,
+		private readonly eventService: EventService,
 	) {
 		super('main');
 
 		this.testWebhooksEnabled = true;
-		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
+		this.webhooksEnabled = !this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess;
 	}
 
 	async start() {
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			const { FrontendService } = await import('@/services/frontend.service');
 			this.frontendService = Container.get(FrontendService);
 		}
@@ -106,7 +105,7 @@ export class Server extends AbstractServer {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Container.get(InternalHooks).onServerStarted();
+		this.eventService.emit('server-started');
 	}
 
 	private async registerAdditionalControllers() {
@@ -120,7 +119,7 @@ export class Server extends AbstractServer {
 			await Container.get(LdapService).init();
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
+		if (this.globalConfig.nodes.communityPackages.enabled) {
 			await import('@/controllers/communityPackages.controller');
 		}
 
@@ -132,7 +131,7 @@ export class Server extends AbstractServer {
 			await import('@/controllers/mfa.controller');
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await import('@/controllers/cta.controller');
 		}
 
@@ -166,7 +165,7 @@ export class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		if (config.getEnv('endpoints.metrics.enable')) {
+		if (this.globalConfig.endpoints.metrics.enable) {
 			const { PrometheusMetricsService } = await import('@/metrics/prometheus-metrics.service');
 			await Container.get(PrometheusMetricsService).init(this.app);
 		}
@@ -306,7 +305,8 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
-			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const isTLSEnabled =
+				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
@@ -340,7 +340,7 @@ export class Server extends AbstractServer {
 				this.restEndpoint,
 				this.endpointPresetCredentials,
 				isApiEnabled() ? '' : publicApiEndpoint,
-				...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
+				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
 			const historyApiHandler: express.RequestHandler = (req, res, next) => {

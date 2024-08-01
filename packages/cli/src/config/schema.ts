@@ -2,17 +2,8 @@ import path from 'path';
 import convict from 'convict';
 import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
+import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
-
-convict.addFormat({
-	name: 'json-string-array',
-	coerce: (rawStr: string) =>
-		jsonParse<string[]>(rawStr, {
-			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
-		}),
-	validate: ensureStringArray,
-});
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -21,27 +12,6 @@ convict.addFormat({
 });
 
 export const schema = {
-	workflows: {
-		defaultName: {
-			doc: 'Default name for workflow',
-			format: String,
-			default: 'My workflow',
-			env: 'WORKFLOWS_DEFAULT_NAME',
-		},
-		onboardingFlowDisabled: {
-			doc: 'Show onboarding flow in new workflow',
-			format: Boolean,
-			default: false,
-			env: 'N8N_ONBOARDING_FLOW_DISABLED',
-		},
-		callerPolicyDefaultOption: {
-			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
-			default: 'workflowsFromSameOwner',
-			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
-		},
-	},
-
 	executions: {
 		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
@@ -337,40 +307,6 @@ export const schema = {
 		},
 	},
 
-	// How n8n can be reached (Editor & REST-API)
-	path: {
-		format: String,
-		default: '/',
-		arg: 'path',
-		env: 'N8N_PATH',
-		doc: 'Path n8n is deployed to',
-	},
-	host: {
-		format: String,
-		default: 'localhost',
-		arg: 'host',
-		env: 'N8N_HOST',
-		doc: 'Host name n8n can be reached',
-	},
-	port: {
-		format: Number,
-		default: 5678,
-		arg: 'port',
-		env: 'N8N_PORT',
-		doc: 'HTTP port n8n can be reached',
-	},
-	listen_address: {
-		format: String,
-		default: '0.0.0.0',
-		env: 'N8N_LISTEN_ADDRESS',
-		doc: 'IP address n8n should listen on',
-	},
-	protocol: {
-		format: ['http', 'https'] as const,
-		default: 'http',
-		env: 'N8N_PROTOCOL',
-		doc: 'HTTP Protocol via which n8n can be reached',
-	},
 	secure_cookie: {
 		doc: 'This sets the `Secure` flag on n8n auth cookie',
 		format: Boolean,
@@ -416,149 +352,6 @@ export const schema = {
 				default: 90,
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
 			},
-		},
-	},
-
-	endpoints: {
-		payloadSizeMax: {
-			format: Number,
-			default: 16,
-			env: 'N8N_PAYLOAD_SIZE_MAX',
-			doc: 'Maximum payload size in MB.',
-		},
-		metrics: {
-			enable: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS',
-				doc: 'Enable /metrics endpoint. Default: false',
-			},
-			prefix: {
-				format: String,
-				default: 'n8n_',
-				env: 'N8N_METRICS_PREFIX',
-				doc: 'An optional prefix for metric names. Default: n8n_',
-			},
-			includeDefaultMetrics: {
-				format: Boolean,
-				default: true,
-				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
-				doc: 'Whether to expose default system and node.js metrics. Default: true',
-			},
-			includeWorkflowIdLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
-				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
-			},
-			includeNodeTypeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
-				doc: 'Whether to include a label for the node type on node metrics. Default: false',
-			},
-			includeCredentialTypeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
-				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
-			},
-			includeApiEndpoints: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
-				doc: 'Whether to expose metrics for API endpoints. Default: false',
-			},
-			includeApiPathLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
-				doc: 'Whether to include a label for the path of API invocations. Default: false',
-			},
-			includeApiMethodLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
-				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
-			},
-			includeApiStatusCodeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
-				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
-			},
-			includeCacheMetrics: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
-				doc: 'Whether to include metrics for cache hits and misses. Default: false',
-			},
-			includeMessageEventBusMetrics: {
-				format: Boolean,
-				default: true,
-				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
-				doc: 'Whether to include metrics for events. Default: false',
-			},
-		},
-		rest: {
-			format: String,
-			default: 'rest',
-			env: 'N8N_ENDPOINT_REST',
-			doc: 'Path for rest endpoint',
-		},
-		form: {
-			format: String,
-			default: 'form',
-			env: 'N8N_ENDPOINT_FORM',
-			doc: 'Path for form endpoint',
-		},
-		formTest: {
-			format: String,
-			default: 'form-test',
-			env: 'N8N_ENDPOINT_FORM_TEST',
-			doc: 'Path for test form endpoint',
-		},
-		formWaiting: {
-			format: String,
-			default: 'form-waiting',
-			env: 'N8N_ENDPOINT_FORM_WAIT',
-			doc: 'Path for waiting form endpoint',
-		},
-		webhook: {
-			format: String,
-			default: 'webhook',
-			env: 'N8N_ENDPOINT_WEBHOOK',
-			doc: 'Path for webhook endpoint',
-		},
-		webhookWaiting: {
-			format: String,
-			default: 'webhook-waiting',
-			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
-			doc: 'Path for waiting-webhook endpoint',
-		},
-		webhookTest: {
-			format: String,
-			default: 'webhook-test',
-			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
-			doc: 'Path for test-webhook endpoint',
-		},
-		disableUi: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_DISABLE_UI',
-			doc: 'Disable N8N UI (Frontend).',
-		},
-		disableProductionWebhooksOnMainProcess: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
-			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
-		},
-		additionalNonUIRoutes: {
-			doc: 'Additional endpoints to not open the UI on. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_ADDITIONAL_NON_UI_ROUTES',
 		},
 	},
 
@@ -613,35 +406,6 @@ export const schema = {
 		format: String,
 		default: '',
 		env: 'EXTERNAL_HOOK_FILES',
-	},
-
-	nodes: {
-		include: {
-			doc: 'Nodes to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_INCLUDE',
-		},
-		exclude: {
-			doc: 'Nodes not to load',
-			format: 'json-string-array',
-			default: undefined,
-			env: 'NODES_EXCLUDE',
-		},
-		errorTriggerType: {
-			doc: 'Node Type to use as Error Trigger',
-			format: String,
-			default: 'n8n-nodes-base.errorTrigger',
-			env: 'NODES_ERROR_TRIGGER_TYPE',
-		},
-		communityPackages: {
-			enabled: {
-				doc: 'Allows you to disable the usage of community packages for nodes',
-				format: Boolean,
-				default: true,
-				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
-			},
-		},
 	},
 
 	logs: {
@@ -706,45 +470,6 @@ export const schema = {
 			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-	},
-
-	externalStorage: {
-		s3: {
-			host: {
-				format: String,
-				default: '',
-				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
-			},
-			bucket: {
-				name: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
-					doc: 'Name of the n8n bucket in S3-compatible external storage',
-				},
-				region: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
-				},
-			},
-			credentials: {
-				accessKey: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
-					doc: 'Access key in S3-compatible external storage',
-				},
-				accessSecret: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
-					doc: 'Access secret in S3-compatible external storage',
-				},
-			},
 		},
 	},
 
@@ -1015,12 +740,13 @@ export const schema = {
 		},
 	},
 
+	instanceRole: {
+		doc: 'Always `leader` in single-main setup. `leader` or `follower` in multi-main setup.',
+		format: ['unset', 'leader', 'follower'] as const,
+		default: 'unset', // only until Start.initOrchestration
+	},
+
 	multiMainSetup: {
-		instanceType: {
-			doc: 'Type of instance in multi-main setup',
-			format: ['unset', 'leader', 'follower'] as const,
-			default: 'unset', // only until first leader key check
-		},
 		enabled: {
 			doc: 'Whether to enable multi-main setup for queue mode (license required)',
 			format: Boolean,

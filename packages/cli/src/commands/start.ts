@@ -124,8 +124,8 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const n8nPath = this.globalConfig.path;
+
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -151,7 +151,9 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -184,10 +186,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (
-			!config.getEnv('license.autoRenewEnabled') &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader'
-		) {
+		if (!config.getEnv('license.autoRenewEnabled') && config.getEnv('instanceRole') === 'leader') {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -204,14 +203,14 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 	}
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 			return;
 		}
 
@@ -252,16 +251,15 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
+		const globalConfig = Container.get(GlobalConfig);
 
-		if (areCommunityPackagesEnabled) {
+		if (globalConfig.nodes.communityPackages.enabled) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,
 			});
 		}
 
-		const globalConfig = Container.get(GlobalConfig);
 		const { type: dbType } = globalConfig.database;
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
@@ -284,7 +282,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const port = config.getEnv('port');
+			const { port } = Container.get(GlobalConfig);
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',

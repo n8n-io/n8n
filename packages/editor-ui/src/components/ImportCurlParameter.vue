@@ -3,7 +3,7 @@ import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 
 defineProps<{
-	isReadOnly: boolean;
+	isReadOnly?: boolean;
 }>();
 
 const uiStore = useUIStore();
