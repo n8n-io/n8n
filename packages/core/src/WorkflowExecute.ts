@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -55,9 +54,11 @@ import {
 	DirectedGraph,
 	findCycles,
 	findStartNodes,
+	// TODO: rename to findSubgraph
 	findSubgraph2,
 	findTriggerForPartialExecution,
 } from './utils';
+// TODO: move into it's own folder
 import { recreateNodeExecutionStack } from './utils-2';
 
 export class WorkflowExecute {
@@ -295,8 +296,6 @@ export class WorkflowExecute {
 			}
 		}
 
-		console.log(JSON.stringify(nodeExecutionStack, null, 2));
-
 		this.runExecutionData = {
 			startData: {
 				destinationNode,
@@ -318,7 +317,10 @@ export class WorkflowExecute {
 		return this.processRunExecutionData(workflow);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
@@ -326,111 +328,68 @@ export class WorkflowExecute {
 		destinationNodeName?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
-		debugger;
-		try {
-			const graph = DirectedGraph.fromWorkflow(workflow);
-
-			if (destinationNodeName === undefined) {
-				throw new ApplicationError('destinationNodeName is undefined');
-			}
-
-			const destinationNode = workflow.getNode(destinationNodeName);
-
-			if (destinationNode === null) {
-				throw new ApplicationError(
-					`Could not find a node with the name ${destinationNodeName} in the workflow.`,
-				);
-			}
-
-			// 1. Find the Trigger
-
-			const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
-
-			if (trigger === undefined) {
-				throw new ApplicationError(
-					'The destination node is not connected to any trigger. Partial executions need a trigger.',
-				);
-			}
-
-			// 2. Find the Subgraph
-
-			// TODO: filter out the branches that connect to other triggers than the one
-			// selected above.
-			const subgraph = findSubgraph2(graph, destinationNode, trigger);
-			//const filteredNodes = findSubgraph(workflow, destinationNode);
-			const filteredNodes = subgraph.getNodes();
-			console.log('filteredNodes', filteredNodes);
-
-			// 3. Find the Start Nodes
-
-			const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
-			console.log('startNodes', JSON.stringify(startNodes, null, 2));
-
-			// 4. Detect Cycles
-
-			const cycles = findCycles(workflow);
-
-			// 5. Handle Cycles
-
-			if (cycles.length) {
-				// TODO: handle
-			}
-
-			// 6. Clean Run Data
-
-			// 7. Recreate Execution Stack
-
-			this.status = 'running';
-
-			//_startNodes = startNodes.map((sn) => ({
-			//	name: sn.node.name,
-			//	sourceData: sn.sourceData
-			//		? {
-			//				...sn.sourceData,
-			//				previousNode: sn.sourceData.previousNode.name,
-			//			}
-			//		: null,
-			//}));
-
-			//console.log('_startNodes', _startNodes);
-
-			// Initialize the nodeExecutionStack and waitingExecution with
-			// the data from runData
-			const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-				recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
-
-			//console.log(JSON.stringify(nodeExecutionStack, null, 2));
-
-			// 8. Execute
-
-			this.runExecutionData = {
-				startData: {
-					destinationNode: destinationNodeName,
-					runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-				},
-				resultData: {
-					runData,
-					pinData,
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack,
-					metadata: {},
-					waitingExecution,
-					waitingExecutionSource,
-				},
-			};
-
-			return this.processRunExecutionData(
-				//workflow,
-				subgraph.toWorkflow({
-					...workflow,
-				}),
-			);
-		} catch (error) {
-			console.error(error);
-			throw error;
+		if (destinationNodeName === undefined) {
+			throw new ApplicationError('destinationNodeName is undefined');
 		}
+
+		const destinationNode = workflow.getNode(destinationNodeName);
+		if (destinationNode === null) {
+			throw new ApplicationError(
+				`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+			);
+		}
+
+		// 1. Find the Trigger
+		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
+		if (trigger === undefined) {
+			throw new ApplicationError(
+				'The destination node is not connected to any trigger. Partial executions need a trigger.',
+			);
+		}
+
+		// 2. Find the Subgraph
+		const subgraph = findSubgraph2(DirectedGraph.fromWorkflow(workflow), destinationNode, trigger);
+		const filteredNodes = subgraph.getNodes();
+
+		// 3. Find the Start Nodes
+		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+
+		// 4. Detect Cycles
+		const cycles = findCycles(workflow);
+
+		// 5. Handle Cycles
+		if (cycles.length) {
+			// TODO: handle
+		}
+
+		// 6. Clean Run Data
+		// TODO:
+
+		// 7. Recreate Execution Stack
+		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+
+		// 8. Execute
+		this.status = 'running';
+		this.runExecutionData = {
+			startData: {
+				destinationNode: destinationNodeName,
+				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+			},
+			resultData: {
+				runData,
+				pinData,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack,
+				metadata: {},
+				waitingExecution,
+				waitingExecutionSource,
+			},
+		};
+
+		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
 	}
 
 	/**
