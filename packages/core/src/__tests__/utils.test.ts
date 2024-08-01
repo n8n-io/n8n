@@ -10,7 +10,7 @@
 
 import type { IConnections, INode, IPinData, IRunData } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import { DirectedGraph, findStartNodes, findSubgraph2, isDirty } from '../utils';
+import { DirectedGraph, findStartNodes, findSubgraph, isDirty } from '../utils';
 import { createNodeData, toITaskData, defaultWorkflowParameter } from './helpers';
 
 test('toITaskData', function () {
@@ -547,7 +547,7 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, destination)
 			.addConnections({ from: trigger, to: destination });
 
-		const subgraph = findSubgraph2(graph, destination, trigger);
+		const subgraph = findSubgraph(graph, destination, trigger);
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -569,7 +569,7 @@ describe('findSubgraph2', () => {
 				{ from: ifNode, to: noOp, outputIndex: 1 },
 			);
 
-		const subgraph = findSubgraph2(graph, noOp, ifNode);
+		const subgraph = findSubgraph(graph, noOp, ifNode);
 
 		expect(subgraph).toEqual(graph);
 	});
@@ -589,7 +589,7 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, destination, node)
 			.addConnections({ from: trigger, to: destination }, { from: destination, to: node });
 
-		const subgraph = findSubgraph2(graph, destination, trigger);
+		const subgraph = findSubgraph(graph, destination, trigger);
 
 		expect(subgraph).toEqual(
 			new DirectedGraph()
@@ -613,7 +613,7 @@ describe('findSubgraph2', () => {
 			.addNodes(trigger, disabled, destination)
 			.addConnections({ from: trigger, to: disabled }, { from: disabled, to: destination });
 
-		const subgraph = findSubgraph2(graph, destination, trigger);
+		const subgraph = findSubgraph(graph, destination, trigger);
 
 		expect(subgraph).toEqual(
 			new DirectedGraph()
@@ -646,7 +646,7 @@ describe('findSubgraph2', () => {
 		//
 		// ACT
 		//
-		const subgraph = findSubgraph2(graph, node2, trigger);
+		const subgraph = findSubgraph(graph, node2, trigger);
 
 		//
 		// ASSERT
@@ -676,7 +676,7 @@ describe('findSubgraph2', () => {
 		//
 		// ACT
 		//
-		const subgraph = findSubgraph2(graph, node1, trigger);
+		const subgraph = findSubgraph(graph, node1, trigger);
 
 		//
 		// ASSERT
@@ -710,7 +710,7 @@ describe('findSubgraph2', () => {
 		//
 		// ACT
 		//
-		const subgraph = findSubgraph2(graph, destination, trigger);
+		const subgraph = findSubgraph(graph, destination, trigger);
 
 		//
 		// ASSERT

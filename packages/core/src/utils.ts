@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 
-function findSubgraph2Recursive(
+function findSubgraphRecursive(
 	graph: DirectedGraph,
 	destinationNode: INode,
 	current: INode,
@@ -89,7 +89,7 @@ function findSubgraph2Recursive(
 
 	// Recurse on each parent.
 	for (const parentConnection of parentConnections) {
-		findSubgraph2Recursive(graph, destinationNode, parentConnection.from, trigger, newGraph, [
+		findSubgraphRecursive(graph, destinationNode, parentConnection.from, trigger, newGraph, [
 			...currentBranch,
 			parentConnection,
 		]);
@@ -603,14 +603,14 @@ export class DirectedGraph {
 	}
 }
 
-export function findSubgraph2(
+export function findSubgraph(
 	graph: DirectedGraph,
 	destinationNode: INode,
 	trigger: INode,
 ): DirectedGraph {
 	const newGraph = new DirectedGraph();
 
-	findSubgraph2Recursive(graph, destinationNode, destinationNode, trigger, newGraph, []);
+	findSubgraphRecursive(graph, destinationNode, destinationNode, trigger, newGraph, []);
 
 	return newGraph;
 }

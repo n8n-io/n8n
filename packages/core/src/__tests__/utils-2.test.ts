@@ -11,7 +11,7 @@
 import { recreateNodeExecutionStack } from '@/utils-2';
 import { createNodeData, toITaskData } from './helpers';
 import type { StartNodeData } from '@/utils';
-import { DirectedGraph, findSubgraph2 } from '@/utils';
+import { DirectedGraph, findSubgraph } from '@/utils';
 import { type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
 
@@ -31,7 +31,7 @@ describe('recreateNodeExecutionStack', () => {
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
 
-		const workflow = findSubgraph2(graph, node, trigger);
+		const workflow = findSubgraph(graph, node, trigger);
 		const startNodes: StartNodeData[] = [
 			{
 				node,
