@@ -54,7 +54,7 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					default: '',
 					placeholder: 'e.g. What is your name?',
-					description: 'Label appears above the input field',
+					description: 'Label that appears above the input field',
 					required: true,
 				},
 				{
@@ -102,6 +102,7 @@ export const formFields: INodeProperties = {
 				{
 					displayName: 'Placeholder',
 					name: 'placeholder',
+					description: 'Sample text to display inside the field',
 					type: 'string',
 					default: '',
 					displayOptions: {
@@ -169,11 +170,11 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
-					displayName: 'Accept File Types',
+					displayName: 'Accepted File Types',
 					name: 'acceptFileTypes',
 					type: 'string',
 					default: '',
-					description: 'List of file types that can be uploaded, separated by commas',
+					description: 'Comma-separated list of allowed file extensions',
 					hint: 'Leave empty to allow all file types',
 					placeholder: 'e.g. .jpg, .png',
 					displayOptions: {
@@ -188,7 +189,7 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					default: '',
 					description:
-						'Returns a string representation of this field formatted according to the specified format string. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
+						'How to format the date in the output data. For a table of tokens and their interpretations, see <a href="https://moment.github.io/luxon/#/formatting?ID=table-of-tokens" target="_blank">here</a>.',
 					placeholder: 'e.g. dd/mm/yyyy',
 					hint: 'Leave empty to use the default format',
 					displayOptions: {
