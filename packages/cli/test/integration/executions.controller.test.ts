@@ -12,7 +12,10 @@ import { WaitTracker } from '@/WaitTracker';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 mockInstance(WaitTracker);
-mockInstance(ConcurrencyControlService, { isEnabled: false });
+mockInstance(ConcurrencyControlService, {
+	// @ts-expect-error Private property
+	isEnabled: false,
+});
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
