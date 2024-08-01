@@ -13,6 +13,6 @@
 	},
 	"alias": ["cpde", "Javascript", "JS", "Script", "Custom Code", "Function", "AI", "LLM"],
 	"subcategories": {
-		"Core Nodes": ["Helpers", "Data Transformation"]
+		"Core Nodes": ["Data Transformation"]
 	}
 }

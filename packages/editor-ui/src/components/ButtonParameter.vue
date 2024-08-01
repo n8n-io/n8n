@@ -15,8 +15,6 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { generateCodeForPrompt } from '@/api/ai';
 
-const MIN_PROMPT_LENGTH = 10;
-
 const emit = defineEmits<{
 	// submit: [code: string];
 	valueChanged: [value: IUpdateInformation];
@@ -41,7 +39,7 @@ const parentNodes = ref<INodeUi[]>([]);
 
 const isSubmitEnabled = computed(() => {
 	if (!hasExecutionData.value) return false;
-	if (prompt.value.length < MIN_PROMPT_LENGTH) return false;
+	if (!prompt.value) return false;
 
 	const maxlength = props.parameter.typeOptions?.buttonInputFieldMaxLength;
 	if (maxlength && prompt.value.length > maxlength) return false;
@@ -200,11 +198,15 @@ onMounted(() => {
 
 <template>
 	<div>
-		<p
-			:class="$style.intro"
-			v-text="parameter.displayName"
+		<n8n-input-label
+			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
+			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 			:hidden="!parameter.typeOptions?.buttonHasInputField"
-		/>
+			:bold="false"
+			size="small"
+			color="text-dark"
+		>
+		</n8n-input-label>
 		<div :class="$style.inputContainer" :hidden="!parameter.typeOptions?.buttonHasInputField">
 			<div :class="$style.meta">
 				<span
@@ -233,6 +235,7 @@ onMounted(() => {
 						size="small"
 						@click="onSubmit"
 						:loading="isLoading"
+						type="secondary"
 					>
 						{{ parameter.typeOptions?.buttonLabel ?? parameter.displayName }}
 					</N8nButton>
@@ -245,14 +248,6 @@ onMounted(() => {
 					<span
 						v-else-if="prompt.length === 0"
 						v-text="i18n.baseText('codeNodeEditor.askAi.noPrompt')"
-					/>
-					<span
-						v-else-if="prompt.length < MIN_PROMPT_LENGTH"
-						v-text="
-							i18n.baseText('codeNodeEditor.askAi.promptTooShort', {
-								interpolate: { minLength: String(MIN_PROMPT_LENGTH) },
-							})
-						"
 					/>
 				</template>
 			</N8nTooltip>

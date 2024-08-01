@@ -55,22 +55,13 @@ export class AiTransform implements INodeType {
 				name: 'jsCode',
 				type: 'string',
 				typeOptions: {
-					// editor: 'codeNodeEditor',
-					// editorLanguage: 'javaScript',
 					editor: 'jsEditor',
 					editorIsReadOnly: true,
 				},
-				default:
-					"// Enter some text to 'Instructions' and click 'Generate code' button\n\nreturn [];",
+				default: '',
 				description:
 					'Read-only. To edit this code, adjust the prompt or copy and paste it into a Code node.',
 				noDataExpression: true,
-				// hint: 'To edit this code, adjust the prompt. Or copy and paste into a code node',
-				displayOptions: {
-					hide: {
-						generate: [{ _cnd: { eq: '' } }],
-					},
-				},
 			},
 			{
 				displayName:
@@ -80,7 +71,7 @@ export class AiTransform implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						generate: [{ _cnd: { eq: '' } }],
+						jsCode: [{ _cnd: { exists: true } }],
 					},
 				},
 			},
@@ -133,9 +124,10 @@ export class AiTransform implements INodeType {
 			try {
 				code = this.getNodeParameter(codeParameterName, index) as string;
 			} catch (error) {
-				throw new NodeOperationError(node, 'No code provided', {
-					description: "Enter some text to 'Instructions' and click 'Generate Code' button",
-				});
+				throw new NodeOperationError(
+					node,
+					"Enter some text in the 'Instructions' parameter and click the 'Generate Code' button",
+				);
 			}
 
 			const context = getSandboxContext.call(this, index);

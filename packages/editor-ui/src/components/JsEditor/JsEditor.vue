@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.editor">
+	<div :class="$style.editor" :style="isReadOnly ? 'opacity: 0.7' : ''">
 		<div ref="jsEditorRef" class="ph-no-capture js-editor"></div>
 		<slot name="suffix" />
 	</div>
@@ -54,7 +54,11 @@ watch(
 		const editorValue = editor.value?.state?.doc.toString();
 
 		// If model value changes from outside the component
-		if (editorValue && editorValue.length !== newValue.length && editorValue !== newValue) {
+		if (
+			editorValue !== undefined &&
+			editorValue.length !== newValue.length &&
+			editorValue !== newValue
+		) {
 			destroyEditor();
 			createEditor();
 		}
