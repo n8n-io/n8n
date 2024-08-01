@@ -86,13 +86,13 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflowId, workflowName }: Event['workflow-saved']) {
+	private workflowSaved({ user, workflow }: Event['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
-				workflowId,
-				workflowName,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
 			},
 		});
 	}
@@ -272,7 +272,7 @@ export class AuditEventRelay {
 	}
 
 	/**
-	 * API key
+	 * Public API
 	 */
 
 	@Redactable()
