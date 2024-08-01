@@ -1,5 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
-import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES } from '@/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES, AI_ASSISTANT_EXPERIMENT } from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -23,6 +23,7 @@ import {
 	getReferencedNodes,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
+import { usePostHog } from './posthog.store';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -41,6 +42,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
+	const { getVariant } = usePostHog();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -53,9 +55,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 
+	const isExperimentEnabled = computed(
+		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
+	);
+
 	const canShowAssistant = computed(
 		() =>
-			settings.isAiAssistantEnabled && route.name && ENABLED_VIEWS.includes(route.name as VIEWS),
+			isExperimentEnabled.value &&
+			settings.isAiAssistantEnabled &&
+			route.name &&
+			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const isSessionEnded = computed(() => {
