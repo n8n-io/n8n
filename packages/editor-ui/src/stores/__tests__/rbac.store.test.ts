@@ -87,6 +87,7 @@ describe('RBAC store', () => {
 					resource: [],
 				},
 				undefined,
+				undefined,
 			);
 		});
 
@@ -105,6 +106,7 @@ describe('RBAC store', () => {
 					resource: [],
 				},
 				undefined,
+				undefined,
 			);
 		});
 
@@ -122,6 +124,7 @@ describe('RBAC store', () => {
 					project: [],
 					resource: expect.arrayContaining([newScope]),
 				},
+				undefined,
 				undefined,
 			);
 		});
@@ -145,6 +148,7 @@ describe('RBAC store', () => {
 					project: expect.arrayContaining([newScope]),
 					resource: expect.arrayContaining([newScope]),
 				},
+				undefined,
 				undefined,
 			);
 		});

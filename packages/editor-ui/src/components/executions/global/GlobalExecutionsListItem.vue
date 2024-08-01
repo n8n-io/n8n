@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import { ref, computed, useCssModule } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@/composables/useI18n';
@@ -10,22 +9,26 @@ import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
-const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
+type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
-const props = defineProps({
-	execution: {
-		type: Object as PropType<ExecutionSummary>,
-		required: true,
+const emit = defineEmits<{
+	stop: [data: ExecutionSummary];
+	select: [data: ExecutionSummary];
+	retrySaved: [data: ExecutionSummary];
+	retryOriginal: [data: ExecutionSummary];
+	delete: [data: ExecutionSummary];
+}>();
+
+const props = withDefaults(
+	defineProps<{
+		execution: ExecutionSummary;
+		selected?: boolean;
+		workflowName?: string;
+	}>(),
+	{
+		selected: false,
 	},
-	selected: {
-		type: Boolean,
-		default: false,
-	},
-	workflowName: {
-		type: String,
-		default: undefined,
-	},
-});
+);
 
 const style = useCssModule();
 const i18n = useI18n();
@@ -51,7 +54,7 @@ const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.e
 const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
-		[style[props.execution.status ?? '']]: !!props.execution.status,
+		[style[props.execution.status]]: true,
 	};
 });
 
@@ -89,7 +92,7 @@ const statusText = computed(() => {
 		case 'crashed':
 			return i18n.baseText('executionsList.error');
 		case 'new':
-			return i18n.baseText('executionsList.running');
+			return i18n.baseText('executionsList.new');
 		case 'running':
 			return i18n.baseText('executionsList.running');
 		case 'success':
@@ -116,7 +119,7 @@ const statusTextTranslationPath = computed(() => {
 				return 'executionsList.statusText';
 			}
 		case 'new':
-			return 'executionsList.statusRunning';
+			return 'executionsList.statusTextWithoutTime';
 		case 'running':
 			return 'executionsList.statusRunning';
 		default:
@@ -146,7 +149,8 @@ function onSelect() {
 	emit('select', props.execution);
 }
 
-async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal' | 'delete') {
+async function handleActionItemClick(commandData: Command) {
+	//@ts-ignore todo: fix this type
 	emit(commandData, props.execution);
 }
 </script>
@@ -188,7 +192,10 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 						<span v-else-if="!!execution.stoppedAt">
 							{{ formattedStoppedAtDate }}
 						</span>
-						<ExecutionsTime v-else :start-time="execution.startedAt" />
+						<ExecutionsTime
+							v-else-if="execution.status !== 'new'"
+							:start-time="execution.startedAt"
+						/>
 					</template>
 				</i18n-t>
 				<N8nTooltip v-else placement="top">
@@ -330,7 +337,10 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		background: var(--execution-card-border-success);
 	}
 
-	&.new td:first-child::before,
+	&.new td:first-child::before {
+		background: var(--execution-card-border-new);
+	}
+
 	&.running td:first-child::before {
 		background: var(--execution-card-border-running);
 	}
@@ -378,7 +388,10 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new &,
+	.new {
+		color: var(--color-text-dark);
+	}
+
 	.running & {
 		color: var(--color-warning);
 	}

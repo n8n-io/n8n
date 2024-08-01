@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
+<div
+  class="n8n-sticky sticky clickable color-1 sticky"
+  data-test-id="canvas-sticky-note-node"
+  style="height: 180px; width: 240px;"
+>
+  <div
+    class="wrapper"
+  >
+    <div
+      class="n8n-markdown"
+    >
+      <div
+        class="sticky"
+      />
+    </div>
+  </div>
+  <div
+    class="sticky-textarea"
+    style="display: none;"
+  >
+    <div
+      class="el-textarea el-input--large n8n-input"
+    >
+      <!-- input -->
+      
+      <!-- textarea -->
+      <textarea
+        autocomplete="off"
+        class="el-textarea__inner"
+        name="sticky-input"
+        placeholder=""
+        rows="5"
+        tabindex="0"
+        title=""
+      />
+      <!--v-if-->
+      
+    </div>
+  </div>
+  <!--v-if-->
+</div>
+`;

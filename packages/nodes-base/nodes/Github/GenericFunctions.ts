@@ -114,3 +114,8 @@ export async function githubApiRequestAllItems(
 	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }
+
+export function isBase64(content: string) {
+	const base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+	return base64regex.test(content);
+}

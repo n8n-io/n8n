@@ -218,7 +218,7 @@ export class FacebookGraphApi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -410,7 +410,7 @@ export class FacebookGraphApi implements INodeType {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
-				if (!this.continueOnFail()) {
+				if (!this.continueOnFail(error)) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 

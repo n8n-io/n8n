@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import type { IN8nUISettings } from 'n8n-workflow';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
@@ -44,8 +44,8 @@ function setCurrentUser() {
 }
 
 function resetStores() {
-	useSettingsStore().$reset();
-	useUsersStore().$reset();
+	useSettingsStore().reset();
+	useUsersStore().reset();
 }
 
 function setup() {

@@ -1,4 +1,4 @@
-import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
+import { parserWithMetaData as n8nParser } from '@n8n/codemirror-lang';
 import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
@@ -25,4 +25,5 @@ export function n8nLang() {
 	]);
 }
 
-export const n8nAutocompletion = () => autocompletion({ icons: false });
+export const n8nAutocompletion = () =>
+	autocompletion({ icons: false, aboveCursor: true, closeOnBlur: false });

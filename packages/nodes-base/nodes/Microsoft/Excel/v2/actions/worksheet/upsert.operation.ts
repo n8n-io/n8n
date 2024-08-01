@@ -135,7 +135,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -379,7 +379,7 @@ export async function execute(
 			}),
 		);
 	} catch (error) {
-		if (this.continueOnFail()) {
+		if (this.continueOnFail(error)) {
 			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),

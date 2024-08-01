@@ -113,6 +113,7 @@ export class Ftp implements INodeType {
 		displayName: 'FTP',
 		name: 'ftp',
 		icon: 'fa:server',
+		iconColor: 'dark-blue',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
@@ -227,7 +228,7 @@ export class Ftp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						operation: ['delete'],
@@ -547,7 +548,7 @@ export class Ftp implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const pairedItem = generatePairedItemData(items.length);
 
 					return [[{ json: { error: error.message }, pairedItem }]];
@@ -815,7 +816,7 @@ export class Ftp implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnItems.push({ json: { error: error.message }, pairedItem: { item: i } });
 						continue;
 					}

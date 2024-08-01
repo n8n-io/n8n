@@ -6,8 +6,11 @@ import { createTestingPinia } from '@pinia/testing';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 import { renderComponent } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
+import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { useRouter } from 'vue-router';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeUi } from '@/Interface';
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -18,50 +21,61 @@ const DEFAULT_SETUP = {
 	},
 };
 
+async function focusEditor(container: Element) {
+	await waitFor(() => expect(container.querySelector('.cm-line')).toBeInTheDocument());
+	await userEvent.click(container.querySelector('.cm-line') as Element);
+}
+const nodes = [
+	{
+		id: '1',
+		typeVersion: 1,
+		name: 'Test Node',
+		position: [0, 0],
+		type: 'test',
+		parameters: {},
+	},
+] as INodeUi[];
+
+const mockResolveExpression = () => {
+	const mock = vi.fn();
+	vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
+		...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
+		resolveExpression: mock,
+	});
+
+	return mock;
+};
+
 describe('SqlEditor.vue', () => {
-	const pinia = createTestingPinia({
-		initialState: {
-			[STORES.SETTINGS]: {
-				settings: SETTINGS_STORE_DEFAULT_STATE.settings,
-			},
-			[STORES.NDV]: {
-				activeNodeName: 'Test Node',
-			},
-			[STORES.WORKFLOWS]: {
-				workflow: {
-					nodes: [
-						{
-							id: '1',
-							typeVersion: 1,
-							name: 'Test Node',
-							position: [0, 0],
-							type: 'test',
-							parameters: {},
-						},
-					],
-					connections: {},
+	beforeEach(() => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: SETTINGS_STORE_DEFAULT_STATE.settings,
+				},
+				[STORES.NDV]: {
+					activeNodeName: 'Test Node',
+				},
+				[STORES.WORKFLOWS]: {
+					workflow: {
+						nodes,
+						connections: {},
+					},
 				},
 			},
-		},
-	});
-	setActivePinia(pinia);
-
-	const mockResolveExpression = () => {
-		const mock = vi.fn();
-		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
-			...workflowHelpers.useWorkflowHelpers({ router: useRouter() }),
-			resolveExpression: mock,
 		});
+		setActivePinia(pinia);
 
-		return mock;
-	};
+		const workflowsStore = useWorkflowsStore();
+		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+	});
 
 	afterAll(() => {
 		vi.clearAllMocks();
 	});
 
 	it('renders basic query', async () => {
-		const { getByTestId } = renderComponent(SqlEditor, {
+		const { getByTestId, container } = renderComponent(SqlEditor, {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
@@ -69,6 +83,7 @@ describe('SqlEditor.vue', () => {
 			},
 		});
 
+		await focusEditor(container);
 		await waitFor(() =>
 			expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent('SELECT * FROM users'),
 		);
@@ -76,7 +91,7 @@ describe('SqlEditor.vue', () => {
 
 	it('renders basic query with expression', async () => {
 		mockResolveExpression().mockReturnValueOnce('users');
-		const { getByTestId } = renderComponent(SqlEditor, {
+		const { getByTestId, container } = renderComponent(SqlEditor, {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
@@ -84,6 +99,7 @@ describe('SqlEditor.vue', () => {
 			},
 		});
 
+		await focusEditor(container);
 		await waitFor(() =>
 			expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent('SELECT * FROM users'),
 		);
@@ -91,13 +107,15 @@ describe('SqlEditor.vue', () => {
 
 	it('renders resolved expressions with dot between resolvables', async () => {
 		mockResolveExpression().mockReturnValueOnce('public.users');
-		const { getByTestId } = renderComponent(SqlEditor, {
+		const { getByTestId, container } = renderComponent(SqlEditor, {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
 				modelValue: 'SELECT * FROM {{ $json.schema }}.{{ $json.table }}',
 			},
 		});
+
+		await focusEditor(container);
 		await waitFor(() =>
 			expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent(
 				'SELECT * FROM public.users',
@@ -111,7 +129,7 @@ describe('SqlEditor.vue', () => {
 			.mockReturnValueOnce('users')
 			.mockReturnValueOnce('id')
 			.mockReturnValueOnce(0);
-		const { getByTestId } = renderComponent(SqlEditor, {
+		const { getByTestId, container } = renderComponent(SqlEditor, {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
@@ -119,6 +137,8 @@ describe('SqlEditor.vue', () => {
 					'SELECT * FROM {{ $json.schema }}.{{ $json.table }} WHERE {{ $json.id }} > {{ $json.limit - 10 }}',
 			},
 		});
+
+		await focusEditor(container);
 		await waitFor(() =>
 			expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent(
 				'SELECT * FROM public.users WHERE id > 0',
@@ -132,7 +152,7 @@ describe('SqlEditor.vue', () => {
 			.mockReturnValueOnce('users')
 			.mockReturnValueOnce(0)
 			.mockReturnValueOnce(false);
-		const { getByTestId } = renderComponent(SqlEditor, {
+		const { getByTestId, container } = renderComponent(SqlEditor, {
 			...DEFAULT_SETUP,
 			props: {
 				...DEFAULT_SETUP.props,
@@ -140,6 +160,8 @@ describe('SqlEditor.vue', () => {
 					'SELECT * FROM {{ $json.schema }}.{{ $json.table }}\n  WHERE id > {{ $json.limit - 10 }}\n  AND active = {{ $json.active }};',
 			},
 		});
+
+		await focusEditor(container);
 		await waitFor(() =>
 			expect(getByTestId(EXPRESSION_OUTPUT_TEST_ID)).toHaveTextContent(
 				'SELECT * FROM public.users WHERE id > 0 AND active = false;',

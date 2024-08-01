@@ -22,17 +22,16 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	(
-		event: 'action',
+	action: [
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
 			data: { formattedCreatedAt: string };
 		},
-	): void;
-	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
-	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
-	(event: 'upgrade'): void;
+	];
+	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
+	loadMore: [value: WorkflowHistoryRequestParams];
+	upgrade: [];
 }>();
 
 const i18n = useI18n();
@@ -138,7 +137,7 @@ const onItemMounted = ({
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { evaluatedPruneTime: props.evaluatedPruneTime },
+						interpolate: { evaluatedPruneTime: String(props.evaluatedPruneTime) },
 					})
 				}}
 			</span>

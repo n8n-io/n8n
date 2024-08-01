@@ -118,7 +118,7 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: {},
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		description: 'Add query options',
 		options: [
 			{
@@ -240,7 +240,7 @@ export const nodeProperties: INodeProperties[] = [
 				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -248,7 +248,7 @@ export const nodeProperties: INodeProperties[] = [
 				name: 'dateFields',
 				type: 'string',
 				default: '',
-				description: 'Comma separeted list of fields that will be parse as Mongo Date type',
+				description: 'Comma separeted list of fields that will be parsed as Mongo Date type',
 			},
 			{
 				displayName: 'Use Dot Notation',

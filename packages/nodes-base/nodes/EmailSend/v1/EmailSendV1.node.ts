@@ -106,7 +106,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -226,7 +226,7 @@ export class EmailSendV1 implements INodeType {
 					},
 				});
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

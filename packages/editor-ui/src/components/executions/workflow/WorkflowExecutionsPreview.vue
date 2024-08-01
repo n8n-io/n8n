@@ -1,5 +1,13 @@
 <template>
-	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
+	<div v-if="executionUIDetails?.name === 'new'" :class="$style.newInfo">
+		<n8n-text :class="$style.newMessage" color="text-light">
+			{{ $locale.baseText('executionDetails.newMessage') }}
+		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
+	</div>
+	<div v-else-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
 			<n8n-spinner type="ring" />
 		</div>
@@ -10,7 +18,7 @@
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
-	<div v-else :class="$style.previewContainer">
+	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
 		<div
 			v-if="execution"
 			:class="$style.executionDetails"
@@ -34,7 +42,14 @@
 					{{ executionUIDetails.label }}
 				</n8n-text>
 				{{ ' ' }}
-				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+				<n8n-text
+					v-if="executionUIDetails?.showTimestamp === false"
+					color="text-base"
+					size="medium"
+				>
+					| ID#{{ execution.id }}
+				</n8n-text>
+				<n8n-text v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
 							interpolate: { time: executionUIDetails?.runningTime },
@@ -55,19 +70,12 @@
 					}}
 					| ID#{{ execution.id }}
 				</n8n-text>
-				<n8n-text
-					v-else-if="executionUIDetails?.name === 'waiting'"
-					color="text-base"
-					size="medium"
-				>
-					| ID#{{ execution.id }}
-				</n8n-text>
 				<br /><n8n-text v-if="execution.mode === 'retry'" color="text-base" size="medium">
 					{{ $locale.baseText('executionDetails.retry') }}
 					<router-link
 						:class="$style.executionLink"
 						:to="{
-							name: VIEWS.EXECUTION_PREVIEW,
+							name: executionPreviewViewName,
 							params: {
 								workflowId: execution.workflowId,
 								executionId: execution.retryOf,
@@ -82,7 +90,7 @@
 				<n8n-button size="medium" :type="debugButtonData.type" :class="$style.debugLink">
 					<router-link
 						:to="{
-							name: VIEWS.EXECUTION_DEBUG,
+							name: executionDebugViewName,
 							params: {
 								name: execution.workflowId,
 								executionId: execution.id,
@@ -143,6 +151,7 @@
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -165,7 +174,7 @@ export default defineComponent({
 	},
 	props: {
 		execution: {
-			type: Object as () => ExecutionSummary | null,
+			type: Object as PropType<ExecutionSummary>,
 			required: true,
 		},
 	},
@@ -173,7 +182,6 @@ export default defineComponent({
 		const executionHelpers = useExecutionHelpers();
 
 		return {
-			VIEWS,
 			executionHelpers,
 			...useMessage(),
 			...useExecutionDebugging(),
@@ -203,6 +211,12 @@ export default defineComponent({
 		},
 		isRetriable(): boolean {
 			return !!this.execution && this.executionHelpers.isExecutionRetriable(this.execution);
+		},
+		executionDebugViewName() {
+			return VIEWS.EXECUTION_DEBUG;
+		},
+		executionPreviewViewName() {
+			return VIEWS.EXECUTION_PREVIEW;
 		},
 	},
 	methods: {
@@ -290,6 +304,7 @@ export default defineComponent({
 	color: var(--color-danger);
 }
 
+.newInfo,
 .runningInfo {
 	display: flex;
 	flex-direction: column;
@@ -297,8 +312,9 @@ export default defineComponent({
 	margin-top: var(--spacing-4xl);
 }
 
+.newMessage,
 .runningMessage {
-	width: 200px;
+	width: 240px;
 	margin-top: var(--spacing-l);
 	text-align: center;
 }

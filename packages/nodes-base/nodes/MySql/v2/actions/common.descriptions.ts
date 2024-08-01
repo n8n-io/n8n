@@ -33,7 +33,7 @@ export const optionsCollection: INodeProperties = {
 	name: 'options',
 	type: 'collection',
 	default: {},
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	options: [
 		{
 			displayName: 'Connection Timeout',
@@ -279,6 +279,10 @@ export const selectRowsFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
+						{
+							name: 'Is Not Null',
+							value: 'IS NOT NULL',
+						},
 					],
 					default: 'equal',
 				},
@@ -286,6 +290,11 @@ export const selectRowsFixedCollection: INodeProperties = {
 					displayName: 'Value',
 					name: 'value',
 					type: 'string',
+					displayOptions: {
+						hide: {
+							condition: ['IS NULL', 'IS NOT NULL'],
+						},
+					},
 					default: '',
 				},
 			],

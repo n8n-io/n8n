@@ -12,7 +12,7 @@ import {
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
@@ -24,20 +24,23 @@ import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue'
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { getNodeIcon, getNodeIconColor, getNodeIconUrl } from '@/utils/nodeTypesUtils';
+import { useUIStore } from '@/stores/ui.store';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
 }
 
-const emit = defineEmits({
-	nodeTypeSelected: (nodeTypes: string[]) => true,
-});
+const emit = defineEmits<{
+	nodeTypeSelected: [nodeTypes: string[]];
+}>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
+const uiStore = useUIStore();
+const rootStore = useRootStore();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
-const { baseUrl } = useRootStore();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -54,10 +57,16 @@ function onSelected(item: INodeCreateElement) {
 		const subcategoryKey = camelCase(item.properties.title);
 		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
 
+		// If the info message exists in locale, add it to the info field of the view
+		const infoKey = `nodeCreator.subcategoryInfos.${subcategoryKey}` as BaseTextKey;
+		const info = i18n.baseText(infoKey);
+		const extendedInfo = info !== infoKey ? { info } : {};
+
 		pushViewStack({
 			subcategory: item.key,
-			title,
 			mode: 'nodes',
+			title,
+			...extendedInfo,
 			...(item.properties.icon
 				? {
 						nodeIcon: {
@@ -86,9 +95,10 @@ function onSelected(item: INodeCreateElement) {
 			return;
 		}
 
-		const icon = item.properties.iconUrl
-			? `${baseUrl}${item.properties.iconUrl}`
-			: item.properties.icon?.split(':')[1];
+		const iconUrl = getNodeIconUrl(item.properties, uiStore.appliedTheme);
+		const icon = iconUrl
+			? rootStore.baseUrl + iconUrl
+			: getNodeIcon(item.properties, uiStore.appliedTheme)?.split(':')[1];
 
 		const transformedActions = nodeActions?.map((a) =>
 			transformNodeType(a, item.properties.displayName, 'action'),
@@ -98,9 +108,9 @@ function onSelected(item: INodeCreateElement) {
 			subcategory: item.properties.displayName,
 			title: item.properties.displayName,
 			nodeIcon: {
-				color: item.properties.defaults?.color || '',
+				color: getNodeIconColor(item.properties),
 				icon,
-				iconType: item.properties.iconUrl ? 'file' : 'icon',
+				iconType: iconUrl ? 'file' : 'icon',
 			},
 
 			rootView: activeViewStack.value.rootView,
@@ -137,6 +147,13 @@ function onSelected(item: INodeCreateElement) {
 			mode: 'nodes',
 			// Root search should include all nodes
 			searchItems: mergedNodes,
+		});
+	}
+
+	if (item.type === 'link') {
+		window.open(item.properties.url, '_blank');
+		telemetry.trackNodesPanel('nodeCreateList.onLinkSelected', {
+			link: item.properties.url,
 		});
 	}
 }
@@ -195,13 +212,13 @@ function onKeySelect(activeItemId: string) {
 
 registerKeyHook('MainViewArrowRight', {
 	keyboardKeys: ['ArrowRight', 'Enter'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: onKeySelect,
 });
 
 registerKeyHook('MainViewArrowLeft', {
 	keyboardKeys: ['ArrowLeft'],
-	condition: (type) => ['subcategory', 'node', 'view'].includes(type),
+	condition: (type) => ['subcategory', 'node', 'link', 'view'].includes(type),
 	handler: arrowLeft,
 });
 </script>

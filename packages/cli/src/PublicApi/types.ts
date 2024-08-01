@@ -1,4 +1,5 @@
-import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
+
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { Risk } from '@/security-audit/types';
@@ -71,6 +72,7 @@ export declare namespace WorkflowRequest {
 			workflowId?: number;
 			active: boolean;
 			name?: string;
+			projectId?: string;
 		}
 	>;
 
@@ -81,6 +83,11 @@ export declare namespace WorkflowRequest {
 	type Activate = Get;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
+	type Transfer = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
 }
 
 export declare namespace UserRequest {
@@ -127,7 +134,14 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
-	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {}>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
+
+	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

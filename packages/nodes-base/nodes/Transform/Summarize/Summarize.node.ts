@@ -5,6 +5,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { generatePairedItemData } from '../../../utils/utilities';
 import {
 	type Aggregations,
 	NUMERICAL_AGGREGATIONS,
@@ -14,7 +15,6 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
-import { generatePairedItemData } from '../../../utils/utilities';
 
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
@@ -237,7 +237,7 @@ export class Summarize implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

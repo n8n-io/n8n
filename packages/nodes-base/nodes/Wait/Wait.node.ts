@@ -226,6 +226,7 @@ export class Wait extends Webhook {
 		displayName: 'Wait',
 		name: 'wait',
 		icon: 'fa:pause-circle',
+		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',
@@ -236,6 +237,14 @@ export class Wait extends Webhook {
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: credentialsProperty(this.authPropertyName),
+		hints: [
+			{
+				message:
+					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the Wait node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results there.",
+				location: 'outputPane',
+				whenToDisplay: 'beforeExecution',
+			},
+		],
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -285,13 +294,36 @@ export class Wait extends Webhook {
 						description: 'Waits for a webhook call before continuing',
 					},
 					{
-						name: 'On Form Submited',
+						name: 'On Form Submitted',
 						value: 'form',
 						description: 'Waits for a form submission before continuing',
 					},
 				],
 				default: 'timeInterval',
 				description: 'Determines the waiting mode to use before the workflow continues',
+			},
+			{
+				displayName: 'Authentication',
+				name: 'incomingAuthentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description:
+					'If and how incoming resume-webhook-requests to $execution.resumeFormUrl should be authenticated for additional security',
+				displayOptions: {
+					show: {
+						resume: ['form'],
+					},
+				},
 			},
 			{
 				...authenticationProperty(this.authPropertyName),
@@ -393,7 +425,7 @@ export class Wait extends Webhook {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -409,7 +441,7 @@ export class Wait extends Webhook {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -426,7 +458,7 @@ export class Wait extends Webhook {
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return await formWebhook(context);
+		if (resume === 'form') return await formWebhook(context, this.authPropertyName);
 		return await super.webhook(context);
 	}
 

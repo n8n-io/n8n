@@ -1,34 +1,22 @@
-import { Config } from '@oclif/core';
+import { nanoid } from 'nanoid';
 
 import { InternalHooks } from '@/InternalHooks';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
+import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
+import { getPersonalProject } from '../shared/db/projects';
 
-const oclifConfig = new Config({ root: __dirname });
-
-async function importCredential(argv: string[]) {
-	const importer = new ImportCredentialsCommand(argv, oclifConfig);
-	await importer.init();
-	await importer.run();
-}
-
-beforeAll(async () => {
-	mockInstance(InternalHooks);
-	mockInstance(LoadNodesAndCredentials);
-	await testDb.init();
-});
+mockInstance(InternalHooks);
+mockInstance(LoadNodesAndCredentials);
+const command = setupTestCommand(ImportCredentialsCommand);
 
 beforeEach(async () => {
 	await testDb.truncate(['Credentials', 'SharedCredentials', 'User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 test('import:credentials should import a credential', async () => {
@@ -36,13 +24,12 @@ test('import:credentials should import a credential', async () => {
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
 	//
-	await importCredential([
-		'--input=./test/integration/commands/importCredentials/credentials.json',
-	]);
+	await command.run(['--input=./test/integration/commands/importCredentials/credentials.json']);
 
 	//
 	// ASSERT
@@ -54,7 +41,11 @@ test('import:credentials should import a credential', async () => {
 	expect(after).toMatchObject({
 		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
 		sharings: [
-			expect.objectContaining({ credentialsId: '123', userId: owner.id, role: 'credential:owner' }),
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
 		],
 	});
 });
@@ -64,12 +55,13 @@ test('import:credentials should import a credential from separated files', async
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
 	//
 	// import credential the first time, assigning it to the owner
-	await importCredential([
+	await command.run([
 		'--separate',
 		'--input=./test/integration/commands/importCredentials/separate',
 	]);
@@ -92,7 +84,7 @@ test('import:credentials should import a credential from separated files', async
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -104,10 +96,11 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 	const member = await createMember();
 
 	// import credential the first time, assigning it to the owner
-	await importCredential([
+	await command.run([
 		'--input=./test/integration/commands/importCredentials/credentials.json',
 		`--userId=${owner.id}`,
 	]);
@@ -122,7 +115,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -135,12 +128,12 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	// Import again while updating the name we try to assign the
 	// credential to another user.
 	await expect(
-		importCredential([
+		command.run([
 			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with id "123" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
+		`The credential with ID "123" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the user with the ID "${member.id}"`,
 	);
 
 	//
@@ -162,22 +155,23 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
 	});
 });
 
-test("only update credential, don't create or update owner if `--userId` is not passed", async () => {
+test("only update credential, don't create or update owner if neither `--userId` nor `--projectId` is passed", async () => {
 	//
 	// ARRANGE
 	//
 	await createOwner();
 	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
 
 	// import credential the first time, assigning it to a member
-	await importCredential([
+	await command.run([
 		'--input=./test/integration/commands/importCredentials/credentials.json',
 		`--userId=${member.id}`,
 	]);
@@ -192,7 +186,7 @@ test("only update credential, don't create or update owner if `--userId` is not 
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -202,7 +196,7 @@ test("only update credential, don't create or update owner if `--userId` is not 
 	// ACT
 	//
 	// Import again only updating the name and omitting `--userId`
-	await importCredential([
+	await command.run([
 		'--input=./test/integration/commands/importCredentials/credentials-updated.json',
 	]);
 
@@ -225,9 +219,93 @@ test("only update credential, don't create or update owner if `--userId` is not 
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'credential:owner',
 			}),
 		],
 	});
+});
+
+test('`import:credential --projectId ...` should fail if the credential already exists and is owned by another project', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
+
+	// import credential the first time, assigning it to the owner
+	await command.run([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
+
+	// making sure the import worked
+	const before = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(before).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+
+	//
+	// ACT
+	//
+
+	// Import again while updating the name we try to assign the
+	// credential to another user.
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			`--projectId=${memberProject.id}`,
+		]),
+	).rejects.toThrowError(
+		`The credential with ID "123" is already owned by the user with the ID "${owner.id}". It can't be re-owned by the project with the ID "${memberProject.id}".`,
+	);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				// only the name was updated
+				name: 'cred-aws-test',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			`--projectId=${nanoid()}`,
+			`--userId=${nanoid()}`,
+		]),
+	).rejects.toThrowError(
+		'You cannot use `--userId` and `--projectId` together. Use one or the other.',
+	);
 });

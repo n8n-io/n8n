@@ -1337,7 +1337,7 @@ export class Gitlab implements INodeType {
 		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
 		// 	}
 		// } catch (error) {
-		// 	if (this.continueOnFail()) {
+		// 	if (this.continueOnFail(error)) {
 		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
 		// 	}
 		// 	throw new NodeOperationError(this.getNode(), error as Error);
@@ -1755,7 +1755,7 @@ export class Gitlab implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)

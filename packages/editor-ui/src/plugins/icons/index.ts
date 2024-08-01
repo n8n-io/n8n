@@ -7,12 +7,14 @@ import {
 	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
+	faArchive,
 	faArrowLeft,
 	faArrowRight,
 	faArrowUp,
 	faArrowDown,
 	faAt,
 	faBan,
+	faBalanceScaleLeft,
 	faBars,
 	faBolt,
 	faBook,
@@ -128,6 +130,7 @@ import {
 	faSync,
 	faSyncAlt,
 	faTable,
+	faTags,
 	faTasks,
 	faTerminal,
 	faThLarge,
@@ -165,19 +168,21 @@ function addIcon(icon: IconDefinition) {
 	library.add(icon);
 }
 
-export const FontAwesomePlugin: Plugin<{}> = {
+export const FontAwesomePlugin: Plugin = {
 	install: (app) => {
 		addIcon(faAngleDoubleLeft);
 		addIcon(faAngleDown);
 		addIcon(faAngleLeft);
 		addIcon(faAngleRight);
 		addIcon(faAngleUp);
+		addIcon(faArchive);
 		addIcon(faArrowLeft);
 		addIcon(faArrowRight);
 		addIcon(faArrowUp);
 		addIcon(faArrowDown);
 		addIcon(faAt);
 		addIcon(faBan);
+		addIcon(faBalanceScaleLeft);
 		addIcon(faBars);
 		addIcon(faBolt);
 		addIcon(faBook);
@@ -298,6 +303,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faSync);
 		addIcon(faSyncAlt);
 		addIcon(faTable);
+		addIcon(faTags);
 		addIcon(faTasks);
 		addIcon(faTerminal);
 		addIcon(faThLarge);

@@ -9,11 +9,11 @@ import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } fro
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventService } from '@/eventbus/event.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -36,8 +36,8 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 export class CommunityPackagesController {
 	constructor(
 		private readonly push: Push,
-		private readonly internalHooks: InternalHooks,
 		private readonly communityPackagesService: CommunityPackagesService,
+		private readonly eventService: EventService,
 	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
@@ -106,13 +106,13 @@ export class CommunityPackagesController {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			void this.internalHooks.onCommunityPackageInstallFinished({
+			this.eventService.emit('community-package-installed', {
 				user: req.user,
-				input_string: name,
-				package_name: parsed.packageName,
+				inputString: name,
+				packageName: parsed.packageName,
 				success: false,
-				package_version: parsed.version,
-				failure_reason: errorMessage,
+				packageVersion: parsed.version,
+				failureReason: errorMessage,
 			});
 
 			let message = [`Error loading package "${name}" `, errorMessage].join(':');
@@ -134,15 +134,15 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageInstallFinished({
+		this.eventService.emit('community-package-installed', {
 			user: req.user,
-			input_string: name,
-			package_name: parsed.packageName,
+			inputString: name,
+			packageName: parsed.packageName,
 			success: true,
-			package_version: parsed.version,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
+			packageVersion: parsed.version,
+			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
+			packageAuthor: installedPackage.authorName,
+			packageAuthorEmail: installedPackage.authorEmail,
 		});
 
 		return installedPackage;
@@ -225,13 +225,13 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageDeleteFinished({
+		this.eventService.emit('community-package-deleted', {
 			user: req.user,
-			package_name: name,
-			package_version: installedPackage.installedVersion,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
+			packageName: name,
+			packageVersion: installedPackage.installedVersion,
+			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
+			packageAuthor: installedPackage.authorName,
+			packageAuthorEmail: installedPackage.authorEmail,
 		});
 	}
 
@@ -272,14 +272,14 @@ export class CommunityPackagesController {
 				});
 			});
 
-			void this.internalHooks.onCommunityPackageUpdateFinished({
+			this.eventService.emit('community-package-updated', {
 				user: req.user,
-				package_name: name,
-				package_version_current: previouslyInstalledPackage.installedVersion,
-				package_version_new: newInstalledPackage.installedVersion,
-				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
-				package_author: newInstalledPackage.authorName,
-				package_author_email: newInstalledPackage.authorEmail,
+				packageName: name,
+				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
+				packageVersionNew: newInstalledPackage.installedVersion,
+				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
+				packageAuthor: newInstalledPackage.authorName,
+				packageAuthorEmail: newInstalledPackage.authorEmail,
 			});
 
 			return newInstalledPackage;

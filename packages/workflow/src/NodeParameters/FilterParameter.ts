@@ -10,6 +10,7 @@ import type {
 } from '../Interfaces';
 import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
+import { ApplicationError } from '../errors/application.error';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -18,7 +19,7 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends Error {
+export class FilterError extends ApplicationError {
 	constructor(
 		message: string,
 		readonly description: string,
@@ -32,9 +33,19 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any' || value === null || value === undefined
-		? ({ valid: true, newValue: value } as ValidationResult)
-		: validateFieldType('filter', value, type, { strict, parseStrings: true });
+	if (type === 'any' || value === null || value === undefined) {
+		return { valid: true, newValue: value } as ValidationResult;
+	}
+
+	if (type === 'boolean' && !strict) {
+		return { valid: true, newValue: Boolean(value) };
+	}
+
+	if (type === 'number' && Number.isNaN(value)) {
+		return { valid: true, newValue: value };
+	}
+
+	return validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
 const withIndefiniteArticle = (noun: string): string => {
@@ -105,7 +116,13 @@ function parseFilterConditionValues(
 		};
 	}
 
-	return { ok: true, result: { left: parsedLeftValue.newValue, right: parsedRightValue.newValue } };
+	return {
+		ok: true,
+		result: {
+			left: parsedLeftValue.valid ? parsedLeftValue.newValue : undefined,
+			right: parsedRightValue.valid ? parsedRightValue.newValue : undefined,
+		},
+	};
 }
 
 function parseRegexPattern(pattern: string): RegExp {
@@ -119,6 +136,18 @@ function parseRegexPattern(pattern: string): RegExp {
 	}
 
 	return regex;
+}
+
+export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
+	if (ignoreCase && typeof value === 'string') {
+		return array.some((item) => {
+			if (typeof item !== 'string') {
+				return false;
+			}
+			return item.toString().toLocaleLowerCase() === value.toLocaleLowerCase();
+		});
+	}
+	return array.includes(value);
 }
 
 // eslint-disable-next-line complexity
@@ -137,7 +166,7 @@ export function executeFilterCondition(
 
 	let { left: leftValue, right: rightValue } = parsedValues.result;
 
-	const exists = leftValue !== undefined && leftValue !== null;
+	const exists = leftValue !== undefined && leftValue !== null && !Number.isNaN(leftValue);
 	if (condition.operator.operation === 'exists') {
 		return exists;
 	} else if (condition.operator.operation === 'notExists') {
@@ -196,6 +225,10 @@ export function executeFilterCondition(
 			const right = rightValue as number;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'equals':
 					return left === right;
 				case 'notEquals':
@@ -213,6 +246,12 @@ export function executeFilterCondition(
 		case 'dateTime': {
 			const left = leftValue as DateTime;
 			const right = rightValue as DateTime;
+
+			if (condition.operator.operation === 'empty') {
+				return !exists;
+			} else if (condition.operator.operation === 'notEmpty') {
+				return exists;
+			}
 
 			if (!left || !right) {
 				return false;
@@ -238,6 +277,10 @@ export function executeFilterCondition(
 			const right = rightValue as boolean;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return !exists;
+				case 'notEmpty':
+					return exists;
 				case 'true':
 					return left;
 				case 'false':
@@ -254,15 +297,9 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return left.includes(rightValue);
+					return arrayContainsValue(left, rightValue, ignoreCase);
 				case 'notContains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return !left.includes(rightValue);
+					return !arrayContainsValue(left, rightValue, ignoreCase);
 				case 'lengthEquals':
 					return left.length === rightNumber;
 				case 'lengthNotEquals':

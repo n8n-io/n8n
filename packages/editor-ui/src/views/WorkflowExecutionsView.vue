@@ -8,12 +8,13 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { VIEWS } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
-import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -24,8 +25,8 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
-
-const { filters } = storeToRefs(executionsStore);
+const workflowHelpers = useWorkflowHelpers({ router });
+const nodeHelpers = useNodeHelpers();
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -115,24 +116,19 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	let data: IWorkflowDb | undefined;
-	try {
-		// @TODO Retrieve from store if exists
-		data = await workflowsStore.fetchWorkflow(workflowId.value);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-		return;
+	// Check if the workflow already has an ID
+	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
+	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		try {
+			await workflowsStore.fetchActiveWorkflows();
+			const data = await workflowsStore.fetchWorkflow(workflowId.value);
+			workflowHelpers.initState(data);
+			await nodeHelpers.addNodes(data.nodes, data.connections);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+		}
 	}
-
-	if (!data) {
-		throw new Error(
-			i18n.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-				interpolate: { workflowId: workflowId.value },
-			}),
-		);
-	}
-
-	workflow.value = data;
+	workflow.value = workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -312,7 +308,6 @@ async function loadMore(): Promise<void> {
 		v-if="workflow"
 		:executions="executions"
 		:execution="execution"
-		:filters="filters"
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"

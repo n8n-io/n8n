@@ -544,7 +544,7 @@ export class NextCloud implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -757,7 +757,7 @@ export class NextCloud implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -792,7 +792,7 @@ export class NextCloud implements INodeType {
 				typeOptions: {
 					multipleValues: false,
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1099,7 +1099,7 @@ export class NextCloud implements INodeType {
 						qs,
 					);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						if (resource === 'file' && operation === 'download') {
 							items[i].json = { error: error.message };
 						} else {
@@ -1288,7 +1288,7 @@ export class NextCloud implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {

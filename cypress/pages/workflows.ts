@@ -1,7 +1,8 @@
 import { BasePage } from './base';
 
 export class WorkflowsPage extends BasePage {
-	url = '/workflows';
+	url = '/home/workflows';
+
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
@@ -23,6 +24,8 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
+		workflowMoveButton: () =>
+			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Move'),
 		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
 		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
 		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),
@@ -34,13 +37,6 @@ export class WorkflowsPage extends BasePage {
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
-		suggestedTemplatesPageContainer: () => cy.getByTestId('suggested-templates-page-container'),
-		suggestedTemplatesCards: () => cy.get('.agile__slides--regular [data-test-id=templates-info-card]'),
-		suggestedTemplatesNewWorkflowButton: () => cy.getByTestId('suggested-templates-new-workflow-button'),
-		suggestedTemplatesSectionContainer: () => cy.getByTestId('suggested-templates-section-container'),
-		suggestedTemplatesPreviewModal: () => cy.getByTestId('suggested-templates-preview-modal'),
-		suggestedTemplatesUseTemplateButton: () => cy.getByTestId('use-template-button'),
-		suggestedTemplatesSectionDescription: () => cy.getByTestId('suggested-template-section-description'),
 	};
 
 	actions = {

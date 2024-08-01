@@ -13,9 +13,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
+import type { ITemplatesCollection } from '@/Interface';
 
 export default defineComponent({
 	name: 'TemplatesInfoCard',
@@ -24,11 +25,12 @@ export default defineComponent({
 		NodeList,
 	},
 	props: {
+		collection: {
+			type: Object as PropType<ITemplatesCollection>,
+			required: true,
+		},
 		loading: {
 			type: Boolean,
-		},
-		collection: {
-			type: Object,
 		},
 		showItemCount: {
 			type: Boolean,

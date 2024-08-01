@@ -1,17 +1,23 @@
-import { EventEmitter } from 'node:events';
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
-import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisClientService } from '@/services/redis/redis-client.service';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type MultiMainEvents = {
+	'leader-stepdown': never;
+	'leader-takeover': never;
+};
 
 @Service()
-export class MultiMainSetup extends EventEmitter {
+export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly redisPublisher: RedisServicePubSubPublisher,
+		private readonly redisClientService: RedisClientService,
 	) {
 		super();
 	}
@@ -20,13 +26,17 @@ export class MultiMainSetup extends EventEmitter {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
+	private leaderKey: string;
 
 	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
 
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
+		const prefix = config.getEnv('redis.prefix');
+		const validPrefix = this.redisClientService.toValidPrefix(prefix);
+		this.leaderKey = validPrefix + ':main_instance_leader';
+
 		await this.tryBecomeLeader(); // prevent initial wait
 
 		this.leaderCheckInterval = setInterval(
@@ -40,7 +50,7 @@ export class MultiMainSetup extends EventEmitter {
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
-		const isLeader = config.getEnv('multiMainSetup.instanceType') === 'leader';
+		const isLeader = config.getEnv('instanceRole') === 'leader';
 
 		if (isLeader) await this.redisPublisher.clear(this.leaderKey);
 	}
@@ -59,10 +69,10 @@ export class MultiMainSetup extends EventEmitter {
 		if (leaderId && leaderId !== this.instanceId) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
 
-			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
-				config.set('multiMainSetup.instanceType', 'follower');
+			if (config.getEnv('instanceRole') === 'leader') {
+				config.set('instanceRole', 'follower');
 
-				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking
+				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
 				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
 			}
@@ -75,9 +85,12 @@ export class MultiMainSetup extends EventEmitter {
 				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
 			);
 
-			config.set('multiMainSetup.instanceType', 'follower');
+			config.set('instanceRole', 'follower');
 
-			this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning
+			/**
+			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
+			 */
+			this.emit('leader-stepdown');
 
 			await this.tryBecomeLeader();
 		}
@@ -93,13 +106,16 @@ export class MultiMainSetup extends EventEmitter {
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
 
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
-			this.emit('leader-takeover'); // gained leadership - start triggers, pollers, pruning, wait-tracking
+			/**
+			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
+			 */
+			this.emit('leader-takeover');
 		} else {
-			config.set('multiMainSetup.instanceType', 'follower');
+			config.set('instanceRole', 'follower');
 		}
 	}
 

@@ -1,13 +1,9 @@
 <template>
-	<div :class="[$style.wrapper, !uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
-		<div :class="$style.container">
-			<aside v-if="$slots.aside" :class="$style.aside">
-				<slot name="aside" />
-			</aside>
-			<main :class="$style.content">
-				<slot />
-			</main>
-		</div>
+	<div :class="$style.wrapper">
+		<slot name="header" />
+		<main :class="$style.content">
+			<slot />
+		</main>
 	</div>
 </template>
 
@@ -31,54 +27,18 @@ export default defineComponent({
 
 <style lang="scss" module>
 .wrapper {
-	display: flex;
+	display: grid;
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
-	justify-content: center;
+	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
-	padding: var(--spacing-l) var(--spacing-l) 0;
-	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
-	}
-}
-
-.container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	flex-direction: row;
-	height: 100%;
-	width: 100%;
-}
-
-.aside {
-	display: flex;
-	flex-shrink: 0;
-	flex-direction: column;
-	height: 100%;
-	width: 160px;
-	margin-right: var(--spacing-l);
-
-	@media (min-width: 1200px) {
-		margin-right: var(--spacing-2xl);
-	}
+	align-content: start;
+	padding: var(--spacing-l) var(--spacing-2xl) 0;
 }
 
 .content {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 100%;
+	display: grid;
 	height: 100%;
-}
-
-@media (max-width: 500px) {
-	.container {
-		flex-direction: column;
-	}
-	.aside {
-		height: auto;
-		margin: 0;
-	}
 }
 </style>

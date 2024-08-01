@@ -1,5 +1,4 @@
-import type { SuperAgentTest } from 'supertest';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import type { User } from '@db/entities/User';
 import { TagRepository } from '@db/repositories/tag.repository';
 
@@ -8,6 +7,7 @@ import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import { createUser } from '../shared/db/users';
 import { createTag } from '../shared/db/tags';
+import type { SuperAgentTest } from '../shared/types';
 
 let owner: User;
 let member: User;

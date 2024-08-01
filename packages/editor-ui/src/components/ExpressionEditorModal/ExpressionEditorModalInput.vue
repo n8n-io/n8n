@@ -24,6 +24,7 @@ import {
 } from '@/plugins/codemirror/keymap';
 import type { Segment } from '@/types/expressions';
 import { removeExpressionPrefix } from '@/utils/expressions';
+import { infoBoxTooltips } from '@/plugins/codemirror/tooltips/InfoBoxTooltip';
 
 type Props = {
 	modelValue: string;
@@ -36,9 +37,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'change', value: { value: string; segments: Segment[] }): void;
-	(event: 'focus'): void;
-	(event: 'close'): void;
+	change: [value: { value: string; segments: Segment[] }];
+	focus: [];
+	close: [];
 }>();
 
 const root = ref<HTMLElement>();
@@ -68,6 +69,7 @@ const extensions = computed(() => [
 	expressionInputHandler(),
 	EditorView.lineWrapping,
 	EditorView.domEventHandlers({ scroll: forceParse }),
+	infoBoxTooltips(),
 ]);
 const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {

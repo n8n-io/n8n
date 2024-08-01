@@ -56,6 +56,7 @@ export default defineComponent({
 	props: {
 		collections: {
 			type: Array as PropType<ITemplatesCollection[]>,
+			required: true,
 		},
 		loading: {
 			type: Boolean,
@@ -125,7 +126,7 @@ export default defineComponent({
 				this.scrollEnd = scrollWidth - width <= scrollLeft + 7;
 			}
 		},
-		onCardClick(event: MouseEvent, id: string) {
+		onCardClick(event: MouseEvent, id: number) {
 			this.$emit('openCollection', { event, id });
 		},
 		scrollLeft() {

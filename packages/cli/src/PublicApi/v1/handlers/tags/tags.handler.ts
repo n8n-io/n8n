@@ -1,18 +1,19 @@
 import type express from 'express';
 
 import type { TagEntity } from '@db/entities/TagEntity';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { globalScope, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 import { Container } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { TagService } from '@/services/tag.service';
 
 export = {
 	createTag: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		globalScope('tag:create'),
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
@@ -27,7 +28,7 @@ export = {
 		},
 	],
 	updateTag: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		globalScope('tag:update'),
 		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { name } = req.body;
@@ -49,7 +50,7 @@ export = {
 		},
 	],
 	deleteTag: [
-		authorize(['global:owner', 'global:admin']),
+		globalScope('tag:delete'),
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -65,7 +66,7 @@ export = {
 		},
 	],
 	getTags: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		globalScope('tag:read'),
 		validCursor,
 		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100 } = req.query;
@@ -88,7 +89,7 @@ export = {
 		},
 	],
 	getTag: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		globalScope('tag:read'),
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 

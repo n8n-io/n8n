@@ -2,13 +2,10 @@
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
 import { type ImapMessage } from 'imap';
-import * as qp from 'quoted-printable';
-import * as iconvlite from 'iconv-lite';
-import * as utf8 from 'utf8';
-import * as uuencode from 'uuencode';
 
 import { getMessage } from './helpers/getMessage';
 import type { Message, MessagePart } from './types';
+import { PartData } from './PartData';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
@@ -124,7 +121,7 @@ export class ImapSimple extends EventEmitter {
 		/** The message part to be downloaded, from the `message.attributes.struct` Array */
 		part: MessagePart,
 	) {
-		return await new Promise<string>((resolve, reject) => {
+		return await new Promise<PartData>((resolve, reject) => {
 			const fetch = this.imap.fetch(message.attributes.uid, {
 				bodies: [part.partID],
 				struct: true,
@@ -138,43 +135,8 @@ export class ImapSimple extends EventEmitter {
 				}
 
 				const data = result.parts[0].body as string;
-
 				const encoding = part.encoding.toUpperCase();
-
-				if (encoding === 'BASE64') {
-					resolve(Buffer.from(data, 'base64').toString());
-					return;
-				}
-
-				if (encoding === 'QUOTED-PRINTABLE') {
-					if (part.params?.charset?.toUpperCase() === 'UTF-8') {
-						resolve(Buffer.from(utf8.decode(qp.decode(data))).toString());
-					} else {
-						resolve(Buffer.from(qp.decode(data)).toString());
-					}
-					return;
-				}
-
-				if (encoding === '7BIT') {
-					resolve(Buffer.from(data).toString('ascii'));
-					return;
-				}
-
-				if (encoding === '8BIT' || encoding === 'BINARY') {
-					const charset = part.params?.charset ?? 'utf-8';
-					resolve(iconvlite.decode(Buffer.from(data), charset));
-					return;
-				}
-
-				if (encoding === 'UUENCODE') {
-					const parts = data.toString().split('\n'); // remove newline characters
-					const merged = parts.splice(1, parts.length - 4).join(''); // remove excess lines and join lines with empty string
-					resolve(uuencode.decode(merged));
-					return;
-				}
-
-				// if it gets here, the encoding is not currently supported
-				reject(new Error('Unknown encoding ' + part.encoding));
+				resolve(PartData.fromData(data, encoding));
 			};
 
 			const fetchOnError = (error: Error) => {

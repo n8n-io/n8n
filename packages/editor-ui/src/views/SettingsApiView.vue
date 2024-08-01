@@ -4,7 +4,7 @@
 			<n8n-heading size="2xlarge">
 				{{ $locale.baseText('settings.api') }}
 				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
-					({{ $locale.baseText('beta') }})
+					({{ $locale.baseText('generic.beta') }})
 				</span>
 			</n8n-heading>
 		</div>
@@ -43,11 +43,13 @@
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
+						:disable-copy="isRedactedApiKey"
+						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
 						@copy="onCopy"
 					/>
 				</div>
 			</n8n-card>
-			<div :class="$style.hint">
+			<div v-if="!isRedactedApiKey" :class="$style.hint">
 				<n8n-text size="small">
 					{{
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
@@ -93,7 +95,7 @@ import { useMessage } from '@/composables/useMessage';
 import CopyInput from '@/components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -145,6 +147,9 @@ export default defineComponent({
 		},
 		isPublicApiEnabled(): boolean {
 			return this.settingsStore.isPublicApiEnabled;
+		},
+		isRedactedApiKey(): boolean {
+			return this.apiKey.includes('*');
 		},
 	},
 	methods: {

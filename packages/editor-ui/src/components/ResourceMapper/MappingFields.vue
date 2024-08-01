@@ -50,10 +50,10 @@ const {
 } = useNodeSpecificationValues(props.parameter.typeOptions);
 
 const emit = defineEmits<{
-	(event: 'fieldValueChanged', value: IUpdateInformation): void;
-	(event: 'removeField', field: string): void;
-	(event: 'addField', field: string): void;
-	(event: 'refreshFieldList'): void;
+	fieldValueChanged: [value: IUpdateInformation];
+	removeField: [field: string];
+	addField: [field: string];
+	refreshFieldList: [];
 }>();
 
 const ndvStore = useNDVStore();
@@ -67,7 +67,7 @@ function markAsReadOnly(field: ResourceMapperField): boolean {
 	return field.readOnly || false;
 }
 
-const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
+const fieldsUi = computed<Array<INodeProperties & { readOnly: boolean }>>(() => {
 	return props.fieldsToMap
 		.filter((field) => field.display && field.removed !== true)
 		.map((field) => {
@@ -85,11 +85,11 @@ const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean 
 		});
 });
 
-const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
+const orderedFields = computed<Array<INodeProperties & { readOnly: boolean }>>(() => {
 	// Sort so that matching columns are first
 	if (props.paramValue.matchingColumns) {
 		fieldsUi.value.forEach((field, i) => {
-			const fieldName = parseResourceMapperFieldName(field.name);
+			const fieldName = field.name && parseResourceMapperFieldName(field.name);
 			if (fieldName) {
 				if (props.paramValue.matchingColumns.includes(fieldName)) {
 					fieldsUi.value.splice(i, 1);

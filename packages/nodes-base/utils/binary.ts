@@ -7,6 +7,7 @@ import get from 'lodash/get';
 import iconv from 'iconv-lite';
 
 import { getDocument as readPDF, version as pdfJsVersion } from 'pdfjs-dist';
+import type { DocumentInitParameters } from 'pdfjs-dist/types/src/display/api';
 import { flattenObject } from '@utils/utilities';
 
 export type JsonToSpreadsheetBinaryFormat = 'csv' | 'html' | 'rtf' | 'ods' | 'xls' | 'xlsx';
@@ -157,7 +158,7 @@ export async function extractDataFromPDF(
 ) {
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-	const params: { password?: string; url?: URL; data?: ArrayBuffer } = { password };
+	const params: DocumentInitParameters = { password, isEvalSupported: false };
 
 	if (binaryData.id) {
 		params.data = await this.helpers.binaryToBuffer(

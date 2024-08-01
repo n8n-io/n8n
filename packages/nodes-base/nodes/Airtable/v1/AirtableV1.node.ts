@@ -347,7 +347,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			default: {},
 			description: 'Additional options which decide which records should be returned',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			options: [
 				{
 					displayName: 'Fields',
@@ -502,7 +502,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			displayOptions: {
 				show: {
 					operation: ['append', 'delete', 'update'],
@@ -653,7 +653,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -696,7 +696,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -757,7 +757,7 @@ export class AirtableV1 implements INodeType {
 					}),
 				];
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
@@ -792,7 +792,7 @@ export class AirtableV1 implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -880,7 +880,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}

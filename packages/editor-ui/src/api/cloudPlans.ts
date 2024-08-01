@@ -1,4 +1,4 @@
-import type { Cloud, IRestApiContext, InstanceUsage, LeadEnrichmentTemplates } from '@/Interface';
+import type { Cloud, IRestApiContext, InstanceUsage } from '@/Interface';
 import { get, post } from '@/utils/apiUtils';
 
 export async function getCurrentPlan(context: IRestApiContext): Promise<Cloud.PlanData> {
@@ -19,10 +19,4 @@ export async function confirmEmail(context: IRestApiContext): Promise<Cloud.User
 
 export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<{ code: string }> {
 	return await get(context.baseUrl, '/cloud/proxy/login/code');
-}
-
-export async function fetchSuggestedTemplates(
-	context: IRestApiContext,
-): Promise<LeadEnrichmentTemplates> {
-	return await get(context.baseUrl, '/cloud/proxy/templates');
 }

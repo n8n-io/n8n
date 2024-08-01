@@ -64,6 +64,13 @@ export class Shopify implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Shopify API Version: 2024-07',
+				type: 'notice',
+				name: 'apiVersion',
+				default: '',
+				isNodeSetting: true,
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
@@ -459,7 +466,7 @@ export class Shopify implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

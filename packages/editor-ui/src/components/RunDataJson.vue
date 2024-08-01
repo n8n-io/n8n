@@ -1,7 +1,7 @@
 <template>
 	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
 		<Suspense>
-			<RunDataJsonActions
+			<LazyRunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
 				:push-ref="pushRef"
@@ -93,7 +93,7 @@ import { nonExistingJsonPath } from '@/constants';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
 
-const RunDataJsonActions = defineAsyncComponent(
+const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/components/RunDataJsonActions.vue'),
 );
 
@@ -102,13 +102,14 @@ export default defineComponent({
 	components: {
 		VueJsonPretty,
 		Draggable,
-		RunDataJsonActions,
+		LazyRunDataJsonActions,
 		MappingPill,
 		TextWithHighlights,
 	},
 	props: {
 		editMode: {
-			type: Object as () => { enabled?: boolean; value?: string },
+			type: Object as PropType<{ enabled?: boolean; value?: string }>,
+			default: () => ({}),
 		},
 		pushRef: {
 			type: String,
@@ -118,15 +119,18 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -260,6 +264,7 @@ export default defineComponent({
 <style lang="scss">
 .vjs-tree {
 	color: var(--color-json-default);
+	--color-line-break: var(--color-code-line-break);
 }
 
 .vjs-tree-node {

@@ -2,6 +2,38 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.52.0
+
+### What changed?
+
+Prometheus metrics enabled via `N8N_METRICS_INCLUDE_DEFAULT_METRICS` and `N8N_METRICS_INCLUDE_API_ENDPOINTS` were fixed to include the default `n8n_` prefix.
+
+### When is action necessary?
+
+If you are using Prometheus metrics from these categories and are using a non-empty prefix, please update those metrics to match their new prefixed names.
+
+## 1.47.0
+
+### What changed?
+
+Calling `$(...).last()` (or `$(...).first()` or `$(...).all()` respectively) without arguments is returning the the last item (or first or all items) of the output that connects the two nodes. Before it was returning the item/items of the first output of that node.
+
+### When is action necessary?
+
+If you are using `$(...).last()` (or `$(...).first()` or `$(...)all()` respectively) without arguments for nodes that have multiple outputs (e.g. `If`, `Switch`, `Compare Datasets`, etc.) and you want it to default to the first output. In that case change it to `$(...).last(0)` (or `first` or `all` respectively).
+
+This does not affect the Array functions `[].last()`, `[].first()`.
+
+## 1.40.0
+
+### What changed?
+
+The default value for the `DB_POSTGRESDB_USER` environment variable was switched from `root` to `postgres`.
+
+### When is action necessary?
+
+If your Postgres connection is relying on the old default value `root` for the `DB_POSTGRESDB_USER` environment variable, you must now explicitly set `DB_POSTGRESDB_USER` to `root` in your environment.
+
 ## 1.37.0
 
 ### What changed?

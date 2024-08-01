@@ -1448,6 +1448,27 @@ export class Asana implements INodeType {
 						default: '',
 						description: 'Basic description or notes for the project',
 					},
+					{
+						displayName: 'Privacy Setting',
+						name: 'privacy_setting',
+						type: 'options',
+						options: [
+							{
+								name: 'Private',
+								value: 'private',
+							},
+							{
+								name: 'Private to Team',
+								value: 'private_to_team',
+							},
+							{
+								name: 'Public to Workspace',
+								value: 'public_to_workspace',
+							},
+						],
+						default: 'private',
+						description: 'The privacy setting of the project',
+					},
 				],
 			},
 			// ----------------------------------
@@ -1658,6 +1679,27 @@ export class Asana implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'The new assignee/cardinal for this project',
+					},
+					{
+						displayName: 'Privacy Setting',
+						name: 'privacy_setting',
+						type: 'options',
+						options: [
+							{
+								name: 'Private',
+								value: 'private',
+							},
+							{
+								name: 'Private to Team',
+								value: 'private_to_team',
+							},
+							{
+								name: 'Public to Workspace',
+								value: 'public_to_workspace',
+							},
+						],
+						default: 'private',
+						description: 'The privacy setting of the project',
 					},
 					{
 						displayName: 'Team Name or ID',
@@ -2425,7 +2467,7 @@ export class Asana implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

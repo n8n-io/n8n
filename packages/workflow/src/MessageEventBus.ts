@@ -11,6 +11,7 @@ export const enum EventMessageTypeNames {
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
 	node = '$$EventMessageNode',
+	execution = '$$EventMessageExecution',
 	aiNode = '$$EventMessageAiNode',
 }
 
@@ -20,6 +21,13 @@ export const enum MessageEventBusDestinationTypeNames {
 	sentry = '$$MessageEventBusDestinationSentry',
 	syslog = '$$MessageEventBusDestinationSyslog',
 }
+
+export const messageEventBusDestinationTypeNames = [
+	MessageEventBusDestinationTypeNames.abstract,
+	MessageEventBusDestinationTypeNames.webhook,
+	MessageEventBusDestinationTypeNames.sentry,
+	MessageEventBusDestinationTypeNames.syslog,
+];
 
 // ===============================
 // Event Message Interfaces

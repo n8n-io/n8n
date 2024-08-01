@@ -2,11 +2,12 @@ import { Container, Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
+import { engine as expressHandlebars } from 'express-handlebars';
 import compression from 'compression';
 import isbot from 'isbot';
 
 import config from '@/config';
-import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -21,6 +22,7 @@ import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { ActiveWebhooks } from '@/ActiveWebhooks';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export abstract class AbstractServer {
@@ -32,7 +34,7 @@ export abstract class AbstractServer {
 
 	protected externalHooks: ExternalHooks;
 
-	protected protocol = config.getEnv('protocol');
+	protected globalConfig = Container.get(GlobalConfig);
 
 	protected sslKey: string;
 
@@ -62,21 +64,25 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
+		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
+
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
-		this.restEndpoint = config.getEnv('endpoints.rest');
+		this.restEndpoint = this.globalConfig.endpoints.rest;
 
-		this.endpointForm = config.getEnv('endpoints.form');
-		this.endpointFormTest = config.getEnv('endpoints.formTest');
-		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
+		this.endpointForm = this.globalConfig.endpoints.form;
+		this.endpointFormTest = this.globalConfig.endpoints.formTest;
+		this.endpointFormWaiting = this.globalConfig.endpoints.formWaiting;
 
-		this.endpointWebhook = config.getEnv('endpoints.webhook');
-		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
-		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
+		this.endpointWebhook = this.globalConfig.endpoints.webhook;
+		this.endpointWebhookTest = this.globalConfig.endpoints.webhookTest;
+		this.endpointWebhookWaiting = this.globalConfig.endpoints.webhookWaiting;
 
 		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 
@@ -128,7 +134,8 @@ export abstract class AbstractServer {
 	}
 
 	async init(): Promise<void> {
-		const { app, protocol, sslKey, sslCert } = this;
+		const { app, sslKey, sslCert } = this;
+		const { protocol } = this.globalConfig;
 
 		if (protocol === 'https' && sslKey && sslCert) {
 			const https = await import('https');
@@ -144,25 +151,24 @@ export abstract class AbstractServer {
 			this.server = http.createServer(app);
 		}
 
-		const PORT = config.getEnv('port');
-		const ADDRESS = config.getEnv('listen_address');
+		const { port, listen_address: address } = Container.get(GlobalConfig);
 
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
-				console.log(
-					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
+				this.logger.info(
+					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
 			}
 		});
 
-		await new Promise<void>((resolve) => this.server.listen(PORT, ADDRESS, () => resolve()));
+		await new Promise<void>((resolve) => this.server.listen(port, address, () => resolve()));
 
 		this.externalHooks = Container.get(ExternalHooks);
 
 		await this.setupHealthCheck();
 
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
+		this.logger.info(`n8n ready on ${address}, port ${port}`);
 	}
 
 	async start(): Promise<void> {
@@ -202,13 +208,6 @@ export abstract class AbstractServer {
 			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
-
-			// Removes a test webhook
-			// TODO UM: check if this needs validation with user management.
-			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
-			);
 		}
 
 		// Block bots from scanning the application
@@ -225,17 +224,27 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
+		if (this.testWebhooksEnabled) {
+			const testWebhooks = Container.get(TestWebhooks);
+			// Removes a test webhook
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-webhook/:id`,
+				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
+			);
+		}
+
 		// Setup body parsing middleware after the webhook handlers are setup
 		this.app.use(bodyParser);
 
 		await this.configure();
 
 		if (!inTest) {
-			console.log(`Version: ${N8N_VERSION}`);
+			this.logger.info(`Version: ${N8N_VERSION}`);
 
 			const defaultLocale = config.getEnv('defaultLocale');
 			if (defaultLocale !== 'en') {
-				console.log(`Locale: ${defaultLocale}`);
+				this.logger.info(`Locale: ${defaultLocale}`);
 			}
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
@@ -253,14 +262,16 @@ export abstract class AbstractServer {
 			return;
 		}
 
-		this.logger.debug(`Shutting down ${this.protocol} server`);
+		const { protocol } = this.globalConfig;
+
+		this.logger.debug(`Shutting down ${protocol} server`);
 
 		this.server.close((error) => {
 			if (error) {
-				this.logger.error(`Error while shutting down ${this.protocol} server`, { error });
+				this.logger.error(`Error while shutting down ${protocol} server`, { error });
 			}
 
-			this.logger.debug(`${this.protocol} server shut down`);
+			this.logger.debug(`${protocol} server shut down`);
 		});
 	}
 }

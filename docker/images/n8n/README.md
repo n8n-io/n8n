@@ -9,25 +9,25 @@ n8n is an extendable workflow automation tool. With a [fair-code](https://fairco
 ## Contents
 
 - [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
-  - [Contents](#contents)
-  - [Demo](#demo)
-  - [Available integrations](#available-integrations)
-  - [Documentation](#documentation)
-  - [Start n8n in Docker](#start-n8n-in-docker)
-  - [Start with tunnel](#start-with-tunnel)
-  - [Persist data](#persist-data)
-    - [Start with other Database](#start-with-other-database)
-      - [Use with PostgresDB](#use-with-postgresdb)
-  - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-  - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-  - [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
-  - [Setting Timezone](#setting-timezone)
-  - [Build Docker-Image](#build-docker-image)
-  - [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-  - [Support](#support)
-  - [Jobs](#jobs)
-  - [Upgrading](#upgrading)
-  - [License](#license)
+	- [Contents](#contents)
+	- [Demo](#demo)
+	- [Available integrations](#available-integrations)
+	- [Documentation](#documentation)
+	- [Start n8n in Docker](#start-n8n-in-docker)
+	- [Start with tunnel](#start-with-tunnel)
+	- [Persist data](#persist-data)
+		- [Start with other Database](#start-with-other-database)
+			- [Use with PostgresDB](#use-with-postgresdb)
+	- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+	- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
+	- [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
+	- [Setting Timezone](#setting-timezone)
+	- [Build Docker-Image](#build-docker-image)
+	- [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+	- [Support](#support)
+	- [Jobs](#jobs)
+	- [Upgrading](#upgrading)
+	- [License](#license)
 
 ## Demo
 
@@ -129,7 +129,7 @@ docker run -it --rm \
  docker.n8n.io/n8nio/n8n
 ```
 
-A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n-hosting/blob/main/docker-compose/withPostgres/README.md)
 
 ## Passing Sensitive Data via File
 

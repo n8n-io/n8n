@@ -5,7 +5,7 @@ import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
-	authorize,
+	globalScope,
 	validCursor,
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
@@ -15,7 +15,7 @@ import { InternalHooks } from '@/InternalHooks';
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		authorize(['global:owner', 'global:admin']),
+		globalScope('user:read'),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -33,7 +33,7 @@ export = {
 				public_api: true,
 			};
 
-			void Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
+			Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
 
 			return res.json(clean(user, { includeRole }));
 		},
@@ -41,7 +41,7 @@ export = {
 	getUsers: [
 		validLicenseWithUserQuota,
 		validCursor,
-		authorize(['global:owner', 'global:admin']),
+		globalScope(['user:list', 'user:read']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false } = req.query;
 
@@ -56,7 +56,7 @@ export = {
 				public_api: true,
 			};
 
-			void Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
+			Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
 
 			return res.json({
 				data: clean(users, { includeRole }),

@@ -7,21 +7,11 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'TitledList',
-	props: {
-		title: {
-			type: String,
-		},
-		items: {
-			type: Array,
-			default: () => [],
-		},
-	},
-});
+<script lang="ts" setup>
+defineProps<{
+	title: string;
+	items: string[];
+}>();
 </script>
 <style lang="scss" scoped>
 .titled-list {

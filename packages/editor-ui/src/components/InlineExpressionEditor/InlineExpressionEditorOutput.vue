@@ -6,20 +6,20 @@ import type { Segment } from '@/types/expressions';
 import ExpressionOutput from './ExpressionOutput.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
+import { computed, onBeforeUnmount } from 'vue';
+import { useNDVStore } from '@/stores/ndv.store';
+import { N8nTooltip } from 'n8n-design-system/components';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
-	hoveringItemNumber: number;
 	unresolvedExpression?: string;
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	visible?: boolean;
-	noInputData?: boolean;
 }
 
 withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	visible: false,
-	noInputData: false,
 	editorState: undefined,
 	selection: undefined,
 	unresolvedExpression: undefined,
@@ -27,19 +27,95 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
+const ndvStore = useNDVStore();
+
+const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
+const hoveringItem = computed(() => ndvStore.getHoveringItem);
+const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
+const isHoveringItem = computed(() => Boolean(hoveringItem.value));
+const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
+const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
+const max = computed(() => Math.max(itemsLength.value - 1, 0));
+const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
+const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.value !== 0);
+const canSelectNextItem = computed(
+	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
+);
+
+function updateItemIndex(index: number) {
+	ndvStore.expressionOutputItemIndex = index;
+}
+
+function nextItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex + 1;
+}
+
+function prevItem() {
+	ndvStore.expressionOutputItemIndex = ndvStore.expressionOutputItemIndex - 1;
+}
+
+onBeforeUnmount(() => {
+	ndvStore.expressionOutputItemIndex = 0;
+});
 </script>
 
 <template>
-	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
-			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-		</n8n-text>
+	<div v-if="visible" :class="$style.dropdown" title="">
+		<div :class="$style.header">
+			<n8n-text bold size="small" compact>
+				{{ i18n.baseText('parameterInput.result') }}
+			</n8n-text>
+
+			<div :class="$style.item">
+				<n8n-text size="small" color="text-base" compact>
+					{{ i18n.baseText('parameterInput.item') }}
+				</n8n-text>
+
+				<div :class="$style.controls">
+					<N8nInputNumber
+						data-test-id="inline-expression-editor-item-input"
+						size="mini"
+						:controls="false"
+						:class="[$style.input, { [$style.hovering]: isHoveringItem }]"
+						:min="0"
+						:max="max"
+						:model-value="itemIndex"
+						@update:model-value="updateItemIndex"
+					></N8nInputNumber>
+					<N8nIconButton
+						data-test-id="inline-expression-editor-item-prev"
+						icon="chevron-left"
+						type="tertiary"
+						text
+						size="mini"
+						:disabled="!canSelectPrevItem"
+						@click="prevItem"
+					></N8nIconButton>
+
+					<N8nTooltip placement="right" :disabled="hideTableHoverHint">
+						<template #content>
+							<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
+						</template>
+						<N8nIconButton
+							data-test-id="inline-expression-editor-item-next"
+							icon="chevron-right"
+							type="tertiary"
+							text
+							size="mini"
+							:disabled="!canSelectNextItem"
+							@click="nextItem"
+						></N8nIconButton>
+					</N8nTooltip>
+				</div>
+			</div>
+		</div>
 		<n8n-text :class="$style.body">
 			<ExpressionOutput
 				data-test-id="inline-expression-editor-output"
 				:segments="segments"
 				:extensions="theme"
-			></ExpressionOutput>
+			>
+			</ExpressionOutput>
 		</n8n-text>
 		<div :class="$style.footer">
 			<InlineExpressionTip
@@ -52,10 +128,6 @@ const theme = outputTheme();
 </template>
 
 <style lang="scss" module>
-.hidden {
-	display: none;
-}
-
 .dropdown {
 	display: flex;
 	flex-direction: column;
@@ -73,7 +145,6 @@ const theme = outputTheme();
 		background-color: var(--color-code-background);
 	}
 
-	.header,
 	.body {
 		padding: var(--spacing-3xs);
 	}
@@ -83,10 +154,20 @@ const theme = outputTheme();
 	}
 
 	.header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: var(--spacing-2xs);
 		color: var(--color-text-dark);
 		font-weight: var(--font-weight-bold);
-		padding-left: var(--spacing-2xs);
+		padding: 0 var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
+	}
+
+	.item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-4xs);
 	}
 
 	.body {
@@ -96,6 +177,34 @@ const theme = outputTheme();
 
 		&:first-child {
 			padding-top: var(--spacing-2xs);
+		}
+	}
+
+	.controls {
+		display: flex;
+		align-items: center;
+	}
+
+	.input {
+		--input-height: 22px;
+		--input-width: 26px;
+		--input-border-top-left-radius: var(--border-radius-base);
+		--input-border-bottom-left-radius: var(--border-radius-base);
+		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-bottom-right-radius: var(--border-radius-base);
+		max-width: var(--input-width);
+		line-height: calc(var(--input-height) - var(--spacing-4xs));
+
+		&.hovering {
+			--input-font-color: var(--color-secondary);
+		}
+
+		:global(.el-input__inner) {
+			height: var(--input-height);
+			min-height: var(--input-height);
+			line-height: var(--input-height);
+			text-align: center;
+			padding: 0 var(--spacing-4xs);
 		}
 	}
 }

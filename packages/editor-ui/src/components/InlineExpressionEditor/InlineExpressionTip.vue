@@ -131,7 +131,7 @@ watchDebounced(
 <style lang="scss" module>
 .tip {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing-4xs);
 	line-height: var(--font-line-height-regular);
 	color: var(--color-text-base);

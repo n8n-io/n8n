@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 import type { FieldType, INodePropertyOptions, ValidationResult } from './Interfaces';
 import isObject from 'lodash/isObject';
 import { ApplicationError } from './errors';
+import { jsonParse } from './utils';
 
 export const tryToParseNumber = (value: unknown): number => {
 	const isValidNumber = !isNaN(Number(value));
@@ -135,7 +136,8 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		const o = JSON.parse(String(value)) as object;
+		const o = jsonParse<object>(String(value), { acceptJSObject: true });
+
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new ApplicationError('Value is not a valid object', { extra: { value } });
 		}
@@ -143,6 +145,16 @@ export const tryToParseObject = (value: unknown): object => {
 	} catch (e) {
 		throw new ApplicationError('Value is not a valid object', { extra: { value } });
 	}
+};
+
+export const getValueDescription = <T>(value: T): string => {
+	if (typeof value === 'object') {
+		if (value === null) return "'null'";
+		if (Array.isArray(value)) return 'array';
+		return 'object';
+	}
+
+	return `'${String(value)}'`;
 };
 
 export const tryToParseUrl = (value: unknown): string => {
@@ -177,19 +189,27 @@ type ValidateFieldTypeOptions = Partial<{
 	strict: boolean;
 	parseStrings: boolean;
 }>;
+
 // Validates field against the schema and tries to parse it to the correct type
+export function validateFieldType<K extends FieldType>(
+	fieldName: string,
+	value: unknown,
+	type: K,
+	options?: ValidateFieldTypeOptions,
+): ValidationResult<K>;
 // eslint-disable-next-line complexity
-export const validateFieldType = (
+export function validateFieldType(
 	fieldName: string,
 	value: unknown,
 	type: FieldType,
 	options: ValidateFieldTypeOptions = {},
-): ValidationResult => {
+): ValidationResult {
 	if (value === null || value === undefined) return { valid: true };
 	const strict = options.strict ?? false;
 	const valueOptions = options.valueOptions ?? [];
 	const parseStrings = options.parseStrings ?? false;
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
+
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got ${getValueDescription(value)}`;
 	switch (type.toLowerCase()) {
 		case 'string': {
 			if (!parseStrings) return { valid: true, newValue: value };
@@ -249,7 +269,7 @@ export const validateFieldType = (
 			} catch (e) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
+					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got ${getValueDescription(value)}.`,
 				};
 			}
 		}
@@ -280,9 +300,9 @@ export const validateFieldType = (
 			if (!isValidOption) {
 				return {
 					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
+					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got ${getValueDescription(
 						value,
-					)}'`,
+					)}`,
 				};
 			}
 			return { valid: true, newValue: value };
@@ -308,4 +328,4 @@ export const validateFieldType = (
 			return { valid: true, newValue: value };
 		}
 	}
-};
+}

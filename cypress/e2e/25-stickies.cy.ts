@@ -1,7 +1,5 @@
 import { META_KEY } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { getPopper } from '../utils';
-import { Interception } from 'cypress/types/net-stubbing';
 
 const workflowPage = new WorkflowPageClass();
 
@@ -26,6 +24,9 @@ function checkStickiesStyle(
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.get('#collapse-change-button').should('be.visible').click();
+		cy.get('#side-menu[class*=collapsed i]').should('be.visible');
+		workflowPage.actions.zoomToFit();
 	});
 
 	it('adds sticky to canvas with default text and position', () => {
@@ -34,15 +35,12 @@ describe('Canvas Actions', () => {
 		addDefaultSticky();
 		workflowPage.actions.deselectAll();
 		workflowPage.actions.addStickyFromContextMenu();
-		workflowPage.actions.hitAddStickyShortcut();
+		workflowPage.actions.hitAddSticky();
 
 		workflowPage.getters.stickies().should('have.length', 3);
 
 		// Should not add a sticky for ctrl+shift+s
-		cy.get('body')
-			.type(META_KEY, { delay: 500, release: false })
-			.type('{shift}', { release: false })
-			.type('s');
+		cy.get('body').type(`{${META_KEY}+shift+s}`);
 
 		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters
@@ -80,32 +78,6 @@ describe('Canvas Actions', () => {
 		workflowPage.actions.deleteSticky();
 
 		workflowPage.getters.stickies().should('have.length', 0);
-	});
-
-	it('change sticky color', () => {
-		workflowPage.actions.addSticky();
-
-		workflowPage.getters.stickies().should('have.length', 1);
-
-		workflowPage.actions.toggleColorPalette();
-
-		getPopper().should('be.visible');
-
-		workflowPage.actions.pickColor(2);
-
-		workflowPage.actions.toggleColorPalette();
-
-		getPopper().should('not.be.visible');
-
-		workflowPage.actions.saveWorkflowOnButtonClick();
-
-		cy.wait('@createWorkflow').then((interception: Interception) => {
-			const { request } = interception;
-			const color = request.body?.nodes[0]?.parameters?.color;
-			expect(color).to.equal(2);
-		});
-
-		workflowPage.getters.stickies().should('have.length', 1);
 	});
 
 	it('edits sticky and updates content as markdown', () => {
@@ -298,15 +270,6 @@ function stickyShouldBePositionedCorrectly(position: Position) {
 	workflowPage.getters.stickies().should(($el) => {
 		expect($el).to.have.css('top', `${yOffset + position.top}px`);
 		expect($el).to.have.css('left', `${xOffset + position.left}px`);
-	});
-}
-
-function stickyShouldHaveCorrectSize(size: [number, number]) {
-	const yOffset = 0;
-	const xOffset = 0;
-	workflowPage.getters.stickies().should(($el) => {
-		expect($el).to.have.css('height', `${yOffset + size[0]}px`);
-		expect($el).to.have.css('width', `${xOffset + size[1]}px`);
 	});
 }
 

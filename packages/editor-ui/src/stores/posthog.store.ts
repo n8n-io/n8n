@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
@@ -155,7 +155,7 @@ export const usePostHog = defineStore('posthog', () => {
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
-			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
+			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
 
 				// must be debounced because it is called multiple times by posthog

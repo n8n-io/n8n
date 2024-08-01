@@ -343,7 +343,7 @@ export class GoogleDriveTrigger implements INodeType {
 						triggerOn: ['specificFile'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

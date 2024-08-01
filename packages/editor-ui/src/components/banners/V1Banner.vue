@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import BaseBanner from '@/components/banners/BaseBanner.vue';
 import { i18n as locale } from '@/plugins/i18n';
-import { hasPermission } from '@/rbac/permissions';
+import { hasPermission } from '@/utils/rbac/permissions';
 import { useUIStore } from '@/stores/ui.store';
 
 const uiStore = useUIStore();

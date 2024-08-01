@@ -52,6 +52,7 @@ export class Ssh implements INodeType {
 		displayName: 'SSH',
 		name: 'ssh',
 		icon: 'fa:terminal',
+		iconColor: 'black',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -255,7 +256,7 @@ export class Ssh implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						resource: ['file'],
@@ -465,7 +466,7 @@ export class Ssh implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						if (resource === 'file' && operation === 'download') {
 							items[i] = {
 								json: {

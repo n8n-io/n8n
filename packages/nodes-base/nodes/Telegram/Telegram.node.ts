@@ -18,7 +18,7 @@ export class Telegram implements INodeType {
 		name: 'telegram',
 		icon: 'file:telegram.svg',
 		group: ['output'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Telegram',
 		defaults: {
@@ -1289,6 +1289,26 @@ export class Telegram implements INodeType {
 														default: '',
 														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1365,6 +1385,26 @@ export class Telegram implements INodeType {
 														default: false,
 														description: "Whether the user's request_location",
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1380,7 +1420,7 @@ export class Telegram implements INodeType {
 				displayName: 'Reply Keyboard Options',
 				name: 'replyKeyboardOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],
@@ -2067,7 +2107,7 @@ export class Telegram implements INodeType {
 							{
 								json: false,
 								encoding: null,
-								uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`,
+								uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
 								useStream: true,
 							},
@@ -2102,7 +2142,7 @@ export class Telegram implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}

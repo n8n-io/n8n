@@ -12,7 +12,7 @@
 		<router-link
 			:class="$style.executionLink"
 			:to="{
-				name: VIEWS.EXECUTION_PREVIEW,
+				name: executionPreviewViewName,
 				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
@@ -110,12 +110,12 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	emits: ['retryExecution', 'mounted'],
 	setup() {
 		const executionHelpers = useExecutionHelpers();
 
 		return {
 			executionHelpers,
-			VIEWS,
 		};
 	},
 	computed: {
@@ -144,6 +144,12 @@ export default defineComponent({
 		isRetriable(): boolean {
 			return this.executionHelpers.isExecutionRetriable(this.execution);
 		},
+		executionPreviewViewName() {
+			return VIEWS.EXECUTION_PREVIEW;
+		},
+	},
+	mounted() {
+		this.$emit('mounted', this.execution.id);
 	},
 	methods: {
 		onRetryMenuItemSelect(action: string): void {
@@ -199,6 +205,16 @@ export default defineComponent({
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-success);
+		}
+	}
+
+	&.new {
+		&,
+		& .executionLink {
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-new);
+		}
+		.statusLabel {
+			color: var(--color-text-dark);
 		}
 	}
 

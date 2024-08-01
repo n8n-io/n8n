@@ -124,7 +124,7 @@ export const RoundDateDescription: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['roundDate'],

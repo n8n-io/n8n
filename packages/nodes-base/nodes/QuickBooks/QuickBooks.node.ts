@@ -263,7 +263,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -528,7 +528,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
@@ -688,7 +688,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						body.Line = processLines.call(this, body, lines, resource);
+						body.Line = processLines.call(this, lines, resource);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -1119,7 +1119,7 @@ export class QuickBooks implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const download = this.getNodeParameter('download', 0, false);
 					if (
 						['invoice', 'estimate', 'payment'].includes(resource) &&

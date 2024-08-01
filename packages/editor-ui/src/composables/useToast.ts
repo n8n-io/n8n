@@ -8,8 +8,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
+import type { ApplicationError } from 'n8n-workflow';
 
-export interface NotificationErrorWithNodeAndDescription extends Error {
+export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
 		name: string;
 	};
@@ -175,7 +176,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...uiStore.getNotificationsForView(view));
+			notifications.push(...(uiStore.pendingNotificationsForViews[view] ?? []));
 		});
 		if (notifications.length) {
 			notifications.forEach(async (notification) => {

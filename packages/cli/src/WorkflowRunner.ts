@@ -16,8 +16,8 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
+	ExecutionCancelledError,
 	Workflow,
-	WorkflowOperationError,
 } from 'n8n-workflow';
 
 import PCancelable from 'p-cancelable';
@@ -25,8 +25,6 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -39,6 +37,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+import { EventService } from './eventbus/event.service';
 
 @Service()
 export class WorkflowRunner {
@@ -54,6 +53,7 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
+		private readonly eventService: EventService,
 	) {
 		if (this.executionsMode === 'queue') {
 			this.jobQueue = Container.get(Queue);
@@ -103,42 +103,6 @@ export class WorkflowRunner {
 			status: 'error',
 		};
 
-		// The following will attempt to recover runData from event logs
-		// Note that this will only work as long as the event logs actually contain the events from this workflow execution
-		// Since processError is run almost immediately after the workflow execution has failed, it is likely that the event logs
-		// does contain those messages.
-		try {
-			// Search for messages for this executionId in event logs
-			const eventBus = Container.get(MessageEventBus);
-			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
-			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
-			if (eventLogMessages.length > 0) {
-				const eventLogExecutionData = await Container.get(
-					ExecutionDataRecoveryService,
-				).recoverExecutionData(executionId, eventLogMessages, false);
-				if (eventLogExecutionData) {
-					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
-					fullRunData.status = 'crashed';
-				}
-			}
-
-			const executionFlattedData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-			});
-
-			if (executionFlattedData) {
-				void Container.get(InternalHooks).onWorkflowCrashed(
-					executionId,
-					executionMode,
-					executionFlattedData?.workflowData,
-					// TODO: get metadata to be sent here
-					// executionFlattedData?.metadata,
-				);
-			}
-		} catch {
-			// Ignore errors
-		}
-
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
 		this.activeExecutions.remove(executionId, fullRunData);
@@ -161,7 +125,7 @@ export class WorkflowRunner {
 
 		const { id: workflowId, nodes } = data.workflowData;
 		try {
-			await this.permissionChecker.check(workflowId, data.userId, nodes);
+			await this.permissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
@@ -182,8 +146,8 @@ export class WorkflowRunner {
 			// frontend would not be possible
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, executionId);
-			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
+			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
+			this.eventService.emit('workflow-pre-execute', { executionId, data });
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
@@ -202,6 +166,15 @@ export class WorkflowRunner {
 						executionData,
 						data.userId,
 					);
+					this.eventService.emit('workflow-post-execute', {
+						workflowId: data.workflowData.id,
+						workflowName: data.workflowData.name,
+						executionId,
+						success: executionData?.status === 'success',
+						isManual: data.executionMode === 'manual',
+						userId: data.userId,
+						runData: executionData,
+					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {
 							await this.externalHooks.run('workflow.postExecute', [
@@ -211,13 +184,17 @@ export class WorkflowRunner {
 							]);
 						} catch (error) {
 							ErrorReporter.error(error);
-							console.error('There was a problem running hook "workflow.postExecute"', error);
+							this.logger.error('There was a problem running hook "workflow.postExecute"', error);
 						}
 					}
 				})
 				.catch((error) => {
+					if (error instanceof ExecutionCancelledError) return;
 					ErrorReporter.error(error);
-					console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
+					this.logger.error(
+						'There was a problem running internal hook "onWorkflowPostExecute"',
+						error,
+					);
 				});
 		}
 
@@ -298,7 +275,6 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 			});
 
-			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
@@ -411,7 +387,7 @@ export class WorkflowRunner {
 		try {
 			job = await this.jobQueue.add(jobData, jobOptions);
 
-			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			this.logger.info(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -452,7 +428,7 @@ export class WorkflowRunner {
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
 
-					const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
+					const error = new ExecutionCancelledError(executionId);
 					await this.processError(error, new Date(), data.executionMode, executionId, hooksWorker);
 
 					reject(error);

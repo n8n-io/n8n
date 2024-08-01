@@ -192,7 +192,7 @@ export class HtmlExtract implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -283,7 +283,7 @@ export class HtmlExtract implements INodeType {
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

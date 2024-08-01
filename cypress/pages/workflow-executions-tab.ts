@@ -24,7 +24,9 @@ export class WorkflowExecutionsTab extends BasePage {
 		executionPreviewId: () =>
 			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
 		executionDebugButton: () => cy.getByTestId('execution-debug-button'),
+		workflowExecutionPreviewIframe: () => cy.getByTestId('workflow-preview-iframe'),
 	};
+
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
 			workflowPage.getters.canvasNodeByName(nodeName).click();
@@ -32,7 +34,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/run').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

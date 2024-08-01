@@ -60,7 +60,6 @@ import {
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { useToast } from '@/composables/useToast';
-import { pushConnection } from '@/mixins/pushConnection';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
@@ -69,6 +68,9 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defineComponent } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { usePushConnection } from '@/composables/usePushConnection';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -77,15 +79,15 @@ export default defineComponent({
 	components: {
 		CommunityPackageCard,
 	},
-	mixins: [pushConnection],
-	setup(props, ctx) {
+	setup() {
+		const router = useRouter();
+		const pushConnection = usePushConnection({ router });
 		const externalHooks = useExternalHooks();
 
 		return {
 			externalHooks,
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnection.setup?.(props, ctx),
+			pushConnection,
 		};
 	},
 	data() {
@@ -93,58 +95,8 @@ export default defineComponent({
 			loading: false,
 		};
 	},
-	async mounted() {
-		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
-		this.pushStore.pushConnect();
-
-		try {
-			this.loading = true;
-			await this.communityNodesStore.fetchInstalledPackages();
-
-			const installedPackages: PublicInstalledPackage[] =
-				this.communityNodesStore.getInstalledPackages;
-			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(
-				(p) => p.updateAvailable,
-			);
-			this.$telemetry.track('user viewed cnr settings page', {
-				num_of_packages_installed: installedPackages.length,
-				installed_packages: installedPackages.map((p) => {
-					return {
-						package_name: p.packageName,
-						package_version: p.installedVersion,
-						package_nodes: p.installedNodes.map((node) => `${node.name}-v${node.latestVersion}`),
-						is_update_available: p.updateAvailable !== undefined,
-					};
-				}),
-				packages_to_update: packagesToUpdate.map((p) => {
-					return {
-						package_name: p.packageName,
-						package_version_current: p.installedVersion,
-						package_version_available: p.updateAvailable,
-					};
-				}),
-				number_of_updates_available: packagesToUpdate.length,
-			});
-		} catch (error) {
-			this.showError(
-				error,
-				this.$locale.baseText('settings.communityNodes.fetchError.title'),
-				this.$locale.baseText('settings.communityNodes.fetchError.message'),
-			);
-		} finally {
-			this.loading = false;
-		}
-		try {
-			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
-		} finally {
-			this.loading = false;
-		}
-	},
-	beforeUnmount() {
-		this.pushStore.pushDisconnect();
-	},
 	computed: {
-		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore),
+		...mapStores(useCommunityNodesStore, useSettingsStore, useUIStore, usePushConnectionStore),
 		getEmptyStateDescription(): string {
 			const packageCount = this.communityNodesStore.availablePackageCount;
 
@@ -208,6 +160,59 @@ export default defineComponent({
 				hideButton: false,
 			};
 		},
+	},
+	beforeMount() {
+		this.pushConnection.initialize();
+		// The push connection is needed here to receive `reloadNodeType` and `removeNodeType` events when community nodes are installed, updated, or removed.
+		this.pushStore.pushConnect();
+	},
+	async mounted() {
+		try {
+			this.loading = true;
+			await this.communityNodesStore.fetchInstalledPackages();
+
+			const installedPackages: PublicInstalledPackage[] =
+				this.communityNodesStore.getInstalledPackages;
+			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(
+				(p) => p.updateAvailable,
+			);
+			this.$telemetry.track('user viewed cnr settings page', {
+				num_of_packages_installed: installedPackages.length,
+				installed_packages: installedPackages.map((p) => {
+					return {
+						package_name: p.packageName,
+						package_version: p.installedVersion,
+						package_nodes: p.installedNodes.map((node) => `${node.name}-v${node.latestVersion}`),
+						is_update_available: p.updateAvailable !== undefined,
+					};
+				}),
+				packages_to_update: packagesToUpdate.map((p) => {
+					return {
+						package_name: p.packageName,
+						package_version_current: p.installedVersion,
+						package_version_available: p.updateAvailable,
+					};
+				}),
+				number_of_updates_available: packagesToUpdate.length,
+			});
+		} catch (error) {
+			this.showError(
+				error,
+				this.$locale.baseText('settings.communityNodes.fetchError.title'),
+				this.$locale.baseText('settings.communityNodes.fetchError.message'),
+			);
+		} finally {
+			this.loading = false;
+		}
+		try {
+			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
+		} finally {
+			this.loading = false;
+		}
+	},
+	beforeUnmount() {
+		this.pushStore.pushDisconnect();
+		this.pushConnection.terminate();
 	},
 	methods: {
 		onClickEmptyStateButton(): void {

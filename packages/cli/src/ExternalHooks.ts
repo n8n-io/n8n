@@ -24,14 +24,12 @@ export class ExternalHooks {
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		this.dbCollections = {
 			User: userRepository,
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 	}
 
 	async init(): Promise<void> {
@@ -44,17 +42,7 @@ export class ExternalHooks {
 		this.initDidRun = true;
 	}
 
-	async reload(externalHooks?: IExternalHooksFileData) {
-		this.externalHooks = {};
-
-		if (externalHooks === undefined) {
-			await this.loadHooksFiles(true);
-		} else {
-			this.loadHooks(externalHooks);
-		}
-	}
-
-	async loadHooksFiles(reload = false) {
+	private async loadHooksFiles() {
 		const externalHookFiles = config.getEnv('externalHookFiles').split(':');
 
 		// Load all the provided hook-files
@@ -62,10 +50,6 @@ export class ExternalHooks {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
-					if (reload) {
-						delete require.cache[require.resolve(hookFilePath)];
-					}
-
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (e) {
@@ -80,7 +64,7 @@ export class ExternalHooks {
 		}
 	}
 
-	loadHooks(hookFileData: IExternalHooksFileData) {
+	private loadHooks(hookFileData: IExternalHooksFileData) {
 		for (const resource of Object.keys(hookFileData)) {
 			for (const operation of Object.keys(hookFileData[resource])) {
 				// Save all the hook functions directly under their string

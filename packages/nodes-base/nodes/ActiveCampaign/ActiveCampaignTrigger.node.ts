@@ -15,8 +15,7 @@ export class ActiveCampaignTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign Trigger',
 		name: 'activeCampaignTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:activeCampaign.png',
+		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle ActiveCampaign events via webhooks',

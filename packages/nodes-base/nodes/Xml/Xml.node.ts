@@ -12,6 +12,7 @@ export class Xml implements INodeType {
 		displayName: 'XML',
 		name: 'xml',
 		icon: 'fa:file-code',
+		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="jsonToxml" ? "JSON to XML" : "XML to JSON"}}',
@@ -75,7 +76,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['jsonToxml'],
@@ -149,7 +150,7 @@ export class Xml implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						mode: ['xmlToJson'],
@@ -279,7 +280,7 @@ export class Xml implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					items[itemIndex] = {
 						json: {
 							error: error.message,

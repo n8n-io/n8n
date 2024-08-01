@@ -5,8 +5,13 @@ import type {
 	IUserResponse,
 	InvitableRoleName,
 } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, IUserSettings } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
+
+export interface IUpdateUserSettingsReqPayload {
+	allowSSOManualLogin?: boolean;
+	userActivated?: boolean;
+}
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
@@ -93,27 +98,22 @@ export async function updateCurrentUser(
 		email: string;
 	},
 ): Promise<IUserResponse> {
-	return await makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings as IDataObject);
+	settings: IUpdateUserSettingsReqPayload,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
 
 export async function updateOtherUserSettings(
 	context: IRestApiContext,
 	userId: string,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return await makeRestApiRequest(
-		context,
-		'PATCH',
-		`/users/${userId}/settings`,
-		settings as IDataObject,
-	);
+	settings: IUpdateUserSettingsReqPayload,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
 export async function updateCurrentUserPassword(

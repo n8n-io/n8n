@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:model-value="uiStore.isModalOpen(name)"
+		:model-value="uiStore.modalsById[name].open"
 		:before-close="closeDialog"
 		:class="{
 			'dialog-wrapper': true,
@@ -54,13 +54,14 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { EventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
+import type { ModalKey } from '@/Interface';
 
 export default defineComponent({
 	name: 'Modal',
 	props: {
 		...ElDialog.props,
 		name: {
-			type: String,
+			type: String as PropType<ModalKey>,
 		},
 		title: {
 			type: String,
@@ -168,7 +169,7 @@ export default defineComponent({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.name)) {
+			if (!this.uiStore.isModalActiveById[this.name]) {
 				return;
 			}
 
@@ -177,7 +178,7 @@ export default defineComponent({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.name)) {
+			if (this.uiStore.isModalActiveById[this.name]) {
 				this.$emit('enter');
 			}
 		},

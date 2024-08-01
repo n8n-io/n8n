@@ -8,7 +8,7 @@ vi.mock('@/stores/ui.store', () => ({
 	useUIStore: vi.fn(() => ({
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
-		isActionActive: vi.fn(),
+		isActionActive: vi.fn().mockReturnValue(() => true),
 	})),
 }));
 
@@ -62,14 +62,14 @@ describe('useCanvasPanning()', () => {
 			vi.mocked(useUIStore).mockReturnValueOnce({
 				nodeViewOffsetPosition: [0, 0],
 				nodeViewMoveInProgress: true,
-				isActionActive: vi.fn(),
+				isActionActive: vi.fn().mockReturnValue(() => true),
 			} as unknown as ReturnType<typeof useUIStore>);
 
 			const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 			const { onMouseDown, onMouseMove, onMouseUp } = useCanvasPanning(elementRef);
 
 			onMouseDown(new MouseEvent('mousedown', { button: 1 }), true);
-			onMouseUp(new MouseEvent('mouseup'));
+			onMouseUp();
 
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('mousemove', onMouseMove);
 		});

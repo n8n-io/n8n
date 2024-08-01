@@ -7,6 +7,8 @@ import type { IncomingHttpHeaders } from 'http';
 import type { SecureContextOptions } from 'tls';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
+import type { RequestBodyMatcher } from 'nock';
+import type { Client as SSHClient } from 'ssh2';
 
 import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
@@ -17,6 +19,7 @@ import type { Workflow } from './Workflow';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
+import type { ExecutionCancelledError } from './errors';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
@@ -39,7 +42,7 @@ export type IAllExecuteFunctions =
 
 export type BinaryFileType = 'text' | 'json' | 'image' | 'audio' | 'video' | 'pdf' | 'html';
 export interface IBinaryData {
-	[key: string]: string | undefined;
+	[key: string]: string | number | undefined;
 	data: string;
 	mimeType: string;
 	fileType?: BinaryFileType;
@@ -68,7 +71,7 @@ export interface IConnection {
 	node: string;
 
 	// The type of the input on destination node (for example "main")
-	type: string;
+	type: NodeConnectionType;
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;
@@ -78,6 +81,7 @@ export type ExecutionError =
 	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
+	| ExecutionCancelledError
 	| NodeOperationError
 	| NodeApiError;
 
@@ -116,13 +120,21 @@ export interface IUser {
 	lastName: string;
 }
 
+export type ProjectSharingData = {
+	id: string;
+	name: string | null;
+	type: 'personal' | 'team' | 'public';
+	createdAt: string;
+	updatedAt: string;
+};
+
 export interface ICredentialsDecrypted {
 	id: string;
 	name: string;
 	type: string;
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IUser;
-	sharedWith?: IUser[];
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface ICredentialsEncrypted {
@@ -208,6 +220,8 @@ export abstract class ICredentialsHelper {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void>;
+
+	abstract getCredentialsProperties(type: string): INodeProperties[];
 }
 
 export interface IAuthenticateBase {
@@ -299,8 +313,8 @@ type ICredentialHttpRequestNode = {
 export interface ICredentialType {
 	name: string;
 	displayName: string;
-	icon?: string;
-	iconUrl?: string;
+	icon?: Icon;
+	iconUrl?: Themed<string>;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -330,7 +344,13 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
+export type CredentialInformation =
+	| string
+	| string[]
+	| number
+	| boolean
+	| IDataObject
+	| IDataObject[];
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
@@ -392,7 +412,7 @@ export interface IGetExecuteTriggerFunctions {
 }
 
 export interface IRunNodeResponse {
-	data: INodeExecutionData[][] | null | undefined;
+	data: INodeExecutionData[][] | NodeExecutionOutput | null | undefined;
 	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
@@ -446,6 +466,7 @@ export interface IGetExecuteWebhookFunctions {
 		mode: WorkflowExecuteMode,
 		webhookData: IWebhookData,
 		closeFunctions: CloseFunction[],
+		runExecutionData: IRunExecutionData | null,
 	): IWebhookFunctions;
 }
 
@@ -606,8 +627,11 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 	};
 }
 
+export type EnsureTypeOptions = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'json';
 export interface IGetNodeParameterOptions {
 	contextNode?: INode;
+	// make sure that returned value would be of specified type, converts it if needed
+	ensureType?: EnsureTypeOptions;
 	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
 	// get raw value of parameter with unresolved expressions
@@ -697,7 +721,7 @@ export type ICredentialTestFunction = (
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
-	helpers: {
+	helpers: SSHTunnelFunctions & {
 		request: (uriOrObject: string | object, options?: object) => Promise<any>;
 	};
 }
@@ -729,6 +753,7 @@ export interface BinaryHelperFunctions {
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
+	binaryToString(body: Buffer | Readable, encoding?: BufferEncoding): Promise<string>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	getBinaryMetadata(binaryDataId: string): Promise<{
@@ -796,6 +821,36 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 }
 
+export type SSHCredentials = {
+	sshHost: string;
+	sshPort: number;
+	sshUser: string;
+} & (
+	| {
+			sshAuthenticateWith: 'password';
+			sshPassword: string;
+	  }
+	| {
+			sshAuthenticateWith: 'privateKey';
+			// TODO: rename this to `sshPrivateKey`
+			privateKey: string;
+			// TODO: rename this to `sshPassphrase`
+			passphrase?: string;
+	  }
+);
+
+export interface SSHTunnelFunctions {
+	getSSHClient(credentials: SSHCredentials): Promise<SSHClient>;
+}
+
+type CronUnit = number | '*' | `*/${number}`;
+export type CronExpression =
+	`${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit} ${CronUnit}`;
+
+export interface SchedulingFunctions {
+	registerCron(cronExpression: CronExpression, onTick: () => void): void;
+}
+
 export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
@@ -805,6 +860,7 @@ export type NodeTypeAndVersion = {
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
@@ -815,6 +871,7 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	getChildNodes(nodeName: string): NodeTypeAndVersion[];
 	getParentNodes(nodeName: string): NodeTypeAndVersion[];
+	getKnownNodeTypes(): IDataObject;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 
@@ -829,7 +886,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(): boolean;
+	continueOnFail(error?: Error): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -854,6 +911,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputIndex?: number,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getNodeInputs(): INodeInputConfiguration[];
 		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
@@ -876,6 +934,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
 			FileSystemHelperFunctions &
+			SSHTunnelFunctions &
 			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -925,7 +984,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
-	helpers: RequestHelperFunctions;
+	helpers: RequestHelperFunctions & SSHTunnelFunctions;
 }
 
 export interface IPollFunctions
@@ -944,6 +1003,7 @@ export interface IPollFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -963,6 +1023,8 @@ export interface ITriggerFunctions
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
+		SSHTunnelFunctions &
+		SchedulingFunctions &
 		JsonHelperFunctions;
 }
 
@@ -1109,6 +1171,9 @@ export type NodeParameterValueType =
 	| NodeParameterValue
 	| INodeParameters
 	| INodeParameterResourceLocator
+	| ResourceMapperValue
+	| FilterValue
+	| AssignmentCollectionValue
 	| NodeParameterValue[]
 	| INodeParameters[]
 	| INodeParameterResourceLocator[]
@@ -1232,7 +1297,8 @@ export type DisplayCondition =
 	| { _cnd: { startsWith: string } }
 	| { _cnd: { endsWith: string } }
 	| { _cnd: { includes: string } }
-	| { _cnd: { regex: string } };
+	| { _cnd: { regex: string } }
+	| { _cnd: { exists: true } };
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1250,7 +1316,6 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'@version'?: number[];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
@@ -1383,14 +1448,10 @@ export type IParameterLabel = {
 	size?: 'small' | 'medium';
 };
 
-export interface IPollResponse {
-	closeFunction?: CloseFunction;
-}
-
 export interface ITriggerResponse {
 	closeFunction?: CloseFunction;
 	// To manually trigger the run
-	manualTriggerFunction?: CloseFunction;
+	manualTriggerFunction?: () => Promise<void>;
 	// Gets added automatically at manual workflow runs resolves with
 	// the first emitted data
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
@@ -1404,6 +1465,7 @@ export namespace MultiPartFormData {
 		mimetype?: string;
 		originalFilename?: string;
 		newFilename: string;
+		size?: number;
 	}
 
 	export type Request = express.Request<
@@ -1420,6 +1482,20 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+}
+
+export class NodeExecutionOutput extends Array {
+	private hints: NodeExecutionHint[];
+
+	constructor(data: INodeExecutionData[][], hints: NodeExecutionHint[] = []) {
+		super();
+		this.push(...data);
+		this.hints = hints;
+	}
+
+	public getHints(): NodeExecutionHint[] {
+		return this.hints;
+	}
 }
 
 export interface INodeType {
@@ -1487,6 +1563,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
+	displayName?: string;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
@@ -1500,7 +1577,7 @@ export interface INodeIssueObjectProperty {
 export interface INodeIssueData {
 	node: string;
 	type: INodeIssueTypes;
-	value: boolean | string | string[] | INodeIssueObjectProperty;
+	value: null | boolean | string | string[] | INodeIssueObjectProperty;
 }
 
 export interface INodeIssues {
@@ -1516,12 +1593,34 @@ export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
+export type NodeIconColor =
+	| 'gray'
+	| 'black'
+	| 'blue'
+	| 'light-blue'
+	| 'dark-blue'
+	| 'orange'
+	| 'orange-red'
+	| 'pink-red'
+	| 'red'
+	| 'light-green'
+	| 'green'
+	| 'dark-green'
+	| 'azure'
+	| 'purple'
+	| 'crimson';
+export type Themed<T> = T | { light: T; dark: T };
+export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconFile = `file:${string}.png` | `file:${string}.svg`;
+export type Icon = IconRef | Themed<IconFile>;
+
 export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
-	icon?: string;
-	iconUrl?: string;
-	badgeIconUrl?: string;
+	icon?: Icon;
+	iconColor?: NodeIconColor;
+	iconUrl?: Themed<string>;
+	badgeIconUrl?: Themed<string>;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1651,31 +1750,45 @@ export type ConnectionTypes =
 	| 'main';
 
 export const enum NodeConnectionType {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiAgent = 'ai_agent',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiChain = 'ai_chain',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiDocument = 'ai_document',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiEmbedding = 'ai_embedding',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiLanguageModel = 'ai_languageModel',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiMemory = 'ai_memory',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiOutputParser = 'ai_outputParser',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiRetriever = 'ai_retriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTextSplitter = 'ai_textSplitter',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	AiVectorStore = 'ai_vectorStore',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	Main = 'main',
 }
+
+export const nodeConnectionTypes: NodeConnectionType[] = [
+	NodeConnectionType.AiAgent,
+	NodeConnectionType.AiChain,
+	NodeConnectionType.AiDocument,
+	NodeConnectionType.AiEmbedding,
+	NodeConnectionType.AiLanguageModel,
+	NodeConnectionType.AiMemory,
+	NodeConnectionType.AiOutputParser,
+	NodeConnectionType.AiRetriever,
+	NodeConnectionType.AiTextSplitter,
+	NodeConnectionType.AiTool,
+	NodeConnectionType.AiVectorStore,
+	NodeConnectionType.Main,
+];
 
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
@@ -1685,29 +1798,41 @@ export interface INodeInputFilter {
 }
 
 export interface INodeInputConfiguration {
-	displayName?: string;
-	maxConnections?: number;
-	required?: boolean;
-	filter?: INodeInputFilter;
-	type: ConnectionTypes;
-}
-
-export interface INodeOutputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
+	filter?: INodeInputFilter;
+	maxConnections?: number;
 }
+
+export interface INodeOutputConfiguration {
+	category?: 'error';
+	displayName?: string;
+	maxConnections?: number;
+	required?: boolean;
+	type: ConnectionTypes;
+}
+
+export type ExpressionString = `={{${string}}}`;
+
+export type NodeDefaults = Partial<{
+	/**
+	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
+	 */
+	color: string;
+	name: string;
+}>;
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
-	defaults: INodeParameters;
+	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
+	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -1724,27 +1849,28 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	webhooks?: IWebhookDescription[];
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
-	triggerPanel?:
-		| {
-				hideContent?: boolean | string;
-				header?: string;
-				executionsHelp?:
-					| string
-					| {
-							active: string;
-							inactive: string;
-					  };
-				activationHint?:
-					| string
-					| {
-							active: string;
-							inactive: string;
-					  };
-		  }
-		| boolean;
+	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
+	hints?: NodeHint[];
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
+
+export type TriggerPanelDefinition = {
+	hideContent?: boolean | string;
+	header?: string;
+	executionsHelp?: string | { active: string; inactive: string };
+	activationHint?: string | { active: string; inactive: string };
+};
+
+export type NodeHint = {
+	message: string;
+	type?: 'info' | 'warning' | 'danger';
+	location?: 'outputPane' | 'inputPane' | 'ndv';
+	displayCondition?: string;
+	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+};
+
+export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
 
 export interface INodeHookDescription {
 	method: string;
@@ -1833,11 +1959,12 @@ export interface IWebhookResponseData {
 }
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
-export type WebhookResponseMode = 'onReceived' | 'lastNode';
+export type WebhookResponseMode = 'onReceived' | 'lastNode' | 'responseNode';
 
 export interface INodeTypes {
 	getByName(nodeType: string): INodeType | IVersionedNodeType;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType;
+	getKnownTypes(): IDataObject;
 }
 
 export type LoadingDetails = {
@@ -1926,6 +2053,7 @@ export interface ITaskData {
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
+	hints?: NodeExecutionHint[];
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
 	metadata?: ITaskMetadata;
 }
@@ -2017,26 +2145,30 @@ export const eventNamesAiNodes = [
 	'n8n.ai.tool.called',
 	'n8n.ai.vector.store.searched',
 	'n8n.ai.llm.generated',
+	'n8n.ai.llm.error',
 	'n8n.ai.vector.store.populated',
+	'n8n.ai.vector.store.updated',
 ] as const;
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
+
+export interface ExecuteWorkflowOptions {
+	node?: INode;
+	parentWorkflowId: string;
+	inputData?: INodeExecutionData[];
+	parentExecutionId?: string;
+	loadedWorkflowData?: IWorkflowBase;
+	loadedRunData?: any;
+	parentWorkflowSettings?: IWorkflowSettings;
+	parentCallbackManager?: CallbackManager;
+}
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		options: {
-			node?: INode;
-			parentWorkflowId: string;
-			inputData?: INodeExecutionData[];
-			parentExecutionId?: string;
-			loadedWorkflowData?: IWorkflowBase;
-			loadedRunData?: any;
-			parentWorkflowSettings?: IWorkflowSettings;
-			parentCallbackManager?: CallbackManager;
-		},
+		options: ExecuteWorkflowOptions,
 	) => Promise<any>;
 	executionId?: string;
 	restartExecutionId?: string;
@@ -2053,7 +2185,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
+	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (
@@ -2126,6 +2258,7 @@ export interface WorkflowTestData {
 	};
 	output: {
 		nodeExecutionOrder?: string[];
+		testAllOutputs?: boolean;
 		nodeData: {
 			[key: string]: any[][];
 		};
@@ -2133,10 +2266,11 @@ export interface WorkflowTestData {
 	nock?: {
 		baseUrl: string;
 		mocks: Array<{
-			method: string;
+			method: 'get' | 'post';
 			path: string;
+			requestBody?: RequestBodyMatcher;
 			statusCode: number;
-			responseBody: any;
+			responseBody: string | object;
 		}>;
 	};
 	trigger?: {
@@ -2234,6 +2368,9 @@ export interface INodeGraphItem {
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	toolSettings?: IDataObject; //various langchain tool's settings
+	sql?: string; //merge node combineBySql, cloud only
+	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
 }
 
 export interface INodeNameIndex {
@@ -2300,7 +2437,7 @@ export interface ExecutionSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
-	status?: ExecutionStatus;
+	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
@@ -2334,24 +2471,31 @@ export interface ResourceMapperField {
 	readOnly?: boolean;
 }
 
-export type FieldType =
-	| 'string'
-	| 'string-alphanumeric'
-	| 'number'
-	| 'dateTime'
-	| 'boolean'
-	| 'time'
-	| 'array'
-	| 'object'
-	| 'options'
-	| 'url'
-	| 'jwt';
-
-export type ValidationResult = {
-	valid: boolean;
-	errorMessage?: string;
-	newValue?: string | number | boolean | object | null | undefined;
+export type FieldTypeMap = {
+	// eslint-disable-next-line id-denylist
+	boolean: boolean;
+	// eslint-disable-next-line id-denylist
+	number: number;
+	// eslint-disable-next-line id-denylist
+	string: string;
+	'string-alphanumeric': string;
+	dateTime: string;
+	time: string;
+	array: unknown[];
+	object: object;
+	options: any;
+	url: string;
+	jwt: string;
 };
+
+export type FieldType = keyof FieldTypeMap;
+
+export type ValidationResult<T extends FieldType = FieldType> =
+	| { valid: false; errorMessage: string }
+	| {
+			valid: true;
+			newValue?: FieldTypeMap[T];
+	  };
 
 export type ResourceMapperValue = {
 	mappingMode: string;
@@ -2378,9 +2522,9 @@ export interface FilterOperatorValue {
 
 export type FilterConditionValue = {
 	id: string;
-	leftValue: unknown;
+	leftValue: NodeParameterValue | NodeParameterValue[];
 	operator: FilterOperatorValue;
-	rightValue: unknown;
+	rightValue: NodeParameterValue | NodeParameterValue[];
 };
 
 export type FilterOptionsValue = {
@@ -2433,11 +2577,21 @@ export interface IUserManagementSettings {
 	authenticationMethod: AuthenticationMethod;
 }
 
+export type NpsSurveyRespondedState = { lastShownAt: number; responded: true };
+export type NpsSurveyWaitingState = {
+	lastShownAt: number;
+	waitingForResponse: true;
+	ignoredCount: number;
+};
+export type NpsSurveyState = NpsSurveyRespondedState | NpsSurveyWaitingState;
+
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
 	userActivated?: boolean;
+	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
+	npsSurvey?: NpsSurveyState;
 }
 
 export interface IPublicApiSettings {
@@ -2454,6 +2608,8 @@ export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
+	isDocker?: boolean;
+	databaseType: 'sqlite' | 'mariadb' | 'mysqldb' | 'postgresdb';
 	endpointForm: string;
 	endpointFormTest: string;
 	endpointFormWaiting: string;
@@ -2462,6 +2618,7 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
+	saveExecutionProgress: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	workflowCallerPolicyDefaultOption: WorkflowSettings.CallerPolicy;
@@ -2473,10 +2630,12 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	nodeJsVersion: string;
+	concurrency: number;
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: string;
+	binaryDataMode: 'default' | 'filesystem' | 's3';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -2515,7 +2674,6 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		host: string;
 	};
-	onboardingCallPromptEnabled: boolean;
 	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
@@ -2544,9 +2702,16 @@ export interface IN8nUISettings {
 		workflowHistory: boolean;
 		workerView: boolean;
 		advancedPermissions: boolean;
+		projects: {
+			team: {
+				limit: number;
+			};
+		};
 	};
 	hideUsagePage: boolean;
 	license: {
+		planName?: string;
+		consumerId: string;
 		environment: 'development' | 'production' | 'staging';
 	};
 	variables: {
@@ -2563,12 +2728,18 @@ export interface IN8nUISettings {
 	};
 	ai: {
 		enabled: boolean;
-		provider: string;
-		errorDebugging: boolean;
 	};
 	workflowHistory: {
 		pruneTime: number;
 		licensePruneTime: number;
+	};
+	pruning: {
+		isEnabled: boolean;
+		maxAge: number;
+		maxCount: number;
+	};
+	security: {
+		blockFileAccessToN8nFiles: boolean;
 	};
 }
 

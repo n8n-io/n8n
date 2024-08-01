@@ -2,107 +2,156 @@ import type {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	IVersionedNodeType,
 	IConnections,
 	IDataObject,
 	INode,
 	IPinData,
 	IWorkflowSettings,
+	LoadedClass,
+	INodeTypeDescription,
+	INodeIssues,
 } from 'n8n-workflow';
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
-import { defaultMockNodeTypes } from '@/__tests__/defaults';
-import type {
-	INodeUi,
-	ITag,
-	IUsedCredential,
-	IUser,
-	IWorkflowDb,
-	WorkflowMetadata,
-} from '@/Interface';
+import { mock } from 'vitest-mock-extended';
 
-export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
-	const getResolvedKey = (key: string) => {
-		const resolvedKeyParts = key.split(/[\/.]/);
-		return resolvedKeyParts[resolvedKeyParts.length - 1];
-	};
+import {
+	AGENT_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	CODE_NODE_TYPE,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NO_OP_NODE_TYPE,
+	SET_NODE_TYPE,
+	STICKY_NODE_TYPE,
+} from '@/constants';
+import type { INodeUi } from '@/Interface';
 
-	const nodeTypes = {
-		...defaultMockNodeTypes,
-		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
-			acc[getResolvedKey(key)] = data[key];
+export const mockNode = ({
+	id = uuid(),
+	name,
+	type,
+	position = [0, 0],
+	disabled = false,
+	issues = undefined,
+	typeVersion = 1,
+	parameters = {},
+}: {
+	id?: INodeUi['id'];
+	name: INodeUi['name'];
+	type: INodeUi['type'];
+	position?: INodeUi['position'];
+	disabled?: INodeUi['disabled'];
+	issues?: INodeIssues;
+	typeVersion?: INodeUi['typeVersion'];
+	parameters?: INodeUi['parameters'];
+}) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
 
-			return acc;
-		}, {}),
-	};
+export const mockNodeTypeDescription = ({
+	name,
+	version = 1,
+	credentials = [],
+	inputs = ['main'],
+	outputs = ['main'],
+}: {
+	name: INodeTypeDescription['name'];
+	version?: INodeTypeDescription['version'];
+	credentials?: INodeTypeDescription['credentials'];
+	inputs?: INodeTypeDescription['inputs'];
+	outputs?: INodeTypeDescription['outputs'];
+}) =>
+	mock<INodeTypeDescription>({
+		name,
+		displayName: name,
+		version,
+		defaults: {
+			name,
+		},
+		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
+		properties: [],
+		maxNodes: Infinity,
+		group: EXECUTABLE_TRIGGER_NODE_TYPES.includes(name) ? ['trigger'] : [],
+		inputs,
+		outputs,
+		credentials,
+		documentationUrl: 'https://docs',
+		webhooks: undefined,
+	});
 
-	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[getResolvedKey(nodeType)].type;
-	}
+export const mockLoadedNodeType = (name: string) =>
+	mock<LoadedClass<INodeType>>({
+		type: mock<INodeType>({
+			// @ts-expect-error
+			description: mockNodeTypeDescription({ name }),
+		}),
+	});
 
-	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(getByName(nodeType), version);
-	}
+export const mockNodes = [
+	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Set', type: SET_NODE_TYPE }),
+	mockNode({ name: 'Code', type: CODE_NODE_TYPE }),
+	mockNode({ name: 'Rename', type: SET_NODE_TYPE }),
+	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
+	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
+];
 
-	return {
-		getByName,
-		getByNameAndVersion,
-	};
-}
+export const defaultNodeTypes = mockNodes.reduce<INodeTypeData>((acc, { type }) => {
+	acc[type] = mockLoadedNodeType(type);
+	return acc;
+}, {});
 
-export function createTestWorkflowObject(options: {
+export const defaultNodeDescriptions = Object.values(defaultNodeTypes).map(
+	({ type }) => type.description,
+) as INodeTypeDescription[];
+
+const nodeTypes = mock<INodeTypes>({
+	getByName(nodeType) {
+		return defaultNodeTypes[nodeType].type;
+	},
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		return NodeHelpers.getVersionedNodeType(defaultNodeTypes[nodeType].type, version);
+	},
+});
+
+export function createTestWorkflowObject({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	staticData = {},
+	settings = {},
+	pinData = {},
+}: {
 	id?: string;
 	name?: string;
-	nodes: INode[];
-	connections: IConnections;
+	nodes?: INode[];
+	connections?: IConnections;
 	active?: boolean;
-	nodeTypes?: INodeTypeData;
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
-}) {
+} = {}) {
 	return new Workflow({
-		...options,
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		nodeTypes: createTestNodeTypes(options.nodeTypes),
-		connections: options.connections ?? {},
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		staticData,
+		settings,
+		pinData,
+		nodeTypes,
 	});
 }
 
-export function createTestWorkflow(options: {
-	id?: string;
-	name: string;
-	active?: boolean;
-	createdAt?: number | string;
-	updatedAt?: number | string;
-	nodes?: INodeUi[];
-	connections?: IConnections;
-	settings?: IWorkflowSettings;
-	tags?: ITag[] | string[];
-	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
-	versionId?: string;
-	usedCredentials?: IUsedCredential[];
-	meta?: WorkflowMetadata;
-}): IWorkflowDb {
-	return {
-		...options,
-		createdAt: options.createdAt ?? '',
-		updatedAt: options.updatedAt ?? '',
-		versionId: options.versionId ?? '',
-		id: options.id ?? uuid(),
-		active: options.active ?? false,
-		connections: options.connections ?? {},
-	} as IWorkflowDb;
-}
-
-export function createTestNode(
-	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
-): INode {
+export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
+		name: 'Node',
+		type: 'n8n-nodes-base.test',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},

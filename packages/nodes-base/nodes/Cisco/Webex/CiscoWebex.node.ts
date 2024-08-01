@@ -489,7 +489,7 @@ export class CiscoWebex implements INodeType {
 
 				returnData.push(...(responseData as INodeExecutionData[]));
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.toString(), json: {}, itemIndex: i });
 					continue;
 				}
@@ -548,7 +548,7 @@ export class CiscoWebex implements INodeType {
 		// 					returnData.push(...responseData.items);
 		// 				}
 		// 			} catch (error) {
-		// 				if (this.continueOnFail()) {
+		// 				if (this.continueOnFail(error)) {
 		// 					returnData.push({
 		// 						error: error.message,
 		// 					});

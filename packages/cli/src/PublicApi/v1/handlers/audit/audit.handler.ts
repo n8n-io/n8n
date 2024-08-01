@@ -1,11 +1,11 @@
-import { authorize } from '@/PublicApi/v1/shared/middlewares/global.middleware';
+import { globalScope } from '@/PublicApi/v1/shared/middlewares/global.middleware';
 import type { Response } from 'express';
 import type { AuditRequest } from '@/PublicApi/types';
 import Container from 'typedi';
 
 export = {
 	generateAudit: [
-		authorize(['global:owner', 'global:admin']),
+		globalScope('securityAudit:generate'),
 		async (req: AuditRequest.Generate, res: Response): Promise<Response> => {
 			try {
 				const { SecurityAuditService } = await import('@/security-audit/SecurityAudit.service');

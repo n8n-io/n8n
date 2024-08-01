@@ -21,7 +21,7 @@ export async function execute(
 		conn.execute({
 			sqlText,
 			binds,
-			complete: (error, stmt, rows) => (error ? reject(error) : resolve(rows)),
+			complete: (error, _, rows) => (error ? reject(error) : resolve(rows)),
 		});
 	});
 }

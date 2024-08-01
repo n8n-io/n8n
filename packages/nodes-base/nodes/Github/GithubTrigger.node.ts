@@ -16,7 +16,7 @@ export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Trigger',
 		name: 'githubTrigger',
-		icon: 'file:github.svg',
+		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		subtitle:
@@ -438,7 +438,7 @@ export class GithubTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

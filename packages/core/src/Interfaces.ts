@@ -1,5 +1,4 @@
 import type {
-	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	ValidationResult,
@@ -18,7 +17,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 }
 
 export interface IWorkflowData {
-	pollResponses?: IPollResponse[];
 	triggerResponses?: ITriggerResponse[];
 }
 
@@ -37,4 +35,4 @@ export namespace n8n {
 	}
 }
 
-export type ExtendedValidationResult = Partial<ValidationResult> & { fieldName?: string };
+export type ExtendedValidationResult = ValidationResult & { fieldName?: string };

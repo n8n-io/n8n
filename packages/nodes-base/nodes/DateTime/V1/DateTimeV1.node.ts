@@ -203,7 +203,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -362,7 +362,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -570,7 +570,7 @@ export class DateTimeV1 implements INodeType {
 					returnData.push(newItem);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: error.message,

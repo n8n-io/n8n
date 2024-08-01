@@ -11,13 +11,20 @@ import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { Logger } from '@/Logger';
 import { Push } from '@/push';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { mockInstance } from '../../shared/mocking';
 import type { WorkflowActivateMode } from 'n8n-workflow';
+import { RedisClientService } from '@/services/redis/redis-client.service';
+import type Redis from 'ioredis';
+import { mock } from 'jest-mock-extended';
+
+const redisClientService = mockInstance(RedisClientService);
+const mockRedisClient = mock<Redis>();
+redisClientService.createClient.mockReturnValue(mockRedisClient);
 
 const os = Container.get(OrchestrationService);
 const handler = Container.get(OrchestrationHandlerMainService);
-mockInstance(ActiveWorkflowRunner);
+mockInstance(ActiveWorkflowManager);
 
 let queueModeId: string;
 
@@ -26,7 +33,7 @@ function setDefaultConfig() {
 	config.set('generic.instanceType', 'main');
 }
 
-const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
+const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 	senderId: 'test',
 	workerId: 'test',
 	command: 'restartEventBus',
@@ -43,20 +50,6 @@ describe('Orchestration Service', () => {
 	const eventBus = mockInstance(MessageEventBus);
 
 	beforeAll(async () => {
-		jest.mock('ioredis', () => {
-			const Redis = require('ioredis-mock');
-			if (typeof Redis === 'object') {
-				// the first mock is an ioredis shim because ioredis-mock depends on it
-				// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
-				return {
-					Command: { _transformer: { argument: {}, reply: {} } },
-				};
-			}
-			// second mock for our code
-			return function (...args: any) {
-				return new Redis(args);
-			};
-		});
 		jest.mock('@/services/redis/RedisServicePubSubPublisher', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
@@ -95,7 +88,7 @@ describe('Orchestration Service', () => {
 
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
-			JSON.stringify(workerRestartEventbusResponse),
+			JSON.stringify(workerRestartEventBusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
 	});
@@ -115,7 +108,7 @@ describe('Orchestration Service', () => {
 
 	test('should reject command messages from itself', async () => {
 		const response = await handleCommandMessageMain(
-			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
+			JSON.stringify({ ...workerRestartEventBusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
@@ -148,12 +141,12 @@ describe('Orchestration Service', () => {
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
-		expect(res2!.payload!.result).toEqual('debounced');
+		expect((res2!.payload as { result: string }).result).toEqual('debounced');
 	});
 
 	describe('shouldAddWebhooks', () => {
 		beforeEach(() => {
-			config.set('multiMainSetup.instanceType', 'leader');
+			config.set('instanceRole', 'leader');
 		});
 		test('should return true for init', () => {
 			// We want to ensure that webhooks are populated on init
@@ -176,7 +169,7 @@ describe('Orchestration Service', () => {
 		});
 
 		test('should return false for update or activate when not leader', () => {
-			config.set('multiMainSetup.instanceType', 'follower');
+			config.set('instanceRole', 'follower');
 			const modes = ['update', 'activate'] as WorkflowActivateMode[];
 			for (const mode of modes) {
 				const result = os.shouldAddWebhooks(mode);

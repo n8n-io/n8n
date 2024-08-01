@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { Ollama } from '@langchain/community/llms/ollama';
-import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 
 export class LmOllama implements INodeType {
@@ -28,6 +28,7 @@ export class LmOllama implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -60,10 +61,11 @@ export class LmOllama implements INodeType {
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

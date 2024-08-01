@@ -1,6 +1,6 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { Response } from 'express';
+import { type RequestHandler, Response } from 'express';
 import { randomBytes } from 'crypto';
 
 import { AuthService } from '@/auth/auth.service';
@@ -22,6 +22,18 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { isApiEnabled } from '@/PublicApi';
+import { EventService } from '@/eventbus/event.service';
+
+export const API_KEY_PREFIX = 'n8n_api_';
+
+export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
+	if (isApiEnabled()) {
+		next();
+	} else {
+		res.status(404).end();
+	}
+};
 
 @RestController('/me')
 export class MeController {
@@ -33,6 +45,7 @@ export class MeController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -41,7 +54,7 @@ export class MeController {
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
 		const { id: userId, email: currentEmail } = req.user;
-		const payload = plainToInstance(UserUpdatePayload, req.body);
+		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
 		if (!email) {
@@ -87,11 +100,9 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const updatedKeys = Object.keys(payload);
-		void this.internalHooks.onUserUpdate({
-			user,
-			fields_changed: updatedKeys,
-		});
+		const fieldsChanged = Object.keys(payload);
+		this.internalHooks.onUserUpdate({ user, fields_changed: fieldsChanged });
+		this.eventService.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
 
@@ -140,10 +151,8 @@ export class MeController {
 
 		this.authService.issueCookie(res, updatedUser, req.browserId);
 
-		void this.internalHooks.onUserUpdate({
-			user: updatedUser,
-			fields_changed: ['password'],
-		});
+		this.internalHooks.onUserUpdate({ user: updatedUser, fields_changed: ['password'] });
+		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
@@ -177,7 +186,7 @@ export class MeController {
 
 		this.logger.info('User survey updated successfully', { userId: req.user.id });
 
-		void this.internalHooks.onPersonalizationSurveySubmitted(req.user.id, personalizationAnswers);
+		this.internalHooks.onPersonalizationSurveySubmitted(req.user.id, personalizationAnswers);
 
 		return { success: true };
 	}
@@ -185,16 +194,13 @@ export class MeController {
 	/**
 	 * Creates an API Key
 	 */
-	@Post('/api-key')
+	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
 		await this.userService.update(req.user.id, { apiKey });
 
-		void this.internalHooks.onApiKeyCreated({
-			user: req.user,
-			public_api: false,
-		});
+		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
 		return { apiKey };
 	}
@@ -202,22 +208,20 @@ export class MeController {
 	/**
 	 * Get an API Key
 	 */
-	@Get('/api-key')
+	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKey(req: AuthenticatedRequest) {
-		return { apiKey: req.user.apiKey };
+		const apiKey = this.redactApiKey(req.user.apiKey);
+		return { apiKey };
 	}
 
 	/**
 	 * Deletes an API Key
 	 */
-	@Delete('/api-key')
+	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
 	async deleteAPIKey(req: AuthenticatedRequest) {
 		await this.userService.update(req.user.id, { apiKey: null });
 
-		void this.internalHooks.onApiKeyDeleted({
-			user: req.user,
-			public_api: false,
-		});
+		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 
 		return { success: true };
 	}
@@ -227,7 +231,9 @@ export class MeController {
 	 */
 	@Patch('/settings')
 	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
-		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
+		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
+			excludeExtraneousValues: true,
+		});
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
@@ -238,5 +244,15 @@ export class MeController {
 		});
 
 		return user.settings;
+	}
+
+	private redactApiKey(apiKey: string | null) {
+		if (!apiKey) return;
+		const keepLength = 5;
+		return (
+			API_KEY_PREFIX +
+			apiKey.slice(API_KEY_PREFIX.length, API_KEY_PREFIX.length + keepLength) +
+			'*'.repeat(apiKey.length - API_KEY_PREFIX.length - keepLength)
+		);
 	}
 }

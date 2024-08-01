@@ -26,6 +26,7 @@ import {
 
 import type { User } from '@/databases/entities/User';
 import type { UserInvitationResult } from '../../shared/utils/users';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);
@@ -36,9 +37,11 @@ describe('InvitationController', () => {
 
 	let instanceOwner: User;
 	let userRepository: UserRepository;
+	let projectRelationRepository: ProjectRelationRepository;
 
 	beforeAll(async () => {
 		userRepository = Container.get(UserRepository);
+		projectRelationRepository = Container.get(ProjectRelationRepository);
 		instanceOwner = await createOwner();
 	});
 
@@ -269,6 +272,39 @@ describe('InvitationController', () => {
 			});
 
 			assertStoredUserProps(storedUser);
+		});
+
+		test('should create personal project for shell account', async () => {
+			mailer.invite.mockResolvedValue({ emailSent: false });
+
+			const response: InvitationResponse = await testServer
+				.authAgentFor(instanceOwner)
+				.post('/invitations')
+				.send([{ email: randomEmail() }])
+				.expect(200);
+
+			const [result] = response.body.data;
+
+			const storedUser = await userRepository.findOneByOrFail({
+				id: result.user.id,
+			});
+
+			assertStoredUserProps(storedUser);
+
+			const projectRelation = await projectRelationRepository.findOneOrFail({
+				where: {
+					userId: storedUser.id,
+					role: 'project:personalOwner',
+					project: {
+						type: 'personal',
+					},
+				},
+				relations: { project: true },
+			});
+
+			expect(projectRelation).not.toBeUndefined();
+			expect(projectRelation.project.name).toBe(storedUser.createPersonalProjectName());
+			expect(projectRelation.project.type).toBe('personal');
 		});
 
 		test('should create admin shell when advanced permissions is licensed', async () => {
