@@ -403,10 +403,10 @@ function copySuccess() {
 	});
 }
 
-// TODO: Rename to something more specific
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
+	const node = props.error.node || ndvStore.activeNode;
 	const errorPayload: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
@@ -415,7 +415,7 @@ async function onAskAssistantClick() {
 			description: description ?? '',
 			type: 'type' in props.error ? props.error.type : undefined,
 		},
-		node: props.error.node || ndvStore.activeNode,
+		node,
 	};
 	if (sessionInProgress) {
 		uiStore.openModalWithData({

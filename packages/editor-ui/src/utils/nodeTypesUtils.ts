@@ -558,3 +558,16 @@ export function getReferencedNodes(node: INode): string[] {
 	}
 	return referencedNodes;
 }
+
+/**
+ * Remove properties from a node based on the provided list of property names.
+ * Reruns a new node object with the properties removed.
+ */
+export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode {
+	const prunedNode = { ...node };
+	propsToRemove.forEach((key) => {
+		console.log('Removing key', key);
+		delete prunedNode[key as keyof INode];
+	});
+	return prunedNode;
+}

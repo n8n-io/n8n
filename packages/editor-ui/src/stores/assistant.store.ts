@@ -14,13 +14,14 @@ import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
+import type { IPushDataNodeExecuteAfter, IUpdateInformation, Schema } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
 import {
 	executionDataToJson,
 	getMainAuthField,
 	getNodeAuthOptions,
 	getReferencedNodes,
+	pruneNodeProperties,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -277,8 +278,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const node = workflowsStore.getNodeByName(name);
 			if (!node) {
 				return {
-					nodeName: name,
-					schema: {},
+					node_name: name,
+					schema: {} as Schema,
 				};
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
@@ -287,7 +288,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				true,
 			);
 			return {
-				nodeName: node.name,
+				node_name: node.name,
 				schema,
 			};
 		});
@@ -315,7 +316,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: context.node,
+					node: pruneNodeProperties(context.node, ['position']),
 					executionSchema: schemas,
 					authType,
 				},
