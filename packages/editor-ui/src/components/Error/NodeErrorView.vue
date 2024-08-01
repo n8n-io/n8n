@@ -835,4 +835,8 @@ async function onAskAssistantClick() {
 		}
 	}
 }
+
+.node-error-view__assistant-button {
+	margin-top: var(--spacing-xs);
+}
 </style>

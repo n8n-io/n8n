@@ -136,6 +136,7 @@
 	"aiAssistant.newSessionModal.message": "You already have an active AI Assistant session. Starting a new session will clear your current conversation history.",
 	"aiAssistant.newSessionModal.question": "Are you sure you want to start a new session?",
 	"aiAssistant.newSessionModal.confirm": "Start new session",
+	"aiAssistant.serviceError.message": "Unable to connect to n8n's AI service",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",

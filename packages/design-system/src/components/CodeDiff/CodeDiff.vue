@@ -121,7 +121,7 @@ const diffs = computed(() => {
 				<n8n-button type="secondary" size="mini" icon="undo" @click="() => emit('undo')">{{
 					t('codeDiff.undo')
 				}}</n8n-button>
-				<n8n-icon icon="check" color="success" class="ml-2xs mr-5xs" />
+				<n8n-icon icon="check" color="success" class="ml-xs" />
 				<span :class="$style.infoText">{{ t('codeDiff.codeReplaced') }}</span>
 			</div>
 			<n8n-button
@@ -168,7 +168,8 @@ const diffs = computed(() => {
 	border-top: var(--border-base);
 	border-bottom: var(--border-base);
 	max-height: 218px; // 12 lines
-	background-color: var(--color-foreground-light);
+	background-color: var(--color-background-base);
+	font-family: var(--font-family-monospace);
 }
 
 .diff {
@@ -209,6 +210,7 @@ const diffs = computed(() => {
 
 .infoText {
 	color: var(--color-text-light);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-xs);
+	margin-left: var(--spacing-4xs);
 }
 </style>

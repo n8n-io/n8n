@@ -25,6 +25,7 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
+import { useI18n } from '@/composables/useI18n';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -44,6 +45,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const streaming = ref<boolean>();
 	const ndvStore = useNDVStore();
 	const { getVariant } = usePostHog();
+	const locale = useI18n();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -230,7 +232,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function handleServiceError(e: unknown, id: string) {
 		assert(e instanceof Error);
 		stopStreaming();
-		addAssistantError(`There was an error reaching the service: (${e.message})`, id);
+		addAssistantError(`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`, id);
 	}
 
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' }>(), {
+withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' | 'xlarge' }>(), {
 	text: '',
 	size: 'medium',
 });
@@ -19,16 +19,21 @@ withDefaults(defineProps<{ text: string; size: 'small' | 'medium' | 'large' }>()
 
 .small {
 	font-size: 9px;
-	line-height: 12px;
+	line-height: var(--spacing-xs);
 }
 
 .medium {
-	font-size: 12px;
-	line-height: 16px;
+	font-size: var(--spacing-xs);
+	line-height: var(--spacing-s);
 }
 
 .large {
 	font-size: 14px;
 	line-height: 18px;
+}
+
+.xlarge {
+	font-size: var(--spacing-s);
+	line-height: var(--spacing-s);
 }
 </style>

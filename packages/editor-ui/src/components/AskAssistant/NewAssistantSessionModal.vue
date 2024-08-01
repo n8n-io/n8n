@@ -33,8 +33,8 @@ const startNewSession = async () => {
 	<Modal width="460px" height="250px" :name="NEW_ASSISTANT_SESSION_MODAL" :center="true">
 		<template #header>
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
-			<AssistantIcon size="medium" />
-			<AssistantText size="large" :text="i18n.baseText('aiAssistant.name')" />
+			<span :class="$style.assistantIcon"><AssistantIcon size="medium" /></span>
+			<AssistantText size="xlarge" :text="i18n.baseText('aiAssistant.name')" />
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
 		</template>
 		<template #content>
@@ -68,6 +68,11 @@ const startNewSession = async () => {
 		margin-top: 10px;
 	}
 }
+
+.assistantIcon {
+	margin-right: var(--spacing-4xs);
+}
+
 .footer {
 	display: flex;
 	gap: 10px;

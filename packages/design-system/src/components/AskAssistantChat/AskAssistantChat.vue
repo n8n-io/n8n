@@ -73,8 +73,10 @@ function renderMarkdown(content: string) {
 	<div :class="$style.container">
 		<div :class="$style.header">
 			<div :class="$style.chatTitle">
-				<AssistantIcon size="large" />
-				<AssistantText size="large" :text="t('assistantChat.aiAssistantName')" />
+				<div :class="$style.headerText">
+					<AssistantIcon size="large" />
+					<AssistantText size="large" :text="t('assistantChat.aiAssistantName')" />
+				</div>
 				<BetaTag />
 			</div>
 			<div :class="$style.back" @click="onClose">
@@ -217,6 +219,11 @@ function renderMarkdown(content: string) {
 	position: relative;
 }
 
+p {
+	line-height: var(--font-line-height-xloose);
+	margin: var(--spacing-2xs) 0;
+}
+
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing-l);
@@ -243,6 +250,10 @@ function renderMarkdown(content: string) {
 	overflow: scroll;
 	padding-bottom: 250px; // make scrollable at the end
 	position: relative;
+
+	pre {
+		text-wrap: stable;
+	}
 }
 
 .placeholder {
@@ -276,8 +287,13 @@ function renderMarkdown(content: string) {
 	margin-top: var(--spacing-l);
 }
 
-.chatTitle > * {
-	margin-right: var(--spacing-xs);
+.chatTitle {
+	display: flex;
+	gap: var(--spacing-3xs);
+}
+
+.headerText {
+	gap: var(--spacing-xs);
 }
 
 .greeting {
@@ -298,7 +314,7 @@ function renderMarkdown(content: string) {
 .quickReplies {
 	margin-top: var(--spacing-s);
 	> * {
-		margin-bottom: var(--spacing-2xs);
+		margin-bottom: var(--spacing-3xs);
 	}
 }
 
@@ -326,6 +342,7 @@ function renderMarkdown(content: string) {
 	border-bottom: var(--border-base);
 	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
+	word-break: break-word;
 }
 
 .blockBody {
@@ -368,6 +385,7 @@ function renderMarkdown(content: string) {
 
 	p {
 		display: inline;
+		line-height: 1.7;
 	}
 
 	ul,
