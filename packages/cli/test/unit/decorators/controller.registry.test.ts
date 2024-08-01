@@ -10,16 +10,18 @@ import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators'
 import type { AuthService } from '@/auth/auth.service';
 import type { License } from '@/License';
 import type { SuperAgentTest } from '@test-integration/types';
+import type { GlobalConfig } from '@n8n/config';
 
 describe('ControllerRegistry', () => {
 	const license = mock<License>();
 	const authService = mock<AuthService>();
+	const globalConfig = mock<GlobalConfig>({ endpoints: { rest: 'rest' } });
 	let agent: SuperAgentTest;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		const app = express();
-		new ControllerRegistry(license, authService).activate(app);
+		new ControllerRegistry(license, authService, globalConfig).activate(app);
 		agent = testAgent(app);
 	});
 

@@ -44,7 +44,7 @@ export abstract class BaseCommand extends Command {
 
 	protected license: License;
 
-	private globalConfig = Container.get(GlobalConfig);
+	protected globalConfig = Container.get(GlobalConfig);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
