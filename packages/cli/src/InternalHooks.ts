@@ -10,22 +10,15 @@ import type {
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
-import type {
-	ITelemetryUserDeletionData,
-	IWorkflowDb,
-	IExecutionTrackProperties,
-} from '@/Interfaces';
+import type { ITelemetryUserDeletionData, IExecutionTrackProperties } from '@/Interfaces';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
-import type { Project } from '@db/entities/Project';
-import { ProjectRelationRepository } from './databases/repositories/projectRelation.repository';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 /**
@@ -40,7 +33,6 @@ export class InternalHooks {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		workflowStatisticsService: WorkflowStatisticsService,
-		private readonly projectRelationRepository: ProjectRelationRepository,
 		// Can't use @ts-expect-error because only dev time tsconfig considers this as an error, but not build time
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore - needed until we decouple telemetry
@@ -70,78 +62,6 @@ export class InternalHooks {
 		});
 
 		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
-	}
-
-	onWorkflowCreated(
-		user: User,
-		workflow: IWorkflowBase,
-		project: Project,
-		publicApi: boolean,
-	): void {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-
-		this.telemetry.track('User created workflow', {
-			user_id: user.id,
-			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
-			public_api: publicApi,
-			project_id: project.id,
-			project_type: project.type,
-		});
-	}
-
-	onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): void {
-		this.telemetry.track('User deleted workflow', {
-			user_id: user.id,
-			workflow_id: workflowId,
-			public_api: publicApi,
-		});
-	}
-
-	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
-		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
-
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
-			isCloudDeployment,
-		});
-
-		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
-		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
-		if (role) {
-			userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
-		} else {
-			const workflowOwner = await this.sharedWorkflowRepository.getWorkflowOwningProject(
-				workflow.id,
-			);
-
-			if (workflowOwner) {
-				const projectRole = await this.projectRelationRepository.findProjectRole({
-					userId: user.id,
-					projectId: workflowOwner.id,
-				});
-
-				if (projectRole && projectRole !== 'project:personalOwner') {
-					userRole = 'member';
-				}
-			}
-		}
-
-		const notesCount = Object.keys(nodeGraph.notes).length;
-		const overlappingCount = Object.values(nodeGraph.notes).filter(
-			(note) => note.overlapping,
-		).length;
-
-		this.telemetry.track('User saved workflow', {
-			user_id: user.id,
-			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
-			notes_count_overlapping: overlappingCount,
-			notes_count_non_overlapping: notesCount - overlappingCount,
-			version_cli: N8N_VERSION,
-			num_tags: workflow.tags?.length ?? 0,
-			public_api: publicApi,
-			sharing_role: userRole,
-		});
 	}
 
 	// eslint-disable-next-line complexity

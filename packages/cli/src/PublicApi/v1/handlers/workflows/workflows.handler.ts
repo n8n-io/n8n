@@ -60,10 +60,12 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
+				publicApi: true,
+				projectId: project.id,
+				projectType: project.type,
 			});
 
 			return res.json(createdWorkflow);
@@ -259,11 +261,10 @@ export = {
 			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 			Container.get(EventService).emit('workflow-saved', {
 				user: req.user,
-				workflowId: updateData.id,
-				workflowName: updateData.name,
+				workflow: updateData,
+				publicApi: true,
 			});
 
 			return res.json(updatedWorkflow);

@@ -8,6 +8,10 @@ import { License } from '@/License';
 import { GlobalConfig } from '@n8n/config';
 import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { TelemetryHelpers } from 'n8n-workflow';
+import { NodeTypes } from '@/NodeTypes';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @Service()
 export class TelemetryEventRelay {
@@ -17,6 +21,9 @@ export class TelemetryEventRelay {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async init() {
@@ -100,6 +107,16 @@ export class TelemetryEventRelay {
 		});
 		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
 			this.loginFailedDueToLdapDisabled(event);
+		});
+
+		this.eventService.on('workflow-created', (event) => {
+			this.workflowCreated(event);
+		});
+		this.eventService.on('workflow-deleted', (event) => {
+			this.workflowDeleted(event);
+		});
+		this.eventService.on('workflow-saved', async (event) => {
+			await this.workflowSaved(event);
 		});
 	}
 
@@ -429,6 +446,79 @@ export class TelemetryEventRelay {
 
 	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
 		this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
+	}
+
+	private workflowCreated({
+		user,
+		workflow,
+		publicApi,
+		projectId,
+		projectType,
+	}: Event['workflow-created']) {
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+
+		this.telemetry.track('User created workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			public_api: publicApi,
+			project_id: projectId,
+			project_type: projectType,
+		});
+	}
+
+	private workflowDeleted({ user, workflowId, publicApi }: Event['workflow-deleted']) {
+		this.telemetry.track('User deleted workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+		});
+	}
+
+	private async workflowSaved({ user, workflow, publicApi }: Event['workflow-saved']) {
+		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
+
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+			isCloudDeployment,
+		});
+
+		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
+		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
+		if (role) {
+			userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
+		} else {
+			const workflowOwner = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+				workflow.id,
+			);
+
+			if (workflowOwner) {
+				const projectRole = await this.projectRelationRepository.findProjectRole({
+					userId: user.id,
+					projectId: workflowOwner.id,
+				});
+
+				if (projectRole && projectRole !== 'project:personalOwner') {
+					userRole = 'member';
+				}
+			}
+		}
+
+		const notesCount = Object.keys(nodeGraph.notes).length;
+		const overlappingCount = Object.values(nodeGraph.notes).filter(
+			(note) => note.overlapping,
+		).length;
+
+		this.telemetry.track('User saved workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			notes_count_overlapping: overlappingCount,
+			notes_count_non_overlapping: notesCount - overlappingCount,
+			version_cli: N8N_VERSION,
+			num_tags: workflow.tags?.length ?? 0,
+			public_api: publicApi,
+			sharing_role: userRole,
+		});
 	}
 
 	private async serverStarted() {
