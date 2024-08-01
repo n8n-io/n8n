@@ -35,6 +35,7 @@ import { Logger } from '@/Logger';
 import type { Project } from '@/databases/entities/Project';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
+import * as Db from '@/Db';
 
 @Service()
 export class WorkflowExecutionService {
@@ -220,7 +221,12 @@ export class WorkflowExecutionService {
 						workflowId: workflowData.id,
 					};
 
-					await this.executionRepository.createNewExecution(fullExecutionData);
+					await Db.transaction(async (transactionManager) => {
+						await this.executionRepository.createNewExecution(
+							fullExecutionData,
+							transactionManager,
+						);
+					});
 				}
 				this.logger.info('Error workflow execution blocked due to subworkflow settings', {
 					erroredWorkflowId: workflowErrorData.workflow.id,

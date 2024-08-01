@@ -13,6 +13,7 @@ import {
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import type {
+	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -270,16 +271,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: ExecutionPayload): Promise<string> {
+	/**
+	 * Insert a new execution and its execution data
+	 */
+	async createNewExecution(execution: ExecutionPayload, trx?: EntityManager): Promise<string> {
+		trx = trx ?? this.manager;
+
 		const { data, workflowData, ...rest } = execution;
-		const { identifiers: inserted } = await this.insert(rest);
-		const { id: executionId } = inserted[0] as { id: string };
+		const insertResult = await trx.insert(ExecutionEntity, rest);
+		const { id: executionId } = insertResult.identifiers[0] as { id: string };
+
 		const { connections, nodes, name, settings } = workflowData ?? {};
-		await this.executionDataRepository.insert({
-			executionId,
-			workflowData: { connections, nodes, name, settings, id: workflowData.id },
-			data: stringify(data),
-		});
+		await this.executionDataRepository.createExecutionDataForExecution(
+			{
+				executionId,
+				workflowData: { connections, nodes, name, settings, id: workflowData.id },
+				data: stringify(data),
+			},
+			trx,
+		);
+
 		return String(executionId);
 	}
 

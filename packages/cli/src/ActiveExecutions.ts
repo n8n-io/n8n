@@ -12,6 +12,7 @@ import {
 	ExecutionCancelledError,
 	sleep,
 } from 'n8n-workflow';
+import { strict as assert } from 'node:assert';
 
 import type {
 	ExecutionPayload,
@@ -23,6 +24,7 @@ import type {
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
+import * as Db from '@/Db';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 
@@ -73,10 +75,13 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
-			if (executionId === undefined) {
-				throw new ApplicationError('There was an issue assigning an execution id to the execution');
-			}
+			executionId = await Db.transaction(async (transactionManager) => {
+				return await this.executionRepository.createNewExecution(
+					fullExecutionData,
+					transactionManager,
+				);
+			});
+			assert(executionId);
 
 			await this.concurrencyControl.throttle({ mode, executionId });
 			executionStatus = 'running';

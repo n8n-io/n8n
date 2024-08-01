@@ -40,6 +40,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
+import * as Db from '@/Db';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -323,7 +324,9 @@ export class ExecutionService {
 			status: 'error',
 		};
 
-		await this.executionRepository.createNewExecution(fullExecutionData);
+		await Db.transaction(async (transactionManager) => {
+			await this.executionRepository.createNewExecution(fullExecutionData, transactionManager);
+		});
 	}
 
 	// ----------------------------------
