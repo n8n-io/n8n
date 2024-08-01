@@ -100,7 +100,10 @@ let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
-	const partialExecutionVersion = useLocalStorage('PartialExecution.version', 0);
+	// -1 means the backend chooses the default
+	// 0 is the old flow
+	// 1 is the new flow
+	const partialExecutionVersion = useLocalStorage('PartialExecution.version', -1);
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
