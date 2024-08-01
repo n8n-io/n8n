@@ -39,6 +39,7 @@ import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 import { License } from './License';
 import { AuthService } from './auth/auth.service';
 import { getAiServiceProxyMiddleware } from '@n8n_io/ai-assistant-sdk';
+import { GlobalConfig } from '@n8n/config';
 
 import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
@@ -390,7 +391,7 @@ export class Server extends AbstractServer {
 		const licenseCert = await licenseService.loadCertStr();
 		const authService = Container.get(AuthService);
 		const consumerId = licenseService.getConsumerId();
-		const apiRestPath = config.getEnv('endpoints.rest');
+		const apiRestPath = Container.get(GlobalConfig).endpoints.rest;
 		const aiAssistantEnabled = config.get('aiAssistant.enabled');
 		const aiServiceApiBase = config.get('aiAssistant.baseUrl');
 
