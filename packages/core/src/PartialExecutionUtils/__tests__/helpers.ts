@@ -1,5 +1,5 @@
 import { NodeConnectionType } from 'n8n-workflow';
-import type { INodeParameters, INode, ITaskData, IDataObject } from 'n8n-workflow';
+import type { INodeParameters, INode, ITaskData, IDataObject, IConnections } from 'n8n-workflow';
 
 interface StubNode {
 	name: string;
@@ -73,3 +73,36 @@ export const defaultWorkflowParameter = {
 	active: false,
 	nodeTypes,
 };
+
+type Connection = {
+	from: INode;
+	to: INode;
+	type?: NodeConnectionType;
+	outputIndex?: number;
+	inputIndex?: number;
+};
+
+export function toIConnections(connections: Connection[]): IConnections {
+	const result: IConnections = {};
+
+	for (const connection of connections) {
+		const type = connection.type ?? NodeConnectionType.Main;
+		const outputIndex = connection.outputIndex ?? 0;
+		const inputIndex = connection.inputIndex ?? 0;
+
+		result[connection.from.name] = result[connection.from.name] ?? {
+			[type]: [],
+		};
+		const resultConnection = result[connection.from.name];
+		resultConnection[type][outputIndex] = resultConnection[type][outputIndex] ?? [];
+		const group = resultConnection[type][outputIndex];
+
+		group.push({
+			node: connection.to.name,
+			type,
+			index: inputIndex,
+		});
+	}
+
+	return result;
+}

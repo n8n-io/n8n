@@ -1,5 +1,6 @@
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
-// If you update the tests please update the diagrams as well.
+// If you update the tests, please update the diagrams as well.
+// If you add a test, please create a new diagram.
 //
 // Map
 // 0  means the output has no run data
@@ -8,12 +9,13 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { recreateNodeExecutionStack } from '@/utils-2';
-import { createNodeData, toITaskData } from './helpers';
-import type { StartNodeData } from '@/utils';
-import { DirectedGraph, findSubgraph } from '@/utils';
+import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
 import { type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
+import { DirectedGraph } from '../DirectedGraph';
+import { findSubgraph } from '../findSubgraph';
+import type { StartNodeData } from '../findStartNodes';
+import { createNodeData, toITaskData } from './helpers';
 
 describe('recreateNodeExecutionStack', () => {
 	//                   ►►

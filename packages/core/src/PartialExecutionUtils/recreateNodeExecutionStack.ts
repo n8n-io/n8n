@@ -12,8 +12,9 @@ import {
 } from 'n8n-workflow';
 
 import * as a from 'assert';
-import type { DirectedGraph, StartNodeData } from './utils';
-import { getIncomingData } from './utils';
+import type { DirectedGraph } from './DirectedGraph';
+import type { StartNodeData } from './findStartNodes';
+import { getIncomingData } from './getIncomingData';
 
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
