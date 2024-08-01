@@ -186,6 +186,9 @@ export default defineComponent({
 			this.$emit('refresh');
 		},
 		onFilterChanged(filter: ExecutionFilterType) {
+			this.autoScrollDeps.activeExecutionSet = false;
+			this.autoScrollDeps.scroll = true;
+			this.mountedItems = [];
 			this.$emit('filterUpdated', filter);
 		},
 		reloadExecutions(): void {

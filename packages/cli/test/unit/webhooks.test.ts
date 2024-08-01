@@ -2,7 +2,6 @@ import type SuperAgentTest from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 
-import config from '@/config';
 import { AbstractServer } from '@/AbstractServer';
 import { ActiveWebhooks } from '@/ActiveWebhooks';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -13,6 +12,8 @@ import { WaitingForms } from '@/WaitingForms';
 import type { IResponseCallbackData } from '@/Interfaces';
 
 import { mockInstance } from '../shared/mocking';
+import { GlobalConfig } from '@n8n/config';
+import Container from 'typedi';
 
 let agent: SuperAgentTest;
 
@@ -46,7 +47,7 @@ describe('WebhookServer', () => {
 		for (const [key, manager] of tests) {
 			describe(`for ${key}`, () => {
 				it('should handle preflight requests', async () => {
-					const pathPrefix = config.getEnv(`endpoints.${key}`);
+					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 
 					const response = await agent
@@ -60,7 +61,7 @@ describe('WebhookServer', () => {
 				});
 
 				it('should handle regular requests', async () => {
-					const pathPrefix = config.getEnv(`endpoints.${key}`);
+					const pathPrefix = Container.get(GlobalConfig).endpoints[key];
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 					manager.executeWebhook.mockResolvedValueOnce(
 						mockResponse({ test: true }, { key: 'value ' }),

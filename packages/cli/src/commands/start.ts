@@ -124,8 +124,8 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = Container.get(GlobalConfig).path;
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const n8nPath = this.globalConfig.path;
+
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -151,7 +151,9 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -201,7 +203,7 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 	}
