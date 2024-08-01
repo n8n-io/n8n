@@ -2775,28 +2775,6 @@ async function getInputConnectionData(
 				connectedNode.typeVersion,
 			);
 
-			if (!nodeType.supplyData) {
-				nodeType.supplyData = async function(this: IAllExecuteFunctions, itemIndex: number) {
-					// Fallback implementation
-					const nodeParameters = this.getNode().parameters;
-					const fallbackData = {
-						json: { ...nodeParameters },
-						// Add any other default properties you want in the fallback data
-					};
-					return {
-						response: {
-							nodeType,
-							context,
-							connectedNode,
-						},
-						closeFunction: undefined,
-					};
-				};
-				// throw new ApplicationError('Node does not have a `supplyData` method defined', {
-				// 	extra: { nodeName: connectedNode.name },
-				// });
-			}
-
 			const context = Object.assign({}, this);
 
 			context.getNodeParameter = (
@@ -2863,6 +2841,22 @@ async function getInputConnectionData(
 					throw error;
 				}
 			};
+
+			if (!nodeType.supplyData) {
+				nodeType.supplyData = async function (this: IAllExecuteFunctions, itemIndex: number) {
+					return {
+						response: {
+							nodeType,
+							context: this,
+							connectedNode: this.getNode(),
+						},
+						closeFunction: undefined,
+					};
+				};
+				// throw new ApplicationError('Node does not have a `supplyData` method defined', {
+				// 	extra: { nodeName: connectedNode.name },
+				// });
+			}
 
 			try {
 				const response = await nodeType.supplyData.call(context, itemIndex);
