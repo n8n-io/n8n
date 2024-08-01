@@ -10,11 +10,8 @@ function findSubgraphRecursive(
 	newGraph: DirectedGraph,
 	currentBranch: Connection[],
 ) {
-	//console.log('currentBranch', currentBranch);
-
 	// If the current node is the chosen ‘trigger keep this branch.
 	if (current === trigger) {
-		console.log(`${current.name}: is trigger`);
 		for (const connection of currentBranch) {
 			newGraph.addNodes(connection.from, connection.to);
 			newGraph.addConnection(connection);
@@ -27,7 +24,6 @@ function findSubgraphRecursive(
 
 	// If the current node has no parents, don’t keep this branch.
 	if (parentConnections.length === 0) {
-		console.log(`${current.name}: no parents`);
 		return;
 	}
 
@@ -35,14 +31,12 @@ function findSubgraphRecursive(
 	const isCycleWithDestinationNode =
 		current === destinationNode && currentBranch.some((c) => c.to === destinationNode);
 	if (isCycleWithDestinationNode) {
-		console.log(`${current.name}: isCycleWithDestinationNode`);
 		return;
 	}
 
 	// If the current node was already visited, keep this branch.
 	const isCycleWithCurrentNode = currentBranch.some((c) => c.to === current);
 	if (isCycleWithCurrentNode) {
-		console.log(`${current.name}: isCycleWithCurrentNode`);
 		// TODO: write function that adds nodes when adding connections
 		for (const connection of currentBranch) {
 			newGraph.addNodes(connection.from, connection.to);
@@ -56,7 +50,6 @@ function findSubgraphRecursive(
 	// Take every incoming connection and connect it to every node that is
 	// connected to the current node’s first output
 	if (current.disabled) {
-		console.log(`${current.name}: is disabled`);
 		const incomingConnections = graph.getDirectParents(current);
 		const outgoingConnections = graph
 			.getDirectChildren(current)
