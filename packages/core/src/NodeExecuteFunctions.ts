@@ -4275,18 +4275,17 @@ export function getExecuteWebhookFunctions(
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
-				// const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
 
 				let connectionInputData: INodeExecutionData[] = [];
-				let executionData;
+				let executionData: IExecuteData | undefined;
 
 				if (runExecutionData?.executionData !== undefined) {
 					executionData = runExecutionData.executionData.nodeExecutionStack[0];
 
 					if (executionData !== undefined) {
-						connectionInputData = executionData.data.main[0] as INodeExecutionData[];
+						connectionInputData = executionData.data.main[0]!;
 					}
 				}
 
