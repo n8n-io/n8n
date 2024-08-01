@@ -18,6 +18,7 @@ import {
 	configureToolFunction,
 	updateParametersAndOptions,
 	makeToolInputSchema,
+	prepareToolDescription,
 } from './utils';
 
 import {
@@ -394,12 +395,18 @@ export class ToolHttpRequest implements INodeType {
 			optimizeResponse,
 		);
 
-		// const description = prepareToolDescription(toolDescription, toolParameters);
+		const fallbackDescription = prepareToolDescription(toolDescription, toolParameters);
 		// const tool = new DynamicTool({ name, description, func });
 
 		const schema = makeToolInputSchema(toolParameters);
 
-		const tool = new N8nTool(this, { name, description: toolDescription, func, schema });
+		const tool = new N8nTool(this, {
+			name,
+			description: toolDescription,
+			fallbackDescription,
+			func,
+			schema,
+		});
 
 		return {
 			response: tool,

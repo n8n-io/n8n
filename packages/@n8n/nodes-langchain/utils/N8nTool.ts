@@ -7,19 +7,25 @@ import { StructuredOutputParser } from 'langchain/output_parsers';
 export class N8nTool extends DynamicStructuredTool {
 	private context: IExecuteFunctions;
 
-	constructor(context: IExecuteFunctions, fields: DynamicStructuredToolInput) {
+	private fallbackDescription: string;
+
+	constructor(
+		context: IExecuteFunctions,
+		fields: DynamicStructuredToolInput & { fallbackDescription?: string },
+	) {
 		super(fields);
 
 		this.context = context;
+		this.fallbackDescription = fields.fallbackDescription ?? '';
 	}
 
 	asDynamicTool(): DynamicTool {
-		const { name, func, description, schema, context } = this;
+		const { name, func, schema, context } = this;
 
 		const parser = new StructuredOutputParser(schema);
-		const formattingInstructions = parser.getFormatInstructions();
+		// const formattingInstructions = parser.getFormatInstructions();
 
-		console.log({ formattingInstructions });
+		// console.log({ formattingInstructions });
 
 		const wrappedFunc = async function (query: string) {
 			console.log('TOOL CALLED');
@@ -47,8 +53,8 @@ export class N8nTool extends DynamicStructuredTool {
 
 		return new DynamicTool({
 			name,
-			description:
-				description + '\n\n' + formattingInstructions.replace(/\{/g, '{{').replace(/\}/g, '}}'),
+			description: this.fallbackDescription,
+			// description + '\n\n' + formattingInstructions.replace(/\{/g, '{{').replace(/\}/g, '}}'),
 			func: wrappedFunc,
 		});
 	}
