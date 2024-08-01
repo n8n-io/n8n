@@ -466,6 +466,7 @@ export interface IGetExecuteWebhookFunctions {
 		mode: WorkflowExecuteMode,
 		webhookData: IWebhookData,
 		closeFunctions: CloseFunction[],
+		runExecutionData: IRunExecutionData | null,
 	): IWebhookFunctions;
 }
 
