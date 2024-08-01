@@ -4,6 +4,7 @@ import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { Event } from '../event.types';
 import { EventService } from '../event.service';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interfaces';
 
 describe('AuditEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
@@ -29,6 +30,9 @@ describe('AuditEventRelay', () => {
 					id: 'wf123',
 					name: 'Test Workflow',
 				}),
+				publicApi: false,
+				projectId: 'proj123',
+				projectType: 'personal',
 			};
 
 			eventService.emit('workflow-created', event);
@@ -57,6 +61,7 @@ describe('AuditEventRelay', () => {
 					role: 'user',
 				},
 				workflowId: 'wf789',
+				publicApi: false,
 			};
 
 			eventService.emit('workflow-deleted', event);
@@ -83,8 +88,8 @@ describe('AuditEventRelay', () => {
 					lastName: 'Johnson',
 					role: 'editor',
 				},
-				workflowId: 'wf101',
-				workflowName: 'Updated Workflow',
+				workflow: mock<IWorkflowDb>({ id: 'wf101', name: 'Updated Workflow' }),
+				publicApi: false,
 			};
 
 			eventService.emit('workflow-saved', event);
