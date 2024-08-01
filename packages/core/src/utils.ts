@@ -246,6 +246,11 @@ interface ISourceData {
 	previousNodeOutput: number; // If undefined "0" gets used
 	previousNodeRun: number; // If undefined "0" gets used
 }
+// TODO: This is how ISourceData should look like.
+//interface NewSourceData {
+//	connection: Connection;
+//	previousNodeRun: number; // If undefined "0" gets used
+//}
 
 // TODO: rename to something more general, like path segment
 export interface StartNodeData {

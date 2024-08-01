@@ -15,7 +15,6 @@ import * as a from 'assert';
 import type { DirectedGraph, StartNodeData } from './utils';
 import { getIncomingData } from './utils';
 
-// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
 	// TODO: turn this into StartNodeData from utils
@@ -81,6 +80,10 @@ export function recreateNodeExecutionStack(
 			// missing is the inputIndex and that's the sole reason why we iterate
 			// over all incoming connections.
 			for (const connection of incomingStartNodeConnections) {
+				// TODO: do not skip connections that don't match the source data, this
+				// causes problems with nodes that have multiple inputs.
+				// The proper fix would be to remodel source data to contain all sources
+				// not just the first one it finds.
 				if (connection.from.name !== startNode.sourceData?.previousNode.name) {
 					continue;
 				}
@@ -125,6 +128,7 @@ export function recreateNodeExecutionStack(
 
 		nodeExecutionStack.push(executeData);
 
+		// NOTE: Do we need this?
 		if (destinationNode) {
 			const destinationNodeName = destinationNode.name;
 			// Check if the destinationNode has to be added as waiting

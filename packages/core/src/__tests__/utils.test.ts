@@ -443,12 +443,44 @@ describe('findStartNodes', () => {
 			},
 		});
 	});
+
+	// TODO: This is not working yet as expected.
+	// It should only have `node` once as a start node.
+	// The spec needs to be updated before this is fixed.
+	//                     ►►
+	//  ┌───────┐         ┌────┐
+	//  │       │1  ┌────►│    │
+	//  │trigger├───┤     │node│
+	//  │       │   └────►│    │
+	//  └───────┘         └────┘
+	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+	test.skip('multiple connections with both having data', () => {
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: node1, to: node3 },
+				{ from: node2, to: node3 },
+			);
+
+		const startNodes = findStartNodes(graph, trigger, node3, {
+			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+			[node1.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+			[node2.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 0 }])],
+		});
+
+		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
-			node: merge,
+			node: node3,
 			sourceData: {
-				previousNode: ifNode,
+				previousNode: node1,
 				previousNodeRun: 0,
-				previousNodeOutput: 1,
+				previousNodeOutput: 0,
 			},
 		});
 	});
