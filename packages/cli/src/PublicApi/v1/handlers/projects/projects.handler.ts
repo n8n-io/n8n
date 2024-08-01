@@ -23,7 +23,7 @@ export = {
 		},
 	],
 	updateProject: [
-		isLicensed('feat:projectRole:admin'), // @TODO: Confirm
+		isLicensed('feat:projectRole:admin'),
 		globalScope('project:update'),
 		async (req: Update, res: Response) => {
 			await Container.get(ProjectController).updateProject(req);
