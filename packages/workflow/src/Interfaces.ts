@@ -763,6 +763,48 @@ export interface BinaryHelperFunctions {
 	}>;
 }
 
+export type ProcessedDataContext = 'node' | 'workflow';
+export type ProcessedDataItemTypes = string | number;
+export type ProcessedDataMode = 'entries' | 'latest';
+
+export interface ICheckProcessedOutput {
+	new: ProcessedDataItemTypes[];
+	processed: ProcessedDataItemTypes[];
+}
+
+export interface ICheckProcessedOutputItems {
+	new: IDataObject[];
+	processed: IDataObject[];
+}
+
+export interface ICheckProcessedOptions {
+	mode: ProcessedDataMode;
+	maxEntries?: number;
+}
+
+export interface CheckProcessedHelperFunctions {
+	checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+	checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+	checkProcessedItemsAndRecord(
+		propertyName: string,
+		items: IDataObject[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutputItems>;
+	removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+}
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
@@ -933,6 +975,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		helpers: RequestHelperFunctions &
 			BaseHelperFunctions &
 			BinaryHelperFunctions &
+			CheckProcessedHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			JsonHelperFunctions & {
@@ -2592,6 +2635,47 @@ export interface IUserSettings {
 	userActivatedAt?: number;
 	allowSSOManualLogin?: boolean;
 	npsSurvey?: NpsSurveyState;
+}
+
+export interface IProcessedDataConfig {
+	availableModes: string;
+	mode: string;
+}
+
+export interface IProcessedDataManager {
+	init(): Promise<void>;
+	checkProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+
+	checkProcessedAndRecord(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<ICheckProcessedOutput>;
+
+	removeProcessed(
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+}
+
+export interface IProcessedDataManagers {
+	[key: string]: IProcessedDataManager;
+}
+
+export interface ICheckProcessedContextData {
+	node?: INode;
+	workflow: {
+		id?: number | string;
+		active: boolean;
+	};
 }
 
 export interface IPublicApiSettings {

@@ -24,6 +24,8 @@ import type {
 	IUserSettings,
 	IHttpRequestMethods,
 	StartNodeData,
+	ProcessedDataMode,
+	ProcessedDataItemTypes,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
@@ -52,6 +54,30 @@ export interface ICredentialsTypeData {
 
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
+}
+
+// ----------------------------------
+//               ProcessedData
+// ----------------------------------
+
+export interface IProcessedDataLatest {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes[];
+}
+
+// ----------------------------------
+//               settings
+// ----------------------------------
+
+export interface ISettingsDb {
+	key: string;
+	value: string | boolean | IDataObject | number;
+	loadOnStartup: boolean;
 }
 
 // ----------------------------------

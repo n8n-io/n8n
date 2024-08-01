@@ -163,6 +163,7 @@ export class ExecuteBatch extends BaseCommand {
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();
+		await this.initProcessedDataManager();
 		await this.initExternalHooks();
 	}
 

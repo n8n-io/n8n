@@ -3,7 +3,12 @@ import { Container } from 'typedi';
 import { Command, Errors } from '@oclif/core';
 import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
-import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
+import {
+	BinaryDataService,
+	InstanceSettings,
+	ObjectStoreService,
+	ProcessedDataManager,
+} from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { Logger } from '@/Logger';
 import config from '@/config';
@@ -24,6 +29,7 @@ import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
 import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
+import { getProcessedDataManagers } from '@/ProcessedDataManagers';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -257,6 +263,15 @@ export abstract class BaseCommand extends Command {
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
+	}
+
+	protected async initProcessedDataManager() {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const processedDataConfig = config.getEnv('processedDataManager');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+		const processedDataManagers = await getProcessedDataManagers(processedDataConfig);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		await ProcessedDataManager.init(processedDataConfig, processedDataManagers);
 	}
 
 	async initExternalHooks() {

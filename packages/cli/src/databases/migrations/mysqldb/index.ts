@@ -42,6 +42,7 @@ import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-Migrate
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
+import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
@@ -104,6 +105,7 @@ export const mysqlMigrations: Migration[] = [
 	SeparateExecutionData1690000000030,
 	FixExecutionDataType1690000000031,
 	RemoveSkipOwnerSetup1681134145997,
+	CreateProcessedDataTable1721319360300,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,

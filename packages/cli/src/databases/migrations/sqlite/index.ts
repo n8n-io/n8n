@@ -15,6 +15,7 @@ import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { CommunityNodes1652254514001 } from './1652254514001-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
+import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
 import { AddJsonKeyPinData1659888469333 } from '../common/1659888469333-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
@@ -74,6 +75,7 @@ const sqliteMigrations: Migration[] = [
 	CommunityNodes1652254514001,
 	AddAPIKeyColumn1652905585850,
 	IntroducePinData1654089251344,
+	CreateProcessedDataTable1721319360300,
 	AddNodeIds1658930531669,
 	AddJsonKeyPinData1659888469333,
 	CreateCredentialsUserRole1660062385367,

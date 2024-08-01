@@ -21,6 +21,7 @@ import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
 import { Project } from './Project';
 import { ProjectRelation } from './ProjectRelation';
+import { ProcessedData } from './ProcessedData';
 
 export const entities = {
 	AuthIdentity,
@@ -46,4 +47,5 @@ export const entities = {
 	WorkflowHistory,
 	Project,
 	ProjectRelation,
+	ProcessedData,
 };
