@@ -49,7 +49,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	);
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === ProjectTypes.Team));
 	const teamProjectsLimit = computed(() => settingsStore.settings.enterprise.projects.team.limit);
-	const isTeamProjectsAvailable = computed<boolean>(
+	const isTeamProjectFeatureEnabled = computed<boolean>(
 		() => settingsStore.settings.enterprise.projects.team.limit !== 0,
 	);
 	const hasUnlimitedProjects = computed<boolean>(
@@ -61,7 +61,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	const canCreateProjects = computed<boolean>(
 		() =>
 			hasUnlimitedProjects.value ||
-			(isTeamProjectsAvailable.value && !isTeamProjectLimitExceeded.value),
+			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -199,7 +199,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		hasUnlimitedProjects,
 		canCreateProjects,
 		hasPermissionToCreateProjects,
-		isTeamProjectsAvailable,
+		isTeamProjectFeatureEnabled,
 		projectNavActiveId,
 		setCurrentProject,
 		getAllProjects,

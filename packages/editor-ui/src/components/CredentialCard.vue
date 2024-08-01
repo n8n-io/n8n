@@ -64,7 +64,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && projectsStore.isTeamProjectsAvailable) {
+	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,

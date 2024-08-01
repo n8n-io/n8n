@@ -63,7 +63,7 @@ describe('CredentialCard', () => {
 	});
 
 	it('should show Move action only if there is resource permission and not on community plan', async () => {
-		vi.spyOn(projectsStore, 'isTeamProjectsAvailable', 'get').mockReturnValue(true);
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 
 		const data = createCredential({
 			scopes: ['credential:move'],

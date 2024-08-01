@@ -144,7 +144,7 @@ describe('WorkflowCard', () => {
 	});
 
 	it('should show Move action only if there is resource permission and team projects available', async () => {
-		vi.spyOn(projectsStore, 'isTeamProjectsAvailable', 'get').mockReturnValue(true);
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 
 		const data = createWorkflow({
 			scopes: ['workflow:move'],
