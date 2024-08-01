@@ -154,8 +154,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			} else if (msg.type === 'agent-suggestion') {
 				messages.push({
 					id,
-					suggestionId: id,
-					type: 'agent-suggestion',
+					type: 'block',
 					role: 'assistant',
 					title: msg.title,
 					content: msg.text,
