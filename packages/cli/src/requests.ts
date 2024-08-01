@@ -76,9 +76,7 @@ export type AuthlessRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	user: never;
-};
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
 
 export type AuthenticatedRequest<
 	RouteParams = {},
