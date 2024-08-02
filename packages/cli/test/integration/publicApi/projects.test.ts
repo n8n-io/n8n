@@ -51,6 +51,24 @@ describe('Projects in Public API', () => {
 			});
 		});
 
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwner({ withApiKey: false });
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+		});
+
 		it('if not licensed, should reject', async () => {
 			/**
 			 * Arrange
@@ -127,6 +145,28 @@ describe('Projects in Public API', () => {
 			await expect(getProjectByNameOrFail(projectPayload.name)).resolves.not.toThrow();
 		});
 
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwner({ withApiKey: false });
+			const projectPayload = { name: 'some-project' };
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/projects')
+				.send(projectPayload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+		});
+
 		it('if not licensed, should reject', async () => {
 			/**
 			 * Arrange
@@ -199,6 +239,25 @@ describe('Projects in Public API', () => {
 			await expect(getProjectByNameOrFail(project.id)).rejects.toThrow();
 		});
 
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwner({ withApiKey: false });
+			const project = await createTeamProject();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).delete(`/projects/${project.id}`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
+		});
+
 		it('if not licensed, should reject', async () => {
 			/**
 			 * Arrange
@@ -266,6 +325,28 @@ describe('Projects in Public API', () => {
 			 */
 			expect(response.status).toBe(204);
 			await expect(getProjectByNameOrFail('new-name')).resolves.not.toThrow();
+		});
+
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwner({ withApiKey: false });
+			const project = await createTeamProject();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/projects/${project.id}`)
+				.send({ name: 'new-name' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+			expect(response.body).toHaveProperty('message', "'X-N8N-API-KEY' header required");
 		});
 
 		it('if not licensed, should reject', async () => {
