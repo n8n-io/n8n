@@ -718,13 +718,11 @@ export class TelemetryEventRelay {
 						}
 					});
 
-					console.log('manualExecEventProperties', manualExecEventProperties);
 					this.telemetry.track('Manual workflow exec finished', manualExecEventProperties);
 				}
 			}
 		}
 
-		console.log(telemetryProperties);
 		this.telemetry.trackWorkflowExecution(telemetryProperties);
 	}
 }
