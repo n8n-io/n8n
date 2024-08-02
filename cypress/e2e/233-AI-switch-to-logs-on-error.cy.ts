@@ -5,7 +5,6 @@ import {
 	addMemoryNodeToParent,
 	addNodeToCanvas,
 	addToolNodeToParent,
-	getNodeByName,
 	navigateToNewWorkflowPage,
 	openNode,
 } from '../composables/workflow';
@@ -14,7 +13,6 @@ import {
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 	AI_MEMORY_POSTGRES_NODE_NAME,
 	AI_TOOL_CALCULATOR_NODE_NAME,
-	EDIT_FIELDS_SET_NODE_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_DISPLAY_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
@@ -24,7 +22,6 @@ import {
 	clickCreateNewCredential,
 	clickExecuteNode,
 	clickGetBackToCanvas,
-	getExecuteNodeButton,
 } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
@@ -39,7 +36,7 @@ import { createMockNodeExecutionData, getVisibleSelect, runMockWorkflowExecution
 const ndv = new NDV();
 const WorkflowPage = new WorkflowPageClass();
 
-function createRunDataWithError(inputMessage) {
+function createRunDataWithError(inputMessage: string) {
 	return [
 		createMockNodeExecutionData(MANUAL_CHAT_TRIGGER_NODE_NAME, {
 			jsonData: {
@@ -194,7 +191,7 @@ function setupTestWorkflow(chatTrigger: boolean = false) {
 	WorkflowPage.actions.zoomToFit();
 }
 
-function checkMessages(inputMessage, outputMessage) {
+function checkMessages(inputMessage: string, outputMessage: string) {
 	const messages = getManualChatMessages();
 	messages.should('have.length', 2);
 	messages.should('contain', inputMessage);
