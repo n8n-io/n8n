@@ -15,7 +15,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { GlobalConfig } from '@n8n/config';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 async function createApiRouter(
 	version: string,

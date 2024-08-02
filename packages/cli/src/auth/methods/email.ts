@@ -4,7 +4,7 @@ import { Container } from 'typedi';
 import { isLdapLoginEnabled } from '@/Ldap/helpers.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export const handleEmailLogin = async (
 	email: string,
