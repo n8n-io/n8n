@@ -12,8 +12,8 @@ jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 const toLines = (response: Response) => response.text.trim().split('\n');
 
 const globalConfig = Container.get(GlobalConfig);
-// @ts-expect-error `metrics` is a readonly property
 globalConfig.endpoints.metrics = {
+	enable: true,
 	prefix: 'n8n_test_',
 	includeDefaultMetrics: true,
 	includeApiEndpoints: true,

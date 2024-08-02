@@ -19,7 +19,6 @@ for (const backend of ['memory', 'redis'] as const) {
 
 		beforeAll(async () => {
 			globalConfig = Container.get(GlobalConfig);
-			// @ts-expect-error globalConfig is readonly
 			globalConfig.cache.backend = backend;
 			cacheService = new CacheService(globalConfig);
 			await cacheService.init();
@@ -48,7 +47,6 @@ for (const backend of ['memory', 'redis'] as const) {
 
 			if (backend === 'memory') {
 				test('should honor max size when enough', async () => {
-					// @ts-expect-error globalConfig is readonly
 					globalConfig.cache.memory.maxSize = 16; // enough bytes for "withoutUnicode"
 
 					await cacheService.init();
@@ -57,13 +55,11 @@ for (const backend of ['memory', 'redis'] as const) {
 					await expect(cacheService.get('key')).resolves.toBe('withoutUnicode');
 
 					// restore
-					// @ts-expect-error globalConfig is readonly
 					globalConfig.cache.memory.maxSize = 3 * 1024 * 1024;
 					await cacheService.init();
 				});
 
 				test('should honor max size when not enough', async () => {
-					// @ts-expect-error globalConfig is readonly
 					globalConfig.cache.memory.maxSize = 16; // not enough bytes for "withUnicodeԱԲԳ"
 
 					await cacheService.init();
@@ -72,7 +68,6 @@ for (const backend of ['memory', 'redis'] as const) {
 					await expect(cacheService.get('key')).resolves.toBeUndefined();
 
 					// restore
-					// @ts-expect-error globalConfig is readonly
 					globalConfig.cache.memory.maxSize = 3 * 1024 * 1024;
 					// restore
 					await cacheService.init();
