@@ -12,6 +12,8 @@ delete:
       description: Operation successful.
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
