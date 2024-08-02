@@ -109,11 +109,15 @@ function renderMarkdown(content: string) {
 						<div :class="$style.block">
 							<div :class="$style.blockTitle">
 								{{ message.title }}
-								<BlinkingCursor v-if="streaming && !message.content" />
+								<BlinkingCursor
+									v-if="streaming && i === messages?.length - 1 && !message.content"
+								/>
 							</div>
 							<div :class="$style.blockBody">
 								<span v-html="renderMarkdown(message.content)"></span>
-								<BlinkingCursor v-if="streaming && message.title && message.content" />
+								<BlinkingCursor
+									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
+								/>
 							</div>
 						</div>
 					</div>
