@@ -1,5 +1,5 @@
 import { setupTestServer } from '@test-integration/utils';
-import { createOwner } from '@test-integration/db/users';
+import { createMember, createOwner } from '@test-integration/db/users';
 import * as testDb from '../shared/testDb';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
@@ -71,6 +71,26 @@ describe('Projects in Public API', () => {
 				new FeatureNotLicensedError('feat:projectRole:admin').message,
 			);
 		});
+
+		it('if missing scope, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const owner = await createMember({ withApiKey: true });
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
 	});
 
 	describe('POST /projects', () => {
@@ -131,6 +151,30 @@ describe('Projects in Public API', () => {
 				new FeatureNotLicensedError('feat:projectRole:admin').message,
 			);
 		});
+
+		it('if missing scope, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const member = await createMember({ withApiKey: true });
+			const projectPayload = { name: 'some-project' };
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/projects')
+				.send(projectPayload);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
+		});
 	});
 
 	describe('DELETE /projects/:id', () => {
@@ -175,6 +219,27 @@ describe('Projects in Public API', () => {
 				'message',
 				new FeatureNotLicensedError('feat:projectRole:admin').message,
 			);
+		});
+
+		it('if missing scope, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const member = await createMember({ withApiKey: true });
+			const project = await createTeamProject();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(member).delete(`/projects/${project.id}`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 	});
 
@@ -226,6 +291,30 @@ describe('Projects in Public API', () => {
 				'message',
 				new FeatureNotLicensedError('feat:projectRole:admin').message,
 			);
+		});
+
+		it('if missing scope, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			testServer.license.setQuota('quota:maxTeamProjects', -1);
+			testServer.license.enable('feat:projectRole:admin');
+			const member = await createMember({ withApiKey: true });
+			const project = await createTeamProject();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.put(`/projects/${project.id}`)
+				.send({ name: 'new-name' });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'Forbidden');
 		});
 	});
 });
