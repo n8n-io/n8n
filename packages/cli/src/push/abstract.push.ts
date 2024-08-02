@@ -1,20 +1,24 @@
-import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/Interfaces';
-import type { Logger } from '@/Logger';
+import { Service } from 'typedi';
+import { type Readable } from 'stream';
+import { JsonStreamStringify } from 'json-stream-stringify';
 
-/**
- * Abstract class for two-way push communication.
- * Keeps track of user sessions and enables sending messages.
- *
- * @emits message when a message is received from a client
- */
+import type { IPushDataType } from '@/Interfaces';
+import { Logger } from '@/Logger';
+
+@Service()
 export abstract class AbstractPush<T> {
 	protected connections: Record<string, T> = {};
 
 	protected abstract close(connection: T): void;
-	protected abstract sendToOneConnection(connection: T, data: string): void;
+	protected abstract sendTo(clients: T[], stream: Readable): Promise<void>;
+	protected abstract ping(connection: T): void;
 
-	constructor(protected readonly logger: Logger) {}
+	private messageQueue: Array<[T[], Readable]> = [];
+
+	constructor(protected readonly logger: Logger) {
+		// Ping all connected clients every 60 seconds
+		setInterval(() => this.pingAll(), 60 * 1000);
+	}
 
 	protected add(pushRef: string, connection: T) {
 		const { connections } = this;
@@ -38,32 +42,37 @@ export abstract class AbstractPush<T> {
 		delete this.connections[pushRef];
 	}
 
-	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
-			dataType: type,
-			pushRefs: pushRefs.join(', '),
-		});
-
-		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
-
-		for (const pushRef of pushRefs) {
-			const connection = this.connections[pushRef];
-			assert(connection);
-			this.sendToOneConnection(connection, stringifiedPayload);
-		}
-	}
-
-	sendToAll(type: IPushDataType, data?: unknown) {
-		this.sendTo(type, data, Object.keys(this.connections));
-	}
-
 	sendToOne(type: IPushDataType, data: unknown, pushRef: string) {
-		if (this.connections[pushRef] === undefined) {
+		const client = this.connections[pushRef];
+		if (client === undefined) {
 			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
+		this.enqueue([client], type, data);
+	}
 
-		this.sendTo(type, data, [pushRef]);
+	sendToAll(type: IPushDataType, data?: unknown) {
+		const clients = Object.values(this.connections);
+		this.enqueue(clients, type, data);
+	}
+
+	private pingAll() {
+		for (const pushRef in this.connections) {
+			this.ping(this.connections[pushRef]);
+		}
+	}
+
+	private enqueue<D>(clients: T[], type: IPushDataType, data?: D) {
+		const stream = new JsonStreamStringify({ type, data }, undefined, undefined, true);
+		this.messageQueue.push([clients, stream]);
+		setImmediate(async () => this.processQueue());
+	}
+
+	private async processQueue() {
+		while (this.messageQueue.length) {
+			const [clients, stream] = this.messageQueue.shift()!;
+			await this.sendTo(clients, stream);
+		}
 	}
 
 	closeAllConnections() {
