@@ -644,13 +644,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
 				eventService.emit('workflow-post-execute', {
-					workflowId: workflow.id,
-					workflowName: workflow.name,
+					workflow,
 					executionId,
-					success: runData.status === 'success',
-					isManual: runData.mode === 'manual',
 					runData,
 				});
 			},
@@ -933,13 +929,9 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 	eventService.emit('workflow-post-execute', {
-		workflowId: workflowData.id,
-		workflowName: workflowData.name,
+		workflow: workflowData,
 		executionId,
-		success: data.status === 'success',
-		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
 		runData: data,
 	});

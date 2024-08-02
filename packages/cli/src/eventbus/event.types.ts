@@ -44,12 +44,8 @@ export type Event = {
 
 	'workflow-post-execute': {
 		executionId: string;
-		success: boolean;
 		userId?: string;
-		workflowId: string;
-		isManual: boolean;
-		workflowName: string;
-		metadata?: Record<string, string>;
+		workflow: IWorkflowBase;
 		runData?: IRun;
 	};
 

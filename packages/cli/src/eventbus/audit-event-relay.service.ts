@@ -122,12 +122,20 @@ export class AuditEventRelay {
 	}
 
 	private workflowPostExecute(event: Event['workflow-post-execute']) {
-		const { runData, ...rest } = event;
+		const { runData, workflow, ...rest } = event;
 
-		if (event.success) {
+		const payload = {
+			...rest,
+			success: runData?.status === 'success',
+			isManual: runData?.mode === 'manual',
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+		};
+
+		if (payload.success) {
 			void this.eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.success',
-				payload: rest,
+				payload,
 			});
 
 			return;
@@ -136,7 +144,7 @@ export class AuditEventRelay {
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.failed',
 			payload: {
-				...rest,
+				...payload,
 				lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
 				errorNodeType:
 					runData?.data.resultData.error && 'node' in runData?.data.resultData.error
