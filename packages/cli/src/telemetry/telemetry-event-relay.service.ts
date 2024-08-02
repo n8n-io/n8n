@@ -8,6 +8,14 @@ import { License } from '@/License';
 import { GlobalConfig } from '@n8n/config';
 import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import { get as pslGet } from 'psl';
+import { TelemetryHelpers } from 'n8n-workflow';
+import { NodeTypes } from '@/NodeTypes';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import type { IExecutionTrackProperties } from '@/Interfaces';
+import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
 
 @Service()
 export class TelemetryEventRelay {
@@ -17,6 +25,9 @@ export class TelemetryEventRelay {
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly nodeTypes: NodeTypes,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async init() {
@@ -101,10 +112,23 @@ export class TelemetryEventRelay {
 		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
 			this.loginFailedDueToLdapDisabled(event);
 		});
+
+		this.eventService.on('workflow-created', (event) => {
+			this.workflowCreated(event);
+		});
+		this.eventService.on('workflow-deleted', (event) => {
+			this.workflowDeleted(event);
+		});
+		this.eventService.on('workflow-saved', async (event) => {
+			await this.workflowSaved(event);
+		});
+		this.eventService.on('workflow-post-execute', async (event) => {
+			await this.workflowPostExecute(event);
+		});
 	}
 
 	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
-		void this.telemetry.track('Project settings updated', {
+		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
 			// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -120,7 +144,7 @@ export class TelemetryEventRelay {
 		removalType,
 		targetProjectId,
 	}: Event['team-project-deleted']) {
-		void this.telemetry.track('User deleted project', {
+		this.telemetry.track('User deleted project', {
 			user_id: userId,
 			role,
 			project_id: projectId,
@@ -130,7 +154,7 @@ export class TelemetryEventRelay {
 	}
 
 	private teamProjectCreated({ userId, role }: Event['team-project-created']) {
-		void this.telemetry.track('User created project', {
+		this.telemetry.track('User created project', {
 			user_id: userId,
 			role,
 		});
@@ -142,7 +166,7 @@ export class TelemetryEventRelay {
 		repoType,
 		connected,
 	}: Event['source-control-settings-updated']) {
-		void this.telemetry.track('User updated source control settings', {
+		this.telemetry.track('User updated source control settings', {
 			branch_name: branchName,
 			read_only_instance: readOnlyInstance,
 			repo_type: repoType,
@@ -155,7 +179,7 @@ export class TelemetryEventRelay {
 		workflowConflicts,
 		credConflicts,
 	}: Event['source-control-user-started-pull-ui']) {
-		void this.telemetry.track('User started pull via UI', {
+		this.telemetry.track('User started pull via UI', {
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
@@ -165,7 +189,7 @@ export class TelemetryEventRelay {
 	private sourceControlUserFinishedPullUi({
 		workflowUpdates,
 	}: Event['source-control-user-finished-pull-ui']) {
-		void this.telemetry.track('User finished pull via UI', {
+		this.telemetry.track('User finished pull via UI', {
 			workflow_updates: workflowUpdates,
 		});
 	}
@@ -178,7 +202,7 @@ export class TelemetryEventRelay {
 			workflow_updates: workflowUpdates,
 			forced,
 		});
-		void this.telemetry.track('User pulled via API', {
+		this.telemetry.track('User pulled via API', {
 			workflow_updates: workflowUpdates,
 			forced,
 		});
@@ -191,7 +215,7 @@ export class TelemetryEventRelay {
 		credsEligibleWithConflicts,
 		variablesEligible,
 	}: Event['source-control-user-started-push-ui']) {
-		void this.telemetry.track('User started push via UI', {
+		this.telemetry.track('User started push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
 			creds_eligible: credsEligible,
@@ -206,7 +230,7 @@ export class TelemetryEventRelay {
 		credsPushed,
 		variablesPushed,
 	}: Event['source-control-user-finished-push-ui']) {
-		void this.telemetry.track('User finished push via UI', {
+		this.telemetry.track('User finished push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
@@ -215,13 +239,13 @@ export class TelemetryEventRelay {
 	}
 
 	private licenseRenewalAttempted({ success }: Event['license-renewal-attempted']) {
-		void this.telemetry.track('Instance attempted to refresh license', {
+		this.telemetry.track('Instance attempted to refresh license', {
 			success,
 		});
 	}
 
 	private variableCreated() {
-		void this.telemetry.track('User created variable');
+		this.telemetry.track('User created variable');
 	}
 
 	private externalSecretsProviderSettingsSaved({
@@ -231,7 +255,7 @@ export class TelemetryEventRelay {
 		isNew,
 		errorMessage,
 	}: Event['external-secrets-provider-settings-saved']) {
-		void this.telemetry.track('User updated external secrets settings', {
+		this.telemetry.track('User updated external secrets settings', {
 			user_id: userId,
 			vault_type: vaultType,
 			is_valid: isValid,
@@ -241,7 +265,7 @@ export class TelemetryEventRelay {
 	}
 
 	private publicApiInvoked({ userId, path, method, apiVersion }: Event['public-api-invoked']) {
-		void this.telemetry.track('User invoked API', {
+		this.telemetry.track('User invoked API', {
 			user_id: userId,
 			path,
 			method,
@@ -252,7 +276,7 @@ export class TelemetryEventRelay {
 	private publicApiKeyCreated(event: Event['public-api-key-created']) {
 		const { user, publicApi } = event;
 
-		void this.telemetry.track('API key created', {
+		this.telemetry.track('API key created', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
@@ -261,7 +285,7 @@ export class TelemetryEventRelay {
 	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
 		const { user, publicApi } = event;
 
-		void this.telemetry.track('API key deleted', {
+		this.telemetry.track('API key deleted', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
@@ -278,7 +302,7 @@ export class TelemetryEventRelay {
 		packageAuthorEmail,
 		failureReason,
 	}: Event['community-package-installed']) {
-		void this.telemetry.track('cnr package install finished', {
+		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
 			input_string: inputString,
 			package_name: packageName,
@@ -300,7 +324,7 @@ export class TelemetryEventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 	}: Event['community-package-updated']) {
-		void this.telemetry.track('cnr package updated', {
+		this.telemetry.track('cnr package updated', {
 			user_id: user.id,
 			package_name: packageName,
 			package_version_current: packageVersionCurrent,
@@ -319,7 +343,7 @@ export class TelemetryEventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 	}: Event['community-package-deleted']) {
-		void this.telemetry.track('cnr package deleted', {
+		this.telemetry.track('cnr package deleted', {
 			user_id: user.id,
 			package_name: packageName,
 			package_version: packageVersion,
@@ -336,7 +360,7 @@ export class TelemetryEventRelay {
 		projectId,
 		projectType,
 	}: Event['credentials-created']) {
-		void this.telemetry.track('User created credentials', {
+		this.telemetry.track('User created credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -353,7 +377,7 @@ export class TelemetryEventRelay {
 		userIdsShareesAdded,
 		shareesRemoved,
 	}: Event['credentials-shared']) {
-		void this.telemetry.track('User updated cred sharing', {
+		this.telemetry.track('User updated cred sharing', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -364,7 +388,7 @@ export class TelemetryEventRelay {
 	}
 
 	private credentialsUpdated({ user, credentialId, credentialType }: Event['credentials-updated']) {
-		void this.telemetry.track('User updated credentials', {
+		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -372,7 +396,7 @@ export class TelemetryEventRelay {
 	}
 
 	private credentialsDeleted({ user, credentialId, credentialType }: Event['credentials-deleted']) {
-		void this.telemetry.track('User deleted credentials', {
+		this.telemetry.track('User deleted credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
@@ -385,7 +409,7 @@ export class TelemetryEventRelay {
 		usersSynced,
 		error,
 	}: Event['ldap-general-sync-finished']) {
-		void this.telemetry.track('Ldap general sync finished', {
+		this.telemetry.track('Ldap general sync finished', {
 			type,
 			succeeded,
 			users_synced: usersSynced,
@@ -407,7 +431,7 @@ export class TelemetryEventRelay {
 		loginLabel,
 		loginEnabled,
 	}: Event['ldap-settings-updated']) {
-		void this.telemetry.track('User updated Ldap settings', {
+		this.telemetry.track('User updated Ldap settings', {
 			user_id: userId,
 			loginIdAttribute,
 			firstNameAttribute,
@@ -424,11 +448,84 @@ export class TelemetryEventRelay {
 	}
 
 	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
-		void this.telemetry.track('Ldap login sync failed', { error });
+		this.telemetry.track('Ldap login sync failed', { error });
 	}
 
 	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
-		void this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
+		this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
+	}
+
+	private workflowCreated({
+		user,
+		workflow,
+		publicApi,
+		projectId,
+		projectType,
+	}: Event['workflow-created']) {
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+
+		this.telemetry.track('User created workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			public_api: publicApi,
+			project_id: projectId,
+			project_type: projectType,
+		});
+	}
+
+	private workflowDeleted({ user, workflowId, publicApi }: Event['workflow-deleted']) {
+		this.telemetry.track('User deleted workflow', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			public_api: publicApi,
+		});
+	}
+
+	private async workflowSaved({ user, workflow, publicApi }: Event['workflow-saved']) {
+		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
+
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+			isCloudDeployment,
+		});
+
+		let userRole: 'owner' | 'sharee' | 'member' | undefined = undefined;
+		const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
+		if (role) {
+			userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
+		} else {
+			const workflowOwner = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+				workflow.id,
+			);
+
+			if (workflowOwner) {
+				const projectRole = await this.projectRelationRepository.findProjectRole({
+					userId: user.id,
+					projectId: workflowOwner.id,
+				});
+
+				if (projectRole && projectRole !== 'project:personalOwner') {
+					userRole = 'member';
+				}
+			}
+		}
+
+		const notesCount = Object.keys(nodeGraph.notes).length;
+		const overlappingCount = Object.values(nodeGraph.notes).filter(
+			(note) => note.overlapping,
+		).length;
+
+		this.telemetry.track('User saved workflow', {
+			user_id: user.id,
+			workflow_id: workflow.id,
+			node_graph_string: JSON.stringify(nodeGraph),
+			notes_count_overlapping: overlappingCount,
+			notes_count_non_overlapping: notesCount - overlappingCount,
+			version_cli: N8N_VERSION,
+			num_tags: workflow.tags?.length ?? 0,
+			public_api: publicApi,
+			sharing_role: userRole,
+		});
 	}
 
 	private async serverStarted() {
@@ -444,9 +541,8 @@ export class TelemetryEventRelay {
 			version_cli: N8N_VERSION,
 			db_type: this.globalConfig.database.type,
 			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
-			n8n_disable_production_main_process: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
+			n8n_disable_production_main_process:
+				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
 			system_info: {
 				os: {
 					type: os.type(),
@@ -489,12 +585,144 @@ export class TelemetryEventRelay {
 			where: {},
 		});
 
-		void Promise.all([
-			this.telemetry.identify(info),
-			this.telemetry.track('Instance started', {
-				...info,
-				earliest_workflow_created: firstWorkflow?.createdAt,
-			}),
-		]);
+		this.telemetry.identify(info);
+		this.telemetry.track('Instance started', {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+		});
+	}
+
+	// eslint-disable-next-line complexity
+	private async workflowPostExecute({ workflow, runData, userId }: Event['workflow-post-execute']) {
+		if (!workflow.id) {
+			return;
+		}
+
+		if (runData?.status === 'waiting') {
+			// No need to send telemetry or logs when the workflow hasn't finished yet.
+			return;
+		}
+
+		const telemetryProperties: IExecutionTrackProperties = {
+			workflow_id: workflow.id,
+			is_manual: false,
+			version_cli: N8N_VERSION,
+			success: false,
+		};
+
+		if (userId) {
+			telemetryProperties.user_id = userId;
+		}
+
+		if (runData?.data.resultData.error?.message?.includes('canceled')) {
+			runData.status = 'canceled';
+		}
+
+		telemetryProperties.success = !!runData?.finished;
+
+		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
+		const executionStatus: ExecutionStatus = runData
+			? determineFinalExecutionStatus(runData)
+			: 'unknown';
+
+		if (runData !== undefined) {
+			telemetryProperties.execution_mode = runData.mode;
+			telemetryProperties.is_manual = runData.mode === 'manual';
+
+			let nodeGraphResult: INodesGraphResult | null = null;
+
+			if (!telemetryProperties.success && runData?.data.resultData.error) {
+				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				let errorNodeName =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.name
+						: undefined;
+				telemetryProperties.error_node_type =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined;
+
+				if (runData.data.resultData.lastNodeExecuted) {
+					const lastNode = TelemetryHelpers.getNodeTypeForName(
+						workflow,
+						runData.data.resultData.lastNodeExecuted,
+					);
+
+					if (lastNode !== undefined) {
+						telemetryProperties.error_node_type = lastNode.type;
+						errorNodeName = lastNode.name;
+					}
+				}
+
+				if (telemetryProperties.is_manual) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
+					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+
+					if (errorNodeName) {
+						telemetryProperties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
+					}
+				}
+			}
+
+			if (telemetryProperties.is_manual) {
+				if (!nodeGraphResult) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+				}
+
+				let userRole: 'owner' | 'sharee' | undefined = undefined;
+				if (userId) {
+					const role = await this.sharedWorkflowRepository.findSharingRole(userId, workflow.id);
+					if (role) {
+						userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
+					}
+				}
+
+				const manualExecEventProperties: ITelemetryTrackProperties = {
+					user_id: userId,
+					workflow_id: workflow.id,
+					status: executionStatus,
+					executionStatus: runData?.status ?? 'unknown',
+					error_message: telemetryProperties.error_message as string,
+					error_node_type: telemetryProperties.error_node_type,
+					node_graph_string: telemetryProperties.node_graph_string as string,
+					error_node_id: telemetryProperties.error_node_id as string,
+					webhook_domain: null,
+					sharing_role: userRole,
+				};
+
+				if (!manualExecEventProperties.node_graph_string) {
+					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+				}
+
+				if (runData.data.startData?.destinationNode) {
+					const telemetryPayload = {
+						...manualExecEventProperties,
+						node_type: TelemetryHelpers.getNodeTypeForName(
+							workflow,
+							runData.data.startData?.destinationNode,
+						)?.type,
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+					};
+
+					this.telemetry.track('Manual node exec finished', telemetryPayload);
+				} else {
+					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
+						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+							?.json as { headers?: { origin?: string } };
+						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
+							manualExecEventProperties.webhook_domain = pslGet(
+								execJson.headers.origin.replace(/^https?:\/\//, ''),
+							);
+						}
+					});
+
+					this.telemetry.track('Manual workflow exec finished', manualExecEventProperties);
+				}
+			}
+		}
+
+		this.telemetry.trackWorkflowExecution(telemetryProperties);
 	}
 }

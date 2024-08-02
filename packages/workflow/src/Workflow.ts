@@ -1237,6 +1237,7 @@ export class Workflow {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
+		runExecutionData: IRunExecutionData | null,
 	): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		if (nodeType === undefined) {
@@ -1258,6 +1259,7 @@ export class Workflow {
 			mode,
 			webhookData,
 			closeFunctions,
+			runExecutionData,
 		);
 		return nodeType instanceof Node
 			? await nodeType.webhook(context)

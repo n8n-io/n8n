@@ -256,6 +256,10 @@ export async function executeWebhook(
 	// Prepare everything that is needed to run the workflow
 	const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
+	if (executionId) {
+		additionalData.executionId = executionId;
+	}
+
 	// Get the responseMode
 	const responseMode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
@@ -359,12 +363,12 @@ export async function executeWebhook(
 				additionalData,
 				NodeExecuteFunctions,
 				executionMode,
+				runExecutionData ?? null,
 			);
-			Container.get(WorkflowStatisticsService).emit(
-				'nodeFetchedData',
-				workflow.id,
-				workflowStartNode,
-			);
+			Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
+				workflowId: workflow.id,
+				node: workflowStartNode,
+			});
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';

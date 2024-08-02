@@ -66,7 +66,7 @@ export class FrontendService {
 
 	private initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.getEnv('diagnostics.enabled'),
@@ -88,11 +88,11 @@ export class FrontendService {
 			isDocker: this.isDocker(),
 			databaseType: this.globalConfig.database.type,
 			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
-			endpointForm: config.getEnv('endpoints.form'),
-			endpointFormTest: config.getEnv('endpoints.formTest'),
-			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
-			endpointWebhook: config.getEnv('endpoints.webhook'),
-			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),
+			endpointForm: this.globalConfig.endpoints.form,
+			endpointFormTest: this.globalConfig.endpoints.formTest,
+			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
+			endpointWebhook: this.globalConfig.endpoints.webhook,
+			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
 			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
 			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
@@ -244,9 +244,9 @@ export class FrontendService {
 	}
 
 	getSettings(pushRef?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(pushRef);
+		this.internalHooks.onFrontendSettingsAPI(pushRef);
 
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const restEndpoint = this.globalConfig.endpoints.rest;
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();

@@ -78,7 +78,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedExecution({
+			Container.get(InternalHooks).onUserRetrievedExecution({
 				user_id: req.user.id,
 				public_api: true,
 			});
@@ -95,9 +95,10 @@ export = {
 				status = undefined,
 				includeData = false,
 				workflowId = undefined,
+				projectId,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read'], projectId);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -129,7 +130,7 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
+			Container.get(InternalHooks).onUserRetrievedAllExecutions({
 				user_id: req.user.id,
 				public_api: true,
 			});
