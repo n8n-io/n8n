@@ -66,7 +66,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		() =>
 			isExperimentEnabled.value &&
 			settings.isAiAssistantEnabled &&
-			route.name &&
 			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
@@ -85,8 +84,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const canShowAssistantButtons = computed(
 		() =>
+			isExperimentEnabled.value &&
 			settings.isAiAssistantEnabled &&
-			route.name &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 

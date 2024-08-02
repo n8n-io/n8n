@@ -29,7 +29,7 @@
 			<AskAssistantChat />
 			<Modals />
 			<Telemetry />
-			<AskAssistantFloatingButton />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
 	</div>
 </template>
@@ -61,6 +61,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
+import { useAssistantStore } from './stores/assistant.store';
 
 export default defineComponent({
 	name: 'App',
@@ -82,6 +83,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(
+			useAssistantStore,
 			useNodeTypesStore,
 			useRootStore,
 			useSettingsStore,
@@ -97,6 +99,9 @@ export default defineComponent({
 		},
 		isDemoMode(): boolean {
 			return this.$route.name === VIEWS.DEMO;
+		},
+		showAssistantButton(): boolean {
+			return this.assistantStore.canShowAssistantButtons;
 		},
 	},
 	data() {
