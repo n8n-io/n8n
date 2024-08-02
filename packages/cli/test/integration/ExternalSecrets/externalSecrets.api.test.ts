@@ -21,7 +21,7 @@ import {
 	TestFailProvider,
 } from '../../shared/ExternalSecrets/utils';
 import type { SuperAgentTest } from '../shared/types';
-import type { EventService } from '@/eventbus/event.service';
+import type { EventService } from '@/events/event.service';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

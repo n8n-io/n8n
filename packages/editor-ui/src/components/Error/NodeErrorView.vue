@@ -29,6 +29,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 type Props = {
 	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
+	compact?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -459,7 +460,7 @@ async function onAskAssistantClick() {
 			</div>
 		</div>
 
-		<div class="node-error-view__info">
+		<div v-if="!compact" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}

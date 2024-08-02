@@ -35,11 +35,11 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { AuditEventRelay } from './eventbus/audit-event-relay.service';
 import { License } from './License';
 import { AuthService } from './auth/auth.service';
 import { getAiServiceProxyMiddleware } from '@n8n_io/ai-assistant-sdk';
 import { GlobalConfig } from '@n8n/config';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
@@ -68,7 +68,7 @@ import '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
-import { EventService } from './eventbus/event.service';
+import { EventService } from './events/event.service';
 
 const exec = promisify(callbackExec);
 
@@ -254,7 +254,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(AuditEventRelay).init();
+		Container.get(LogStreamingEventRelay).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
