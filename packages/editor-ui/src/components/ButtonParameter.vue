@@ -85,21 +85,21 @@ function getPath(parameter: string) {
 	return ((props.path ? `${props.path}.` : '') + parameter) as string;
 }
 
-function createPrompt(prompt: string) {
-	return `
-Generate JavaScript code for this prompt:
+// function createPrompt(prompt: string) {
+// 	return `
+// Generate JavaScript code for this prompt:
 
----
-${prompt}
----
+// ---
+// ${prompt}
+// ---
 
-input available by calling $input.all(), assume $input variable is defined already:
+// input available by calling $input.all(), assume $input variable is defined already:
 
-return has to be an array of objects each must containe single property json that should be an object
-always have return statment
-return only code snippet without any additional explanation or comments
-format code as by using prettify`;
-}
+// return has to be an array of objects each must containe single property json that should be an object
+// always have return statment
+// return only code snippet without any additional explanation or comments
+// format code as by using prettify`;
+// }
 
 async function onSubmit() {
 	const { activeNode } = useNDVStore();
@@ -133,7 +133,7 @@ async function onSubmit() {
 				: 'gpt-3.5-turbo-16k';
 
 		const payload = {
-			question: createPrompt(prompt.value),
+			question: prompt.value,
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
