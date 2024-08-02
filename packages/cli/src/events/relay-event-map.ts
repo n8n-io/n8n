@@ -11,11 +11,12 @@ export type UserLike = {
 	role: string;
 };
 
-/**
- * Events sent by `EventService` and forwarded by relays, e.g. `AuditEventRelay` and `TelemetryEventRelay`.
- */
-export type Event = {
+export type RelayEventMap = {
 	'server-started': {};
+
+	/**
+	 * Workflow
+	 */
 
 	'workflow-created': {
 		user: UserLike;
@@ -49,6 +50,10 @@ export type Event = {
 		runData?: IRun;
 	};
 
+	/**
+	 * Node
+	 */
+
 	'node-pre-execute': {
 		executionId: string;
 		workflow: IWorkflowBase;
@@ -60,6 +65,10 @@ export type Event = {
 		workflow: IWorkflowBase;
 		nodeName: string;
 	};
+
+	/**
+	 * User
+	 */
 
 	'user-deleted': {
 		user: UserLike;
@@ -95,6 +104,10 @@ export type Event = {
 		reason?: string;
 	};
 
+	/**
+	 * Click
+	 */
+
 	'user-invite-email-click': {
 		inviter: UserLike;
 		invitee: UserLike;
@@ -108,12 +121,30 @@ export type Event = {
 		user: UserLike;
 	};
 
+	/**
+	 * Public API
+	 */
+
+	'public-api-key-created': {
+		user: UserLike;
+		publicApi: boolean;
+	};
+
+	'public-api-key-deleted': {
+		user: UserLike;
+		publicApi: boolean;
+	};
+
 	'public-api-invoked': {
 		userId: string;
 		path: string;
 		method: string;
 		apiVersion: string;
 	};
+
+	/**
+	 * Email
+	 */
 
 	'email-failed': {
 		user: UserLike;
@@ -124,6 +155,10 @@ export type Event = {
 			| 'Workflow shared'
 			| 'Credentials shared';
 	};
+
+	/**
+	 * Credentials
+	 */
 
 	'credentials-created': {
 		user: UserLike;
@@ -154,6 +189,10 @@ export type Event = {
 		credentialType: string;
 		credentialId: string;
 	};
+
+	/**
+	 * Community package
+	 */
 
 	'community-package-installed': {
 		user: UserLike;
@@ -186,6 +225,10 @@ export type Event = {
 		packageAuthorEmail?: string;
 	};
 
+	/**
+	 * Execution
+	 */
+
 	'execution-throttled': {
 		executionId: string;
 	};
@@ -193,6 +236,10 @@ export type Event = {
 	'execution-started-during-bootup': {
 		executionId: string;
 	};
+
+	/**
+	 * Project
+	 */
 
 	'team-project-updated': {
 		userId: string;
@@ -216,6 +263,10 @@ export type Event = {
 		userId: string;
 		role: GlobalRole;
 	};
+
+	/**
+	 * Source control
+	 */
 
 	'source-control-settings-updated': {
 		branchName: string;
@@ -254,11 +305,23 @@ export type Event = {
 		variablesPushed: number;
 	};
 
+	/**
+	 * License
+	 */
+
 	'license-renewal-attempted': {
 		success: boolean;
 	};
 
+	/**
+	 * Variable
+	 */
+
 	'variable-created': {};
+
+	/**
+	 * External secrets
+	 */
 
 	'external-secrets-provider-settings-saved': {
 		userId?: string;
@@ -267,6 +330,10 @@ export type Event = {
 		isNew: boolean;
 		errorMessage?: string;
 	};
+
+	/**
+	 * LDAP
+	 */
 
 	'ldap-general-sync-finished': {
 		type: string;
@@ -296,19 +363,5 @@ export type Event = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
-	};
-
-	/**
-	 * Events listened to by more than one relay
-	 */
-
-	'public-api-key-created': {
-		user: UserLike; // audit and telemetry
-		publicApi: boolean; // telemetry only
-	};
-
-	'public-api-key-deleted': {
-		user: UserLike; // audit and telemetry
-		publicApi: boolean; // telemetry only
 	};
 };

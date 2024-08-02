@@ -1,64 +1,52 @@
 import { Service } from 'typedi';
-import { MessageEventBus } from './MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { Redactable } from '@/decorators/Redactable';
-import { EventService } from './event.service';
-import type { Event } from './event.types';
+import { EventRelay } from '@/events/event-relay';
+import type { RelayEventMap } from '@/events/relay-event-map';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { EventService } from './event.service';
 
 @Service()
-export class AuditEventRelay {
+export class LogEventRelay extends EventRelay {
 	constructor(
-		private readonly eventService: EventService,
+		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,
-	) {}
-
-	init() {
-		this.setupHandlers();
+	) {
+		super(eventService);
 	}
 
-	private setupHandlers() {
-		this.eventService.on('workflow-created', (event) => this.workflowCreated(event));
-		this.eventService.on('workflow-deleted', (event) => this.workflowDeleted(event));
-		this.eventService.on('workflow-saved', (event) => this.workflowSaved(event));
-		this.eventService.on('workflow-pre-execute', (event) => this.workflowPreExecute(event));
-		this.eventService.on('workflow-post-execute', (event) => this.workflowPostExecute(event));
-		this.eventService.on('node-pre-execute', (event) => this.nodePreExecute(event));
-		this.eventService.on('node-post-execute', (event) => this.nodePostExecute(event));
-		this.eventService.on('user-deleted', (event) => this.userDeleted(event));
-		this.eventService.on('user-invited', (event) => this.userInvited(event));
-		this.eventService.on('user-reinvited', (event) => this.userReinvited(event));
-		this.eventService.on('user-updated', (event) => this.userUpdated(event));
-		this.eventService.on('user-signed-up', (event) => this.userSignedUp(event));
-		this.eventService.on('user-logged-in', (event) => this.userLoggedIn(event));
-		this.eventService.on('user-login-failed', (event) => this.userLoginFailed(event));
-		this.eventService.on('user-invite-email-click', (event) => this.userInviteEmailClick(event));
-		this.eventService.on('user-password-reset-email-click', (event) =>
-			this.userPasswordResetEmailClick(event),
-		);
-		this.eventService.on('user-password-reset-request-click', (event) =>
-			this.userPasswordResetRequestClick(event),
-		);
-		this.eventService.on('public-api-key-created', (event) => this.publicApiKeyCreated(event));
-		this.eventService.on('public-api-key-deleted', (event) => this.publicApiKeyDeleted(event));
-		this.eventService.on('email-failed', (event) => this.emailFailed(event));
-		this.eventService.on('credentials-created', (event) => this.credentialsCreated(event));
-		this.eventService.on('credentials-deleted', (event) => this.credentialsDeleted(event));
-		this.eventService.on('credentials-shared', (event) => this.credentialsShared(event));
-		this.eventService.on('credentials-updated', (event) => this.credentialsUpdated(event));
-		this.eventService.on('credentials-deleted', (event) => this.credentialsDeleted(event));
-		this.eventService.on('community-package-installed', (event) =>
-			this.communityPackageInstalled(event),
-		);
-		this.eventService.on('community-package-updated', (event) =>
-			this.communityPackageUpdated(event),
-		);
-		this.eventService.on('community-package-deleted', (event) =>
-			this.communityPackageDeleted(event),
-		);
-		this.eventService.on('execution-throttled', (event) => this.executionThrottled(event));
-		this.eventService.on('execution-started-during-bootup', (event) =>
-			this.executionStartedDuringBootup(event),
-		);
+	init() {
+		this.setupListeners({
+			'workflow-created': (event) => this.workflowCreated(event),
+			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-saved': (event) => this.workflowSaved(event),
+			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
+			'workflow-post-execute': (event) => this.workflowPostExecute(event),
+			'node-pre-execute': (event) => this.nodePreExecute(event),
+			'node-post-execute': (event) => this.nodePostExecute(event),
+			'user-deleted': (event) => this.userDeleted(event),
+			'user-invited': (event) => this.userInvited(event),
+			'user-reinvited': (event) => this.userReinvited(event),
+			'user-updated': (event) => this.userUpdated(event),
+			'user-signed-up': (event) => this.userSignedUp(event),
+			'user-logged-in': (event) => this.userLoggedIn(event),
+			'user-login-failed': (event) => this.userLoginFailed(event),
+			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
+			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
+			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
+			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
+			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'email-failed': (event) => this.emailFailed(event),
+			'credentials-created': (event) => this.credentialsCreated(event),
+			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-shared': (event) => this.credentialsShared(event),
+			'credentials-updated': (event) => this.credentialsUpdated(event),
+			'community-package-installed': (event) => this.communityPackageInstalled(event),
+			'community-package-updated': (event) => this.communityPackageUpdated(event),
+			'community-package-deleted': (event) => this.communityPackageDeleted(event),
+			'execution-throttled': (event) => this.executionThrottled(event),
+			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
+		});
 	}
 
 	/**
@@ -66,7 +54,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private workflowCreated({ user, workflow }: Event['workflow-created']) {
+	private workflowCreated({ user, workflow }: RelayEventMap['workflow-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.created',
 			payload: {
@@ -78,7 +66,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowDeleted({ user, workflowId }: Event['workflow-deleted']) {
+	private workflowDeleted({ user, workflowId }: RelayEventMap['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
 			payload: { ...user, workflowId },
@@ -86,7 +74,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow }: Event['workflow-saved']) {
+	private workflowSaved({ user, workflow }: RelayEventMap['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
@@ -97,7 +85,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId }: Event['workflow-pre-execute']) {
+	private workflowPreExecute({ data, executionId }: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -121,7 +109,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private workflowPostExecute(event: Event['workflow-post-execute']) {
+	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
 		const { runData, workflow, ...rest } = event;
 
 		const payload = {
@@ -159,7 +147,7 @@ export class AuditEventRelay {
 	 * Node
 	 */
 
-	private nodePreExecute({ workflow, executionId, nodeName }: Event['node-pre-execute']) {
+	private nodePreExecute({ workflow, executionId, nodeName }: RelayEventMap['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
@@ -172,7 +160,7 @@ export class AuditEventRelay {
 		});
 	}
 
-	private nodePostExecute({ workflow, executionId, nodeName }: Event['node-post-execute']) {
+	private nodePostExecute({ workflow, executionId, nodeName }: RelayEventMap['node-post-execute']) {
 		void this.eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
@@ -190,7 +178,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private userDeleted({ user }: Event['user-deleted']) {
+	private userDeleted({ user }: RelayEventMap['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
 			payload: user,
@@ -198,7 +186,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userInvited({ user, targetUserId }: Event['user-invited']) {
+	private userInvited({ user, targetUserId }: RelayEventMap['user-invited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invited',
 			payload: { ...user, targetUserId },
@@ -206,7 +194,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userReinvited({ user, targetUserId }: Event['user-reinvited']) {
+	private userReinvited({ user, targetUserId }: RelayEventMap['user-reinvited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reinvited',
 			payload: { ...user, targetUserId },
@@ -214,7 +202,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userUpdated({ user, fieldsChanged }: Event['user-updated']) {
+	private userUpdated({ user, fieldsChanged }: RelayEventMap['user-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.updated',
 			payload: { ...user, fieldsChanged },
@@ -226,7 +214,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private userSignedUp({ user }: Event['user-signed-up']) {
+	private userSignedUp({ user }: RelayEventMap['user-signed-up']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.signedup',
 			payload: user,
@@ -234,7 +222,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userLoggedIn({ user, authenticationMethod }: Event['user-logged-in']) {
+	private userLoggedIn({ user, authenticationMethod }: RelayEventMap['user-logged-in']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.success',
 			payload: { ...user, authenticationMethod },
@@ -242,7 +230,7 @@ export class AuditEventRelay {
 	}
 
 	private userLoginFailed(
-		event: Event['user-login-failed'] /* exception: no `UserLike` to redact */,
+		event: RelayEventMap['user-login-failed'] /* exception: no `UserLike` to redact */,
 	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.login.failed',
@@ -256,7 +244,7 @@ export class AuditEventRelay {
 
 	@Redactable('inviter')
 	@Redactable('invitee')
-	private userInviteEmailClick(event: Event['user-invite-email-click']) {
+	private userInviteEmailClick(event: RelayEventMap['user-invite-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invitation.accepted',
 			payload: event,
@@ -264,7 +252,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userPasswordResetEmailClick({ user }: Event['user-password-reset-email-click']) {
+	private userPasswordResetEmailClick({ user }: RelayEventMap['user-password-reset-email-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset',
 			payload: user,
@@ -272,7 +260,9 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private userPasswordResetRequestClick({ user }: Event['user-password-reset-request-click']) {
+	private userPasswordResetRequestClick({
+		user,
+	}: RelayEventMap['user-password-reset-request-click']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.reset.requested',
 			payload: user,
@@ -284,7 +274,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private publicApiKeyCreated({ user }: Event['public-api-key-created']) {
+	private publicApiKeyCreated({ user }: RelayEventMap['public-api-key-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.created',
 			payload: user,
@@ -292,7 +282,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private publicApiKeyDeleted({ user }: Event['public-api-key-deleted']) {
+	private publicApiKeyDeleted({ user }: RelayEventMap['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
 			payload: user,
@@ -304,7 +294,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private emailFailed({ user, messageType }: Event['email-failed']) {
+	private emailFailed({ user, messageType }: RelayEventMap['email-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.email.failed',
 			payload: { ...user, messageType },
@@ -316,7 +306,7 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private credentialsCreated({ user, ...rest }: Event['credentials-created']) {
+	private credentialsCreated({ user, ...rest }: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
 			payload: { ...user, ...rest },
@@ -324,7 +314,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsDeleted({ user, ...rest }: Event['credentials-deleted']) {
+	private credentialsDeleted({ user, ...rest }: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
 			payload: { ...user, ...rest },
@@ -332,7 +322,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsShared({ user, ...rest }: Event['credentials-shared']) {
+	private credentialsShared({ user, ...rest }: RelayEventMap['credentials-shared']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.shared',
 			payload: { ...user, ...rest },
@@ -340,7 +330,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private credentialsUpdated({ user, ...rest }: Event['credentials-updated']) {
+	private credentialsUpdated({ user, ...rest }: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
 			payload: { ...user, ...rest },
@@ -352,7 +342,10 @@ export class AuditEventRelay {
 	 */
 
 	@Redactable()
-	private communityPackageInstalled({ user, ...rest }: Event['community-package-installed']) {
+	private communityPackageInstalled({
+		user,
+		...rest
+	}: RelayEventMap['community-package-installed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.installed',
 			payload: { ...user, ...rest },
@@ -360,7 +353,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private communityPackageUpdated({ user, ...rest }: Event['community-package-updated']) {
+	private communityPackageUpdated({ user, ...rest }: RelayEventMap['community-package-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.updated',
 			payload: { ...user, ...rest },
@@ -368,7 +361,7 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private communityPackageDeleted({ user, ...rest }: Event['community-package-deleted']) {
+	private communityPackageDeleted({ user, ...rest }: RelayEventMap['community-package-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
 			payload: { ...user, ...rest },
@@ -379,14 +372,16 @@ export class AuditEventRelay {
 	 * Execution
 	 */
 
-	private executionThrottled({ executionId }: Event['execution-throttled']) {
+	private executionThrottled({ executionId }: RelayEventMap['execution-throttled']) {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.throttled',
 			payload: { executionId },
 		});
 	}
 
-	private executionStartedDuringBootup({ executionId }: Event['execution-started-during-bootup']) {
+	private executionStartedDuringBootup({
+		executionId,
+	}: RelayEventMap['execution-started-during-bootup']) {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.started-during-bootup',
 			payload: { executionId },

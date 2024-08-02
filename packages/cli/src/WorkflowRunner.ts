@@ -36,7 +36,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
-import { EventService } from './eventbus/event.service';
+import { EventService } from './events/event.service';
 
 @Service()
 export class WorkflowRunner {

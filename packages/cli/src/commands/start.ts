@@ -33,7 +33,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

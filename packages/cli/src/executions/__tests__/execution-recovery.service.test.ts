@@ -21,7 +21,7 @@ import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNod
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
 import { setupMessages } from './utils';
 
-import type { EventService } from '@/eventbus/event.service';
+import type { EventService } from '@/events/event.service';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
 import type { Logger } from '@/Logger';
 
