@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
-import { EventService } from '@/eventbus/event.service';
-import type { Event } from '@/eventbus/event.types';
-import { Telemetry } from '.';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/relay-event-map';
+import { Telemetry } from '../telemetry';
 import config from '@/config';
 import os from 'node:os';
 import { License } from '@/License';
@@ -16,11 +16,12 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
+import { EventRelay } from './event-relay';
 
 @Service()
-export class TelemetryEventRelay {
+export class TelemetryEventRelay extends EventRelay {
 	constructor(
-		private readonly eventService: EventService,
+		readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
 		private readonly license: License,
 		private readonly globalConfig: GlobalConfig,
@@ -28,106 +29,63 @@ export class TelemetryEventRelay {
 		private readonly nodeTypes: NodeTypes,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-	) {}
+	) {
+		super(eventService);
+	}
 
 	async init() {
 		if (!config.getEnv('diagnostics.enabled')) return;
 
 		await this.telemetry.init();
 
-		this.setupHandlers();
-	}
-
-	private setupHandlers() {
-		this.eventService.on('server-started', async () => await this.serverStarted());
-
-		this.eventService.on('team-project-updated', (event) => this.teamProjectUpdated(event));
-		this.eventService.on('team-project-deleted', (event) => this.teamProjectDeleted(event));
-		this.eventService.on('team-project-created', (event) => this.teamProjectCreated(event));
-		this.eventService.on('source-control-settings-updated', (event) =>
-			this.sourceControlSettingsUpdated(event),
-		);
-		this.eventService.on('source-control-user-started-pull-ui', (event) =>
-			this.sourceControlUserStartedPullUi(event),
-		);
-		this.eventService.on('source-control-user-finished-pull-ui', (event) =>
-			this.sourceControlUserFinishedPullUi(event),
-		);
-		this.eventService.on('source-control-user-pulled-api', (event) =>
-			this.sourceControlUserPulledApi(event),
-		);
-		this.eventService.on('source-control-user-started-push-ui', (event) =>
-			this.sourceControlUserStartedPushUi(event),
-		);
-		this.eventService.on('source-control-user-finished-push-ui', (event) =>
-			this.sourceControlUserFinishedPushUi(event),
-		);
-		this.eventService.on('license-renewal-attempted', (event) => {
-			this.licenseRenewalAttempted(event);
-		});
-		this.eventService.on('variable-created', () => this.variableCreated());
-		this.eventService.on('external-secrets-provider-settings-saved', (event) => {
-			this.externalSecretsProviderSettingsSaved(event);
-		});
-		this.eventService.on('public-api-invoked', (event) => {
-			this.publicApiInvoked(event);
-		});
-		this.eventService.on('public-api-key-created', (event) => {
-			this.publicApiKeyCreated(event);
-		});
-		this.eventService.on('public-api-key-deleted', (event) => {
-			this.publicApiKeyDeleted(event);
-		});
-		this.eventService.on('community-package-installed', (event) => {
-			this.communityPackageInstalled(event);
-		});
-		this.eventService.on('community-package-updated', (event) => {
-			this.communityPackageUpdated(event);
-		});
-		this.eventService.on('community-package-deleted', (event) => {
-			this.communityPackageDeleted(event);
-		});
-
-		this.eventService.on('credentials-created', (event) => {
-			this.credentialsCreated(event);
-		});
-		this.eventService.on('credentials-shared', (event) => {
-			this.credentialsShared(event);
-		});
-		this.eventService.on('credentials-updated', (event) => {
-			this.credentialsUpdated(event);
-		});
-		this.eventService.on('credentials-deleted', (event) => {
-			this.credentialsDeleted(event);
-		});
-		this.eventService.on('ldap-general-sync-finished', (event) => {
-			this.ldapGeneralSyncFinished(event);
-		});
-		this.eventService.on('ldap-settings-updated', (event) => {
-			this.ldapSettingsUpdated(event);
-		});
-		this.eventService.on('ldap-login-sync-failed', (event) => {
-			this.ldapLoginSyncFailed(event);
-		});
-		this.eventService.on('login-failed-due-to-ldap-disabled', (event) => {
-			this.loginFailedDueToLdapDisabled(event);
-		});
-
-		this.eventService.on('workflow-created', (event) => {
-			this.workflowCreated(event);
-		});
-		this.eventService.on('workflow-deleted', (event) => {
-			this.workflowDeleted(event);
-		});
-		this.eventService.on('workflow-saved', async (event) => {
-			await this.workflowSaved(event);
-		});
-		this.eventService.on('workflow-post-execute', async (event) => {
-			await this.workflowPostExecute(event);
+		this.setupListeners({
+			'team-project-updated': (event) => this.teamProjectUpdated(event),
+			'team-project-deleted': (event) => this.teamProjectDeleted(event),
+			'team-project-created': (event) => this.teamProjectCreated(event),
+			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
+			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
+			'source-control-user-finished-pull-ui': (event) =>
+				this.sourceControlUserFinishedPullUi(event),
+			'source-control-user-pulled-api': (event) => this.sourceControlUserPulledApi(event),
+			'source-control-user-started-push-ui': (event) => this.sourceControlUserStartedPushUi(event),
+			'source-control-user-finished-push-ui': (event) =>
+				this.sourceControlUserFinishedPushUi(event),
+			'license-renewal-attempted': (event) => this.licenseRenewalAttempted(event),
+			'variable-created': () => this.variableCreated(),
+			'external-secrets-provider-settings-saved': (event) =>
+				this.externalSecretsProviderSettingsSaved(event),
+			'public-api-invoked': (event) => this.publicApiInvoked(event),
+			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
+			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'community-package-installed': (event) => this.communityPackageInstalled(event),
+			'community-package-updated': (event) => this.communityPackageUpdated(event),
+			'community-package-deleted': (event) => this.communityPackageDeleted(event),
+			'credentials-created': (event) => this.credentialsCreated(event),
+			'credentials-shared': (event) => this.credentialsShared(event),
+			'credentials-updated': (event) => this.credentialsUpdated(event),
+			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'ldap-general-sync-finished': (event) => this.ldapGeneralSyncFinished(event),
+			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
+			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
+			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
+			'workflow-created': (event) => this.workflowCreated(event),
+			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-saved': async (event) => await this.workflowSaved(event),
+			'server-started': async () => await this.serverStarted(),
+			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
 		});
 	}
 
-	private teamProjectUpdated({ userId, role, members, projectId }: Event['team-project-updated']) {
+	// #endregion
+
+	// #region Team
+
+	private teamProjectUpdated({
+		userId,
+		role,
+		members,
+		projectId,
+	}: RelayEventMap['team-project-updated']) {
 		this.telemetry.track('Project settings updated', {
 			user_id: userId,
 			role,
@@ -143,7 +101,7 @@ export class TelemetryEventRelay {
 		projectId,
 		removalType,
 		targetProjectId,
-	}: Event['team-project-deleted']) {
+	}: RelayEventMap['team-project-deleted']) {
 		this.telemetry.track('User deleted project', {
 			user_id: userId,
 			role,
@@ -153,19 +111,23 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private teamProjectCreated({ userId, role }: Event['team-project-created']) {
+	private teamProjectCreated({ userId, role }: RelayEventMap['team-project-created']) {
 		this.telemetry.track('User created project', {
 			user_id: userId,
 			role,
 		});
 	}
 
+	// #endregion
+
+	// #region Source control
+
 	private sourceControlSettingsUpdated({
 		branchName,
 		readOnlyInstance,
 		repoType,
 		connected,
-	}: Event['source-control-settings-updated']) {
+	}: RelayEventMap['source-control-settings-updated']) {
 		this.telemetry.track('User updated source control settings', {
 			branch_name: branchName,
 			read_only_instance: readOnlyInstance,
@@ -178,7 +140,7 @@ export class TelemetryEventRelay {
 		workflowUpdates,
 		workflowConflicts,
 		credConflicts,
-	}: Event['source-control-user-started-pull-ui']) {
+	}: RelayEventMap['source-control-user-started-pull-ui']) {
 		this.telemetry.track('User started pull via UI', {
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
@@ -188,7 +150,7 @@ export class TelemetryEventRelay {
 
 	private sourceControlUserFinishedPullUi({
 		workflowUpdates,
-	}: Event['source-control-user-finished-pull-ui']) {
+	}: RelayEventMap['source-control-user-finished-pull-ui']) {
 		this.telemetry.track('User finished pull via UI', {
 			workflow_updates: workflowUpdates,
 		});
@@ -197,7 +159,7 @@ export class TelemetryEventRelay {
 	private sourceControlUserPulledApi({
 		workflowUpdates,
 		forced,
-	}: Event['source-control-user-pulled-api']) {
+	}: RelayEventMap['source-control-user-pulled-api']) {
 		console.log('source-control-user-pulled-api', {
 			workflow_updates: workflowUpdates,
 			forced,
@@ -214,7 +176,7 @@ export class TelemetryEventRelay {
 		credsEligible,
 		credsEligibleWithConflicts,
 		variablesEligible,
-	}: Event['source-control-user-started-push-ui']) {
+	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
@@ -229,7 +191,7 @@ export class TelemetryEventRelay {
 		workflowsPushed,
 		credsPushed,
 		variablesPushed,
-	}: Event['source-control-user-finished-push-ui']) {
+	}: RelayEventMap['source-control-user-finished-push-ui']) {
 		this.telemetry.track('User finished push via UI', {
 			workflows_eligible: workflowsEligible,
 			workflows_pushed: workflowsPushed,
@@ -238,15 +200,27 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private licenseRenewalAttempted({ success }: Event['license-renewal-attempted']) {
+	// #endregion
+
+	// #region License
+
+	private licenseRenewalAttempted({ success }: RelayEventMap['license-renewal-attempted']) {
 		this.telemetry.track('Instance attempted to refresh license', {
 			success,
 		});
 	}
 
+	// #endregion
+
+	// #region Variable
+
 	private variableCreated() {
 		this.telemetry.track('User created variable');
 	}
+
+	// #endregion
+
+	// #region External secrets
 
 	private externalSecretsProviderSettingsSaved({
 		userId,
@@ -254,7 +228,7 @@ export class TelemetryEventRelay {
 		isValid,
 		isNew,
 		errorMessage,
-	}: Event['external-secrets-provider-settings-saved']) {
+	}: RelayEventMap['external-secrets-provider-settings-saved']) {
 		this.telemetry.track('User updated external secrets settings', {
 			user_id: userId,
 			vault_type: vaultType,
@@ -264,7 +238,16 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private publicApiInvoked({ userId, path, method, apiVersion }: Event['public-api-invoked']) {
+	// #endregion
+
+	// #region Public API
+
+	private publicApiInvoked({
+		userId,
+		path,
+		method,
+		apiVersion,
+	}: RelayEventMap['public-api-invoked']) {
 		this.telemetry.track('User invoked API', {
 			user_id: userId,
 			path,
@@ -273,7 +256,7 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private publicApiKeyCreated(event: Event['public-api-key-created']) {
+	private publicApiKeyCreated(event: RelayEventMap['public-api-key-created']) {
 		const { user, publicApi } = event;
 
 		this.telemetry.track('API key created', {
@@ -282,7 +265,7 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private publicApiKeyDeleted(event: Event['public-api-key-deleted']) {
+	private publicApiKeyDeleted(event: RelayEventMap['public-api-key-deleted']) {
 		const { user, publicApi } = event;
 
 		this.telemetry.track('API key deleted', {
@@ -290,6 +273,10 @@ export class TelemetryEventRelay {
 			public_api: publicApi,
 		});
 	}
+
+	// #endregion
+
+	// #region Community package
 
 	private communityPackageInstalled({
 		user,
@@ -301,7 +288,7 @@ export class TelemetryEventRelay {
 		packageAuthor,
 		packageAuthorEmail,
 		failureReason,
-	}: Event['community-package-installed']) {
+	}: RelayEventMap['community-package-installed']) {
 		this.telemetry.track('cnr package install finished', {
 			user_id: user.id,
 			input_string: inputString,
@@ -323,7 +310,7 @@ export class TelemetryEventRelay {
 		packageNodeNames,
 		packageAuthor,
 		packageAuthorEmail,
-	}: Event['community-package-updated']) {
+	}: RelayEventMap['community-package-updated']) {
 		this.telemetry.track('cnr package updated', {
 			user_id: user.id,
 			package_name: packageName,
@@ -342,7 +329,7 @@ export class TelemetryEventRelay {
 		packageNodeNames,
 		packageAuthor,
 		packageAuthorEmail,
-	}: Event['community-package-deleted']) {
+	}: RelayEventMap['community-package-deleted']) {
 		this.telemetry.track('cnr package deleted', {
 			user_id: user.id,
 			package_name: packageName,
@@ -353,13 +340,17 @@ export class TelemetryEventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region Credentials
+
 	private credentialsCreated({
 		user,
 		credentialType,
 		credentialId,
 		projectId,
 		projectType,
-	}: Event['credentials-created']) {
+	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
@@ -376,7 +367,7 @@ export class TelemetryEventRelay {
 		userIdSharer,
 		userIdsShareesAdded,
 		shareesRemoved,
-	}: Event['credentials-shared']) {
+	}: RelayEventMap['credentials-shared']) {
 		this.telemetry.track('User updated cred sharing', {
 			user_id: user.id,
 			credential_type: credentialType,
@@ -387,7 +378,11 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private credentialsUpdated({ user, credentialId, credentialType }: Event['credentials-updated']) {
+	private credentialsUpdated({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
@@ -395,7 +390,11 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private credentialsDeleted({ user, credentialId, credentialType }: Event['credentials-deleted']) {
+	private credentialsDeleted({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['credentials-deleted']) {
 		this.telemetry.track('User deleted credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
@@ -403,12 +402,16 @@ export class TelemetryEventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region LDAP
+
 	private ldapGeneralSyncFinished({
 		type,
 		succeeded,
 		usersSynced,
 		error,
-	}: Event['ldap-general-sync-finished']) {
+	}: RelayEventMap['ldap-general-sync-finished']) {
 		this.telemetry.track('Ldap general sync finished', {
 			type,
 			succeeded,
@@ -430,7 +433,7 @@ export class TelemetryEventRelay {
 		synchronizationInterval,
 		loginLabel,
 		loginEnabled,
-	}: Event['ldap-settings-updated']) {
+	}: RelayEventMap['ldap-settings-updated']) {
 		this.telemetry.track('User updated Ldap settings', {
 			user_id: userId,
 			loginIdAttribute,
@@ -447,13 +450,19 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private ldapLoginSyncFailed({ error }: Event['ldap-login-sync-failed']) {
+	private ldapLoginSyncFailed({ error }: RelayEventMap['ldap-login-sync-failed']) {
 		this.telemetry.track('Ldap login sync failed', { error });
 	}
 
-	private loginFailedDueToLdapDisabled({ userId }: Event['login-failed-due-to-ldap-disabled']) {
+	private loginFailedDueToLdapDisabled({
+		userId,
+	}: RelayEventMap['login-failed-due-to-ldap-disabled']) {
 		this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
+
+	// #endregion
+
+	// #region Workflow
 
 	private workflowCreated({
 		user,
@@ -461,7 +470,7 @@ export class TelemetryEventRelay {
 		publicApi,
 		projectId,
 		projectType,
-	}: Event['workflow-created']) {
+	}: RelayEventMap['workflow-created']) {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		this.telemetry.track('User created workflow', {
@@ -474,7 +483,7 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private workflowDeleted({ user, workflowId, publicApi }: Event['workflow-deleted']) {
+	private workflowDeleted({ user, workflowId, publicApi }: RelayEventMap['workflow-deleted']) {
 		this.telemetry.track('User deleted workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
@@ -482,7 +491,7 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private async workflowSaved({ user, workflow, publicApi }: Event['workflow-saved']) {
+	private async workflowSaved({ user, workflow, publicApi }: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
 
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
@@ -528,72 +537,12 @@ export class TelemetryEventRelay {
 		});
 	}
 
-	private async serverStarted() {
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
-		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
-
-		const info = {
-			version_cli: N8N_VERSION,
-			db_type: this.globalConfig.database.type,
-			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
-			n8n_disable_production_main_process:
-				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
-			system_info: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
-			},
-			execution_variables: {
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			},
-			n8n_deployment_type: config.getEnv('deployment.type'),
-			n8n_binary_data_mode: binaryDataConfig.mode,
-			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
-			ldap_allowed: authenticationMethod === 'ldap',
-			saml_enabled: authenticationMethod === 'saml',
-			license_plan_name: this.license.getPlanName(),
-			license_tenant_id: config.getEnv('license.tenantId'),
-			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		});
-
-		this.telemetry.identify(info);
-		this.telemetry.track('Instance started', {
-			...info,
-			earliest_workflow_created: firstWorkflow?.createdAt,
-		});
-	}
-
 	// eslint-disable-next-line complexity
-	private async workflowPostExecute({ workflow, runData, userId }: Event['workflow-post-execute']) {
+	private async workflowPostExecute({
+		workflow,
+		runData,
+		userId,
+	}: RelayEventMap['workflow-post-execute']) {
 		if (!workflow.id) {
 			return;
 		}
@@ -725,4 +674,74 @@ export class TelemetryEventRelay {
 
 		this.telemetry.trackWorkflowExecution(telemetryProperties);
 	}
+
+	// #endregion
+
+	// #region Server
+
+	private async serverStarted() {
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+
+		const info = {
+			version_cli: N8N_VERSION,
+			db_type: this.globalConfig.database.type,
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
+			n8n_disable_production_main_process:
+				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
+			system_info: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			execution_variables: {
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+			},
+			n8n_deployment_type: config.getEnv('deployment.type'),
+			n8n_binary_data_mode: binaryDataConfig.mode,
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
+			ldap_allowed: authenticationMethod === 'ldap',
+			saml_enabled: authenticationMethod === 'saml',
+			license_plan_name: this.license.getPlanName(),
+			license_tenant_id: config.getEnv('license.tenantId'),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+		};
+
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
+
+		this.telemetry.identify(info);
+		this.telemetry.track('Instance started', {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+		});
+	}
+
+	// #endregion
 }

@@ -30,7 +30,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController('/credentials')
 export class CredentialsController {
