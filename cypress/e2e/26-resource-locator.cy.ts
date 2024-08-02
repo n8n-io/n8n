@@ -105,8 +105,6 @@ describe('Resource Locator', () => {
 
 		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
 
-		ndv.getters.resourceLocatorInput('rlc').click();
-
 		cy.getByTestId('rlc-item').should('exist');
 		getVisiblePopper()
 			.should('have.length', 1)
