@@ -1,5 +1,5 @@
-import type { AuthenticationMethod, IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { AuthenticationMethod, IRun, IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { GlobalRole } from '@/databases/entities/User';
 
@@ -20,17 +20,21 @@ export type Event = {
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;
+		publicApi: boolean;
+		projectId: string;
+		projectType: string;
 	};
 
 	'workflow-deleted': {
 		user: UserLike;
 		workflowId: string;
+		publicApi: boolean;
 	};
 
 	'workflow-saved': {
 		user: UserLike;
-		workflowId: string;
-		workflowName: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
 	};
 
 	'workflow-pre-execute': {
@@ -40,12 +44,9 @@ export type Event = {
 
 	'workflow-post-execute': {
 		executionId: string;
-		success: boolean;
 		userId?: string;
-		workflowId: string;
-		isManual: boolean;
-		workflowName: string;
-		metadata?: Record<string, string>;
+		workflow: IWorkflowBase;
+		runData?: IRun;
 	};
 
 	'node-pre-execute': {

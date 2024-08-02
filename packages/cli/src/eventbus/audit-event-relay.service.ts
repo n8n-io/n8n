@@ -86,13 +86,13 @@ export class AuditEventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflowId, workflowName }: Event['workflow-saved']) {
+	private workflowSaved({ user, workflow }: Event['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
 				...user,
-				workflowId,
-				workflowName,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
 			},
 		});
 	}
@@ -122,9 +122,36 @@ export class AuditEventRelay {
 	}
 
 	private workflowPostExecute(event: Event['workflow-post-execute']) {
+		const { runData, workflow, ...rest } = event;
+
+		const payload = {
+			...rest,
+			success: runData?.status === 'success',
+			isManual: runData?.mode === 'manual',
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+		};
+
+		if (payload.success) {
+			void this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.success',
+				payload,
+			});
+
+			return;
+		}
+
 		void this.eventBus.sendWorkflowEvent({
-			eventName: 'n8n.workflow.success',
-			payload: event,
+			eventName: 'n8n.workflow.failed',
+			payload: {
+				...payload,
+				lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+				errorNodeType:
+					runData?.data.resultData.error && 'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined,
+				errorMessage: runData?.data.resultData.error?.message.toString(),
+			},
 		});
 	}
 
@@ -253,7 +280,7 @@ export class AuditEventRelay {
 	}
 
 	/**
-	 * API key
+	 * Public API
 	 */
 
 	@Redactable()

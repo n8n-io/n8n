@@ -33,6 +33,8 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/eventbus/event.service';
+import { z } from 'zod';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 export = {
 	createWorkflow: [
@@ -58,13 +60,29 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
+				publicApi: true,
+				projectId: project.id,
+				projectType: project.type,
 			});
 
 			return res.json(createdWorkflow);
+		},
+	],
+	transferWorkflow: [
+		projectScope('workflow:move', 'workflow'),
+		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+			await Container.get(EnterpriseWorkflowService).transferOne(
+				req.user,
+				req.params.workflowId,
+				body.destinationProjectId,
+			);
+
+			res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
@@ -112,7 +130,7 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name } = req.query;
+			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -143,6 +161,10 @@ export = {
 				if (options.workflowIds) {
 					const workflowIds = options.workflowIds;
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
+				}
+
+				if (projectId) {
+					workflows = workflows.filter((w) => w.projectId === projectId);
 				}
 
 				if (!workflows.length) {
@@ -239,11 +261,10 @@ export = {
 			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 			Container.get(EventService).emit('workflow-saved', {
 				user: req.user,
-				workflowId: updateData.id,
-				workflowName: updateData.name,
+				workflow: updateData,
+				publicApi: true,
 			});
 
 			return res.json(updatedWorkflow);

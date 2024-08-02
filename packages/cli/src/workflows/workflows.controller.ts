@@ -179,8 +179,13 @@ export class WorkflowsController {
 		delete savedWorkflowWithMetaData.shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
-		this.eventService.emit('workflow-created', { user: req.user, workflow: newWorkflow });
+		this.eventService.emit('workflow-created', {
+			user: req.user,
+			workflow: newWorkflow,
+			publicApi: false,
+			projectId: project!.id,
+			projectType: project!.type,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

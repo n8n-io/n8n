@@ -6,12 +6,20 @@ import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
 	globalScope,
+	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import type { Response } from 'express';
+import { InvitationController } from '@/controllers/invitation.controller';
+import { UsersController } from '@/controllers/users.controller';
+
+type Create = UserRequest.Invite;
+type Delete = UserRequest.Delete;
+type ChangeRole = UserRequest.ChangeRole;
 
 export = {
 	getUser: [
@@ -72,6 +80,31 @@ export = {
 					numberOfTotalRecords: count,
 				}),
 			});
+		},
+	],
+	createUser: [
+		globalScope('user:create'),
+		async (req: Create, res: Response) => {
+			const usersInvited = await Container.get(InvitationController).inviteUser(req);
+
+			return res.status(201).json(usersInvited);
+		},
+	],
+	deleteUser: [
+		globalScope('user:delete'),
+		async (req: Delete, res: Response) => {
+			await Container.get(UsersController).deleteUser(req);
+
+			return res.status(204).send();
+		},
+	],
+	changeRole: [
+		isLicensed('feat:advancedPermissions'),
+		globalScope('user:changeRole'),
+		async (req: ChangeRole, res: Response) => {
+			await Container.get(UsersController).changeGlobalRole(req);
+
+			return res.status(204).send();
 		},
 	],
 };
