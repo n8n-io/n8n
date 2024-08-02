@@ -510,8 +510,14 @@ export class Wise implements INodeType {
 						});
 
 						if (filters.range !== undefined) {
-							qs.createdDateStart = moment.tz(filters.range.rangeProperties.createdDateStart, timezone).utc().format();
-							qs.createdDateEnd = moment.tz(filters.range.rangeProperties.createdDateEnd, timezone).utc().format();
+							qs.createdDateStart = moment
+								.tz(filters.range.rangeProperties.createdDateStart, timezone)
+								.utc()
+								.format();
+							qs.createdDateEnd = moment
+								.tz(filters.range.rangeProperties.createdDateEnd, timezone)
+								.utc()
+								.format();
 						} else {
 							qs.createdDateStart = moment().subtract(1, 'months').utc().format();
 							qs.createdDateEnd = moment().utc().format();
