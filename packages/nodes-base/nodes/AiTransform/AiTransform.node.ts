@@ -81,7 +81,7 @@ export class AiTransform implements INodeType {
 				displayName: 'AI Service URL',
 				name: 'url',
 				type: 'string',
-				default: 'http://localhost:5678/webhook/ai-service',
+				default: '',
 				isNodeSetting: true,
 			},
 		],
