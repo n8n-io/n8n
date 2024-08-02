@@ -28,6 +28,7 @@
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
 					<n8n-radio-buttons
+						data-test-id="ai-output-mode-select"
 						v-model="outputMode"
 						:options="outputTypes"
 						@update:model-value="onUpdateOutputMode"
