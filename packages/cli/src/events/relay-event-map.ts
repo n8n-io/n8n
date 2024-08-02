@@ -12,11 +12,13 @@ export type UserLike = {
 };
 
 export type RelayEventMap = {
+	// #region Server
+
 	'server-started': {};
 
-	/**
-	 * Workflow
-	 */
+	// #endregion
+
+	// #region Workflow
 
 	'workflow-created': {
 		user: UserLike;
@@ -50,9 +52,9 @@ export type RelayEventMap = {
 		runData?: IRun;
 	};
 
-	/**
-	 * Node
-	 */
+	// #endregion
+
+	// #region Node
 
 	'node-pre-execute': {
 		executionId: string;
@@ -66,9 +68,9 @@ export type RelayEventMap = {
 		nodeName: string;
 	};
 
-	/**
-	 * User
-	 */
+	// #endregion
+
+	// #region User
 
 	'user-deleted': {
 		user: UserLike;
@@ -104,9 +106,9 @@ export type RelayEventMap = {
 		reason?: string;
 	};
 
-	/**
-	 * Click
-	 */
+	// #endregion
+
+	// #region Click
 
 	'user-invite-email-click': {
 		inviter: UserLike;
@@ -121,9 +123,9 @@ export type RelayEventMap = {
 		user: UserLike;
 	};
 
-	/**
-	 * Public API
-	 */
+	// #endregion
+
+	// #region Public API
 
 	'public-api-key-created': {
 		user: UserLike;
@@ -142,9 +144,9 @@ export type RelayEventMap = {
 		apiVersion: string;
 	};
 
-	/**
-	 * Email
-	 */
+	// #endregion
+
+	// #region Email
 
 	'email-failed': {
 		user: UserLike;
@@ -156,9 +158,9 @@ export type RelayEventMap = {
 			| 'Credentials shared';
 	};
 
-	/**
-	 * Credentials
-	 */
+	// #endregion
+
+	// #region Credentials
 
 	'credentials-created': {
 		user: UserLike;
@@ -190,9 +192,9 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
-	/**
-	 * Community package
-	 */
+	// #endregion
+
+	// #region Community package
 
 	'community-package-installed': {
 		user: UserLike;
@@ -225,9 +227,9 @@ export type RelayEventMap = {
 		packageAuthorEmail?: string;
 	};
 
-	/**
-	 * Execution
-	 */
+	// #endregion
+
+	// #region Execution
 
 	'execution-throttled': {
 		executionId: string;
@@ -237,9 +239,9 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
-	/**
-	 * Project
-	 */
+	// #endregion
+
+	// #region Project
 
 	'team-project-updated': {
 		userId: string;
@@ -264,9 +266,9 @@ export type RelayEventMap = {
 		role: GlobalRole;
 	};
 
-	/**
-	 * Source control
-	 */
+	// #endregion
+
+	// #region Source control
 
 	'source-control-settings-updated': {
 		branchName: string;
@@ -305,23 +307,23 @@ export type RelayEventMap = {
 		variablesPushed: number;
 	};
 
-	/**
-	 * License
-	 */
+	// #endregion
+
+	// #region License
 
 	'license-renewal-attempted': {
 		success: boolean;
 	};
 
-	/**
-	 * Variable
-	 */
+	// #endregion
+
+	// #region Variable
 
 	'variable-created': {};
 
-	/**
-	 * External secrets
-	 */
+	// #endregion
+
+	// #region External secrets
 
 	'external-secrets-provider-settings-saved': {
 		userId?: string;
@@ -331,9 +333,9 @@ export type RelayEventMap = {
 		errorMessage?: string;
 	};
 
-	/**
-	 * LDAP
-	 */
+	// #endregion
+
+	// #region LDAP
 
 	'ldap-general-sync-finished': {
 		type: string;
@@ -364,4 +366,6 @@ export type RelayEventMap = {
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
 	};
+
+	// #endregion
 };

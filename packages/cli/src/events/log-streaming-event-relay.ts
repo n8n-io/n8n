@@ -49,9 +49,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Workflow
-	 */
+	// #region Workflow
 
 	@Redactable()
 	private workflowCreated({ user, workflow }: RelayEventMap['workflow-created']) {
@@ -143,9 +141,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Node
-	 */
+	// #endregion
+
+	// #region Node
 
 	private nodePreExecute({ workflow, executionId, nodeName }: RelayEventMap['node-pre-execute']) {
 		void this.eventBus.sendNodeEvent({
@@ -173,9 +171,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * User
-	 */
+	// #endregion
+
+	// #region User
 
 	@Redactable()
 	private userDeleted({ user }: RelayEventMap['user-deleted']) {
@@ -209,9 +207,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Auth
-	 */
+	// #endregion
+
+	// #region Auth
 
 	@Redactable()
 	private userSignedUp({ user }: RelayEventMap['user-signed-up']) {
@@ -238,9 +236,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Click
-	 */
+	// #endregion
+
+	// #region Click
 
 	@Redactable('inviter')
 	@Redactable('invitee')
@@ -269,9 +267,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Public API
-	 */
+	// #endregion
+
+	// #region Public API
 
 	@Redactable()
 	private publicApiKeyCreated({ user }: RelayEventMap['public-api-key-created']) {
@@ -289,9 +287,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Emailing
-	 */
+	// #endregion
+
+	// #region Email
 
 	@Redactable()
 	private emailFailed({ user, messageType }: RelayEventMap['email-failed']) {
@@ -301,9 +299,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Credentials
-	 */
+	// #endregion
+
+	// #region Credentials
 
 	@Redactable()
 	private credentialsCreated({ user, ...rest }: RelayEventMap['credentials-created']) {
@@ -337,9 +335,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Community package
-	 */
+	// #endregion
+
+	// #region Community package
 
 	@Redactable()
 	private communityPackageInstalled({
@@ -368,9 +366,9 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	/**
-	 * Execution
-	 */
+	// #endregion
+
+	// #region Execution
 
 	private executionThrottled({ executionId }: RelayEventMap['execution-throttled']) {
 		void this.eventBus.sendExecutionEvent({
@@ -387,4 +385,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: { executionId },
 		});
 	}
+
+	// #endregion
 }

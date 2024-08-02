@@ -76,6 +76,10 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region Team
+
 	private teamProjectUpdated({
 		userId,
 		role,
@@ -113,6 +117,10 @@ export class TelemetryEventRelay extends EventRelay {
 			role,
 		});
 	}
+
+	// #endregion
+
+	// #region Source control
 
 	private sourceControlSettingsUpdated({
 		branchName,
@@ -192,15 +200,27 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region License
+
 	private licenseRenewalAttempted({ success }: RelayEventMap['license-renewal-attempted']) {
 		this.telemetry.track('Instance attempted to refresh license', {
 			success,
 		});
 	}
 
+	// #endregion
+
+	// #region Variable
+
 	private variableCreated() {
 		this.telemetry.track('User created variable');
 	}
+
+	// #endregion
+
+	// #region External secrets
 
 	private externalSecretsProviderSettingsSaved({
 		userId,
@@ -217,6 +237,10 @@ export class TelemetryEventRelay extends EventRelay {
 			error_message: errorMessage,
 		});
 	}
+
+	// #endregion
+
+	// #region Public API
 
 	private publicApiInvoked({
 		userId,
@@ -249,6 +273,10 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 		});
 	}
+
+	// #endregion
+
+	// #region Community package
 
 	private communityPackageInstalled({
 		user,
@@ -312,6 +340,10 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region Credentials
+
 	private credentialsCreated({
 		user,
 		credentialType,
@@ -370,6 +402,10 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	// #endregion
+
+	// #region LDAP
+
 	private ldapGeneralSyncFinished({
 		type,
 		succeeded,
@@ -423,6 +459,10 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['login-failed-due-to-ldap-disabled']) {
 		this.telemetry.track('User login failed since ldap disabled', { user_ud: userId });
 	}
+
+	// #endregion
+
+	// #region Workflow
 
 	private workflowCreated({
 		user,
@@ -494,70 +534,6 @@ export class TelemetryEventRelay extends EventRelay {
 			num_tags: workflow.tags?.length ?? 0,
 			public_api: publicApi,
 			sharing_role: userRole,
-		});
-	}
-
-	private async serverStarted() {
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
-		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
-
-		const info = {
-			version_cli: N8N_VERSION,
-			db_type: this.globalConfig.database.type,
-			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
-			n8n_disable_production_main_process:
-				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
-			system_info: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
-			},
-			execution_variables: {
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			},
-			n8n_deployment_type: config.getEnv('deployment.type'),
-			n8n_binary_data_mode: binaryDataConfig.mode,
-			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
-			ldap_allowed: authenticationMethod === 'ldap',
-			saml_enabled: authenticationMethod === 'saml',
-			license_plan_name: this.license.getPlanName(),
-			license_tenant_id: config.getEnv('license.tenantId'),
-			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
-		});
-
-		this.telemetry.identify(info);
-		this.telemetry.track('Instance started', {
-			...info,
-			earliest_workflow_created: firstWorkflow?.createdAt,
 		});
 	}
 
@@ -698,4 +674,74 @@ export class TelemetryEventRelay extends EventRelay {
 
 		this.telemetry.trackWorkflowExecution(telemetryProperties);
 	}
+
+	// #endregion
+
+	// #region Server
+
+	private async serverStarted() {
+		const cpus = os.cpus();
+		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+
+		const info = {
+			version_cli: N8N_VERSION,
+			db_type: this.globalConfig.database.type,
+			n8n_version_notifications_enabled: this.globalConfig.versionNotifications.enabled,
+			n8n_disable_production_main_process:
+				this.globalConfig.endpoints.disableProductionWebhooksOnMainProcess,
+			system_info: {
+				os: {
+					type: os.type(),
+					version: os.version(),
+				},
+				memory: os.totalmem() / 1024,
+				cpus: {
+					count: cpus.length,
+					model: cpus[0].model,
+					speed: cpus[0].speed,
+				},
+			},
+			execution_variables: {
+				executions_mode: config.getEnv('executions.mode'),
+				executions_timeout: config.getEnv('executions.timeout'),
+				executions_timeout_max: config.getEnv('executions.maxTimeout'),
+				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+				executions_data_save_manual_executions: config.getEnv(
+					'executions.saveDataManualExecutions',
+				),
+				executions_data_prune: config.getEnv('executions.pruneData'),
+				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+			},
+			n8n_deployment_type: config.getEnv('deployment.type'),
+			n8n_binary_data_mode: binaryDataConfig.mode,
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
+			ldap_allowed: authenticationMethod === 'ldap',
+			saml_enabled: authenticationMethod === 'saml',
+			license_plan_name: this.license.getPlanName(),
+			license_tenant_id: config.getEnv('license.tenantId'),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
+			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+		};
+
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
+
+		this.telemetry.identify(info);
+		this.telemetry.track('Instance started', {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+		});
+	}
+
+	// #endregion
 }
