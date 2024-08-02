@@ -24,7 +24,6 @@ import type {
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
-import * as Db from '@/Db';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 
@@ -75,12 +74,7 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			executionId = await Db.transaction(async (transactionManager) => {
-				return await this.executionRepository.createNewExecution(
-					fullExecutionData,
-					transactionManager,
-				);
-			});
+			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			assert(executionId);
 
 			await this.concurrencyControl.throttle({ mode, executionId });

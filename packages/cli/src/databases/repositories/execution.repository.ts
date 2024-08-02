@@ -13,7 +13,6 @@ import {
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import type {
-	EntityManager,
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
@@ -30,6 +29,7 @@ import {
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
 import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import * as Db from '@/Db';
 
 import type {
 	ExecutionPayload,
@@ -272,26 +272,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Insert a new execution and its execution data
+	 * Insert a new execution and its execution data using a transaction.
 	 */
-	async createNewExecution(execution: ExecutionPayload, trx?: EntityManager): Promise<string> {
-		trx = trx ?? this.manager;
+	async createNewExecution(execution: ExecutionPayload): Promise<string> {
+		return await Db.transaction(async (transactionManager) => {
+			const { data, workflowData, ...rest } = execution;
+			const insertResult = await transactionManager.insert(ExecutionEntity, rest);
+			const { id: executionId } = insertResult.identifiers[0] as { id: string };
 
-		const { data, workflowData, ...rest } = execution;
-		const insertResult = await trx.insert(ExecutionEntity, rest);
-		const { id: executionId } = insertResult.identifiers[0] as { id: string };
+			const { connections, nodes, name, settings } = workflowData ?? {};
+			await this.executionDataRepository.createExecutionDataForExecution(
+				{
+					executionId,
+					workflowData: { connections, nodes, name, settings, id: workflowData.id },
+					data: stringify(data),
+				},
+				transactionManager,
+			);
 
-		const { connections, nodes, name, settings } = workflowData ?? {};
-		await this.executionDataRepository.createExecutionDataForExecution(
-			{
-				executionId,
-				workflowData: { connections, nodes, name, settings, id: workflowData.id },
-				data: stringify(data),
-			},
-			trx,
-		);
-
-		return String(executionId);
+			return String(executionId);
+		});
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {

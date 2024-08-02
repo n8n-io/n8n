@@ -8,7 +8,6 @@ import type { ExecutionRepository } from '@db/repositories/execution.repository'
 import { mock } from 'jest-mock-extended';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { mockInstance } from '@test/mocking';
-import type { EntityManager } from '@n8n/typeorm';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
@@ -25,10 +24,6 @@ const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
 	isEnabled: false,
 });
-
-jest.mock('@/Db', () => ({
-	transaction: (fn: (entityManager: EntityManager) => unknown) => fn(mock<EntityManager>()),
-}));
 
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;

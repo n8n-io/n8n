@@ -1,7 +1,6 @@
 import Container from 'typedi';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
-import * as Db from '@/Db';
 import * as testDb from '../../shared/testDb';
 import { createWorkflow } from '../../shared/db/workflows';
 
@@ -65,22 +64,17 @@ describe('ExecutionRepository', () => {
 
 			await expect(
 				async () =>
-					await Db.transaction(async (transactionManager) => {
-						await executionRepo.createNewExecution(
-							{
-								workflowId: workflow.id,
-								data: {
-									//@ts-expect-error This is not needed for tests
-									resultData: {},
-								},
-								workflowData: workflow,
-								mode: 'manual',
-								startedAt: new Date(),
-								status: 'new',
-								finished: false,
-							},
-							transactionManager,
-						);
+					await executionRepo.createNewExecution({
+						workflowId: workflow.id,
+						data: {
+							//@ts-expect-error This is not needed for tests
+							resultData: {},
+						},
+						workflowData: workflow,
+						mode: 'manual',
+						startedAt: new Date(),
+						status: 'new',
+						finished: false,
 					}),
 			).rejects.toThrow();
 
