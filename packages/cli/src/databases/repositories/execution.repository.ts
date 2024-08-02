@@ -29,7 +29,6 @@ import {
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
 import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import * as Db from '@/Db';
 
 import type {
 	ExecutionPayload,
@@ -275,7 +274,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Insert a new execution and its execution data using a transaction.
 	 */
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
-		return await Db.transaction(async (transactionManager) => {
+		return await this.manager.transaction(async (transactionManager) => {
 			const { data, workflowData, ...rest } = execution;
 			const insertResult = await transactionManager.insert(ExecutionEntity, rest);
 			const { id: executionId } = insertResult.identifiers[0] as { id: string };
