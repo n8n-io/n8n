@@ -82,6 +82,7 @@ export class RssFeedRead implements INodeType {
 		for (let i = 0; i < itemsLength; i++) {
 			try {
 				const url = this.getNodeParameter('url', i) as string;
+				console.log(`got url: ${url}`);
 				const options = this.getNodeParameter('options', i);
 				const ignoreSSL = Boolean(options.ignoreSSL);
 

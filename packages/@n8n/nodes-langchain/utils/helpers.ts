@@ -182,7 +182,7 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 }
 
 function isINode(obj: unknown): obj is INodeType {
-	return typeof obj === 'object' && obj !== null && 'execute' in obj;
+	return typeof obj === 'object' && obj !== null && 'execute' in obj && !('supplyData' in obj);
 }
 
 type NestedObject = { [key: string]: any };
@@ -266,11 +266,12 @@ function extractPlaceholderDescription(value: string): string {
 	return match ? match[1] : 'No description provided';
 }
 
-function convertNodeToTool(
+export function convertNodeToTool(
 	node: INodeType,
 	ctx: IExecuteFunctions,
 	nodeParameters: INodeParameters,
 ) {
+	console.log('Converting node to tool');
 	const placeholderValues = traverseObject(nodeParameters);
 
 	// Generate Zod schema
@@ -343,6 +344,8 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 	for (const tool of connectedTools) {
 		// @ts-ignore
 		if (isINode(tool?.nodeType)) {
+			// @ts-ignore
+			console.log('tool params', tool.connectedNode.parameters);
 			// @ts-ignore
 			const convertedNode = convertNodeToTool(
 				// @ts-ignore
