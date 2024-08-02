@@ -13,6 +13,7 @@ import type {
 } from '@/services/cache/cache.types';
 import { TIME } from '@/constants';
 import { TypedEmitter } from '@/TypedEmitter';
+import { GlobalConfig } from '@n8n/config';
 
 type CacheEvents = {
 	'metrics.cache.hit': never;
@@ -22,12 +23,15 @@ type CacheEvents = {
 
 @Service()
 export class CacheService extends TypedEmitter<CacheEvents> {
+	constructor(private readonly globalConfig: GlobalConfig) {
+		super();
+	}
+
 	private cache: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
-		const backend = config.getEnv('cache.backend');
+		const { backend } = this.globalConfig.cache;
 		const mode = config.getEnv('executions.mode');
-		const ttl = config.getEnv('cache.redis.ttl');
 
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
@@ -36,8 +40,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = config.getEnv('redis.prefix');
-			const cachePrefix = config.getEnv('cache.redis.prefix');
-			const prefix = redisClientService.toValidPrefix(`${prefixBase}:${cachePrefix}:`);
+			const prefix = redisClientService.toValidPrefix(
+				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
+			);
 
 			const redisClient = redisClientService.createClient({
 				type: 'client(cache)',
@@ -45,7 +50,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			});
 
 			const { redisStoreUsingClient } = await import('@/services/cache/redis.cache-manager');
-			const redisStore = redisStoreUsingClient(redisClient, { ttl });
+			const redisStore = redisStoreUsingClient(redisClient, {
+				ttl: this.globalConfig.cache.redis.ttl,
+			});
 
 			const redisCache = await caching(redisStore);
 
@@ -54,7 +61,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			return;
 		}
 
-		const maxSize = config.getEnv('cache.memory.maxSize');
+		const { maxSize, ttl } = this.globalConfig.cache.memory;
 
 		const sizeCalculation = (item: unknown) => {
 			const str = jsonStringify(item, { replaceCircularRefs: true });
