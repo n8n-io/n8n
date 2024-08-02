@@ -16,12 +16,11 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 
 	async createExecutionDataForExecution(
 		executionData: CreateExecutionDataOpts,
-		trx?: EntityManager,
+		transactionManager: EntityManager,
 	) {
-		trx = trx ?? this.manager;
 		const { data, executionId, workflowData } = executionData;
 
-		return await trx.insert(ExecutionData, {
+		return await transactionManager.insert(ExecutionData, {
 			executionId,
 			data,
 			workflowData,
