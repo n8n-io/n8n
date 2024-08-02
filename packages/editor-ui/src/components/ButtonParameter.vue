@@ -15,6 +15,10 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { generateCodeForPrompt } from '@/api/ai';
 
+import { format } from 'prettier';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
+
 const emit = defineEmits<{
 	valueChanged: [value: IUpdateInformation];
 }>();
@@ -85,21 +89,15 @@ function getPath(parameter: string) {
 	return ((props.path ? `${props.path}.` : '') + parameter) as string;
 }
 
-// function createPrompt(prompt: string) {
-// 	return `
-// Generate JavaScript code for this prompt:
+function createPrompt(prompt: string) {
+	return `
+Important! The original input must remain unchanged. If there is a risk of modifying the original input, create a copy of it before making any changes. Use appropriate methods to ensure that the properties of objects are not directly altered.
 
-// ---
-// ${prompt}
-// ---
+Always return an array
 
-// input available by calling $input.all(), assume $input variable is defined already:
-
-// return has to be an array of objects each must containe single property json that should be an object
-// always have return statment
-// return only code snippet without any additional explanation or comments
-// format code as by using prettify`;
-// }
+${prompt}
+`;
+}
 
 async function onSubmit() {
 	const { activeNode } = useNDVStore();
@@ -133,7 +131,7 @@ async function onSubmit() {
 				: 'gpt-3.5-turbo-16k';
 
 		const payload = {
-			question: prompt.value,
+			question: createPrompt(prompt.value),
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
@@ -167,9 +165,14 @@ async function onSubmit() {
 				}
 				if (value === undefined) return;
 
+				const formattedCode = await format(String(value), {
+					parser: 'babel',
+					plugins: [jsParser, estree],
+				});
+
 				const updateInformation = {
 					name: getPath(target as string),
-					value,
+					value: formattedCode,
 				};
 
 				emit('valueChanged', updateInformation);
