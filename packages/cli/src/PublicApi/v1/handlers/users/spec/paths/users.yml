@@ -9,6 +9,14 @@ get:
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
     - $ref: '../schemas/parameters/includeRole.yml'
+    - name: projectId
+      in: query
+      required: false
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
   responses:
     '200':
       description: Operation successful.
