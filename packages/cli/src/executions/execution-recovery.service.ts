@@ -3,7 +3,6 @@ import { Push } from '@/push';
 import { jsonStringify, sleep } from 'n8n-workflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO: Dependency cycle
-import { InternalHooks } from '@/InternalHooks'; // @TODO: Dependency cycle if injected
 import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';
 import type { EventMessageTypes } from '../eventbus/EventMessageClasses';
@@ -280,22 +279,9 @@ export class ExecutionRecoveryService {
 	private async runHooks(execution: IExecutionResponse) {
 		execution.data ??= { resultData: { runData: {} } };
 
-		await Container.get(InternalHooks).onWorkflowPostExecute(execution.id, execution.workflowData, {
-			data: execution.data,
-			finished: false,
-			mode: execution.mode,
-			waitTill: execution.waitTill,
-			startedAt: execution.startedAt,
-			stoppedAt: execution.stoppedAt,
-			status: execution.status,
-		});
-
 		this.eventService.emit('workflow-post-execute', {
-			workflowId: execution.workflowData.id,
-			workflowName: execution.workflowData.name,
+			workflow: execution.workflowData,
 			executionId: execution.id,
-			success: execution.status === 'success',
-			isManual: execution.mode === 'manual',
 			runData: execution,
 		});
 

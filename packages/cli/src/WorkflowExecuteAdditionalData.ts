@@ -52,7 +52,6 @@ import { Push } from '@/push';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './SecretsHelpers';
@@ -548,7 +547,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const internalHooks = Container.get(InternalHooks);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	const eventService = Container.get(EventService);
 	return {
@@ -644,13 +642,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
 				eventService.emit('workflow-post-execute', {
-					workflowId: workflow.id,
-					workflowName: workflow.name,
+					workflow,
 					executionId,
-					success: runData.status === 'success',
-					isManual: runData.mode === 'manual',
 					runData,
 				});
 			},
@@ -787,7 +781,6 @@ async function executeWorkflow(
 		parentCallbackManager?: CallbackManager;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
-	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
@@ -933,13 +926,9 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
 	eventService.emit('workflow-post-execute', {
-		workflowId: workflowData.id,
-		workflowName: workflowData.name,
+		workflow: workflowData,
 		executionId,
-		success: data.status === 'success',
-		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
 		runData: data,
 	});
