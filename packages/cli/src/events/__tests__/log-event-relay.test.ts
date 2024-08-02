@@ -9,8 +9,7 @@ import type { RelayEventMap } from '@/events/relay-event-map';
 describe('LogEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = new EventService();
-	const auditor = new LogEventRelay(eventService, eventBus);
-	auditor.init();
+	new LogEventRelay(eventService, eventBus).init();
 
 	afterEach(() => {
 		jest.clearAllMocks();
