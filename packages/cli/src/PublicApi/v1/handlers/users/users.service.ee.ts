@@ -3,6 +3,8 @@ import { UserRepository } from '@db/repositories/user.repository';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 
 export async function getUser(data: {
 	withIdentifier: string;
@@ -25,9 +27,12 @@ export async function getAllUsersAndCount(data: {
 	includeRole?: boolean;
 	limit?: number;
 	offset?: number;
+	in?: string[];
 }): Promise<[User[], number]> {
+	const { in: _in } = data;
+
 	const users = await Container.get(UserRepository).find({
-		where: {},
+		where: { ...(_in && { id: In(_in) }) },
 		skip: data.offset,
 		take: data.limit,
 	});

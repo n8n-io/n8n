@@ -27,11 +27,16 @@ export class WorkflowSharingService {
 	async getSharedWorkflowIds(
 		user: User,
 		options:
-			| { scopes: Scope[] }
-			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[] },
+			| { scopes: Scope[]; projectId?: string }
+			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string },
 	): Promise<string[]> {
+		const { projectId } = options;
+
 		if (user.hasGlobalScope('workflow:read')) {
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({ select: ['workflowId'] });
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({
+				select: ['workflowId'],
+				...(projectId && { where: { projectId } }),
+			});
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
 
