@@ -17,15 +17,21 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise<string[]> {
+export async function getSharedWorkflowIds(
+	user: User,
+	scopes: Scope[],
+	projectId?: string,
+): Promise<string[]> {
 	if (Container.get(License).isSharingEnabled()) {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			scopes,
+			projectId,
 		});
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
 			workflowRoles: ['workflow:owner'],
 			projectRoles: ['project:personalOwner'],
+			projectId,
 		});
 	}
 }

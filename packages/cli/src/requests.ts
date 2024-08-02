@@ -306,7 +306,7 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
+		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
