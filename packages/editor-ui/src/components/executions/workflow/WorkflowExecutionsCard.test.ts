@@ -51,7 +51,7 @@ describe('WorkflowExecutionsCard', () => {
 				retryOf: '2',
 				retrySuccessId: null,
 			},
-			false,
+			true,
 		],
 		[
 			{

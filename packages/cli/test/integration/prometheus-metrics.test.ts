@@ -5,45 +5,27 @@ import request, { type Response } from 'supertest';
 import { N8N_VERSION } from '@/constants';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 
-mockInstance(GlobalConfig, {
-	database: {
-		type: 'sqlite',
-		sqlite: {
-			database: 'database.sqlite',
-			enableWAL: false,
-			executeVacuumOnStartup: false,
-			poolSize: 0,
-		},
-		logging: {
-			enabled: false,
-			maxQueryExecutionTime: 0,
-			options: 'error',
-		},
-		tablePrefix: '',
-	},
-	endpoints: {
-		metrics: {
-			prefix: 'n8n_test_',
-			includeDefaultMetrics: true,
-			includeApiEndpoints: true,
-			includeCacheMetrics: true,
-			includeMessageEventBusMetrics: true,
-			includeCredentialTypeLabel: false,
-			includeNodeTypeLabel: false,
-			includeWorkflowIdLabel: false,
-			includeApiPathLabel: true,
-			includeApiMethodLabel: true,
-			includeApiStatusCodeLabel: true,
-		},
-	},
-});
+const globalConfig = Container.get(GlobalConfig);
+// @ts-expect-error `metrics` is a readonly property
+globalConfig.endpoints.metrics = {
+	prefix: 'n8n_test_',
+	includeDefaultMetrics: true,
+	includeApiEndpoints: true,
+	includeCacheMetrics: true,
+	includeMessageEventBusMetrics: true,
+	includeCredentialTypeLabel: false,
+	includeNodeTypeLabel: false,
+	includeWorkflowIdLabel: false,
+	includeApiPathLabel: true,
+	includeApiMethodLabel: true,
+	includeApiStatusCodeLabel: true,
+};
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
 const agent = request.agent(server.app);
