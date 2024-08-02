@@ -9,9 +9,10 @@ import { randomApiKey, randomName } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
-import { affixRoleToSaveCredential } from '../shared/db/credentials';
+import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
+import { createTeamProject } from '@test-integration/db/projects';
 
 let owner: User;
 let member: User;
@@ -253,6 +254,53 @@ describe('GET /credentials/schema/:credentialType', () => {
 		expect(properties.password.type).toBe('string');
 		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('PUT /credentials/:id/transfer', () => {
+	test('should transfer credential to project', async () => {
+		/**
+		 * Arrange
+		 */
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject('first-project', owner),
+			createTeamProject('second-project', owner),
+		]);
+
+		const credentials = await createCredentials(
+			{ name: 'Test', type: 'test', data: '' },
+			firstProject,
+		);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/transfer`).send({
+			destinationProjectId: secondProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(204);
+	});
+
+	test('if no destination project, should reject', async () => {
+		/**
+		 * Arrange
+		 */
+		const project = await createTeamProject('first-project', member);
+		const credentials = await createCredentials({ name: 'Test', type: 'test', data: '' }, project);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.put(`/credentials/${credentials.id}/transfer`).send({});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(400);
 	});
 });
 
