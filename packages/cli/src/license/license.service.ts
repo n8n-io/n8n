@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

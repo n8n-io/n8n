@@ -32,7 +32,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { z } from 'zod';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 

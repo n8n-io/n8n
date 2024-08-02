@@ -9,8 +9,8 @@ import { Telemetry } from '@/telemetry';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 /**
- * @deprecated Do not add to this class. To add audit or telemetry events, use
- * `EventService` to emit the event and then use the `AuditEventRelay` or
+ * @deprecated Do not add to this class. To add log streaming or telemetry events, use
+ * `EventService` to emit the event and then use the `LogStreamingEventRelay` or
  * `TelemetryEventRelay` to forward them to the event bus or telemetry.
  */
 @Service()

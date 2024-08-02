@@ -12,7 +12,7 @@ import {
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers.ee';
 import type { User } from '@db/entities/User';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export const handleLdapLogin = async (
 	loginId: string,
