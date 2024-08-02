@@ -142,6 +142,12 @@ export declare namespace CredentialRequest {
 	>;
 
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
+
+	type Transfer = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ destinationProjectId: string }
+	>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

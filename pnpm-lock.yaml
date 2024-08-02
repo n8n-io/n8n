@@ -1710,8 +1710,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/tournament':
-        specifier: 1.0.2
-        version: 1.0.2
+        specifier: 1.0.3
+        version: 1.0.3
       '@n8n_io/riot-tmpl':
         specifier: 4.0.0
         version: 4.0.0
@@ -4143,8 +4143,8 @@ packages:
     resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
     engines: {node: '>=18.10'}
 
-  '@n8n/tournament@1.0.2':
-    resolution: {integrity: sha512-fTpi7F8ra5flGSVfRzohPyG7czAAKCZPlLjdKdwbLJivLoI/Ekhgodov1jfVSCVFVbwQ06gRQRxLEDzl2jl8ig==}
+  '@n8n/tournament@1.0.3':
+    resolution: {integrity: sha512-GnmDD5wKAxKfxnSzhENHPn5n91/1c3/psnuT7D+jHHVQdMe8qaCcSq15rcGRfDfTf2v+BZBT0yeyK8Cfexr9yw==}
     engines: {node: '>=18.10', pnpm: '>=8.6'}
 
   '@n8n/typeorm@0.3.20-10':
@@ -6231,9 +6231,6 @@ packages:
     resolution: {integrity: sha512-NfJ4UzBCcQGLDlQq7nHxH+tv3kyZ0hHQqF5BO6J7tNJeP5do1llPr8dZ8zHonfhAu0PHAdMkSo+8o0wxg9lZWw==}
     engines: {node: '>=0.8'}
 
-  assert@2.0.0:
-    resolution: {integrity: sha512-se5Cd+js9dXJnu6Ag2JFc00t+HmHOen+8Q+L7O9zI0PqQXr20uk2J0XQqMxZEeo5U50o8Nvmmx7dZrl+Ufr35A==}
-
   assert@2.1.0:
     resolution: {integrity: sha512-eLHpSK/Y4nhMJ07gDaAzoX/XAKS8PSaojml3M0DM4JpV1LAi5JOJ/p6H/XWrl8L+DzVEvVCW1z3vWAaB9oTsQw==}
 
@@ -7556,9 +7553,6 @@ packages:
   es-to-primitive@1.2.1:
     resolution: {integrity: sha512-QCOllgZJtaUo9miYBcLChTUaHNjJF3PYs1VidD7AwiEj1kYxKeQTctLAezAOH5ZKRH0g2IgPn6KwB4IT8iRpvA==}
     engines: {node: '>= 0.4'}
-
-  es6-object-assign@1.1.0:
-    resolution: {integrity: sha512-MEl9uirslVwqQU369iHNWZXsI8yaZYGg/D65aOgZkeyFJwHYSxilf7rQzXKI7DdDuBPrBXbfk3sl9hJhmd5AUw==}
 
   es6-promise@3.3.1:
     resolution: {integrity: sha512-SOp9Phqvqn7jtEUxPWdWfWoLmyt2VaJ6MpvP9Comy1MceMXqE6bxvaTu4iaxpYYPzhny28Lc+M87/c2cPK6lDg==}
@@ -16649,7 +16643,7 @@ snapshots:
       '@types/retry': 0.12.5
       retry: 0.13.1
 
-  '@n8n/tournament@1.0.2':
+  '@n8n/tournament@1.0.3':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
@@ -19612,13 +19606,6 @@ snapshots:
 
   assert-plus@1.0.0: {}
 
-  assert@2.0.0:
-    dependencies:
-      es6-object-assign: 1.1.0
-      is-nan: 1.3.2
-      object-is: 1.1.5
-      util: 0.12.5
-
   assert@2.1.0:
     dependencies:
       call-bind: 1.0.7
@@ -21207,8 +21194,6 @@ snapshots:
       is-callable: 1.2.7
       is-date-object: 1.0.5
       is-symbol: 1.0.4
-
-  es6-object-assign@1.1.0: {}
 
   es6-promise@3.3.1: {}
 
@@ -25579,7 +25564,7 @@ snapshots:
 
   recast@0.22.0:
     dependencies:
-      assert: 2.0.0
+      assert: 2.1.0
       ast-types: 0.15.2
       esprima: 4.0.1
       source-map: 0.6.1
