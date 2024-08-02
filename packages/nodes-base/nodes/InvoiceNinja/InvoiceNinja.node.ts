@@ -36,6 +36,10 @@ import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import type { IQuote } from './QuoteInterface';
 
+import { bankTransactionFields, bankTransactionOperations } from './BankTransactionDescription';
+
+import type { IBankTransaction } from './BankTransactionInterface';
+
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Invoice Ninja',
@@ -131,6 +135,15 @@ export class InvoiceNinja implements INodeType {
 						name: 'Task',
 						value: 'task',
 					},
+					{
+						name: 'Bank Transaction',
+						value: 'bank_transaction',
+						displayOptions: {
+							show: {
+								apiVersion: ['v5'],
+							},
+						},
+					},
 				],
 				default: 'client',
 			},
@@ -146,6 +159,8 @@ export class InvoiceNinja implements INodeType {
 			...expenseFields,
 			...quoteOperations,
 			...quoteFields,
+			...bankTransactionOperations,
+			...bankTransactionFields,
 		],
 	};
 
@@ -858,6 +873,84 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 				}
+				if (resource === 'bank_transaction') {
+					const resourceEndpoint = '/bank_transactions';
+					if (operation === 'create') {
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const body: IBankTransaction = { };
+						if (additionalFields.amount) {
+							body.amount = additionalFields.amount as number;
+						}
+						if (additionalFields.baseType) {
+							body.base_type = additionalFields.baseType as string;
+						}
+						if(additionalFields.bankAccountId) {
+							body.bank_integration_id = additionalFields.bankAccountId as number;
+						}
+						if (additionalFields.client) {
+							body.date = additionalFields.date as string;
+						}
+						if (additionalFields.email) {
+							body.description = additionalFields.description as string;
+						}
+		
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'POST',
+							resourceEndpoint,
+							body as IDataObject,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'get') {
+						const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
+						const options = this.getNodeParameter('options', i);
+						if (options.include) {
+							qs.include = options.include as string;
+						}
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'GET',
+							`${resourceEndpoint}/${bankTransactionId}`,
+							{},
+							qs,
+						);
+						responseData = responseData.data;
+					}
+					if (operation === 'getAll') {
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
+						if (options.include) {
+							qs.include = options.include as string;
+						}
+						if (options.invoiceNumber) {
+							qs.invoice_number = options.invoiceNumber as string;
+						}
+						if (returnAll) {
+							responseData = await invoiceNinjaApiRequestAllItems.call(
+								this,
+								'data',
+								'GET',
+								resourceEndpoint,
+								{},
+								qs,
+							);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', 0);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', resourceEndpoint, {}, qs);
+							responseData = responseData.data;
+						}
+					}
+					if (operation === 'delete') {
+						const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'DELETE',
+							`${resourceEndpoint}/${bankTransactionId}`,
+						);
+						responseData = responseData.data;
+					}
+				}
 				if (resource === 'quote') {
 					const resourceEndpoint = apiVersion === 'v4' ? '/invoices' : '/quotes';
 					if (operation === 'create') {
@@ -983,7 +1076,7 @@ export class InvoiceNinja implements INodeType {
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
 								'GET',
-								`/quotes/${quoteId}/email`,
+								`${resourceEndpoint}/${quoteId}/email`,
 							);
 						}
 					}
@@ -1016,13 +1109,13 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/quotes',
+								resourceEndpoint,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/quotes', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(this, 'GET', resourceEndpoint, {}, qs);
 							responseData = responseData.data;
 						}
 					}
