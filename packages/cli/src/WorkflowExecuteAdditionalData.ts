@@ -717,7 +717,6 @@ export async function getRunData(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: mode,
 		executionData: runExecutionData,
-		// @ts-ignore
 		workflowData,
 	};
 
