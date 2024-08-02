@@ -56,7 +56,7 @@ export class Worker extends BaseCommand {
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
-	override needsCommunityNodes = true;
+	override needsCommunityPackages = true;
 
 	/**
 	 * Stop n8n in a graceful way.

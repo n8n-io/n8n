@@ -27,7 +27,7 @@ export class Execute extends BaseCommand {
 		}),
 	};
 
-	override needsCommunityNodes = true;
+	override needsCommunityPackages = true;
 
 	async init() {
 		await super.init();

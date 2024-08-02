@@ -67,7 +67,7 @@ export class Start extends BaseCommand {
 
 	protected server = Container.get(Server);
 
-	override needsCommunityNodes = true;
+	override needsCommunityPackages = true;
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
@@ -189,7 +189,7 @@ export class Start extends BaseCommand {
 				communityPackages.reinstallMissing = true;
 			} else {
 				this.logger.warn(
-					'`--reinstallMissingPackages` was passed, but Community packages are disabled',
+					'`--reinstallMissingPackages` was passed, but community packages are disabled',
 				);
 			}
 		}

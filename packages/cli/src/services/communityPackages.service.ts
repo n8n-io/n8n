@@ -47,7 +47,7 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
 export class CommunityPackagesService {
-	reinstallMissingPackages: boolean = false;
+	reinstallMissingPackages = false;
 
 	missingPackages: string[] = [];
 
@@ -326,7 +326,7 @@ export class CommunityPackagesService {
 		options: { version?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = isUpdate ? 'latest' : options.version || 'latest';
+		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
 		const command = `npm install ${packageName}@${packageVersion}`;
 
 		try {

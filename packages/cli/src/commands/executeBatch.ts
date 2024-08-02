@@ -108,7 +108,7 @@ export class ExecuteBatch extends BaseCommand {
 		}),
 	};
 
-	override needsCommunityNodes = true;
+	override needsCommunityPackages = true;
 
 	/**
 	 * Gracefully handles exit.

@@ -44,15 +44,15 @@ export abstract class BaseCommand extends Command {
 
 	protected license: License;
 
-	protected globalConfig = Container.get(GlobalConfig);
+	protected readonly globalConfig = Container.get(GlobalConfig);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
 	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
 
-	/** This flag determines if a command needs to initialize Community nodes (when they are enabled) */
-	protected needsCommunityNodes = false;
+	/** Whether to init community packages (if enabled) */
+	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -72,7 +72,7 @@ export abstract class BaseCommand extends Command {
 		);
 
 		const { communityPackages } = this.globalConfig.nodes;
-		if (communityPackages.enabled && this.needsCommunityNodes) {
+		if (communityPackages.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
