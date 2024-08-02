@@ -52,7 +52,6 @@ import { Push } from '@/push';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './SecretsHelpers';
@@ -548,7 +547,6 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const internalHooks = Container.get(InternalHooks);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
 	const eventService = Container.get(EventService);
 	return {
@@ -783,7 +781,6 @@ async function executeWorkflow(
 		parentCallbackManager?: CallbackManager;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
-	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
