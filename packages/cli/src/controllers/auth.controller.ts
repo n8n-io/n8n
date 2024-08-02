@@ -24,7 +24,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController()
 export class AuthController {
