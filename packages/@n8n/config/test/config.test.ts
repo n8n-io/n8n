@@ -172,6 +172,17 @@ describe('GlobalConfig', () => {
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
 		},
+		cache: {
+			backend: 'auto',
+			memory: {
+				maxSize: 3145728,
+				ttl: 3600000,
+			},
+			redis: {
+				prefix: 'redis',
+				ttl: 3600000,
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
