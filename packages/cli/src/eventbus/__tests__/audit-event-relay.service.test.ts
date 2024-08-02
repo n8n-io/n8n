@@ -141,27 +141,31 @@ describe('AuditEventRelay', () => {
 		it('should log on `workflow-post-execute` for successful execution', () => {
 			const payload = mock<Event['workflow-post-execute']>({
 				executionId: 'some-id',
-				success: true,
 				userId: 'some-id',
-				workflowId: 'some-id',
-				isManual: true,
-				workflowName: 'some-name',
-				metadata: {},
-				runData: mock<IRun>({ data: { resultData: {} } }),
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
+				runData: mock<IRun>({ status: 'success', mode: 'manual', data: { resultData: {} } }),
 			});
 
 			eventService.emit('workflow-post-execute', payload);
 
-			const { runData: _, ...rest } = payload;
+			const { runData: _, workflow: __, ...rest } = payload;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.success',
-				payload: rest,
+				payload: {
+					...rest,
+					success: true,
+					isManual: true,
+					workflowName: 'some-name',
+					workflowId: 'some-id',
+				},
 			});
 		});
 
-		it('should handle `workflow-post-execute` event for unsuccessful execution', () => {
+		it('should log on `workflow-post-execute` event for unsuccessful execution', () => {
 			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
@@ -177,23 +181,23 @@ describe('AuditEventRelay', () => {
 
 			const event = {
 				executionId: 'some-id',
-				success: false,
 				userId: 'some-id',
-				workflowId: 'some-id',
-				isManual: true,
-				workflowName: 'some-name',
-				metadata: {},
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
 				runData,
 			};
 
 			eventService.emit('workflow-post-execute', event);
 
-			const { runData: _, ...rest } = event;
+			const { runData: _, workflow: __, ...rest } = event;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.failed',
 				payload: {
 					...rest,
+					success: false,
+					isManual: true,
+					workflowName: 'some-name',
+					workflowId: 'some-id',
 					lastNodeExecuted: 'some-node',
 					errorNodeType: 'some-type',
 					errorMessage: 'some-message',

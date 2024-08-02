@@ -1,23 +1,10 @@
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
-import { get as pslGet } from 'psl';
-import type {
-	ExecutionStatus,
-	INodesGraphResult,
-	IRun,
-	ITelemetryTrackProperties,
-	IWorkflowBase,
-} from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
-
-import { N8N_VERSION } from '@/constants';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { User } from '@db/entities/User';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
-import type { ITelemetryUserDeletionData, IExecutionTrackProperties } from '@/Interfaces';
+import type { ITelemetryUserDeletionData } from '@/Interfaces';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { NodeTypes } from '@/NodeTypes';
 import { Telemetry } from '@/telemetry';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
@@ -30,8 +17,6 @@ import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 export class InternalHooks {
 	constructor(
 		private readonly telemetry: Telemetry,
-		private readonly nodeTypes: NodeTypes,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		workflowStatisticsService: WorkflowStatisticsService,
 		// Can't use @ts-expect-error because only dev time tsconfig considers this as an error, but not build time
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -62,145 +47,6 @@ export class InternalHooks {
 		});
 
 		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
-	}
-
-	// eslint-disable-next-line complexity
-	async onWorkflowPostExecute(
-		_executionId: string,
-		workflow: IWorkflowBase,
-		runData?: IRun,
-		userId?: string,
-	) {
-		if (!workflow.id) {
-			return;
-		}
-
-		if (runData?.status === 'waiting') {
-			// No need to send telemetry or logs when the workflow hasn't finished yet.
-			return;
-		}
-
-		const telemetryProperties: IExecutionTrackProperties = {
-			workflow_id: workflow.id,
-			is_manual: false,
-			version_cli: N8N_VERSION,
-			success: false,
-		};
-
-		if (userId) {
-			telemetryProperties.user_id = userId;
-		}
-
-		if (runData?.data.resultData.error?.message?.includes('canceled')) {
-			runData.status = 'canceled';
-		}
-
-		telemetryProperties.success = !!runData?.finished;
-
-		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
-		const executionStatus: ExecutionStatus = runData
-			? determineFinalExecutionStatus(runData)
-			: 'unknown';
-
-		if (runData !== undefined) {
-			telemetryProperties.execution_mode = runData.mode;
-			telemetryProperties.is_manual = runData.mode === 'manual';
-
-			let nodeGraphResult: INodesGraphResult | null = null;
-
-			if (!telemetryProperties.success && runData?.data.resultData.error) {
-				telemetryProperties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.name
-						: undefined;
-				telemetryProperties.error_node_type =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.type
-						: undefined;
-
-				if (runData.data.resultData.lastNodeExecuted) {
-					const lastNode = TelemetryHelpers.getNodeTypeForName(
-						workflow,
-						runData.data.resultData.lastNodeExecuted,
-					);
-
-					if (lastNode !== undefined) {
-						telemetryProperties.error_node_type = lastNode.type;
-						errorNodeName = lastNode.name;
-					}
-				}
-
-				if (telemetryProperties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
-					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
-
-					if (errorNodeName) {
-						telemetryProperties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
-					}
-				}
-			}
-
-			if (telemetryProperties.is_manual) {
-				if (!nodeGraphResult) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-				}
-
-				let userRole: 'owner' | 'sharee' | undefined = undefined;
-				if (userId) {
-					const role = await this.sharedWorkflowRepository.findSharingRole(userId, workflow.id);
-					if (role) {
-						userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
-					}
-				}
-
-				const manualExecEventProperties: ITelemetryTrackProperties = {
-					user_id: userId,
-					workflow_id: workflow.id,
-					status: executionStatus,
-					executionStatus: runData?.status ?? 'unknown',
-					error_message: telemetryProperties.error_message as string,
-					error_node_type: telemetryProperties.error_node_type,
-					node_graph_string: telemetryProperties.node_graph_string as string,
-					error_node_id: telemetryProperties.error_node_id as string,
-					webhook_domain: null,
-					sharing_role: userRole,
-				};
-
-				if (!manualExecEventProperties.node_graph_string) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
-				}
-
-				if (runData.data.startData?.destinationNode) {
-					const telemetryPayload = {
-						...manualExecEventProperties,
-						node_type: TelemetryHelpers.getNodeTypeForName(
-							workflow,
-							runData.data.startData?.destinationNode,
-						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
-					};
-
-					this.telemetry.track('Manual node exec finished', telemetryPayload);
-				} else {
-					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
-						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
-							?.json as { headers?: { origin?: string } };
-						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
-							manualExecEventProperties.webhook_domain = pslGet(
-								execJson.headers.origin.replace(/^https?:\/\//, ''),
-							);
-						}
-					});
-
-					this.telemetry.track('Manual workflow exec finished', manualExecEventProperties);
-				}
-			}
-		}
-
-		this.telemetry.trackWorkflowExecution(telemetryProperties);
 	}
 
 	onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
