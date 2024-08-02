@@ -1,15 +1,15 @@
 import { mock } from 'jest-mock-extended';
-import { LogEventRelay } from '@/events/log-event-relay';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { EventService } from '@/events/event.service';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
 import type { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import type { RelayEventMap } from '@/events/relay-event-map';
 
-describe('LogEventRelay', () => {
+describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = new EventService();
-	new LogEventRelay(eventService, eventBus).init();
+	new LogStreamingEventRelay(eventService, eventBus).init();
 
 	afterEach(() => {
 		jest.clearAllMocks();

@@ -10,7 +10,7 @@ import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 /**
  * @deprecated Do not add to this class. To add log or telemetry events, use
- * `EventService` to emit the event and then use the `LogEventRelay` or
+ * `EventService` to emit the event and then use the `LogStreamingEventRelay` or
  * `TelemetryEventRelay` to forward them to the event bus or telemetry.
  */
 @Service()

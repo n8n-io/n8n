@@ -7,7 +7,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { EventService } from './event.service';
 
 @Service()
-export class LogEventRelay extends EventRelay {
+export class LogStreamingEventRelay extends EventRelay {
 	constructor(
 		readonly eventService: EventService,
 		private readonly eventBus: MessageEventBus,

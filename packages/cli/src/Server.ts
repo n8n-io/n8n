@@ -35,7 +35,7 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { LogEventRelay } from '@/events/log-event-relay';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
@@ -250,7 +250,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(LogEventRelay).init();
+		Container.get(LogStreamingEventRelay).init();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
