@@ -95,6 +95,15 @@ describe('Projects in Public API', () => {
 			 * Assert
 			 */
 			expect(response.status).toBe(201);
+			expect(response.body).toEqual({
+				name: 'some-project',
+				type: 'team',
+				id: expect.any(String),
+				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
+				role: 'project:admin',
+				scopes: expect.any(Array),
+			});
 			await expect(getProjectByNameOrFail(projectPayload.name)).resolves.not.toThrow();
 		});
 
