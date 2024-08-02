@@ -38,7 +38,7 @@ export class AiTransform implements INodeType {
 				type: 'button',
 				default: '',
 				description:
-					"Provide instructions on how you want to transform the data, then click 'Generate code'",
+					"Provide instructions on how you want to transform the data, then click 'Generate code'. Use dot notation to refer to nested fields (e.g. address.street).",
 				placeholder:
 					"Example: Merge 'firstname' and 'lastname' into a field 'details.name' and sort by 'email'",
 				typeOptions: {
