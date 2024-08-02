@@ -270,6 +270,31 @@ export class InvoiceNinja implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available bank integrations to display them to user so that they can
+			// select them easily
+			async getBankIntegrations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let banks = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					'/bank_integrations',
+				);
+				banks = banks.filter((e) => !e.is_deleted);
+				for (const bank of banks) {
+					const providerName = bank.provider_name as string;
+					const accountName = bank.bank_account_name as string;
+					const bankId = bank.id as string;
+					returnData.push({
+						name:
+							providerName != accountName
+								? `${providerName} - ${accountName}`
+								: accountName || providerName,
+						value: bankId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -884,8 +909,8 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.baseType) {
 							body.base_type = additionalFields.baseType as string;
 						}
-						if(additionalFields.bankAccountId) {
-							body.bank_integration_id = additionalFields.bankAccountId as number;
+						if(additionalFields.bankIntegrationId) {
+							body.bank_integration_id = additionalFields.bankIntegrationId as number;
 						}
 						if (additionalFields.client) {
 							body.date = additionalFields.date as string;
