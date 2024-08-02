@@ -14,6 +14,8 @@ interface WritableSettings {
 
 type Settings = ReadOnlySettings & WritableSettings;
 
+type InstanceRole = 'unset' | 'leader' | 'follower';
+
 const inTest = process.env.NODE_ENV === 'test';
 
 @Service()
@@ -37,6 +39,25 @@ export class InstanceSettings {
 	private settings = this.loadOrCreate();
 
 	readonly instanceId = this.generateInstanceId();
+
+	/** Always `leader` in single-main setup. `leader` or `follower` in multi-main setup. */
+	private instanceRole: InstanceRole = 'unset';
+
+	get isLeader() {
+		return this.instanceRole === 'leader';
+	}
+
+	markAsLeader() {
+		this.instanceRole = 'leader';
+	}
+
+	get isFollower() {
+		return this.instanceRole === 'follower';
+	}
+
+	markAsFollower() {
+		this.instanceRole = 'follower';
+	}
 
 	get encryptionKey() {
 		return this.settings.encryptionKey;
