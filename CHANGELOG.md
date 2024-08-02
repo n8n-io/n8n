@@ -1,3 +1,15 @@
+## [1.53.1](https://github.com/n8n-io/n8n/compare/n8n@1.53.0...n8n@1.53.1) (2024-08-02)
+
+
+### Bug Fixes
+
+* **core:** Upgrade tournament to address some XSS vulnerabilities ([#10277](https://github.com/n8n-io/n8n/issues/10277)) ([887ed17](https://github.com/n8n-io/n8n/commit/887ed1788fbb730a2ed5119e042afd5f79ddbe79))
+* **editor:** Enable moving resources only if team projects are available by the license ([#10271](https://github.com/n8n-io/n8n/issues/10271)) ([d9a638a](https://github.com/n8n-io/n8n/commit/d9a638aa0b2b51269c89a35184eeb702c212d432))
+* **editor:** Fix execution retry button ([#10275](https://github.com/n8n-io/n8n/issues/10275)) ([3978b93](https://github.com/n8n-io/n8n/commit/3978b93f5189cf89e5c3de1d17e5ae1e38f6aa56))
+* Loop node no input data shown ([#10224](https://github.com/n8n-io/n8n/issues/10224)) ([2cfa75d](https://github.com/n8n-io/n8n/commit/2cfa75def142851b98ebe0725bc112496165b6e4))
+
+
+
 # [1.53.0](https://github.com/n8n-io/n8n/compare/n8n@1.52.0...n8n@1.53.0) (2024-07-31)
 
 
