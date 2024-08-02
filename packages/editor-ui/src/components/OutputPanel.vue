@@ -28,6 +28,7 @@
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
 					<n8n-radio-buttons
+						data-test-id="ai-output-mode-select"
 						v-model="outputMode"
 						:options="outputTypes"
 						@update:model-value="onUpdateOutputMode"
@@ -83,6 +84,7 @@
 		<template v-if="outputMode === 'logs' && node" #content>
 			<RunDataAi :node="node" :run-index="runIndex" />
 		</template>
+
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
@@ -101,8 +103,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { IRunData, IRunExecutionData, Workflow } from 'n8n-workflow';
+import { ref, computed, onMounted, watch } from 'vue';
+import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { storeToRefs } from 'pinia';
@@ -183,7 +185,7 @@ const pinnedData = usePinnedData(activeNode, {
 
 // Data
 
-const outputMode = ref<OutputType>('regular');
+const outputMode = ref<OutputType>(OUTPUT_TYPE.REGULAR);
 const outputTypes = ref([
 	{ label: i18n.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
 	{ label: i18n.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
@@ -211,6 +213,16 @@ const hasAiMetadata = computed(() => {
 		return !!resultData[resultData.length - 1].metadata;
 	}
 	return false;
+});
+
+// Determine the initial output mode to logs if the node has an error and the logs are available
+const defaultOutputMode = computed<OutputType>(() => {
+	const hasError =
+		workflowRunData.value &&
+		node.value &&
+		(workflowRunData.value[node.value.name]?.[props.runIndex]?.error as NodeError);
+
+	return Boolean(hasError) && hasAiMetadata.value ? OUTPUT_TYPE.LOGS : OUTPUT_TYPE.REGULAR;
 });
 
 const isNodeRunning = computed(() => {
@@ -350,6 +362,20 @@ const onUpdateOutputMode = (outputMode: OutputType) => {
 		ndvEventBus.emit('setPositionByName', 'initial');
 	}
 };
+
+// Set the initial output mode when the component is mounted
+onMounted(() => {
+	outputMode.value = defaultOutputMode.value;
+});
+
+// In case the output panel was opened when the node has not run yet,
+// defaultOutputMode will be "regular" at the time of mounting.
+// This is why we need to watch the defaultOutputMode and change the outputMode to "logs" if the node has run and criteria are met.
+watch(defaultOutputMode, (newValue: OutputType, oldValue: OutputType) => {
+	if (newValue === OUTPUT_TYPE.LOGS && oldValue === OUTPUT_TYPE.REGULAR && hasNodeRun.value) {
+		outputMode.value = defaultOutputMode.value;
+	}
+});
 
 const activatePane = () => {
 	emit('activatePane');
