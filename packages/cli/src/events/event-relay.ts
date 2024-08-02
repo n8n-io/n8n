@@ -10,10 +10,8 @@ export class EventRelay {
 		[EventName in EventNames]?: (event: RelayEventMap[EventName]) => void | Promise<void>;
 	}) {
 		for (const [eventName, handler] of Object.entries(map) as Array<
-			[EventNames, ((event: RelayEventMap[EventNames]) => void | Promise<void>) | undefined]
+			[EventNames, (event: RelayEventMap[EventNames]) => void | Promise<void>]
 		>) {
-			if (!handler) continue;
-
 			this.eventService.on(eventName, async (event) => {
 				await handler(event);
 			});
