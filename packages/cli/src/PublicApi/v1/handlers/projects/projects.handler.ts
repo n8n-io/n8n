@@ -17,9 +17,9 @@ export = {
 		isLicensed('feat:projectRole:admin'),
 		globalScope('project:create'),
 		async (req: Create, res: Response) => {
-			await Container.get(ProjectController).createProject(req);
+			const project = await Container.get(ProjectController).createProject(req);
 
-			return res.status(201).send();
+			return res.status(201).json(project);
 		},
 	],
 	updateProject: [
