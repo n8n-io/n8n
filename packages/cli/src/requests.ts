@@ -6,7 +6,6 @@ import type {
 	ILoadOptions,
 	INodeCredentialTestRequest,
 	INodeCredentials,
-	INodeExecutionData,
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
@@ -423,8 +422,7 @@ export declare namespace DynamicNodeParametersRequest {
 	/** POST /dynamic-node-parameters/action-result */
 	type ActionResult = BaseRequest<{
 		handler: string;
-		payload: string;
-		inputData: INodeExecutionData[];
+		payload: IDataObject | string | undefined;
 	}>;
 }
 

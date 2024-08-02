@@ -1538,8 +1538,7 @@ export interface INodeType {
 		actionHandler?: {
 			[functionName: string]: (
 				this: ILoadOptionsFunctions,
-				payload: string,
-				inputData: INodeExecutionData[],
+				payload: IDataObject | string | undefined,
 			) => Promise<NodeParameterValueType>;
 		};
 	};

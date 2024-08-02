@@ -16,7 +16,6 @@ import { useRootStore } from '@/stores/root.store';
 import { generateCodeForPrompt } from '@/api/ai';
 
 const emit = defineEmits<{
-	// submit: [code: string];
 	valueChanged: [value: IUpdateInformation];
 }>();
 
@@ -86,6 +85,22 @@ function getPath(parameter: string) {
 	return ((props.path ? `${props.path}.` : '') + parameter) as string;
 }
 
+function createPrompt(prompt: string) {
+	return `
+Generate JavaScript code for this prompt:
+
+---
+${prompt}
+---
+
+input available by calling $input.all(), assume $input variable is defined already:
+
+return has to be an array of objects each must containe single property json that should be an object
+always have return statment
+return only code snippet without any additional explanation or comments
+format code as by using prettify`;
+}
+
 async function onSubmit() {
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
@@ -110,35 +125,33 @@ async function onSubmit() {
 	startLoading();
 
 	try {
+		const schemas = getSchemas();
+		const version = rootStore.versionCli;
+		const model =
+			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
+				? 'gpt-4'
+				: 'gpt-3.5-turbo-16k';
+
+		const payload = {
+			question: createPrompt(prompt.value),
+			context: {
+				schema: schemas.parentNodesSchemas,
+				inputSchema: schemas.inputSchema!,
+				ndvPushRef: useNDVStore().pushRef,
+				pushRef: rootStore.pushRef,
+			},
+			model,
+			n8nVersion: version,
+		};
 		switch (type) {
 			case 'generateCodeFromPrompt':
 				let value;
 				if (aiEnabled.value) {
 					const { restApiContext } = useRootStore();
-					const version = rootStore.versionCli;
-					const schemas = getSchemas();
-					console.log('schemas', schemas);
-					const model =
-						usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
-							? 'gpt-4'
-							: 'gpt-3.5-turbo-16k';
-
-					const { code } = await generateCodeForPrompt(restApiContext, {
-						question: prompt.value,
-						context: {
-							schema: schemas.parentNodesSchemas,
-							inputSchema: schemas.inputSchema!,
-							ndvPushRef: useNDVStore().pushRef,
-							pushRef: rootStore.pushRef,
-						},
-						model,
-						n8nVersion: version,
-					});
-
+					const { code } = await generateCodeForPrompt(restApiContext, payload);
 					value = code;
 				} else {
 					const currentNodeParameters = activeNode.parameters;
-					const inputData = useNDVStore().ndvInputData;
 
 					value = await nodeTypesStore.getNodeParameterActionResult({
 						nodeTypeAndVersion: {
@@ -149,8 +162,7 @@ async function onSubmit() {
 						currentNodeParameters,
 						credentials: activeNode.credentials,
 						handler,
-						payload: prompt.value,
-						inputData,
+						payload,
 					});
 				}
 				if (value === undefined) return;

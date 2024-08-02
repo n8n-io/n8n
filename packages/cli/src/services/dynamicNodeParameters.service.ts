@@ -16,6 +16,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	NodeParameterValueType,
+	IDataObject,
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { NodeExecuteFunctions } from 'n8n-core';
@@ -164,8 +165,7 @@ export class DynamicNodeParametersService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeTypeAndVersion: INodeTypeNameVersion,
 		currentNodeParameters: INodeParameters,
-		payload: string,
-		inputData: INodeExecutionData[],
+		payload: IDataObject | string | undefined,
 		credentials?: INodeCredentials,
 	): Promise<NodeParameterValueType> {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
@@ -173,7 +173,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, payload, inputData);
+		return method.call(thisArgs, payload);
 	}
 
 	private getMethod(

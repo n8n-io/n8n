@@ -1,5 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
+	type IDataObject,
+	jsonParse,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -87,27 +89,24 @@ export class AiTransform implements INodeType {
 
 	methods = {
 		actionHandler: {
-			async generateCode(
-				this: ILoadOptionsFunctions,
-				payload: string,
-				inputData: INodeExecutionData[],
-			) {
-				const url = this.getNodeParameter('url') as string;
-				const { output } = (await this.helpers.httpRequest({
+			async generateCode(this: ILoadOptionsFunctions, payload: IDataObject | string | undefined) {
+				const url = this.getNodeParameter('url', 0) as string;
+				let body: IDataObject = {};
+				if (payload) {
+					body = typeof payload === 'string' ? jsonParse(payload) : payload;
+				}
+				const response = (await this.helpers.httpRequest({
 					method: 'POST',
 					url,
 					headers: {
 						'Content-Type': 'application/json',
 					},
-					body: {
-						prompt: payload,
-						input: inputData,
-					},
+					body,
 				})) as {
-					output: string;
+					data: { code: string };
 				};
 
-				return output;
+				return response?.data?.code;
 			},
 		},
 	};
