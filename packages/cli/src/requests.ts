@@ -68,7 +68,7 @@ export type APIRequest<
 	RequestBody = {},
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	browserId?: string;
+	browserId: string;
 };
 
 export type AuthlessRequest<

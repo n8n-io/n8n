@@ -50,17 +50,6 @@ describe('HooksService', () => {
 		expect(userService.inviteUsers).toHaveBeenCalledWith(mockedUser, usersToInvite);
 	});
 
-	it('hooksService.issueCookie should call authService.issueCookie', async () => {
-		// ARRANGE
-		const res = mock<Response>();
-
-		// ACT
-		hooksService.issueCookie(res, mockedUser);
-
-		// ASSERT
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, mockedUser);
-	});
-
 	it('hooksService.findOneUser should call authUserRepository.findOne', async () => {
 		// ARRANGE
 		const filter = { where: { id: '1' } };

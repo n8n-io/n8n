@@ -22,7 +22,7 @@ interface AuthJwtPayload {
 	/** This hash is derived from email and bcrypt of password */
 	hash: string;
 	/** This is a client generated unique string to prevent session hijacking */
-	browserId?: string;
+	browserId: string;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
@@ -80,7 +80,7 @@ export class AuthService {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
 
-	issueCookie(res: Response, user: User, browserId?: string) {
+	issueCookie(res: Response, user: User, browserId: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -101,11 +101,11 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User, browserId?: string) {
+	issueJWT(user: User, browserId: string) {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
-			browserId: browserId && this.hash(browserId),
+			browserId: this.hash(browserId),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -138,8 +138,9 @@ export class AuthService {
 		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
-			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+			!jwtPayload.browserId ||
+			!req.browserId ||
+			jwtPayload.browserId !== this.hash(req.browserId)
 		) {
 			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
