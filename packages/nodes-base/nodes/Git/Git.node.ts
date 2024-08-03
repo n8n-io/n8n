@@ -182,6 +182,19 @@ export class Git implements INodeType {
 				required: true,
 				description: 'Local path to which the git repository should be cloned into',
 			},
+			{
+				displayName: 'Disable certificate check',
+				name: 'disableCertCheck',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Disable git ssl certificate check',
+				displayOptions: {
+					show : {
+						operation: ['clone', 'fetch', 'pull', 'push', 'pushTags'],
+					},
+				},
+			},
 
 			...addFields,
 			...addConfigFields,
@@ -214,10 +227,12 @@ export class Git implements INodeType {
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
+
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
+				const disableCertCheck = this.getNodeParameter('disableCertCheck', itemIndex, false) as boolean;
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				if (operation === 'clone') {
@@ -231,6 +246,7 @@ export class Git implements INodeType {
 
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: repositoryPath,
+					config: [`http.sslVerify=${disableCertCheck}`]
 				};
 
 				const git: SimpleGit = simpleGit(gitOptions)
