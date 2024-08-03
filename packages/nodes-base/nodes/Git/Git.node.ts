@@ -246,7 +246,7 @@ export class Git implements INodeType {
 
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: repositoryPath,
-					config: [`http.sslVerify=${disableCertCheck}`]
+					config: [`http.sslVerify=${!disableCertCheck}`]
 				};
 
 				const git: SimpleGit = simpleGit(gitOptions)
