@@ -325,7 +325,7 @@ export class MongoDb implements INodeType {
 
 				const { insertedIds } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.insertMany(insertItems);
+					.insertMany(insertItems, { ordered: !this.continueOnFail() });
 
 				// Add the id to the data
 				for (const i of Object.keys(insertedIds)) {
