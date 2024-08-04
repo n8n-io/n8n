@@ -276,7 +276,6 @@ export class Gitlab implements INodeType {
 				],
 				default: 'create',
 			},
-
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -907,6 +906,19 @@ export class Gitlab implements INodeType {
 			// ----------------------------------
 			//         repository:getIssues
 			// ----------------------------------
+
+			{
+				displayName: 'With labels details?',
+				name: 'withLabelsDetails',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['getIssues'],
+					},
+				},
+				default: false,
+				description: 'Whether to retrieve enriched data for labels',
+			},
 			{
 				displayName: 'Filters',
 				name: 'getRepositoryIssuesFilters',
@@ -1575,6 +1587,8 @@ export class Gitlab implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
+
+						qs.with_labels_details = this.getNodeParameter('withLabelsDetails', 0);
 
 						endpoint = `${baseEndpoint}/issues`;
 					}
