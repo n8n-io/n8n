@@ -122,6 +122,8 @@ const telemetry = useTelemetry();
 onMounted(() => {
 	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
 
+	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
+
 	const { isReadOnly, language } = props;
 	const extensions: Extension[] = [
 		...readOnlyEditorExtensions,
@@ -347,6 +349,13 @@ function getLine(lineNumber: number): Line | null {
 	}
 }
 
+function diffApplied() {
+	codeNodeEditorContainerRef.value?.classList.add('animate-editor');
+	codeNodeEditorContainerRef.value?.addEventListener('animationend', () => {
+		codeNodeEditorContainerRef.value?.classList.remove('animate-editor');
+	});
+}
+
 function highlightLine(lineNumber: number | 'final') {
 	if (!editor.value) return;
 
@@ -413,6 +422,38 @@ function onAiLoadEnd() {
 :deep(.el-tabs) {
 	.code-editor-tabs .cm-editor {
 		border: 0;
+	}
+}
+
+@keyframes backgroundAnimation {
+	0% {
+		background-color: none;
+	}
+	30% {
+		background-color: rgba(41, 163, 102, 0.2);
+	}
+	100% {
+		background-color: none;
+	}
+}
+
+@keyframes shadowAnimation {
+	0% {
+		box-shadow: none;
+	}
+	30% {
+		box-shadow: 0px 0px 10px 0px var(--color-success);
+	}
+	100% {
+		box-shadow: none;
+	}
+}
+
+.animate-editor {
+	animation: shadowAnimation 2s ease-in-out;
+	:deep(.cm-editor),
+	:deep(.cm-gutter) {
+		animation: backgroundAnimation 2s ease-in-out;
 	}
 }
 </style>

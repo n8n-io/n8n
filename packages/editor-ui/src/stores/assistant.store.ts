@@ -26,6 +26,7 @@ import {
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
+import { codeNodeEditorEventBus } from '@/event-bus';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -470,6 +471,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 
 			codeDiffMessage.replaced = true;
+			codeNodeEditorEventBus.emit('codeDiffApplied');
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
@@ -501,6 +503,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			updateParameters(activeNode.name, suggested);
 
 			codeDiffMessage.replaced = false;
+			codeNodeEditorEventBus.emit('codeDiffApplied');
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
