@@ -817,7 +817,7 @@ export class WorkflowExecute {
 		});
 		if (workflowIssues !== null) {
 			throw new WorkflowOperationError(
-				'The workflow has issues and can for that reason not be executed. Please fix them first.',
+				`The workflow with id ${workflow.id} has issues and can for that reason not be executed. Please fix them first.`,
 			);
 		}
 
