@@ -52,4 +52,13 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			{} as Record<ProjectRole, number>,
 		);
 	}
+
+	async findUserIdsByProjectId(projectId: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['userId'],
+			where: { projectId },
+		});
+
+		return [...new Set(rows.map((r) => r.userId))];
+	}
 }

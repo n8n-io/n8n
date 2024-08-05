@@ -32,7 +32,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { z } from 'zod';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -60,10 +60,12 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
+				publicApi: true,
+				projectId: project.id,
+				projectType: project.type,
 			});
 
 			return res.json(createdWorkflow);
@@ -259,11 +261,10 @@ export = {
 			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 			Container.get(EventService).emit('workflow-saved', {
 				user: req.user,
-				workflowId: updateData.id,
-				workflowName: updateData.name,
+				workflow: updateData,
+				publicApi: true,
 			});
 
 			return res.json(updatedWorkflow);

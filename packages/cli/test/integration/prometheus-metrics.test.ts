@@ -2,17 +2,30 @@ import { Container } from 'typedi';
 import { parse as semverParse } from 'semver';
 import request, { type Response } from 'supertest';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { setupTestServer } from './shared/utils';
+import { GlobalConfig } from '@n8n/config';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 
-config.set('endpoints.metrics.enable', true);
-config.set('endpoints.metrics.prefix', 'n8n_test_');
+const globalConfig = Container.get(GlobalConfig);
+globalConfig.endpoints.metrics = {
+	enable: true,
+	prefix: 'n8n_test_',
+	includeDefaultMetrics: true,
+	includeApiEndpoints: true,
+	includeCacheMetrics: true,
+	includeMessageEventBusMetrics: true,
+	includeCredentialTypeLabel: false,
+	includeNodeTypeLabel: false,
+	includeWorkflowIdLabel: false,
+	includeApiPathLabel: true,
+	includeApiMethodLabel: true,
+	includeApiStatusCodeLabel: true,
+};
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
 const agent = request.agent(server.app);

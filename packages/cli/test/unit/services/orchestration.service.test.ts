@@ -1,4 +1,9 @@
 import Container from 'typedi';
+import type Redis from 'ioredis';
+import { mock } from 'jest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
+import type { WorkflowActivateMode } from 'n8n-workflow';
+
 import config from '@/config';
 import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
@@ -13,11 +18,9 @@ import { Logger } from '@/Logger';
 import { Push } from '@/push';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { mockInstance } from '../../shared/mocking';
-import type { WorkflowActivateMode } from 'n8n-workflow';
 import { RedisClientService } from '@/services/redis/redis-client.service';
-import type Redis from 'ioredis';
-import { mock } from 'jest-mock-extended';
 
+const instanceSettings = Container.get(InstanceSettings);
 const redisClientService = mockInstance(RedisClientService);
 const mockRedisClient = mock<Redis>();
 redisClientService.createClient.mockReturnValue(mockRedisClient);
@@ -70,6 +73,10 @@ describe('Orchestration Service', () => {
 		});
 		setDefaultConfig();
 		queueModeId = config.get('redis.queueModeId');
+	});
+
+	beforeEach(() => {
+		instanceSettings.markAsLeader();
 	});
 
 	afterAll(async () => {
@@ -141,13 +148,10 @@ describe('Orchestration Service', () => {
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
-		expect((res2!.payload as { result: string }).result).toEqual('debounced');
+		expect(res2!.payload).toEqual({ result: 'debounced' });
 	});
 
 	describe('shouldAddWebhooks', () => {
-		beforeEach(() => {
-			config.set('instanceRole', 'leader');
-		});
 		test('should return true for init', () => {
 			// We want to ensure that webhooks are populated on init
 			// more https://github.com/n8n-io/n8n/pull/8830
@@ -169,7 +173,7 @@ describe('Orchestration Service', () => {
 		});
 
 		test('should return false for update or activate when not leader', () => {
-			config.set('instanceRole', 'follower');
+			instanceSettings.markAsFollower();
 			const modes = ['update', 'activate'] as WorkflowActivateMode[];
 			for (const mode of modes) {
 				const result = os.shouldAddWebhooks(mode);

@@ -52,6 +52,8 @@ export interface MessageEventBusInitializeOptions {
 }
 
 @Service()
+// TODO: Convert to TypedEventEmitter
+// eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 

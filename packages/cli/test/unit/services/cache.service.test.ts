@@ -1,6 +1,8 @@
 import { CacheService } from '@/services/cache/cache.service';
 import config from '@/config';
 import { sleep } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
+import Container from 'typedi';
 
 jest.mock('ioredis', () => {
 	const Redis = require('ioredis-mock');
@@ -13,10 +15,12 @@ jest.mock('ioredis', () => {
 for (const backend of ['memory', 'redis'] as const) {
 	describe(backend, () => {
 		let cacheService: CacheService;
+		let globalConfig: GlobalConfig;
 
 		beforeAll(async () => {
-			config.set('cache.backend', backend);
-			cacheService = new CacheService();
+			globalConfig = Container.get(GlobalConfig);
+			globalConfig.cache.backend = backend;
+			cacheService = new CacheService(globalConfig);
 			await cacheService.init();
 		});
 
@@ -43,7 +47,7 @@ for (const backend of ['memory', 'redis'] as const) {
 
 			if (backend === 'memory') {
 				test('should honor max size when enough', async () => {
-					config.set('cache.memory.maxSize', 16); // enough bytes for "withoutUnicode"
+					globalConfig.cache.memory.maxSize = 16; // enough bytes for "withoutUnicode"
 
 					await cacheService.init();
 					await cacheService.set('key', 'withoutUnicode');
@@ -51,12 +55,12 @@ for (const backend of ['memory', 'redis'] as const) {
 					await expect(cacheService.get('key')).resolves.toBe('withoutUnicode');
 
 					// restore
-					config.set('cache.memory.maxSize', 3 * 1024 * 1024);
+					globalConfig.cache.memory.maxSize = 3 * 1024 * 1024;
 					await cacheService.init();
 				});
 
 				test('should honor max size when not enough', async () => {
-					config.set('cache.memory.maxSize', 16); // not enough bytes for "withUnicodeԱԲԳ"
+					globalConfig.cache.memory.maxSize = 16; // not enough bytes for "withUnicodeԱԲԳ"
 
 					await cacheService.init();
 					await cacheService.set('key', 'withUnicodeԱԲԳ');
@@ -64,7 +68,8 @@ for (const backend of ['memory', 'redis'] as const) {
 					await expect(cacheService.get('key')).resolves.toBeUndefined();
 
 					// restore
-					config.set('cache.memory.maxSize', 3 * 1024 * 1024);
+					globalConfig.cache.memory.maxSize = 3 * 1024 * 1024;
+					// restore
 					await cacheService.init();
 				});
 			}

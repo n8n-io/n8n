@@ -42,7 +42,7 @@ import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { GlobalConfig } from '@n8n/config';
 
 @RestController('/workflows')
@@ -179,8 +179,13 @@ export class WorkflowsController {
 		delete savedWorkflowWithMetaData.shared;
 
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
-		this.internalHooks.onWorkflowCreated(req.user, newWorkflow, project!, false);
-		this.eventService.emit('workflow-created', { user: req.user, workflow: newWorkflow });
+		this.eventService.emit('workflow-created', {
+			user: req.user,
+			workflow: newWorkflow,
+			publicApi: false,
+			projectId: project!.id,
+			projectType: project!.type,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 

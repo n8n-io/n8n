@@ -33,7 +33,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -124,8 +124,8 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = Container.get(GlobalConfig).path;
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const n8nPath = this.globalConfig.path;
+
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -151,7 +151,9 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -184,7 +186,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (!config.getEnv('license.autoRenewEnabled') && config.getEnv('instanceRole') === 'leader') {
+		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -201,14 +203,14 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 	}
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('instanceRole', 'leader');
+			this.instanceSettings.markAsLeader();
 			return;
 		}
 

@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import type { NextFunction, Response } from 'express';
 import { createHash } from 'crypto';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
@@ -14,6 +14,7 @@ import { Logger } from '@/Logger';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
+import { GlobalConfig } from '@n8n/config';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -33,7 +34,7 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const restEndpoint = config.get('endpoints.rest');
+const restEndpoint = Container.get(GlobalConfig).endpoints.rest;
 // The browser-id check needs to be skipped on these endpoints
 const skipBrowserIdCheckEndpoints = [
 	// we need to exclude push endpoint because we can't send custom header on websocket requests

@@ -4,6 +4,7 @@ import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
 import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
+import { GlobalConfig } from '@n8n/config';
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -355,149 +356,6 @@ export const schema = {
 		},
 	},
 
-	endpoints: {
-		payloadSizeMax: {
-			format: Number,
-			default: 16,
-			env: 'N8N_PAYLOAD_SIZE_MAX',
-			doc: 'Maximum payload size in MB.',
-		},
-		metrics: {
-			enable: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS',
-				doc: 'Enable /metrics endpoint. Default: false',
-			},
-			prefix: {
-				format: String,
-				default: 'n8n_',
-				env: 'N8N_METRICS_PREFIX',
-				doc: 'An optional prefix for metric names. Default: n8n_',
-			},
-			includeDefaultMetrics: {
-				format: Boolean,
-				default: true,
-				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
-				doc: 'Whether to expose default system and node.js metrics. Default: true',
-			},
-			includeWorkflowIdLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
-				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
-			},
-			includeNodeTypeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
-				doc: 'Whether to include a label for the node type on node metrics. Default: false',
-			},
-			includeCredentialTypeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
-				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
-			},
-			includeApiEndpoints: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
-				doc: 'Whether to expose metrics for API endpoints. Default: false',
-			},
-			includeApiPathLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
-				doc: 'Whether to include a label for the path of API invocations. Default: false',
-			},
-			includeApiMethodLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
-				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
-			},
-			includeApiStatusCodeLabel: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
-				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
-			},
-			includeCacheMetrics: {
-				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_INCLUDE_CACHE_METRICS',
-				doc: 'Whether to include metrics for cache hits and misses. Default: false',
-			},
-			includeMessageEventBusMetrics: {
-				format: Boolean,
-				default: true,
-				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
-				doc: 'Whether to include metrics for events. Default: false',
-			},
-		},
-		rest: {
-			format: String,
-			default: 'rest',
-			env: 'N8N_ENDPOINT_REST',
-			doc: 'Path for rest endpoint',
-		},
-		form: {
-			format: String,
-			default: 'form',
-			env: 'N8N_ENDPOINT_FORM',
-			doc: 'Path for form endpoint',
-		},
-		formTest: {
-			format: String,
-			default: 'form-test',
-			env: 'N8N_ENDPOINT_FORM_TEST',
-			doc: 'Path for test form endpoint',
-		},
-		formWaiting: {
-			format: String,
-			default: 'form-waiting',
-			env: 'N8N_ENDPOINT_FORM_WAIT',
-			doc: 'Path for waiting form endpoint',
-		},
-		webhook: {
-			format: String,
-			default: 'webhook',
-			env: 'N8N_ENDPOINT_WEBHOOK',
-			doc: 'Path for webhook endpoint',
-		},
-		webhookWaiting: {
-			format: String,
-			default: 'webhook-waiting',
-			env: 'N8N_ENDPOINT_WEBHOOK_WAIT',
-			doc: 'Path for waiting-webhook endpoint',
-		},
-		webhookTest: {
-			format: String,
-			default: 'webhook-test',
-			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
-			doc: 'Path for test-webhook endpoint',
-		},
-		disableUi: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_DISABLE_UI',
-			doc: 'Disable N8N UI (Frontend).',
-		},
-		disableProductionWebhooksOnMainProcess: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
-			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
-		},
-		additionalNonUIRoutes: {
-			doc: 'Additional endpoints to not open the UI on. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_ADDITIONAL_NON_UI_ROUTES',
-		},
-	},
-
 	workflowTagsDisabled: {
 		format: Boolean,
 		default: false,
@@ -524,12 +382,17 @@ export const schema = {
 			default: 0,
 			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		},
+
+		/**
+		 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+		 */
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
 			format: Boolean,
 			default: false,
 		},
+
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
 			format: ['email', 'ldap', 'saml'] as const,
@@ -797,43 +660,19 @@ export const schema = {
 		},
 	},
 
-	cache: {
-		backend: {
-			doc: 'Backend to use for caching',
-			format: ['memory', 'redis', 'auto'] as const,
-			default: 'auto',
-			env: 'N8N_CACHE_BACKEND',
-		},
-		memory: {
-			maxSize: {
-				doc: 'Maximum size of memory cache in bytes',
-				format: Number,
-				default: 3 * 1024 * 1024, // 3 MB
-				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in memory (in ms)',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_MEMORY_TTL',
-			},
-		},
-		redis: {
-			prefix: {
-				doc: 'Prefix for all cache keys',
-				format: String,
-				default: 'cache',
-				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_REDIS_TTL',
-			},
+	/**
+	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+	 */
+	endpoints: {
+		rest: {
+			format: String,
+			default: Container.get(GlobalConfig).endpoints.rest,
 		},
 	},
 
+	/**
+	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+	 */
 	ai: {
 		enabled: {
 			doc: 'Whether AI features are enabled',
@@ -881,12 +720,6 @@ export const schema = {
 			default: -1,
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
-	},
-
-	instanceRole: {
-		doc: 'Always `leader` in single-main setup. `leader` or `follower` in multi-main setup.',
-		format: ['unset', 'leader', 'follower'] as const,
-		default: 'unset', // only until Start.initOrchestration
 	},
 
 	multiMainSetup: {
