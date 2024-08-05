@@ -189,6 +189,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	codeNodeEditorEventBus.off('codeDiffApplied', diffApplied);
 	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
 });
 
@@ -437,20 +438,7 @@ function onAiLoadEnd() {
 	}
 }
 
-@keyframes shadowAnimation {
-	0% {
-		box-shadow: none;
-	}
-	30% {
-		box-shadow: 0px 0px 10px 0px var(--color-success);
-	}
-	100% {
-		box-shadow: none;
-	}
-}
-
 .animate-editor {
-	animation: shadowAnimation 2s ease-in-out;
 	:deep(.cm-editor),
 	:deep(.cm-gutter) {
 		animation: backgroundAnimation 2s ease-in-out;
