@@ -1318,18 +1318,27 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
-							ErrorReporterProxy.error(error, {
-								extra: {
-									nodeName: executionNode.name,
-									nodeType: executionNode.type,
-									nodeVersion: executionNode.typeVersion,
-									workflowId: workflow.id,
-								},
-							});
-
-							if (!(error instanceof ApplicationError)) {
+							let toReport: Error | undefined;
+							if (error instanceof ApplicationError) {
+								// Report any unhandled errors that were wrapped in by one of our error classes
+								if (error.cause instanceof Error) toReport = error.cause;
+							} else {
+								// Report any unhandled and non-wrapped errors to Sentry
+								toReport = error;
+								// Set obfuscate to true so that the error would be obfuscated in th UI
 								error.obfuscate = true;
 							}
+							if (toReport) {
+								ErrorReporterProxy.error(toReport, {
+									extra: {
+										nodeName: executionNode.name,
+										nodeType: executionNode.type,
+										nodeVersion: executionNode.typeVersion,
+										workflowId: workflow.id,
+									},
+								});
+							}
+
 							const e = error as unknown as ExecutionBaseError;
 
 							executionError = { ...e, message: e.message, stack: e.stack };
