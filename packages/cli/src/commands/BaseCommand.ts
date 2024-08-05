@@ -23,7 +23,7 @@ import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
-import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);

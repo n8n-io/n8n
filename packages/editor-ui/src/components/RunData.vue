@@ -281,7 +281,15 @@
 						})
 					}}
 				</n8n-text>
-				<slot v-else-if="$slots['content']" name="content"></slot>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						compact
+					/>
+					<slot name="content"></slot>
+				</div>
 				<NodeErrorView
 					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
@@ -1147,7 +1155,7 @@ export default defineComponent({
 			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
 			const errorsToTrack = ['unknown error'];
 
-			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
+			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
 					`User encountered an error: "${error.message}"`,
 					{
@@ -1774,6 +1782,13 @@ export default defineComponent({
 	line-height: var(--font-line-height-xloose);
 	word-break: normal;
 	height: 100%;
+}
+
+.inlineError {
+	line-height: var(--font-line-height-xloose);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
 }
 
 .outputs {

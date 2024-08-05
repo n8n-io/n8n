@@ -23,7 +23,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 

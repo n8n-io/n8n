@@ -16,7 +16,7 @@ import config from '@/config';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import type { QueueRecoverySettings } from './execution.types';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 /**
  * Service for recovering key properties in executions.
