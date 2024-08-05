@@ -108,6 +108,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			communityPackages: {
 				enabled: true,
+				reinstallMissing: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -171,6 +172,17 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+		},
+		cache: {
+			backend: 'auto',
+			memory: {
+				maxSize: 3145728,
+				ttl: 3600000,
+			},
+			redis: {
+				prefix: 'redis',
+				ttl: 3600000,
+			},
 		},
 	};
 

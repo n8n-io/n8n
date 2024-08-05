@@ -660,43 +660,6 @@ export const schema = {
 		},
 	},
 
-	cache: {
-		backend: {
-			doc: 'Backend to use for caching',
-			format: ['memory', 'redis', 'auto'] as const,
-			default: 'auto',
-			env: 'N8N_CACHE_BACKEND',
-		},
-		memory: {
-			maxSize: {
-				doc: 'Maximum size of memory cache in bytes',
-				format: Number,
-				default: 3 * 1024 * 1024, // 3 MB
-				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in memory (in ms)',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_MEMORY_TTL',
-			},
-		},
-		redis: {
-			prefix: {
-				doc: 'Prefix for all cache keys',
-				format: String,
-				default: 'cache',
-				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_REDIS_TTL',
-			},
-		},
-	},
-
 	/**
 	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
 	 */

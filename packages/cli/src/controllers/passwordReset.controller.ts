@@ -215,17 +215,16 @@ export class PasswordResetController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 
-		// if this user used to be an LDAP users
+		// if this user used to be an LDAP user
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
-			this.internalHooks.onUserSignup(user, {
-				user_type: 'email',
-				was_disabled_ldap_user: true,
+			this.eventService.emit('user-signed-up', {
+				user,
+				userType: 'email',
+				wasDisabledLdapUser: true,
 			});
-			this.eventService.emit('user-signed-up', { user });
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
