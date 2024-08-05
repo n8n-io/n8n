@@ -17,7 +17,7 @@ import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });

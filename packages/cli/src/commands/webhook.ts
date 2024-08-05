@@ -22,6 +22,8 @@ export class Webhook extends BaseCommand {
 
 	protected server = Container.get(WebhookServer);
 
+	override needsCommunityPackages = true;
+
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('webhook');

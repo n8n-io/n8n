@@ -13,7 +13,7 @@ import { Logger } from '@/Logger';
 import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
 import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { License } from '@/License';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
 import { OrchestrationService } from '@/services/orchestration.service';

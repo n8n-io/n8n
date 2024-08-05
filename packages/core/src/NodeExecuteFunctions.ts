@@ -4212,8 +4212,9 @@ export function getExecuteWebhookFunctions(
 	mode: WorkflowExecuteMode,
 	webhookData: IWebhookData,
 	closeFunctions: CloseFunction[],
+	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode) => {
+	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getBodyData(): IDataObject {
@@ -4274,10 +4275,21 @@ export function getExecuteWebhookFunctions(
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
+
+				let connectionInputData: INodeExecutionData[] = [];
+				let executionData: IExecuteData | undefined;
+
+				if (runExecutionData?.executionData !== undefined) {
+					executionData = runExecutionData.executionData.nodeExecutionStack[0];
+
+					if (executionData !== undefined) {
+						connectionInputData = executionData.data.main[0]!;
+					}
+				}
+
+				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
 
 				return getNodeParameter(
 					workflow,
@@ -4288,8 +4300,8 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					getAdditionalKeys(additionalData, mode, null),
-					undefined,
+					additionalKeys,
+					executionData,
 					fallbackValue,
 					options,
 				);
@@ -4336,5 +4348,5 @@ export function getExecuteWebhookFunctions(
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
-	})(workflow, node);
+	})(workflow, node, runExecutionData);
 }

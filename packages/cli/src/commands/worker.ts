@@ -3,7 +3,6 @@ import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import { sleep, ApplicationError } from 'n8n-workflow';
-import { GlobalConfig } from '@n8n/config';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -20,8 +19,8 @@ import { OrchestrationHandlerWorkerService } from '@/services/orchestration/work
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
-import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
 import { Processor } from '@/scaling/processor';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -49,6 +48,8 @@ export class Worker extends BaseCommand {
 	processor: Processor;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
+
+	override needsCommunityPackages = true;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -142,7 +143,7 @@ export class Worker extends BaseCommand {
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
-		Container.get(AuditEventRelay).init();
+		Container.get(LogStreamingEventRelay).init();
 	}
 
 	/**
@@ -232,8 +233,7 @@ export class Worker extends BaseCommand {
 
 		let presetCredentialsLoaded = false;
 
-		const globalConfig = Container.get(GlobalConfig);
-		const endpointPresetCredentials = globalConfig.credentials.overwrite.endpoint;
+		const endpointPresetCredentials = this.globalConfig.credentials.overwrite.endpoint;
 		if (endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
 			app.post(

@@ -10,7 +10,7 @@ import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export = {
 	pull: [

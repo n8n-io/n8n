@@ -10,6 +10,7 @@ import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	// eslint-disable-next-line complexity
@@ -110,6 +111,18 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 									error: (error as Error).message,
 								},
 							});
+						}
+						break;
+					case 'community-package-install':
+					case 'community-package-update':
+					case 'community-package-uninstall':
+						if (!debounceMessageReceiver(message, 500)) return;
+						const { packageName, packageVersion } = message.payload;
+						const communityPackagesService = Container.get(CommunityPackagesService);
+						if (message.command === 'community-package-uninstall') {
+							await communityPackagesService.removeNpmPackage(packageName);
+						} else {
+							await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
 						}
 						break;
 					case 'reloadLicense':
