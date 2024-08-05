@@ -139,10 +139,12 @@ function fuzzyMatchRecursive(
 	if (matched) {
 		outScore = 100;
 
-		// Apply leading letter penalty
-		let penalty = LEADING_LETTER_PENALTY * matches[0];
-		penalty = penalty < MAX_LEADING_LETTER_PENALTY ? MAX_LEADING_LETTER_PENALTY : penalty;
-		outScore += penalty;
+		// Apply leading letter penalty (if not n8n-prefixed)
+		if (!target.toLowerCase().startsWith('n8n')) {
+			let penalty = LEADING_LETTER_PENALTY * matches[0];
+			penalty = penalty < MAX_LEADING_LETTER_PENALTY ? MAX_LEADING_LETTER_PENALTY : penalty;
+			outScore += penalty;
+		}
 
 		//Apply unmatched penalty
 		const unmatched = target.length - nextMatch;
