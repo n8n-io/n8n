@@ -7,8 +7,8 @@ import * as uuencode from 'uuencode';
 export abstract class PartData {
 	constructor(readonly buffer: Buffer) {}
 
-	toString() {
-		return this.buffer.toString();
+	toString(charset?: string) {
+		return iconvlite.decode(this.buffer, charset ?? 'utf-8');
 	}
 
 	static fromData(data: string, encoding: string, charset?: string): PartData {
@@ -44,10 +44,25 @@ export class Base64PartData extends PartData {
 }
 
 export class QuotedPrintablePartData extends PartData {
+	static ansiBuffer(data: string): Buffer {
+		const decoded = qp.decode(data);
+		const arr = [];
+		for (let index = 0; index < decoded.length; index++) {
+			arr.push(decoded.charCodeAt(index));
+		}
+		return Buffer.from(arr);
+	}
+
+	static utf8Buffer(data: string): Buffer {
+		return Buffer.from(utf8.decode(qp.decode(data)));
+	}
+
 	constructor(data: string, charset?: string) {
 		const decoded =
-			charset?.toUpperCase() === 'UTF-8' ? utf8.decode(qp.decode(data)) : qp.decode(data);
-		super(Buffer.from(decoded));
+			charset?.toUpperCase() === 'UTF-8'
+				? QuotedPrintablePartData.utf8Buffer(data)
+				: QuotedPrintablePartData.ansiBuffer(data);
+		super(decoded);
 	}
 }
 
