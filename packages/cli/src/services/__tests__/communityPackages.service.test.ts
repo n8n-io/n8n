@@ -2,8 +2,10 @@ import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
 import axios from 'axios';
 import { mocked } from 'jest-mock';
-import Container from 'typedi';
+import { mock } from 'jest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
 import type { PublicInstalledPackage } from 'n8n-workflow';
+import type { PackageDirectoryLoader } from 'n8n-core';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -11,21 +13,18 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import config from '@/config';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { randomName } from '@test-integration/random';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
-import { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
-import { Logger } from '@/Logger';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -40,6 +39,15 @@ const execMock = ((...args) => {
 }) as typeof exec;
 
 describe('CommunityPackagesService', () => {
+	const globalConfig = mock<GlobalConfig>({
+		nodes: {
+			communityPackages: {
+				reinstallMissing: false,
+			},
+		},
+	});
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	installedNodesRepository.create.mockImplementation(() => {
 		const nodeName = randomName();
@@ -60,13 +68,14 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
-	mockInstance(LoadNodesAndCredentials);
-
-	const communityPackagesService = Container.get(CommunityPackagesService);
-
-	beforeEach(() => {
-		config.load(config.default);
-	});
+	const communityPackagesService = new CommunityPackagesService(
+		mock(),
+		mock(),
+		mock(),
+		loadNodesAndCredentials,
+		mock(),
+		globalConfig,
+	);
 
 	describe('parseNpmPackageName()', () => {
 		test('should fail with empty package name', () => {
@@ -365,29 +374,12 @@ describe('CommunityPackagesService', () => {
 	};
 
 	describe('updateNpmModule', () => {
-		let packageDirectoryLoader: PackageDirectoryLoader;
-		let communityPackagesService: CommunityPackagesService;
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>();
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			jest.clearAllMocks();
 
-			packageDirectoryLoader = mockInstance(PackageDirectoryLoader);
-			const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
-			const instanceSettings = mockInstance(InstanceSettings);
-			const logger = mockInstance(Logger);
-			const installedPackagesRepository = mockInstance(InstalledPackagesRepository);
-
-			communityPackagesService = new CommunityPackagesService(
-				instanceSettings,
-				logger,
-				installedPackagesRepository,
-				loadNodesAndCredentials,
-			);
-		});
-
-		afterEach(async () => {
-			jest.restoreAllMocks();
 		});
 
 		test('should call `exec` with the correct command ', async () => {
@@ -405,10 +397,7 @@ describe('CommunityPackagesService', () => {
 			//
 			// ACT
 			//
-			await communityPackagesService.updateNpmModule(
-				installedPackage.packageName,
-				installedPackage,
-			);
+			await communityPackagesService.updatePackage(installedPackage.packageName, installedPackage);
 
 			//
 			// ASSERT
