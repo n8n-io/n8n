@@ -26,7 +26,6 @@ import {
 	updateTags,
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { InternalHooks } from '@/InternalHooks';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -119,9 +118,9 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			Container.get(InternalHooks).onUserRetrievedWorkflow({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-workflow', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json(workflow);
@@ -185,9 +184,9 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-workflows', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({
