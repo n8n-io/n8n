@@ -13,7 +13,7 @@ import {
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 	AI_MEMORY_POSTGRES_NODE_NAME,
 	AI_TOOL_CALCULATOR_NODE_NAME,
-	MANUAL_CHAT_TRIGGER_NODE_DISPLAY_NAME,
+	CHAT_TRIGGER_NODE_DISPLAY_NAME,
 	MANUAL_CHAT_TRIGGER_NODE_NAME,
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
@@ -148,7 +148,7 @@ function setupTestWorkflow(chatTrigger: boolean = false) {
 	if (!chatTrigger) {
 		// Remove chat trigger
 		WorkflowPage.getters
-			.canvasNodeByName(MANUAL_CHAT_TRIGGER_NODE_DISPLAY_NAME)
+			.canvasNodeByName(CHAT_TRIGGER_NODE_DISPLAY_NAME)
 			.find('[data-test-id="delete-node-button"]')
 			.click({ force: true });
 
