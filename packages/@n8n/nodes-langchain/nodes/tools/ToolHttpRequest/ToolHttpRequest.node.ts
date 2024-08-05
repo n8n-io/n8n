@@ -395,15 +395,11 @@ export class ToolHttpRequest implements INodeType {
 			optimizeResponse,
 		);
 
-		const fallbackDescription = prepareToolDescription(toolDescription, toolParameters);
-		// const tool = new DynamicTool({ name, description, func });
-
 		const schema = makeToolInputSchema(toolParameters);
 
 		const tool = new N8nTool(this, {
 			name,
 			description: toolDescription,
-			fallbackDescription,
 			func,
 			schema,
 		});

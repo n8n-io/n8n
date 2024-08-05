@@ -180,46 +180,6 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-// function convertToSimpleTool(ctx: IExecuteFunctions, tool: DynamicStructuredTool): DynamicTool {
-// 	const name = tool.name;
-// 	const description = tool.description;
-// 	const func = tool.func;
-//
-// 	const parser = new StructuredOutputParser(tool.schema);
-//
-// 	const formattingInstructions = parser.getFormatInstructions();
-//
-// 	const wrappedFunc = async function (query: string) {
-// 		console.log('TOOL CALLED');
-//
-// 		try {
-// 			const parsedQuery = await parser.parse(query);
-//
-// 			console.log({ parsedQuery });
-//
-// 			const result = await func(parsedQuery);
-//
-// 			console.log(result);
-// 			return result;
-// 		} catch (e) {
-// 			console.log(query);
-// 			// const result = await func(JSON.parse(query));
-//
-// 			console.log(result);
-// 			console.log(e);
-//
-// 			return e.toString();
-// 		}
-// 	};
-//
-// 	return new DynamicTool({
-// 		name,
-// 		description:
-// 			description + '\n\n' + formattingInstructions.replace(/\{/g, '{{').replace(/\}/g, '}}'),
-// 		func: wrappedFunc,
-// 	});
-// }
-
 export const getConnectedTools = async (
 	ctx: IExecuteFunctions,
 	enforceUniqueNames: boolean,

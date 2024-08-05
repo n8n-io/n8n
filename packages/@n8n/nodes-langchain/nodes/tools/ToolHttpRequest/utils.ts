@@ -568,7 +568,7 @@ export const configureToolFunction = (
 	httpRequest: (options: IHttpRequestOptions) => Promise<any>,
 	optimizeResponse: (response: string) => string,
 ) => {
-	return async (query: string | IDataObject): Promise<string> => {
+	return async (query: IDataObject): Promise<string> => {
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 		let response: string = '';
@@ -786,7 +786,7 @@ function makeParameterZodSchema(parameter: ToolParameter) {
 	} else if (parameter.type === 'json') {
 		schema = z.record(z.any());
 	} else {
-		schema = z.unknown();
+		schema = z.string();
 	}
 
 	if (!parameter.required) {
