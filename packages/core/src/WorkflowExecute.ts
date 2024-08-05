@@ -44,7 +44,7 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
-	OBFUSCATED_ERROR_MESSAGE,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1318,12 +1318,30 @@ export class WorkflowExecute {
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 
-							const message =
-								error instanceof ApplicationError ? error.message : OBFUSCATED_ERROR_MESSAGE;
+							let toReport: Error | undefined;
+							if (error instanceof ApplicationError) {
+								// Report any unhandled errors that were wrapped in by one of our error classes
+								if (error.cause instanceof Error) toReport = error.cause;
+							} else {
+								// Report any unhandled and non-wrapped errors to Sentry
+								toReport = error;
+								// Set obfuscate to true so that the error would be obfuscated in th UI
+								error.obfuscate = true;
+							}
+							if (toReport) {
+								ErrorReporterProxy.error(toReport, {
+									extra: {
+										nodeName: executionNode.name,
+										nodeType: executionNode.type,
+										nodeVersion: executionNode.typeVersion,
+										workflowId: workflow.id,
+									},
+								});
+							}
 
 							const e = error as unknown as ExecutionBaseError;
 
-							executionError = { ...e, message, stack: e.stack };
+							executionError = { ...e, message: e.message, stack: e.stack };
 
 							Logger.debug(`Running node "${executionNode.name}" finished with error`, {
 								node: executionNode.name,
