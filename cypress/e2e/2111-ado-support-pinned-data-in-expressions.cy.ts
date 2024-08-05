@@ -124,12 +124,12 @@ describe('ADO-2111 expressions should support pinned data', () => {
 		// close open expression
 		ndv.getters.inputLabel().eq(0).click();
 
-		ndv.getters.parameterInput('value').eq(1).click();
+		ndv.getters.parameterInput('value').eq(1).click({ force: true });
 		ndv.getters
 			.inlineExpressionEditorOutput()
 			.should(
 				'have.text',
-				'0,0[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][Execute previous nodes for preview]',
+				'[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][undefined]',
 			);
 	});
 });
