@@ -179,7 +179,7 @@ describe('POST /community-packages', () => {
 		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-		communityPackagesService.installNpmModule.mockResolvedValue(mockPackage());
+		communityPackagesService.installPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
@@ -219,7 +219,7 @@ describe('DELETE /community-packages', () => {
 
 		await authAgent.delete('/community-packages').query({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackagesService.removeNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -242,6 +242,6 @@ describe('PATCH /community-packages', () => {
 
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
-		expect(communityPackagesService.updateNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.updatePackage).toHaveBeenCalledTimes(1);
 	});
 });

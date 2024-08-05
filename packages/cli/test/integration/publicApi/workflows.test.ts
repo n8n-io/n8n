@@ -1493,7 +1493,7 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Arrange
 		 */
 		const firstProject = await createTeamProject('first-project', member);
-		const secondProject = await createTeamProject('secon-project', member);
+		const secondProject = await createTeamProject('second-project', member);
 		const workflow = await createWorkflow({}, firstProject);
 
 		/**

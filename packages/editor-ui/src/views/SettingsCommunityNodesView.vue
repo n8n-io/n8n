@@ -3,25 +3,13 @@
 		<div :class="$style.headingContainer">
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 			<n8n-button
-				v-if="
-					!settingsStore.isQueueModeEnabled &&
-					communityNodesStore.getInstalledPackages.length > 0 &&
-					!loading
-				"
+				v-if="communityNodesStore.getInstalledPackages.length > 0 && !loading"
 				:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
 				@click="openInstallModal"
 			/>
 		</div>
-		<div v-if="settingsStore.isQueueModeEnabled" :class="$style.actionBoxContainer">
-			<n8n-action-box
-				:heading="$locale.baseText('settings.communityNodes.empty.title')"
-				:description="getEmptyStateDescription"
-				:callout-text="actionBoxConfig.calloutText"
-				:callout-theme="actionBoxConfig.calloutTheme"
-			/>
-		</div>
-		<div v-else-if="loading" :class="$style.cardsContainer">
+		<div v-if="loading" :class="$style.cardsContainer">
 			<CommunityPackageCard
 				v-for="n in 2"
 				:key="'index-' + n"
@@ -55,7 +43,6 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
@@ -138,16 +125,6 @@ export default defineComponent({
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.npmUnavailable.warning', {
 						interpolate: { npmUrl: COMMUNITY_NODES_NPM_INSTALLATION_URL },
-					}),
-					calloutTheme: 'warning',
-					hideButton: true,
-				};
-			}
-
-			if (this.settingsStore.isQueueModeEnabled) {
-				return {
-					calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
-						interpolate: { docURL: COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL },
 					}),
 					calloutTheme: 'warning',
 					hideButton: true,

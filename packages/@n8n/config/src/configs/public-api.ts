@@ -4,13 +4,13 @@ import { Config, Env } from '../decorators';
 export class PublicApiConfig {
 	/** Whether to disable the Public API */
 	@Env('N8N_PUBLIC_API_DISABLED')
-	readonly disabled: boolean = false;
+	disabled = false;
 
 	/** Path segment for the Public API */
 	@Env('N8N_PUBLIC_API_ENDPOINT')
-	readonly path: string = 'api';
+	path = 'api';
 
 	/** Whether to disable the Swagger UI for the Public API */
 	@Env('N8N_PUBLIC_API_SWAGGERUI_DISABLED')
-	readonly swaggerUiDisabled: boolean = false;
+	swaggerUiDisabled = false;
 }

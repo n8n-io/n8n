@@ -6,7 +6,7 @@ import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from './constants';
 import { getLdapSynchronizations } from './helpers.ee';
 import { LdapConfiguration } from './types';
 import { LdapService } from './ldap.service.ee';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController('/ldap')
 export class LdapController {

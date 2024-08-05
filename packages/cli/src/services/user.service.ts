@@ -12,7 +12,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class UserService {
@@ -151,16 +151,12 @@ export class UserService {
 						});
 					}
 
-					Container.get(InternalHooks).onUserInvite({
-						user: owner,
-						target_user_id: Object.values(toInviteUsers),
-						public_api: false,
-						email_sent: result.emailSent,
-						invitee_role: role, // same role for all invited users
-					});
 					this.eventService.emit('user-invited', {
 						user: owner,
 						targetUserId: Object.values(toInviteUsers),
+						publicApi: false,
+						emailSent: result.emailSent,
+						inviteeRole: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {

@@ -8,7 +8,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
