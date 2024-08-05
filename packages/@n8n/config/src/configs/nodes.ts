@@ -25,6 +25,10 @@ class CommunityPackagesConfig {
 	/** Whether to enable community packages */
 	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
 	enabled: boolean = true;
+
+	/** Whether to reinstall any missing community packages */
+	@Env('N8N_REINSTALL_MISSING_PACKAGES')
+	reinstallMissing: boolean = false;
 }
 
 @Config

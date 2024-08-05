@@ -108,6 +108,8 @@ export class ExecuteBatch extends BaseCommand {
 		}),
 	};
 
+	override needsCommunityPackages = true;
+
 	/**
 	 * Gracefully handles exit.
 	 * @param {boolean} skipExit Whether to skip exit or number according to received signal
