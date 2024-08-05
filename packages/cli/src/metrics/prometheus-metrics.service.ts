@@ -1,4 +1,3 @@
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
@@ -11,32 +10,34 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 import type { Includes, MetricCategory, MetricLabel } from './types';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class PrometheusMetricsService {
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
 
-	private readonly prefix = config.getEnv('endpoints.metrics.prefix');
+	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
 
 	private readonly includes: Includes = {
 		metrics: {
-			default: config.getEnv('endpoints.metrics.includeDefaultMetrics'),
-			routes: config.getEnv('endpoints.metrics.includeApiEndpoints'),
-			cache: config.getEnv('endpoints.metrics.includeCacheMetrics'),
-			logs: config.getEnv('endpoints.metrics.includeMessageEventBusMetrics'),
+			default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,
+			routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
+			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
+			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 		},
 		labels: {
-			credentialsType: config.getEnv('endpoints.metrics.includeCredentialTypeLabel'),
-			nodeType: config.getEnv('endpoints.metrics.includeNodeTypeLabel'),
-			workflowId: config.getEnv('endpoints.metrics.includeWorkflowIdLabel'),
-			apiPath: config.getEnv('endpoints.metrics.includeApiPathLabel'),
-			apiMethod: config.getEnv('endpoints.metrics.includeApiMethodLabel'),
-			apiStatusCode: config.getEnv('endpoints.metrics.includeApiStatusCodeLabel'),
+			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
+			nodeType: this.globalConfig.endpoints.metrics.includeNodeTypeLabel,
+			workflowId: this.globalConfig.endpoints.metrics.includeWorkflowIdLabel,
+			apiPath: this.globalConfig.endpoints.metrics.includeApiPathLabel,
+			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
+			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
 		},
 	};
 

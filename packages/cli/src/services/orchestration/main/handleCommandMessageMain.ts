@@ -10,6 +10,7 @@ import { Push } from '@/push';
 import { TestWebhooks } from '@/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
@@ -76,6 +77,20 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
+				break;
+			case 'community-package-install':
+			case 'community-package-update':
+			case 'community-package-uninstall':
+				if (!debounceMessageReceiver(message, 200)) {
+					return message;
+				}
+				const { packageName, packageVersion } = message.payload;
+				const communityPackagesService = Container.get(CommunityPackagesService);
+				if (message.command === 'community-package-uninstall') {
+					await communityPackagesService.removeNpmPackage(packageName);
+				} else {
+					await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
+				}
 				break;
 
 			case 'add-webhooks-triggers-and-pollers': {

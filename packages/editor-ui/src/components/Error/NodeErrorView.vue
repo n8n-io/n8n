@@ -21,6 +21,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 
 type Props = {
 	error: NodeError | NodeApiError | NodeOperationError;
+	compact?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -377,7 +378,7 @@ function copySuccess() {
 			></div>
 		</div>
 
-		<div class="node-error-view__info">
+		<div v-if="!compact" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}

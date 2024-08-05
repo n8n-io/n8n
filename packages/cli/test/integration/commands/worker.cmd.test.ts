@@ -15,7 +15,7 @@ import { type JobQueue, Queue } from '@/Queue';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
-import { AuditEventRelay } from '@/eventbus/audit-event-relay.service';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
@@ -26,7 +26,7 @@ const externalHooks = mockInstance(ExternalHooks);
 const externalSecretsManager = mockInstance(ExternalSecretsManager);
 const license = mockInstance(License);
 const messageEventBus = mockInstance(MessageEventBus);
-const auditEventRelay = mockInstance(AuditEventRelay);
+const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
 const queue = mockInstance(Queue);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
@@ -45,7 +45,7 @@ test('worker initializes all its components', async () => {
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
-	expect(auditEventRelay.init).toHaveBeenCalledTimes(1);
+	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(queue.init).toHaveBeenCalledTimes(1);
 	expect(queue.process).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);

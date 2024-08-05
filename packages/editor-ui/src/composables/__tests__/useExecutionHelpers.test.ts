@@ -47,4 +47,25 @@ describe('useExecutionHelpers()', () => {
 			);
 		});
 	});
+
+	describe('isExecutionRetriable', () => {
+		const { isExecutionRetriable } = useExecutionHelpers();
+
+		it.each(['crashed', 'error'])('returns true when execution status is %s', (status) => {
+			expect(isExecutionRetriable({ status } as ExecutionSummary)).toEqual(true);
+		});
+
+		it.each(['canceled', 'new', 'running', 'success', 'unknown', 'waiting'])(
+			'returns false when execution status is %s',
+			(status) => {
+				expect(isExecutionRetriable({ status } as ExecutionSummary)).toEqual(false);
+			},
+		);
+
+		it('should return false if retrySuccessId is set', () => {
+			expect(
+				isExecutionRetriable({ status: 'crashed', retrySuccessId: '123' } as ExecutionSummary),
+			).toEqual(false);
+		});
+	});
 });

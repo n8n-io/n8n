@@ -8,7 +8,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
@@ -53,20 +53,20 @@ export class ConcurrencyControlService {
 
 		this.isEnabled = true;
 
-		this.productionQueue.on('concurrency-check', ({ capacity }: { capacity: number }) => {
+		this.productionQueue.on('concurrency-check', ({ capacity }) => {
 			if (this.shouldReport(capacity)) {
-				void this.telemetry.track('User hit concurrency limit', {
+				this.telemetry.track('User hit concurrency limit', {
 					threshold: CLOUD_TEMP_PRODUCTION_LIMIT - capacity,
 				});
 			}
 		});
 
-		this.productionQueue.on('execution-throttled', ({ executionId }: { executionId: string }) => {
+		this.productionQueue.on('execution-throttled', ({ executionId }) => {
 			this.log('Execution throttled', { executionId });
 			this.eventService.emit('execution-throttled', { executionId });
 		});
 
-		this.productionQueue.on('execution-released', async (executionId: string) => {
+		this.productionQueue.on('execution-released', async (executionId) => {
 			this.log('Execution released', { executionId });
 			await this.executionRepository.resetStartedAt(executionId);
 		});

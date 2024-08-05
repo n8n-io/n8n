@@ -16,7 +16,7 @@ import { toError } from '@/utils';
 
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -112,7 +112,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
+			Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -120,7 +120,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
+			Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -171,7 +171,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
+			Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Credentials shared',
 				public_api: false,
@@ -179,7 +179,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
+			Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Credentials shared',
 				public_api: false,
