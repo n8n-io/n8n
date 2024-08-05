@@ -274,23 +274,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Insert a new execution and its execution data using a transaction.
 	 */
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
-		return await this.manager.transaction(async (transactionManager) => {
-			const { data, workflowData, ...rest } = execution;
-			const insertResult = await transactionManager.insert(ExecutionEntity, rest);
-			const { id: executionId } = insertResult.identifiers[0] as { id: string };
-
-			const { connections, nodes, name, settings } = workflowData ?? {};
-			await this.executionDataRepository.createExecutionDataForExecution(
-				{
-					executionId,
-					workflowData: { connections, nodes, name, settings, id: workflowData.id },
-					data: stringify(data),
-				},
-				transactionManager,
-			);
-
-			return String(executionId);
+		const { data, workflowData, ...rest } = execution;
+		const { identifiers: inserted } = await this.insert(rest);
+		const { id: executionId } = inserted[0] as { id: string };
+		const { connections, nodes, name, settings } = workflowData ?? {};
+		await this.executionDataRepository.insert({
+			executionId,
+			workflowData: { connections, nodes, name, settings, id: workflowData.id },
+			data: stringify(data),
 		});
+		return String(executionId);
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
