@@ -59,6 +59,12 @@ export const customResourceOperations: INodeProperties[] = [
 				description: 'Update an item',
 				action: 'Update an item',
 			},
+			{
+				name: 'Action',
+				value: 'action',
+				description: 'Perform an action',
+				action: 'Perform an action',
+			},
 		],
 	},
 ];
@@ -340,5 +346,34 @@ export const customResourceDescription: INodeProperties[] = [
 				],
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                custom:action                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Custom Resource ID',
+		name: 'customResourceId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['action'],
+				resource: ['custom'],
+			},
+		},
+	},
+	{
+		displayName: 'Action to Perform',
+		name: 'actionName',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['action'],
+				resource: ['custom'],
+			},
+		},
 	},
 ];
