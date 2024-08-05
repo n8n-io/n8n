@@ -82,8 +82,8 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
 		// If it's an object with a 'message' property, create a new Error instance.
 		let error: Error | undefined;
-		if ('node' in errorObject) {
-			const node = workflow.getNode((errorObject.node as { name: string }).name);
+		if ('node' in errorObject && typeof errorObject.node === 'object' && errorObject.node !== null && 'name' in errorObject.node && typeof errorObject.node.name === 'string') {
+			const node = workflow.getNode(errorObject.node.name);
 			if (node) {
 				error = new NodeOperationError(
 					node,
