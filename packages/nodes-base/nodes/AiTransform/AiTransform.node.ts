@@ -122,11 +122,23 @@ export class AiTransform implements INodeType {
 			let code = '';
 			try {
 				code = this.getNodeParameter(codeParameterName, index) as string;
+
+				if (!code) {
+					const instructions = this.getNodeParameter('generate', index) as string;
+					if (!instructions) {
+						throw new NodeOperationError(node, 'Missing instructions to generate code', {
+							description:
+								"Enter your prompt in the 'Instructions' parameter and click 'Generate code'",
+						});
+					}
+					throw new NodeOperationError(node, 'Missing code for data transformation', {
+						description: "Click the 'Generate code' button to create the code",
+					});
+				}
 			} catch (error) {
-				throw new NodeOperationError(
-					node,
-					"Enter some text in the 'Instructions' parameter and click the 'Generate Code' button",
-				);
+				if (error instanceof NodeOperationError) throw error;
+
+				throw new NodeOperationError(node, error);
 			}
 
 			const context = getSandboxContext.call(this, index);
