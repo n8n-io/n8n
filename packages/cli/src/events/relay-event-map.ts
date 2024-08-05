@@ -2,6 +2,7 @@ import type { AuthenticationMethod, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { GlobalRole } from '@/databases/entities/User';
+import type { AuthProviderType } from '@/databases/entities/AuthIdentity';
 
 export type UserLike = {
 	id: string;
@@ -72,13 +73,26 @@ export type RelayEventMap = {
 
 	// #region User
 
+	'user-submitted-personalization-survey': {
+		userId: string;
+		answers: Record<string, string>;
+	};
+
 	'user-deleted': {
 		user: UserLike;
+		publicApi: boolean;
+		targetUserOldStatus: 'active' | 'invited';
+		migrationStrategy?: 'transfer_data' | 'delete_data';
+		targetUserId?: string;
+		migrationUserId?: string;
 	};
 
 	'user-invited': {
 		user: UserLike;
 		targetUserId: string[];
+		publicApi: boolean;
+		emailSent: boolean;
+		inviteeRole: string;
 	};
 
 	'user-reinvited': {
@@ -93,6 +107,8 @@ export type RelayEventMap = {
 
 	'user-signed-up': {
 		user: UserLike;
+		userType: AuthProviderType;
+		wasDisabledLdapUser: boolean;
 	};
 
 	'user-logged-in': {
@@ -104,6 +120,43 @@ export type RelayEventMap = {
 		userEmail: string;
 		authenticationMethod: AuthenticationMethod;
 		reason?: string;
+	};
+
+	'user-changed-role': {
+		userId: string;
+		targetUserId: string;
+		publicApi: boolean;
+		targetUserNewRole: string;
+	};
+
+	'user-retrieved-user': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-all-users': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-execution': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-all-executions': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-workflow': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-all-workflows': {
+		userId: string;
+		publicApi: boolean;
 	};
 
 	// #endregion

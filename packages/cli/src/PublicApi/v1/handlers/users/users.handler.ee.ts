@@ -11,7 +11,7 @@ import {
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { Response } from 'express';
 import { InvitationController } from '@/controllers/invitation.controller';
@@ -37,12 +37,10 @@ export = {
 				});
 			}
 
-			const telemetryData = {
-				user_id: req.user.id,
-				public_api: true,
-			};
-
-			Container.get(InternalHooks).onUserRetrievedUser(telemetryData);
+			Container.get(EventService).emit('user-retrieved-user', {
+				userId: req.user.id,
+				publicApi: true,
+			});
 
 			return res.json(clean(user, { includeRole }));
 		},
@@ -65,12 +63,10 @@ export = {
 				in: _in,
 			});
 
-			const telemetryData = {
-				user_id: req.user.id,
-				public_api: true,
-			};
-
-			Container.get(InternalHooks).onUserRetrievedAllUsers(telemetryData);
+			Container.get(EventService).emit('user-retrieved-all-users', {
+				userId: req.user.id,
+				publicApi: true,
+			});
 
 			return res.json({
 				data: clean(users, { includeRole }),
