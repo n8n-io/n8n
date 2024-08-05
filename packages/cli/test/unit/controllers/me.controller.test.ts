@@ -15,12 +15,14 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { badPasswords } from '../shared/testData';
 import { mockInstance } from '../../shared/mocking';
+import { EventService } from '@/events/event.service';
 
 const browserId = 'test-browser-id';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
-	const internalHooks = mockInstance(InternalHooks);
+	mockInstance(InternalHooks);
+	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
@@ -202,9 +204,9 @@ describe('MeController', () => {
 				req.user.password,
 			]);
 
-			expect(internalHooks.onUserUpdate).toHaveBeenCalledWith({
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user: req.user,
-				fields_changed: ['password'],
+				fieldsChanged: ['password'],
 			});
 		});
 	});

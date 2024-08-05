@@ -242,6 +242,11 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'Doe',
 					role: 'some-role',
 				},
+				targetUserOldStatus: 'active',
+				publicApi: false,
+				migrationStrategy: 'transfer_data',
+				targetUserId: '456',
+				migrationUserId: '789',
 			};
 
 			eventService.emit('user-deleted', event);
