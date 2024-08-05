@@ -1,9 +1,6 @@
 import { Service } from 'typedi';
-import { snakeCase } from 'change-case';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { User } from '@db/entities/User';
-import type { ITelemetryUserDeletionData } from '@/Interfaces';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { Telemetry } from '@/telemetry';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
@@ -39,16 +36,6 @@ export class InternalHooks {
 		this.telemetry.track('Session started', { session_id: pushRef });
 	}
 
-	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): void {
-		const camelCaseKeys = Object.keys(answers);
-		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
-		camelCaseKeys.forEach((camelCaseKey) => {
-			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
-		});
-
-		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
-	}
-
 	onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
 		const properties: ITelemetryTrackProperties = {
 			workflow_id: workflowId,
@@ -65,76 +52,6 @@ export class InternalHooks {
 		});
 
 		return await Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
-	}
-
-	onUserDeletion(userDeletionData: {
-		user: User;
-		telemetryData: ITelemetryUserDeletionData;
-		publicApi: boolean;
-	}) {
-		this.telemetry.track('User deleted user', {
-			...userDeletionData.telemetryData,
-			user_id: userDeletionData.user.id,
-			public_api: userDeletionData.publicApi,
-		});
-	}
-
-	onUserInvite(userInviteData: {
-		user: User;
-		target_user_id: string[];
-		public_api: boolean;
-		email_sent: boolean;
-		invitee_role: string;
-	}) {
-		this.telemetry.track('User invited new user', {
-			user_id: userInviteData.user.id,
-			target_user_id: userInviteData.target_user_id,
-			public_api: userInviteData.public_api,
-			email_sent: userInviteData.email_sent,
-			invitee_role: userInviteData.invitee_role,
-		});
-	}
-
-	onUserRoleChange(userRoleChangeData: {
-		user: User;
-		target_user_id: string;
-		public_api: boolean;
-		target_user_new_role: string;
-	}) {
-		const { user, ...rest } = userRoleChangeData;
-
-		this.telemetry.track('User changed role', { user_id: user.id, ...rest });
-	}
-
-	onUserRetrievedUser(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved user', userRetrievedData);
-	}
-
-	onUserRetrievedAllUsers(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved all users', userRetrievedData);
-	}
-
-	onUserRetrievedExecution(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved execution', userRetrievedData);
-	}
-
-	onUserRetrievedAllExecutions(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved all executions', userRetrievedData);
-	}
-
-	onUserRetrievedWorkflow(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved workflow', userRetrievedData);
-	}
-
-	onUserRetrievedAllWorkflows(userRetrievedData: { user_id: string; public_api: boolean }) {
-		this.telemetry.track('User retrieved all workflows', userRetrievedData);
-	}
-
-	onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }) {
-		this.telemetry.track('User changed personal settings', {
-			user_id: userUpdateData.user.id,
-			fields_changed: userUpdateData.fields_changed,
-		});
 	}
 
 	onUserInviteEmailClick(userInviteClickData: { inviter: User; invitee: User }) {
@@ -170,19 +87,6 @@ export class InternalHooks {
 
 	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }) {
 		this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
-	}
-
-	onUserSignup(
-		user: User,
-		userSignupData: {
-			user_type: AuthProviderType;
-			was_disabled_ldap_user: boolean;
-		},
-	) {
-		this.telemetry.track('User signed up', {
-			user_id: user.id,
-			...userSignupData,
-		});
 	}
 
 	onEmailFailed(failedEmailData: {

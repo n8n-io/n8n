@@ -7,7 +7,7 @@ import { validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
@@ -78,9 +78,9 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			Container.get(InternalHooks).onUserRetrievedExecution({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-execution', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json(replaceCircularReferences(execution));
@@ -130,9 +130,9 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			Container.get(InternalHooks).onUserRetrievedAllExecutions({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-executions', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({
