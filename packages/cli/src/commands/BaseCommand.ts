@@ -44,12 +44,15 @@ export abstract class BaseCommand extends Command {
 
 	protected license: License;
 
-	protected globalConfig = Container.get(GlobalConfig);
+	protected readonly globalConfig = Container.get(GlobalConfig);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
 	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+
+	/** Whether to init community packages (if enabled) */
+	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -109,6 +112,12 @@ export abstract class BaseCommand extends Command {
 			this.logger.warn(
 				'The env vars N8N_BINARY_DATA_TTL and N8N_PERSISTED_BINARY_DATA_TTL and EXECUTIONS_DATA_PRUNE_TIMEOUT no longer have any effect and can be safely removed. Instead of relying on a TTL system for binary data, n8n currently cleans up binary data together with executions during pruning.',
 			);
+		}
+
+		const { communityPackages } = this.globalConfig.nodes;
+		if (communityPackages.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
 
 		await Container.get(PostHogClient).init();

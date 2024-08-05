@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeTypeData } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -14,7 +14,6 @@ import { mockInstance } from '../shared/mocking';
 import { randomCredentialPayload as randomCred } from '../integration/shared/random';
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockNodeTypesData } from '../unit/Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { createOwner, createUser } from '../integration/shared/db/users';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
@@ -24,6 +23,36 @@ import type { Project } from '@/databases/entities/Project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const ownershipService = mockInstance(OwnershipService);
+
+function mockNodeTypesData(
+	nodeNames: string[],
+	options?: {
+		addTrigger?: boolean;
+	},
+) {
+	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
+		return (
+			(acc[`n8n-nodes-base.${nodeName}`] = {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: nodeName,
+						name: nodeName,
+						group: [],
+						description: '',
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+					},
+					trigger: options?.addTrigger ? async () => undefined : undefined,
+				},
+			}),
+			acc
+		);
+	}, {});
+}
 
 const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
 	const workflowDetails = {
