@@ -1,4 +1,4 @@
-import type { INodeProperties, IDisplayOptions } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const sessionIdOption: INodeProperties = {
 	displayName: 'Session ID',
