@@ -8,26 +8,30 @@ import type {
 	IRunData,
 } from 'n8n-workflow';
 import type {
-	IResponseCallbackData,
+	IWebhookResponseCallbackData,
 	IWebhookManager,
-	IWorkflowDb,
 	WebhookAccessControlOptions,
 	WebhookRequest,
-} from '@/Interfaces';
+} from './webhook.types';
 import { Push } from '@/push';
 import { NodeTypes } from '@/NodeTypes';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as NodeExecuteFunctions from 'n8n-core';
-import { removeTrailingSlash } from './utils';
-import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
-import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
+import { removeTrailingSlash } from '@/utils';
+import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import type { IWorkflowDb } from '@/Interfaces';
 
+/**
+ * Service for handling the execution of webhooks of manual executions
+ * that use the [Test URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).
+ */
 @Service()
 export class TestWebhooks implements IWebhookManager {
 	constructor(
@@ -46,7 +50,7 @@ export class TestWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: express.Response,
-	): Promise<IResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -117,7 +121,7 @@ export class TestWebhooks implements IWebhookManager {
 					undefined, // executionId
 					request,
 					response,
-					(error: Error | null, data: IResponseCallbackData) => {
+					(error: Error | null, data: IWebhookResponseCallbackData) => {
 						if (error !== null) reject(error);
 						else resolve(data);
 					},
