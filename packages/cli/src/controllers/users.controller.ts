@@ -292,7 +292,7 @@ export class UsersController {
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,
 			targetUserId: targetUser.id,
-			targetUserNewRole: ['global', payload.newRoleName].join(' '),
+			targetUserNewRole: payload.newRoleName,
 			publicApi: false,
 		});
 

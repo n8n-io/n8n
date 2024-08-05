@@ -89,6 +89,7 @@ export class MeController {
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
+		const preUpdateUser = await this.userRepository.findOneByOrFail({ id: userId });
 		await this.userService.update(userId, payload);
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
@@ -98,7 +99,10 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const fieldsChanged = Object.keys(payload);
+		const fieldsChanged = (Object.keys(payload) as Array<keyof UserUpdatePayload>).filter(
+			(key) => payload[key] !== preUpdateUser[key],
+		);
+
 		this.eventService.emit('user-updated', { user, fieldsChanged });
 
 		const publicUser = await this.userService.toPublic(user);
