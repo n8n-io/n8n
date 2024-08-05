@@ -566,7 +566,6 @@ export function getReferencedNodes(node: INode): string[] {
 export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode {
 	const prunedNode = { ...node };
 	propsToRemove.forEach((key) => {
-		console.log('Removing key', key);
 		delete prunedNode[key as keyof INode];
 	});
 	return prunedNode;

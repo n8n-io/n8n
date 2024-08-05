@@ -238,6 +238,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
+		} else if (currentSessionId.value !== response.sessionId) {
+			return;
 		}
 		addAssistantMessages(response.messages, id);
 	}
@@ -363,6 +365,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			return;
 		}
 
+		streaming.value = true;
 		if (pushEvent.data.error) {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 		} else if (pushEvent.data.executionStatus === 'success') {
