@@ -1,11 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
-import config from '@/config';
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
@@ -39,17 +37,6 @@ export class CommunityPackagesController {
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 	) {}
-
-	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
-	@Middleware()
-	checkIfCommunityNodesEnabled(req: Request, res: Response, next: NextFunction) {
-		if (config.getEnv('executions.mode') === 'queue' && req.method !== 'GET')
-			res.status(400).json({
-				status: 'error',
-				message: 'Package management is disabled when running in "queue" mode',
-			});
-		else next();
-	}
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
@@ -99,7 +86,7 @@ export class CommunityPackagesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.communityPackagesService.installNpmModule(
+			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
 				parsed.version,
 			);
@@ -207,7 +194,7 @@ export class CommunityPackagesController {
 		}
 
 		try {
-			await this.communityPackagesService.removeNpmModule(name, installedPackage);
+			await this.communityPackagesService.removePackage(name, installedPackage);
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -252,7 +239,7 @@ export class CommunityPackagesController {
 		}
 
 		try {
-			const newInstalledPackage = await this.communityPackagesService.updateNpmModule(
+			const newInstalledPackage = await this.communityPackagesService.updatePackage(
 				this.communityPackagesService.parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 			);

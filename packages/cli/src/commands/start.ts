@@ -8,7 +8,6 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
-import { GlobalConfig } from '@n8n/config';
 import { jsonParse, randomString } from 'n8n-workflow';
 
 import config from '@/config';
@@ -68,6 +67,8 @@ export class Start extends BaseCommand {
 
 	protected server = Container.get(Server);
 
+	override needsCommunityPackages = true;
+
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
@@ -125,7 +126,6 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
-
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -176,6 +176,22 @@ export class Start extends BaseCommand {
 		if (config.getEnv('executions.mode') === 'queue') {
 			this.logger.debug('Main Instance running in queue mode');
 			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		}
+
+		const { flags } = await this.parse(Start);
+		const { communityPackages } = this.globalConfig.nodes;
+		// cli flag overrides the config env variable
+		if (flags.reinstallMissingPackages) {
+			if (communityPackages.enabled) {
+				this.logger.warn(
+					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
+				);
+				communityPackages.reinstallMissing = true;
+			} else {
+				this.logger.warn(
+					'`--reinstallMissingPackages` was passed, but community packages are disabled',
+				);
+			}
 		}
 
 		await super.init();
@@ -251,18 +267,9 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const globalConfig = Container.get(GlobalConfig);
-
-		if (globalConfig.nodes.communityPackages.enabled) {
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
-			await Container.get(CommunityPackagesService).setMissingPackages({
-				reinstallMissingPackages: flags.reinstallMissingPackages,
-			});
-		}
-
-		const { type: dbType } = globalConfig.database;
+		const { type: dbType } = this.globalConfig.database;
 		if (dbType === 'sqlite') {
-			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
+			const shouldRunVacuum = this.globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
@@ -282,7 +289,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const { port } = Container.get(GlobalConfig);
+			const { port } = this.globalConfig;
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
