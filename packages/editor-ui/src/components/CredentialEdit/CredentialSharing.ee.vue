@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<n8n-action-box
+			<N8nActionBox
 				:heading="
 					$locale.baseText(
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
@@ -21,16 +21,16 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-			</n8n-info-tip>
-			<n8n-info-tip v-else :bold="false" class="mb-s">
+			</N8nInfoTip>
+			<N8nInfoTip v-else :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
-			</n8n-info-tip>
+			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projects"
