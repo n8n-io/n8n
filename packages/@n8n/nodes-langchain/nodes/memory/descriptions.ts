@@ -34,13 +34,10 @@ export const sessionKeyProperty: INodeProperties = {
 	},
 };
 
-export function contextWindowLengthProperty(displayOptions?: IDisplayOptions): INodeProperties {
-	return {
-		displayName: 'Context Window Length',
-		name: 'contextWindowLength',
-		type: 'number',
-		default: 5,
-		hint: 'How many past interactions the model receives as context',
-		displayOptions: displayOptions ?? {},
-	};
-}
+export const contextWindowLengthProperty: INodeProperties = {
+	displayName: 'Context Window Length',
+	name: 'contextWindowLength',
+	type: 'number',
+	default: 5,
+	hint: 'How many past interactions the model receives as context',
+};

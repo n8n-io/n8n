@@ -60,7 +60,10 @@ export class MemoryPostgresChat implements INodeType {
 				description:
 					'The table name to store the chat history in. If table does not exist, it will be created.',
 			},
-			contextWindowLengthProperty({ hide: { '@version': [{ _cnd: { lt: 1.1 } }] } }),
+			{
+				...contextWindowLengthProperty,
+				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.1 } }] } },
+			},
 		],
 	};
 

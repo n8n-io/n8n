@@ -130,7 +130,7 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			contextWindowLengthProperty(),
+			contextWindowLengthProperty,
 		],
 	};
 

@@ -81,7 +81,10 @@ export class MemoryXata implements INodeType {
 				},
 			},
 			sessionKeyProperty,
-			contextWindowLengthProperty({ hide: { '@version': [{ _cnd: { lt: 1.3 } }] } }),
+			{
+				...contextWindowLengthProperty,
+				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
+			},
 		],
 	};
 
