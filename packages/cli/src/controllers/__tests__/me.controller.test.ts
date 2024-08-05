@@ -13,6 +13,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventService } from '@/events/event.service';
 import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
 
@@ -20,7 +21,8 @@ const browserId = 'test-browser-id';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
-	const internalHooks = mockInstance(InternalHooks);
+	mockInstance(InternalHooks);
+	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
@@ -202,9 +204,9 @@ describe('MeController', () => {
 				req.user.password,
 			]);
 
-			expect(internalHooks.onUserUpdate).toHaveBeenCalledWith({
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user: req.user,
-				fields_changed: ['password'],
+				fieldsChanged: ['password'],
 			});
 		});
 	});
