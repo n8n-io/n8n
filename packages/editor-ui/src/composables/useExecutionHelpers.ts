@@ -62,11 +62,7 @@ export function useExecutionHelpers() {
 	}
 
 	function isExecutionRetriable(execution: ExecutionSummary): boolean {
-		return (
-			['crashed', 'error'].includes(execution.status) &&
-			!execution.retryOf &&
-			!execution.retrySuccessId
-		);
+		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
 	}
 
 	return {

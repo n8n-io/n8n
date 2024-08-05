@@ -1,16 +1,15 @@
 import { mock } from 'jest-mock-extended';
-import { AuditEventRelay } from '../audit-event-relay.service';
-import type { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { Event } from '../event.types';
-import { EventService } from '../event.service';
+import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
+import { EventService } from '@/events/event.service';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
+import type { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import type { RelayEventMap } from '@/events/relay-event-map';
 
-describe('AuditEventRelay', () => {
+describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
 	const eventService = new EventService();
-	const auditor = new AuditEventRelay(eventService, eventBus);
-	auditor.init();
+	new LogStreamingEventRelay(eventService, eventBus).init();
 
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -18,7 +17,7 @@ describe('AuditEventRelay', () => {
 
 	describe('workflow events', () => {
 		it('should log on `workflow-created` event', () => {
-			const event: Event['workflow-created'] = {
+			const event: RelayEventMap['workflow-created'] = {
 				user: {
 					id: '123',
 					email: 'john@n8n.io',
@@ -52,7 +51,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `workflow-deleted` event', () => {
-			const event: Event['workflow-deleted'] = {
+			const event: RelayEventMap['workflow-deleted'] = {
 				user: {
 					id: '456',
 					email: 'jane@n8n.io',
@@ -80,7 +79,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `workflow-saved` event', () => {
-			const event: Event['workflow-saved'] = {
+			const event: RelayEventMap['workflow-saved'] = {
 				user: {
 					id: '789',
 					email: 'alex@n8n.io',
@@ -119,7 +118,7 @@ describe('AuditEventRelay', () => {
 				settings: {},
 			});
 
-			const event: Event['workflow-pre-execute'] = {
+			const event: RelayEventMap['workflow-pre-execute'] = {
 				executionId: 'exec123',
 				data: workflow,
 			};
@@ -139,29 +138,33 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `workflow-post-execute` for successful execution', () => {
-			const payload = mock<Event['workflow-post-execute']>({
+			const payload = mock<RelayEventMap['workflow-post-execute']>({
 				executionId: 'some-id',
-				success: true,
 				userId: 'some-id',
-				workflowId: 'some-id',
-				isManual: true,
-				workflowName: 'some-name',
-				metadata: {},
-				runData: mock<IRun>({ data: { resultData: {} } }),
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
+				runData: mock<IRun>({ status: 'success', mode: 'manual', data: { resultData: {} } }),
 			});
 
 			eventService.emit('workflow-post-execute', payload);
 
-			const { runData: _, ...rest } = payload;
+			const { runData: _, workflow: __, ...rest } = payload;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.success',
-				payload: rest,
+				payload: {
+					...rest,
+					success: true,
+					isManual: true,
+					workflowName: 'some-name',
+					workflowId: 'some-id',
+				},
 			});
 		});
 
-		it('should handle `workflow-post-execute` event for unsuccessful execution', () => {
+		it('should log on `workflow-post-execute` event for unsuccessful execution', () => {
 			const runData = mock<IRun>({
+				status: 'error',
+				mode: 'manual',
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
@@ -177,23 +180,23 @@ describe('AuditEventRelay', () => {
 
 			const event = {
 				executionId: 'some-id',
-				success: false,
 				userId: 'some-id',
-				workflowId: 'some-id',
-				isManual: true,
-				workflowName: 'some-name',
-				metadata: {},
+				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
 				runData,
 			};
 
 			eventService.emit('workflow-post-execute', event);
 
-			const { runData: _, ...rest } = event;
+			const { runData: _, workflow: __, ...rest } = event;
 
 			expect(eventBus.sendWorkflowEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.workflow.failed',
 				payload: {
 					...rest,
+					success: false,
+					isManual: true,
+					workflowName: 'some-name',
+					workflowId: 'some-id',
 					lastNodeExecuted: 'some-node',
 					errorNodeType: 'some-type',
 					errorMessage: 'some-message',
@@ -204,7 +207,7 @@ describe('AuditEventRelay', () => {
 
 	describe('user events', () => {
 		it('should log on `user-updated` event', () => {
-			const event: Event['user-updated'] = {
+			const event: RelayEventMap['user-updated'] = {
 				user: {
 					id: 'user456',
 					email: 'updated@example.com',
@@ -231,7 +234,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `user-deleted` event', () => {
-			const event: Event['user-deleted'] = {
+			const event: RelayEventMap['user-deleted'] = {
 				user: {
 					id: '123',
 					email: 'john@n8n.io',
@@ -258,7 +261,7 @@ describe('AuditEventRelay', () => {
 
 	describe('click events', () => {
 		it('should log on `user-password-reset-request-click` event', () => {
-			const event: Event['user-password-reset-request-click'] = {
+			const event: RelayEventMap['user-password-reset-request-click'] = {
 				user: {
 					id: 'user101',
 					email: 'user101@example.com',
@@ -283,7 +286,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `user-invite-email-click` event', () => {
-			const event: Event['user-invite-email-click'] = {
+			const event: RelayEventMap['user-invite-email-click'] = {
 				inviter: {
 					id: '123',
 					email: 'john@n8n.io',
@@ -350,7 +353,7 @@ describe('AuditEventRelay', () => {
 				settings: {},
 			});
 
-			const event: Event['node-pre-execute'] = {
+			const event: RelayEventMap['node-pre-execute'] = {
 				executionId: 'exec456',
 				nodeName: 'HTTP Request',
 				workflow,
@@ -395,7 +398,7 @@ describe('AuditEventRelay', () => {
 				settings: {},
 			});
 
-			const event: Event['node-post-execute'] = {
+			const event: RelayEventMap['node-post-execute'] = {
 				executionId: 'exec789',
 				nodeName: 'HTTP Response',
 				workflow,
@@ -418,7 +421,7 @@ describe('AuditEventRelay', () => {
 
 	describe('credentials events', () => {
 		it('should log on `credentials-shared` event', () => {
-			const event: Event['credentials-shared'] = {
+			const event: RelayEventMap['credentials-shared'] = {
 				user: {
 					id: 'user123',
 					email: 'sharer@example.com',
@@ -453,7 +456,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `credentials-created` event', () => {
-			const event: Event['credentials-created'] = {
+			const event: RelayEventMap['credentials-created'] = {
 				user: {
 					id: 'user123',
 					email: 'user@example.com',
@@ -490,7 +493,7 @@ describe('AuditEventRelay', () => {
 
 	describe('auth events', () => {
 		it('should log on `user-login-failed` event', () => {
-			const event: Event['user-login-failed'] = {
+			const event: RelayEventMap['user-login-failed'] = {
 				userEmail: 'user@example.com',
 				authenticationMethod: 'email',
 				reason: 'Invalid password',
@@ -511,7 +514,7 @@ describe('AuditEventRelay', () => {
 
 	describe('community package events', () => {
 		it('should log on `community-package-updated` event', () => {
-			const event: Event['community-package-updated'] = {
+			const event: RelayEventMap['community-package-updated'] = {
 				user: {
 					id: 'user202',
 					email: 'packageupdater@example.com',
@@ -548,7 +551,7 @@ describe('AuditEventRelay', () => {
 		});
 
 		it('should log on `community-package-installed` event', () => {
-			const event: Event['community-package-installed'] = {
+			const event: RelayEventMap['community-package-installed'] = {
 				user: {
 					id: 'user789',
 					email: 'admin@example.com',
@@ -589,7 +592,7 @@ describe('AuditEventRelay', () => {
 
 	describe('email events', () => {
 		it('should log on `email-failed` event', () => {
-			const event: Event['email-failed'] = {
+			const event: RelayEventMap['email-failed'] = {
 				user: {
 					id: 'user789',
 					email: 'recipient@example.com',
@@ -618,7 +621,7 @@ describe('AuditEventRelay', () => {
 
 	describe('public API events', () => {
 		it('should log on `public-api-key-created` event', () => {
-			const event: Event['public-api-key-created'] = {
+			const event: RelayEventMap['public-api-key-created'] = {
 				user: {
 					id: 'user101',
 					email: 'apiuser@example.com',
@@ -646,7 +649,7 @@ describe('AuditEventRelay', () => {
 
 	describe('execution events', () => {
 		it('should log on `execution-throttled` event', () => {
-			const event: Event['execution-throttled'] = {
+			const event: RelayEventMap['execution-throttled'] = {
 				executionId: 'exec123456',
 			};
 

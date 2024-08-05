@@ -4,6 +4,7 @@ import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
 import { LOG_LEVELS } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
+import { GlobalConfig } from '@n8n/config';
 
 convict.addFormat({
 	name: 'comma-separated-list',
@@ -381,12 +382,17 @@ export const schema = {
 			default: 0,
 			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		},
+
+		/**
+		 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+		 */
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
 			format: Boolean,
 			default: false,
 		},
+
 		authenticationMethod: {
 			doc: 'How to authenticate users (e.g. "email", "ldap", "saml")',
 			format: ['email', 'ldap', 'saml'] as const,
@@ -654,43 +660,19 @@ export const schema = {
 		},
 	},
 
-	cache: {
-		backend: {
-			doc: 'Backend to use for caching',
-			format: ['memory', 'redis', 'auto'] as const,
-			default: 'auto',
-			env: 'N8N_CACHE_BACKEND',
-		},
-		memory: {
-			maxSize: {
-				doc: 'Maximum size of memory cache in bytes',
-				format: Number,
-				default: 3 * 1024 * 1024, // 3 MB
-				env: 'N8N_CACHE_MEMORY_MAX_SIZE',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in memory (in ms)',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_MEMORY_TTL',
-			},
-		},
-		redis: {
-			prefix: {
-				doc: 'Prefix for all cache keys',
-				format: String,
-				default: 'cache',
-				env: 'N8N_CACHE_REDIS_KEY_PREFIX',
-			},
-			ttl: {
-				doc: 'Time to live for cached items in redis (in ms), 0 for no TTL',
-				format: Number,
-				default: 3600 * 1000, // 1 hour
-				env: 'N8N_CACHE_REDIS_TTL',
-			},
+	/**
+	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+	 */
+	endpoints: {
+		rest: {
+			format: String,
+			default: Container.get(GlobalConfig).endpoints.rest,
 		},
 	},
 
+	/**
+	 * @important Do not remove until after cloud hooks are updated to stop using convict config.
+	 */
 	ai: {
 		enabled: {
 			doc: 'Whether AI features are enabled',
@@ -738,12 +720,6 @@ export const schema = {
 			default: -1,
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
-	},
-
-	instanceRole: {
-		doc: 'Always `leader` in single-main setup. `leader` or `follower` in multi-main setup.',
-		format: ['unset', 'leader', 'follower'] as const,
-		default: 'unset', // only until Start.initOrchestration
 	},
 
 	multiMainSetup: {
