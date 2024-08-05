@@ -161,7 +161,7 @@ export class FrontendService {
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
 			aiAssistant: {
-				enabled: config.getEnv('aiAssistant.enabled'),
+				enabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,

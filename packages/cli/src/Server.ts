@@ -392,7 +392,8 @@ export class Server extends AbstractServer {
 		const authService = Container.get(AuthService);
 		const consumerId = licenseService.getConsumerId();
 		const apiRestPath = Container.get(GlobalConfig).endpoints.rest;
-		const aiAssistantEnabled = config.get('aiAssistant.enabled');
+		const aiAssistantEnabled = licenseService.isAiAssistantEnabled();
+
 		const aiServiceApiBase = config.get('aiAssistant.baseUrl');
 
 		if (!aiAssistantEnabled) return;
