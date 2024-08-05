@@ -17,6 +17,7 @@ import { ProjectRelationRepository } from '@/databases/repositories/projectRelat
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
 import { EventRelay } from './event-relay';
+import { snakeCase } from 'change-case';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {
@@ -73,6 +74,19 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
 			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
+			'user-changed-role': (event) => this.userChangedRole(event),
+			'user-retrieved-user': (event) => this.userRetrievedUser(event),
+			'user-retrieved-all-users': (event) => this.userRetrievedAllUsers(event),
+			'user-retrieved-execution': (event) => this.userRetrievedExecution(event),
+			'user-retrieved-all-executions': (event) => this.userRetrievedAllExecutions(event),
+			'user-retrieved-workflow': (event) => this.userRetrievedWorkflow(event),
+			'user-retrieved-all-workflows': (event) => this.userRetrievedAllWorkflows(event),
+			'user-updated': (event) => this.userUpdated(event),
+			'user-deleted': (event) => this.userDeleted(event),
+			'user-invited': (event) => this.userInvited(event),
+			'user-signed-up': (event) => this.userSignedUp(event),
+			'user-submitted-personalization-survey': (event) =>
+				this.userSubmittedPersonalizationSurvey(event),
 		});
 	}
 
@@ -160,10 +174,6 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowUpdates,
 		forced,
 	}: RelayEventMap['source-control-user-pulled-api']) {
-		console.log('source-control-user-pulled-api', {
-			workflow_updates: workflowUpdates,
-			forced,
-		});
 		this.telemetry.track('User pulled via API', {
 			workflow_updates: workflowUpdates,
 			forced,
@@ -741,6 +751,134 @@ export class TelemetryEventRelay extends EventRelay {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 		});
+	}
+
+	// #endregion
+
+	// #region User
+
+	private userChangedRole({
+		userId,
+		targetUserId,
+		targetUserNewRole,
+		publicApi,
+	}: RelayEventMap['user-changed-role']) {
+		this.telemetry.track('User changed role', {
+			user_id: userId,
+			target_user_id: targetUserId,
+			target_user_new_role: targetUserNewRole,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedUser({ userId, publicApi }: RelayEventMap['user-retrieved-user']) {
+		this.telemetry.track('User retrieved user', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedAllUsers({ userId, publicApi }: RelayEventMap['user-retrieved-all-users']) {
+		this.telemetry.track('User retrieved all users', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedExecution({ userId, publicApi }: RelayEventMap['user-retrieved-execution']) {
+		this.telemetry.track('User retrieved execution', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedAllExecutions({
+		userId,
+		publicApi,
+	}: RelayEventMap['user-retrieved-all-executions']) {
+		this.telemetry.track('User retrieved all executions', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedWorkflow({ userId, publicApi }: RelayEventMap['user-retrieved-workflow']) {
+		this.telemetry.track('User retrieved workflow', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedAllWorkflows({
+		userId,
+		publicApi,
+	}: RelayEventMap['user-retrieved-all-workflows']) {
+		this.telemetry.track('User retrieved all workflows', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userUpdated({ user, fieldsChanged }: RelayEventMap['user-updated']) {
+		this.telemetry.track('User changed personal settings', {
+			user_id: user.id,
+			fields_changed: fieldsChanged,
+		});
+	}
+
+	private userDeleted({
+		user,
+		publicApi,
+		targetUserOldStatus,
+		migrationStrategy,
+		targetUserId,
+		migrationUserId,
+	}: RelayEventMap['user-deleted']) {
+		this.telemetry.track('User deleted user', {
+			user_id: user.id,
+			public_api: publicApi,
+			target_user_old_status: targetUserOldStatus,
+			migration_strategy: migrationStrategy,
+			target_user_id: targetUserId,
+			migration_user_id: migrationUserId,
+		});
+	}
+
+	private userInvited({
+		user,
+		targetUserId,
+		publicApi,
+		emailSent,
+		inviteeRole,
+	}: RelayEventMap['user-invited']) {
+		this.telemetry.track('User invited new user', {
+			user_id: user.id,
+			target_user_id: targetUserId,
+			public_api: publicApi,
+			email_sent: emailSent,
+			invitee_role: inviteeRole,
+		});
+	}
+
+	private userSignedUp({ user, userType, wasDisabledLdapUser }: RelayEventMap['user-signed-up']) {
+		this.telemetry.track('User signed up', {
+			user_id: user.id,
+			user_type: userType,
+			was_disabled_ldap_user: wasDisabledLdapUser,
+		});
+	}
+
+	private userSubmittedPersonalizationSurvey({
+		userId,
+		answers,
+	}: RelayEventMap['user-submitted-personalization-survey']) {
+		const camelCaseKeys = Object.keys(answers);
+		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
+		camelCaseKeys.forEach((camelCaseKey) => {
+			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
+		});
+
+		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
 	}
 
 	// #endregion
