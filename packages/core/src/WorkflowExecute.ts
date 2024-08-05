@@ -44,6 +44,7 @@ import {
 	ApplicationError,
 	NodeExecutionOutput,
 	sleep,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1316,6 +1317,15 @@ export class WorkflowExecute {
 							break;
 						} catch (error) {
 							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+
+							ErrorReporterProxy.error(error, {
+								extra: {
+									nodeName: executionNode.name,
+									nodeType: executionNode.type,
+									nodeVersion: executionNode.typeVersion,
+									workflowId: workflow.id,
+								},
+							});
 
 							if (!(error instanceof ApplicationError)) {
 								error.obfuscate = true;
