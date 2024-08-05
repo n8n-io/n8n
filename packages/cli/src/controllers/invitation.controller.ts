@@ -16,7 +16,6 @@ import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { EventService } from '@/events/event.service';
 
@@ -24,7 +23,6 @@ import { EventService } from '@/events/event.service';
 export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
