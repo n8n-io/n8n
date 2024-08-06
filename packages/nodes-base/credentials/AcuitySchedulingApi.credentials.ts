@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeProperties,
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+} from 'n8n-workflow';
 
 export class AcuitySchedulingApi implements ICredentialType {
 	name = 'acuitySchedulingApi';
@@ -22,4 +27,21 @@ export class AcuitySchedulingApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://acuityscheduling.com/api/v1',
+			url: '/appointments',
+		},
+	};
 }
