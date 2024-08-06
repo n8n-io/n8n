@@ -326,7 +326,12 @@ export class SourceControlImportService {
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
 				} else {
-					newCredentialObject.setData(data);
+					/**
+					 * Edge case: Do not import `oauthTokenData`, so that that the
+					 * pulling instance reconnects instead of trying to use stubbed values.
+					 */
+					const { oauthTokenData, ...rest } = data;
+					newCredentialObject.setData(rest);
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
