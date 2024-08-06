@@ -49,12 +49,18 @@ export = {
 	transferCredential: [
 		projectScope('credential:move', 'credential'),
 		async (req: CredentialRequest.Transfer, res: express.Response) => {
-			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+			const body = z
+				.object({
+					destinationProjectId: z.string(),
+					shareWithOriginalProject: z.boolean().optional(),
+				})
+				.parse(req.body);
 
 			await Container.get(EnterpriseCredentialsService).transferOne(
 				req.user,
 				req.params.workflowId,
 				body.destinationProjectId,
+				body.shareWithOriginalProject ?? false,
 			);
 
 			res.status(204).send();
