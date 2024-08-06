@@ -178,7 +178,7 @@ import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCo
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import ButtonParameter from '@/components/ButtonParameter.vue';
+import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';

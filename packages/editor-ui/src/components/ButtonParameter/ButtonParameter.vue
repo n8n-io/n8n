@@ -8,9 +8,8 @@ import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getSchemas } from './CodeNodeEditor/utils';
+import { getSchemas } from './utils';
 import { ASK_AI_EXPERIMENT } from '@/constants';
-import { useSettingsStore } from '@/stores/settings.store';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
 import { generateCodeForPrompt } from '@/api/ai';
@@ -30,7 +29,6 @@ const props = defineProps<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
-const settingsStore = useSettingsStore();
 const posthog = usePostHog();
 const rootStore = useRootStore();
 
@@ -50,14 +48,6 @@ const isSubmitEnabled = computed(() => {
 	return true;
 });
 const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
-
-const aiEnabled = computed(() => {
-	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
-		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
-	);
-
-	return isAiExperimentEnabled && settingsStore.settings.ai.enabled;
-});
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
@@ -86,7 +76,7 @@ function stopLoading() {
 }
 
 function getPath(parameter: string) {
-	return ((props.path ? `${props.path}.` : '') + parameter);
+	return (props.path ? `${props.path}.` : '') + parameter;
 }
 
 function createPrompt(prompt: string) {
@@ -144,7 +134,7 @@ async function onSubmit() {
 		switch (type) {
 			case 'generateCodeFromPrompt':
 				let value;
-				if (aiEnabled.value) {
+				if (posthog.isAiEnabled()) {
 					const { restApiContext } = useRootStore();
 					const { code } = await generateCodeForPrompt(restApiContext, payload);
 					value = code;
@@ -214,9 +204,9 @@ onMounted(() => {
 <template>
 	<div>
 		<n8n-input-label
+			v-if="parameter.typeOptions?.buttonHasInputField"
 			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
-			:hidden="!parameter.typeOptions?.buttonHasInputField"
 			:bold="false"
 			size="small"
 			color="text-dark"
@@ -248,7 +238,7 @@ onMounted(() => {
 					<N8nButton
 						:disabled="!isSubmitEnabled"
 						size="small"
-					        :loading="isLoading"
+						:loading="isLoading"
 						type="secondary"
 						@click="onSubmit"
 					>
