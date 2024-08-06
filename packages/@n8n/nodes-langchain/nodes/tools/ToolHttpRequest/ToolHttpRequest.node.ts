@@ -11,6 +11,7 @@ import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } 
 
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
+import { N8nTool } from '../../../utils/N8nTool';
 import {
 	configureHttpRequestFunction,
 	configureResponseOptimizer,
@@ -18,7 +19,6 @@ import {
 	configureToolFunction,
 	updateParametersAndOptions,
 	makeToolInputSchema,
-	prepareToolDescription,
 } from './utils';
 
 import {
@@ -31,7 +31,6 @@ import {
 } from './descriptions';
 
 import type { PlaceholderDefinition, ToolParameter } from './interfaces';
-import { N8nTool } from '../../../utils/N8nTool';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
