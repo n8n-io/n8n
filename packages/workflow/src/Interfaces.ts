@@ -1229,16 +1229,19 @@ export interface ILoadOptions {
 }
 
 export type NodePropertyAction = {
-	type: 'generateCodeFromPrompt';
-	handler: string;
+	type: 'askAiCodeGeneration';
+	handler?: string;
 	target?: string;
 };
 
 export interface INodePropertyTypeOptions {
-	action?: string | NodePropertyAction; // Supported by: button
-	buttonLabel?: string; // Supported by: button
-	buttonHasInputField?: boolean; // Supported by: button
-	buttonInputFieldMaxLength?: number; // Supported by: button
+	// Supported by: button
+	buttonConfig?: {
+		action?: string | NodePropertyAction;
+		label?: string; // otherwise "displayName" is used
+		hasInputField?: boolean;
+		inputFieldMaxLength?: number; // Supported if hasInputField is true
+	};
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string

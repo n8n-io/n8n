@@ -42,13 +42,15 @@ export class AiTransform implements INodeType {
 				placeholder:
 					"Example: Merge 'firstname' and 'lastname' into a field 'details.name' and sort by 'email'",
 				typeOptions: {
-					buttonLabel: 'Generate code',
-					buttonHasInputField: true,
-					buttonInputFieldMaxLength: 500,
-					action: {
-						type: 'generateCodeFromPrompt',
-						handler: 'generateCode',
-						target: 'jsCode',
+					buttonConfig: {
+						label: 'Generate code',
+						hasInputField: true,
+						inputFieldMaxLength: 500,
+						action: {
+							type: 'askAiCodeGeneration',
+							handler: 'generateCode',
+							target: 'jsCode',
+						},
 					},
 				},
 			},

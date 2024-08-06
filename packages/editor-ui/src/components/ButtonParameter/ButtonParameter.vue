@@ -38,16 +38,23 @@ const isLoading = ref(false);
 const prompt = ref(props.value);
 const parentNodes = ref<INodeUi[]>([]);
 
+const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
+const hasInputField = computed(() => props.parameter.typeOptions?.buttonConfig?.hasInputField);
+const inputFieldMaxLength = computed(
+	() => props.parameter.typeOptions?.buttonConfig?.inputFieldMaxLength,
+);
+const buttonLabel = computed(
+	() => props.parameter.typeOptions?.buttonConfig?.label ?? props.parameter.displayName,
+);
 const isSubmitEnabled = computed(() => {
 	if (!hasExecutionData.value) return false;
 	if (!prompt.value) return false;
 
-	const maxlength = props.parameter.typeOptions?.buttonInputFieldMaxLength;
+	const maxlength = inputFieldMaxLength.value;
 	if (maxlength && prompt.value.length > maxlength) return false;
 
 	return true;
 });
-const hasExecutionData = computed(() => (useNDVStore().ndvInputData || []).length > 0);
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
@@ -92,7 +99,8 @@ ${prompt}
 async function onSubmit() {
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
-	const action: string | NodePropertyAction | undefined = props.parameter.typeOptions?.action;
+	const action: string | NodePropertyAction | undefined =
+		props.parameter.typeOptions?.buttonConfig?.action;
 
 	if (!action || !activeNode) return;
 
@@ -132,7 +140,7 @@ async function onSubmit() {
 			n8nVersion: version,
 		};
 		switch (type) {
-			case 'generateCodeFromPrompt':
+			case 'askAiCodeGeneration':
 				let value;
 				if (posthog.isAiEnabled()) {
 					const { restApiContext } = useRootStore();
@@ -141,17 +149,19 @@ async function onSubmit() {
 				} else {
 					const currentNodeParameters = activeNode.parameters;
 
-					value = await nodeTypesStore.getNodeParameterActionResult({
-						nodeTypeAndVersion: {
-							name: activeNode.type,
-							version: activeNode.typeVersion,
-						},
-						path: props.path,
-						currentNodeParameters,
-						credentials: activeNode.credentials,
-						handler,
-						payload,
-					});
+					if (handler) {
+						value = await nodeTypesStore.getNodeParameterActionResult({
+							nodeTypeAndVersion: {
+								name: activeNode.type,
+								version: activeNode.typeVersion,
+							},
+							path: props.path,
+							currentNodeParameters,
+							credentials: activeNode.credentials,
+							handler,
+							payload,
+						});
+					}
 				}
 				if (value === undefined) return;
 
@@ -204,7 +214,7 @@ onMounted(() => {
 <template>
 	<div>
 		<n8n-input-label
-			v-if="parameter.typeOptions?.buttonHasInputField"
+			v-if="hasInputField"
 			:label="i18n.nodeText().inputLabelDisplayName(parameter, path)"
 			:tooltip-text="i18n.nodeText().inputLabelDescription(parameter, path)"
 			:bold="false"
@@ -212,13 +222,13 @@ onMounted(() => {
 			color="text-dark"
 		>
 		</n8n-input-label>
-		<div :class="$style.inputContainer" :hidden="!parameter.typeOptions?.buttonHasInputField">
+		<div :class="$style.inputContainer" :hidden="!hasInputField">
 			<div :class="$style.meta">
 				<span
-					v-if="parameter.typeOptions?.buttonInputFieldMaxLength"
+					v-if="inputFieldMaxLength"
 					v-show="prompt.length > 1"
 					:class="$style.counter"
-					v-text="`${prompt.length} / ${parameter.typeOptions?.buttonInputFieldMaxLength}`"
+					v-text="`${prompt.length} / ${inputFieldMaxLength}`"
 				/>
 			</div>
 			<N8nInput
@@ -227,7 +237,7 @@ onMounted(() => {
 				style="border: 1px solid var(--color-foreground-base)"
 				type="textarea"
 				:rows="6"
-				:maxlength="parameter.typeOptions?.buttonInputFieldMaxLength"
+				:maxlength="inputFieldMaxLength"
 				:placeholder="parameter.placeholder"
 				@input="onPromptInput"
 			/>
@@ -242,7 +252,7 @@ onMounted(() => {
 						type="secondary"
 						@click="onSubmit"
 					>
-						{{ parameter.typeOptions?.buttonLabel ?? parameter.displayName }}
+						{{ buttonLabel }}
 					</N8nButton>
 				</div>
 				<template #content>
