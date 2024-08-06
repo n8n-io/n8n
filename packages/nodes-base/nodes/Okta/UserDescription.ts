@@ -38,6 +38,16 @@ export const userOperations: INodeProperties[] = [
 						url: '={{"/api/v1/users/" + $parameter["userId"]}}',
 						returnFullResponse: true,
 					},
+					output: {
+						postReceive: [
+							{
+								type: 'set',
+								properties: {
+									value: '={{ { "success": true } }}',
+								},
+							},
+						],
+					},
 				},
 				action: 'Delete a user',
 			},
@@ -522,5 +532,19 @@ export const userFields: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
+	},
+	// Fields specific to 'delete' operation
+	{
+		displayName: 'Send Email',
+		name: 'sendEmail',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['delete'],
+			},
+		},
+		default: false,
+		description: 'Whether to send a deactivation email to the administrator',
 	},
 ];
