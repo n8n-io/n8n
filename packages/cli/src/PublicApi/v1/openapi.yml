@@ -8,7 +8,7 @@ info:
     email: hello@n8n.io
   license:
     name: Sustainable Use License
-    url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
+    url: https://github.com/n8n-io/n8n/blob/master/LICENSE.md
   version: 1.1.1
 externalDocs:
   description: n8n API documentation
