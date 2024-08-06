@@ -3,7 +3,7 @@ import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES, AI_ASSISTANT_EXPERIMENT } from '@
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
@@ -57,6 +57,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
+	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 
 	const isExperimentEnabled = computed(
@@ -99,6 +100,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			0,
 		),
 	);
+
+	watch(route, () => {
+		const activeWorkflowId = workflowsStore.workflowId;
+		if (!currentSessionId.value || currentSessionWorkflowId.value === activeWorkflowId) {
+			return;
+		}
+		resetAssistantChat();
+	});
 
 	function resetAssistantChat() {
 		clearMessages();
@@ -272,6 +281,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		resetAssistantChat();
 		chatSessionError.value = context;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
+
 		if (workflowsStore.activeExecutionId) {
 			currentSessionActiveExecutionId.value = workflowsStore.activeExecutionId;
 		}
