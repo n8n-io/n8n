@@ -153,7 +153,7 @@
     "@langchain/textsplitters": "0.0.3",
     "@mozilla/readability": "^0.5.0",
     "@n8n/typeorm": "0.3.20-10",
-    "@n8n/vm2": "3.9.24",
+    "@n8n/vm2": "3.9.25",
     "@pinecone-database/pinecone": "3.0.0",
     "@qdrant/js-client-rest": "1.9.0",
     "@supabase/supabase-js": "2.43.4",
