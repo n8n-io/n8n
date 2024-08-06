@@ -1329,7 +1329,9 @@ export async function requestOAuth2(
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+		(oauthTokenData === undefined ||
+			Object.keys(oauthTokenData).length === 0 ||
+			oauthTokenData.access_token === '') // stub
 	) {
 		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
