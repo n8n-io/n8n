@@ -12,6 +12,7 @@ import { ExternalStorageConfig } from './configs/external-storage';
 import { WorkflowsConfig } from './configs/workflows';
 import { EndpointsConfig } from './configs/endpoints';
 import { CacheConfig } from './configs/cache';
+import { PruningConfig } from './configs/pruning.config';
 
 @Config
 class UserManagementConfig {
@@ -79,4 +80,7 @@ export class GlobalConfig {
 
 	@Nested
 	readonly cache: CacheConfig;
+
+	@Nested
+	pruning: PruningConfig;
 }
