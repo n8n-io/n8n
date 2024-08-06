@@ -72,7 +72,7 @@ function getParentNodes() {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
 		.map((n) => getNodeByName(n.name))
-		.filter((n) => n !== null) as INodeUi[];
+		.filter((n) => n !== null);
 }
 
 function startLoading() {
