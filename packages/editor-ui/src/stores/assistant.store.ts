@@ -282,7 +282,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const node = workflowsStore.getNodeByName(name);
 			if (!node) {
 				return {
-					node_name: name,
+					nodeName: name,
 					schema: {} as Schema,
 				};
 			}
@@ -292,7 +292,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				true,
 			);
 			return {
-				node_name: node.name,
+				nodeName: node.name,
 				schema,
 			};
 		});

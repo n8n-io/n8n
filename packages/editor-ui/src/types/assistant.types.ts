@@ -3,7 +3,7 @@ import type { INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
 	interface NodeExecutionSchema {
-		node_name: string;
+		nodeName: string;
 		schema: Schema;
 	}
 
