@@ -10,7 +10,6 @@ import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import type { OwnerRequest } from '@/requests';
 import type { UserService } from '@/services/user.service';
@@ -21,7 +20,6 @@ import { badPasswords } from '@test/testData';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');
-	const internalHooks = mock<InternalHooks>();
 	const authService = mock<AuthService>();
 	const userService = mock<UserService>();
 	const userRepository = mock<UserRepository>();
@@ -29,7 +27,7 @@ describe('OwnerController', () => {
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
 		mock(),
-		internalHooks,
+		mock(),
 		settingsRepository,
 		authService,
 		userService,

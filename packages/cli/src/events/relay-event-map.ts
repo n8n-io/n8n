@@ -13,9 +13,34 @@ export type UserLike = {
 };
 
 export type RelayEventMap = {
-	// #region Server
+	// #region Lifecycle
 
 	'server-started': {};
+
+	'session-started': {
+		pushRef?: string;
+	};
+
+	'instance-stopped': {};
+
+	'instance-owner-setup': {
+		userId: string;
+	};
+
+	'first-production-workflow-succeeded': {
+		projectId: string;
+		workflowId: string;
+		userId: string;
+	};
+
+	'first-workflow-data-loaded': {
+		userId: string;
+		workflowId: string;
+		nodeType: string;
+		nodeId: string;
+		credentialType?: string;
+		credentialId?: string;
+	};
 
 	// #endregion
 

@@ -31,7 +31,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/PublicApi';
 
 @Service()
@@ -50,7 +50,7 @@ export class FrontendService {
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventService: EventService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -244,7 +244,7 @@ export class FrontendService {
 	}
 
 	getSettings(pushRef?: string): IN8nUISettings {
-		this.internalHooks.onFrontendSettingsAPI(pushRef);
+		this.eventService.emit('session-started', { pushRef });
 
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
