@@ -29,10 +29,11 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 	const isFeedback = quickReplyType === 'all-good' || quickReplyType === 'still-stuck';
 	const isPositive = !isFeedback ? null : quickReplyType === 'all-good';
 	const task = 'error';
-	// TODO: This is not completely correct, we need to remove text messages from the count
 	const solutionCount =
 		task === 'error'
-			? assistantStore.chatMessages.filter((msg) => msg.role === 'assistant').length - 1
+			? assistantStore.chatMessages.filter(
+					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
+				).length
 			: null;
 	telemetry.track('User gave feedback', {
 		task: 'error',

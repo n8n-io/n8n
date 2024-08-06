@@ -338,11 +338,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		if (isSessionEnded.value || streaming.value) {
 			return;
 		}
-
 		assert(currentSessionId.value);
 
 		const id = getRandomId();
 		addEmptyAssistantMessage(id);
+		streaming.value = true;
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
@@ -364,8 +364,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
-
-		streaming.value = true;
 		if (pushEvent.data.error) {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 		} else if (pushEvent.data.executionStatus === 'success') {
