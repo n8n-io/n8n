@@ -72,7 +72,7 @@ const checkLinks = async (packageName, kind) => {
 	const invalidUrls = [];
 	for (const [name, statusCode] of statuses) {
 		if (statusCode === null) missingDocs.push(name);
-		if (statusCode !== 200) invalidUrls.push(name);
+		if (statusCode !== 200 && statusCode !== 301) invalidUrls.push(name);
 	}
 
 	if (missingDocs.length)
