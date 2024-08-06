@@ -53,10 +53,14 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			return await this.executionService.findLatestCurrentAndCompleted(query);
+			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
+			await this.executionService.enrichExecutionSummariesWithScopes(req.user, executions.results);
+			return executions;
 		}
 
-		return await this.executionService.findRangeWithCount(query);
+		const executions = await this.executionService.findRangeWithCount(query);
+		await this.executionService.enrichExecutionSummariesWithScopes(req.user, executions.results);
+		return executions;
 	}
 
 	@Get('/:id')
