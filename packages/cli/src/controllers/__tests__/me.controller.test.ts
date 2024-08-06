@@ -13,6 +13,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { EventService } from '@/events/event.service';
 import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
 
@@ -20,7 +21,8 @@ const browserId = 'test-browser-id';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
-	const internalHooks = mockInstance(InternalHooks);
+	mockInstance(InternalHooks);
+	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
@@ -44,6 +46,7 @@ describe('MeController', () => {
 		it('should update the user in the DB, and issue a new cookie', async () => {
 			const user = mock<User>({
 				id: '123',
+				email: 'valid@email.com',
 				password: 'password',
 				authIdentities: [],
 				role: 'global:owner',
@@ -51,6 +54,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
+			userRepository.findOneByOrFail.mockResolvedValue(user);
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
@@ -64,7 +68,10 @@ describe('MeController', () => {
 			]);
 
 			expect(userService.update).toHaveBeenCalled();
-
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
+				user,
+				fieldsChanged: ['firstName', 'lastName'], // email did not change
+			});
 			expect(res.cookie).toHaveBeenCalledWith(
 				AUTH_COOKIE_NAME,
 				'signed-token',
@@ -202,9 +209,9 @@ describe('MeController', () => {
 				req.user.password,
 			]);
 
-			expect(internalHooks.onUserUpdate).toHaveBeenCalledWith({
+			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user: req.user,
-				fields_changed: ['password'],
+				fieldsChanged: ['password'],
 			});
 		});
 	});
