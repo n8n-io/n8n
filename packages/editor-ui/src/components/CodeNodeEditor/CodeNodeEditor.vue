@@ -431,7 +431,7 @@ function onAiLoadEnd() {
 		background-color: none;
 	}
 	30% {
-		background-color: rgba(41, 163, 102, 0.2);
+		background-color: rgba(41, 163, 102, 0.1);
 	}
 	100% {
 		background-color: none;
@@ -441,7 +441,7 @@ function onAiLoadEnd() {
 .animate-editor {
 	:deep(.cm-editor),
 	:deep(.cm-gutter) {
-		animation: backgroundAnimation 2s ease-in-out;
+		animation: backgroundAnimation 1.5s ease-in-out;
 	}
 }
 </style>
