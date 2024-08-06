@@ -1,5 +1,10 @@
 import { computed } from 'vue';
-import type { IDataObject, INodeParameters } from 'n8n-workflow';
+import {
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	NodeConnectionType,
+	type IDataObject,
+	type INodeParameters,
+} from 'n8n-workflow';
 import type {
 	ActionTypeDescription,
 	AddedNode,
@@ -11,6 +16,7 @@ import type {
 } from '@/Interface';
 import {
 	AGENT_NODE_TYPE,
+	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -37,11 +43,12 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 import { sortNodeCreateElements, transformNodeType } from '../utils';
 import { useI18n } from '@/composables/useI18n';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 export const useActions = () => {
 	const nodeCreatorStore = useNodeCreatorStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
-
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 		NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -216,6 +223,19 @@ export const useActions = () => {
 		return isCompatibleNode && isChatTriggerMissing;
 	}
 
+	// AI-226: Prepend LLM Chain node when adding a language model
+	function shouldPrependLLMChain(addedNodes: AddedNode[]): boolean {
+		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
+		if (canvasHasAINodes) return false;
+
+		return addedNodes.some((node) => {
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			return Object.keys(nodeType?.codex?.subcategories ?? {}).includes(
+				AI_CATEGORY_LANGUAGE_MODELS,
+			);
+		});
+	}
+
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
@@ -230,7 +250,14 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependChatTrigger(addedNodes)) {
+		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
+			if (shouldPrependLLMChain(addedNodes)) {
+				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
+				connections.push({
+					from: { nodeIndex: 2, type: NodeConnectionType.AiLanguageModel },
+					to: { nodeIndex: 1 },
+				});
+			}
 			addedNodes.unshift({ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },
