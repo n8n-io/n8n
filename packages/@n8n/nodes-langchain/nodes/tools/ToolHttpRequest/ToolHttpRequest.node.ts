@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, tryToParseAlphanumericString } from 'n8n-workflow';
 
+import { DynamicTool } from '@langchain/core/tools';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import { N8nTool } from '../../../utils/N8nTool';
@@ -16,6 +17,7 @@ import {
 	configureHttpRequestFunction,
 	configureResponseOptimizer,
 	extractParametersFromText,
+	prepareToolDescription,
 	configureToolFunction,
 	updateParametersAndOptions,
 	makeToolInputSchema,
@@ -38,7 +40,7 @@ export class ToolHttpRequest implements INodeType {
 		name: 'toolHttpRequest',
 		icon: { light: 'file:httprequest.svg', dark: 'file:httprequest.dark.svg' },
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Makes an HTTP request and returns the response data',
 		subtitle: '={{ $parameter.toolDescription }}',
 		defaults: {
@@ -394,14 +396,24 @@ export class ToolHttpRequest implements INodeType {
 			optimizeResponse,
 		);
 
-		const schema = makeToolInputSchema(toolParameters);
+		let tool: DynamicTool | N8nTool;
 
-		const tool = new N8nTool(this, {
-			name,
-			description: toolDescription,
-			func,
-			schema,
-		});
+		// If the node version is 1.1 or higher, we use the N8nTool wrapper:
+		// it allows to use tool as a DynamicStructuredTool and have a fallback to DynamicTool
+		if (this.getNode().typeVersion >= 1.1) {
+			const schema = makeToolInputSchema(toolParameters);
+
+			tool = new N8nTool(this, {
+				name,
+				description: toolDescription,
+				func,
+				schema,
+			});
+		} else {
+			// Keep the old behavior for nodes with version 1.0
+			const description = prepareToolDescription(toolDescription, toolParameters);
+			tool = new DynamicTool({ name, description, func });
+		}
 
 		return {
 			response: tool,
