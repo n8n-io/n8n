@@ -25,13 +25,13 @@ export const userOperations: INodeProperties[] = [
 						returnFullResponse: true,
 					},
 				},
-				action: 'Create a new User',
+				action: 'Create a new user',
 			},
 			// Delete Operation
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an empty Bucket',
+				description: 'Delete an existing user',
 				routing: {
 					request: {
 						method: 'DELETE',
@@ -45,7 +45,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a user',
+				description: 'Get details of a user',
 				routing: {
 					request: {
 						method: 'GET',
@@ -77,7 +77,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update users',
+				description: 'Update an existing user',
 				routing: {
 					request: {
 						method: 'POST',
@@ -102,7 +102,7 @@ export const userFields: INodeProperties[] = [
 		name: 'firstName',
 		type: 'string',
 		required: true,
-		placeholder: 'First Name',
+		placeholder: 'e.g. Nathan',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -122,7 +122,7 @@ export const userFields: INodeProperties[] = [
 		name: 'lastName',
 		type: 'string',
 		required: true,
-		placeholder: 'Last Name',
+		placeholder: 'e.g. Smith',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -138,32 +138,12 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		required: true,
-		placeholder: 'Email',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
-		default: '',
-		routing: {
-			send: {
-				property: 'profile.email',
-				type: 'body',
-			},
-		},
-	},
-	{
-		displayName: 'Login',
+		displayName: 'Username',
 		name: 'login',
 		type: 'string',
 		required: true,
-		placeholder: 'Login',
-		description: 'Unique identifier for the user (username)',
+		placeholder: 'e.g. nathan@example.com',
+		hint: 'Unique identifier for the user, must be an email',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -174,6 +154,26 @@ export const userFields: INodeProperties[] = [
 		routing: {
 			send: {
 				property: 'profile.login',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		placeholder: 'e.g. nathan@example.com',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create', 'update'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.email',
 				type: 'body',
 			},
 		},
@@ -231,7 +231,7 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Fields',
 		name: 'getFields',
 		type: 'collection',
 		displayOptions: {
@@ -247,18 +247,47 @@ export const userFields: INodeProperties[] = [
 				type: 'body',
 			},
 		},
-		placeholder: 'Add additional field',
+		placeholder: 'Add field',
 		options: [
 			{
-				displayName: 'Second Email',
-				name: 'secondEmail',
+				displayName: 'City',
+				name: 'city',
 				type: 'string',
-				typeOptions: { email: true },
 				default: '',
 			},
 			{
-				displayName: 'Middle Name',
-				name: 'middleName',
+				displayName: 'Cost Center',
+				name: 'costCenter',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Country Code',
+				name: 'countryCode',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Department',
+				name: 'department',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Display Name',
+				name: 'displayName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Division',
+				name: 'division',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Employee Number',
+				name: 'employeeNumber',
 				type: 'string',
 				default: '',
 			},
@@ -275,32 +304,26 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
+				displayName: 'Locale',
+				name: 'locale',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Display Name',
-				name: 'displayName',
+				displayName: 'Manager',
+				name: 'manager',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Nick Name',
-				name: 'nickName',
+				displayName: 'ManagerId',
+				name: 'managerId',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Profile Url',
-				name: 'profileUrl',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Primary Phone',
-				name: 'primaryPhone',
+				displayName: 'Middle Name',
+				name: 'middleName',
 				type: 'string',
 				default: '',
 			},
@@ -311,32 +334,14 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Street Address',
-				name: 'streetAddress',
+				displayName: 'Nick Name',
+				name: 'nickName',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Zip Code',
-				name: 'zipCode',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Country Code',
-				name: 'countryCode',
+				displayName: 'Organization',
+				name: 'organization',
 				type: 'string',
 				default: '',
 			},
@@ -353,8 +358,33 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Locale',
-				name: 'locale',
+				displayName: 'Primary Phone',
+				name: 'primaryPhone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Profile Url',
+				name: 'profileUrl',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Second Email',
+				name: 'secondEmail',
+				type: 'string',
+				typeOptions: { email: true },
+				default: '',
+			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Street Address',
+				name: 'streetAddress',
 				type: 'string',
 				default: '',
 			},
@@ -365,53 +395,24 @@ export const userFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'User Type',
 				name: 'userType',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Employee Number',
-				name: 'employeeNumber',
+				displayName: 'Zip Code',
+				name: 'zipCode',
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Cost Center',
-				name: 'costCenter',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Organization',
-				name: 'organization',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Division',
-				name: 'division',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Department',
-				name: 'department',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ManagerId',
-				name: 'managerId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Manager',
-				name: 'manager',
-				type: 'string',
-				default: '',
-			},
+
 		],
 	},
 	// Fields specific to 'create' operation
@@ -425,15 +426,16 @@ export const userFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		default: false,
-		description: 'Whether to activate the user',
+		default: true,
+		description: 'Whether to activate the user and allow access to all assigned applications',
 	},
 	// Fields specific to 'getAll' operation
 	{
 		displayName: 'Search Query',
 		name: 'searchQuery',
 		type: 'string',
-		placeholder: 'Filter Users by email, last name, or first name',
+		placeholder: 'e.g. profile.lastName sw "Smi"',
+		hint: 'Filter users by using the allowed syntax. <a href="https://developer.okta.com/docs/reference/core-okta-api/#filter" target="_blank">More info</a>.',
 		displayOptions: {
 			show: {
 				resource: ['user'],
@@ -450,7 +452,7 @@ export const userFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
