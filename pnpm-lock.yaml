@@ -390,8 +390,8 @@ importers:
         specifier: 0.3.20-10
         version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
-        specifier: 3.9.24
-        version: 3.9.24
+        specifier: 3.9.25
+        version: 3.9.25
       '@pinecone-database/pinecone':
         specifier: 3.0.0
         version: 3.0.0
@@ -1448,8 +1448,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/imap
       '@n8n/vm2':
-        specifier: 3.9.24
-        version: 3.9.24
+        specifier: 3.9.25
+        version: 3.9.25
       alasql:
         specifier: ^4.4.0
         version: 4.4.0(encoding@0.1.13)
@@ -4211,8 +4211,8 @@ packages:
       typeorm-aurora-data-api-driver:
         optional: true
 
-  '@n8n/vm2@3.9.24':
-    resolution: {integrity: sha512-O4z67yVgUs2FHkcw3vbGnxdC1EglpzOj966kPkK4gtW+ZmTTFRfEB+2Ehq6PMthgg/Ou5JCLSR3wvQIZFFt4Pg==}
+  '@n8n/vm2@3.9.25':
+    resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
@@ -6005,11 +6005,6 @@ packages:
 
   acorn@7.4.1:
     resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
-  acorn@8.11.2:
-    resolution: {integrity: sha512-nc0Axzp/0FILLEVsm4fNwLCwMttvhEI263QtVPQcbpfZZ3ts0hLsZGOpE6czNlid7CJ9MlyH8reXkpsf3YUY4w==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -16710,7 +16705,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/vm2@3.9.24':
+  '@n8n/vm2@3.9.25':
     dependencies:
       acorn: 8.12.1
       acorn-walk: 8.3.2
@@ -19360,15 +19355,13 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.2
 
-  acorn-jsx@5.3.2(acorn@8.11.2):
+  acorn-jsx@5.3.2(acorn@8.12.1):
     dependencies:
-      acorn: 8.11.2
+      acorn: 8.12.1
 
   acorn-walk@8.3.2: {}
 
   acorn@7.4.1: {}
-
-  acorn@8.11.2: {}
 
   acorn@8.12.1: {}
 
@@ -21481,8 +21474,8 @@ snapshots:
 
   espree@9.6.1:
     dependencies:
-      acorn: 8.11.2
-      acorn-jsx: 5.3.2(acorn@8.11.2)
+      acorn: 8.12.1
+      acorn-jsx: 5.3.2(acorn@8.12.1)
       eslint-visitor-keys: 3.4.3
 
   esprima-next@5.8.4: {}
