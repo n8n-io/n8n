@@ -1,3 +1,12 @@
+## [1.45.2](https://github.com/n8n-io/n8n/compare/n8n@1.45.1...n8n@1.45.2) (2024-08-06)
+
+
+### Bug Fixes
+
+* **core:** Ensure OAuth token data is not stubbed in source control ([#10302](https://github.com/n8n-io/n8n/issues/10302)) ([d7286fd](https://github.com/n8n-io/n8n/commit/d7286fd8cb85991c89365112fd578907f71af4d6))
+
+
+
 ## [1.45.1](https://github.com/n8n-io/n8n/compare/n8n@1.45.0...n8n@1.45.1) (2024-06-12)
 
 
