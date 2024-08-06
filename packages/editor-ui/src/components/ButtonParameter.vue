@@ -248,9 +248,9 @@ onMounted(() => {
 					<N8nButton
 						:disabled="!isSubmitEnabled"
 						size="small"
-						@click="onSubmit"
-						:loading="isLoading"
+					        :loading="isLoading"
 						type="secondary"
+						@click="onSubmit"
 					>
 						{{ parameter.typeOptions?.buttonLabel ?? parameter.displayName }}
 					</N8nButton>
