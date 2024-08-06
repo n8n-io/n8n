@@ -6,17 +6,9 @@ import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { ABORT_JOB_SIGNAL, JOB_TYPE_NAME, QUEUE_NAME } from './constants';
+import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { Processor } from './processor';
-import type {
-	JobQueue,
-	Job,
-	JobData,
-	JobOptions,
-	JobProgressReport,
-	JobStatus,
-	JobId,
-} from './types';
+import type { JobQueue, Job, JobData, JobOptions, JobMessage, JobStatus, JobId } from './types';
 import type { IDataObject, IExecuteResponsePromiseData } from 'n8n-workflow';
 
 @Service()
@@ -31,9 +23,7 @@ export class ScalingService {
 		private readonly processor: Processor,
 	) {}
 
-	/**
-	 * Lifecycle
-	 */
+	// #region Lifecycle
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
@@ -77,9 +67,9 @@ export class ScalingService {
 		await this.queue.client.ping();
 	}
 
-	/**
-	 * Jobs
-	 */
+	// #endregion
+
+	// #region Jobs
 
 	async addJob(jobData: JobData, jobOptions: JobOptions) {
 		const { executionId } = jobData;
@@ -95,7 +85,7 @@ export class ScalingService {
 		return await this.queue.getJob(jobId);
 	}
 
-	async findJobsByState(statuses: JobStatus[]) {
+	async findJobsByStatus(statuses: JobStatus[]) {
 		return await this.queue.getJobs(statuses);
 	}
 
@@ -104,7 +94,7 @@ export class ScalingService {
 
 		try {
 			if (await job.isActive()) {
-				await job.progress(ABORT_JOB_SIGNAL);
+				await job.progress({ kind: 'abort-job' });
 				this.logger.debug('[ScalingService] Stopped active job', props);
 				return true;
 			}
@@ -113,20 +103,20 @@ export class ScalingService {
 			this.logger.debug('[ScalingService] Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {
-			await job.progress(ABORT_JOB_SIGNAL);
+			await job.progress({ kind: 'abort-job' });
 			this.logger.error('[ScalingService] Failed to stop job', { ...props, error });
 			return false;
 		}
 	}
 
-	/**
-	 * Listeners
-	 */
+	// #endregion
+
+	// #region Listeners
 
 	private registerListeners() {
-		this.queue.on('global:progress', (_job: Job, report: JobProgressReport) => {
-			if (report.kind === 'webhook-response') {
-				const { executionId, response } = report;
+		this.queue.on('global:progress', (_jobId: JobId, msg: JobMessage) => {
+			if (msg.kind === 'respond-to-webhook') {
+				const { executionId, response } = msg;
 				this.activeExecutions.resolveResponsePromise(
 					executionId,
 					this.decodeWebhookResponse(response),
@@ -134,8 +124,10 @@ export class ScalingService {
 			}
 		});
 
-		this.queue.on('global:progress', (jobId: JobId, progress) => {
-			if (progress === ABORT_JOB_SIGNAL) this.processor.stopJob(jobId);
+		this.queue.on('global:progress', (jobId: JobId, msg: JobMessage) => {
+			if (msg.kind === 'abort-job') {
+				this.processor.stopJob(jobId);
+			}
 		});
 
 		let latestAttemptTs = 0;
@@ -194,6 +186,8 @@ export class ScalingService {
 			throw error;
 		});
 	}
+
+	// #endregion
 
 	private decodeWebhookResponse(
 		response: IExecuteResponsePromiseData,

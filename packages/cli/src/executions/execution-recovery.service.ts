@@ -137,7 +137,7 @@ export class ExecutionRecoveryService {
 
 		const { ScalingService } = await import('@/scaling/scaling.service');
 
-		const runningJobs = await Container.get(ScalingService).findJobsByState(['active', 'waiting']);
+		const runningJobs = await Container.get(ScalingService).findJobsByStatus(['active', 'waiting']);
 
 		const queuedIds = new Set(runningJobs.map((job) => job.data.executionId));
 

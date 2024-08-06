@@ -66,7 +66,7 @@ export class Worker extends BaseCommand {
 
 			// Wait for active workflow executions to finish
 			let count = 0;
-			while (Object.keys(this.processor.getRunningJobIds()).length !== 0) {
+			while (this.processor.getRunningJobIds().length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
 					this.logger.info(
@@ -157,7 +157,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
-			getRunningJobIds: () => this.processor.getRunningJobIds() as string[],
+			getRunningJobIds: () => this.processor.getRunningJobIds(),
 			getRunningJobsSummary: () => this.processor.getRunningJobsSummary(),
 		});
 	}

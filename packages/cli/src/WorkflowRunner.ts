@@ -28,7 +28,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobResult } from './scaling/types';
+import type { Job, JobData, JobResult } from '@/scaling/types';
 import { ScalingService } from '@/scaling/scaling.service';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -40,7 +40,7 @@ import { EventService } from './events/event.service';
 
 @Service()
 export class WorkflowRunner {
-	private scalingService: ScalingService;
+	private readonly scalingService: ScalingService;
 
 	private executionsMode = config.getEnv('executions.mode');
 

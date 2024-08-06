@@ -8,14 +8,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { NodeTypes } from '@/NodeTypes';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type {
-	Job,
-	JobId,
-	JobResult,
-	RunningJob,
-	RunningJobSummary,
-	WebhookResponseReport,
-} from './types';
+import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './types';
 import type PCancelable from 'p-cancelable';
 
 @Service()
@@ -103,13 +96,11 @@ export class Processor {
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
-				const webhookResponseReport: WebhookResponseReport = {
-					kind: 'webhook-response',
+				await job.progress({
+					kind: 'respond-to-webhook',
 					executionId,
 					response: this.encodeWebhookResponse(response),
-				};
-
-				await job.progress(webhookResponseReport);
+				});
 			},
 		];
 

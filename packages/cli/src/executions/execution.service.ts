@@ -468,9 +468,9 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		const jobs = await this.scalingService.findJobsByState(['active', 'waiting']);
+		const jobs = await this.scalingService.findJobsByStatus(['active', 'waiting']);
 
-		const job = jobs.find(({ data }) => data.executionId === execution.id) ?? null;
+		const job = jobs.find(({ data }) => data.executionId === execution.id);
 
 		if (job) {
 			await this.scalingService.stopJob(job);

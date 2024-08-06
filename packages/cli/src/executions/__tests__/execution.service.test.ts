@@ -225,7 +225,7 @@ describe('ExecutionService', () => {
 					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
 					const job = mock<Job>({ data: { executionId: '123' } });
-					scalingService.findJobsByState.mockResolvedValue([job]);
+					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
 					/**
@@ -238,7 +238,7 @@ describe('ExecutionService', () => {
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 					expect(activeExecutions.stopExecution).toHaveBeenCalled();
-					expect(scalingService.findJobsByState).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
 					expect(scalingService.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
@@ -252,7 +252,7 @@ describe('ExecutionService', () => {
 					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
 					const job = mock<Job>({ data: { executionId: '123' } });
-					scalingService.findJobsByState.mockResolvedValue([job]);
+					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
 					/**
@@ -264,7 +264,7 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-					expect(scalingService.findJobsByState).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
 					expect(scalingService.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});

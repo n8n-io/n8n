@@ -5,7 +5,7 @@ import type { RunningJobSummary } from '@/scaling/types';
 export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
 	redisPublisher: RedisServicePubSubPublisher;
-	getRunningJobIds: () => string[];
+	getRunningJobIds: () => Array<string | number>;
 	getRunningJobsSummary: () => RunningJobSummary[];
 }
 

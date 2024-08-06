@@ -23,7 +23,7 @@ mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
 const externalSecretsManager = mockInstance(ExternalSecretsManager);
-const license = mockInstance(License, { loadCertStr: jest.fn().mockReturnValue('') });
+const license = mockInstance(License);
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
@@ -43,6 +43,7 @@ test('worker initializes all its components', async () => {
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
 	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
