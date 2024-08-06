@@ -717,7 +717,6 @@ export async function getRunData(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: mode,
 		executionData: runExecutionData,
-		// @ts-ignore
 		workflowData,
 	};
 
@@ -1000,10 +999,10 @@ export async function getBase(
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: urlBaseWebhook,
-		formWaitingBaseUrl: globalConfig.endpoints.formWaiting,
-		webhookBaseUrl: globalConfig.endpoints.webhook,
-		webhookWaitingBaseUrl: globalConfig.endpoints.webhookWaiting,
-		webhookTestBaseUrl: globalConfig.endpoints.webhookTest,
+		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
+		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
+		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
+		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

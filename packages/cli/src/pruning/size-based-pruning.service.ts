@@ -14,7 +14,7 @@ import { OnShutdown } from '@/decorators/OnShutdown';
 const asyncExec = promisify(exec);
 
 type ExecutionDir = {
-	/** Absolute path to the execution dir, typically `$HOME/.n8n/binaryData/workflows/{id}/executions/{id}`. */
+	/** Absolute path to the execution dir. */
 	path: string;
 
 	/** Size (in bytes) of the execution dir. */
@@ -25,12 +25,12 @@ type ExecutionDir = {
 };
 
 /**
- * Responsible for regularly deleting old execution-related files from a target dir
- * (typically `$HOME/.n8n/binaryData`) to keep the dir at or below a target size.
+ * Responsible for regularly deleting old execution-related files
+ * from a target dir to keep it at or below a target size.
  */
 @Service()
 export class SizeBasedPruningService {
-	/** Path to dir subject to size-based pruning. */
+	/** Path to dir subject to size-based pruning, typically `~/.n8n/binaryData`. */
 	private targetDirPath: string;
 
 	/** Current size (in bytes) of the target dir. */
@@ -39,13 +39,13 @@ export class SizeBasedPruningService {
 	/** Max size (in bytes) allowed for the target dir. */
 	private maxSize: number;
 
-	/** Size (in bytes) to come down to after a size-based pruning cycle. */
+	/** Size (in bytes) to come back down to after a size-based pruning cycle. */
 	private targetSize: number;
 
 	/** How often (in milliseconds) to prune the target dir based on size. */
 	private frequency: number;
 
-	/** Min heap prioritizing oldest modified execution dirs. */
+	/** Min heap of execution dirs, prioritized by oldest modification time. */
 	private heap: Heap<ExecutionDir>;
 
 	private interval: NodeJS.Timer | null = null;
@@ -66,7 +66,11 @@ export class SizeBasedPruningService {
 	}
 
 	start() {
+		// @TODO: Delegate to worker thread for fewer microtasks?
+
 		this.interval = setInterval(async () => await this.prune(), this.frequency);
+
+		this.logger.debug('[Pruning] Started size-based pruning timer');
 	}
 
 	@OnShutdown()
@@ -74,6 +78,7 @@ export class SizeBasedPruningService {
 		if (this.interval) {
 			clearInterval(this.interval);
 			this.interval = null;
+			this.logger.debug('[Pruning] Stopped size-based pruning timer');
 		}
 	}
 
@@ -84,7 +89,7 @@ export class SizeBasedPruningService {
 		const workflowsDirPath = path.join(this.targetDirPath, 'workflows');
 		const workflowDirs = await fs.readdir(workflowsDirPath, { withFileTypes: true });
 
-		// @TODO: `Promise.all` might overwhelm the filesystem if too many dirs?
+		// @TODO: `Promise.all` might overwhelm the FS if too many dirs to check?
 
 		for (const workflowDir of workflowDirs) {
 			if (workflowDir.isDirectory()) {
@@ -120,6 +125,8 @@ export class SizeBasedPruningService {
 
 	/** Delete oldest modified execution dirs until at or below target size. */
 	private async prune() {
+		this.logger.debug('[Pruning] Starting size-based pruning cycle');
+
 		await this.fullScan();
 
 		const prunedDirs: { paths: string[]; size: number } = { paths: [], size: 0 };
@@ -143,11 +150,11 @@ export class SizeBasedPruningService {
 		}
 
 		if (prunedDirs.paths.length > 0) {
-			this.logger.debug('[Pruning] Pruned execution dirs', {
+			this.logger.debug('[Pruning] Size-based pruning cycle completed', {
 				prunedDirs: prunedDirs.paths,
-				prunedSize: prunedDirs.size,
-				prePruneSize,
-				postPruneSize: this.currentSize,
+				totalPrunedBytes: prunedDirs.size,
+				prePruneSizeBytes: prePruneSize,
+				postPruneSizeBytes: this.currentSize,
 			});
 		}
 	}

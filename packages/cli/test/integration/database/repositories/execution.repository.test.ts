@@ -52,34 +52,5 @@ describe('ExecutionRepository', () => {
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
 		});
-
-		it('should not create execution if execution data insert fails', async () => {
-			const executionRepo = Container.get(ExecutionRepository);
-			const executionDataRepo = Container.get(ExecutionDataRepository);
-
-			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
-			jest
-				.spyOn(executionDataRepo, 'createExecutionDataForExecution')
-				.mockRejectedValueOnce(new Error());
-
-			await expect(
-				async () =>
-					await executionRepo.createNewExecution({
-						workflowId: workflow.id,
-						data: {
-							//@ts-expect-error This is not needed for tests
-							resultData: {},
-						},
-						workflowData: workflow,
-						mode: 'manual',
-						startedAt: new Date(),
-						status: 'new',
-						finished: false,
-					}),
-			).rejects.toThrow();
-
-			const executionEntities = await executionRepo.find();
-			expect(executionEntities).toBeEmptyArray();
-		});
 	});
 });

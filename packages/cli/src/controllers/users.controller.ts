@@ -9,7 +9,7 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
+import type { PublicUser } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -21,7 +21,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
@@ -35,7 +34,6 @@ export class UsersController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
-		private readonly internalHooks: InternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
@@ -183,12 +181,7 @@ export class UsersController {
 			);
 		}
 
-		const telemetryData: ITelemetryUserDeletionData = {
-			user_id: req.user.id,
-			target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
-			target_user_id: idToDelete,
-			migration_strategy: transferId ? 'transfer_data' : 'delete_data',
-		};
+		let transfereeId;
 
 		if (transferId) {
 			const transfereePersonalProject = await this.projectRepository.findOneBy({ id: transferId });
@@ -206,7 +199,7 @@ export class UsersController {
 				},
 			});
 
-			telemetryData.migration_user_id = transferee.id;
+			transfereeId = transferee.id;
 
 			await this.userService.getManager().transaction(async (trx) => {
 				await this.workflowService.transferAll(
@@ -253,12 +246,14 @@ export class UsersController {
 			await trx.delete(User, { id: userToDelete.id });
 		});
 
-		this.internalHooks.onUserDeletion({
+		this.eventService.emit('user-deleted', {
 			user: req.user,
-			telemetryData,
 			publicApi: false,
+			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
+			targetUserId: idToDelete,
+			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
+			migrationUserId: transfereeId,
 		});
-		this.eventService.emit('user-deleted', { user: req.user });
 
 		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 
@@ -294,11 +289,11 @@ export class UsersController {
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });
 
-		this.internalHooks.onUserRoleChange({
-			user: req.user,
-			target_user_id: targetUser.id,
-			target_user_new_role: ['global', payload.newRoleName].join(' '),
-			public_api: false,
+		this.eventService.emit('user-changed-role', {
+			userId: req.user.id,
+			targetUserId: targetUser.id,
+			targetUserNewRole: payload.newRoleName,
+			publicApi: false,
 		});
 
 		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
