@@ -9,7 +9,7 @@ import { OnShutdown } from '@/decorators/OnShutdown';
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { Processor } from './processor';
 import type { JobQueue, Job, JobData, JobOptions, JobMessage, JobStatus, JobId } from './types';
-import type { IDataObject, IExecuteResponsePromiseData } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 
 @Service()
 export class ScalingService {
@@ -195,12 +195,11 @@ export class ScalingService {
 		if (
 			typeof response === 'object' &&
 			typeof response.body === 'object' &&
-			(response.body as IDataObject)['__@N8nEncodedBuffer@__']
+			response.body !== null &&
+			'__@N8nEncodedBuffer@__' in response.body &&
+			typeof response.body['__@N8nEncodedBuffer@__'] === 'string'
 		) {
-			response.body = Buffer.from(
-				(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
-				BINARY_ENCODING,
-			);
+			response.body = Buffer.from(response.body['__@N8nEncodedBuffer@__'], BINARY_ENCODING);
 		}
 
 		return response;
