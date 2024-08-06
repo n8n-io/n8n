@@ -11,11 +11,17 @@ import Markdown from 'markdown-it';
 import InlineAskAssistantButton from '../InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import BetaTag from '../BetaTag/BetaTag.vue';
 import { useI18n } from '../../composables/useI18n';
+import markdownLink from 'markdown-it-link-attributes';
 
 const { t } = useI18n();
 
 const md = new Markdown({
 	breaks: true,
+}).use(markdownLink, {
+	attrs: {
+		target: '_blank',
+		rel: 'noopener',
+	},
 });
 
 interface Props {
