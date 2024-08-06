@@ -147,9 +147,9 @@ async function onSubmit() {
 					const { code } = await generateCodeForPrompt(restApiContext, payload);
 					value = code;
 				} else {
-					const currentNodeParameters = activeNode.parameters;
-
 					if (handler) {
+						const currentNodeParameters = activeNode.parameters;
+
 						value = await nodeTypesStore.getNodeParameterActionResult({
 							nodeTypeAndVersion: {
 								name: activeNode.type,
@@ -163,6 +163,7 @@ async function onSubmit() {
 						});
 					}
 				}
+
 				if (value === undefined) return;
 
 				const formattedCode = await format(String(value), {
@@ -176,7 +177,6 @@ async function onSubmit() {
 				};
 
 				emit('valueChanged', updateInformation);
-
 				break;
 			default:
 				return;
