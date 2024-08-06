@@ -11,8 +11,11 @@ import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-wor
 import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './types';
 import type PCancelable from 'p-cancelable';
 
+/**
+ * Responsible for processing jobs from the queue, i.e. running enqueued executions.
+ */
 @Service()
-export class Processor {
+export class JobProcessor {
 	private readonly runningJobs: { [jobId: JobId]: RunningJob } = {};
 
 	constructor(

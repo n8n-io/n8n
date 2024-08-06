@@ -7,7 +7,7 @@ import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
-import { Processor } from './processor';
+import { JobProcessor } from './job-processor';
 import type { JobQueue, Job, JobData, JobOptions, JobMessage, JobStatus, JobId } from './types';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 
@@ -20,7 +20,7 @@ export class ScalingService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly processor: Processor,
+		private readonly jobProcessor: JobProcessor,
 	) {}
 
 	// #region Lifecycle
@@ -50,7 +50,7 @@ export class ScalingService {
 		void this.queue.process(
 			JOB_TYPE_NAME,
 			concurrency,
-			async (job: Job) => await this.processor.processJob(job),
+			async (job: Job) => await this.jobProcessor.processJob(job),
 		);
 
 		this.logger.debug('[ScalingService] Worker setup completed');
@@ -126,7 +126,7 @@ export class ScalingService {
 
 		this.queue.on('global:progress', (jobId: JobId, msg: JobMessage) => {
 			if (msg.kind === 'abort-job') {
-				this.processor.stopJob(jobId);
+				this.jobProcessor.stopJob(jobId);
 			}
 		});
 
