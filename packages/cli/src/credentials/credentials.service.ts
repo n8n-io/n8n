@@ -90,6 +90,19 @@ export class CredentialsService {
 			let credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
 
 			if (isDefaultSelect) {
+				// Since we're filtering using project ID as part of the relation,
+				// we end up filtering out all the other relations, meaning that if
+				// it's shared to a project, it won't be able to find the home project.
+				// To solve this, we have to get all the relation now, even though
+				// we're deleting them later.
+				if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
+					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+						credentials.map((c) => c.id),
+					);
+					credentials.forEach((c) => {
+						c.shared = relations.filter((r) => r.credentialsId === c.id);
+					});
+				}
 				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 			}
 
@@ -130,6 +143,20 @@ export class CredentialsService {
 		);
 
 		if (isDefaultSelect) {
+			// Since we're filtering using project ID as part of the relation,
+			// we end up filtering out all the other relations, meaning that if
+			// it's shared to a project, it won't be able to find the home project.
+			// To solve this, we have to get all the relation now, even though
+			// we're deleting them later.
+			if ((options.listQueryOptions?.filter?.shared as { projectId?: string })?.projectId) {
+				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+					credentials.map((c) => c.id),
+				);
+				credentials.forEach((c) => {
+					c.shared = relations.filter((r) => r.credentialsId === c.id);
+				});
+			}
+
 			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
 		}
 
