@@ -24,7 +24,6 @@ describe('Test N8nTool wrapper as DynamicStructuredTool', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string(),
@@ -44,7 +43,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string(),
@@ -64,7 +62,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string(),
@@ -93,7 +90,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({}),
 		});
@@ -111,7 +107,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string().describe('Foo description'),
@@ -136,7 +131,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string().describe('Foo description'),
@@ -160,7 +154,6 @@ describe('Test N8nTool wrapper - DynamicTool fallback', () => {
 		const tool = new N8nTool(ctx, {
 			name: 'Dummy Tool',
 			description: 'A dummy tool for testing',
-			fallbackDescription: 'A fallback description of the dummy tool',
 			func,
 			schema: z.object({
 				foo: z.string().describe('Foo description'),
