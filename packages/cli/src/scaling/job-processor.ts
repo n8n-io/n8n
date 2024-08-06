@@ -34,7 +34,7 @@ export class JobProcessor {
 		});
 
 		if (!execution) {
-			this.logger.error('[Processor] Failed to find execution data', { executionId });
+			this.logger.error('[JobProcessor] Failed to find execution data', { executionId });
 			throw new ApplicationError('Failed to find execution data. Aborting execution.', {
 				extra: { executionId },
 			});
@@ -42,7 +42,7 @@ export class JobProcessor {
 
 		const workflowId = execution.workflowData.id;
 
-		this.logger.info(`[Processor] Starting job ${job.id} (execution ${executionId})`);
+		this.logger.info(`[JobProcessor] Starting job ${job.id} (execution ${executionId})`);
 
 		await this.executionRepository.updateStatus(executionId, 'running');
 
@@ -55,7 +55,7 @@ export class JobProcessor {
 			});
 
 			if (workflowData === null) {
-				this.logger.error('[Processor] Failed to find workflow', { workflowId, executionId });
+				this.logger.error('[JobProcessor] Failed to find workflow', { workflowId, executionId });
 				throw new ApplicationError('Failed to find workflow', { extra: { workflowId } });
 			}
 
@@ -112,7 +112,7 @@ export class JobProcessor {
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
 			this.logger.debug(
-				`[Processor] Queued worker execution status for ${executionId} is "${status}"`,
+				`[JobProcessor] Queued worker execution status for ${executionId} is "${status}"`,
 			);
 		};
 
@@ -145,7 +145,7 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
-		this.logger.debug('[Processor] Job finished running', { jobId: job.id, executionId });
+		this.logger.debug('[JobProcessor] Job finished running', { jobId: job.id, executionId });
 
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.
