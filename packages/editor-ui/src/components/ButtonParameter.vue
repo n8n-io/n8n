@@ -72,7 +72,7 @@ function getParentNodes() {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
 		.map((n) => getNodeByName(n.name))
-		.filter((n) => n !== null) as INodeUi[];
+		.filter((n) => n !== null);
 }
 
 function startLoading() {
@@ -86,7 +86,7 @@ function stopLoading() {
 }
 
 function getPath(parameter: string) {
-	return ((props.path ? `${props.path}.` : '') + parameter) as string;
+	return ((props.path ? `${props.path}.` : '') + parameter);
 }
 
 function createPrompt(prompt: string) {
@@ -248,9 +248,9 @@ onMounted(() => {
 					<N8nButton
 						:disabled="!isSubmitEnabled"
 						size="small"
-						@click="onSubmit"
-						:loading="isLoading"
+					        :loading="isLoading"
 						type="secondary"
+						@click="onSubmit"
 					>
 						{{ parameter.typeOptions?.buttonLabel ?? parameter.displayName }}
 					</N8nButton>
