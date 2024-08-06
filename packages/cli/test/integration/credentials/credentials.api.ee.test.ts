@@ -1244,7 +1244,7 @@ describe('PUT /:credentialId/transfer', () => {
 		const response = await testServer
 			.authAgentFor(member)
 			.put(`/credentials/${credential.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id, shareWithSource: true })
+			.send({ destinationProjectId: destinationProject.id, shareWithOriginalProject: true })
 			.expect(200);
 
 		//
