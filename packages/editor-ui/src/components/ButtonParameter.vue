@@ -86,7 +86,7 @@ function stopLoading() {
 }
 
 function getPath(parameter: string) {
-	return ((props.path ? `${props.path}.` : '') + parameter) as string;
+	return ((props.path ? `${props.path}.` : '') + parameter);
 }
 
 function createPrompt(prompt: string) {
