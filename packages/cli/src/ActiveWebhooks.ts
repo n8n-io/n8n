@@ -72,11 +72,9 @@ export class ActiveWebhooks implements IWebhookManager {
 			const pathElements = path.split('/').slice(1);
 
 			// extracting params from path
-			// @ts-ignore
 			webhook.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
-					// @ts-ignore
 					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});

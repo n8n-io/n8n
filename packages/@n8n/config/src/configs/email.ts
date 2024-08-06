@@ -4,75 +4,75 @@ import { Config, Env, Nested } from '../decorators';
 export class SmtpAuth {
 	/** SMTP login username */
 	@Env('N8N_SMTP_USER')
-	readonly user: string = '';
+	user = '';
 
 	/** SMTP login password */
 	@Env('N8N_SMTP_PASS')
-	readonly pass: string = '';
+	pass = '';
 
 	/** SMTP OAuth Service Client */
 	@Env('N8N_SMTP_OAUTH_SERVICE_CLIENT')
-	readonly serviceClient: string = '';
+	serviceClient = '';
 
 	/** SMTP OAuth Private Key */
 	@Env('N8N_SMTP_OAUTH_PRIVATE_KEY')
-	readonly privateKey: string = '';
+	privateKey = '';
 }
 
 @Config
 export class SmtpConfig {
 	/** SMTP server host */
 	@Env('N8N_SMTP_HOST')
-	readonly host: string = '';
+	host = '';
 
 	/** SMTP server port */
 	@Env('N8N_SMTP_PORT')
-	readonly port: number = 465;
+	port: number = 465;
 
 	/** Whether to use SSL for SMTP */
 	@Env('N8N_SMTP_SSL')
-	readonly secure: boolean = true;
+	secure: boolean = true;
 
 	/** Whether to use STARTTLS for SMTP when SSL is disabled */
 	@Env('N8N_SMTP_STARTTLS')
-	readonly startTLS: boolean = true;
+	startTLS: boolean = true;
 
 	/** How to display sender name */
 	@Env('N8N_SMTP_SENDER')
-	readonly sender: string = '';
+	sender = '';
 
 	@Nested
-	readonly auth: SmtpAuth;
+	auth: SmtpAuth;
 }
 
 @Config
 export class TemplateConfig {
 	/** Overrides default HTML template for inviting new people (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_INVITE')
-	readonly invite: string = '';
+	invite = '';
 
 	/** Overrides default HTML template for resetting password (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_PWRESET')
-	readonly passwordReset: string = '';
+	passwordReset = '';
 
 	/** Overrides default HTML template for notifying that a workflow was shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED')
-	readonly workflowShared: string = '';
+	workflowShared = '';
 
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED')
-	readonly credentialsShared: string = '';
+	credentialsShared = '';
 }
 
 @Config
 export class EmailConfig {
 	/** How to send emails */
 	@Env('N8N_EMAIL_MODE')
-	readonly mode: '' | 'smtp' = 'smtp';
+	mode: '' | 'smtp' = 'smtp';
 
 	@Nested
-	readonly smtp: SmtpConfig;
+	smtp: SmtpConfig;
 
 	@Nested
-	readonly template: TemplateConfig;
+	template: TemplateConfig;
 }

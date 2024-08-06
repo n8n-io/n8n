@@ -12,7 +12,6 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
-import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -28,8 +27,6 @@ const toast = useToast();
 const { callDebounced } = useDebounce();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
-
-const { filters } = storeToRefs(executionsStore);
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -311,7 +308,6 @@ async function loadMore(): Promise<void> {
 		v-if="workflow"
 		:executions="executions"
 		:execution="execution"
-		:filters="filters"
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"

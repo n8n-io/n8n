@@ -34,10 +34,9 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
-import { EventService } from './eventbus/event.service';
+import { EventService } from './events/event.service';
 
 @Service()
 export class WorkflowRunner {
@@ -160,19 +159,11 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
-					void Container.get(InternalHooks).onWorkflowPostExecute(
-						executionId,
-						data.workflowData,
-						executionData,
-						data.userId,
-					);
 					this.eventService.emit('workflow-post-execute', {
-						workflowId: data.workflowData.id,
-						workflowName: data.workflowData.name,
+						workflow: data.workflowData,
 						executionId,
-						success: executionData?.status === 'success',
-						isManual: data.executionMode === 'manual',
 						userId: data.userId,
+						runData: executionData,
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {

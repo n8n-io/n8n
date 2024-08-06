@@ -13,7 +13,7 @@
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
 						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
 					</template>
@@ -48,7 +48,7 @@
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
