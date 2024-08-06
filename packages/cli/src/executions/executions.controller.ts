@@ -1,4 +1,4 @@
-import { ExecutionRequest } from './execution.types';
+import { ExecutionRequest, type ExecutionSummaries } from './execution.types';
 import { ExecutionService } from './execution.service';
 import { Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
@@ -54,12 +54,18 @@ export class ExecutionsController {
 
 		if (noStatus && noRange) {
 			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
-			await this.executionService.enrichExecutionSummariesWithScopes(req.user, executions.results);
+			await this.executionService.addScopes(
+				req.user,
+				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
+			);
 			return executions;
 		}
 
 		const executions = await this.executionService.findRangeWithCount(query);
-		await this.executionService.enrichExecutionSummariesWithScopes(req.user, executions.results);
+		await this.executionService.addScopes(
+			req.user,
+			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
+		);
 		return executions;
 	}
 

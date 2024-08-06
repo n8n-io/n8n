@@ -71,17 +71,12 @@ export class WorkflowSharingService {
 		workflowIds: string[],
 		user: User,
 	): Promise<Array<[string, Scope[]]>> {
-		const projectRelations = await this.projectRelationRepository.find({
-			where: {
-				userId: user.id,
-			},
-		});
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: {
-				workflowId: In(workflowIds),
-				projectId: In(projectRelations.map((p) => p.projectId)),
-			},
-		});
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
+		const sharedWorkflows =
+			await this.sharedWorkflowRepository.getRelationsByWorkflowIdsAndProjectIds(
+				workflowIds,
+				projectRelations.map((p) => p.projectId),
+			);
 
 		return workflowIds.map((workflowId) => {
 			return [

@@ -49,14 +49,14 @@ describe('GET /executions', () => {
 		expect(response2.body.data.count).toBe(1);
 	});
 
-	test('should return scopes a scopes array for each execution', async () => {
+	test('should return a scopes array for each execution', async () => {
 		testServer.license.enable('feat:sharing');
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 		await createSuccessfulExecution(workflow);
 
-		const response1 = await testServer.authAgentFor(member).get('/executions').expect(200);
-		expect(response1.body.data.results[0].scopes).toContain('workflow:execute');
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+		expect(response.body.data.results[0].scopes).toContain('workflow:execute');
 	});
 });
 

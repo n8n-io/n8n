@@ -8,7 +8,6 @@ import type {
 	IRunExecutionData,
 	WorkflowExecuteMode,
 	ExecutionStatus,
-	ExecutionSummary,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -41,7 +40,6 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
-import type { Scope } from '@n8n/permissions';
 import type { User } from '@/databases/entities/User';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
@@ -484,15 +482,14 @@ export class ExecutionService {
 		return await this.executionRepository.stopDuringRun(execution);
 	}
 
-	async enrichExecutionSummariesWithScopes(user: User, summaries: ExecutionSummary[]) {
-		const summariesWithScopes = summaries as Array<ExecutionSummary & { scopes: Scope[] }>;
+	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {
 		const workflowIds = [...new Set(summaries.map((s) => s.workflowId))];
 
 		const scopes = Object.fromEntries(
 			await this.workflowSharingService.getSharedWorkflowScopes(workflowIds, user),
 		);
 
-		for (const s of summariesWithScopes) {
+		for (const s of summaries) {
 			s.scopes = scopes[s.workflowId] ?? [];
 		}
 	}
