@@ -75,7 +75,7 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: BASE_API_URL,
-						qs: { q: '={{$parameter["searchQuery"]}}' },
+						qs: { search: '={{$parameter["searchQuery"]}}' },
 					},
 					send: {
 						paginate: true,
@@ -92,9 +92,6 @@ export const userOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						url: '={{"/api/v1/users/" + $parameter["userId"]}}',
-						qs: {
-							project: '={{$parameter["projectId"]}}',
-						},
 						returnFullResponse: true,
 					},
 				},
@@ -104,21 +101,12 @@ export const userOperations: INodeProperties[] = [
 		default: 'getAll',
 	},
 ];
-
-export const userFields: INodeProperties[] = [
-	// Fields for 'create' and 'update' operations
+const mainProfileFields: INodeProperties[] = [
 	{
 		displayName: 'First Name',
 		name: 'firstName',
 		type: 'string',
-		required: true,
 		placeholder: 'e.g. Nathan',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
 		default: '',
 		routing: {
 			send: {
@@ -131,14 +119,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Last Name',
 		name: 'lastName',
 		type: 'string',
-		required: true,
 		placeholder: 'e.g. Smith',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
 		default: '',
 		routing: {
 			send: {
@@ -151,15 +132,8 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Username',
 		name: 'login',
 		type: 'string',
-		required: true,
 		placeholder: 'e.g. nathan@example.com',
 		hint: 'Unique identifier for the user, must be an email',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
 		default: '',
 		routing: {
 			send: {
@@ -172,14 +146,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		required: true,
 		placeholder: 'e.g. nathan@example.com',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
 		default: '',
 		routing: {
 			send: {
@@ -188,279 +155,378 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 	},
+];
+const createFields: INodeProperties[] = [
 	{
-		displayName: 'Credentials',
-		name: 'getCredentials',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
-		default: {},
-		placeholder: 'Add credential field',
-		options: [
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				typeOptions: { password: true },
-				default: '',
-				routing: {
-					send: {
-						property: 'credentials.password.value',
-						type: 'body',
-					},
-				},
-			},
-			{
-				displayName: 'Recovery Question Question',
-				name: 'recoveryQuestionQuestion',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						property: 'credentials.recovery_question.question',
-						type: 'body',
-					},
-				},
-			},
-			{
-				displayName: 'Recovery Question Answer',
-				name: 'recoveryQuestionAnswer',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						property: 'credentials.recovery_question.answer',
-						type: 'body',
-					},
-				},
-			},
-		],
-	},
-	{
-		displayName: 'Fields',
-		name: 'getFields',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create', 'update'],
-			},
-		},
-		default: {},
+		displayName: 'City',
+		name: 'city',
+		type: 'string',
+		default: '',
 		routing: {
 			send: {
-				property: 'profile',
+				property: 'profile.city',
 				type: 'body',
 			},
 		},
-		placeholder: 'Add field',
-		options: [
-			{
-				displayName: 'City',
-				name: 'city',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Cost Center',
-				name: 'costCenter',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Country Code',
-				name: 'countryCode',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Department',
-				name: 'department',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Display Name',
-				name: 'displayName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Division',
-				name: 'division',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Employee Number',
-				name: 'employeeNumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Honorific Prefix',
-				name: 'honorificPrefix',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Honorific Suffix',
-				name: 'honorificSuffix',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Locale',
-				name: 'locale',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Manager',
-				name: 'manager',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'ManagerId',
-				name: 'managerId',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Middle Name',
-				name: 'middleName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Mobile Phone',
-				name: 'mobilePhone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Nick Name',
-				name: 'nickName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Organization',
-				name: 'organization',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Postal Address',
-				name: 'postalAddress',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Preferred Language',
-				name: 'preferredLanguage',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Primary Phone',
-				name: 'primaryPhone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Profile Url',
-				name: 'profileUrl',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Second Email',
-				name: 'secondEmail',
-				type: 'string',
-				typeOptions: { email: true },
-				default: '',
-			},
-			{
-				displayName: 'State',
-				name: 'state',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Street Address',
-				name: 'streetAddress',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'User Type',
-				name: 'userType',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Zip Code',
-				name: 'zipCode',
-				type: 'string',
-				default: '',
-			},
-
-		],
 	},
-	// Fields specific to 'create' operation
 	{
-		displayName: 'Activate',
-		name: 'activate',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['create'],
-			},
-		},
-		default: true,
-		description: 'Whether to activate the user and allow access to all assigned applications',
-	},
-	// Fields specific to 'getAll' operation
-	{
-		displayName: 'Search Query',
-		name: 'searchQuery',
+		displayName: 'Cost Center',
+		name: 'costCenter',
 		type: 'string',
-		placeholder: 'e.g. profile.lastName sw "Smi"',
-		hint: 'Filter users by using the allowed syntax. <a href="https://developer.okta.com/docs/reference/core-okta-api/#filter" target="_blank">More info</a>.',
-		displayOptions: {
-			show: {
-				resource: ['user'],
-				operation: ['getAll'],
-			},
-		},
 		default: '',
 		routing: {
-			request: {
-				qs: {
-					prefix: '={{$value}}',
-				},
+			send: {
+				property: 'profile.costCenter',
+				type: 'body',
 			},
 		},
 	},
+	{
+		displayName: 'Country Code',
+		name: 'countryCode',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.countryCode',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Department',
+		name: 'department',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.department',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Display Name',
+		name: 'displayName',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.displayName',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Division',
+		name: 'division',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.division',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Employee Number',
+		name: 'employeeNumber',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.employeeNumber',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Honorific Prefix',
+		name: 'honorificPrefix',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.honorificPrefix',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Honorific Suffix',
+		name: 'honorificSuffix',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.honorificSuffix',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Locale',
+		name: 'locale',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.locale',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Manager',
+		name: 'manager',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.manager',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'ManagerId',
+		name: 'managerId',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.managerId',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Middle Name',
+		name: 'middleName',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.middleName',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Mobile Phone',
+		name: 'mobilePhone',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.mobilePhone',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Nick Name',
+		name: 'nickName',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.nickName',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		typeOptions: { password: true },
+		default: '',
+		routing: {
+			send: {
+				property: 'credentials.password.value',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Organization',
+		name: 'organization',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.organization',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Postal Address',
+		name: 'postalAddress',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.postalAddress',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Preferred Language',
+		name: 'preferredLanguage',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.preferredLanguage',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Primary Phone',
+		name: 'primaryPhone',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.primaryPhone',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Profile Url',
+		name: 'profileUrl',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.profileUrl',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Recovery Question Answer',
+		name: 'recoveryQuestionAnswer',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'credentials.recovery_question.answer',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Recovery Question Question',
+		name: 'recoveryQuestionQuestion',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'credentials.recovery_question.question',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Second Email',
+		name: 'secondEmail',
+		type: 'string',
+		typeOptions: { email: true },
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.secondEmail',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'State',
+		name: 'state',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.state',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Street Address',
+		name: 'streetAddress',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.streetAddress',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Timezone',
+		name: 'timezone',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.timezone',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.title',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'User Type',
+		name: 'userType',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.userType',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Zip Code',
+		name: 'zipCode',
+		type: 'string',
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.zipCode',
+				type: 'body',
+			},
+		},
+	},
+];
+const updateFields: INodeProperties[] = createFields
+	.concat(mainProfileFields)
+	.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+export const userFields: INodeProperties[] = [
+	// Fields for 'get', 'update', and 'delete' operations
+
 	{
 		displayName: 'User',
 		name: 'userId',
@@ -492,6 +558,154 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		description: 'The user you want to operate on. Choose from the list, or specify an ID.',
+	},
+	//  Fields specific to 'create' operation
+	{
+		displayName: 'First Name',
+		name: 'firstName',
+		type: 'string',
+		required: true,
+		placeholder: 'e.g. Nathan',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.firstName',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Last Name',
+		name: 'lastName',
+		type: 'string',
+		required: true,
+		placeholder: 'e.g. Smith',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.lastName',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Username',
+		name: 'login',
+		type: 'string',
+		required: true,
+		placeholder: 'e.g. nathan@example.com',
+		hint: 'Unique identifier for the user, must be an email',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.login',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		placeholder: 'e.g. nathan@example.com',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: '',
+		routing: {
+			send: {
+				property: 'profile.email',
+				type: 'body',
+			},
+		},
+	},
+	{
+		displayName: 'Activate',
+		name: 'activate',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: true,
+		description: 'Whether to activate the user and allow access to all assigned applications',
+	},
+	{
+		displayName: 'Fields',
+		name: 'getCreateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		placeholder: 'Add field',
+		options: createFields,
+	},
+
+	// Fields for 'update' operations
+	{
+		displayName: 'Fields',
+		name: 'getUpdateFields',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add field',
+		options: updateFields,
+	},
+
+	// Fields specific to 'getAll' operation
+	{
+		displayName: 'Search Query',
+		name: 'searchQuery',
+		type: 'string',
+		placeholder: 'e.g. profile.lastName sw "Smi"',
+		hint: 'Filter users by using the allowed syntax. <a href="https://developer.okta.com/docs/reference/core-okta-api/#filter" target="_blank">More info</a>.',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		default: '',
+		routing: {
+			request: {
+				qs: {
+					prefix: '={{$value}}',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Limit',
@@ -532,6 +746,20 @@ export const userFields: INodeProperties[] = [
 		},
 		default: false,
 		description: 'Whether to return all results or only up to a given limit',
+	},
+	// Fields for 'get' and 'getAll' operations
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['get', 'getAll'],
+			},
+		},
+		default: true,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	// Fields specific to 'delete' operation
 	{
