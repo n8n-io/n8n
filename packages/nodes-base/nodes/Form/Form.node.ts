@@ -17,6 +17,8 @@ import { formWebhook } from '../Form/utils';
 
 import { Webhook } from '../Webhook/Webhook.node';
 
+const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
+
 export class Form extends Webhook {
 	authPropertyName = 'authentication';
 
@@ -26,7 +28,6 @@ export class Form extends Webhook {
 		icon: 'file:form.svg',
 		group: ['input'],
 		version: 1,
-		subtitle: '=type: {{ $parameter["operation"] }}',
 		description: 'Create a multi-step webform by adding pages to a n8n form',
 		defaults: {
 			name: 'Form Page',
@@ -38,7 +39,7 @@ export class Form extends Webhook {
 				name: 'default',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: '',
+				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
@@ -48,13 +49,20 @@ export class Form extends Webhook {
 				httpMethod: 'POST',
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
-				path: '',
+				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
 			},
 		],
 		properties: [
+			//TODO check if form trigger is authenticated
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'hidden',
+				default: 'none',
+			},
 			formTitle,
 			formDescription,
 			formFields,
@@ -80,7 +88,6 @@ export class Form extends Webhook {
 						type: 'string',
 						default: '',
 						placeholder: 'webhook',
-						noDataExpression: true,
 						description:
 							'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes.',
 					},
@@ -94,15 +101,7 @@ export class Form extends Webhook {
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return await this.configureAndPutToWait(context);
-	}
-
-	private async configureAndPutToWait(context: IExecuteFunctions) {
 		const waitTill = new Date(WAIT_TIME_UNLIMITED);
-		return await this.putToWait(context, waitTill);
-	}
-
-	private async putToWait(context: IExecuteFunctions, waitTill: Date) {
 		await context.putExecutionToWait(waitTill);
 		return [context.getInputData()];
 	}
