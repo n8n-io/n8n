@@ -683,12 +683,6 @@ export const schema = {
 	},
 
 	aiAssistant: {
-		enabled: {
-			doc: 'Whether AI assistant features are enabled',
-			format: Boolean,
-			default: false,
-			env: 'N8N_AI_ASSISTANT_ENABLED',
-		},
 		baseUrl: {
 			doc: 'Base URL of the AI assistant service',
 			format: String,
