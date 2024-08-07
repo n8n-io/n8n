@@ -1,6 +1,10 @@
 import type express from 'express';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import type { IWebhookManager, WebhookCORSRequest, WebhookRequest } from '@/webhooks/webhook.types';
+import type {
+	IWebhookManager,
+	WebhookOptionsRequest,
+	WebhookRequest,
+} from '@/webhooks/webhook.types';
 import * as ResponseHelper from '@/ResponseHelper';
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
@@ -19,7 +23,7 @@ class WebhookRequestHandler {
 	 * Handles an incoming webhook request. Handles CORS and delegates the
 	 * request to the webhook manager to execute the webhook.
 	 */
-	async handleRequest(req: WebhookRequest | WebhookCORSRequest, res: express.Response) {
+	async handleRequest(req: WebhookRequest | WebhookOptionsRequest, res: express.Response) {
 		const method = req.method;
 
 		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
@@ -60,7 +64,7 @@ class WebhookRequestHandler {
 	}
 
 	private async setupCorsHeaders(
-		req: WebhookRequest | WebhookCORSRequest,
+		req: WebhookRequest | WebhookOptionsRequest,
 		res: express.Response,
 	): Promise<Error | null> {
 		const method = req.method;
@@ -116,7 +120,7 @@ class WebhookRequestHandler {
 export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
 	const handler = new WebhookRequestHandler(webhookManager);
 
-	return async (req: WebhookRequest | WebhookCORSRequest, res: express.Response) => {
+	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
 		await handler.handleRequest(req, res);
 	};
 }

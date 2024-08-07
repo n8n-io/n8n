@@ -6,7 +6,7 @@ import type { IHttpRequestMethods } from 'n8n-workflow';
 import type {
 	IWebhookManager,
 	IWebhookResponseCallbackData,
-	WebhookCORSRequest,
+	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
 import { createWebhookHandlerFor } from '@/webhooks/WebhookRequestHandler';
@@ -21,7 +21,7 @@ describe('WebhookRequestHandler', () => {
 	});
 
 	it('should throw for unsupported methods', async () => {
-		const req = mock<WebhookRequest | WebhookCORSRequest>({
+		const req = mock<WebhookRequest | WebhookOptionsRequest>({
 			method: 'CONNECT' as IHttpRequestMethods,
 		});
 		const res = mock<Response>();
@@ -38,7 +38,7 @@ describe('WebhookRequestHandler', () => {
 
 	describe('preflight requests', () => {
 		it('should handle missing header for requested method', async () => {
-			const req = mock<WebhookRequest | WebhookCORSRequest>({
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
@@ -61,7 +61,7 @@ describe('WebhookRequestHandler', () => {
 		});
 
 		it('should handle default origin and max-age', async () => {
-			const req = mock<WebhookRequest | WebhookCORSRequest>({
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
@@ -87,7 +87,7 @@ describe('WebhookRequestHandler', () => {
 
 		it('should handle wildcard origin', async () => {
 			const randomOrigin = randomString(10);
-			const req = mock<WebhookRequest | WebhookCORSRequest>({
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
 				method: 'OPTIONS',
 				headers: {
 					origin: randomOrigin,
@@ -114,7 +114,7 @@ describe('WebhookRequestHandler', () => {
 		});
 
 		it('should handle custom origin', async () => {
-			const req = mock<WebhookRequest | WebhookCORSRequest>({
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
