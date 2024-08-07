@@ -135,6 +135,16 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Output Decimals as Numbers',
+			name: 'decimalNumbers',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to output DECIMAL types as numbers instead of strings',
+			displayOptions: {
+				show: { '/operation': ['select', 'executeQuery'] },
+			},
+		},
+		{
 			displayName: 'Priority',
 			name: 'priority',
 			type: 'options',

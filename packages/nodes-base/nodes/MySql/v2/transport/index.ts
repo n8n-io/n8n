@@ -24,6 +24,7 @@ export async function createPool(
 		password: credentials.password,
 		multipleStatements: true,
 		supportBigNumbers: true,
+		decimalNumbers: false,
 	};
 
 	if (credentials.ssl) {
@@ -53,6 +54,10 @@ export async function createPool(
 
 	if (options?.largeNumbersOutput === 'text') {
 		connectionOptions.bigNumberStrings = true;
+	}
+
+	if (options?.decimalNumbers === true) {
+		connectionOptions.decimalNumbers = true;
 	}
 
 	if (!credentials.sshTunnel) {

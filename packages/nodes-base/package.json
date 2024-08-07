@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.53.0",
+  "version": "1.54.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -830,7 +830,7 @@
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "@n8n/imap": "workspace:*",
-    "@n8n/vm2": "3.9.24",
+    "@n8n/vm2": "3.9.25",
     "amqplib": "0.10.3",
     "alasql": "^4.4.0",
     "aws4": "1.11.0",
