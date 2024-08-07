@@ -43,27 +43,25 @@ import {
 } from 'n8n-workflow';
 
 import type {
-	IExecutionDb,
-	IResponseCallbackData,
+	IWebhookResponseCallbackData,
 	IWebhookManager,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
 	WebhookCORSRequest,
 	WebhookRequest,
-} from '@/Interfaces';
+} from './webhook.types';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { OwnershipService } from './services/ownership.service';
-import { parseBody } from './middlewares';
-import { Logger } from './Logger';
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { InternalServerError } from './errors/response-errors/internal-server.error';
-import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
-import type { Project } from './databases/entities/Project';
+import { OwnershipService } from '@/services/ownership.service';
+import { parseBody } from '@/middlewares';
+import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { Project } from '@/databases/entities/Project';
+import type { IExecutionDb, IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
@@ -137,7 +135,7 @@ export const webhookRequestHandler =
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		}
 
-		let response;
+		let response: IWebhookResponseCallbackData;
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
@@ -228,7 +226,7 @@ export async function executeWebhook(
 	executionId: string | undefined,
 	req: WebhookRequest,
 	res: express.Response,
-	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
