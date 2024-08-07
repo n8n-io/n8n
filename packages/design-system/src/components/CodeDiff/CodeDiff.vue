@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import parseDiff from 'parse-diff';
 import { computed } from 'vue';
-import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
 import { useI18n } from 'n8n-design-system/composables/useI18n';
 
 const MIN_LINES = 4;
@@ -86,7 +85,6 @@ const diffs = computed(() => {
 	<div :class="$style.container">
 		<div :class="$style.title">
 			{{ title }}
-			<BlinkingCursor v-if="streaming && !content" />
 		</div>
 		<div :class="$style.diffSection">
 			<div v-for="(diff, i) in diffs" :key="i" :class="$style.diff">
@@ -101,13 +99,6 @@ const diffs = computed(() => {
 					<span v-else>&nbsp;&nbsp;&nbsp;</span>
 					<span>
 						{{ diff.content }}
-						<BlinkingCursor
-							v-if="
-								streaming &&
-								diff.content &&
-								(i === diffs.length - 1 || diffs[i + 1].type === 'filler')
-							"
-						/>
 					</span>
 				</div>
 			</div>
