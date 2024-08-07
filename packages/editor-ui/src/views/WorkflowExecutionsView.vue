@@ -48,7 +48,7 @@ const execution = computed(() => {
 	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
 });
 
-const currentExecution = ref<ExecutionSummary | null>(null);
+const currentExecution = ref<ExecutionSummary | undefined>();
 
 watch(
 	() => workflowId.value,
