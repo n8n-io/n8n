@@ -764,11 +764,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async instanceStopped() {
-		const timeoutPromise = new Promise<void>((resolve) => {
-			setTimeout(resolve, 3000);
-		});
-
-		return await Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
+		return await this.telemetry.trackN8nStop();
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
