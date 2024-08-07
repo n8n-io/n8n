@@ -18,7 +18,8 @@ import type { IExecutionResponse, IWorkflowDb } from '@/Interfaces';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
- * "Resume On Webhook Call" feature.
+ * [Resume On Webhook Call](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/#on-webhook-call)
+ * feature.
  */
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
