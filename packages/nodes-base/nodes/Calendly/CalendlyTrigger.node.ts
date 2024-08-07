@@ -95,12 +95,12 @@ export class CalendlyTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'invitee.created',
+						name: 'Event Created',
 						value: 'invitee.created',
 						description: 'Receive notifications when a new Calendly event is created',
 					},
 					{
-						name: 'invitee.canceled',
+						name: 'Event Canceled',
 						value: 'invitee.canceled',
 						description: 'Receive notifications when a Calendly event is canceled',
 					},
