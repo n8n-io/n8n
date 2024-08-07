@@ -133,11 +133,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 					{{ executionUIDetails.label }}
 				</N8nText>
 				{{ ' ' }}
-				<N8nText
-					v-if="executionUIDetails?.showTimestamp === false"
-					color="text-base"
-					size="medium"
-				>
+				<N8nText v-if="executionUIDetails?.showTimestamp === false" color="text-base" size="medium">
 					| ID#{{ execution.id }}
 				</N8nText>
 				<N8nText v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
