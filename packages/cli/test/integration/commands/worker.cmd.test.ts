@@ -1,5 +1,4 @@
 import { BinaryDataService } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
 
 import { Worker } from '@/commands/worker';
 import config from '@/config';
@@ -11,7 +10,7 @@ import { OrchestrationHandlerWorkerService } from '@/services/orchestration/work
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { License } from '@/License';
 import { ExternalHooks } from '@/ExternalHooks';
-import { type JobQueue, Queue } from '@/Queue';
+import { ScalingService } from '@/scaling/scaling.service';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
@@ -28,11 +27,9 @@ const license = mockInstance(License);
 const messageEventBus = mockInstance(MessageEventBus);
 const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const orchestrationHandlerWorkerService = mockInstance(OrchestrationHandlerWorkerService);
-const queue = mockInstance(Queue);
+const scalingService = mockInstance(ScalingService);
 const orchestrationWorkerService = mockInstance(OrchestrationWorkerService);
 const command = setupTestCommand(Worker);
-
-queue.getBullObjectInstance.mockReturnValue(mock<JobQueue>({ on: jest.fn() }));
 
 test('worker initializes all its components', async () => {
 	const worker = await command.run();
@@ -45,9 +42,9 @@ test('worker initializes all its components', async () => {
 	expect(externalHooks.init).toHaveBeenCalledTimes(1);
 	expect(externalSecretsManager.init).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.initialize).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
+	expect(scalingService.setupWorker).toHaveBeenCalledTimes(1);
 	expect(logStreamingEventRelay.init).toHaveBeenCalledTimes(1);
-	expect(queue.init).toHaveBeenCalledTimes(1);
-	expect(queue.process).toHaveBeenCalledTimes(1);
 	expect(orchestrationWorkerService.init).toHaveBeenCalledTimes(1);
 	expect(orchestrationHandlerWorkerService.initWithOptions).toHaveBeenCalledTimes(1);
 	expect(messageEventBus.send).toHaveBeenCalledTimes(1);

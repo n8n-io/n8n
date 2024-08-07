@@ -42,7 +42,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ExternalHooks } from './ExternalHooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { RunningJobSummary } from './scaling/types';
 import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
@@ -420,7 +420,7 @@ export interface IPushDataWorkerStatusMessage {
 
 export interface IPushDataWorkerStatusPayload {
 	workerId: string;
-	runningJobsSummary: WorkerJobStatusSummary[];
+	runningJobsSummary: RunningJobSummary[];
 	freeMem: number;
 	totalMem: number;
 	uptime: number;
