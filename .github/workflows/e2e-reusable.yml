@@ -17,15 +17,10 @@ on:
         required: false
         default: 'e2e/*'
         type: string
-      run-env:
-        description: 'Node env version to run tests with.'
-        required: false
-        default: 'browsers:node18.12.0-chrome107'
-        type: string
       cache-key:
         description: 'Cache key for modules and build artifacts.'
         required: false
-        default: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
+        default: ${{ github.sha }}-e2e-modules
         type: string
       record:
         description: 'Record test run.'
@@ -73,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ['prepare']
     container:
-      image: cypress/${{ inputs.run-env }}
+      image: ghcr.io/n8n-io/cypress:node20
       options: --user 1001
     steps:
       - uses: actions/checkout@v4.1.1
@@ -116,7 +111,7 @@ jobs:
   testing:
     runs-on: ubuntu-latest
     container:
-      image: cypress/${{ inputs.run-env }}
+      image: ghcr.io/n8n-io/cypress:node20
       options: --user 1001
     needs: ['prepare', 'install']
     strategy:
@@ -170,7 +165,7 @@ jobs:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           E2E_TESTS: true
-          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ ${{ inputs.run-env }} 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
+          COMMIT_INFO_MESSAGE: 🌳 ${{ inputs.branch }} 🖥️ 🤖 ${{ inputs.user }} 🗃️ ${{ inputs.spec }}
           SHELL: /bin/sh
 
   # Check if all tests passed and set the output variable
