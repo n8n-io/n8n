@@ -13,15 +13,15 @@ import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
-import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingForms } from '@/WaitingForms';
-import { WaitingWebhooks } from '@/WaitingWebhooks';
-import { webhookRequestHandler } from '@/WebhookHelpers';
+import { TestWebhooks } from '@/webhooks/TestWebhooks';
+import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
+import { webhookRequestHandler } from '@/webhooks/WebhookHelpers';
+import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { ActiveWebhooks } from '@/ActiveWebhooks';
 import { GlobalConfig } from '@n8n/config';
 
 @Service()

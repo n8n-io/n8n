@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { CacheService } from '@/services/cache/cache.service';
-import { WebhookService } from '@/services/webhook.service';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WebhookEntity } from '@db/entities/WebhookEntity';
 import { mockInstance } from '@test/mocking';
 
