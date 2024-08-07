@@ -5,20 +5,25 @@ import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type {
-	IResponseCallbackData,
+	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WebhookAccessControlOptions,
 	WebhookRequest,
-} from '@/Interfaces';
+} from './webhook.types';
 import { Logger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
-import { WebhookService } from '@/services/webhook.service';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 
+/**
+ * Service for handling the execution of production webhooks, i.e. webhooks
+ * that belong to activated workflows and use the production URL
+ * (https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls)
+ */
 @Service()
 export class ActiveWebhooks implements IWebhookManager {
 	constructor(
@@ -57,7 +62,7 @@ export class ActiveWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: Response,
-	): Promise<IResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData> {
 		const httpMethod = request.method;
 		const path = request.params.path;
 

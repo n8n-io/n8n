@@ -30,7 +30,7 @@ import type {
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { TestWebhooks } from '@/TestWebhooks';
+import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { Logger } from '@/Logger';
 import type { Project } from '@/databases/entities/Project';
 import { GlobalConfig } from '@n8n/config';
