@@ -163,7 +163,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = await getConnectedTools(this, nodeVersion > 1);
+	const tools = await getConnectedTools(this, nodeVersion > 1, false);
 	let assistantTools;
 
 	if (tools.length) {
