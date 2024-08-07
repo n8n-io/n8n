@@ -1126,7 +1126,6 @@ function expressionUpdated(value: string) {
 	const val: NodeParameterValueType = isResourceLocatorParameter.value
 		? { __rl: true, value, mode: modelValueResourceLocator.value.mode }
 		: value;
-	console.log(val);
 	valueChanged(val);
 }
 
