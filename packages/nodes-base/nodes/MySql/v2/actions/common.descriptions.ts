@@ -33,7 +33,7 @@ export const optionsCollection: INodeProperties = {
 	name: 'options',
 	type: 'collection',
 	default: {},
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	options: [
 		{
 			displayName: 'Connection Timeout',
@@ -130,6 +130,16 @@ export const optionsCollection: INodeProperties = {
 			],
 			hint: 'Applies to NUMERIC and BIGINT columns only',
 			default: 'text',
+			displayOptions: {
+				show: { '/operation': ['select', 'executeQuery'] },
+			},
+		},
+		{
+			displayName: 'Output Decimals as Numbers',
+			name: 'decimalNumbers',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to output DECIMAL types as numbers instead of strings',
 			displayOptions: {
 				show: { '/operation': ['select', 'executeQuery'] },
 			},

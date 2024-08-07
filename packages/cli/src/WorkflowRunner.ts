@@ -28,20 +28,19 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobResponse } from '@/Queue';
-import { Queue } from '@/Queue';
+import type { Job, JobData, JobResult } from '@/scaling/types';
+import { ScalingService } from '@/scaling/scaling.service';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
-import { EventService } from './eventbus/event.service';
+import { EventService } from './events/event.service';
 
 @Service()
 export class WorkflowRunner {
-	private jobQueue: Queue;
+	private readonly scalingService: ScalingService;
 
 	private executionsMode = config.getEnv('executions.mode');
 
@@ -56,7 +55,7 @@ export class WorkflowRunner {
 		private readonly eventService: EventService,
 	) {
 		if (this.executionsMode === 'queue') {
-			this.jobQueue = Container.get(Queue);
+			this.scalingService = Container.get(ScalingService);
 		}
 	}
 
@@ -160,19 +159,11 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
-					void Container.get(InternalHooks).onWorkflowPostExecute(
-						executionId,
-						data.workflowData,
-						executionData,
-						data.userId,
-					);
 					this.eventService.emit('workflow-post-execute', {
-						workflowId: data.workflowData.id,
-						workflowName: data.workflowData.name,
+						workflow: data.workflowData,
 						executionId,
-						success: executionData?.status === 'success',
-						isManual: data.executionMode === 'manual',
 						userId: data.userId,
+						runData: executionData,
 					});
 					if (this.externalHooks.exists('workflow.postExecute')) {
 						try {
@@ -384,9 +375,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.jobQueue.add(jobData, jobOptions);
-
-			this.logger.info(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			job = await this.scalingService.addJob(jobData, jobOptions);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -415,8 +404,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					const queue = Container.get(Queue);
-					await queue.stopJob(job);
+					await Container.get(ScalingService).stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -433,11 +421,11 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<JobResponse> = job.finished();
+				const jobData: Promise<JobResult> = job.finished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<JobResponse>> = [jobData];
+				const racingPromises: Array<Promise<JobResult>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -455,9 +443,9 @@ export class WorkflowRunner {
 					 ************************************************ */
 					let watchDogInterval: NodeJS.Timeout | undefined;
 
-					const watchDog: Promise<JobResponse> = new Promise((res) => {
+					const watchDog: Promise<JobResult> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id);
+							const currentJob = await this.scalingService.getJob(job.id);
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message

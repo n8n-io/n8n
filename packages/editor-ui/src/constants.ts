@@ -92,7 +92,6 @@ export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/manual-install/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
@@ -648,6 +647,7 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	WAIT_NODE_TYPE,
 	DISCORD_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';

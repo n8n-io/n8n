@@ -44,7 +44,7 @@ import {
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class LdapService {

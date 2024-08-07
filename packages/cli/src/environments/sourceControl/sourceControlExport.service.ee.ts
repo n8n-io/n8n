@@ -293,11 +293,18 @@ export class SourceControlExportService {
 						};
 					}
 
+					/**
+					 * Edge case: Do not export `oauthTokenData`, so that that the
+					 * pulling instance reconnects instead of trying to use stubbed values.
+					 */
+					const credentialData = credentials.getData();
+					const { oauthTokenData, ...rest } = credentialData;
+
 					const stub: ExportableCredential = {
 						id,
 						name,
 						type,
-						data: this.replaceCredentialData(credentials.getData()),
+						data: this.replaceCredentialData(rest),
 						ownedBy: owner,
 					};
 

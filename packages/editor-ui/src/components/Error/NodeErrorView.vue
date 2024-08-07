@@ -21,6 +21,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 
 type Props = {
 	error: NodeError | NodeApiError | NodeOperationError;
+	compact?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -178,6 +179,10 @@ function addItemIndexSuffix(message: string): string {
 }
 
 function getErrorMessage(): string {
+	if ('obfuscate' in props.error && props.error.obfuscate === true) {
+		return i18n.baseText('nodeErrorView.showMessage.obfuscate');
+	}
+
 	let message = '';
 
 	const isSubNodeError =
@@ -377,7 +382,7 @@ function copySuccess() {
 			></div>
 		</div>
 
-		<div class="node-error-view__info">
+		<div v-if="!compact" class="node-error-view__info">
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">
 					{{ i18n.baseText('nodeErrorView.details.title') }}

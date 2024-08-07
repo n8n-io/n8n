@@ -76,9 +76,7 @@ export type AuthlessRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	user: never;
-};
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>;
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -308,7 +306,7 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
+		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
@@ -371,7 +369,7 @@ export declare namespace MFA {
 export declare namespace OAuthRequest {
 	namespace OAuth1Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthenticatedRequest<
+		type Callback = AuthlessRequest<
 			{},
 			{},
 			{},
@@ -383,7 +381,7 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthlessRequest<{}, {}, {}, { code: string; state: string }>;
 	}
 }
 

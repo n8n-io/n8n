@@ -55,7 +55,7 @@ export const formFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

@@ -1795,8 +1795,8 @@ export type AddedNode = {
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
-	from: { nodeIndex: number; outputIndex?: number };
-	to: { nodeIndex: number; inputIndex?: number };
+	from: { nodeIndex: number; outputIndex?: number; type?: NodeConnectionType };
+	to: { nodeIndex: number; inputIndex?: number; type?: NodeConnectionType };
 };
 
 export type AddedNodesAndConnections = {
