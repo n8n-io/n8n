@@ -73,6 +73,12 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
+			'session-started': (event) => this.sessionStarted(event),
+			'instance-stopped': () => this.instanceStopped(),
+			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
+			'first-production-workflow-succeeded': (event) =>
+				this.firstProductionWorkflowSucceeded(event),
+			'first-workflow-data-loaded': (event) => this.firstWorkflowDataLoaded(event),
 			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
 			'user-changed-role': (event) => this.userChangedRole(event),
 			'user-retrieved-user': (event) => this.userRetrievedUser(event),
@@ -687,7 +693,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 
-	// #region Server
+	// #region Lifecycle
 
 	private async serverStarted() {
 		const cpus = os.cpus();
@@ -750,6 +756,48 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Instance started', {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
+		});
+	}
+
+	private sessionStarted({ pushRef }: RelayEventMap['session-started']) {
+		this.telemetry.track('Session started', { session_id: pushRef });
+	}
+
+	private instanceStopped() {
+		this.telemetry.track('User instance stopped');
+	}
+
+	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
+		this.telemetry.track('Owner finished instance setup', { user_id: userId });
+	}
+
+	private firstProductionWorkflowSucceeded({
+		projectId,
+		workflowId,
+		userId,
+	}: RelayEventMap['first-production-workflow-succeeded']) {
+		this.telemetry.track('Workflow first prod success', {
+			project_id: projectId,
+			workflow_id: workflowId,
+			user_id: userId,
+		});
+	}
+
+	private firstWorkflowDataLoaded({
+		userId,
+		workflowId,
+		nodeType,
+		nodeId,
+		credentialType,
+		credentialId,
+	}: RelayEventMap['first-workflow-data-loaded']) {
+		this.telemetry.track('Workflow first data fetched', {
+			user_id: userId,
+			workflow_id: workflowId,
+			node_type: nodeType,
+			node_id: nodeId,
+			credential_type: credentialType,
+			credential_id: credentialId,
 		});
 	}
 
