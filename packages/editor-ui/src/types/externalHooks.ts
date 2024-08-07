@@ -44,15 +44,7 @@ interface UpdatedWorkflowSettingsEventData {
 interface NodeTypeChangedEventData {
 	nodeSubtitle?: string;
 }
-interface InsertedItemFromExpEditorEventData {
-	parameter: {
-		displayName: string;
-	};
-	value: string;
-	selectedItem: {
-		variable: string;
-	};
-}
+
 interface ExpressionEditorEventsData {
 	dialogVisible: boolean;
 	value: string;
