@@ -16,7 +16,7 @@ class WebhookRequestHandler {
 	constructor(private readonly webhookManager: IWebhookManager) {}
 
 	/**
-	 * Handles an incoming webhook requests. Handles CORS and delegates the
+	 * Handles an incoming webhook request. Handles CORS and delegates the
 	 * request to the webhook manager to execute the webhook.
 	 */
 	async handleRequest(req: WebhookRequest | WebhookCORSRequest, res: express.Response) {
