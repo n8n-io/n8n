@@ -40,6 +40,8 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
+import type { User } from '@/databases/entities/User';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -92,6 +94,7 @@ export class ExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	async findOne(
@@ -477,5 +480,17 @@ export class ExecutionService {
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
+	}
+
+	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {
+		const workflowIds = [...new Set(summaries.map((s) => s.workflowId))];
+
+		const scopes = Object.fromEntries(
+			await this.workflowSharingService.getSharedWorkflowScopes(workflowIds, user),
+		);
+
+		for (const s of summaries) {
+			s.scopes = scopes[s.workflowId] ?? [];
+		}
 	}
 }
