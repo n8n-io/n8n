@@ -1,14 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	type IDataObject,
-	jsonParse,
 	NodeOperationError,
 	type IExecuteFunctions,
-	type ILoadOptionsFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+
 import set from 'lodash/set';
 
 import { JavaScriptSandbox } from '../Code/JavaScriptSandbox';
@@ -48,7 +46,6 @@ export class AiTransform implements INodeType {
 						inputFieldMaxLength: 500,
 						action: {
 							type: 'askAiCodeGeneration',
-							handler: 'generateCode',
 							target: 'jsCode',
 						},
 					},
@@ -79,38 +76,7 @@ export class AiTransform implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'AI Service URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				isNodeSetting: true,
-			},
 		],
-	};
-
-	methods = {
-		actionHandler: {
-			async generateCode(this: ILoadOptionsFunctions, payload: IDataObject | string | undefined) {
-				const url = this.getNodeParameter('url', 0) as string;
-				let body: IDataObject = {};
-				if (payload) {
-					body = typeof payload === 'string' ? jsonParse(payload) : payload;
-				}
-				const response = (await this.helpers.httpRequest({
-					method: 'POST',
-					url,
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body,
-				})) as {
-					data: { code: string };
-				};
-
-				return response?.data?.code;
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions) {

@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import type { INodeProperties, NodePropertyAction } from 'n8n-workflow';
+import { ApplicationError, type INodeProperties, type NodePropertyAction } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { ref, computed, onMounted } from 'vue';
 import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSchemas } from './utils';
 import { ASK_AI_EXPERIMENT } from '@/constants';
@@ -28,7 +27,6 @@ const props = defineProps<{
 	path: string;
 }>();
 
-const nodeTypesStore = useNodeTypesStore();
 const posthog = usePostHog();
 const rootStore = useRootStore();
 
@@ -116,7 +114,7 @@ async function onSubmit() {
 		value: prompt.value,
 	});
 
-	const { type, handler, target } = action;
+	const { type, target } = action;
 
 	startLoading();
 
@@ -147,21 +145,7 @@ async function onSubmit() {
 					const { code } = await generateCodeForPrompt(restApiContext, payload);
 					value = code;
 				} else {
-					if (handler) {
-						const currentNodeParameters = activeNode.parameters;
-
-						value = await nodeTypesStore.getNodeParameterActionResult({
-							nodeTypeAndVersion: {
-								name: activeNode.type,
-								version: activeNode.typeVersion,
-							},
-							path: props.path,
-							currentNodeParameters,
-							credentials: activeNode.credentials,
-							handler,
-							payload,
-						});
-					}
+					throw new ApplicationError('AI code generation is not enabled');
 				}
 
 				if (value === undefined) return;
