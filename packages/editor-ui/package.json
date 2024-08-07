@@ -24,7 +24,7 @@
     "@codemirror/language": "^6.10.2",
     "@codemirror/lint": "^6.8.1",
     "@codemirror/state": "^6.4.1",
-    "@codemirror/view": "^6.28.4",
+    "@codemirror/view": "^6.30.0",
     "@fontsource/open-sans": "^4.5.0",
     "@jsplumb/browser-ui": "^5.13.2",
     "@jsplumb/common": "^5.13.2",

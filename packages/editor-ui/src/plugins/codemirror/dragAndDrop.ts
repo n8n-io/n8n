@@ -1,5 +1,6 @@
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
+import { syntaxTree } from '@codemirror/language';
 import { useNDVStore } from '@/stores/ndv.store';
 
 const setDropCursorPos = StateEffect.define<number | null>({
@@ -102,7 +103,9 @@ const drawDropCursor = ViewPlugin.fromClass(
 		eventObservers: {
 			mousemove(event) {
 				if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping') return;
-				this.setDropPos(this.view.posAtCoords({ x: event.clientX, y: event.clientY }));
+				const pos = posAtCoords(this.view, eventToCoord(event));
+
+				this.setDropPos(pos);
 			},
 			mouseleave() {
 				this.setDropPos(null);
@@ -114,8 +117,23 @@ const drawDropCursor = ViewPlugin.fromClass(
 	},
 );
 
+function eventToCoord(event: MouseEvent): { x: number; y: number } {
+	return { x: event.clientX, y: event.clientY };
+}
+
+function posAtCoords(view: EditorView, coord: { x: number; y: number }) {
+	const pos = view.posAtCoords(coord, false);
+	const node = syntaxTree(view.state).resolve(pos);
+
+	if (node.name === 'Resolvable') {
+		return node.to;
+	}
+
+	return pos;
+}
+
 export async function dropInEditor(view: EditorView, event: MouseEvent, value: string) {
-	const dropPos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+	const dropPos = posAtCoords(view, eventToCoord(event));
 	const changes = view.state.changes({ from: dropPos, insert: value });
 	const anchor = changes.mapPos(dropPos, -1);
 	const head = changes.mapPos(dropPos, 1);

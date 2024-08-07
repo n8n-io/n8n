@@ -125,7 +125,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isReadOnly: false,
 });
 const emit = defineEmits<{
-	'update:modelValue': [value: string];
+	'update:model-value': [value: string];
 	closeDialog: [];
 }>();
 
@@ -193,6 +193,7 @@ watch(
 
 function valueChanged(update: { value: string; segments: Segment[] }) {
 	segments.value = update.segments;
+	emit('update:model-value', update.value);
 }
 
 function closeDialog() {
