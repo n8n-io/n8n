@@ -328,6 +328,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await this.update({ id: executionId }, executionInformation);
 		}
 
+		console.log(data);
+
 		if (data || workflowData) {
 			const executionData: Partial<ExecutionData> = {};
 			if (workflowData) {

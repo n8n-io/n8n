@@ -62,6 +62,7 @@ const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledCon
 		database: path.resolve(Container.get(InstanceSettings).n8nFolder, sqliteConfig.database),
 		migrations: sqliteMigrations,
 	};
+
 	if (sqliteConfig.poolSize > 0) {
 		return {
 			type: 'sqlite-pooled',

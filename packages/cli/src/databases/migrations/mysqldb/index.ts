@@ -59,6 +59,7 @@ import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNo
 import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
+import { CreateAnnotationTables1723039529455 } from '../common/1723039529455-CreateExecutionAnnotationTables';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -121,4 +122,5 @@ export const mysqlMigrations: Migration[] = [
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
+	CreateAnnotationTables1723039529455,
 ];
