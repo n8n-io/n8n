@@ -9,7 +9,7 @@ import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { N8N_VERSION } from '@/constants';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -168,7 +168,7 @@ export class Telemetry {
 		}
 	}
 
-	@OnShutdown()
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
 
