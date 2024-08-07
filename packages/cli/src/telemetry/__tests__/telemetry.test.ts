@@ -265,22 +265,6 @@ describe('Telemetry', () => {
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
 		});
 	});
-
-	describe('pulse', () => {
-		let pulseSpy: jest.SpyInstance;
-		beforeAll(() => {
-			startPulseSpy.mockRestore();
-		});
-
-		beforeEach(() => {
-			fakeJestSystemTime(testDateTime);
-			pulseSpy = jest.spyOn(Telemetry.prototype as any, 'pulse').mockName('pulseSpy');
-		});
-
-		afterEach(() => {
-			pulseSpy.mockClear();
-		});
-	});
 });
 
 const fakeJestSystemTime = (dateTime: string | Date): Date => {
