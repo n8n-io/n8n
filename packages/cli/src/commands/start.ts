@@ -109,7 +109,7 @@ export class Start extends BaseCommand {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
-			Container.get(EventService).emit('instance-stopped'); // @TODO: Or should we await on this?
+			Container.get(EventService).emit('instance-stopped');
 
 			await Container.get(ActiveExecutions).shutdown();
 

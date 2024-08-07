@@ -15,6 +15,7 @@ import { SourceControlPreferencesService } from '../environments/sourceControl/s
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -167,10 +168,9 @@ export class Telemetry {
 		}
 	}
 
-	async trackN8nStop(): Promise<void> {
+	@OnShutdown()
+	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-
-		this.track('User instance stopped');
 
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}

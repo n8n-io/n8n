@@ -74,7 +74,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
 			'session-started': (event) => this.sessionStarted(event),
-			'instance-stopped': async () => await this.instanceStopped(),
+			'instance-stopped': () => this.instanceStopped(),
 			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
 			'first-production-workflow-succeeded': (event) =>
 				this.firstProductionWorkflowSucceeded(event),
@@ -763,8 +763,8 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Session started', { session_id: pushRef });
 	}
 
-	private async instanceStopped() {
-		return await this.telemetry.trackN8nStop();
+	private instanceStopped() {
+		this.telemetry.track('User instance stopped');
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
