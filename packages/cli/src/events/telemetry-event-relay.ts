@@ -174,10 +174,6 @@ export class TelemetryEventRelay extends EventRelay {
 		workflowUpdates,
 		forced,
 	}: RelayEventMap['source-control-user-pulled-api']) {
-		console.log('source-control-user-pulled-api', {
-			workflow_updates: workflowUpdates,
-			forced,
-		});
 		this.telemetry.track('User pulled via API', {
 			workflow_updates: workflowUpdates,
 			forced,

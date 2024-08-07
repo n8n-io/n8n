@@ -4,8 +4,8 @@ import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { WebhookServer } from '@/WebhookServer';
 import { ScalingService } from '@/scaling/scaling.service';
+import { WebhookServer } from '@/webhooks/WebhookServer';
 import { BaseCommand } from './BaseCommand';
 
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
@@ -86,7 +86,7 @@ export class Webhook extends BaseCommand {
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
-		this.logger.debug('External seecrets init complete');
+		this.logger.debug('External secrets init complete');
 	}
 
 	async run() {

@@ -1,7 +1,7 @@
 import type { CacheService } from '@/services/cache/cache.service';
 import type { OrchestrationService } from '@/services/orchestration.service';
-import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
-import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
+import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { mock } from 'jest-mock-extended';
 
 describe('TestWebhookRegistrationsService', () => {

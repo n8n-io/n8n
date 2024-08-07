@@ -610,7 +610,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive['workflowRunning'];
+			return this.uiStore.isActionActive.workflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -4428,7 +4428,7 @@ export default defineComponent({
 					from.outputIndex ?? 0,
 					toNode.name,
 					to.inputIndex ?? 0,
-					NodeConnectionType.Main,
+					from.type ?? NodeConnectionType.Main,
 				);
 			}
 
@@ -4446,6 +4446,22 @@ export default defineComponent({
 						nodeName: nodeUi.name,
 						position: [nodeUi.position[0], nodeUi.position[1] + 100 * (index + 1)],
 					});
+				});
+			}
+
+			const lastNodeType = this.nodeTypesStore.getNodeType(lastAddedNode.type);
+			const isSubNode = NodeHelpers.isSubNodeType(lastNodeType);
+
+			// When adding a sub-node and there's more than one node added at the time, it must mean that it's
+			// connected to a root node, so we adjust the position of the sub-node to make it appear in the correct
+			// in relation to the root node
+			if (isSubNode && nodes.length > 1) {
+				this.onMoveNode({
+					nodeName: lastAddedNode.name,
+					position: [
+						lastAddedNode.position[0] - NodeViewUtils.NODE_SIZE * 2.5,
+						lastAddedNode.position[1] + NodeViewUtils.NODE_SIZE * 1.5,
+					],
 				});
 			}
 

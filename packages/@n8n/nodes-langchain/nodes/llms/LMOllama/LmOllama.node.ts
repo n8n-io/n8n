@@ -27,7 +27,7 @@ export class LmOllama implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Text Completion Models'],
 			},
 			resources: {

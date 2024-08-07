@@ -3,8 +3,8 @@ import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
-import type { IWebhookManager, WebhookCORSRequest, WebhookRequest } from '@/Interfaces';
-import { webhookRequestHandler } from '@/WebhookHelpers';
+import type { IWebhookManager, WebhookCORSRequest, WebhookRequest } from '@/webhooks/webhook.types';
+import { webhookRequestHandler } from '@/webhooks/WebhookHelpers';
 
 describe('WebhookHelpers', () => {
 	describe('webhookRequestHandler', () => {
