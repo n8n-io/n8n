@@ -41,7 +41,7 @@ const autoScrollDeps = ref<AutoScrollDeps>({
 	cardsMounted: false,
 	scroll: true,
 });
-const currentWorkflowExecutionsCardRefs = ref<ComponentPublicInstance[]>([]);
+const currentWorkflowExecutionsCardRefs = ref<Record<string, ComponentPublicInstance>>({});
 const sidebarContainerRef = ref<HTMLElement | null>(null);
 const executionListRef = ref<HTMLElement | null>(null);
 
@@ -76,9 +76,12 @@ watch(
 	{ deep: true },
 );
 
-function addCurrentWorkflowExecutionsCardRef(comp: Element | ComponentPublicInstance | null) {
-	if (comp && isComponentPublicInstance(comp)) {
-		currentWorkflowExecutionsCardRefs.value.push(comp);
+function addCurrentWorkflowExecutionsCardRef(
+	comp: Element | ComponentPublicInstance | null,
+	id?: string,
+) {
+	if (comp && isComponentPublicInstance(comp) && id) {
+		currentWorkflowExecutionsCardRefs.value[id] = comp;
 	}
 }
 
@@ -125,8 +128,9 @@ function onAutoRefreshChange(enabled: boolean) {
 function checkListSize(): void {
 	// Find out how many execution card can fit into list
 	// and load more if needed
-	if (sidebarContainerRef.value && currentWorkflowExecutionsCardRefs.value.length) {
-		const cardElement = currentWorkflowExecutionsCardRefs.value[0].$el as HTMLElement;
+	const cards = Object.values(currentWorkflowExecutionsCardRefs.value);
+	if (sidebarContainerRef.value && cards.length) {
+		const cardElement = cards[0].$el as HTMLElement;
 		const listCapacity = Math.ceil(
 			sidebarContainerRef.value.clientHeight / cardElement.clientHeight,
 		);
@@ -140,10 +144,11 @@ function checkListSize(): void {
 function scrollToActiveCard(): void {
 	if (
 		executionListRef.value &&
-		currentWorkflowExecutionsCardRefs.value.length &&
-		executionsStore.activeExecution
+		executionsStore.activeExecution &&
+		currentWorkflowExecutionsCardRefs.value[executionsStore.activeExecution.id]
 	) {
-		const cardElement = currentWorkflowExecutionsCardRefs.value[0].$el as HTMLElement;
+		const cardElement =
+			currentWorkflowExecutionsCardRefs.value[executionsStore.activeExecution.id].$el;
 		const cardRect = cardElement.getBoundingClientRect();
 		const LIST_HEADER_OFFSET = 200;
 		if (cardRect.top > executionListRef.value.offsetHeight) {
@@ -198,7 +203,7 @@ function scrollToActiveCard(): void {
 			</div>
 			<WorkflowExecutionsCard
 				v-else-if="temporaryExecution"
-				:ref="(el) => addCurrentWorkflowExecutionsCardRef(el)"
+				:ref="(el) => addCurrentWorkflowExecutionsCardRef(el, temporaryExecution?.id)"
 				:execution="temporaryExecution"
 				:data-test-id="`execution-details-${temporaryExecution.id}`"
 				:show-gap="true"
@@ -209,7 +214,7 @@ function scrollToActiveCard(): void {
 				<WorkflowExecutionsCard
 					v-for="execution in executions"
 					:key="execution.id"
-					:ref="(el) => addCurrentWorkflowExecutionsCardRef(el)"
+					:ref="(el) => addCurrentWorkflowExecutionsCardRef(el, execution.id)"
 					:execution="execution"
 					:workflow-permissions="workflowPermissions"
 					:data-test-id="`execution-details-${execution.id}`"
