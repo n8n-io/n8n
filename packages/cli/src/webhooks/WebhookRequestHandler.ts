@@ -7,14 +7,7 @@ import type {
 } from '@/webhooks/webhook.types';
 import * as ResponseHelper from '@/ResponseHelper';
 
-export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
-	'DELETE',
-	'GET',
-	'HEAD',
-	'PATCH',
-	'POST',
-	'PUT',
-];
+const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
 	constructor(private readonly webhookManager: IWebhookManager) {}
