@@ -6,8 +6,7 @@ import { N8nButton, N8nInput, N8nTooltip } from 'n8n-design-system/components';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { getSchemas } from './utils';
+import { getSchemas, getParentNodes } from './utils';
 import { ASK_AI_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
@@ -53,22 +52,6 @@ const isSubmitEnabled = computed(() => {
 
 	return true;
 });
-
-function getParentNodes() {
-	const activeNode = useNDVStore().activeNode;
-	const { getCurrentWorkflow, getNodeByName } = useWorkflowsStore();
-	const workflow = getCurrentWorkflow();
-
-	if (!activeNode || !workflow) return [];
-
-	return workflow
-		.getParentNodesByDepth(activeNode?.name)
-		.filter(({ name }, i, nodes) => {
-			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
-		})
-		.map((n) => getNodeByName(n.name))
-		.filter((n) => n !== null);
-}
 
 function startLoading() {
 	isLoading.value = true;
