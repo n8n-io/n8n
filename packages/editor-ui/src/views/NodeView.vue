@@ -4590,11 +4590,11 @@ export default defineComponent({
 			}
 		},
 		async readOnlyEnvRouteCheck() {
-			await this.$nextTick();
 			if (
 				(this.readOnlyEnv || !this.projectPermissions.workflow.create) &&
 				(this.$route.name === VIEWS.NEW_WORKFLOW || this.$route.name === VIEWS.TEMPLATE_IMPORT)
 			) {
+				await this.$nextTick();
 				this.resetWorkspace();
 				this.uiStore.stateIsDirty = false;
 
