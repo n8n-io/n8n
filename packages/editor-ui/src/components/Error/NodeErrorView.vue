@@ -16,10 +16,18 @@ import type {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils/htmlUtils';
-import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
+import { MAX_DISPLAY_DATA_SIZE, NEW_ASSISTANT_SESSION_MODAL } from '@/constants';
 import type { BaseTextKey } from '@/plugins/i18n';
+import { useAssistantStore } from '@/stores/assistant.store';
+import type { ChatRequest } from '@/types/assistant.types';
+import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
+import { useUIStore } from '@/stores/ui.store';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
+	// TODO: .node can be undefined
 	error: NodeError | NodeApiError | NodeOperationError;
 	compact?: boolean;
 };
@@ -32,6 +40,10 @@ const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
+const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const telemetry = useTelemetry();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -103,6 +115,41 @@ const prepareRawMessages = computed(() => {
 	});
 	return returnData;
 });
+
+const isAskAssistantAvailable = computed(() => {
+	const isCustomNode =
+		props.error.node?.type === undefined || isCommunityPackageName(props.error.node);
+	return assistantStore.canShowAssistantButtons && !isCustomNode;
+});
+
+const assistantAlreadyAsked = computed(() => {
+	return assistantStore.isNodeErrorActive({
+		error: simplifyErrorForAssistant(props.error),
+		node: props.error.node || ndvStore.activeNode,
+	});
+});
+
+function simplifyErrorForAssistant(
+	error: NodeError | NodeApiError | NodeOperationError,
+): ChatRequest.ErrorContext['error'] {
+	const simple: ChatRequest.ErrorContext['error'] = {
+		name: error.name,
+		message: error.message,
+	};
+	if ('type' in error) {
+		simple.type = error.type;
+	}
+	if ('description' in error && error.description) {
+		simple.description = error.description;
+	}
+	if (error.stack) {
+		simple.stack = error.stack;
+	}
+	if ('lineNumber' in error) {
+		error.lineNumber = error.lineNumber;
+	}
+	return simple;
+}
 
 function nodeVersionTag(nodeType: NodeError['node']): string {
 	if (!nodeType || ('hidden' in nodeType && nodeType.hidden)) {
@@ -364,6 +411,38 @@ function copySuccess() {
 		type: 'info',
 	});
 }
+
+async function onAskAssistantClick() {
+	const { message, lineNumber, description } = props.error;
+	const sessionInProgress = !assistantStore.isSessionEnded;
+	const node = props.error.node || ndvStore.activeNode;
+	const errorPayload: ChatRequest.ErrorContext = {
+		error: {
+			name: props.error.name,
+			message,
+			lineNumber,
+			description: description ?? '',
+			type: 'type' in props.error ? props.error.type : undefined,
+		},
+		node,
+	};
+	if (sessionInProgress) {
+		uiStore.openModalWithData({
+			name: NEW_ASSISTANT_SESSION_MODAL,
+			data: { context: errorPayload },
+		});
+		return;
+	}
+	await assistantStore.initErrorHelper(errorPayload);
+	telemetry.track('User opened assistant', {
+		source: 'error',
+		task: 'error',
+		has_existing_session: false,
+		workflow_id: workflowsStore.workflowId,
+		node_type: node.type,
+		error: props.error,
+	});
+}
 </script>
 
 <template>
@@ -380,6 +459,9 @@ function copySuccess() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
+			<div v-if="isAskAssistantAvailable" class="node-error-view__assistant-button">
+				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+			</div>
 		</div>
 
 		<div v-if="!compact" class="node-error-view__info">
@@ -636,6 +718,11 @@ function copySuccess() {
 		}
 	}
 
+	&__assistant-button {
+		margin-left: var(--spacing-s);
+		margin-bottom: var(--spacing-xs);
+	}
+
 	&__debugging {
 		font-size: var(--font-size-s);
 
@@ -764,5 +851,9 @@ function copySuccess() {
 			word-wrap: break-word;
 		}
 	}
+}
+
+.node-error-view__assistant-button {
+	margin-top: var(--spacing-xs);
 }
 </style>

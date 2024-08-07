@@ -87,6 +87,7 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_ADMIN]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_EDITOR]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {

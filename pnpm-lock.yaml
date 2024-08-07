@@ -629,6 +629,9 @@ importers:
       '@n8n/typeorm':
         specifier: 0.3.20-10
         version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)
+      '@n8n_io/ai-assistant-sdk':
+        specifier: ^1.8.2
+        version: 1.8.2
       '@n8n_io/license-sdk':
         specifier: 2.13.0
         version: 2.13.0
@@ -1075,6 +1078,9 @@ importers:
       markdown-it-task-lists:
         specifier: ^2.1.1
         version: 2.1.1
+      parse-diff:
+        specifier: ^0.11.1
+        version: 0.11.1
       sanitize-html:
         specifier: 2.12.1
         version: 2.12.1
@@ -4215,6 +4221,10 @@ packages:
     resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
+
+  '@n8n_io/ai-assistant-sdk@1.8.2':
+    resolution: {integrity: sha512-9jJWUiyxg/OsGi926U3hg7u20nVNN9iuuykSNHHUOGLTcnk4Wa1EsXu/zHOSdgE2wk0QaGhTCe+PLQBf26J6mQ==}
+    engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.0':
     resolution: {integrity: sha512-iVER9RjR6pP4ujceG7rSMoHU0IMI5HvwNHhC8ezq1VwbRq8W1ecYQpTbIrUTgK6gNMyeLRfySkNlVGejKXJ3MQ==}
@@ -7552,6 +7562,9 @@ packages:
   es6-promise@3.3.1:
     resolution: {integrity: sha512-SOp9Phqvqn7jtEUxPWdWfWoLmyt2VaJ6MpvP9Comy1MceMXqE6bxvaTu4iaxpYYPzhny28Lc+M87/c2cPK6lDg==}
 
+  es6-promise@4.2.8:
+    resolution: {integrity: sha512-HJDGx5daxeIvxdBxvG2cb9g4tEvwIk3i8+nhX0yGrYmZUzbkdg8QbDevheDB8gd0//uPj4c1EQua8Q+MViT0/w==}
+
   esbuild-plugin-alias@0.2.1:
     resolution: {integrity: sha512-jyfL/pwPqaFXyKnj8lP8iLk6Z0m099uXR45aSN8Av1XD4vhvQutxxPzgA2bTcAwQpa1zCXDcWOlhFgyP3GKqhQ==}
 
@@ -7849,6 +7862,10 @@ packages:
   express-handlebars@7.1.2:
     resolution: {integrity: sha512-ss9d3mBChOLTEtyfzXCsxlItUxpgS3i4cb/F70G6Q5ohQzmD12XB4x/Y9U6YboeeYBJZt7WQ5yUNu7ZSQ/EGyQ==}
     engines: {node: '>=v16'}
+
+  express-http-proxy@2.0.0:
+    resolution: {integrity: sha512-TXxcPFTWVUMSEmyM6iX2sT/JtmqhqngTq29P+eXTVFdtxZrTmM8THUYK59rUXiln0FfPGvxEpGRnVrgvHksXDw==}
+    engines: {node: '>=6.0.0'}
 
   express-openapi-validator@5.1.6:
     resolution: {integrity: sha512-CF24Pef5uThjdsCbjo1UP2mYx2YCkQl1HFoikCFFafFpZBCZ0YErD/RbqlcnKbKM9tMwXZsjAuuO84b2hmdF4g==}
@@ -10603,6 +10620,9 @@ packages:
   parent-module@1.0.1:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
+
+  parse-diff@0.11.1:
+    resolution: {integrity: sha512-Oq4j8LAOPOcssanQkIjxosjATBIEJhCxMCxPhMu+Ci4wdNmAEdx0O+a7gzbR2PyKXgKPvRLIN5g224+dJAsKHA==}
 
   parse-json@5.2.0:
     resolution: {integrity: sha512-ayCKvm/phCGxOkYRSCM82iDwct8/EonSEgCSxWxD7ve6jHggsFl4fZVQBPRNgQoKiuV/odhFrGzQXZwbifC8Rg==}
@@ -14438,7 +14458,7 @@ snapshots:
       '@babel/traverse': 7.24.6
       '@babel/types': 7.24.6
       convert-source-map: 2.0.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 7.6.0
@@ -15731,7 +15751,7 @@ snapshots:
   '@eslint/eslintrc@2.1.4':
     dependencies:
       ajv: 6.12.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       espree: 9.6.1
       globals: 13.20.0
       ignore: 5.2.4
@@ -15891,7 +15911,7 @@ snapshots:
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.2
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -16709,6 +16729,13 @@ snapshots:
     dependencies:
       acorn: 8.12.1
       acorn-walk: 8.3.2
+
+  '@n8n_io/ai-assistant-sdk@1.8.2':
+    dependencies:
+      debug: 4.3.5(supports-color@8.1.1)
+      express-http-proxy: 2.0.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@n8n_io/license-sdk@2.13.0':
     dependencies:
@@ -18942,7 +18969,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 7.2.0(typescript@5.5.2)
       '@typescript-eslint/utils': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       eslint: 8.57.0
       ts-api-utils: 1.0.1(typescript@5.5.2)
     optionalDependencies:
@@ -18972,7 +18999,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 7.2.0
       '@typescript-eslint/visitor-keys': 7.2.0
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.5(supports-color@8.1.1)
       globby: 11.1.0
       is-glob: 4.0.3
       minimatch: 9.0.3
@@ -21190,6 +21217,8 @@ snapshots:
 
   es6-promise@3.3.1: {}
 
+  es6-promise@4.2.8: {}
+
   esbuild-plugin-alias@0.2.1: {}
 
   esbuild-register@3.5.0(esbuild@0.20.2):
@@ -21602,6 +21631,14 @@ snapshots:
       glob: 10.3.10
       graceful-fs: 4.2.11
       handlebars: 4.7.8
+
+  express-http-proxy@2.0.0:
+    dependencies:
+      debug: 3.2.7(supports-color@5.5.0)
+      es6-promise: 4.2.8
+      raw-body: 2.5.1
+    transitivePeerDependencies:
+      - supports-color
 
   express-openapi-validator@5.1.6:
     dependencies:
@@ -24807,6 +24844,8 @@ snapshots:
   parent-module@1.0.1:
     dependencies:
       callsites: 3.1.0
+
+  parse-diff@0.11.1: {}
 
   parse-json@5.2.0:
     dependencies:

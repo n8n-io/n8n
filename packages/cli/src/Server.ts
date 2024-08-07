@@ -35,6 +35,10 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { License } from './License';
+import { AuthService } from './auth/auth.service';
+import { getAiServiceProxyMiddleware } from '@n8n_io/ai-assistant-sdk';
+import { GlobalConfig } from '@n8n/config';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 import '@/controllers/activeWorkflows.controller';
@@ -380,6 +384,36 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
+	}
+
+	async configureProxyEndpoints(): Promise<void> {
+		const licenseService = Container.get(License);
+		const licenseCert = await licenseService.loadCertStr();
+		const authService = Container.get(AuthService);
+		const consumerId = licenseService.getConsumerId();
+		const apiRestPath = Container.get(GlobalConfig).endpoints.rest;
+		const aiAssistantEnabled = licenseService.isAiAssistantEnabled();
+
+		const aiServiceApiBase = config.get('aiAssistant.baseUrl');
+
+		if (!aiAssistantEnabled) return;
+
+		this.app.use(
+			`/${apiRestPath}/ai-proxy`,
+			cookieParser(),
+			(req: APIRequest, _, next) => {
+				req.browserId = req.headers['browser-id'] as string;
+				next();
+			},
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			authService.authMiddleware,
+			getAiServiceProxyMiddleware({
+				licenseCert,
+				consumerId,
+				n8nVersion: N8N_VERSION,
+				options: { aiServiceApiBase, timeout: 20000 },
+			}),
+		);
 	}
 
 	protected setupPushServer(): void {
