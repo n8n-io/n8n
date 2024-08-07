@@ -467,6 +467,7 @@ export interface IGetExecuteWebhookFunctions {
 		mode: WorkflowExecuteMode,
 		webhookData: IWebhookData,
 		closeFunctions: CloseFunction[],
+		runExecutionData: IRunExecutionData | null,
 	): IWebhookFunctions;
 }
 
@@ -1465,6 +1466,7 @@ export namespace MultiPartFormData {
 		mimetype?: string;
 		originalFilename?: string;
 		newFilename: string;
+		size?: number;
 	}
 
 	export type Request = express.Request<
@@ -2257,6 +2259,7 @@ export interface WorkflowTestData {
 	};
 	output: {
 		nodeExecutionOrder?: string[];
+		testAllOutputs?: boolean;
 		nodeData: {
 			[key: string]: any[][];
 		};

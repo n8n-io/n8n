@@ -10,14 +10,12 @@ import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
-import config from '@/config';
-
 import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { GlobalConfig } from '@n8n/config';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 async function createApiRouter(
 	version: string,
@@ -25,7 +23,7 @@ async function createApiRouter(
 	handlersDirectory: string,
 	publicApiEndpoint: string,
 ): Promise<Router> {
-	const n8nPath = config.getEnv('path');
+	const n8nPath = Container.get(GlobalConfig).path;
 	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI

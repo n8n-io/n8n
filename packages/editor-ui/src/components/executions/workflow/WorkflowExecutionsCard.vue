@@ -185,6 +185,16 @@ function onRetryMenuItemSelect(action: string): void {
 		}
 	}
 
+	&.new {
+		&,
+		& .executionLink {
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-new);
+		}
+		.statusLabel {
+			color: var(--color-text-dark);
+		}
+	}
+
 	&.waiting {
 		&,
 		& .executionLink {

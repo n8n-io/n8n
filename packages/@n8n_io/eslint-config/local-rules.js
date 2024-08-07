@@ -448,6 +448,36 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-type-unsafe-event-emitter': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Disallow extending from `EventEmitter`, which is not type-safe.',
+				recommended: 'error',
+			},
+			messages: {
+				noExtendsEventEmitter: 'Extend from the type-safe `TypedEmitter` class instead.',
+			},
+		},
+		create(context) {
+			return {
+				ClassDeclaration(node) {
+					if (
+						node.superClass &&
+						node.superClass.type === 'Identifier' &&
+						node.superClass.name === 'EventEmitter' &&
+						node.id.name !== 'TypedEmitter'
+					) {
+						context.report({
+							node: node.superClass,
+							messageId: 'noExtendsEventEmitter',
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>

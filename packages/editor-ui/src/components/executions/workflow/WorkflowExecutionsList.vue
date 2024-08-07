@@ -2,54 +2,75 @@
 import { computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
-import { MAIN_HEADER_TABS, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useMessage } from '@/composables/useMessage';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useUIStore } from '@/stores/ui.store';
-import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
-import { useI18n } from '@/composables/useI18n';
 
-const props = defineProps<{
-	loading: boolean;
-	workflow?: IWorkflowDb;
-	executions: ExecutionSummary[];
-	execution: ExecutionSummary | null;
-	loadingMore: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		loading: boolean;
+		workflow: IWorkflowDb;
+		executions: ExecutionSummary[];
+		execution?: ExecutionSummary;
+		loadingMore: boolean;
+	}>(),
+	{
+		loading: false,
+		executions: () => [] as ExecutionSummary[],
+		loadingMore: false,
+	},
+);
 
 const emit = defineEmits<{
-	'execution:delete': [string | undefined];
-	'execution:stop': [string | undefined];
-	'execution:retry': [{ id: string; loadWorkflow: boolean }];
-	'update:auto-refresh': [boolean];
-	'update:filters': [ExecutionFilterType];
+	'execution:delete': [value: string];
+	'execution:stop': [value: string];
+	'execution:retry': [value: { id: string; loadWorkflow: boolean }];
+	'update:auto-refresh': [value: boolean];
+	'update:filters': [value: ExecutionFilterType];
 	'load-more': [];
 	reload: [];
 }>();
 
+const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 const router = useRouter();
-const locale = useI18n();
-const workflowHelpers = useWorkflowHelpers({ router });
-const message = useMessage();
-const uiStore = useUIStore();
-const npsSurveyStore = useNpsSurveyStore();
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
 	props.executions.find((execution) => execution.id === props.execution?.id)
 		? undefined
 		: props.execution ?? undefined,
 );
-const hidePreview = computed<boolean>(
-	() => props.loading || (!props.execution && props.executions.length > 0),
-);
+
+const hidePreview = computed(() => {
+	return props.loading || (!props.execution && props.executions.length);
+});
+
+const onDeleteCurrentExecution = () => {
+	if (!props.execution?.id) return;
+
+	emit('execution:delete', props.execution.id);
+};
+
+const onStopExecution = () => {
+	if (!props.execution?.id) return;
+
+	emit('execution:stop', props.execution.id);
+};
+
+const onRetryExecution = (payload: { execution: ExecutionSummary; command: string }) => {
+	const loadWorkflow = payload.command === 'current-workflow';
+
+	emit('execution:retry', {
+		id: payload.execution.id,
+		loadWorkflow,
+	});
+};
 
 watch(
 	() => props.execution,
-	(value: ExecutionSummary | null) => {
-		if (!value || !props.workflow) {
+	(value: ExecutionSummary | undefined) => {
+		if (!value) {
 			return;
 		}
 
@@ -67,50 +88,9 @@ onBeforeRouteLeave(async (to, _, next) => {
 		next();
 		return;
 	}
-	if (uiStore.stateIsDirty) {
-		const confirmModal = await message.confirm(
-			locale.baseText('generic.unsavedWork.confirmMessage.message'),
-			{
-				title: locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-				type: 'warning',
-				confirmButtonText: locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-				cancelButtonText: locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-				showClose: true,
-			},
-		);
 
-		if (confirmModal === MODAL_CONFIRM) {
-			const saved = await workflowHelpers.saveCurrentWorkflow({}, false);
-			if (saved) {
-				await npsSurveyStore.fetchPromptsData();
-			}
-			uiStore.stateIsDirty = false;
-			next();
-		} else if (confirmModal === MODAL_CANCEL) {
-			uiStore.stateIsDirty = false;
-			next();
-		}
-	} else {
-		next();
-	}
+	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next);
 });
-
-function onDeleteCurrentExecution() {
-	emit('execution:delete', props.execution?.id);
-}
-
-function onStopExecution() {
-	emit('execution:stop', props.execution?.id);
-}
-
-function onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
-	const loadWorkflow = payload.command === 'current-workflow';
-
-	emit('execution:retry', {
-		id: payload.execution.id,
-		loadWorkflow,
-	});
-}
 </script>
 
 <template>

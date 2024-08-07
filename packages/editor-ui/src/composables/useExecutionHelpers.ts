@@ -7,6 +7,7 @@ export interface IExecutionUIData {
 	label: string;
 	startTime: string;
 	runningTime: string;
+	showTimestamp: boolean;
 }
 
 export function useExecutionHelpers() {
@@ -18,14 +19,20 @@ export function useExecutionHelpers() {
 			startTime: formatDate(execution.startedAt),
 			label: 'Status unknown',
 			runningTime: '',
+			showTimestamp: true,
 		};
 
-		if (execution.status === 'waiting') {
+		if (execution.status === 'new') {
+			status.name = 'new';
+			status.label = i18n.baseText('executionsList.new');
+			status.showTimestamp = false;
+		} else if (execution.status === 'waiting') {
 			status.name = 'waiting';
 			status.label = i18n.baseText('executionsList.waiting');
+			status.showTimestamp = false;
 		} else if (execution.status === 'canceled') {
 			status.label = i18n.baseText('executionsList.canceled');
-		} else if (execution.status === 'running' || execution.status === 'new') {
+		} else if (execution.status === 'running') {
 			status.name = 'running';
 			status.label = i18n.baseText('executionsList.running');
 		} else if (execution.status === 'success') {
@@ -55,11 +62,7 @@ export function useExecutionHelpers() {
 	}
 
 	function isExecutionRetriable(execution: ExecutionSummary): boolean {
-		return (
-			['crashed', 'error'].includes(execution.status) &&
-			!execution.retryOf &&
-			!execution.retrySuccessId
-		);
+		return ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId;
 	}
 
 	return {

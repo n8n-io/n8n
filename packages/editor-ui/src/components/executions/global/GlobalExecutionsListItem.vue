@@ -95,7 +95,7 @@ const statusText = computed(() => {
 		case 'crashed':
 			return i18n.baseText('executionsList.error');
 		case 'new':
-			return i18n.baseText('executionsList.running');
+			return i18n.baseText('executionsList.new');
 		case 'running':
 			return i18n.baseText('executionsList.running');
 		case 'success':
@@ -122,7 +122,7 @@ const statusTextTranslationPath = computed(() => {
 				return 'executionsList.statusText';
 			}
 		case 'new':
-			return 'executionsList.statusRunning';
+			return 'executionsList.statusTextWithoutTime';
 		case 'running':
 			return 'executionsList.statusRunning';
 		default:
@@ -195,7 +195,10 @@ async function handleActionItemClick(commandData: Command) {
 						<span v-else-if="!!execution.stoppedAt">
 							{{ formattedStoppedAtDate }}
 						</span>
-						<ExecutionsTime v-else :start-time="execution.startedAt" />
+						<ExecutionsTime
+							v-else-if="execution.status !== 'new'"
+							:start-time="execution.startedAt"
+						/>
 					</template>
 				</i18n-t>
 				<N8nTooltip v-else placement="top">
@@ -340,7 +343,10 @@ async function handleActionItemClick(commandData: Command) {
 		background: var(--execution-card-border-success);
 	}
 
-	&.new td:first-child::before,
+	&.new td:first-child::before {
+		background: var(--execution-card-border-new);
+	}
+
 	&.running td:first-child::before {
 		background: var(--execution-card-border-running);
 	}
@@ -388,7 +394,10 @@ async function handleActionItemClick(commandData: Command) {
 		font-weight: var(--font-weight-normal);
 	}
 
-	.new &,
+	.new {
+		color: var(--color-text-dark);
+	}
+
 	.running & {
 		color: var(--color-warning);
 	}

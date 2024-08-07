@@ -635,7 +635,6 @@ function showCreateWorkflowSuccessToast(id?: string) {
 				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
-				:create-enabled="true"
 				:event-bus="tagsEventBus"
 				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"

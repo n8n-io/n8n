@@ -432,66 +432,6 @@ export default defineComponent({
 		ContextMenu,
 		LazySetupWorkflowCredentialsButton,
 	},
-	async beforeRouteLeave(to, from, next) {
-		if (
-			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
-			from.name === VIEWS.TEMPLATE_IMPORT ||
-			(getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-		) {
-			next();
-			return;
-		}
-		if (
-			this.uiStore.stateIsDirty &&
-			!this.readOnlyEnv &&
-			!this.isReadOnlyRoute &&
-			(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
-		) {
-			const confirmModal = await this.confirm(
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.cancelButtonText',
-					),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
-				if (saved) {
-					await this.npsSurveyStore.fetchPromptsData();
-				}
-				this.uiStore.stateIsDirty = false;
-
-				if (from.name === VIEWS.NEW_WORKFLOW) {
-					// Replace the current route with the new workflow route
-					// before navigating to the new route when saving new workflow.
-					await this.$router.replace({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.currentWorkflow },
-					});
-
-					await this.$router.push(to);
-				} else {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.resetWorkspace();
-				this.uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
-	},
 	setup() {
 		const nodeViewRootRef = ref<HTMLElement | null>(null);
 		const nodeViewRef = ref<HTMLElement | null>(null);
@@ -1431,7 +1371,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			await this.workflowHelpers.initState(workflow);
+			this.workflowHelpers.initState(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
@@ -4554,7 +4494,7 @@ export default defineComponent({
 					from.outputIndex ?? 0,
 					toNode.name,
 					to.inputIndex ?? 0,
-					NodeConnectionType.Main,
+					from.type ?? NodeConnectionType.Main,
 				);
 			}
 
@@ -4572,6 +4512,22 @@ export default defineComponent({
 						nodeName: nodeUi.name,
 						position: [nodeUi.position[0], nodeUi.position[1] + 100 * (index + 1)],
 					});
+				});
+			}
+
+			const lastNodeType = this.nodeTypesStore.getNodeType(lastAddedNode.type);
+			const isSubNode = NodeHelpers.isSubNodeType(lastNodeType);
+
+			// When adding a sub-node and there's more than one node added at the time, it must mean that it's
+			// connected to a root node, so we adjust the position of the sub-node to make it appear in the correct
+			// in relation to the root node
+			if (isSubNode && nodes.length > 1) {
+				this.onMoveNode({
+					nodeName: lastAddedNode.name,
+					position: [
+						lastAddedNode.position[0] - NodeViewUtils.NODE_SIZE * 2.5,
+						lastAddedNode.position[1] + NodeViewUtils.NODE_SIZE * 1.5,
+					],
 				});
 			}
 

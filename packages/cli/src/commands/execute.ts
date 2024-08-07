@@ -27,6 +27,8 @@ export class Execute extends BaseCommand {
 		}),
 	};
 
+	override needsCommunityPackages = true;
+
 	async init() {
 		await super.init();
 		await this.initBinaryDataService();

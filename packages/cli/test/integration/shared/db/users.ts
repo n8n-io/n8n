@@ -78,11 +78,19 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export async function createOwner() {
+export async function createOwner({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:owner' }));
+	}
+
 	return await createUser({ role: 'global:owner' });
 }
 
-export async function createMember() {
+export async function createMember({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:member' }));
+	}
+
 	return await createUser({ role: 'global:member' });
 }
 

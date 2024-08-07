@@ -117,13 +117,13 @@ describe('WorkflowExecutionsCard', () => {
 
 			const retryButton = queryByTestId('retry-execution-button');
 
-			if (shouldRenderRetryBtn && retryButton) {
+			if (shouldRenderRetryBtn) {
 				expect(retryButton).toBeVisible();
 
 				if (disabled) {
-					expect(retryButton.querySelector('.is-disabled')).toBeVisible();
+					expect(retryButton?.querySelector('.is-disabled')).toBeVisible();
 				} else {
-					expect(retryButton.querySelector('.is-disabled')).toBe(null);
+					expect(retryButton?.querySelector('.is-disabled')).toBe(null);
 				}
 			} else {
 				expect(retryButton).toBe(null);

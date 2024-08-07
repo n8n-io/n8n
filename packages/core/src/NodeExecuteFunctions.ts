@@ -1342,7 +1342,9 @@ export async function requestOAuth2(
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+		(oauthTokenData === undefined ||
+			Object.keys(oauthTokenData).length === 0 ||
+			oauthTokenData.access_token === '') // stub
 	) {
 		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
@@ -3168,10 +3170,16 @@ const getRequestHelperFunctions = (
 				additionalKeys.$response = newResponse;
 				additionalKeys.$pageCount = additionalKeys.$pageCount + 1;
 
-				if (
-					paginationOptions.maxRequests &&
-					additionalKeys.$pageCount >= paginationOptions.maxRequests
-				) {
+				const maxRequests = getResolvedValue(
+					paginationOptions.maxRequests,
+					itemIndex,
+					runIndex,
+					executeData,
+					additionalKeys,
+					false,
+				) as number;
+
+				if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
 					break;
 				}
 
@@ -3186,7 +3194,16 @@ const getRequestHelperFunctions = (
 
 				if (makeAdditionalRequest) {
 					if (paginationOptions.requestInterval) {
-						await sleep(paginationOptions.requestInterval);
+						const requestInterval = getResolvedValue(
+							paginationOptions.requestInterval,
+							itemIndex,
+							runIndex,
+							executeData,
+							additionalKeys,
+							false,
+						) as number;
+
+						await sleep(requestInterval);
 					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
@@ -4197,8 +4214,9 @@ export function getExecuteWebhookFunctions(
 	mode: WorkflowExecuteMode,
 	webhookData: IWebhookData,
 	closeFunctions: CloseFunction[],
+	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode) => {
+	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getBodyData(): IDataObject {
@@ -4259,10 +4277,21 @@ export function getExecuteWebhookFunctions(
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
+
+				let connectionInputData: INodeExecutionData[] = [];
+				let executionData: IExecuteData | undefined;
+
+				if (runExecutionData?.executionData !== undefined) {
+					executionData = runExecutionData.executionData.nodeExecutionStack[0];
+
+					if (executionData !== undefined) {
+						connectionInputData = executionData.data.main[0]!;
+					}
+				}
+
+				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
 
 				return getNodeParameter(
 					workflow,
@@ -4273,8 +4302,8 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					getAdditionalKeys(additionalData, mode, null),
-					undefined,
+					additionalKeys,
+					executionData,
 					fallbackValue,
 					options,
 				);
@@ -4321,5 +4350,5 @@ export function getExecuteWebhookFunctions(
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
-	})(workflow, node);
+	})(workflow, node, runExecutionData);
 }

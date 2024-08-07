@@ -14,7 +14,6 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectCardBadge from '@/components/Projects/ProjectCardBadge.vue';
 import { useI18n } from '@/composables/useI18n';
 import { ResourceType } from '@/utils/projects.utils';
-import { useSettingsStore } from '@/stores/settings.store';
 
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -46,7 +45,6 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
-const settingsStore = useSettingsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
@@ -66,7 +64,7 @@ const actions = computed(() => {
 		});
 	}
 
-	if (credentialPermissions.value.move && !settingsStore.isCommunityPlan) {
+	if (credentialPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled) {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,

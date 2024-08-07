@@ -90,7 +90,15 @@ function onRetryButtonBlur(event: FocusEvent) {
 </script>
 
 <template>
-	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
+	<div v-if="executionUIDetails?.name === 'new'" :class="$style.newInfo">
+		<N8nText :class="$style.newMessage" color="text-light">
+			{{ locale.baseText('executionDetails.newMessage') }}
+		</N8nText>
+		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ locale.baseText('executionsList.stopExecution') }}
+		</N8nButton>
+	</div>
+	<div v-else-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
 			<N8nSpinner type="ring" />
 		</div>
@@ -125,7 +133,14 @@ function onRetryButtonBlur(event: FocusEvent) {
 					{{ executionUIDetails.label }}
 				</N8nText>
 				{{ ' ' }}
-				<N8nText v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+				<N8nText
+					v-if="executionUIDetails?.showTimestamp === false"
+					color="text-base"
+					size="medium"
+				>
+					| ID#{{ execution.id }}
+				</N8nText>
+				<N8nText v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						locale.baseText('executionDetails.runningTimeRunning', {
 							interpolate: { time: executionUIDetails?.runningTime },
@@ -144,9 +159,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
 						})
 					}}
-					| ID#{{ execution.id }}
-				</N8nText>
-				<N8nText v-else-if="executionUIDetails?.name === 'waiting'" color="text-base" size="medium">
 					| ID#{{ execution.id }}
 				</N8nText>
 				<br /><N8nText v-if="execution.mode === 'retry'" color="text-base" size="medium">
@@ -288,6 +300,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 	color: var(--color-danger);
 }
 
+.newInfo,
 .runningInfo {
 	display: flex;
 	flex-direction: column;
@@ -295,8 +308,9 @@ function onRetryButtonBlur(event: FocusEvent) {
 	margin-top: var(--spacing-4xl);
 }
 
+.newMessage,
 .runningMessage {
-	width: 200px;
+	width: 240px;
 	margin-top: var(--spacing-l);
 	text-align: center;
 }
