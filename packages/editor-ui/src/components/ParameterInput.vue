@@ -134,13 +134,14 @@
 					:model-value="modelValueString"
 					:default-value="parameter.default"
 					:language="editorLanguage"
-					:is-read-only="isReadOnly"
+					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
 						<n8n-icon
+							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -198,12 +199,13 @@
 					v-else-if="editorType === 'jsEditor'"
 					:key="'js-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
-					:is-read-only="isReadOnly"
+					:is-read-only="isReadOnly || editorIsReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
 						<n8n-icon
+							v-if="!editorIsReadOnly"
 							data-test-id="code-editor-fullscreen-button"
 							icon="external-link-alt"
 							size="xsmall"
@@ -858,6 +860,9 @@ const getIssues = computed<string[]>(() => {
 
 const editorType = computed<EditorType | 'json' | 'code'>(() => {
 	return getArgument<EditorType>('editor');
+});
+const editorIsReadOnly = computed<boolean>(() => {
+	return getArgument<boolean>('editorIsReadOnly') ?? false;
 });
 
 const editorLanguage = computed<CodeNodeEditorLanguage>(() => {
