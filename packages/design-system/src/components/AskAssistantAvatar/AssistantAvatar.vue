@@ -22,12 +22,12 @@ withDefaults(defineProps<{ size: 'small' | 'mini' }>(), {
 }
 
 .small {
-	height: 20px;
-	width: 20px;
+	height: var(--spacing-m);
+	width: var(--spacing-m);
 }
 
 .mini {
-	height: 16px;
-	width: 16px;
+	height: var(--spacing-s);
+	width: var(--spacing-s);
 }
 </style>

@@ -62,12 +62,8 @@ const onClick = () => {
 </template>
 
 <style lang="scss" module>
-// todo use tokens for colors and stuff
-// todo localization?
-// todo svg? reuse?
 .button {
-	$border: 1px;
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	position: relative;
 	border: 0;
 	padding: 1px;
@@ -124,7 +120,6 @@ const onClick = () => {
 }
 
 .icon {
-	margin-right: 6px;
-	margin-bottom: -1px; // center icon to align with text
+	margin-right: var(--spacing-3xs);
 }
 </style>

@@ -51,7 +51,7 @@ const sessionEnded = computed(() => {
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
-	return event && event.type === 'event' && event.eventName === 'end-session';
+	return event?.type === 'event' && event?.eventName === 'end-session';
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
@@ -401,7 +401,7 @@ p {
 	ul,
 	ol {
 		list-style-position: inside;
-		margin: 12px 0 12px 12px;
+		margin: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-xs);
 	}
 }
 

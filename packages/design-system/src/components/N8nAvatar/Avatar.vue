@@ -81,8 +81,8 @@ const getSize = (size: string): number => sizes[size];
 }
 
 .xsmall {
-	height: 20px;
-	width: 20px;
+	height: var(--spacing-m);
+	width: var(--spacing-m);
 }
 
 .small {

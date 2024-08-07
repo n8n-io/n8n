@@ -75,8 +75,8 @@ function onMouseLeave() {
 	color: var(--prim-color-white);
 	background: var(--color-assistant-highlight-reverse);
 	border-radius: 50%;
-	width: 16px;
-	height: 16px;
+	width: var(--spacing-s);
+	height: var(--spacing-s);
 	display: flex;
 	align-items: center;
 	justify-content: center;

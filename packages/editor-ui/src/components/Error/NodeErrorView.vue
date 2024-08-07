@@ -146,7 +146,7 @@ function simplifyErrorForAssistant(
 		simple.stack = error.stack;
 	}
 	if ('lineNumber' in error) {
-		error.lineNumber = error.lineNumber;
+		simple.lineNumber = error.lineNumber;
 	}
 	return simple;
 }

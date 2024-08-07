@@ -75,12 +75,12 @@ const onClick = () => {
 }
 
 .assistant {
-	font-size: 10px;
-	line-height: 16px;
-	font-weight: 600;
-	margin-top: 12px;
+	font-size: var(--font-size-3xs);
+	line-height: var(--spacing-s);
+	font-weight: var(--font-weight-bold);
+	margin-top: var(--spacing-xs);
 	> span {
-		margin-left: 4px;
+		margin-left: var(--spacing-4xs);
 	}
 }
 

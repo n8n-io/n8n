@@ -14,13 +14,12 @@ import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
-import type { IPushDataNodeExecuteAfter, IUpdateInformation, Schema } from '@/Interface';
-import { useDataSchema } from '@/composables/useDataSchema';
+import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
 import {
-	executionDataToJson,
 	getMainAuthField,
 	getNodeAuthOptions,
 	getReferencedNodes,
+	getNodesSchemas,
 	pruneNodeProperties,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
@@ -73,12 +72,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isSessionEnded = computed(() => {
 		const assistantMessages = chatMessages.value.filter((msg) => msg.role === 'assistant');
-		const lastMessage = assistantMessages[assistantMessages.length - 1];
+		const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+
 		const sessionExplicitlyEnded =
-			assistantMessages.length > 0 &&
-			lastMessage?.type === 'event' &&
-			lastMessage?.eventName === 'end-session';
+			lastAssistantMessage?.type === 'event' && lastAssistantMessage?.eventName === 'end-session';
 		const sessionStarted = currentSessionId.value !== undefined;
+
 		return !sessionStarted || sessionExplicitlyEnded;
 	});
 
@@ -91,14 +90,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
-	const unreadCount = computed(() =>
-		chatMessages.value.reduce(
-			(count, msg) =>
-				READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read
-					? count + 1
-					: count,
-			0,
-		),
+	const unreadCount = computed(
+		() =>
+			chatMessages.value.filter(
+				(msg) => READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read,
+			).length,
 	);
 
 	watch(route, () => {
@@ -289,24 +285,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(context.node);
-		const schemas = referencedNodeNames.map((name) => {
-			const node = workflowsStore.getNodeByName(name);
-			if (!node) {
-				return {
-					nodeName: name,
-					schema: {} as Schema,
-				};
-			}
-			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
-			const schema = getSchemaForExecutionData(
-				executionDataToJson(getInputDataWithPinned(node)),
-				true,
-			);
-			return {
-				nodeName: node.name,
-				schema,
-			};
-		});
+		const schemas = getNodesSchemas(referencedNodeNames);
 
 		// Get node credentials details for the ai assistant
 		const nodeType = useNodeTypesStore().getNodeType(context.node.type);

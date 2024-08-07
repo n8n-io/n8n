@@ -98,15 +98,6 @@ export namespace ChatRequest {
 		text: string;
 	}
 
-	// export type MessageResponse = (
-	// 	| AssistantChatMessage
-	// 	| CodeDiffMessage
-	// 	| AssistantSummaryMessage
-	// 	| EndSessionMessage
-	// ) & {
-	// 	quickReplies?: QuickReplyOption[];
-	// };
-
 	export type MessageResponse =
 		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
 				quickReplies?: QuickReplyOption[];

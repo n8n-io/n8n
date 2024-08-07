@@ -5,8 +5,10 @@ import type {
 	ITemplatesNode,
 	IVersionNode,
 	NodeAuthenticationOption,
+	Schema,
 	SimplifiedNodeType,
 } from '@/Interface';
+import { useDataSchema } from '@/composables/useDataSchema';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -569,4 +571,30 @@ export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode
 		delete prunedNode[key as keyof INode];
 	});
 	return prunedNode;
+}
+
+/**
+ * Get the schema for the referenced nodes as expected by the AI assistant
+ * @param nodeNames The names of the nodes to get the schema for
+ * @returns An array of objects containing the node name and the schema
+ */
+export function getNodesSchemas(nodeNames: string[]) {
+	return nodeNames.map((name) => {
+		const node = useWorkflowsStore().getNodeByName(name);
+		if (!node) {
+			return {
+				nodeName: name,
+				schema: {} as Schema,
+			};
+		}
+		const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+		const schema = getSchemaForExecutionData(
+			executionDataToJson(getInputDataWithPinned(node)),
+			true,
+		);
+		return {
+			nodeName: node.name,
+			schema,
+		};
+	});
 }

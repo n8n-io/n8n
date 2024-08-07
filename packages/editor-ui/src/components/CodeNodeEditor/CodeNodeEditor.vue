@@ -351,9 +351,9 @@ function getLine(lineNumber: number): Line | null {
 }
 
 function diffApplied() {
-	codeNodeEditorContainerRef.value?.classList.add('animate-editor');
+	codeNodeEditorContainerRef.value?.classList.add('flash-editor');
 	codeNodeEditorContainerRef.value?.addEventListener('animationend', () => {
-		codeNodeEditorContainerRef.value?.classList.remove('animate-editor');
+		codeNodeEditorContainerRef.value?.classList.remove('flash-editor');
 	});
 }
 
@@ -438,7 +438,7 @@ function onAiLoadEnd() {
 	}
 }
 
-.animate-editor {
+.flash-editor {
 	:deep(.cm-editor),
 	:deep(.cm-gutter) {
 		animation: backgroundAnimation 1.5s ease-in-out;
