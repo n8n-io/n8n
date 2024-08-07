@@ -34,7 +34,7 @@ describe('Telemetry', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		startPulseSpy.mockRestore();
-		await telemetry.trackN8nStop();
+		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
@@ -49,14 +49,7 @@ describe('Telemetry', () => {
 	});
 
 	afterEach(async () => {
-		await telemetry.trackN8nStop();
-	});
-
-	describe('trackN8nStop', () => {
-		test('should call track method', async () => {
-			await telemetry.trackN8nStop();
-			expect(spyTrack).toHaveBeenCalledTimes(1);
-		});
+		await telemetry.stopTracking();
 	});
 
 	describe('trackWorkflowExecution', () => {
