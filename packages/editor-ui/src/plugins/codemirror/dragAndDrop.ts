@@ -126,7 +126,8 @@ function posAtCoords(view: EditorView, coord: { x: number; y: number }) {
 	const node = syntaxTree(view.state).resolve(pos);
 
 	if (node.name === 'Resolvable') {
-		return node.to;
+		const closerToStart = pos - node.from < node.to - pos;
+		return closerToStart ? node.from : node.to;
 	}
 
 	return pos;
