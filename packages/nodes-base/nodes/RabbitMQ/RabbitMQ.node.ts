@@ -263,6 +263,30 @@ export class RabbitMQ implements INodeType {
 							'An exchange to send messages to if this exchange can’t route them to any queues',
 					},
 					{
+						displayName: 'Assert Exchange',
+						name: 'assertExchange',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to assert the exchange exists before sending',
+						displayOptions: {
+							show: {
+								'/mode': ['exchange'],
+							},
+						},
+					},
+					{
+						displayName: 'Assert Queue',
+						name: 'assertQueue',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to assert the queue exists before sending',
+						displayOptions: {
+							show: {
+								'/mode': ['queue'],
+							},
+						},
+					},
+					{
 						displayName: 'Arguments',
 						name: 'arguments',
 						placeholder: 'Add Argument',
