@@ -182,12 +182,14 @@ module.exports = {
 			messages: {
 				removeSkip: 'Remove `.skip()` call',
 				removeOnly: 'Remove `.only()` call',
+				removeXPrefix: 'Remove `x` prefix',
 			},
 			fixable: 'code',
 		},
 		create(context) {
 			const TESTING_FUNCTIONS = new Set(['test', 'it', 'describe']);
 			const SKIPPING_METHODS = new Set(['skip', 'only']);
+			const PREFIXED_TESTING_FUNCTIONS = new Set(['xtest', 'xit', 'xdescribe']);
 			const toMessageId = (s) => 'remove' + s.charAt(0).toUpperCase() + s.slice(1);
 
 			return {
@@ -205,6 +207,18 @@ module.exports = {
 								const [start, end] = node.property.range;
 								return fixer.removeRange([start - '.'.length, end]);
 							},
+						});
+					}
+				},
+				CallExpression(node) {
+					if (
+						node.callee.type === 'Identifier' &&
+						PREFIXED_TESTING_FUNCTIONS.has(node.callee.name)
+					) {
+						context.report({
+							messageId: 'removeXPrefix',
+							node,
+							fix: (fixer) => fixer.replaceText(node.callee, 'test'),
 						});
 					}
 				},
