@@ -116,7 +116,7 @@ function onRetryMenuItemSelect(action: string): void {
 					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
-					:disabled="!workflowPermissions.update"
+					:disabled="!workflowPermissions.execute"
 					activator-icon="redo"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"

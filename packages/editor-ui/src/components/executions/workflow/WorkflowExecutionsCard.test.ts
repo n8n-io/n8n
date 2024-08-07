@@ -40,7 +40,7 @@ describe('WorkflowExecutionsCard', () => {
 					retrySuccessId: null,
 				},
 				workflowPermissions: {
-					update: true,
+					execute: true,
 				},
 			},
 			false,
@@ -56,7 +56,7 @@ describe('WorkflowExecutionsCard', () => {
 					retrySuccessId: null,
 				},
 				workflowPermissions: {
-					update: true,
+					execute: true,
 				},
 			},
 			true,
@@ -72,7 +72,7 @@ describe('WorkflowExecutionsCard', () => {
 					retrySuccessId: '3',
 				},
 				workflowPermissions: {
-					update: true,
+					execute: true,
 				},
 			},
 			false,
@@ -88,7 +88,7 @@ describe('WorkflowExecutionsCard', () => {
 					retrySuccessId: null,
 				},
 				workflowPermissions: {
-					update: true,
+					execute: true,
 				},
 			},
 			false,
