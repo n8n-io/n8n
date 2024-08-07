@@ -61,4 +61,12 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 
 		return [...new Set(rows.map((r) => r.userId))];
 	}
+
+	async findAllByUser(userId: string) {
+		return await this.find({
+			where: {
+				userId,
+			},
+		});
+	}
 }

@@ -1,20 +1,21 @@
 import { mock } from 'jest-mock-extended';
-import { TestWebhooks } from '@/TestWebhooks';
+import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { v4 as uuid } from 'uuid';
 import { generateNanoId } from '@/databases/utils/generators';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import type * as express from 'express';
 
-import type { IWorkflowDb, WebhookRequest } from '@/Interfaces';
+import type { IWorkflowDb } from '@/Interfaces';
 import type { IWebhookData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
-} from '@/services/test-webhook-registrations.service';
+} from '@/webhooks/test-webhook-registrations.service';
 
 import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
+import type { WebhookRequest } from '@/webhooks/webhook.types';
 
 jest.mock('@/WorkflowExecuteAdditionalData');
 

@@ -2,21 +2,25 @@ import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
 
-import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import type {
-	IExecutionResponse,
-	IResponseCallbackData,
+	IWebhookResponseCallbackData,
 	IWebhookManager,
-	IWorkflowDb,
 	WaitingWebhookRequest,
-} from '@/Interfaces';
+} from './webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
-import { ConflictError } from './errors/response-errors/conflict.error';
-import { NotFoundError } from './errors/response-errors/not-found.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { IExecutionResponse, IWorkflowDb } from '@/Interfaces';
 
+/**
+ * Service for handling the execution of webhooks of Wait nodes that use the
+ * [Resume On Webhook Call](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/#on-webhook-call)
+ * feature.
+ */
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
 	protected includeForms = false;
@@ -40,7 +44,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
-	): Promise<IResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);

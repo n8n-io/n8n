@@ -200,4 +200,13 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			})
 		)?.project;
 	}
+
+	async getRelationsByWorkflowIdsAndProjectIds(workflowIds: string[], projectIds: string[]) {
+		return await this.find({
+			where: {
+				workflowId: In(workflowIds),
+				projectId: In(projectIds),
+			},
+		});
+	}
 }
