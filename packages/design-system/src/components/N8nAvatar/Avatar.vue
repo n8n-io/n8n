@@ -8,7 +8,9 @@
 			:colors="getColors(colors)"
 		/>
 		<div v-else :class="[$style.empty, $style[size]]"></div>
-		<span v-if="firstName" :class="[$style.initials, $style[`text-${size}`]]">{{ initials }}</span>
+		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
+			{{ initials }}
+		</span>
 	</span>
 </template>
 
