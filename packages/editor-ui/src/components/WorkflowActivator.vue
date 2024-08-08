@@ -5,7 +5,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { sanitizeHtml } from '@/utils/htmlUtils';
 
 const props = defineProps<{ workflowActive: boolean; workflowId: string }>();
 const { showMessage } = useToast();
