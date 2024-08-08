@@ -835,6 +835,7 @@ describe('LogStreamingEventRelay', () => {
 					role: 'global:member',
 				},
 				messageType: 'New user invite',
+				publicApi: false,
 			};
 
 			eventService.emit('email-failed', event);
