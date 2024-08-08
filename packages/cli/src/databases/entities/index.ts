@@ -21,13 +21,19 @@ import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
 import { Project } from './Project';
 import { ProjectRelation } from './ProjectRelation';
+import { AnnotationTagEntity } from './AnnotationTagEntity';
+import { AnnotationTagMapping } from './AnnotationTagMapping';
+import { ExecutionAnnotation } from './ExecutionAnnotation';
 
 export const entities = {
+	AnnotationTagEntity,
+	AnnotationTagMapping,
 	AuthIdentity,
 	AuthProviderSyncHistory,
 	AuthUser,
 	CredentialsEntity,
 	EventDestinations,
+	ExecutionAnnotation,
 	ExecutionEntity,
 	InstalledNodes,
 	InstalledPackages,

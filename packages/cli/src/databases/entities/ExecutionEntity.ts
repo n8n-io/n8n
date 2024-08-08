@@ -67,7 +67,7 @@ export class ExecutionEntity {
 	executionData: Relation<ExecutionData>;
 
 	@OneToOne('ExecutionAnnotation', 'execution')
-	annotation: Relation<ExecutionAnnotation>;
+	annotation?: Relation<ExecutionAnnotation>;
 
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;

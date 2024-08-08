@@ -1,14 +1,23 @@
-import { Column, Entity, Generated, ManyToOne, PrimaryColumn, RelationId } from '@n8n/typeorm';
-import { idStringifier } from '../utils/transformers';
+import {
+	Column,
+	Entity,
+	JoinTable,
+	ManyToMany,
+	ManyToOne,
+	OneToMany,
+	PrimaryGeneratedColumn,
+	RelationId,
+} from '@n8n/typeorm';
 import { ExecutionEntity } from './ExecutionEntity';
+import type { AnnotationTagEntity } from './AnnotationTagEntity';
+import type { AnnotationTagMapping } from './AnnotationTagMapping';
 
-type AnnotationVote = 'up' | 'down';
+export type AnnotationVote = 'up' | 'down';
 
-@Entity()
+@Entity({ name: 'execution_annotations' })
 export class ExecutionAnnotation {
-	@Generated()
-	@PrimaryColumn({ transformer: idStringifier })
-	id: string;
+	@PrimaryGeneratedColumn()
+	id: number;
 
 	@Column({ type: 'varchar', nullable: true })
 	vote: AnnotationVote;
@@ -19,8 +28,25 @@ export class ExecutionAnnotation {
 	@RelationId((annotation: ExecutionAnnotation) => annotation.execution)
 	executionId: string;
 
-	@ManyToOne('ExecutionEntity', 'data', {
+	@ManyToOne('ExecutionEntity', 'annotation', {
 		onDelete: 'CASCADE',
 	})
 	execution: ExecutionEntity;
+
+	@ManyToMany('AnnotationTagEntity', 'annotations')
+	@JoinTable({
+		name: 'execution_annotation_tags', // table name for the junction table of this relation
+		joinColumn: {
+			name: 'annotationId',
+			referencedColumnName: 'id',
+		},
+		inverseJoinColumn: {
+			name: 'tagId',
+			referencedColumnName: 'id',
+		},
+	})
+	tags?: AnnotationTagEntity[];
+
+	@OneToMany('AnnotationTagMapping', 'annotations')
+	tagMappings: AnnotationTagMapping[];
 }
