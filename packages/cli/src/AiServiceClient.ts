@@ -22,7 +22,7 @@ export class AiServiceClient {
 		const licenseCert = await this.licenseService.loadCertStr();
 		const consumerId = this.licenseService.getConsumerId();
 		const baseUrl = config.get('aiAssistant.baseUrl');
-		const logLevel = config.get('logs.level');
+		const logLevel = config.getEnv('logs.level');
 
 		this.client = new AiAssistantClient({
 			licenseCert,
@@ -37,6 +37,7 @@ export class AiServiceClient {
 		if (!this.client) {
 			await this.init();
 		}
+
 		await this.client?.chat(payload, { id: user.id });
 	}
 }
