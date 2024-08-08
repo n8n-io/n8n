@@ -1,19 +1,18 @@
-import { Request } from 'express';
 import { Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CurlService, flattenObject } from '@/services/curl.service';
+import { AiAssistantService } from '@/services/aiAsisstant.service';
+import { AiAssistantRequest } from '@/requests';
 
 @RestController('/ai-assistant')
-export class CurlController {
-	constructor(private readonly curlService: CurlService) {}
+export class AiAssistantController {
+	constructor(private readonly aiAssistantService: AiAssistantService) {}
 
 	@Post('/chat')
-	chat(req: Request<{}, {}, object>) {
+	async chat(req: AiAssistantRequest.Chat) {
 		try {
-			const parameters = this.curlService.toHttpNodeParameters(req.body.curlCommand);
-			return flattenObject(parameters, 'parameters');
+			return await this.aiAssistantService.chat(req.body, req.user);
 		} catch (e) {
-			throw new BadRequestError('Invalid cURL command');
+			throw new BadRequestError('Something went wrong');
 		}
 	}
 }

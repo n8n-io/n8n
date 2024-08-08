@@ -1,12 +1,12 @@
 import Container, { Service } from 'typedi';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import type { IUser } from 'n8n-workflow';
-import { License } from './License';
-import { N8N_VERSION } from './constants';
+import { assert, type IUser } from 'n8n-workflow';
+import { License } from '../License';
+import { N8N_VERSION } from '../constants';
 import config from '@/config';
 
 @Service()
-export class AiServiceClient {
+export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
 	private licenseService: License;
@@ -17,7 +17,9 @@ export class AiServiceClient {
 
 	async init() {
 		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
-		if (!aiAssistantEnabled) return;
+		if (!aiAssistantEnabled) {
+			return;
+		}
 
 		const licenseCert = await this.licenseService.loadCertStr();
 		const consumerId = this.licenseService.getConsumerId();
@@ -37,7 +39,8 @@ export class AiServiceClient {
 		if (!this.client) {
 			await this.init();
 		}
+		assert(this.client, 'Assistant client not setup');
 
-		await this.client?.chat(payload, { id: user.id });
+		await this.client.chat(payload, { id: user.id });
 	}
 }
