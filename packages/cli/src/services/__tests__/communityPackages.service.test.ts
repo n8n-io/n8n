@@ -43,6 +43,7 @@ describe('CommunityPackagesService', () => {
 		nodes: {
 			communityPackages: {
 				reinstallMissing: false,
+				registry: 'some.random.host',
 			},
 		},
 	});
@@ -406,7 +407,7 @@ describe('CommunityPackagesService', () => {
 			expect(exec).toHaveBeenCalledTimes(1);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`npm install ${installedPackage.packageName}@latest`,
+				`npm install ${installedPackage.packageName}@latest --registry=some.random.host`,
 				expect.any(Object),
 				expect.any(Function),
 			);
