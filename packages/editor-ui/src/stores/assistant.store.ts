@@ -26,6 +26,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { codeNodeEditorEventBus } from '@/event-bus';
+import { useTelemetry } from '@/composables/useTelemetry';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -46,6 +47,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const ndvStore = useNDVStore();
 	const { getVariant } = usePostHog();
 	const locale = useI18n();
+	const telemetry = useTelemetry();
 
 	const suggestions = ref<{
 		[suggestionId: string]: {
@@ -359,6 +361,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		} else if (pushEvent.data.executionStatus === 'success') {
 			await sendEvent('node-execution-succeeded');
 		}
+		telemetry.track('User executed node after assistant suggestion', {
+			task: 'error',
+			chat_session_id: currentSessionId.value,
+			success: pushEvent.data.executionStatus === 'success',
+		});
 	}
 
 	async function sendMessage(
