@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -24,7 +24,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { ScalingService } from '@/scaling/scaling.service';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -85,7 +84,6 @@ export class ExecutionService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly scalingService: ScalingService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -471,12 +469,14 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		const jobs = await this.scalingService.findJobsByStatus(['active', 'waiting']);
+		const { ScalingService } = await import('@/scaling/scaling.service');
+		const scalingService = Container.get(ScalingService);
+		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
 
 		const job = jobs.find(({ data }) => data.executionId === execution.id);
 
 		if (job) {
-			await this.scalingService.stopJob(job);
+			await scalingService.stopJob(job);
 		} else {
 			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
