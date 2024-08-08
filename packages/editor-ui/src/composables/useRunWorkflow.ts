@@ -264,7 +264,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 			for (const node of workflowData.nodes) {
 				if (pinData[node.name]) continue;
 
-				if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
+				if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE, 'n8n-nodes-base.form'].includes(node.type)) {
 					continue;
 				}
 
@@ -286,9 +286,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						}
 					}
 
+					//TODO clean up this check
 					if (
-						node.type === WAIT_NODE_TYPE &&
-						node.parameters.resume === 'form' &&
+						(node.type === WAIT_NODE_TYPE || node.type === 'n8n-nodes-base.form') &&
+						(node.parameters.resume === 'form' || node.type === 'n8n-nodes-base.form') &&
 						runWorkflowApiResponse.executionId
 					) {
 						const workflowTriggerNodes = workflow
