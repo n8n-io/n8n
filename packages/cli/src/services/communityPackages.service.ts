@@ -51,7 +51,7 @@ export class CommunityPackagesService {
 
 	missingPackages: string[] = [];
 
-	readonly registry: string;
+	private readonly registry: string;
 
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
@@ -383,7 +383,9 @@ export class CommunityPackagesService {
 	}
 
 	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.executeNpmCommand(`npm install ${packageName}@${packageVersion} --registry=${this.registry}`);
+		await this.executeNpmCommand(
+			`npm install ${packageName}@${packageVersion} --registry=${this.registry}`,
+		);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
