@@ -133,6 +133,7 @@ export function useToast() {
 					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			},
 			false,
 		);
