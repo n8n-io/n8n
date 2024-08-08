@@ -1,5 +1,17 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { getUsers, oktaApiRequest } from '../GenericFunctions';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import {
+	getUsers,
+	oktaApiRequest,
+	simplifyGetAllResponse,
+	simplifyGetResponse,
+} from '../GenericFunctions';
 
 describe('oktaApiRequest', () => {
 	const mockGetCredentials = jest.fn();
@@ -96,5 +108,195 @@ describe('getUsers', () => {
 		expect(response).toEqual({
 			results: [],
 		});
+	});
+});
+
+describe('simplifyGetAllResponse', () => {
+	const mockGetNodeParameter = jest.fn();
+	const mockContext = {
+		getNodeParameter: mockGetNodeParameter,
+	} as unknown as IExecuteSingleFunctions;
+	const mockResponse = jest.fn() as unknown as IN8nHttpFullResponse;
+
+	const items: INodeExecutionData[] = [
+		{
+			json: [
+				{
+					id: '01',
+					status: 'ACTIVE',
+					created: '2023-01-01T00:00:00.000Z',
+					activated: '2023-01-01T00:00:01.000Z',
+					lastLogin: null,
+					lastUpdated: '2023-01-01T00:00:01.000Z',
+					passwordChanged: null,
+					some_item: 'some_value',
+					profile: {
+						firstName: 'John',
+						lastName: 'Doe',
+						login: 'john.doe@example.com',
+						email: 'john.doe@example.com',
+						some_profile_item: 'some_profile_value',
+					},
+				},
+			] as unknown as IDataObject,
+		},
+	];
+
+	beforeEach(() => {
+		mockGetNodeParameter.mockClear();
+	});
+
+	it('should return items unchanged when simplify parameter is not set', async () => {
+		mockGetNodeParameter.mockReturnValueOnce(false);
+
+		const expectedResult: INodeExecutionData[] = [
+			{
+				json: {
+					id: '01',
+					status: 'ACTIVE',
+					created: '2023-01-01T00:00:00.000Z',
+					activated: '2023-01-01T00:00:01.000Z',
+					lastLogin: null,
+					lastUpdated: '2023-01-01T00:00:01.000Z',
+					passwordChanged: null,
+					some_item: 'some_value',
+					profile: {
+						firstName: 'John',
+						lastName: 'Doe',
+						login: 'john.doe@example.com',
+						email: 'john.doe@example.com',
+						some_profile_item: 'some_profile_value',
+					},
+				},
+			},
+		];
+
+		const result = await simplifyGetAllResponse.call(mockContext, items, mockResponse);
+		expect(result).toEqual(expectedResult);
+	});
+
+	it('should simplify items correctly', async () => {
+		mockGetNodeParameter.mockReturnValueOnce(true);
+
+		const expectedResult: INodeExecutionData[] = [
+			{
+				json: {
+					id: '01',
+					status: 'ACTIVE',
+					created: '2023-01-01T00:00:00.000Z',
+					activated: '2023-01-01T00:00:01.000Z',
+					lastLogin: null,
+					lastUpdated: '2023-01-01T00:00:01.000Z',
+					passwordChanged: null,
+					profile: {
+						firstName: 'John',
+						lastName: 'Doe',
+						login: 'john.doe@example.com',
+						email: 'john.doe@example.com',
+					},
+				},
+			},
+		];
+
+		const result = await simplifyGetAllResponse.call(mockContext, items, mockResponse);
+		expect(result).toEqual(expectedResult);
+	});
+
+	it('should return an empty array when items is an empty array', async () => {
+		mockGetNodeParameter.mockReturnValueOnce(false);
+
+		const emptyArrayItems: INodeExecutionData[] = [];
+
+		const result = await simplifyGetAllResponse.call(mockContext, emptyArrayItems, mockResponse);
+		expect(result).toEqual([]);
+	});
+});
+
+describe('simplifyGetResponse', () => {
+	const mockGetNodeParameter = jest.fn();
+	const mockContext = {
+		getNodeParameter: mockGetNodeParameter,
+	} as unknown as IExecuteSingleFunctions;
+	const mockResponse = jest.fn() as unknown as IN8nHttpFullResponse;
+
+	const items: INodeExecutionData[] = [
+		{
+			json: {
+				id: '01',
+				status: 'ACTIVE',
+				created: '2023-01-01T00:00:00.000Z',
+				activated: '2023-01-01T00:00:01.000Z',
+				lastLogin: null,
+				lastUpdated: '2023-01-01T00:00:01.000Z',
+				passwordChanged: null,
+				some_item: 'some_value',
+				profile: {
+					firstName: 'John',
+					lastName: 'Doe',
+					login: 'john.doe@example.com',
+					email: 'john.doe@example.com',
+					some_profile_item: 'some_profile_value',
+				},
+			} as unknown as IDataObject,
+		},
+	];
+	beforeEach(() => {
+		mockGetNodeParameter.mockClear();
+	});
+
+	it('should return the item unchanged when simplify parameter is not set', async () => {
+		mockGetNodeParameter.mockReturnValueOnce(false);
+
+		const expectedResult: INodeExecutionData[] = [
+			{
+				json: {
+					id: '01',
+					status: 'ACTIVE',
+					created: '2023-01-01T00:00:00.000Z',
+					activated: '2023-01-01T00:00:01.000Z',
+					lastLogin: null,
+					lastUpdated: '2023-01-01T00:00:01.000Z',
+					passwordChanged: null,
+					some_item: 'some_value',
+					profile: {
+						firstName: 'John',
+						lastName: 'Doe',
+						login: 'john.doe@example.com',
+						email: 'john.doe@example.com',
+						some_profile_item: 'some_profile_value',
+					},
+				},
+			},
+		];
+
+		const result = await simplifyGetResponse.call(mockContext, items, mockResponse);
+		expect(result).toEqual(expectedResult);
+	});
+
+	it('should simplify the item correctly', async () => {
+		mockGetNodeParameter.mockReturnValueOnce(true);
+
+		const expectedResult: INodeExecutionData[] = [
+			{
+				json: {
+					id: '01',
+					status: 'ACTIVE',
+					created: '2023-01-01T00:00:00.000Z',
+					activated: '2023-01-01T00:00:01.000Z',
+					lastLogin: null,
+					lastUpdated: '2023-01-01T00:00:01.000Z',
+					passwordChanged: null,
+					profile: {
+						firstName: 'John',
+						lastName: 'Doe',
+						login: 'john.doe@example.com',
+						email: 'john.doe@example.com',
+					},
+				},
+			},
+		];
+
+		const result = await simplifyGetResponse.call(mockContext, items, mockResponse);
+		expect(result).toEqual(expectedResult);
 	});
 });

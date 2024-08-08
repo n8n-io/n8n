@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { simplifyGetAllResponse, simplifyGetResponse } from './GenericFunctions';
 const BASE_API_URL = '/api/v1/users/';
 export const userOperations: INodeProperties[] = [
 	{
@@ -63,6 +64,9 @@ export const userOperations: INodeProperties[] = [
 						returnFullResponse: true,
 						qs: {},
 					},
+					output: {
+						postReceive: [simplifyGetResponse],
+					},
 				},
 				action: 'Get a user',
 			},
@@ -76,6 +80,9 @@ export const userOperations: INodeProperties[] = [
 						method: 'GET',
 						url: BASE_API_URL,
 						qs: { search: '={{$parameter["searchQuery"]}}' },
+					},
+					output: {
+						postReceive: [simplifyGetAllResponse],
 					},
 					send: {
 						paginate: true,
@@ -548,7 +555,13 @@ export const userFields: INodeProperties[] = [
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				placeholder: '00u1abcd2345EfGHIjk6',
+				placeholder: 'e.g. 00u1abcd2345EfGHIjk6',
+			},
+			{
+				displayName: 'By username',
+				name: 'email',
+				type: 'string',
+				placeholder: '',
 			},
 		],
 		displayOptions: {

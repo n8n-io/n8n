@@ -6,12 +6,22 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	INodeExecutionData,
 	INodeListSearchResult,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
 type OktaUser = {
+	status: string;
+	created: string;
+	activated: string;
+	lastLogin: string;
+	lastUpdated: string;
+	passwordChanged: string;
 	profile: {
+		login: string;
+		email: string;
 		firstName: string;
 		lastName: string;
 	};
@@ -64,4 +74,64 @@ export async function getUsers(
 	return {
 		results: users,
 	};
+}
+
+function simplifyOktaUser(item: OktaUser): IDataObject {
+	return {
+		id: item.id,
+		status: item.status,
+		created: item.created,
+		activated: item.activated,
+		lastLogin: item.lastLogin,
+		lastUpdated: item.lastUpdated,
+		passwordChanged: item.passwordChanged,
+		profile: {
+			firstName: item.profile.firstName,
+			lastName: item.profile.lastName,
+			login: item.profile.login,
+			email: item.profile.email,
+		},
+	};
+}
+
+export async function simplifyGetAllResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	if (items.length === 0) return items;
+	const simplify = this.getNodeParameter('simplify');
+	if (!simplify)
+		return ((items[0].json as unknown as IDataObject[]) ?? []).map((item: IDataObject) => ({
+			json: item,
+		})) as INodeExecutionData[];
+	let simplifiedItems: INodeExecutionData[] = [];
+	if (items[0].json) {
+		const jsonArray = items[0].json as unknown;
+		simplifiedItems = (jsonArray as OktaUser[]).map((item: OktaUser) => {
+			const simplifiedItem = simplifyOktaUser(item);
+			return {
+				json: simplifiedItem,
+			};
+		});
+	}
+
+	return simplifiedItems;
+}
+
+export async function simplifyGetResponse(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+	_response: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const simplify = this.getNodeParameter('simplify');
+	if (!simplify) return items;
+	const item = items[0].json as OktaUser;
+	const simplifiedItem = simplifyOktaUser(item);
+
+	return [
+		{
+			json: simplifiedItem,
+		},
+	] as INodeExecutionData[];
 }
