@@ -613,4 +613,7 @@ export declare namespace NpsSurveyRequest {
 
 export declare namespace AiAssistantRequest {
 	type Chat = AuthenticatedRequest<{}, {}, object>;
+
+	type SuggestionPayload = { sessionId: string; suggestionId: string };
+	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
 }

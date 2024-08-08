@@ -9,14 +9,14 @@ export function chatWithAssistant(
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void {
-	void streamRequest(ctx, '/ai-proxy/v1/chat', payload, onMessageUpdated, onDone, onError);
+	void streamRequest(ctx, '/ai-assistant/chat', payload, onMessageUpdated, onDone, onError);
 }
 
 export async function replaceCode(
 	ctx: IRestApiContext,
 	payload: ReplaceCodeRequest.RequestPayload,
 ): Promise<ReplaceCodeRequest.ResponsePayload> {
-	const data = await postFetch(ctx, '/ai-proxy/v1/chat/apply-suggestion', payload);
+	const data = await postFetch(ctx, '/ai-assistant/chat/apply-suggestion', payload);
 
 	return data as unknown as ReplaceCodeRequest.ResponsePayload;
 }

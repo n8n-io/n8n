@@ -15,4 +15,13 @@ export class AiAssistantController {
 			throw new BadRequestError('Something went wrong');
 		}
 	}
+
+	@Post('/chat/apply-suggestion')
+	async applySuggestion(req: AiAssistantRequest.ApplySuggestion) {
+		try {
+			return await this.aiAssistantService.applySuggestion(req.body, req.user);
+		} catch (e) {
+			throw new BadRequestError('Something went wrong');
+		}
+	}
 }
