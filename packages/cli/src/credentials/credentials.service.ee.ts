@@ -166,6 +166,7 @@ export class EnterpriseCredentialsService {
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
 			// 6. transfer the credential
+			// remove all sharings
 			await trx.remove(credential.shared);
 
 			// create new owner-sharing
