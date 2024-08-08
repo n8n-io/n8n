@@ -5,6 +5,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 const props = defineProps<{ workflowActive: boolean; workflowId: string }>();
 const { showMessage } = useToast();
@@ -71,7 +72,7 @@ async function displayActivationError() {
 
 	showMessage({
 		title: i18n.baseText('workflowActivator.showMessage.displayActivationError.title'),
-		message: errorMessage,
+		message: sanitizeHtml(errorMessage),
 		type: 'warning',
 		duration: 0,
 		dangerouslyUseHTMLString: true,
