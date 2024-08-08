@@ -51,6 +51,8 @@ export class CommunityPackagesService {
 
 	missingPackages: string[] = [];
 
+	readonly registry: string;
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
@@ -59,7 +61,9 @@ export class CommunityPackagesService {
 		private readonly orchestrationService: OrchestrationService,
 		globalConfig: GlobalConfig,
 	) {
-		this.reinstallMissingPackages = globalConfig.nodes.communityPackages.reinstallMissing;
+		const { reinstallMissing, registry } = globalConfig.nodes.communityPackages;
+		this.reinstallMissingPackages = reinstallMissing;
+		this.registry = registry;
 	}
 
 	get hasMissingPackages() {
@@ -327,7 +331,7 @@ export class CommunityPackagesService {
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion}`;
+		const command = `npm install ${packageName}@${packageVersion} --registry=${this.registry}`;
 
 		try {
 			await this.executeNpmCommand(command);
@@ -379,7 +383,7 @@ export class CommunityPackagesService {
 	}
 
 	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
-		await this.executeNpmCommand(`npm install ${packageName}@${packageVersion}`);
+		await this.executeNpmCommand(`npm install ${packageName}@${packageVersion} --registry=${this.registry}`);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		this.logger.info(`Community package installed: ${packageName}`);
