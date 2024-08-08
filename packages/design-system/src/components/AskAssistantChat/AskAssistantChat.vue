@@ -81,7 +81,7 @@ function renderMarkdown(content: string) {
 			<div :class="$style.chatTitle">
 				<div :class="$style.headerText">
 					<AssistantIcon size="large" />
-					<AssistantText size="large" :text="t('assistantChat.aiAssistantName')" />
+					<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
 				</div>
 				<BetaTag />
 			</div>
