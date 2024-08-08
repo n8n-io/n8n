@@ -1,6 +1,7 @@
 import { validate } from 'class-validator';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserRoleChangePayload, UserUpdatePayload } from '@/requests';
@@ -11,6 +12,7 @@ export async function validateEntity(
 		| WorkflowEntity
 		| CredentialsEntity
 		| TagEntity
+		| AnnotationTagEntity
 		| User
 		| UserUpdatePayload
 		| UserRoleChangePayload,

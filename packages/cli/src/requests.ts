@@ -432,6 +432,17 @@ export declare namespace TagsRequest {
 }
 
 // ----------------------------------
+//             /annotation-tags
+// ----------------------------------
+
+export declare namespace AnnotationTagsRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
 //             /nodes
 // ----------------------------------
 

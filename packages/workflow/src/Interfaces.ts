@@ -2443,6 +2443,13 @@ export interface ExecutionSummary {
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
+	annotation?: {
+		vote: AnnotationVote;
+		tags: Array<{
+			id: string;
+			name: string;
+		}>;
+	};
 }
 
 export interface IExecutionSummaryNodeExecutionResult {
