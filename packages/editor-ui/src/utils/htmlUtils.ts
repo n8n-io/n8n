@@ -1,5 +1,5 @@
 import xss, { friendlyAttrValue } from 'xss';
-import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS } from '@/constants';
+import { ALLOWED_HTML_ATTRIBUTES, ALLOWED_HTML_TAGS, HREF_PROTOCOL_BLACKLIST } from '@/constants';
 
 /*
 	Constants and utility functions that help in HTML, CSS and DOM manipulation
@@ -18,6 +18,10 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
+				// href is allowed but we need to sanitize certain protocols
+				if (name === 'href' && HREF_PROTOCOL_BLACKLIST.includes(`${value.split(':')[0]}:`)) {
+					return '';
+				}
 				return `${name}="${friendlyAttrValue(value)}"`;
 			}
 
