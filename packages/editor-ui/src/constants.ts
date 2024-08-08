@@ -726,8 +726,6 @@ export const ALLOWED_HTML_TAGS = [
 	'mark',
 ];
 
-export const HREF_PROTOCOL_BLACKLIST = ['javascript:', 'vbscript:', 'data:'];
-
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
 	? 'https://stage-app.n8n.cloud/account/change-plan'
 	: 'https://app.n8n.cloud/account/change-plan';

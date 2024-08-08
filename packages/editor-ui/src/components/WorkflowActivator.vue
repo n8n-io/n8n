@@ -72,7 +72,7 @@ async function displayActivationError() {
 
 	showMessage({
 		title: i18n.baseText('workflowActivator.showMessage.displayActivationError.title'),
-		message: sanitizeHtml(errorMessage),
+		message: errorMessage,
 		type: 'warning',
 		duration: 0,
 		dangerouslyUseHTMLString: true,
