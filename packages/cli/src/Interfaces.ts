@@ -468,6 +468,10 @@ export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
+	/**
+	 * The data that is sent in the body of the webhook that started this
+	 * execution.
+	 */
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -477,6 +481,7 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 	userId?: string;
 	projectId?: string;
+	partialExecutionVersion?: string;
 }
 
 export interface IWorkflowExecuteProcess {

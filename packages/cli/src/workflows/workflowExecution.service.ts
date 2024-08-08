@@ -96,6 +96,7 @@ export class WorkflowExecutionService {
 		{ workflowData, runData, startNodes, destinationNode }: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
+		partialExecutionVersion?: string,
 	) {
 		const pinData = workflowData.pinData;
 		const pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -139,6 +140,7 @@ export class WorkflowExecutionService {
 			startNodes,
 			workflowData,
 			userId: user.id,
+			partialExecutionVersion: partialExecutionVersion ?? '0',
 		};
 
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];

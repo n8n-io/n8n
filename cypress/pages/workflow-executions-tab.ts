@@ -34,7 +34,7 @@ export class WorkflowExecutionsTab extends BasePage {
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/**/run').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

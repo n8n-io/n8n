@@ -42,7 +42,12 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		ManualRunPayload,
+		{ partialExecutionVersion: string | undefined }
+	>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

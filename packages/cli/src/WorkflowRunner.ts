@@ -111,7 +111,9 @@ export class WorkflowRunner {
 		}
 	}
 
-	/** Run the workflow */
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
 	async run(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
@@ -200,6 +202,8 @@ export class WorkflowRunner {
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
+			// This is the workflow and node specific data that can be saved and
+			// retrieved with the code node.
 			data.workflowData.staticData =
 				await this.workflowStaticDataService.getStaticDataById(workflowId);
 		}
@@ -280,6 +284,7 @@ export class WorkflowRunner {
 				data.startNodes === undefined ||
 				data.startNodes.length === 0
 			) {
+				// Full Execution
 				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
 					executionId,
 				});
@@ -296,16 +301,28 @@ export class WorkflowRunner {
 					data.pinData,
 				);
 			} else {
+				// Partial Execution
 				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
-				workflowExecution = workflowExecute.runPartialWorkflow(
-					workflow,
-					data.runData,
-					data.startNodes,
-					data.destinationNode,
-					data.pinData,
-				);
+
+				if (data.partialExecutionVersion === '1') {
+					workflowExecution = workflowExecute.runPartialWorkflow2(
+						workflow,
+						data.runData,
+						data.startNodes,
+						data.destinationNode,
+						data.pinData,
+					);
+				} else {
+					workflowExecution = workflowExecute.runPartialWorkflow(
+						workflow,
+						data.runData,
+						data.startNodes,
+						data.destinationNode,
+						data.pinData,
+					);
+				}
 			}
 
 			this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);

@@ -48,6 +48,14 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
+import {
+	DirectedGraph,
+	findCycles,
+	findStartNodes,
+	findSubgraph,
+	findTriggerForPartialExecution,
+} from './PartialExecutionUtils';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -303,6 +311,81 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
+	}
+
+	// IMPORTANT: Do not add "async" to this function, it will then convert the
+	//            PCancelable to a regular Promise and does so not allow canceling
+	//            active executions anymore
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	runPartialWorkflow2(
+		workflow: Workflow,
+		runData: IRunData,
+		_startNodes: StartNodeData[],
+		destinationNodeName?: string,
+		pinData?: IPinData,
+	): PCancelable<IRun> {
+		if (destinationNodeName === undefined) {
+			throw new ApplicationError('destinationNodeName is undefined');
+		}
+
+		const destinationNode = workflow.getNode(destinationNodeName);
+		if (destinationNode === null) {
+			throw new ApplicationError(
+				`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+			);
+		}
+
+		// 1. Find the Trigger
+		const trigger = findTriggerForPartialExecution(workflow, destinationNodeName);
+		if (trigger === undefined) {
+			throw new ApplicationError(
+				'The destination node is not connected to any trigger. Partial executions need a trigger.',
+			);
+		}
+
+		// 2. Find the Subgraph
+		const subgraph = findSubgraph(DirectedGraph.fromWorkflow(workflow), destinationNode, trigger);
+		const filteredNodes = subgraph.getNodes();
+
+		// 3. Find the Start Nodes
+		const startNodes = findStartNodes(subgraph, trigger, destinationNode, runData);
+
+		// 4. Detect Cycles
+		const cycles = findCycles(workflow);
+
+		// 5. Handle Cycles
+		if (cycles.length) {
+			// TODO: handle
+		}
+
+		// 6. Clean Run Data
+		// TODO:
+
+		// 7. Recreate Execution Stack
+		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+			recreateNodeExecutionStack(subgraph, startNodes, destinationNode, runData, pinData ?? {});
+
+		// 8. Execute
+		this.status = 'running';
+		this.runExecutionData = {
+			startData: {
+				destinationNode: destinationNodeName,
+				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+			},
+			resultData: {
+				runData,
+				pinData,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack,
+				metadata: {},
+				waitingExecution,
+				waitingExecutionSource,
+			},
+		};
+
+		return this.processRunExecutionData(subgraph.toWorkflow({ ...workflow }));
 	}
 
 	/**

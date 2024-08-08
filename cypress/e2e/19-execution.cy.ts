@@ -504,7 +504,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('do something with them')
@@ -526,7 +526,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.zoomToFitButton().click();
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('If')
@@ -548,7 +548,7 @@ describe('Execution', () => {
 
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters
 			.canvasNodeByName('NoOp2')
@@ -577,7 +577,7 @@ describe('Execution', () => {
 	it('should successfully execute partial executions with nodes attached to the second output', () => {
 		cy.createFixtureWorkflow('Test_Workflow_pairedItem_incomplete_manual_bug.json');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
@@ -597,7 +597,7 @@ describe('Execution', () => {
 	it('should execute workflow partially up to the node that has issues', () => {
 		cy.createFixtureWorkflow('Test_workflow_partial_execution_with_missing_credentials.json');
 
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
+		cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowRun');
 
 		workflowPage.getters.zoomToFitButton().click();
 		workflowPage.getters.executeWorkflowButton().click();
