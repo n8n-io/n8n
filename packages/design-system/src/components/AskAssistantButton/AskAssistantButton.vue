@@ -85,12 +85,11 @@ function onMouseLeave() {
 
 .text {
 	position: absolute;
+	top: -1px;
+	display: flex;
+	flex-direction: column;
+	align-items: end;
 	width: 100px;
 	right: 48px;
-
-	> * {
-		float: right;
-		line-height: var(--font-line-height-compact);
-	}
 }
 </style>

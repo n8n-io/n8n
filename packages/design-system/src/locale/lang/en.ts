@@ -29,9 +29,10 @@ export default {
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
 	'betaTag.beta': 'beta',
-	'askAssistantButton.askAssistant': 'Ask Assistant',
+	'askAssistantButton.askAssistant': 'Ask Ava',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
-	'assistantChat.aiAssistantName': 'AI Assistant',
+	'assistantChat.aiAssistantLabel': 'AI Assistant',
+	'assistantChat.aiAssistantName': 'Ava',
 	'assistantChat.sessionEndMessage.1':
 		'This Assistant session has ended. To start a new session with the Assistant, click an',
 	'assistantChat.sessionEndMessage.2': 'button in n8n',
@@ -43,6 +44,5 @@ export default {
 	'assistantChat.placeholder.3': 'button.',
 	'assistantChat.placeholder.4': 'Clicking it starts a chat session with me.',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
-	'inlineAskAssistantButton.askAssistant': 'Ask Assistant',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;
