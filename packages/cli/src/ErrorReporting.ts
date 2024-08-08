@@ -69,7 +69,7 @@ export const initErrorHandling = async () => {
 
 		if (
 			originalException instanceof QueryFailedError &&
-			originalException.message.includes('SQLITE_FULL')
+			['SQLITE_FULL', 'SQLITE_IOERR'].some((errMsg) => originalException.message.includes(errMsg))
 		) {
 			return null;
 		}
