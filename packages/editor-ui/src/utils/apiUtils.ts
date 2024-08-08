@@ -1,14 +1,18 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import { ApplicationError, type GenericValue, type IDataObject } from 'n8n-workflow';
-import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
-const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-if (!browserId && 'randomUUID' in crypto) {
-	browserId = crypto.randomUUID();
-	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+import { BROWSER_ID_STORAGE_KEY } from '@/constants';
+import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
+
+const getBrowserId = () => {
+	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+	if (!browserId && 'randomUUID' in crypto) {
+		browserId = crypto.randomUUID();
+		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+	}
+	return browserId;
 }
 
 export const NO_NETWORK_ERROR_CODE = 999;
@@ -80,6 +84,7 @@ export async function request(config: {
 		baseURL,
 		headers: headers ?? {},
 	};
+	const browserId = getBrowserId();
 	if (baseURL.startsWith('/') && browserId) {
 		options.headers!['browser-id'] = browserId;
 	}
