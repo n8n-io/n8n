@@ -184,6 +184,14 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		pruning: {
+			bySize: {
+				isEnabled: true,
+				maxSize: 1024 * 1024 * 1024,
+				targetRatio: 0.8,
+				frequency: 60_000,
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

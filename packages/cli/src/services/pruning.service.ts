@@ -7,6 +7,8 @@ import { Logger } from '@/Logger';
 import { jsonStringify } from 'n8n-workflow';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { OrchestrationService } from './orchestration.service';
+import { SizeBasedPruningService } from '@/pruning/size-based-pruning.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class PruningService {
@@ -29,66 +31,64 @@ export class PruningService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly globalConfig: GlobalConfig,
+		private readonly sizeBasedPruningService: SizeBasedPruningService,
 	) {}
 
 	/**
 	 * @important Requires `OrchestrationService` to be initialized.
 	 */
 	init() {
-		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+		if (this.instanceSettings.isLeader) this.startPruning();
 
-		if (isLeader) this.startPruning();
-
-		if (isMultiMainSetupEnabled) {
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			this.orchestrationService.multiMainSetup.on('leader-takeover', () => this.startPruning());
 			this.orchestrationService.multiMainSetup.on('leader-stepdown', () => this.stopPruning());
 		}
 	}
 
-	private isPruningEnabled() {
-		if (
-			!config.getEnv('executions.pruneData') ||
-			inTest ||
-			config.get('generic.instanceType') !== 'main'
-		) {
-			return false;
-		}
-
-		if (
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
-			this.instanceSettings.isFollower
-		) {
-			return false;
-		}
-
-		return true;
+	private isEnabled() {
+		return (
+			config.getEnv('executions.pruneData') &&
+			config.get('generic.instanceType') === 'main' &&
+			this.instanceSettings.isLeader &&
+			!this.isShuttingDown &&
+			!inTest
+		);
 	}
 
 	/**
 	 * @important Call this method only after DB migrations have completed.
 	 */
 	startPruning() {
-		if (!this.isPruningEnabled()) return;
-
-		if (this.isShuttingDown) {
-			this.logger.warn('[Pruning] Cannot start pruning while shutting down');
-			return;
-		}
-
+		if (!this.isEnabled()) return;
 		this.logger.debug('[Pruning] Starting soft-deletion and hard-deletion timers');
 
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
+
+		if (
+			config.getEnv('binaryDataManager.mode') === 'filesystem' &&
+			this.globalConfig.pruning.bySize.isEnabled
+		) {
+			this.sizeBasedPruningService.start();
+		}
 	}
 
 	stopPruning() {
-		if (!this.isPruningEnabled()) return;
+		if (!this.isEnabled()) return;
 
 		this.logger.debug('[Pruning] Removing soft-deletion and hard-deletion timers');
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
+
+		if (
+			config.getEnv('binaryDataManager.mode') === 'filesystem' &&
+			this.globalConfig.pruning.bySize.isEnabled
+		) {
+			this.sizeBasedPruningService.stop();
+		}
 	}
 
 	private setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
