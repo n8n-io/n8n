@@ -28,7 +28,7 @@ const sizes = {
 		height: '28px',
 	},
 	small: {
-		padding: '0px 3px',
+		padding: '0px 6px',
 		height: '18px',
 	},
 };
@@ -55,7 +55,7 @@ const onClick = () => {
 			<div :style="{ padding: sizes[size].padding }">
 				<AssistantIcon :size="size" :class="$style.icon" />
 				<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-				<AssistantText v-else :size="size" :text="t('inlineAskAssistantButton.askAssistant')" />
+				<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
 			</div>
 		</div>
 	</button>
