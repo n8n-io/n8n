@@ -11,7 +11,7 @@ import {
 	oktaApiRequest,
 	simplifyGetAllResponse,
 	simplifyGetResponse,
-} from '../GenericFunctions';
+} from '../UserFunctions';
 
 describe('oktaApiRequest', () => {
 	const mockGetCredentials = jest.fn();

@@ -1,6 +1,6 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { userFields, userOperations } from './UserDescription';
-import { getUsers } from './GenericFunctions';
+import { getUsers } from './UserFunctions';
 
 export class Okta implements INodeType {
 	description: INodeTypeDescription = {
