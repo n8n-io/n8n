@@ -18,7 +18,7 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 }
 
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-	dangerouslyUseHTMLString: true,
+	dangerouslyUseHTMLString: false,
 	position: 'bottom-right',
 };
 
