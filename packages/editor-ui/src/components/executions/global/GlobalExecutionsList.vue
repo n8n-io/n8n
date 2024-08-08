@@ -354,6 +354,7 @@ async function onAutoRefreshToggle(value: boolean) {
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"

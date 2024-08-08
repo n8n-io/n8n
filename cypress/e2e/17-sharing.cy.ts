@@ -213,13 +213,13 @@ describe('Credential Usage in Cross Shared Workflows', () => {
 		credentialsModal.actions.createNewCredential('Notion API');
 
 		// Create a notion credential in one project
-		projects.actions.createProject('Development');
+		projects.createProject('Development');
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');
 
 		// Create a notion credential in another project
-		projects.actions.createProject('Test');
+		projects.createProject('Test');
 		projects.getProjectTabCredentials().click();
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.actions.createNewCredential('Notion API');

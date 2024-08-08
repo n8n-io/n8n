@@ -6,9 +6,10 @@ import {
 	CredentialsPage,
 	WorkflowExecutionsTab,
 	NDV,
+	MainSidebar,
 } from '../pages';
 import * as projects from '../composables/projects';
-import { getVisibleModalOverlay, getVisibleSelect } from '../utils';
+import { getVisibleDropdown, getVisibleModalOverlay, getVisibleSelect } from '../utils';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -16,6 +17,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const executionsTab = new WorkflowExecutionsTab();
 const ndv = new NDV();
+const mainSidebar = new MainSidebar();
 
 describe('Projects', { disableAutoLogin: true }, () => {
 	before(() => {
@@ -237,7 +239,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 	});
 
 	it('should not show viewer role if not licensed', () => {
-		cy.signinAsAdmin();
+		cy.signinAsOwner();
 		cy.visit(workflowsPage.url);
 
 		projects.getMenuItems().first().click();
@@ -272,7 +274,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 
 			// Create a project and add a credential to it
 			cy.intercept('POST', '/rest/projects').as('projectCreate');
-			projects.getAddProjectButton().should('contain', 'Add project').should('be.visible').click();
+			projects.getAddProjectButton().click();
 			cy.wait('@projectCreate');
 			projects.getMenuItems().should('have.length', 1);
 			projects.getMenuItems().first().click();
@@ -577,6 +579,73 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getMenuItems().last().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 2);
+		});
+
+		it('should handle viewer role', () => {
+			cy.enableFeature('projectRole:viewer');
+			cy.signinAsOwner();
+			cy.visit(workflowsPage.url);
+
+			projects.createProject('Development');
+			projects.addProjectMember(INSTANCE_MEMBERS[0].email, 'Viewer');
+			projects.getProjectSettingsSaveButton().click();
+
+			projects.getProjectTabWorkflows().click();
+			workflowsPage.getters.newWorkflowButtonCard().click();
+			projects.createWorkflow('Test_workflow_4_executions_view.json', 'WF with random error');
+			executionsTab.actions.createManualExecutions(2);
+			executionsTab.actions.toggleNodeEnabled('Error');
+			executionsTab.actions.createManualExecutions(2);
+			workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.emptyListCreateCredentialButton().click();
+			projects.createCredential('Notion API');
+
+			mainSidebar.actions.openUserMenu();
+			cy.getByTestId('user-menu-item-logout').click();
+
+			cy.get('input[name="email"]').type(INSTANCE_MEMBERS[0].email);
+			cy.get('input[name="password"]').type(INSTANCE_MEMBERS[0].password);
+			cy.getByTestId('form-submit-button').click();
+
+			mainSidebar.getters.executions().click();
+			cy.getByTestId('global-execution-list-item').first().find('td:last button').click();
+			getVisibleDropdown()
+				.find('li')
+				.filter(':contains("Retry")')
+				.should('have.class', 'is-disabled');
+			getVisibleDropdown()
+				.find('li')
+				.filter(':contains("Delete")')
+				.should('have.class', 'is-disabled');
+
+			projects.getMenuItems().first().click();
+			cy.getByTestId('workflow-card-name').should('be.visible').first().click();
+			workflowPage.getters.nodeViewRoot().should('be.visible');
+			workflowPage.getters.executeWorkflowButton().should('not.exist');
+			workflowPage.getters.nodeCreatorPlusButton().should('not.exist');
+			workflowPage.getters.canvasNodes().should('have.length', 3).last().click();
+			cy.get('body').type('{backspace}');
+			workflowPage.getters.canvasNodes().should('have.length', 3);
+
+			executionsTab.actions.switchToExecutionsTab();
+			cy.getByTestId('retry-execution-button')
+				.should('be.visible')
+				.find('.is-disabled')
+				.should('exist');
+			cy.get('button:contains("Debug")').should('be.disabled');
+			cy.get('button[title="Retry execution"]').should('be.disabled');
+			cy.get('button[title="Delete this execution"]').should('be.disabled');
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().filter(':contains("Notion")').click();
+			cy.getByTestId('node-credentials-config-container')
+				.should('be.visible')
+				.find('input')
+				.should('not.have.length');
 		});
 	});
 });
