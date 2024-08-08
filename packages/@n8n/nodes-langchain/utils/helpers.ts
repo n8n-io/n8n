@@ -182,7 +182,7 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 }
 
 function isINode(obj: unknown): obj is INodeType {
-	return typeof obj === 'object' && obj !== null && 'execute' in obj && !('supplyData' in obj);
+	return typeof obj === 'object' && obj !== null && 'execute' in obj;
 }
 
 type NestedObject = { [key: string]: any };
