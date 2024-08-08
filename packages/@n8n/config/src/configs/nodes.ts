@@ -26,7 +26,7 @@ class CommunityPackagesConfig {
 	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
 	enabled: boolean = true;
 
-	/** NPM registry to pull community packages from */
+	/** NPM registry URL to pull community packages from */
 	@Env('N8N_COMMUNITY_PACKAGES_REGISTRY')
 	registry: string = 'https://registry.npmjs.org';
 
