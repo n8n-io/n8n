@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { Telemetry } from '@/telemetry';
 import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
@@ -21,16 +20,6 @@ export class InternalHooks {
 
 	async init() {
 		await this.telemetry.init();
-	}
-
-	onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
-		const properties: ITelemetryTrackProperties = {
-			workflow_id: workflowId,
-			user_id_sharer: userId,
-			user_id_list: userList,
-		};
-
-		this.telemetry.track('User updated workflow sharing', properties);
 	}
 
 	onUserInviteEmailClick(userInviteClickData: { inviter: User; invitee: User }) {
@@ -61,21 +50,6 @@ export class InternalHooks {
 	onUserPasswordResetRequestClick(userPasswordResetData: { user: User }) {
 		this.telemetry.track('User requested password reset while logged out', {
 			user_id: userPasswordResetData.user.id,
-		});
-	}
-
-	onEmailFailed(failedEmailData: {
-		user: User;
-		message_type:
-			| 'Reset password'
-			| 'New user invite'
-			| 'Resend invite'
-			| 'Workflow shared'
-			| 'Credentials shared';
-		public_api: boolean;
-	}) {
-		this.telemetry.track('Instance failed to send transactional email to user', {
-			user_id: failedEmailData.user.id,
 		});
 	}
 }
