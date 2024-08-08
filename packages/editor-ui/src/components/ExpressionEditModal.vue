@@ -146,6 +146,7 @@ const theme = outputTheme();
 
 const activeNode = computed(() => ndvStore.activeNode);
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
@@ -201,16 +202,16 @@ function closeDialog() {
 }
 
 async function onDrop(expression: string, event: MouseEvent) {
-	const editor = expressionInputRef.value?.editor;
-	if (!editor) return;
+	if (!inputEditor.value) return;
 
-	await dropInEditor(toRaw(editor), event, expression);
+	await dropInEditor(toRaw(inputEditor.value), event, expression);
 }
 </script>
 
 <style module lang="scss">
 .modal {
 	--modal-header-height: 76px;
+	--dialog-close-top: var(--spacing-m);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
@@ -222,6 +223,10 @@ async function onDrop(expression: string, event: MouseEvent) {
 		height: calc(100% - var(--modal-header-height));
 		border-top: var(--border-base);
 		padding-top: var(--spacing-l);
+	}
+
+	:global(.el-dialog__header) {
+		padding: var(--spacing-s) var(--spacing-l);
 	}
 }
 
@@ -248,21 +253,24 @@ async function onDrop(expression: string, event: MouseEvent) {
 }
 
 .editor {
-	height: 100%;
+	display: flex;
+	flex: 1 1 0;
+	font-size: var(--font-size-xs);
 
 	> div {
-		height: 100%;
+		flex: 1 1 0;
 	}
 }
 
 .editorContainer {
-	height: 100%;
+	display: flex;
+	flex: 1 1 0;
+	min-height: 0;
 }
 
 .io {
 	display: flex;
-	flex-wrap: wrap;
-	flex-grow: 1;
+	flex: 1 1 0;
 	gap: var(--spacing-s);
 }
 
@@ -270,9 +278,8 @@ async function onDrop(expression: string, event: MouseEvent) {
 .output {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-s);
-	min-width: 400px;
-	flex: 1;
+	gap: var(--spacing-xs);
+	flex: 1 1 0;
 }
 
 .header {
@@ -283,5 +290,16 @@ async function onDrop(expression: string, event: MouseEvent) {
 
 .tip {
 	min-height: 22px;
+}
+
+@media (max-width: 1200px) {
+	.io {
+		flex-direction: column;
+	}
+
+	.input,
+	.output {
+		height: 50%;
+	}
 }
 </style>
