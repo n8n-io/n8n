@@ -339,20 +339,12 @@ export class CredentialsController {
 	@Put('/:credentialId/transfer')
 	@ProjectScope('credential:move')
 	async transfer(req: CredentialRequest.Transfer) {
-		// TODO: make shareWithOriginalProject non-optional once the frontend
-		// has support
-		const body = z
-			.object({
-				destinationProjectId: z.string(),
-				shareWithOriginalProject: z.boolean().optional(),
-			})
-			.parse(req.body);
+		const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
 
 		return await this.enterpriseCredentialsService.transferOne(
 			req.user,
 			req.params.credentialId,
 			body.destinationProjectId,
-			body.shareWithOriginalProject ?? false,
 		);
 	}
 }

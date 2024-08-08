@@ -203,7 +203,7 @@ export declare namespace CredentialRequest {
 	type Transfer = AuthenticatedRequest<
 		{ credentialId: string },
 		{},
-		{ destinationProjectId: string; shareWithOriginalProject?: boolean }
+		{ destinationProjectId: string }
 	>;
 
 	type ForWorkflow = AuthenticatedRequest<

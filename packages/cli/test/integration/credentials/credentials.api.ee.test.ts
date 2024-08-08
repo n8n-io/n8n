@@ -1182,13 +1182,13 @@ describe('PUT /:credentialId/transfer', () => {
 			.expect(403);
 	});
 
-	test('transferring from a personal project to a team project should not sever all sharings', async () => {
+	test('transferring from a personal project to a team project severs all sharings', async () => {
 		//
 		// ARRANGE
 		//
 		const credential = await saveCredential(randomCredentialPayload(), { user: member });
 
-		// these sharings should not be deleted by the transfer
+		// these sharings should be deleted by the transfer
 		await shareCredentialWithUsers(credential, [anotherMember, owner]);
 
 		const destinationProject = await createTeamProject('Destination Project', member);
@@ -1208,72 +1208,12 @@ describe('PUT /:credentialId/transfer', () => {
 		expect(response.body).toEqual({});
 
 		const allSharings = await getCredentialSharings(credential);
-		expect(allSharings).toHaveLength(3);
-		expect(allSharings).toContainEqual(
-			expect.objectContaining({
-				projectId: destinationProject.id,
-				credentialsId: credential.id,
-				role: 'credential:owner',
-			}),
-		);
-		for (const projectId of [anotherMemberPersonalProject.id, ownerPersonalProject.id]) {
-			expect(allSharings).toContainEqual(
-				expect.objectContaining({
-					credentialsId: credential.id,
-					projectId,
-					role: 'credential:user',
-				}),
-			);
-		}
-	});
-
-	test('transferring should share with original owner when asked', async () => {
-		//
-		// ARRANGE
-		//
-		const credential = await saveCredential(randomCredentialPayload(), { user: member });
-
-		// these sharings should not be deleted by the transfer
-		await shareCredentialWithUsers(credential, [anotherMember, owner]);
-
-		const destinationProject = await createTeamProject('Destination Project', member);
-
-		//
-		// ACT
-		//
-		const response = await testServer
-			.authAgentFor(member)
-			.put(`/credentials/${credential.id}/transfer`)
-			.send({ destinationProjectId: destinationProject.id, shareWithOriginalProject: true })
-			.expect(200);
-
-		//
-		// ASSERT
-		//
-		expect(response.body).toEqual({});
-
-		const allSharings = await getCredentialSharings(credential);
-		expect(allSharings).toHaveLength(4);
-		expect(allSharings).toContainEqual(
-			expect.objectContaining({
-				projectId: destinationProject.id,
-				credentialsId: credential.id,
-				role: 'credential:owner',
-			}),
-		);
-		for (const projectId of [
-			anotherMemberPersonalProject.id,
-			ownerPersonalProject.id,
-			memberPersonalProject.id,
-		]) {
-			expect(allSharings).toContainEqual(
-				expect.objectContaining({
-					credentialsId: credential.id,
-					projectId,
-					role: 'credential:user',
-				}),
-			);
-		}
+		expect(allSharings).toHaveLength(1);
+		expect(allSharings[0]).toMatchObject({
+			projectId: destinationProject.id,
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
 	});
 
 	test('can transfer from team to another team project', async () => {

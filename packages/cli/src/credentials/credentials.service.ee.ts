@@ -116,12 +116,7 @@ export class EnterpriseCredentialsService {
 		return { ...rest };
 	}
 
-	async transferOne(
-		user: User,
-		credentialId: string,
-		destinationProjectId: string,
-		shareWithSource: boolean,
-	) {
+	async transferOne(user: User, credentialId: string, destinationProjectId: string) {
 		// 1. get credential
 		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
@@ -171,26 +166,7 @@ export class EnterpriseCredentialsService {
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
 			// 6. transfer the credential
-
-			// remove original owner sharing
-			await trx.remove(ownerSharing);
-
-			// share it back as a user if asked to
-			if (shareWithSource) {
-				await trx.save(
-					trx.create(SharedCredentials, {
-						credentialsId: credential.id,
-						projectId: sourceProject.id,
-						role: 'credential:user',
-					}),
-				);
-			}
-
-			// remove any previous sharings with the new owner
-			await trx.delete(SharedCredentials, {
-				credentialsId: credential.id,
-				projectId: destinationProjectId,
-			});
+			await trx.remove(credential.shared);
 
 			// create new owner-sharing
 			await trx.save(
