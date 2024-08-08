@@ -1,3 +1,12 @@
+## [1.53.2](https://github.com/n8n-io/n8n/compare/n8n@1.53.1...n8n@1.53.2) (2024-08-08)
+
+
+### Bug Fixes
+
+* **core:** VM2 sandbox should not throw on `new Promise` ([#10298](https://github.com/n8n-io/n8n/issues/10298)) ([6677033](https://github.com/n8n-io/n8n/commit/6677033272662e4527e5bbd64b1a98f057f90708))
+
+
+
 ## [1.53.1](https://github.com/n8n-io/n8n/compare/n8n@1.53.0...n8n@1.53.1) (2024-08-02)
 
 
