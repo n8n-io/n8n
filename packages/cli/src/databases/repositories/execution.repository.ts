@@ -46,6 +46,8 @@ import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
+import { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
+import { AnnotationTagMapping } from '@db/entities/AnnotationTagMapping';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -685,12 +687,38 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
+	private annotationFields = {
+		id: true,
+		vote: true,
+	};
+
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const executions: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
+		const qb = this.toQueryBuilderWithAnnotationTags(query);
+
+		const rawExecutionsWithTags: ExecutionSummary[] = await qb.getRawMany();
+
+		// FIXME: This needs refactoring
+		const executions = rawExecutionsWithTags.reduce(
+			(acc, { tagId, tagName, ...row }) => {
+				const existingExecution = acc.find((e) => e.id === row.id);
+				if (existingExecution) {
+					if (tagId) {
+						existingExecution.tags.push({ id: tagId as string, name: tagName as string });
+					}
+				} else {
+					acc.push({
+						...row,
+						tags: tagId ? [{ id: tagId as string, name: tagName as string }] : [],
+					});
+				}
+				return acc;
+			},
+			[] as Array<ExecutionSummary & { tags: Array<{ id: string; name: string }> }>,
+		);
 
 		return executions.map((execution) => this.toSummary(execution));
 	}
@@ -768,14 +796,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			metadata,
 		} = query;
 
+		const annotationFields = Object.keys(this.annotationFields).map(
+			(key) => `annotation.${key} AS "annotation.${key}"`,
+		);
+
 		const fields = Object.keys(this.summaryFields)
 			.concat(['waitTill', 'retrySuccessId'])
 			.map((key) => `execution.${key} AS "${key}"`)
-			.concat('workflow.name AS "workflowName"');
+			.concat('workflow.name AS "workflowName"')
+			.concat(annotationFields);
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
 			.innerJoin('execution.workflow', 'workflow')
+			.leftJoin('execution.annotation', 'annotation')
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
@@ -815,6 +849,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		return qb;
+	}
+
+	private toQueryBuilderWithAnnotationTags(query: ExecutionSummaries.Query) {
+		const subQuery = this.toQueryBuilder(query);
+
+		return this.manager
+			.createQueryBuilder()
+			.select(['e.*', 'ate.id AS "tagId"', 'ate.name AS "tagName"'])
+			.from(`(${subQuery.getQuery()})`, 'e')
+			.setParameters(subQuery.getParameters())
+			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e."annotation.id"')
+			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId');
 	}
 
 	async getAllIds() {
