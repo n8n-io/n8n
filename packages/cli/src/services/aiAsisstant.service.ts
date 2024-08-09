@@ -46,6 +46,6 @@ export class AiAssistantService {
 		}
 		assert(this.client, 'Assistant client not setup');
 
-		await this.client.applySuggestion(payload, { id: user.id });
+		return await this.client.applySuggestion(payload, { id: user.id });
 	}
 }

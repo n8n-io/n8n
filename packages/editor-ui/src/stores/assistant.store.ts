@@ -12,7 +12,7 @@ import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
 import type { INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { ndvEventBus } from '@/event-bus';
+import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
 import type { IPushDataNodeExecuteAfter, IUpdateInformation } from '@/Interface';
 import {
@@ -25,7 +25,6 @@ import {
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
-import { codeNodeEditorEventBus } from '@/event-bus';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const MAX_CHAT_WIDTH = 425;
@@ -456,7 +455,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (cached) {
 				updateParameters(activeNode.name, cached.suggested);
 			} else {
-				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
+				const {
+					data: { parameters: suggested },
+				} = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiffMessage.suggestionId,
 					sessionId: currentSessionId.value,
 				});
