@@ -29,7 +29,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResult } from '@/scaling/types';
-import { ScalingService } from '@/scaling/scaling.service';
+import type { ScalingService } from '@/scaling/scaling.service';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -40,7 +40,7 @@ import { EventService } from './events/event.service';
 
 @Service()
 export class WorkflowRunner {
-	private readonly scalingService: ScalingService;
+	private scalingService: ScalingService;
 
 	private executionsMode = config.getEnv('executions.mode');
 
@@ -53,11 +53,7 @@ export class WorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
 		private readonly eventService: EventService,
-	) {
-		if (this.executionsMode === 'queue') {
-			this.scalingService = Container.get(ScalingService);
-		}
-	}
+	) {}
 
 	/** The process did error */
 	async processError(
@@ -360,6 +356,11 @@ export class WorkflowRunner {
 			loadStaticData: !!loadStaticData,
 		};
 
+		if (!this.scalingService) {
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			this.scalingService = Container.get(ScalingService);
+		}
+
 		let priority = 100;
 		if (realtime === true) {
 			// Jobs which require a direct response get a higher priority
@@ -404,7 +405,7 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					await Container.get(ScalingService).stopJob(job);
+					await this.scalingService.stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.

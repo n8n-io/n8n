@@ -120,12 +120,11 @@ export class PasswordResetController {
 				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
-			this.internalHooks.onEmailFailed({
+			this.eventService.emit('email-failed', {
 				user,
-				message_type: 'Reset password',
-				public_api: false,
+				messageType: 'Reset password',
+				publicApi: false,
 			});
-			this.eventService.emit('email-failed', { user, messageType: 'Reset password' });
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}

@@ -94,12 +94,12 @@ export class ScalingService {
 
 		try {
 			if (await job.isActive()) {
-				await job.progress({ kind: 'abort-job' });
+				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				this.logger.debug('[ScalingService] Stopped active job', props);
 				return true;
 			}
 
-			await job.remove();
+			await job.remove(); // not yet picked up, or waiting for next pickup (stalled)
 			this.logger.debug('[ScalingService] Stopped inactive job', props);
 			return true;
 		} catch (error: unknown) {

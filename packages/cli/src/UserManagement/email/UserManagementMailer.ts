@@ -120,14 +120,10 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			Container.get(InternalHooks).onEmailFailed({
-				user: sharer,
-				message_type: 'Workflow shared',
-				public_api: false,
-			});
 			Container.get(EventService).emit('email-failed', {
 				user: sharer,
 				messageType: 'Workflow shared',
+				publicApi: false,
 			});
 
 			const error = toError(e);
@@ -179,14 +175,10 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			Container.get(InternalHooks).onEmailFailed({
-				user: sharer,
-				message_type: 'Credentials shared',
-				public_api: false,
-			});
 			Container.get(EventService).emit('email-failed', {
 				user: sharer,
 				messageType: 'Credentials shared',
+				publicApi: false,
 			});
 
 			const error = toError(e);
