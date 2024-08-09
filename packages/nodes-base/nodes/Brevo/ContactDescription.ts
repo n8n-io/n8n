@@ -30,6 +30,17 @@ export const contactOperations: INodeProperties[] = [
 				},
 			},
 			{
+				name: 'Create Bulk',
+				value: 'createBulk',
+				action: 'Create many contacts',
+				routing: {
+					request: {
+						method: 'POST',
+						url: '/v3/contacts',
+					},
+				},
+			},
+			{
 				name: 'Create or Update',
 				value: 'upsert',
 				action: 'Upsert a contact',
@@ -121,6 +132,25 @@ const createOperations: INodeProperties[] = [
 			send: {
 				type: 'body',
 				property: 'email',
+			},
+		},
+	},
+	{
+		displayName: 'File Path',
+		name: 'file',
+		type: 'string',
+		placeholder: 'https://www.xyz.com/file/abc.csv',
+		displayOptions: {
+			show: {
+				resource: ['contact'],
+				operation: ['createBulk'],
+			},
+		},
+		default: '',
+		routing: {
+			request: {
+				method: 'GET',
+				url: '=/v3/contacts/import',
 			},
 		},
 	},
