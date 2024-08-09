@@ -24,6 +24,8 @@ const md = new Markdown({
 	},
 });
 
+const MAX_CHAT_INPUT_HEIGHT = 100;
+
 interface Props {
 	user?: {
 		firstName: string;
@@ -46,8 +48,14 @@ const props = defineProps<Props>();
 
 const textInputValue = ref<string>('');
 
+const chatInput = ref<HTMLTextAreaElement | null>(null);
+
 const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
+});
+
+const sendButtonDisabled = computed(() => {
+	return !textInputValue.value || props.streaming || sessionEnded.value;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -62,6 +70,9 @@ function onSendMessage() {
 	if (textInputValue.value && !props.streaming) {
 		emit('message', textInputValue.value, undefined);
 		textInputValue.value = '';
+		if (chatInput.value) {
+			chatInput.value.style.height = 'auto';
+		}
 	}
 }
 
@@ -72,6 +83,13 @@ function renderMarkdown(content: string) {
 		console.error(`Error parsing markdown content ${content}`);
 		return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
 	}
+}
+
+function growInput() {
+	if (!chatInput.value) return;
+	chatInput.value.style.height = 'auto';
+	const scrollHeight = chatInput.value.scrollHeight;
+	chatInput.value.style.height = `${Math.min(scrollHeight, MAX_CHAT_INPUT_HEIGHT)}px`;
 }
 </script>
 
@@ -120,6 +138,7 @@ function renderMarkdown(content: string) {
 								/>
 							</div>
 							<div :class="$style.blockBody">
+								<!-- eslint-disable-next-line vue/no-v-html -->
 								<span v-html="renderMarkdown(message.content)"></span>
 								<BlinkingCursor
 									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
@@ -128,7 +147,8 @@ function renderMarkdown(content: string) {
 						</div>
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
-						<span v-if="message.role === 'user'">{{ message.content }}</span>
+						<!-- eslint-disable-next-line vue/no-v-html -->
+						<span v-if="message.role === 'user'" v-html="renderMarkdown(message.content)"></span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span
 							v-else
@@ -207,16 +227,22 @@ function renderMarkdown(content: string) {
 			v-if="messages?.length"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 		>
-			<input
+			<textarea
+				ref="chatInput"
 				v-model="textInputValue"
 				:disabled="sessionEnded"
 				:placeholder="t('assistantChat.inputPlaceholder')"
-				@keydown.enter="onSendMessage"
+				rows="1"
+				wrap="hard"
+				@keydown.enter.exact.prevent="onSendMessage"
+				@input="growInput"
 			/>
-			<n8n-icon
-				:class="{ [$style.sendButton]: true, [$style.disabledInput]: streaming }"
+			<n8n-icon-button
+				:class="{ [$style.sendButton]: true }"
 				icon="paper-plane"
+				type="text"
 				size="large"
+				:disabled="sendButtonDisabled"
 				@click="onSendMessage"
 			/>
 		</div>
@@ -361,29 +387,32 @@ p {
 
 .inputWrapper {
 	position: absolute;
+	display: flex;
 	bottom: 0;
-	height: var(--spacing-2xl);
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	width: 100%;
+	padding-top: 1px;
 
-	display: flex;
-	align-items: center;
-	padding: var(--spacing-xs);
-
-	input {
+	textarea {
 		border: none;
 		background-color: transparent;
 		width: 100%;
 		font-size: var(--spacing-xs);
+		padding: var(--spacing-xs);
 		outline: none;
 		color: var(--color-text-dark);
+		resize: none;
+		font-family: inherit;
 	}
 }
 
 .sendButton {
-	color: var(--color-text-lighter);
-	cursor: pointer;
+	color: var(--color-text-base) !important;
+
+	&[disabled] {
+		color: var(--color-text-light) !important;
+	}
 }
 
 .error {
