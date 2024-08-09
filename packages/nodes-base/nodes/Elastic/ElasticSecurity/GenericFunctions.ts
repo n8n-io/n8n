@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { Connector, ElasticSecurityApiCredentials } from './types';
+import type { Connector, ElasticSecurityApiCredentials, ElasticSecurityApiKey } from './types';
 
 export function tolerateTrailingSlash(baseUrl: string) {
 	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
@@ -21,21 +21,23 @@ export async function elasticSecurityApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		username,
-		password,
-		baseUrl: rawBaseUrl,
-	} = (await this.getCredentials('elasticSecurityApi')) as ElasticSecurityApiCredentials;
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
+	let rawBaseUrl;
+
+	if (authenticationMethod === 'basicAuth') {
+		({ baseUrl: rawBaseUrl } = (await this.getCredentials(
+			'elasticSecurityApi',
+		)) as ElasticSecurityApiCredentials);
+	} else {
+		({ baseUrl: rawBaseUrl } = (await this.getCredentials(
+			'elasticSecurityApiKey',
+		)) as ElasticSecurityApiKey);
+	}
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-	const token = Buffer.from(`${username}:${password}`).toString('base64');
-
 	const options: IRequestOptions = {
-		headers: {
-			Authorization: `Basic ${token}`,
-			'kbn-xsrf': true,
-		},
 		method,
 		body,
 		qs,
@@ -51,8 +53,12 @@ export async function elasticSecurityApiRequest(
 		delete options.qs;
 	}
 
+	const credentialType =
+		authenticationMethod === 'basicAuth' ? 'elasticSecurityApi' : 'elasticSecurityApiKey';
+
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		//return await this.helpers.request(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
