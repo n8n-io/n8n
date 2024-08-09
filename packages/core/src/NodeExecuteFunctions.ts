@@ -3326,7 +3326,7 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-function isFilePathBlocked(filePath: string): boolean {
+export function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
