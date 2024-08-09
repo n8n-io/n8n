@@ -636,6 +636,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 					':contains("Open"), :contains("Copy"), :contains("Select all"), :contains("Clear selection")',
 				)
 				.should('not.have.class', 'is-disabled');
+			cy.get('body').type('{esc}');
 
 			executionsTab.actions.switchToExecutionsTab();
 			cy.getByTestId('retry-execution-button')
