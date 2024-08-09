@@ -13,7 +13,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,7 +27,6 @@ export class PasswordResetController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
-		private readonly internalHooks: InternalHooks,
 		private readonly mailer: UserManagementMailer,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -131,13 +129,12 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
-		this.internalHooks.onUserTransactionalEmail({
-			user_id: id,
-			message_type: 'Reset password',
-			public_api: false,
+		this.eventService.emit('user-transactional-email-sent', {
+			userId: id,
+			messageType: 'Reset password',
+			publicApi: false,
 		});
 
-		this.internalHooks.onUserPasswordResetRequestClick({ user });
 		this.eventService.emit('user-password-reset-request-click', { user });
 	}
 
@@ -170,7 +167,6 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		this.internalHooks.onUserPasswordResetEmailClick({ user });
 		this.eventService.emit('user-password-reset-email-click', { user });
 	}
 

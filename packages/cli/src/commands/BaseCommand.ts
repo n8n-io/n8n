@@ -15,7 +15,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { N8nInstanceType } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
@@ -121,7 +120,6 @@ export abstract class BaseCommand extends Command {
 		}
 
 		await Container.get(PostHogClient).init();
-		await Container.get(InternalHooks).init();
 		await Container.get(TelemetryEventRelay).init();
 	}
 
