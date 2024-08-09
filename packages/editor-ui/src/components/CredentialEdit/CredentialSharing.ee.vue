@@ -24,9 +24,12 @@
 			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</N8nInfoTip>
+			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
+			</N8nInfoTip>
 			<N8nInfoTip v-else :bold="false" class="mb-s">
 				{{
-					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
+					$locale.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
@@ -63,12 +66,14 @@ import { EnterpriseEditionFeature } from '@/constants';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
+import { ProjectTypes } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { PermissionsMap } from '@/permissions';
 import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
+import { splitName } from '@/utils/projects.utils';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -130,7 +135,8 @@ export default defineComponent({
 			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
+			const { firstName, lastName, email } = splitName(this.credential?.homeProject?.name ?? '');
+			return firstName || lastName ? `${firstName}${lastName ? ' ' + lastName : ''}` : email ?? '';
 		},
 		credentialDataHomeProject(): ProjectSharingData | undefined {
 			const credentialContainsProjectSharingData = (
@@ -161,6 +167,9 @@ export default defineComponent({
 		},
 		homeProject(): ProjectSharingData | undefined {
 			return this.credential?.homeProject ?? this.credentialDataHomeProject;
+		},
+		isHomeTeamProject(): boolean {
+			return this.homeProject?.type === ProjectTypes.Team;
 		},
 		credentialRoleTranslations(): Record<string, string> {
 			return {

@@ -320,6 +320,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			projectId,
 		);
 
+		if (data?.homeProject && !credential.homeProject) {
+			credential.homeProject = data.homeProject as ProjectSharingData;
+		}
+
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			upsertCredential(credential);
 			if (data.sharedWithProjects) {
