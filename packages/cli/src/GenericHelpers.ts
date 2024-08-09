@@ -47,6 +47,7 @@ class StringWithNoXss {
 	}
 }
 
+// Temporary solution until we implement payload validation middleware
 export async function validateRecordNoXss(record: Record<string, string>) {
 	const errors: ValidationError[] = [];
 
