@@ -4,10 +4,14 @@ export type UnregisterFn = () => void;
 
 export interface EventBus {
 	on: (eventName: string, fn: CallbackFn) => UnregisterFn;
+	once: (eventName: string, fn: CallbackFn) => UnregisterFn;
 	off: (eventName: string, fn: CallbackFn) => void;
 	emit: <T = Event>(eventName: string, event?: T) => void;
 }
 
+/**
+ * @deprecated Use the typed version instead from `typed-event-bus.ts`
+ */
 export function createEventBus(): EventBus {
 	const handlers = new Map<string, CallbackFn[]>();
 
@@ -33,6 +37,15 @@ export function createEventBus(): EventBus {
 		return () => off(eventName, fn);
 	}
 
+	function once(eventName: string, fn: CallbackFn): UnregisterFn {
+		const unregister = on(eventName, (...args: unknown[]) => {
+			unregister();
+			fn(...args);
+		});
+
+		return unregister;
+	}
+
 	function emit<T = Event>(eventName: string, event?: T) {
 		const eventFns = handlers.get(eventName);
 
@@ -45,6 +58,7 @@ export function createEventBus(): EventBus {
 
 	return {
 		on,
+		once,
 		off,
 		emit,
 	};

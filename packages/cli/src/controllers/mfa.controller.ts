@@ -1,4 +1,4 @@
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -71,11 +71,16 @@ export class MFAController {
 		await this.mfaService.enableMfa(id);
 	}
 
-	@Delete('/disable')
-	async disableMFA(req: AuthenticatedRequest) {
-		const { id } = req.user;
+	@Post('/disable', { rateLimit: true })
+	async disableMFA(req: MFA.Disable) {
+		const { id: userId } = req.user;
+		const { token = null } = req.body;
 
-		await this.mfaService.disableMfa(id);
+		if (typeof token !== 'string' || !token) {
+			throw new BadRequestError('Token is required to disable MFA feature');
+		}
+
+		await this.mfaService.disableMfa(userId, token);
 	}
 
 	@Post('/verify', { rateLimit: true })
