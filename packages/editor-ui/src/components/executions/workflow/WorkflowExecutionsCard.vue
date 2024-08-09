@@ -56,6 +56,7 @@
 						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</n8n-text>
 				</div>
+				<N8nTags v-if="executionUIDetails.tags" :tags="executionUIDetails.tags"></N8nTags>
 			</div>
 			<div :class="$style.icons">
 				<n8n-action-dropdown
@@ -86,6 +87,8 @@ import { defineComponent } from 'vue';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import N8nTags from '@/components/N8nTags/Tags.vue';
+import N8nTag from '@/components/N8nTags/Tag.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { mapStores } from 'pinia';
