@@ -1,6 +1,8 @@
 import type {
+	DeclarativeRestApiSettings,
 	IDataObject,
 	IExecuteFunctions,
+	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
@@ -64,11 +66,11 @@ export async function getUsers(
 	const responseData: OktaUser[] = await oktaApiRequest.call(this, 'GET', '/users/');
 	const filteredUsers = responseData.filter((user) => {
 		if (!filter) return true;
-		const fullName = `${user.profile.firstName} ${user.profile.lastName}`.toLowerCase();
-		return fullName.includes(filter.toLowerCase());
+		const username = `${user.profile.login}`.toLowerCase();
+		return username.includes(filter.toLowerCase());
 	});
 	const users: INodePropertyOptions[] = filteredUsers.map((user) => ({
-		name: `${user.profile.firstName} ${user.profile.lastName}`,
+		name: `${user.profile.login}`,
 		value: user.id,
 	}));
 	return {
@@ -104,6 +106,7 @@ export async function simplifyGetAllResponse(
 	if (!simplify)
 		return ((items[0].json as unknown as IDataObject[]) ?? []).map((item: IDataObject) => ({
 			json: item,
+			headers: _response.headers,
 		})) as INodeExecutionData[];
 	let simplifiedItems: INodeExecutionData[] = [];
 	if (items[0].json) {
@@ -112,6 +115,7 @@ export async function simplifyGetAllResponse(
 			const simplifiedItem = simplifyOktaUser(item);
 			return {
 				json: simplifiedItem,
+				headers: _response.headers,
 			};
 		});
 	}
@@ -135,3 +139,32 @@ export async function simplifyGetResponse(
 		},
 	] as INodeExecutionData[];
 }
+
+export const getCursorPaginator = () => {
+	return async function cursorPagination(
+		this: IExecutePaginationFunctions,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	): Promise<INodeExecutionData[]> {
+		if (!requestOptions.options.qs) {
+			requestOptions.options.qs = {};
+		}
+
+		let items: INodeExecutionData[] = [];
+		let responseData: INodeExecutionData[];
+		let nextCursor: string | undefined = undefined;
+		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
+		do {
+			requestOptions.options.qs.limit = 200;
+			requestOptions.options.qs.after = nextCursor;
+			responseData = await this.makeRoutingRequest(requestOptions);
+			if (responseData.length > 0) {
+				const headers = responseData[responseData.length - 1].headers;
+				const headersLink = (headers as IDataObject)?.link as string | undefined;
+				nextCursor = headersLink?.split('after=')[1]?.split('&')[0]?.split('>')[0];
+			}
+			items = items.concat(responseData);
+		} while (returnAll && nextCursor);
+
+		return items;
+	};
+};
