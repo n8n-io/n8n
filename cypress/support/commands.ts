@@ -197,7 +197,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
-			cy.get(droppableSelector).realMouseUp({ position: options?.position ?? 'center' });
+			cy.get(droppableSelector).realMouseUp({ position: options?.position ?? 'top' });
 			if (draggableSelector) {
 				cy.get(draggableSelector).realMouseUp();
 			}

@@ -105,7 +105,6 @@ const drawDropCursor = ViewPlugin.fromClass(
 			mousemove(event) {
 				if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping') return;
 				const pos = this.view.posAtCoords(eventToCoord(event), false);
-
 				this.setDropPos(pos);
 			},
 			mouseleave() {
