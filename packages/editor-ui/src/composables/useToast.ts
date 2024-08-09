@@ -22,7 +22,8 @@ const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	position: 'bottom-right',
 	zIndex: 3000, // above NDV and chat window
 	offset: 64,
-	// TODO: find a way to order the z-index (floating button, chat, toast, ...)
+	appendTo: '#node-view-root',
+	customClass: 'content-toast',
 };
 
 const stickyNotificationQueue: NotificationHandle[] = [];

@@ -376,7 +376,7 @@ p {
 
 .blockTitle {
 	border-bottom: var(--border-base);
-	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
 	word-break: break-word;
 }
