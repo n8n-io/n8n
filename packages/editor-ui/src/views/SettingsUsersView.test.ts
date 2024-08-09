@@ -15,6 +15,7 @@ import { DELETE_USER_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import * as usersApi from '@/api/users';
 import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
+import { ProjectTypes } from '@/types/projects.types';
 
 const wrapperComponentWithModal = {
 	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
@@ -34,7 +35,12 @@ const renderComponent = createComponentRenderer(wrapperComponentWithModal);
 
 const loggedInUser = createUser();
 const users = Array.from({ length: 3 }, createUser);
-const personalProjects = Array.from({ length: 3 }, createProjectListItem);
+const projects = [
+	ProjectTypes.Personal,
+	ProjectTypes.Personal,
+	ProjectTypes.Team,
+	ProjectTypes.Team,
+].map(createProjectListItem);
 
 let pinia: ReturnType<typeof createPinia>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
@@ -60,7 +66,7 @@ describe('SettingsUsersView', () => {
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
-		vi.spyOn(projectsStore, 'personalProjects', 'get').mockReturnValue(personalProjects);
+		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 
 		usersStore.currentUserId = loggedInUser.id;
 	});
