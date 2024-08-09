@@ -1,7 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
-const commonThemeProps = {
+const commonThemeProps = (isReadOnly = false) => ({
 	'&': {
 		borderWidth: 'var(--border-width-base)',
 		borderStyle: 'var(--input-border-style, var(--border-style-base))',
@@ -20,22 +20,22 @@ const commonThemeProps = {
 		fontFamily: 'var(--font-family-monospace)',
 		padding: 'var(--spacing-xs)',
 		color: 'var(--input-font-color, var(--color-text-dark))',
-		caretColor: 'var(--color-code-caret)',
+		caretColor: isReadOnly ? 'transparent' : 'var(--color-code-caret)',
 	},
 	'.cm-line': {
 		padding: '0',
 	},
-};
+});
 
-export const inputTheme = () => {
-	const theme = EditorView.theme(commonThemeProps);
+export const inputTheme = (isReadOnly = false) => {
+	const theme = EditorView.theme(commonThemeProps(isReadOnly));
 
 	return [theme, highlighter.resolvableStyle];
 };
 
 export const outputTheme = () => {
 	const theme = EditorView.theme({
-		...commonThemeProps,
+		...commonThemeProps(true),
 		'.cm-valid-resolvable': {
 			padding: '0 2px',
 			borderRadius: '2px',

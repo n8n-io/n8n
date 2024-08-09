@@ -2,6 +2,7 @@ import { EditorSelection, StateEffect, StateField, type Extension } from '@codem
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { useNDVStore } from '@/stores/ndv.store';
+import { unwrapExpression } from '@/utils/expressions';
 
 const setDropCursorPos = StateEffect.define<number | null>({
 	map(pos, mapping) {
@@ -103,7 +104,7 @@ const drawDropCursor = ViewPlugin.fromClass(
 		eventObservers: {
 			mousemove(event) {
 				if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping') return;
-				const pos = posAtCoords(this.view, eventToCoord(event));
+				const pos = this.view.posAtCoords(eventToCoord(event), false);
 
 				this.setDropPos(pos);
 			},
@@ -121,21 +122,18 @@ function eventToCoord(event: MouseEvent): { x: number; y: number } {
 	return { x: event.clientX, y: event.clientY };
 }
 
-function posAtCoords(view: EditorView, coord: { x: number; y: number }) {
-	const pos = view.posAtCoords(coord, false);
-	const node = syntaxTree(view.state).resolve(pos);
+export async function dropInEditor(view: EditorView, event: MouseEvent, value: string) {
+	const dropPos = view.posAtCoords(eventToCoord(event), false);
 
+	const node = syntaxTree(view.state).resolve(dropPos);
+	let valueToInsert = value;
+
+	// We are already in an expression, do not insert brackets
 	if (node.name === 'Resolvable') {
-		const closerToStart = pos - node.from < node.to - pos;
-		return closerToStart ? node.from : node.to;
+		valueToInsert = unwrapExpression(value);
 	}
 
-	return pos;
-}
-
-export async function dropInEditor(view: EditorView, event: MouseEvent, value: string) {
-	const dropPos = posAtCoords(view, eventToCoord(event));
-	const changes = view.state.changes({ from: dropPos, insert: value });
+	const changes = view.state.changes({ from: dropPos, insert: valueToInsert });
 	const anchor = changes.mapPos(dropPos, -1);
 	const head = changes.mapPos(dropPos, 1);
 	const selection = EditorSelection.single(anchor, head);

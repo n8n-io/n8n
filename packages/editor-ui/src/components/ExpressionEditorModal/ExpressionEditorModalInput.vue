@@ -44,7 +44,7 @@ const emit = defineEmits<{
 
 const root = ref<HTMLElement>();
 const extensions = computed(() => [
-	inputTheme(),
+	inputTheme(props.isReadOnly),
 	Prec.highest(
 		keymap.of([
 			...tabKeyMap(),

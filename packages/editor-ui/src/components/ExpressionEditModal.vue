@@ -1,12 +1,14 @@
 <template>
 	<el-dialog
-		width="calc(100vw - 200px)"
+		width="calc(100vw - var(--spacing-3xl))"
 		append-to-body
 		:class="$style.modal"
 		:model-value="dialogVisible"
-		:title="$locale.baseText('expressionEdit.editExpression')"
 		:before-close="closeDialog"
 	>
+		<button :class="$style.close" @click="closeDialog">
+			<Close height="18" width="18" />
+		</button>
 		<div :class="$style.container">
 			<div :class="$style.sidebar">
 				<N8nInput
@@ -90,6 +92,7 @@
 <script setup lang="ts">
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import { computed, ref, toRaw, watch } from 'vue';
+import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -210,23 +213,21 @@ async function onDrop(expression: string, event: MouseEvent) {
 
 <style module lang="scss">
 .modal {
-	--modal-header-height: 76px;
 	--dialog-close-top: var(--spacing-m);
 	display: flex;
 	flex-direction: column;
 	overflow: clip;
-	height: calc(100vh - 140px);
+	height: calc(100% - var(--spacing-4xl));
 	margin-bottom: 0;
 
 	:global(.el-dialog__body) {
 		background-color: var(--color-expression-editor-modal-background);
-		height: calc(100% - var(--modal-header-height));
-		border-top: var(--border-base);
-		padding-top: var(--spacing-l);
+		height: 100%;
+		padding: var(--spacing-s);
 	}
 
 	:global(.el-dialog__header) {
-		padding: var(--spacing-s) var(--spacing-l);
+		display: none;
 	}
 }
 
@@ -278,21 +279,45 @@ async function onDrop(expression: string, event: MouseEvent) {
 .output {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-2xs);
 	flex: 1 1 0;
+}
+
+.output {
+	[aria-readonly] {
+		background: var(--color-background-light);
+	}
 }
 
 .header {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-4xs);
+
+	gap: var(--spacing-5xs);
 }
 
 .tip {
 	min-height: 22px;
 }
 
-@media (max-width: 1200px) {
+.close {
+	display: flex;
+	border: none;
+	background: none;
+	cursor: pointer;
+	padding: var(--spacing-4xs);
+	position: absolute;
+	right: var(--spacing-s);
+	top: var(--spacing-s);
+	color: var(--color-button-secondary-font);
+
+	&:hover,
+	&:active {
+		color: var(--color-primary);
+	}
+}
+
+@media (max-width: $breakpoint-md) {
 	.io {
 		flex-direction: column;
 	}
@@ -300,6 +325,12 @@ async function onDrop(expression: string, event: MouseEvent) {
 	.input,
 	.output {
 		height: 50%;
+	}
+
+	.header {
+		flex-direction: row;
+		align-items: baseline;
+		gap: var(--spacing-2xs);
 	}
 }
 </style>
