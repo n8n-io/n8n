@@ -71,6 +71,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
+			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'server-started': async () => await this.serverStarted(),
 			'session-started': (event) => this.sessionStarted(event),
@@ -93,6 +94,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-signed-up': (event) => this.userSignedUp(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
+			'email-failed': (event) => this.emailFailed(event),
 		});
 	}
 
@@ -504,6 +506,18 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			workflow_id: workflowId,
 			public_api: publicApi,
+		});
+	}
+
+	private workflowSharingUpdated({
+		workflowId,
+		userIdSharer,
+		userIdList,
+	}: RelayEventMap['workflow-sharing-updated']) {
+		this.telemetry.track('User updated workflow sharing', {
+			workflow_id: workflowId,
+			user_id_sharer: userIdSharer,
+			user_id_list: userIdList,
 		});
 	}
 
@@ -927,6 +941,18 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
+	}
+
+	// #endregion
+
+	// #region Email
+
+	private emailFailed({ user, messageType, publicApi }: RelayEventMap['email-failed']) {
+		this.telemetry.track('Instance failed to send transactional email to user', {
+			user_id: user.id,
+			message_type: messageType,
+			public_api: publicApi,
+		});
 	}
 
 	// #endregion
