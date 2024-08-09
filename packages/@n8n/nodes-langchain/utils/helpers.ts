@@ -271,7 +271,6 @@ export function convertNodeToTool(
 	ctx: IExecuteFunctions,
 	nodeParameters: INodeParameters,
 ) {
-	console.log('Converting node to tool');
 	const placeholderValues = traverseObject(nodeParameters);
 
 	// Generate Zod schema

@@ -1,59 +1,84 @@
-import type { INodeType, SupplyData, IExecuteFunctions, IVersionedNodeType } from 'n8n-workflow';
+import type {
+	INodeType,
+	IVersionedNodeType,
+	INodeTypeDescription,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
-import { convertNodeToTool } from './helpers';
 
-export function nodeToTool<
-	T extends (new (...args: any[]) => INodeType) | (new () => IVersionedNodeType),
->(nodeType: T): T {
-	const myNodeType: INodeType | IVersionedNodeType = new nodeType();
+interface Constructor<T> {
+	new (): T;
+}
 
-	class NewNodeType extends nodeType {
-		constructor(...args: any[]) {
-			super(...args);
+type BaseType = INodeType | IVersionedNodeType;
 
-			// @ts-ignore
-			if (this.nodeVersions) {
-				// VersionedNodes are themselves a wrapper around other nodes, based on
-				// the version of the node. To support this, we need to convert the
-				// description of our copy of the nodeVersions.
-				// @ts-ignore
-				this.nodeVersions = Object.fromEntries(
-					// @ts-ignore
-					Object.entries(this.nodeVersions).map(([version, versionedNodeType]: [string, T]) => {
-						return [version, this.convertDescription(versionedNodeType)];
-					}),
-				);
-			}
-			this.convertDescription(this);
+interface DescribedType {
+	description: INodeTypeDescription;
+}
+
+interface BaseDescribedType {
+	description: INodeTypeBaseDescription;
+}
+
+function addCodex(item: BaseDescribedType) {
+	item.description.codex = {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Other Tools'],
+		},
+	};
+}
+
+function convertDescription(item: DescribedType) {
+	item.description.inputs = [];
+	item.description.outputs = [NodeConnectionType.AiTool];
+	item.description.displayName += ' Tool';
+	addCodex(item);
+	return item;
+}
+
+function nodeToToolNormal(BaseClass: Constructor<INodeType>): Constructor<INodeType> {
+	console.log('normal version');
+	class NewNodeClass extends BaseClass {
+		constructor() {
+			super();
+			convertDescription(this);
 		}
+	}
+	return NewNodeClass;
+}
 
-		private convertDescription(item: any) {
-			// @ts-ignore
-			item.description.inputs = [];
-			// @ts-ignore
-			item.description.outputs = [NodeConnectionType.AiTool];
-			// @ts-ignore
-			item.description.codex = {
-				categories: ['AI'],
-				subcategories: {
-					AI: ['Tools'],
-					Tools: ['Other Tools'],
-				},
-			};
-			// @ts-ignore
-			item.description.displayName += ' Tool';
-			return item;
-		}
+function nodeToToolVersioned(
+	BaseClass: Constructor<IVersionedNodeType>,
+): Constructor<IVersionedNodeType> {
+	class NewNodeClass extends BaseClass {
+		constructor() {
+			super();
+			addCodex(this);
 
-		// TODO -- Some issue with versioned / routered nodes? See airtable. That one will not really work in this mode...
-
-		async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-			return {
-				// @ts-ignore
-				response: convertNodeToTool(myNodeType, this, this.getNode().parameters),
-			};
+			// VersionedNodes are themselves a wrapper around other nodes, based on
+			// the version of the node. To support this, we need to convert the
+			// description of our copy of the nodeVersions.
+			// Then our `helpers.getConnectedTools` will handle the rest.
+			this.nodeVersions = Object.fromEntries(
+				Object.entries(this.nodeVersions).map(([version, versionedNodeType]) => {
+					return [version, convertDescription(versionedNodeType)];
+				}),
+			);
 		}
 	}
 
-	return NewNodeType;
+	return NewNodeClass;
+}
+
+function isVersioned(object: BaseType): object is IVersionedNodeType {
+	return 'nodeVersions' in object;
+}
+
+export function nodeToTool<T extends Constructor<BaseType>>(nodeType: T): T {
+	const myNodeType = new nodeType();
+	if (isVersioned(myNodeType))
+		return nodeToToolVersioned(nodeType as Constructor<IVersionedNodeType>) as T;
+	return nodeToToolNormal(nodeType as Constructor<INodeType>) as T;
 }
