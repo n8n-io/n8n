@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity } from '@/GenericHelpers';
+import { validateEntity, validateRecordNoXss } from '@/GenericHelpers';
 import type { User } from '@db/entities/User';
 import {
 	AuthenticatedRequest,
@@ -176,6 +176,8 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
+		await validateRecordNoXss(personalizationAnswers);
+
 		await this.userRepository.save(
 			{
 				id: req.user.id,
@@ -237,6 +239,9 @@ export class MeController {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
 			excludeExtraneousValues: true,
 		});
+
+		await validateEntity(payload);
+
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);

@@ -225,6 +225,26 @@ describe('MeController', () => {
 				new BadRequestError('Personalization answers are mandatory'),
 			);
 		});
+
+		it('should throw BadRequestError on XSS attempt', async () => {
+			const req = mock<MeRequest.SurveyAnswers>({
+				body: { 'test-answer': '<script>alert("XSS")</script>' },
+			});
+
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+		});
+	});
+
+	describe('updateCurrentUserSettings', () => {
+		it('should throw BadRequestError on XSS attempt', async () => {
+			const req = mock<AuthenticatedRequest>({
+				body: {
+					userActivated: '<script>alert("XSS")</script>',
+				},
+			});
+
+			await expect(controller.updateCurrentUserSettings(req)).rejects.toThrowError(BadRequestError);
+		});
 	});
 
 	describe('API Key methods', () => {
