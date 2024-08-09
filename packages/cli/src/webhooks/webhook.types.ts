@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 
-export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 
 export type WebhookRequest = Request<{ path: string }> & {
 	method: IHttpRequestMethods;
