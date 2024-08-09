@@ -13,7 +13,6 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import config from '@/config';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
@@ -26,7 +25,6 @@ import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageC
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);
-	mockInstance(InternalHooks);
 	const instanceSettings = new InstanceSettings();
 
 	let executionRecoveryService: ExecutionRecoveryService;

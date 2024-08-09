@@ -5,7 +5,6 @@ import type { ExternalSecretsSettings } from '@/Interfaces';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
-import { InternalHooks } from '@/InternalHooks';
 import { mockInstance } from '@test/mocking';
 import {
 	DummyProvider,
@@ -22,7 +21,6 @@ describe('External Secrets Manager', () => {
 	const mockProvidersInstance = new MockProviders();
 	const license = mockInstance(License);
 	const settingsRepo = mockInstance(SettingsRepository);
-	mockInstance(InternalHooks);
 	const cipher = Container.get(Cipher);
 
 	let providersMock: ExternalSecretsProviders;

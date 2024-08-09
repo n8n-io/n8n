@@ -5,7 +5,6 @@ import { mock } from 'jest-mock-extended';
 import { AbstractServer } from '@/AbstractServer';
 import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
 import { WaitingForms } from '@/WaitingForms';
@@ -19,7 +18,6 @@ let agent: SuperAgentTest;
 
 describe('WebhookServer', () => {
 	mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';

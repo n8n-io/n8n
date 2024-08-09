@@ -14,7 +14,6 @@ import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import { InternalHooks } from '@/InternalHooks';
 import { AuthService } from '@/auth/auth.service';
 import type { APIRequest } from '@/requests';
 
@@ -82,7 +81,6 @@ export const setupTestServer = ({
 
 	// Mock all telemetry and logging
 	mockInstance(Logger);
-	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 

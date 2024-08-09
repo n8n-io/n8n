@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
@@ -8,7 +8,6 @@ import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { Logger } from '@/Logger';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -144,10 +143,11 @@ export class UserService {
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						Container.get(InternalHooks).onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
+
+						this.eventService.emit('user-transactional-email-sent', {
+							userId: id,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 					}
 

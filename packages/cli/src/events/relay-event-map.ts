@@ -207,6 +207,17 @@ export type RelayEventMap = {
 		user: UserLike;
 	};
 
+	'user-transactional-email-sent': {
+		userId: string;
+		messageType:
+			| 'Reset password'
+			| 'New user invite'
+			| 'Resend invite'
+			| 'Workflow shared'
+			| 'Credentials shared';
+		publicApi: boolean;
+	};
+
 	// #endregion
 
 	// #region Public API

@@ -4,7 +4,6 @@ import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-wor
 
 import { AbstractServer } from '@/AbstractServer';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -21,7 +20,6 @@ mockInstance(Telemetry);
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 	mockInstance(Push);
 
 	let agent: SuperAgentTest;

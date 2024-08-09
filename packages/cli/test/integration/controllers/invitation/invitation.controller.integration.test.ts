@@ -1,8 +1,6 @@
-import { mocked } from 'jest-mock';
 import Container from 'typedi';
 import { Not } from '@n8n/typeorm';
-
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -31,7 +29,7 @@ import { ProjectRelationRepository } from '@/databases/repositories/projectRelat
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);
 	const externalHooks = mockInstance(ExternalHooks);
-	const internalHooks = mockInstance(InternalHooks);
+	const eventService = mockInstance(EventService);
 
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
@@ -413,14 +411,24 @@ describe('InvitationController', () => {
 			expect(externalHookName).toBe('user.invited');
 			expect(externalHookArg?.[0]).toStrictEqual([newUserEmail]);
 
-			// internal hooks
-
-			const calls = mocked(internalHooks).onUserTransactionalEmail.mock.calls;
-
-			for (const [onUserTransactionalEmailArg] of calls) {
-				expect(onUserTransactionalEmailArg.user_id).toBeDefined();
-				expect(onUserTransactionalEmailArg.message_type).toBe('New user invite');
-				expect(onUserTransactionalEmailArg.public_api).toBe(false);
+			for (const [eventName, payload] of eventService.emit.mock.calls) {
+				if (eventName === 'user-invited') {
+					expect(payload).toEqual({
+						user: expect.objectContaining({ id: expect.any(String) }),
+						targetUserId: expect.arrayContaining([expect.any(String), expect.any(String)]),
+						publicApi: false,
+						emailSent: true,
+						inviteeRole: 'global:member',
+					});
+				} else if (eventName === 'user-transactional-email-sent') {
+					expect(payload).toEqual({
+						userId: expect.any(String),
+						messageType: 'New user invite',
+						publicApi: false,
+					});
+				} else {
+					fail(`Unexpected event name: ${eventName}`);
+				}
 			}
 		});
 
