@@ -197,9 +197,8 @@ describe('ScalingService', () => {
 			 */
 			const scalingService = new ScalingService(mock(), mock(), mock());
 			await scalingService.setupQueue();
-			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
 			// @ts-expect-error - Untyped but possible Redis response
-			queue.getJobs.mockResolvedValue([job, null]);
+			queue.getJobs.mockResolvedValue([mock<Job>(), null]);
 
 			/**
 			 * Act
