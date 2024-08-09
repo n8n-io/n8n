@@ -116,9 +116,15 @@ export async function updateOtherUserSettings(
 	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
+export type UpdateUserPasswordParams = {
+	newPassword: string;
+	currentPassword: string;
+	mfaCode?: string;
+};
+
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: UpdateUserPasswordParams,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }

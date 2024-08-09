@@ -16,6 +16,9 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
 import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
+import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import { MfaService } from '@/Mfa/mfa.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 const browserId = 'test-browser-id';
 
@@ -25,6 +28,8 @@ describe('MeController', () => {
 	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
+	const mockMfaService = mockInstance(MfaService);
+	mockInstance(AuthUserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -181,7 +186,7 @@ describe('MeController', () => {
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
 			const req = mock<MeRequest.Password>({
-				user: mock({ password: passwordHash }),
+				user: mock({ password: passwordHash, mfaEnabled: false }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 				browserId,
 			});
@@ -212,6 +217,52 @@ describe('MeController', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('user-updated', {
 				user: req.user,
 				fieldsChanged: ['password'],
+			});
+		});
+
+		describe('mfa enabled', () => {
+			it('should throw BadRequestError if mfa code is missing', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
+				});
+
+				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+					new BadRequestError('Two-factor code is required to change password.'),
+				);
+			});
+
+			it('should throw ForbiddenError if invalid mfa code is given', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: { currentPassword: 'old_password', newPassword: 'NewPassword123', mfaCode: '123' },
+				});
+				mockMfaService.validateMfa.mockResolvedValue(false);
+
+				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+					new ForbiddenError('Invalid two-factor code.'),
+				);
+			});
+
+			it('should succeed when mfa code is correct', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: {
+						currentPassword: 'old_password',
+						newPassword: 'NewPassword123',
+						mfaCode: 'valid',
+					},
+					browserId,
+				});
+				const res = mock<Response>();
+				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				mockMfaService.validateMfa.mockResolvedValue(true);
+
+				const result = await controller.updatePassword(req, res);
+
+				expect(result).toEqual({ success: true });
+				expect(req.user.password).not.toBe(passwordHash);
 			});
 		});
 	});

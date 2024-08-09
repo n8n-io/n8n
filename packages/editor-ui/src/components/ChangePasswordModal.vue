@@ -35,7 +35,7 @@ import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import Modal from '@/components/Modal.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IFormInputs } from '@/Interface';
+import type { IFormInputs, IFormInput } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 
 const config = ref<IFormInputs | null>(null);
@@ -68,10 +68,18 @@ const onInput = (e: { name: string; value: string }) => {
 	}
 };
 
-const onSubmit = async (values: { currentPassword: string; password: string }) => {
+const onSubmit = async (values: {
+	currentPassword: string;
+	password: string;
+	mfaCode?: string;
+}) => {
 	try {
 		loading.value = true;
-		await usersStore.updateCurrentUserPassword(values);
+		await usersStore.updateCurrentUserPassword({
+			currentPassword: values.currentPassword,
+			newPassword: values.password,
+			mfaCode: values.mfaCode,
+		});
 
 		showMessage({
 			type: 'success',
@@ -92,8 +100,8 @@ const onSubmitClick = () => {
 };
 
 onMounted(() => {
-	const form: IFormInputs = [
-		{
+	const inputs: Record<string, IFormInput> = {
+		currentPassword: {
 			name: 'currentPassword',
 			properties: {
 				label: i18n.baseText('auth.changePassword.currentPassword'),
@@ -104,7 +112,16 @@ onMounted(() => {
 				focusInitially: true,
 			},
 		},
-		{
+		mfaCode: {
+			name: 'mfaCode',
+			properties: {
+				label: i18n.baseText('auth.changePassword.mfaCode'),
+				type: 'text',
+				required: true,
+				capitalize: true,
+			},
+		},
+		newPassword: {
 			name: 'password',
 			properties: {
 				label: i18n.baseText('auth.newPassword'),
@@ -116,7 +133,7 @@ onMounted(() => {
 				capitalize: true,
 			},
 		},
-		{
+		newPasswordAgain: {
 			name: 'password2',
 			properties: {
 				label: i18n.baseText('auth.changePassword.reenterNewPassword'),
@@ -132,7 +149,13 @@ onMounted(() => {
 				capitalize: true,
 			},
 		},
-	];
+	};
+
+	const { currentUser } = usersStore;
+
+	const form: IFormInputs = currentUser?.mfaEnabled
+		? [inputs.currentPassword, inputs.mfaCode, inputs.newPassword, inputs.newPasswordAgain]
+		: [inputs.currentPassword, inputs.newPassword, inputs.newPasswordAgain];
 
 	config.value = form;
 });

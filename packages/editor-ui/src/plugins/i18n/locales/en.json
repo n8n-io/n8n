@@ -98,6 +98,7 @@
 	"activationModal.yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
 	"auth.changePassword": "Change password",
 	"auth.changePassword.currentPassword": "Current password",
+	"auth.changePassword.mfaCode": "Two-factor code",
 	"auth.changePassword.error": "Problem changing the password",
 	"auth.changePassword.missingTokenError": "Missing token",
 	"auth.changePassword.missingUserIdError": "Missing user ID",
