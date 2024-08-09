@@ -94,8 +94,8 @@ onBeforeUnmount(() => {
 <style lang="scss" module>
 .zoomMenu {
 	position: absolute;
-	bottom: var(--spacing-l);
-	left: var(--spacing-l);
+	bottom: var(--spacing-s);
+	left: var(--spacing-s);
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;

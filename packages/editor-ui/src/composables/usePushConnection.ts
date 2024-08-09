@@ -41,6 +41,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -57,6 +58,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const assistantStore = useAssistantStore();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
@@ -535,6 +537,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const pushData = receivedData.data;
 			workflowsStore.addNodeExecutionData(pushData);
 			workflowsStore.removeExecutingNode(pushData.nodeName);
+			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
 			const pushData = receivedData.data;

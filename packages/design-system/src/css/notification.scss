@@ -28,6 +28,10 @@
 		left: 16px;
 	}
 
+	&.content-toast {
+		position: absolute;
+	}
+
 	@include mixins.e(group) {
 		margin-left: var.$notification-group-margin-left;
 		margin-right: var.$notification-group-margin-right;
