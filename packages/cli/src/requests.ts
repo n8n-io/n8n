@@ -46,13 +46,11 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 
 export class UserSettingsUpdatePayload {
 	@Expose()
-	@NoXss()
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
 	userActivated?: boolean;
 
 	@Expose()
-	@NoXss()
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
