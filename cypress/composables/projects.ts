@@ -5,7 +5,8 @@ const credentialsModal = new CredentialsModal();
 
 export const getHomeButton = () => cy.getByTestId('project-home-menu-item');
 export const getMenuItems = () => cy.getByTestId('project-menu-item');
-export const getAddProjectButton = () => cy.getByTestId('add-project-menu-item');
+export const getAddProjectButton = () =>
+	cy.getByTestId('add-project-menu-item').should('contain', 'Add project').should('be.visible');
 export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
@@ -28,7 +29,7 @@ export const getResourceMoveConfirmModal = () =>
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
 
 export function createProject(name: string) {
-	getAddProjectButton().should('be.visible').click();
+	getAddProjectButton().click();
 
 	getProjectNameInput()
 		.should('be.visible')
@@ -46,7 +47,7 @@ export function createWorkflow(fixtureKey: string, name: string) {
 	workflowPage.actions.zoomToFit();
 }
 
-export function createCredential(name: string) {
+export function createCredential(name: string, closeModal = true) {
 	credentialsModal.getters.newCredentialModal().should('be.visible');
 	credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 	credentialsModal.getters.newCredentialTypeOption('Notion API').click();
@@ -54,13 +55,8 @@ export function createCredential(name: string) {
 	credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 	credentialsModal.actions.setName(name);
 	credentialsModal.actions.save();
-	credentialsModal.actions.close();
-}
 
-export const actions = {
-	createProject: (name: string) => {
-		getAddProjectButton().click();
-		getProjectSettingsNameInput().type(name);
-		getProjectSettingsSaveButton().click();
-	},
-};
+	if (closeModal) {
+		credentialsModal.actions.close();
+	}
+}

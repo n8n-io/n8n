@@ -7,7 +7,7 @@ import { sleep, ApplicationError } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
-import { ScalingService } from '@/scaling/scaling.service';
+import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -171,6 +171,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async initScalingService() {
+		const { ScalingService } = await import('@/scaling/scaling.service');
 		this.scalingService = Container.get(ScalingService);
 
 		await this.scalingService.setupQueue();

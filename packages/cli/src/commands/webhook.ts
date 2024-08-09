@@ -4,7 +4,6 @@ import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ScalingService } from '@/scaling/scaling.service';
 import { WebhookServer } from '@/webhooks/WebhookServer';
 import { BaseCommand } from './BaseCommand';
 
@@ -96,6 +95,7 @@ export class Webhook extends BaseCommand {
 			);
 		}
 
+		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);

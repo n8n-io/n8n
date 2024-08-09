@@ -237,7 +237,7 @@ describe('Projects', { disableAutoLogin: true }, () => {
 		cy.signinAsMember(1);
 		cy.visit(workflowsPage.url);
 
-		projects.getAddProjectButton().should('not.exist');
+		cy.getByTestId('add-project-menu-item').should('not.exist');
 		projects.getMenuItems().should('not.exist');
 	});
 
