@@ -2,6 +2,7 @@ import type {
 	INodeType,
 	IVersionedNodeType,
 	INodeTypeDescription,
+	INodeProperties,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
@@ -34,6 +35,20 @@ function convertDescription(item: DescribedType) {
 	item.description.inputs = [];
 	item.description.outputs = [NodeConnectionType.AiTool];
 	item.description.displayName += ' Tool';
+	if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+		const descProp: INodeProperties = {
+			displayName: 'Description',
+			name: 'toolDescription',
+			type: 'string',
+			default: item.description.description,
+			required: true,
+			typeOptions: { rows: 2 },
+			description:
+				'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+			placeholder: `e.g. ${item.description.description}`,
+		};
+		item.description.properties.unshift(descProp);
+	}
 	addCodex(item);
 	return item;
 }

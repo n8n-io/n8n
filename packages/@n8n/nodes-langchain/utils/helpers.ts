@@ -282,9 +282,11 @@ export function convertNodeToTool(
 	}
 	const schema = z.object(schemaObj);
 
+	const toolDescription = ctx.getNodeParameter('toolDescription', 0) as string;
+
 	const tool = new DynamicStructuredTool({
 		name: node.description.name,
-		description: node.description.description,
+		description: toolDescription ? toolDescription : node.description.description,
 		schema,
 		func: async (args: z.infer<typeof schema>) => {
 			const originalGetNodeParameter = ctx.getNodeParameter;
