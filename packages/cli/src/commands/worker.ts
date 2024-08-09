@@ -102,7 +102,7 @@ export class Worker extends BaseCommand {
 		const { QUEUE_WORKER_TIMEOUT } = process.env;
 		if (QUEUE_WORKER_TIMEOUT) {
 			this.gracefulShutdownTimeoutInS =
-				parseInt(QUEUE_WORKER_TIMEOUT, 10) || config.default('queue.bull.gracefulShutdownTimeout');
+				parseInt(QUEUE_WORKER_TIMEOUT, 10) || this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
@@ -182,7 +182,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async setupHealthMonitor() {
-		const port = config.getEnv('queue.health.port');
+		const { port } = this.globalConfig.queue.health;
 
 		const app = express();
 		app.disable('x-powered-by');
@@ -285,7 +285,7 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
 		this.logger.info('');
 
-		if (config.getEnv('queue.health.active')) {
+		if (this.globalConfig.queue.health.active) {
 			await this.setupHealthMonitor();
 		}
 
