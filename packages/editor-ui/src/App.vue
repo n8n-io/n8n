@@ -154,6 +154,7 @@ export default defineComponent({
 .content {
 	display: flex;
 	grid-area: content;
+	position: relative;
 	overflow: auto;
 	height: 100%;
 	width: 100%;

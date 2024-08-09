@@ -441,6 +441,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,
+							appendTo: '#content',
+							customClass: 'content-toast',
 						});
 					}
 				}
