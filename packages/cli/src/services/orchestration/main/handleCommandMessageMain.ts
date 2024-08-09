@@ -7,7 +7,7 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Push } from '@/push';
-import { TestWebhooks } from '@/TestWebhooks';
+import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CommunityPackagesService } from '@/services/communityPackages.service';

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.53.0",
+  "version": "1.54.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -390,6 +390,7 @@
       "dist/nodes/AgileCrm/AgileCrm.node.js",
       "dist/nodes/Airtable/Airtable.node.js",
       "dist/nodes/Airtable/AirtableTrigger.node.js",
+      "dist/nodes/AiTransform/AiTransform.node.js",
       "dist/nodes/Amqp/Amqp.node.js",
       "dist/nodes/Amqp/AmqpTrigger.node.js",
       "dist/nodes/ApiTemplateIo/ApiTemplateIo.node.js",

@@ -16,7 +16,6 @@ import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
@@ -110,7 +109,7 @@ export class Start extends BaseCommand {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
-			await Container.get(InternalHooks).onN8nStop();
+			Container.get(EventService).emit('instance-stopped');
 
 			await Container.get(ActiveExecutions).shutdown();
 

@@ -9,12 +9,13 @@ import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import { License } from '@/License';
-import { N8N_VERSION } from '@/constants';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { OnShutdown } from '@/decorators/OnShutdown';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -167,10 +168,9 @@ export class Telemetry {
 		}
 	}
 
-	async trackN8nStop(): Promise<void> {
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
+	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-
-		this.track('User instance stopped');
 
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}

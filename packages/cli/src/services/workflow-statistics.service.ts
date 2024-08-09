@@ -6,6 +6,7 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
 import { TypedEmitter } from '@/TypedEmitter';
+import { EventService } from '@/events/event.service';
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
@@ -31,6 +32,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
+		private readonly eventService: EventService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -72,12 +74,6 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				if (project.type === 'personal') {
 					const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
-					const metrics = {
-						project_id: project.id,
-						workflow_id: workflowId,
-						user_id: owner!.id,
-					};
-
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
 							firstSuccessfulWorkflowId: workflowId,
@@ -86,8 +82,11 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 						});
 					}
 
-					// Send the metrics
-					this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
+					this.eventService.emit('first-production-workflow-succeeded', {
+						projectId: project.id,
+						workflowId,
+						userId: owner!.id,
+					});
 				}
 			}
 		} catch (error) {
@@ -109,24 +108,23 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
 		let metrics = {
-			user_id: owner!.id,
-			project_id: project.id,
-			workflow_id: workflowId,
-			node_type: node.type,
-			node_id: node.id,
+			userId: owner!.id,
+			project: project.id,
+			workflowId,
+			nodeType: node.type,
+			nodeId: node.id,
 		};
 
 		// This is probably naive but I can't see a way for a node to have multiple credentials attached so..
 		if (node.credentials) {
 			Object.entries(node.credentials).forEach(([credName, credDetails]) => {
 				metrics = Object.assign(metrics, {
-					credential_type: credName,
-					credential_id: credDetails.id,
+					credentialType: credName,
+					credentialId: credDetails.id,
 				});
 			});
 		}
 
-		// Send metrics to posthog
-		this.emit('telemetry.onFirstWorkflowDataLoad', metrics);
+		this.eventService.emit('first-workflow-data-loaded', metrics);
 	}
 }

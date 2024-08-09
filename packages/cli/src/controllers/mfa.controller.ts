@@ -47,7 +47,7 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable')
+	@Post('/enable', { rateLimit: true })
 	async activateMFA(req: MFA.Activate) {
 		const { token = null } = req.body;
 		const { id, mfaEnabled } = req.user;
@@ -78,7 +78,7 @@ export class MFAController {
 		await this.mfaService.disableMfa(id);
 	}
 
-	@Post('/verify')
+	@Post('/verify', { rateLimit: true })
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { token } = req.body;

@@ -4,8 +4,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { WebhookServer } from '@/WebhookServer';
-import { Queue } from '@/Queue';
+import { WebhookServer } from '@/webhooks/WebhookServer';
 import { BaseCommand } from './BaseCommand';
 
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
@@ -86,7 +85,7 @@ export class Webhook extends BaseCommand {
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
-		this.logger.debug('External seecrets init complete');
+		this.logger.debug('External secrets init complete');
 	}
 
 	async run() {
@@ -96,7 +95,8 @@ export class Webhook extends BaseCommand {
 			);
 		}
 
-		await Container.get(Queue).init();
+		const { ScalingService } = await import('@/scaling/scaling.service');
+		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');

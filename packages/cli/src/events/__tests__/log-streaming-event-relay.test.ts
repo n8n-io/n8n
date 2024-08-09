@@ -262,6 +262,117 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `user-invited` event', () => {
+			const event: RelayEventMap['user-invited'] = {
+				user: {
+					id: 'user101',
+					email: 'inviter@example.com',
+					firstName: 'Inviter',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				targetUserId: ['newUser123'],
+				publicApi: false,
+				emailSent: true,
+				inviteeRole: 'global:member',
+			};
+
+			eventService.emit('user-invited', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.invited',
+				payload: {
+					userId: 'user101',
+					_email: 'inviter@example.com',
+					_firstName: 'Inviter',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					targetUserId: ['newUser123'],
+				},
+			});
+		});
+
+		it('should log on `user-reinvited` event', () => {
+			const event: RelayEventMap['user-reinvited'] = {
+				user: {
+					id: 'user202',
+					email: 'reinviter@example.com',
+					firstName: 'Reinviter',
+					lastName: 'User',
+					role: 'global:admin',
+				},
+				targetUserId: ['existingUser456'],
+			};
+
+			eventService.emit('user-reinvited', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.reinvited',
+				payload: {
+					userId: 'user202',
+					_email: 'reinviter@example.com',
+					_firstName: 'Reinviter',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					targetUserId: ['existingUser456'],
+				},
+			});
+		});
+
+		it('should log on `user-signed-up` event', () => {
+			const event: RelayEventMap['user-signed-up'] = {
+				user: {
+					id: 'user303',
+					email: 'newuser@example.com',
+					firstName: 'New',
+					lastName: 'User',
+					role: 'global:member',
+				},
+				userType: 'email',
+				wasDisabledLdapUser: false,
+			};
+
+			eventService.emit('user-signed-up', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.signedup',
+				payload: {
+					userId: 'user303',
+					_email: 'newuser@example.com',
+					_firstName: 'New',
+					_lastName: 'User',
+					globalRole: 'global:member',
+				},
+			});
+		});
+
+		it('should log on `user-logged-in` event', () => {
+			const event: RelayEventMap['user-logged-in'] = {
+				user: {
+					id: 'user404',
+					email: 'loggedin@example.com',
+					firstName: 'Logged',
+					lastName: 'In',
+					role: 'global:owner',
+				},
+				authenticationMethod: 'email',
+			};
+
+			eventService.emit('user-logged-in', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.success',
+				payload: {
+					userId: 'user404',
+					_email: 'loggedin@example.com',
+					_firstName: 'Logged',
+					_lastName: 'In',
+					globalRole: 'global:owner',
+					authenticationMethod: 'email',
+				},
+			});
+		});
 	});
 
 	describe('click events', () => {
@@ -327,6 +438,31 @@ describe('LogStreamingEventRelay', () => {
 						_lastName: 'Doe',
 						globalRole: 'some-other-role',
 					},
+				},
+			});
+		});
+
+		it('should log on `user-password-reset-email-click` event', () => {
+			const event: RelayEventMap['user-password-reset-email-click'] = {
+				user: {
+					id: 'user505',
+					email: 'resetuser@example.com',
+					firstName: 'Reset',
+					lastName: 'User',
+					role: 'global:member',
+				},
+			};
+
+			eventService.emit('user-password-reset-email-click', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.reset',
+				payload: {
+					userId: 'user505',
+					_email: 'resetuser@example.com',
+					_firstName: 'Reset',
+					_lastName: 'User',
+					globalRole: 'global:member',
 				},
 			});
 		});
@@ -494,6 +630,64 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `credentials-deleted` event', () => {
+			const event: RelayEventMap['credentials-deleted'] = {
+				user: {
+					id: 'user707',
+					email: 'creduser@example.com',
+					firstName: 'Cred',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				credentialId: 'cred789',
+				credentialType: 'githubApi',
+			};
+
+			eventService.emit('credentials-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.deleted',
+				payload: {
+					userId: 'user707',
+					_email: 'creduser@example.com',
+					_firstName: 'Cred',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+					credentialId: 'cred789',
+					credentialType: 'githubApi',
+				},
+			});
+		});
+
+		it('should log on `credentials-updated` event', () => {
+			const event: RelayEventMap['credentials-updated'] = {
+				user: {
+					id: 'user808',
+					email: 'updatecred@example.com',
+					firstName: 'Update',
+					lastName: 'Cred',
+					role: 'global:owner',
+				},
+				credentialId: 'cred101',
+				credentialType: 'slackApi',
+			};
+
+			eventService.emit('credentials-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.credentials.updated',
+				payload: {
+					userId: 'user808',
+					_email: 'updatecred@example.com',
+					_firstName: 'Update',
+					_lastName: 'Cred',
+					globalRole: 'global:owner',
+					credentialId: 'cred101',
+					credentialType: 'slackApi',
+				},
+			});
+		});
 	});
 
 	describe('auth events', () => {
@@ -593,6 +787,41 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `community-package-deleted` event', () => {
+			const event: RelayEventMap['community-package-deleted'] = {
+				user: {
+					id: 'user909',
+					email: 'packagedeleter@example.com',
+					firstName: 'Package',
+					lastName: 'Deleter',
+					role: 'global:admin',
+				},
+				packageName: 'n8n-nodes-awesome-package',
+				packageVersion: '1.0.0',
+				packageNodeNames: ['AwesomeNode1', 'AwesomeNode2'],
+				packageAuthor: 'John Doe',
+				packageAuthorEmail: 'john@example.com',
+			};
+
+			eventService.emit('community-package-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.package.deleted',
+				payload: {
+					userId: 'user909',
+					_email: 'packagedeleter@example.com',
+					_firstName: 'Package',
+					_lastName: 'Deleter',
+					globalRole: 'global:admin',
+					packageName: 'n8n-nodes-awesome-package',
+					packageVersion: '1.0.0',
+					packageNodeNames: ['AwesomeNode1', 'AwesomeNode2'],
+					packageAuthor: 'John Doe',
+					packageAuthorEmail: 'john@example.com',
+				},
+			});
+		});
 	});
 
 	describe('email events', () => {
@@ -606,6 +835,7 @@ describe('LogStreamingEventRelay', () => {
 					role: 'global:member',
 				},
 				messageType: 'New user invite',
+				publicApi: false,
 			};
 
 			eventService.emit('email-failed', event);
@@ -650,9 +880,50 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `public-api-key-deleted` event', () => {
+			const event: RelayEventMap['public-api-key-deleted'] = {
+				user: {
+					id: 'user606',
+					email: 'apiuser@example.com',
+					firstName: 'API',
+					lastName: 'User',
+					role: 'global:owner',
+				},
+				publicApi: true,
+			};
+
+			eventService.emit('public-api-key-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.api.deleted',
+				payload: {
+					userId: 'user606',
+					_email: 'apiuser@example.com',
+					_firstName: 'API',
+					_lastName: 'User',
+					globalRole: 'global:owner',
+				},
+			});
+		});
 	});
 
 	describe('execution events', () => {
+		it('should log on `execution-started-during-bootup` event', () => {
+			const event: RelayEventMap['execution-started-during-bootup'] = {
+				executionId: 'exec101010',
+			};
+
+			eventService.emit('execution-started-during-bootup', event);
+
+			expect(eventBus.sendExecutionEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.execution.started-during-bootup',
+				payload: {
+					executionId: 'exec101010',
+				},
+			});
+		});
+
 		it('should log on `execution-throttled` event', () => {
 			const event: RelayEventMap['execution-throttled'] = {
 				executionId: 'exec123456',

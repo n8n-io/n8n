@@ -27,7 +27,7 @@ import {
 } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interfaces';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -40,7 +40,7 @@ import {
 } from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
 import { ExternalHooks } from '@/ExternalHooks';
-import { WebhookService } from './services/webhook.service';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
