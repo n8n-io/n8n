@@ -59,6 +59,7 @@ import { MakeExecutionStatusNonNullable1714133768521 } from '../common/171413376
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
+import { CreateAnnotationTables1723039529455 } from '../common/1723039529455-CreateExecutionAnnotationTables';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -121,4 +122,5 @@ export const postgresMigrations: Migration[] = [
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
 	FixExecutionMetadataSequence1721377157740,
+	CreateAnnotationTables1723039529455,
 ];

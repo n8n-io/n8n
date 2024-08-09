@@ -195,6 +195,7 @@ function getSqliteDbFileSize(): number {
 		Container.get(InstanceSettings).n8nFolder,
 		Container.get(GlobalConfig).database.sqlite.database,
 	);
+
 	const { size } = statSync(filename);
 	return size;
 }

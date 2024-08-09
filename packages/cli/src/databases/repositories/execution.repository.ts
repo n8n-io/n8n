@@ -46,6 +46,8 @@ import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
+import { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
+import { AnnotationTagMapping } from '@db/entities/AnnotationTagMapping';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -683,12 +685,39 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
+	private annotationFields = {
+		id: true,
+		vote: true,
+	};
+
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const executions: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
+		const qb = this.toQueryBuilderWithAnnotations(query);
+		console.log(qb.getQuery());
+
+		const rawExecutionsWithTags: ExecutionSummary[] = await qb.getRawMany();
+
+		// FIXME: This needs refactoring
+		const executions = rawExecutionsWithTags.reduce(
+			(acc, { tagId, tagName, ...row }) => {
+				const existingExecution = acc.find((e) => e.id === row.id);
+				if (existingExecution) {
+					if (tagId) {
+						existingExecution.tags.push({ id: tagId as string, name: tagName as string });
+					}
+				} else {
+					acc.push({
+						...row,
+						tags: tagId ? [{ id: tagId as string, name: tagName as string }] : [],
+					});
+				}
+				return acc;
+			},
+			[] as Array<ExecutionSummary & { tags: Array<{ id: string; name: string }> }>,
+		);
 
 		return executions.map((execution) => this.toSummary(execution));
 	}
@@ -764,6 +793,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedBefore,
 			startedAfter,
 			metadata,
+			tags,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -812,7 +842,48 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
+		if (tags?.length) {
+			// If there is a filter by one or multiple tags, we need to join the annotations table
+			qb.innerJoin('execution.annotation', 'annotation');
+
+			// Add an inner join for each tag
+			for (const tag of tags) {
+				qb.innerJoin(
+					AnnotationTagMapping,
+					`atm_${tag}`,
+					`atm_${tag}.annotationId = annotation.id AND atm_${tag}.tagId = :tagId_${tag}`,
+				);
+
+				qb.setParameter(`tagId_${tag}`, tag);
+			}
+		}
+
 		return qb;
+	}
+
+	// This method is used to add the annotation fields to the executions query
+	// It uses original query builder as a subquery and adds the annotation fields to it
+	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
+		const annotationFields = Object.keys(this.annotationFields).map(
+			(key) => `annotation.${key} AS "annotation.${key}"`,
+		);
+
+		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
+
+		// Ensure the join with annotations is made only once
+		// It might be already present as an inner join if the query includes tags filter
+		// If not, it must be added as a left join
+		if (!subQuery.expressionMap.joinAttributes.some((join) => join.alias.name === 'annotation')) {
+			subQuery.leftJoin('execution.annotation', 'annotation');
+		}
+
+		return this.manager
+			.createQueryBuilder()
+			.select(['e.*', 'ate.id AS "tagId"', 'ate.name AS "tagName"'])
+			.from(`(${subQuery.getQuery()})`, 'e')
+			.setParameters(subQuery.getParameters())
+			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e."annotation.id"')
+			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId');
 	}
 
 	async getAllIds() {

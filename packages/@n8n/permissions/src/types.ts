@@ -1,5 +1,6 @@
 export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
 export type Resource =
+	| 'annotationTag'
 	| 'auditLogs'
 	| 'banner'
 	| 'communityPackage'
@@ -28,6 +29,7 @@ export type ResourceScope<
 
 export type WildcardScope = `${Resource}:*` | '*';
 
+export type AnnotationTagScope = ResourceScope<'annotationTag'>;
 export type AuditLogsScope = ResourceScope<'auditLogs', 'manage'>;
 export type BannerScope = ResourceScope<'banner', 'dismiss'>;
 export type CommunityPackageScope = ResourceScope<
@@ -62,6 +64,7 @@ export type WorkflowScope = ResourceScope<
 >;
 
 export type Scope =
+	| AnnotationTagScope
 	| AuditLogsScope
 	| BannerScope
 	| CommunityPackageScope
