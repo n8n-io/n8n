@@ -41,6 +41,9 @@ export const inputTheme = ({ rows, isReadOnly } = { rows: 5, isReadOnly: false }
 				'var(--input-border-bottom-right-radius, var(--input-border-radius, var(--border-radius-base)))',
 			backgroundColor: 'white',
 		},
+		'.cm-cursor, .cm-dropCursor': {
+			borderLeftColor: 'var(--color-code-caret)',
+		},
 		'.cm-scroller': {
 			lineHeight: '1.68',
 		},

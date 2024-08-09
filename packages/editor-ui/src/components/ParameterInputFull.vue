@@ -24,13 +24,12 @@
 		<DraggableTarget
 			type="mapping"
 			:disabled="isDropDisabled"
-			:sticky="true"
-			:sticky-offset="isExpression ? [26, 3] : [3, 3]"
+			sticky
+			:sticky-offset="[3, 3]"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
 				<ParameterInputWrapper
-					ref="param"
 					:parameter="parameter"
 					:model-value="value"
 					:path="path"
@@ -79,7 +78,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -141,7 +139,11 @@ const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 const isResourceLocator = computed(() => props.parameter.type === 'resourceLocator');
 const isDropDisabled = computed(
-	() => props.parameter.noDataExpression || props.isReadOnly || isResourceLocator.value,
+	() =>
+		props.parameter.noDataExpression ||
+		props.isReadOnly ||
+		isResourceLocator.value ||
+		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 const showExpressionSelector = computed(() =>

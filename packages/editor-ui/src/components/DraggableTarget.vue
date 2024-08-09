@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	drop: [value: string];
+	drop: [value: string, event: MouseEvent];
 }>();
 
 const hovering = ref(false);
@@ -60,10 +60,10 @@ function onMouseLeave() {
 	hovering.value = false;
 }
 
-function onMouseUp() {
+function onMouseUp(event: MouseEvent) {
 	if (activeDrop.value) {
 		const data = ndvStore.draggableData;
-		emit('drop', data);
+		emit('drop', data, event);
 	}
 }
 
