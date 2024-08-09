@@ -185,9 +185,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
 			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
 
-			return credential?.homeProject?.name
-				? `${firstName} ${lastName} (${email})`
-				: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			if (credential?.homeProject?.name) {
+				if (lastName && email) {
+					return `${firstName} ${lastName} (${email})`;
+				} else {
+					return firstName;
+				}
+			} else {
+				return i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			}
 		};
 	});
 
@@ -313,6 +319,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			data,
 			projectId,
 		);
+
+		if (data?.homeProject && !credential.homeProject) {
+			credential.homeProject = data.homeProject as ProjectSharingData;
+		}
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			upsertCredential(credential);

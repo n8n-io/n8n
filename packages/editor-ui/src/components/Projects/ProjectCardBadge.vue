@@ -20,6 +20,7 @@ const enum ProjectState {
 	Owned = 'owned',
 	Personal = 'personal',
 	Team = 'team',
+	SharedTeam = 'shared-team',
 	Unknown = 'unknown',
 }
 
@@ -44,6 +45,9 @@ const projectState = computed(() => {
 		}
 		return ProjectState.Personal;
 	} else if (props.resource.homeProject?.type === ProjectTypes.Team) {
+		if (props.resource.sharedWithProjects?.length) {
+			return ProjectState.SharedTeam;
+		}
 		return ProjectState.Team;
 	}
 	return ProjectState.Unknown;
@@ -65,6 +69,7 @@ const badgeIcon = computed(() => {
 		case ProjectState.SharedOwned:
 			return 'user-friends';
 		case ProjectState.Team:
+		case ProjectState.SharedTeam:
 			return 'archive';
 		default:
 			return '';
@@ -94,6 +99,13 @@ const badgeTooltip = computed(() => {
 			});
 		case ProjectState.Team:
 			return i18n.baseText('projects.badge.tooltip.team', {
+				interpolate: {
+					resourceTypeLabel: props.resourceTypeLabel,
+					name: badgeText.value,
+				},
+			});
+		case ProjectState.SharedTeam:
+			return i18n.baseText('projects.badge.tooltip.sharedTeam', {
 				interpolate: {
 					resourceTypeLabel: props.resourceTypeLabel,
 					name: badgeText.value,
