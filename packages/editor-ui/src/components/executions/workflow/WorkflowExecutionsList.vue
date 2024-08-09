@@ -1,30 +1,5 @@
-<template>
-	<div :class="$style.container">
-		<WorkflowExecutionsSidebar
-			:executions="executions"
-			:loading="loading && !executions.length"
-			:loading-more="loadingMore"
-			:temporary-execution="temporaryExecution"
-			@update:auto-refresh="emit('update:auto-refresh', $event)"
-			@reload-executions="emit('reload')"
-			@filter-updated="emit('update:filters', $event)"
-			@load-more="emit('load-more')"
-			@retry-execution="onRetryExecution"
-		/>
-		<div v-if="!hidePreview" :class="$style.content">
-			<router-view
-				name="executionPreview"
-				:execution="execution"
-				@delete-current-execution="onDeleteCurrentExecution"
-				@retry-execution="onRetryExecution"
-				@stop-execution="onStopExecution"
-			/>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
@@ -32,7 +7,6 @@ import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { watch } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -62,10 +36,11 @@ const emit = defineEmits<{
 const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 const router = useRouter();
 
-const temporaryExecution = computed(() => {
-	const isTemporary = !props.executions.find((execution) => execution.id === props.execution?.id);
-	return isTemporary ? props.execution : undefined;
-});
+const temporaryExecution = computed<ExecutionSummary | undefined>(() =>
+	props.executions.find((execution) => execution.id === props.execution?.id)
+		? undefined
+		: props.execution ?? undefined,
+);
 
 const hidePreview = computed(() => {
 	return props.loading || (!props.execution && props.executions.length);
@@ -117,6 +92,32 @@ onBeforeRouteLeave(async (to, _, next) => {
 	await workflowHelpers.promptSaveUnsavedWorkflowChanges(next);
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<WorkflowExecutionsSidebar
+			:executions="executions"
+			:loading="loading && !executions.length"
+			:loading-more="loadingMore"
+			:temporary-execution="temporaryExecution"
+			:workflow="workflow"
+			@update:auto-refresh="emit('update:auto-refresh', $event)"
+			@reload-executions="emit('reload')"
+			@filter-updated="emit('update:filters', $event)"
+			@load-more="emit('load-more')"
+			@retry-execution="onRetryExecution"
+		/>
+		<div v-if="!hidePreview" :class="$style.content">
+			<router-view
+				name="executionPreview"
+				:execution="execution"
+				@delete-current-execution="onDeleteCurrentExecution"
+				@retry-execution="onRetryExecution"
+				@stop-execution="onStopExecution"
+			/>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .container {

@@ -1,25 +1,7 @@
-export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
-export type Resource =
-	| 'auditLogs'
-	| 'banner'
-	| 'communityPackage'
-	| 'credential'
-	| 'externalSecretsProvider'
-	| 'externalSecret'
-	| 'eventBusDestination'
-	| 'ldap'
-	| 'license'
-	| 'logStreaming'
-	| 'orchestration'
-	| 'project'
-	| 'saml'
-	| 'securityAudit'
-	| 'sourceControl'
-	| 'tag'
-	| 'user'
-	| 'variable'
-	| 'workersView'
-	| 'workflow';
+import type { DEFAULT_OPERATIONS, RESOURCES } from './constants';
+
+export type DefaultOperations = (typeof DEFAULT_OPERATIONS)[number];
+export type Resource = keyof typeof RESOURCES;
 
 export type ResourceScope<
 	R extends Resource,

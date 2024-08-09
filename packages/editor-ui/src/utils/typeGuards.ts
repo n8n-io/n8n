@@ -12,6 +12,7 @@ import type { Connection as VueFlowConnection } from '@vue-flow/core';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/types';
 import { canvasConnectionModes } from '@/types';
+import type { ComponentPublicInstance } from 'vue';
 
 /*
 	Type guards used in editor-ui project
@@ -102,4 +103,8 @@ export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
 		typeof value === 'string' ||
 		(typeof value === 'object' && value !== null && ('name' in value || 'path' in value))
 	);
+}
+
+export function isComponentPublicInstance(value: unknown): value is ComponentPublicInstance {
+	return value !== null && typeof value === 'object' && '$props' in value;
 }

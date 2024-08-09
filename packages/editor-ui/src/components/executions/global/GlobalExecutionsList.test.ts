@@ -100,6 +100,9 @@ describe('GlobalExecutionsList', () => {
 		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
 			props: {
 				executions: [],
+				filters: {},
+				total: 0,
+				estimated: false,
 			},
 			pinia,
 		});
@@ -121,6 +124,8 @@ describe('GlobalExecutionsList', () => {
 					executions: executionsData[0].results,
 					total: executionsData[0].count,
 					filteredExecutions: executionsData[0].results,
+					filters: {},
+					estimated: false,
 				},
 				pinia,
 			});
@@ -185,6 +190,8 @@ describe('GlobalExecutionsList', () => {
 				executions: executionsData[0].results,
 				total: executionsData[0].count,
 				filteredExecutions: executionsData[0].results,
+				filters: {},
+				estimated: false,
 			},
 			pinia,
 		});

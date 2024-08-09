@@ -6,6 +6,7 @@
 			:trigger="trigger"
 			:popper-class="popperClass"
 			:teleported="teleported"
+			:disabled="disabled"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -76,6 +77,7 @@ interface ActionDropdownProps {
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
 	teleported?: boolean;
+	disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -86,6 +88,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	trigger: 'click',
 	hideArrow: false,
 	teleported: true,
+	disabled: false,
 });
 
 const attrs = useAttrs();

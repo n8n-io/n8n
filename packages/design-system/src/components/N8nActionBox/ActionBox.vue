@@ -15,13 +15,19 @@
 				</slot>
 			</N8nText>
 		</div>
-		<N8nButton
-			v-if="buttonText"
-			:label="buttonText"
-			:type="buttonType"
-			size="large"
-			@click="$emit('click:button', $event)"
-		/>
+		<N8nTooltip :disabled="!buttonDisabled">
+			<template #content>
+				<slot name="disabledButtonTooltip"></slot>
+			</template>
+			<N8nButton
+				v-if="buttonText"
+				:label="buttonText"
+				:type="buttonType"
+				:disabled="buttonDisabled"
+				size="large"
+				@click="$emit('click:button', $event)"
+			/>
+		</N8nTooltip>
 		<N8nCallout
 			v-if="calloutText"
 			:theme="calloutTheme"
@@ -41,12 +47,14 @@ import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
 import type { ButtonType } from 'n8n-design-system/types/button';
+import N8nTooltip from 'n8n-design-system/components/N8nTooltip/Tooltip.vue';
 
 interface ActionBoxProps {
 	emoji: string;
 	heading: string;
 	buttonText: string;
 	buttonType: ButtonType;
+	buttonDisabled?: boolean;
 	description: string;
 	calloutText?: string;
 	calloutTheme?: CalloutTheme;

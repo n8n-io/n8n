@@ -10,7 +10,7 @@ import {
 } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -75,7 +75,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const workflowPermissions = computed(() => getWorkflowPermissions(props.data));
+const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 const actions = computed(() => {
 	const items = [
 		{
@@ -88,7 +88,7 @@ const actions = computed(() => {
 		},
 	];
 
-	if (!props.readOnly) {
+	if (workflowPermissions.value.create && !props.readOnly) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -274,6 +274,7 @@ function moveResource() {
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
+					:workflow-permissions="workflowPermissions"
 					data-test-id="workflow-card-activator"
 				/>
 

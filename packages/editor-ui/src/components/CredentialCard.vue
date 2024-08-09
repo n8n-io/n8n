@@ -5,7 +5,7 @@ import type { ICredentialsResponse } from '@/Interface';
 import { MODAL_CONFIRM, PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
@@ -48,7 +48,7 @@ const projectsStore = useProjectsStore();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() => credentialsStore.getCredentialTypeByName(props.data.type));
-const credentialPermissions = computed(() => getCredentialPermissions(props.data));
+const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 const actions = computed(() => {
 	const items = [
 		{

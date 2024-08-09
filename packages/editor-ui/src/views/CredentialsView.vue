@@ -8,6 +8,7 @@
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
 		:loading="loading"
+		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
@@ -79,6 +80,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import useEnvironmentsStore from '@/stores/environments.ee.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { getResourcePermissions } from '@/permissions';
 
 export default defineComponent({
 	name: 'CredentialsView',
@@ -130,6 +132,14 @@ export default defineComponent({
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('credentials.project.add')
 				: this.$locale.baseText('credentials.add');
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		projectPermissions() {
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
 		},
 	},
 	watch: {
