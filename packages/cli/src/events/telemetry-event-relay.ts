@@ -95,7 +95,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
-			'user-transactional-email-sent': (event) => this.transactionalEmailSent(event),
+			'user-transactional-email-sent': (event) => this.userTransactionalEmailSent(event),
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
@@ -959,7 +959,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private transactionalEmailSent({
+	private userTransactionalEmailSent({
 		userId,
 		messageType,
 		publicApi,
