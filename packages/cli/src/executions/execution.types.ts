@@ -63,6 +63,7 @@ export namespace ExecutionSummaries {
 		metadata: Array<{ key: string; value: string }>;
 		startedAfter: string;
 		startedBefore: string;
+		tags: string[]; // tag IDs
 	}>;
 
 	type AccessFields = {

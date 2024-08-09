@@ -59,6 +59,7 @@ export const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
+		tags: { type: 'array', items: { type: 'string' } },
 	},
 	$defs: {
 		metadata: {

@@ -330,8 +330,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await this.update({ id: executionId }, executionInformation);
 		}
 
-		console.log(data);
-
 		if (data || workflowData) {
 			const executionData: Partial<ExecutionData> = {};
 			if (workflowData) {
@@ -697,7 +695,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const qb = this.toQueryBuilderWithAnnotationTags(query);
+		const qb = this.toQueryBuilderWithAnnotations(query);
+		console.log(qb.getQuery());
 
 		const rawExecutionsWithTags: ExecutionSummary[] = await qb.getRawMany();
 
@@ -794,22 +793,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedBefore,
 			startedAfter,
 			metadata,
+			tags,
 		} = query;
-
-		const annotationFields = Object.keys(this.annotationFields).map(
-			(key) => `annotation.${key} AS "annotation.${key}"`,
-		);
 
 		const fields = Object.keys(this.summaryFields)
 			.concat(['waitTill', 'retrySuccessId'])
 			.map((key) => `execution.${key} AS "${key}"`)
-			.concat('workflow.name AS "workflowName"')
-			.concat(annotationFields);
+			.concat('workflow.name AS "workflowName"');
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
 			.innerJoin('execution.workflow', 'workflow')
-			.leftJoin('execution.annotation', 'annotation')
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
@@ -848,11 +842,40 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
+		if (tags?.length) {
+			// If there is a filter by one or multiple tags, we need to join the annotations table
+			qb.innerJoin('execution.annotation', 'annotation');
+
+			// Add an inner join for each tag
+			for (const tag of tags) {
+				qb.innerJoin(
+					AnnotationTagMapping,
+					`atm_${tag}`,
+					`atm_${tag}.annotationId = annotation.id AND atm_${tag}.tagId = :tagId_${tag}`,
+				);
+
+				qb.setParameter(`tagId_${tag}`, tag);
+			}
+		}
+
 		return qb;
 	}
 
-	private toQueryBuilderWithAnnotationTags(query: ExecutionSummaries.Query) {
-		const subQuery = this.toQueryBuilder(query);
+	// This method is used to add the annotation fields to the executions query
+	// It uses original query builder as a subquery and adds the annotation fields to it
+	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
+		const annotationFields = Object.keys(this.annotationFields).map(
+			(key) => `annotation.${key} AS "annotation.${key}"`,
+		);
+
+		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
+
+		// Ensure the join with annotations is made only once
+		// It might be already present as an inner join if the query includes tags filter
+		// If not, it must be added as a left join
+		if (!subQuery.expressionMap.joinAttributes.some((join) => join.alias.name === 'annotation')) {
+			subQuery.leftJoin('execution.annotation', 'annotation');
+		}
 
 		return this.manager
 			.createQueryBuilder()
