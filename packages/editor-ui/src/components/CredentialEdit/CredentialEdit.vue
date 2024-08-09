@@ -446,6 +446,11 @@ const showSaveButton = computed(() => {
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+const homeProject = computed(() => {
+	const { currentProject, personalProject } = projectsStore;
+	return currentProject ?? personalProject;
+});
+
 onMounted(async () => {
 	requiredCredentials.value =
 		isCredentialModalState(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
@@ -456,14 +461,12 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const { currentProject, personalProject } = projectsStore;
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-		const homeProject = currentProject ?? personalProject ?? {};
+		const scopes = homeProject.value?.scopes ?? [];
 
 		credentialData.value = {
 			...credentialData.value,
 			scopes,
-			homeProject,
+			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
 		await loadCurrentCredential();
@@ -791,6 +794,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	) {
 		credentialDetails.sharedWithProjects = credentialData.value
 			.sharedWithProjects as ProjectSharingData[];
+	}
+
+	if (credentialData.value.homeProject) {
+		credentialDetails.homeProject = credentialData.value.homeProject as ProjectSharingData;
 	}
 
 	let credential: ICredentialsResponse | null = null;
