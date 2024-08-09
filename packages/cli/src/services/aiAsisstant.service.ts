@@ -37,7 +37,7 @@ export class AiAssistantService {
 		}
 		assert(this.client, 'Assistant client not setup');
 
-		await this.client.chat(payload, { id: user.id });
+		return await this.client.chat(payload, { id: user.id });
 	}
 
 	async applySuggestion(payload: AiAssistantRequest.SuggestionPayload, user: IUser) {
