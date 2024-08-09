@@ -194,6 +194,8 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 	});
 
 	it('credentials should work between team and personal projects', () => {
+		cy.resetDatabase();
+		cy.enableFeature('sharing');
 		cy.enableFeature('advancedPermissions');
 		cy.enableFeature('projectRole:admin');
 		cy.enableFeature('projectRole:editor');
