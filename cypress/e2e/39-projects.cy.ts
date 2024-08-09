@@ -628,7 +628,14 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			workflowPage.getters.nodeCreatorPlusButton().should('not.exist');
 			workflowPage.getters.canvasNodes().should('have.length', 3).last().click();
 			cy.get('body').type('{backspace}');
-			workflowPage.getters.canvasNodes().should('have.length', 3);
+			workflowPage.getters.canvasNodes().should('have.length', 3).last().rightclick();
+			getVisibleDropdown()
+				.find('li')
+				.should('be.visible')
+				.filter(
+					':contains("Open"), :contains("Copy"), :contains("Select all"), :contains("Clear selection")',
+				)
+				.should('not.have.class', 'is-disabled');
 
 			executionsTab.actions.switchToExecutionsTab();
 			cy.getByTestId('retry-execution-button')
