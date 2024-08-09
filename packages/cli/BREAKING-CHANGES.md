@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-The `N8N_RESTRICT_FILE_ACCESS_TO` environment variable now also blocks access to n8n's static cache directory at `~/.cache/n8n/public`.
+The `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` environment variable now also blocks access to n8n's static cache directory at `~/.cache/n8n/public`.
 
 ### When is action necessary?
 
