@@ -60,7 +60,7 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.projects.filter((project) => project.id !== projectsStore.currentProjectId),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({

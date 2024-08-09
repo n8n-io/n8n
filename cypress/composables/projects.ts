@@ -50,7 +50,7 @@ export function createWorkflow(fixtureKey: string, name: string) {
 	workflowPage.actions.zoomToFit();
 }
 
-export function createCredential(name: string) {
+export function createCredential(name: string, closeModal = true) {
 	credentialsModal.getters.newCredentialModal().should('be.visible');
 	credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
 	credentialsModal.getters.newCredentialTypeOption('Notion API').click();
@@ -58,5 +58,8 @@ export function createCredential(name: string) {
 	credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 	credentialsModal.actions.setName(name);
 	credentialsModal.actions.save();
-	credentialsModal.actions.close();
+
+	if (closeModal) {
+		credentialsModal.actions.close();
+	}
 }
