@@ -10,9 +10,17 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
+import { PromptTemplate } from "@langchain/core/prompts";
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getPromptInputByType } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
+
+const QA_PROMPT_TEMPLATE = `Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+{context}
+
+Question: {question}
+Helpful Answer:`;
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,6 +145,25 @@ export class ChainRetrievalQa implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Question and Answer Prompt Template',
+						name: 'questionAndAnswerPromptTemplate',
+						type: 'string',
+						default: QA_PROMPT_TEMPLATE,
+						description: 'String to use directly as the Question and Answer prompt template',
+						typeOptions: {
+							rows: 6,
+						},
+					},
+				],
+			},
 		],
 	};
 
@@ -154,7 +181,17 @@ export class ChainRetrievalQa implements INodeType {
 		)) as BaseRetriever;
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, retriever);
+
+		const options = this.getNodeParameter('options', 0, {}) as {
+			questionAndAnswerPromptTemplate?: string;
+		};
+
+		const questionAndAnswerPromptTemplate = new PromptTemplate({
+			template: options.questionAndAnswerPromptTemplate ?? QA_PROMPT_TEMPLATE,
+			inputVariables: ['context', 'question']
+		});
+		
+		const chain = RetrievalQAChain.fromLLM(model, retriever, { prompt: questionAndAnswerPromptTemplate });
 
 		const returnData: INodeExecutionData[] = [];
 
