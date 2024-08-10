@@ -4,4 +4,6 @@ export interface IBankTransaction {
 	base_type?: string,
 	date?: string,
 	description?: string,
+	id?: string,
+	paymentId?: string,
 }

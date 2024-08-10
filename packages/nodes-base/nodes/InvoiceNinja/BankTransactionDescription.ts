@@ -36,6 +36,12 @@ export const bankTransactionOperations: INodeProperties[] = [
 				description: 'Get data of many bank transactions',
 				action: 'Get many bank transactions',
 			},
+			{
+				name: 'Match Payment',
+				value: 'matchPayment',
+				description: 'Match payment to a bank transaction',
+				action: 'Match payment to a bank transaction',
+			},
 		],
 		default: 'create',
 	},
@@ -43,7 +49,7 @@ export const bankTransactionOperations: INodeProperties[] = [
 
 export const bankTransactionFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 bankTransaction:create                             */
+	/*                                 bankTransaction:create                     */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
@@ -103,21 +109,10 @@ export const bankTransactionFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Payment',
-				name: 'paymentId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getPayments',
-				},
-				default: '',
-			}
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 bankTransaction:delete                             */
+	/*                                 bankTransaction:delete                     */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bank Transaction ID',
@@ -133,7 +128,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  bankTransaction:get                               */
+	/*                                  bankTransaction:get                       */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Bank Transacrion ID',
@@ -149,7 +144,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  bankTransaction:getAll                             */
+	/*                                  bankTransaction:getAll                    */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -181,5 +176,19 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 bankTransaction:matchPayment               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment',
+		name: 'paymentId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getPayments',
+		},
+		default: '',
 	},
 ];

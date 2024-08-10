@@ -296,6 +296,23 @@ export class InvoiceNinja implements INodeType {
 				return returnData;
 			},
 		},
+		// Get all the available users to display them to user so that they can
+		// select them easily
+		async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			const returnData: INodePropertyOptions[] = [];
+			const payments = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/payments');
+			for (const payment of payments) {
+				const paymentName = [payment.date, payment.amount]
+					.filter((e) => e)
+					.join(' - ');
+				const paymentId = payment.id as string;
+				returnData.push({
+					name: paymentName,
+					value: paymentId,
+				});
+			}
+			return returnData;
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -974,6 +991,24 @@ export class InvoiceNinja implements INodeType {
 							`${resourceEndpoint}/${bankTransactionId}`,
 						);
 						responseData = responseData.data;
+					}
+					if (operation === 'matchPayment') {
+						const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
+						const paymentId = this.getNodeParameter('paymentId', i) as string;
+						const body: IBankTransaction = { };
+						if (bankTransactionId) {
+							body.id = bankTransactionId as string; 
+						}
+						if (paymentId) {
+							body.paymentId = paymentId as string;
+						}
+		
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'POST',
+							`${resourceEndpoint}/match`,
+							body as IDataObject,
+						);
 					}
 				}
 				if (resource === 'quote') {
