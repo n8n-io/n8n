@@ -54,7 +54,7 @@ const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
 });
 
-const sendButtonDisabled = computed(() => {
+const sendDisabled = computed(() => {
 	return !textInputValue.value || props.streaming || sessionEnded.value;
 });
 
@@ -67,12 +67,11 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (textInputValue.value && !props.streaming) {
-		emit('message', textInputValue.value, undefined);
-		textInputValue.value = '';
-		if (chatInput.value) {
-			chatInput.value.style.height = 'auto';
-		}
+	if (sendDisabled.value) return;
+	emit('message', textInputValue.value, undefined);
+	textInputValue.value = '';
+	if (chatInput.value) {
+		chatInput.value.style.height = 'auto';
 	}
 }
 
@@ -242,7 +241,7 @@ function growInput() {
 				icon="paper-plane"
 				type="text"
 				size="large"
-				:disabled="sendButtonDisabled"
+				:disabled="sendDisabled"
 				@click="onSendMessage"
 			/>
 		</div>
