@@ -12,6 +12,10 @@ export const isEmptyExpression = (expr: string) => {
 	return /\{\{\s*\}\}/.test(expr);
 };
 
+export const unwrapExpression = (expr: string) => {
+	return expr.replace(/\{\{(.*)\}\}/, '$1').trim();
+};
+
 export const removeExpressionPrefix = (expr: string) => {
 	return expr.startsWith('=') ? expr.slice(1) : expr;
 };
