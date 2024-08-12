@@ -234,7 +234,8 @@ function growInput() {
 				rows="1"
 				wrap="hard"
 				@keydown.enter.exact.prevent="onSendMessage"
-				@input="growInput"
+				@input.prevent="growInput"
+				@keydown.stop
 			/>
 			<n8n-icon-button
 				:class="{ [$style.sendButton]: true }"
