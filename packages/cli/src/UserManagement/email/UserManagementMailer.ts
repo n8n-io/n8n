@@ -8,7 +8,6 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserRepository } from '@db/repositories/user.repository';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -112,10 +111,10 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			Container.get(InternalHooks).onUserTransactionalEmail({
-				user_id: sharer.id,
-				message_type: 'Workflow shared',
-				public_api: false,
+			Container.get(EventService).emit('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Workflow shared',
+				publicApi: false,
 			});
 
 			return result;
@@ -167,10 +166,10 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			Container.get(InternalHooks).onUserTransactionalEmail({
-				user_id: sharer.id,
-				message_type: 'Credentials shared',
-				public_api: false,
+			Container.get(EventService).emit('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Credentials shared',
+				publicApi: false,
 			});
 
 			return result;
