@@ -64,6 +64,9 @@ catalogs:
     vue:
       specifier: ^3.4.21
       version: 3.4.21
+    vue-markdown-render:
+      specifier: ^2.2.1
+      version: 2.2.1
     vue-tsc:
       specifier: ^2.0.19
       version: 2.0.19
@@ -222,8 +225,8 @@ importers:
         specifier: catalog:frontend
         version: 3.4.21(typescript@5.5.2)
       vue-markdown-render:
-        specifier: ^2.1.1
-        version: 2.1.1(vue@3.4.21(typescript@5.5.2))
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.4.21(typescript@5.5.2))
     devDependencies:
       '@iconify-json/mdi':
         specifier: ^1.1.54
@@ -231,9 +234,6 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../storybook
-      '@types/markdown-it':
-        specifier: ^12.2.3
-        version: 12.2.3
       '@vitest/coverage-v8':
         specifier: catalog:frontend
         version: 1.6.0(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
@@ -1064,8 +1064,8 @@ importers:
         specifier: ^2.3.6
         version: 2.3.6(vue@3.4.21(typescript@5.5.2))
       markdown-it:
-        specifier: ^13.0.1
-        version: 13.0.1
+        specifier: ^13.0.2
+        version: 13.0.2
       markdown-it-emoji:
         specifier: ^2.0.2
         version: 2.0.2
@@ -1104,14 +1104,14 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(@vue/compiler-sfc@3.4.21)(@vue/server-renderer@3.4.21(vue@3.4.21(typescript@5.5.2)))(vue@3.4.21(typescript@5.5.2))
       '@types/markdown-it':
-        specifier: ^12.2.3
-        version: 12.2.3
+        specifier: ^13.0.9
+        version: 13.0.9
       '@types/markdown-it-emoji':
         specifier: ^2.0.2
-        version: 2.0.2
+        version: 2.0.5
       '@types/markdown-it-link-attributes':
-        specifier: ^3.0.1
-        version: 3.0.1
+        specifier: ^3.0.5
+        version: 3.0.5
       '@types/sanitize-html':
         specifier: ^2.11.0
         version: 2.11.0
@@ -1332,8 +1332,8 @@ importers:
         specifier: 2.2.4
         version: 2.2.4(vue@3.4.21(typescript@5.5.2))
       vue-markdown-render:
-        specifier: ^2.0.1
-        version: 2.0.1(typescript@5.5.2)
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.4.21(typescript@5.5.2))
       vue-router:
         specifier: ^4.2.2
         version: 4.2.2(vue@3.4.21(typescript@5.5.2))
@@ -5427,8 +5427,8 @@ packages:
   '@types/jsonwebtoken@9.0.6':
     resolution: {integrity: sha512-/5hndP5dCjloafCXns6SZyESp3Ldq7YjH3zwzwczYnjxIT0Fqzk5ROSYVGfFyczIue7IUEj8hkvLbPoLQ18vQw==}
 
-  '@types/linkify-it@3.0.2':
-    resolution: {integrity: sha512-HZQYqbiFVWufzCwexrvh694SOim8z2d+xJl5UNamcvQFejLY/2YUtzXHYi3cHdI7PMlS8ejH2slRAOJQ32aNbA==}
+  '@types/linkify-it@3.0.5':
+    resolution: {integrity: sha512-yg6E+u0/+Zjva+buc3EIb+29XEg4wltq7cSmd4Uc2EE/1nUVmxyzpX6gUXD0V8jIrG0r7YeOGVIbYRkxeooCtw==}
 
   '@types/lodash-es@4.17.6':
     resolution: {integrity: sha512-R+zTeVUKDdfoRxpAryaQNRKk3105Rrgx2CFRClIgRGaqDTdjsm8h6IYA8ir584W3ePzkZfst5xIgDwYrlh9HLg==}
@@ -5451,20 +5451,20 @@ packages:
   '@types/mailparser@3.4.4':
     resolution: {integrity: sha512-C6Znp2QVS25JqtuPyxj38Qh+QoFcLycdxsvcc6IZCGekhaMBzbdTXzwGzhGoYb3TfKu8IRCNV0sV1o3Od97cEQ==}
 
-  '@types/markdown-it-emoji@2.0.2':
-    resolution: {integrity: sha512-2ln8Wjbcj/0oRi/6VnuMeWEHHuK8uapFttvcLmDIe1GKCsFBLOLBX+D+xhDa9oWOQV0IpvxwrSfKKssAqqroog==}
+  '@types/markdown-it-emoji@2.0.5':
+    resolution: {integrity: sha512-iJLsmCNpSWKtV6Ia3mLSjcXJPEt7ubGG342z+hGvYx++TpM19oTUrJcI7XjbOqRQ+W2UQ323E7B0eCLwlgT/9g==}
 
-  '@types/markdown-it-link-attributes@3.0.1':
-    resolution: {integrity: sha512-K8RnNb1q8j7rDOJbMF7AnlhCC/45BjrQ8z3WZWOrvkBIl8u9RXvmBdG/hfpnmK1JhhEZcmFEKWt+ilW1Mly+2Q==}
+  '@types/markdown-it-link-attributes@3.0.5':
+    resolution: {integrity: sha512-VZ2BGN3ywUg7mBD8W6PwR8ChpOxaQSBDbLqPgvNI+uIra3zY2af1eG/3XzWTKjEraTWskMKnZqZd6m1fDF67Bg==}
 
-  '@types/markdown-it@12.2.3':
-    resolution: {integrity: sha512-GKMHFfv3458yYy+v/N8gjufHO6MSZKCOXpZc5GXIWWy8uldwfmPn98vp81gZ5f9SVw8YYBctgfJ22a2d7AOMeQ==}
+  '@types/markdown-it@13.0.9':
+    resolution: {integrity: sha512-1XPwR0+MgXLWfTn9gCsZ55AHOKW1WN+P9vr0PaQh5aerR9LLQXUbjfEAFhjmEmyoYFWAyuN2Mqkn40MZ4ukjBw==}
 
   '@types/md5@2.3.5':
     resolution: {integrity: sha512-/i42wjYNgE6wf0j2bcTX6kuowmdL/6PE4IVitMpm2eYKBUuYCprdcWVK+xEF0gcV6ufMCRhtxmReGfc6hIK7Jw==}
 
-  '@types/mdurl@1.0.2':
-    resolution: {integrity: sha512-eC4U9MlIcu2q0KQmXszyn5Akca/0jrQmwDRgpAMJai7qBWq4amIQhZyNau4VYGtCeALvW1/NtjzJJ567aZxfKA==}
+  '@types/mdurl@1.0.5':
+    resolution: {integrity: sha512-6L6VymKTzYSrEf4Nev4Xa1LCHKrlTlYCBMTlQKFuddo1CvQcE52I0mwfOJayueUC7MJuXOeHTcIU683lzd0cUA==}
 
   '@types/mdx@2.0.3':
     resolution: {integrity: sha512-IgHxcT3RC8LzFLhKwP3gbMPeaK7BM9eBH46OdapPA7yvuIUJ8H6zHZV53J8hGZcTSnt95jANt+rTBNUUc22ACQ==}
@@ -7480,9 +7480,6 @@ packages:
 
   ent@2.2.0:
     resolution: {integrity: sha512-GHrMyVZQWvTIdDtpiEXdHZnFQKzeO09apj8Cbl4pKWy4i0Oprcq17usfDt5aO63swf0JOeMWjWQE/LzgSRuWpA==}
-
-  entities@2.1.0:
-    resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
 
   entities@2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==}
@@ -9601,9 +9598,6 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkify-it@3.0.3:
-    resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==}
-
   linkify-it@4.0.1:
     resolution: {integrity: sha512-C7bfi1UZmoj8+PQx22XyeXCuBlokoyWQL5pWSP+EI6nzRylyThouddufc2c1NDIcP9k5agmN9fLpA7VNJfIiqw==}
 
@@ -9846,12 +9840,8 @@ packages:
   markdown-it-task-lists@2.1.1:
     resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
 
-  markdown-it@12.3.2:
-    resolution: {integrity: sha512-TchMembfxfNVpHkbtriWltGWc+m3xszaRD0CZup7GFFhzIgQqxIfn3eGj1yZpfuflzPvfkt611B2Q/Bsk1YnGg==}
-    hasBin: true
-
-  markdown-it@13.0.1:
-    resolution: {integrity: sha512-lTlxriVoy2criHP0JKRhO2VDG9c2ypWCsT237eDiLqi09rmbKoUetyGHq2uOIRoRS//kfoJckS0eUzzkDR+k2Q==}
+  markdown-it@13.0.2:
+    resolution: {integrity: sha512-FtwnEuuK+2yVU7goGn/MJ0WBZMM9ZPgU9spqlFs7/A/pDIUNSOQZhUgOqYCficIuR2QaFnrt8LHqBWsbTAoI5w==}
     hasBin: true
 
   markdown-to-jsx@7.3.2:
@@ -12526,8 +12516,8 @@ packages:
   uc.micro@1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
 
-  uc.micro@2.0.0:
-    resolution: {integrity: sha512-DffL94LsNOccVn4hyfRe5rdKa273swqeA5DJpMOeFmEn1wCDc7nAbbB0gXlgBCL7TNzeTv6G7XVWzan7iJtfig==}
+  uc.micro@2.1.0:
+    resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==}
 
   ufo@1.3.2:
     resolution: {integrity: sha512-o+ORpgGwaYQXgqGDwd+hkS4PuZ3QnmqMMxRuajK/a38L6fTpcE5GPIfrf+L/KemFzfUpeUQc1rRS1iDBozvnFA==}
@@ -12940,11 +12930,8 @@ packages:
     peerDependencies:
       vue: '>=3.0.0'
 
-  vue-markdown-render@2.0.1:
-    resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
-
-  vue-markdown-render@2.1.1:
-    resolution: {integrity: sha512-szuJVbCwgIpVsggd8IHGB2lLo8BH8Ojd+wakaOTASNxdYcccKxoMcvDqUsLoGwgKDY8yJf0U/+ppffEYxsEHkA==}
+  vue-markdown-render@2.2.1:
+    resolution: {integrity: sha512-XkYnC0PMdbs6Vy6j/gZXSvCuOS0787Se5COwXlepRqiqPiunyCIeTPQAO2XnB4Yl04EOHXwLx5y6IuszMWSgyQ==}
     peerDependencies:
       vue: ^3.3.4
 
@@ -18635,7 +18622,7 @@ snapshots:
     dependencies:
       '@types/node': 18.16.16
 
-  '@types/linkify-it@3.0.2': {}
+  '@types/linkify-it@3.0.5': {}
 
   '@types/lodash-es@4.17.6':
     dependencies:
@@ -18656,22 +18643,22 @@ snapshots:
       '@types/node': 18.16.16
       iconv-lite: 0.6.3
 
-  '@types/markdown-it-emoji@2.0.2':
+  '@types/markdown-it-emoji@2.0.5':
     dependencies:
-      '@types/markdown-it': 12.2.3
+      '@types/markdown-it': 13.0.9
 
-  '@types/markdown-it-link-attributes@3.0.1':
+  '@types/markdown-it-link-attributes@3.0.5':
     dependencies:
-      '@types/markdown-it': 12.2.3
+      '@types/markdown-it': 13.0.9
 
-  '@types/markdown-it@12.2.3':
+  '@types/markdown-it@13.0.9':
     dependencies:
-      '@types/linkify-it': 3.0.2
-      '@types/mdurl': 1.0.2
+      '@types/linkify-it': 3.0.5
+      '@types/mdurl': 1.0.5
 
   '@types/md5@2.3.5': {}
 
-  '@types/mdurl@1.0.2': {}
+  '@types/mdurl@1.0.5': {}
 
   '@types/mdx@2.0.3': {}
 
@@ -21036,8 +21023,6 @@ snapshots:
       ansi-colors: 4.1.3
 
   ent@2.2.0: {}
-
-  entities@2.1.0: {}
 
   entities@2.2.0: {}
 
@@ -23736,17 +23721,13 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkify-it@3.0.3:
-    dependencies:
-      uc.micro: 1.0.6
-
   linkify-it@4.0.1:
     dependencies:
       uc.micro: 1.0.6
 
   linkify-it@5.0.0:
     dependencies:
-      uc.micro: 2.0.0
+      uc.micro: 2.1.0
 
   listr2@3.14.0(enquirer@2.3.6):
     dependencies:
@@ -24007,15 +23988,7 @@ snapshots:
 
   markdown-it-task-lists@2.1.1: {}
 
-  markdown-it@12.3.2:
-    dependencies:
-      argparse: 2.0.1
-      entities: 2.1.0
-      linkify-it: 3.0.3
-      mdurl: 1.0.1
-      uc.micro: 1.0.6
-
-  markdown-it@13.0.1:
+  markdown-it@13.0.2:
     dependencies:
       argparse: 2.0.1
       entities: 3.0.1
@@ -27069,7 +27042,7 @@ snapshots:
 
   uc.micro@1.0.6: {}
 
-  uc.micro@2.0.0: {}
+  uc.micro@2.1.0: {}
 
   ufo@1.3.2: {}
 
@@ -27476,16 +27449,9 @@ snapshots:
     dependencies:
       vue: 3.4.21(typescript@5.5.2)
 
-  vue-markdown-render@2.0.1(typescript@5.5.2):
+  vue-markdown-render@2.2.1(vue@3.4.21(typescript@5.5.2)):
     dependencies:
-      markdown-it: 12.3.2
-      vue: 3.4.21(typescript@5.5.2)
-    transitivePeerDependencies:
-      - typescript
-
-  vue-markdown-render@2.1.1(vue@3.4.21(typescript@5.5.2)):
-    dependencies:
-      markdown-it: 12.3.2
+      markdown-it: 13.0.2
       vue: 3.4.21(typescript@5.5.2)
 
   vue-router@4.2.2(vue@3.4.21(typescript@5.5.2)):
