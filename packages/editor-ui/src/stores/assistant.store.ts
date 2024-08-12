@@ -455,9 +455,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			if (cached) {
 				updateParameters(activeNode.name, cached.suggested);
 			} else {
-				const {
-					data: { parameters: suggested },
-				} = await replaceCode(rootStore.restApiContext, {
+				const { parameters: suggested } = await replaceCode(rootStore.restApiContext, {
 					suggestionId: codeDiffMessage.suggestionId,
 					sessionId: currentSessionId.value,
 				});
