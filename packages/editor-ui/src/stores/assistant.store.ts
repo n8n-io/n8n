@@ -27,6 +27,7 @@ import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -470,6 +471,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = true;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
+			checkIfNodeNDVIsOpen(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
@@ -502,11 +504,26 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
+			checkIfNodeNDVIsOpen(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
 		}
 		codeDiffMessage.replacing = false;
+	}
+
+	function checkIfNodeNDVIsOpen(errorNodeName: string) {
+		if (errorNodeName !== ndvStore.activeNodeName) {
+			useToast().showMessage({
+				type: 'success',
+				title: locale.baseText('aiAssistant.codeUpdated.message.title'),
+				message: locale.baseText('aiAssistant.codeUpdated.message.body', {
+					interpolate: { nodeName: errorNodeName },
+				}),
+				dangerouslyUseHTMLString: true,
+				duration: 4000,
+			});
+		}
 	}
 
 	return {
