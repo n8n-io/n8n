@@ -23,9 +23,16 @@ export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapp
 
 			await tx.delete(AnnotationTagMapping, { annotationId: annotation.id });
 
-			const tagMappings = tagIds.map((tagId) =>
-				this.create({ annotationId: annotation.id, tagId }),
-			);
+			const tagMappings = tagIds.map((tagId) => {
+				this.create({ annotationId: annotation.id, tagId });
+
+				// FIXME: for some reason tx.insert below throws type error if we use this.create result directly,
+				//  so we have to create plain objects
+				return {
+					annotationId: annotation.id,
+					tagId,
+				};
+			});
 
 			return await tx.insert(AnnotationTagMapping, tagMappings);
 		});

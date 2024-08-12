@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import pick from 'lodash/pick';
 import {
 	Brackets,
 	DataSource,
@@ -266,13 +267,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const { executionData, metadata, annotation, ...rest } = execution;
 
-		console.log({ annotation });
-
 		const sanitizedAnnotation = annotation
 			? {
 					id: annotation.id,
 					vote: annotation.vote,
-					tags: annotation.tags.map(({ id, name }) => ({ id, name })),
+					tags: annotation.tags?.map((tag) => pick(tag, ['id', 'name'])) ?? [],
 				}
 			: annotation;
 
