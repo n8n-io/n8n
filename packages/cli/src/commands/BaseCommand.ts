@@ -333,7 +333,9 @@ export abstract class BaseCommand extends Command {
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.shutdownService.shutdown();
 
-			await Promise.all([this.stopProcess(), this.shutdownService.waitForShutdown()]);
+			await this.shutdownService.waitForShutdown();
+
+			await this.stopProcess();
 
 			clearTimeout(forceShutdownTimer);
 		};

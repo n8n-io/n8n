@@ -83,7 +83,7 @@ describe('ScalingService', () => {
 		});
 	});
 
-	describe('pauseQueue', () => {
+	describe('stop', () => {
 		it('should pause the queue', async () => {
 			/**
 			 * Arrange
@@ -94,7 +94,7 @@ describe('ScalingService', () => {
 			/**
 			 * Act
 			 */
-			await scalingService.pauseQueue();
+			await scalingService.stop();
 
 			/**
 			 * Assert
