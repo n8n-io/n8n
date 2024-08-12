@@ -40,6 +40,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
+import { AnnotationTagMappingRepository } from '@db/repositories/annotationTagMapping.repository';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -86,6 +87,7 @@ export class ExecutionService {
 		private readonly logger: Logger,
 		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -478,5 +480,13 @@ export class ExecutionService {
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
+	}
+
+	public async update(executionId: string, updateData: { tags: string[] }) {
+		if (updateData.tags) {
+			await this.annotationTagMappingRepository.overwriteTags(executionId, updateData.tags);
+		}
+
+		return true;
 	}
 }

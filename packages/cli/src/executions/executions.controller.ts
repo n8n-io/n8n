@@ -1,6 +1,6 @@
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
-import { Get, Post, RestController } from '@/decorators';
+import { Get, Patch, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -99,5 +99,26 @@ export class ExecutionsController {
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
 		return await this.executionService.delete(req, workflowIds);
+	}
+
+	@Patch('/:id')
+	async update(req: ExecutionRequest.Update) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const { tags } = req.body;
+
+		if (tags) {
+			const updatedExecution = await this.executionService.update(req.params.id, { tags });
+
+			return updatedExecution;
+		} else {
+			throw new BadRequestError('No annotation provided');
+		}
 	}
 }

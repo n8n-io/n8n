@@ -28,6 +28,11 @@ export declare namespace ExecutionRequest {
 		};
 	}
 
+	type ExecutionUpdatePayload = {
+		id: number;
+		tags: string[];
+	};
+
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
@@ -39,6 +44,8 @@ export declare namespace ExecutionRequest {
 	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
+
+	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
 }
 
 export namespace ExecutionSummaries {

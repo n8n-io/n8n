@@ -207,6 +207,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData: true;
+			includeAnnotation?: boolean;
 			unflattenData: true;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -215,6 +216,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData: true;
+			includeAnnotation?: boolean;
 			unflattenData?: false | undefined;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -223,6 +225,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData?: boolean;
+			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -231,6 +234,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		id: string,
 		options?: {
 			includeData?: boolean;
+			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
 		},
@@ -242,7 +246,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = ['executionData', 'metadata'];
+			findOptions.relations = { executionData: true, metadata: true };
+		}
+
+		if (options?.includeAnnotation) {
+			findOptions.relations = {
+				...findOptions.relations,
+				annotation: {
+					tags: true,
+				},
+			};
 		}
 
 		const execution = await this.findOne(findOptions);
@@ -251,7 +264,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return undefined;
 		}
 
-		const { executionData, metadata, ...rest } = execution;
+		const { executionData, metadata, annotation, ...rest } = execution;
+
+		console.log({ annotation });
+
+		const sanitizedAnnotation = annotation
+			? {
+					id: annotation.id,
+					vote: annotation.vote,
+					tags: annotation.tags.map(({ id, name }) => ({ id, name })),
+				}
+			: annotation;
 
 		if (options?.includeData && options?.unflattenData) {
 			return {
@@ -259,6 +282,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				data: parse(execution.executionData.data) as IRunExecutionData,
 				workflowData: execution.executionData.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+				annotation: sanitizedAnnotation,
 			} as IExecutionResponse;
 		} else if (options?.includeData) {
 			return {
@@ -266,6 +290,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				data: execution.executionData.data,
 				workflowData: execution.executionData.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+				annotation: sanitizedAnnotation,
 			} as IExecutionFlattedDb;
 		}
 
@@ -614,6 +639,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 			includeData: true,
 			unflattenData: true,
+			includeAnnotation: true,
 		});
 	}
 
@@ -624,6 +650,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 			includeData: true,
 			unflattenData: false,
+			includeAnnotation: true,
 		});
 	}
 
@@ -698,7 +725,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const qb = this.toQueryBuilderWithAnnotations(query);
 		console.log(qb.getQuery());
 
-		const rawExecutionsWithTags: ExecutionSummary[] = await qb.getRawMany();
+		const rawExecutionsWithTags: Array<ExecutionSummary & { tagId: string; tagName: string }> =
+			await qb.getRawMany();
 
 		// FIXME: This needs refactoring
 		const executions = rawExecutionsWithTags.reduce(
@@ -706,12 +734,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const existingExecution = acc.find((e) => e.id === row.id);
 				if (existingExecution) {
 					if (tagId) {
-						existingExecution.tags.push({ id: tagId as string, name: tagName as string });
+						existingExecution.tags.push({ id: tagId, name: tagName });
 					}
 				} else {
 					acc.push({
 						...row,
-						tags: tagId ? [{ id: tagId as string, name: tagName as string }] : [],
+						tags: tagId ? [{ id: tagId, name: tagName }] : [],
 					});
 				}
 				return acc;
@@ -863,6 +891,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	// This method is used to add the annotation fields to the executions query
 	// It uses original query builder as a subquery and adds the annotation fields to it
+	// FIXME: Query made with this query builder fetches duplicate executions for each tag,
+	//  this is intended, as we are working with raw query.
+	//
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation.${key}"`,

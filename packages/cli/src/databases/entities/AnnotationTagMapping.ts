@@ -1,11 +1,11 @@
 import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import { ExecutionAnnotation } from '@db/entities/ExecutionAnnotation';
-import { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
+import type { ExecutionAnnotation } from './ExecutionAnnotation';
+import type { AnnotationTagEntity } from './AnnotationTagEntity';
 
 @Entity({ name: 'execution_annotation_tags' })
 export class AnnotationTagMapping {
 	@PrimaryColumn()
-	annotationId: string;
+	annotationId: number;
 
 	@ManyToOne('ExecutionAnnotation', 'tagMappings')
 	@JoinColumn({ name: 'annotationId' })

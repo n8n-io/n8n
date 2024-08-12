@@ -13,7 +13,7 @@ export class CreateAnnotationTables1723039529455 implements ReversibleMigration 
 				column('vote').varchar(6),
 				column('note').text,
 			)
-			.withIndexOn('executionId')
+			.withIndexOn('executionId', true)
 			.withForeignKey('executionId', {
 				tableName: 'execution_entity',
 				columnName: 'id',

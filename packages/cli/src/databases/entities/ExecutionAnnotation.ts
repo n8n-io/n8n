@@ -11,8 +11,7 @@ import {
 import { ExecutionEntity } from './ExecutionEntity';
 import type { AnnotationTagEntity } from './AnnotationTagEntity';
 import type { AnnotationTagMapping } from './AnnotationTagMapping';
-
-export type AnnotationVote = 'up' | 'down';
+import { AnnotationVote } from 'n8n-workflow';
 
 @Entity({ name: 'execution_annotations' })
 export class ExecutionAnnotation {

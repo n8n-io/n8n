@@ -146,6 +146,12 @@ export interface IExecutionResponse extends IExecutionBase {
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 	customData: Record<string, string>;
+	annotation: {
+		tags: Array<{
+			id: string;
+			name: string;
+		}>;
+	};
 }
 
 // Flatted data to save memory when saving in database or transferring
