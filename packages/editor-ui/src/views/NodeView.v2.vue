@@ -800,6 +800,7 @@ async function onAddNodesAndConnections(
 	}
 
 	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
+	await nextTick();
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
