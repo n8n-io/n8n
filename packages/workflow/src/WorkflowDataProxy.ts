@@ -1355,6 +1355,7 @@ export class WorkflowDataProxy {
 			has: () => true,
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
+				if (name === 'constructor') return {};
 
 				if (['$data', '$json'].includes(name as string)) {
 					return that.nodeDataGetter(that.contextNodeName, true)?.json;

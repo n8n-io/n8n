@@ -60,6 +60,13 @@ const fnConstructors = {
 	},
 };
 
+const NativeClasses = [Object, Boolean, String, Number, BigInt];
+const freezePrototypes = () => {
+	NativeClasses.forEach((Class) => {
+		if (!Object.isFrozen(Class.prototype)) Object.freeze(Class.prototype);
+	});
+};
+
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
@@ -217,8 +224,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.constructor = {};
-
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -346,6 +351,7 @@ export class Expression {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
 			);
+			freezePrototypes();
 			return evaluateExpression(expression, data);
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
