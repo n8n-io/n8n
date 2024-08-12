@@ -648,6 +648,7 @@
       "dist/nodes/Notion/NotionTrigger.node.js",
       "dist/nodes/Npm/Npm.node.js",
       "dist/nodes/Odoo/Odoo.node.js",
+      "dist/nodes/Okta/Okta.node.js",
       "dist/nodes/OneSimpleApi/OneSimpleApi.node.js",
       "dist/nodes/OpenAi/OpenAi.node.js",
       "dist/nodes/OpenThesaurus/OpenThesaurus.node.js",
