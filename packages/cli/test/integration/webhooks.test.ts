@@ -21,7 +21,7 @@ describe('WebhookServer', () => {
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const activeWebhooks = mockInstance(LiveWebhooks);
+		const liveWebhooks = mockInstance(LiveWebhooks);
 		const testWebhooks = mockInstance(TestWebhooks);
 		mockInstance(WaitingWebhooks);
 		mockInstance(WaitingForms);
@@ -35,7 +35,7 @@ describe('WebhookServer', () => {
 		});
 
 		const tests = [
-			['webhook', activeWebhooks],
+			['webhook', liveWebhooks],
 			['webhookTest', testWebhooks],
 			// TODO: enable webhookWaiting & waitingForms after CORS support is added
 			// ['webhookWaiting', waitingWebhooks],
