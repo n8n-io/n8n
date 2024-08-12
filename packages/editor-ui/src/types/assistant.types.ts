@@ -117,9 +117,7 @@ export namespace ReplaceCodeRequest {
 	}
 
 	export interface ResponsePayload {
-		data: {
-			sessionId: string;
-			parameters: INodeParameters;
-		};
+		sessionId: string;
+		parameters: INodeParameters;
 	}
 }

@@ -1,6 +1,6 @@
 import type { IRestApiContext } from '@/Interface';
 import type { ChatRequest, ReplaceCodeRequest } from '@/types/assistant.types';
-import { postFetch, streamRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest, streamRequest } from '@/utils/apiUtils';
 
 export function chatWithAssistant(
 	ctx: IRestApiContext,
@@ -13,10 +13,13 @@ export function chatWithAssistant(
 }
 
 export async function replaceCode(
-	ctx: IRestApiContext,
-	payload: ReplaceCodeRequest.RequestPayload,
+	context: IRestApiContext,
+	data: ReplaceCodeRequest.RequestPayload,
 ): Promise<ReplaceCodeRequest.ResponsePayload> {
-	const data = await postFetch(ctx, '/ai-assistant/chat/apply-suggestion', payload);
-
-	return data as unknown as ReplaceCodeRequest.ResponsePayload;
+	return await makeRestApiRequest<ReplaceCodeRequest.ResponsePayload>(
+		context,
+		'POST',
+		'/ai-assistant/chat/apply-suggestion',
+		data,
+	);
 }
