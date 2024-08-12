@@ -190,6 +190,26 @@ describe('ScalingService', () => {
 			expect(jobs).toHaveLength(1);
 			expect(jobs.at(0)?.id).toBe('123');
 		});
+
+		it('should filter out `null` in Redis response', async () => {
+			/**
+			 * Arrange
+			 */
+			const scalingService = new ScalingService(mock(), mock(), mock());
+			await scalingService.setupQueue();
+			// @ts-expect-error - Untyped but possible Redis response
+			queue.getJobs.mockResolvedValue([mock<Job>(), null]);
+
+			/**
+			 * Act
+			 */
+			const jobs = await scalingService.findJobsByStatus(['waiting']);
+
+			/**
+			 * Assert
+			 */
+			expect(jobs).toHaveLength(1);
+		});
 	});
 
 	describe('stopJob', () => {
