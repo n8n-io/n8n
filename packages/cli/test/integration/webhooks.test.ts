@@ -3,7 +3,7 @@ import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 
 import { AbstractServer } from '@/AbstractServer';
-import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
+import { LiveWebhooks } from '@/webhooks/LiveWebhooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
@@ -21,7 +21,7 @@ describe('WebhookServer', () => {
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const activeWebhooks = mockInstance(ActiveWebhooks);
+		const activeWebhooks = mockInstance(LiveWebhooks);
 		const testWebhooks = mockInstance(TestWebhooks);
 		mockInstance(WaitingWebhooks);
 		mockInstance(WaitingForms);
