@@ -184,6 +184,33 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		queue: {
+			health: {
+				active: false,
+				port: 5678,
+			},
+			bull: {
+				redis: {
+					db: 0,
+					host: 'localhost',
+					password: '',
+					port: 6379,
+					timeoutThreshold: 10_000,
+					username: '',
+					clusterNodes: '',
+					tls: false,
+				},
+				queueRecoveryInterval: 60,
+				gracefulShutdownTimeout: 30,
+				prefix: 'bull',
+				settings: {
+					lockDuration: 30_000,
+					lockRenewTime: 15_000,
+					stalledInterval: 30_000,
+					maxStalledCount: 1,
+				},
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

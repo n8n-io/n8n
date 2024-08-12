@@ -37,6 +37,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { EventService } from './events/event.service';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class WorkflowRunner {
@@ -424,7 +425,7 @@ export class WorkflowRunner {
 
 				const jobData: Promise<JobResult> = job.finished();
 
-				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
+				const { queueRecoveryInterval } = Container.get(GlobalConfig).queue.bull;
 
 				const racingPromises: Array<Promise<JobResult>> = [jobData];
 
