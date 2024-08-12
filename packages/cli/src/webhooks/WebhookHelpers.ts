@@ -20,8 +20,6 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
-	IExecuteResponsePromiseData,
-	IHttpRequestMethods,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -42,119 +40,20 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import type {
-	IExecutionDb,
-	IResponseCallbackData,
-	IWebhookManager,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
-	WebhookCORSRequest,
-	WebhookRequest,
-} from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { OwnershipService } from './services/ownership.service';
-import { parseBody } from './middlewares';
-import { Logger } from './Logger';
-import { NotFoundError } from './errors/response-errors/not-found.error';
-import { InternalServerError } from './errors/response-errors/internal-server.error';
-import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
-import type { Project } from './databases/entities/Project';
-
-export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
-	'DELETE',
-	'GET',
-	'HEAD',
-	'PATCH',
-	'POST',
-	'PUT',
-];
-
-export const webhookRequestHandler =
-	(webhookManager: IWebhookManager) =>
-	async (req: WebhookRequest | WebhookCORSRequest, res: express.Response) => {
-		const { path } = req.params;
-		const method = req.method;
-
-		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
-			return ResponseHelper.sendErrorResponse(
-				res,
-				new Error(`The method ${method} is not supported.`),
-			);
-		}
-
-		// Setup CORS headers only if the incoming request has an `origin` header
-		if ('origin' in req.headers) {
-			if (webhookManager.getWebhookMethods) {
-				try {
-					const allowedMethods = await webhookManager.getWebhookMethods(path);
-					res.header('Access-Control-Allow-Methods', ['OPTIONS', ...allowedMethods].join(', '));
-				} catch (error) {
-					return ResponseHelper.sendErrorResponse(res, error as Error);
-				}
-			}
-
-			const requestedMethod =
-				method === 'OPTIONS'
-					? (req.headers['access-control-request-method'] as IHttpRequestMethods)
-					: method;
-			if (webhookManager.findAccessControlOptions && requestedMethod) {
-				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
-				const { allowedOrigins } = options ?? {};
-
-				if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
-					const originsList = allowedOrigins.split(',');
-					const defaultOrigin = originsList[0];
-
-					if (originsList.length === 1) {
-						res.header('Access-Control-Allow-Origin', defaultOrigin);
-					}
-
-					if (originsList.includes(req.headers.origin as string)) {
-						res.header('Access-Control-Allow-Origin', req.headers.origin);
-					} else {
-						res.header('Access-Control-Allow-Origin', defaultOrigin);
-					}
-				} else {
-					res.header('Access-Control-Allow-Origin', req.headers.origin);
-				}
-
-				if (method === 'OPTIONS') {
-					res.header('Access-Control-Max-Age', '300');
-					const requestedHeaders = req.headers['access-control-request-headers'];
-					if (requestedHeaders?.length) {
-						res.header('Access-Control-Allow-Headers', requestedHeaders);
-					}
-				}
-			}
-		}
-
-		if (method === 'OPTIONS') {
-			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-		}
-
-		let response;
-		try {
-			response = await webhookManager.executeWebhook(req, res);
-		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
-		}
-
-		// Don't respond, if already responded
-		if (response.noWebhookResponse !== true) {
-			ResponseHelper.sendSuccessResponse(
-				res,
-				response.data,
-				true,
-				response.responseCode,
-				response.headers,
-			);
-		}
-	};
+import { OwnershipService } from '@/services/ownership.service';
+import { parseBody } from '@/middlewares';
+import { Logger } from '@/Logger';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import type { Project } from '@/databases/entities/Project';
+import type { IExecutionDb, IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
@@ -192,18 +91,6 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-export function encodeWebhookResponse(
-	response: IExecuteResponsePromiseData,
-): IExecuteResponsePromiseData {
-	if (typeof response === 'object' && Buffer.isBuffer(response.body)) {
-		response.body = {
-			'__@N8nEncodedBuffer@__': response.body.toString(BINARY_ENCODING),
-		};
-	}
-
-	return response;
-}
-
 const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 	for (const key in values) {
 		const value = values[key];
@@ -228,7 +115,7 @@ export async function executeWebhook(
 	executionId: string | undefined,
 	req: WebhookRequest,
 	res: express.Response,
-	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	responseCallback: (error: Error | null, data: IWebhookResponseCallbackData) => void,
 	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set

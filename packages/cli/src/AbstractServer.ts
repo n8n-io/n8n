@@ -13,15 +13,15 @@ import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
-import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingForms } from '@/WaitingForms';
-import { WaitingWebhooks } from '@/WaitingWebhooks';
-import { webhookRequestHandler } from '@/WebhookHelpers';
+import { TestWebhooks } from '@/webhooks/TestWebhooks';
+import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
+import { createWebhookHandlerFor } from '@/webhooks/WebhookRequestHandler';
+import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { ActiveWebhooks } from '@/ActiveWebhooks';
 import { GlobalConfig } from '@n8n/config';
 
 @Service()
@@ -181,33 +181,32 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			const activeWebhooks = Container.get(ActiveWebhooks);
-
+			const activeWebhooksRequestHandler = createWebhookHandlerFor(Container.get(ActiveWebhooks));
 			// Register a handler for active forms
-			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWebhooks));
+			this.app.all(`/${this.endpointForm}/:path(*)`, activeWebhooksRequestHandler);
 
 			// Register a handler for active webhooks
-			this.app.all(`/${this.endpointWebhook}/:path(*)`, webhookRequestHandler(activeWebhooks));
+			this.app.all(`/${this.endpointWebhook}/:path(*)`, activeWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path/:suffix?`,
-				webhookRequestHandler(Container.get(WaitingForms)),
+				createWebhookHandlerFor(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks
 			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path/:suffix?`,
-				webhookRequestHandler(Container.get(WaitingWebhooks)),
+				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 		}
 
 		if (this.testWebhooksEnabled) {
-			const testWebhooks = Container.get(TestWebhooks);
+			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
 
 			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
-			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
+			this.app.all(`/${this.endpointFormTest}/:path(*)`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, testWebhooksRequestHandler);
 		}
 
 		// Block bots from scanning the application

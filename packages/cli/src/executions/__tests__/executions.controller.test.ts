@@ -74,6 +74,8 @@ describe('ExecutionsController', () => {
 			},
 		];
 
+		executionService.findRangeWithCount.mockResolvedValue(NO_EXECUTIONS);
+
 		describe('if either status or range provided', () => {
 			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
 				'should fetch executions per query',

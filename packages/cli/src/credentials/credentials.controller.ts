@@ -291,25 +291,22 @@ export class CredentialsController {
 		let newShareeIds: string[] = [];
 
 		await Db.transaction(async (trx) => {
-			const currentPersonalProjectIDs = credential.shared
+			const currentProjectIds = credential.shared
 				.filter((sc) => sc.role === 'credential:user')
 				.map((sc) => sc.projectId);
-			const newPersonalProjectIds = shareWithIds;
+			const newProjectIds = shareWithIds;
 
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIds, (id) => id],
-			);
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
 			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIds, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
+				[newProjectIds, (id) => id],
+				[currentProjectIds, (id) => id],
 			);
 
 			const deleteResult = await trx.delete(SharedCredentials, {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;
