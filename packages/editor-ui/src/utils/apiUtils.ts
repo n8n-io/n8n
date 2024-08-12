@@ -193,32 +193,6 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	return returnData;
 }
 
-export const postFetch = async (
-	context: IRestApiContext,
-	apiEndpoint: string,
-	payload: object,
-): Promise<object> => {
-	const headers: Record<string, string> = {
-		'Content-Type': 'application/json',
-	};
-	if (browserId) {
-		headers['browser-id'] = browserId;
-	}
-	const request: RequestInit = {
-		headers,
-		method: 'POST',
-		credentials: 'include',
-		body: JSON.stringify(payload),
-	};
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, request);
-
-	if (response.ok && response.body) {
-		return await response.json();
-	} else {
-		throw new Error(response.statusText);
-	}
-};
-
 export const streamRequest = async (
 	context: IRestApiContext,
 	apiEndpoint: string,
