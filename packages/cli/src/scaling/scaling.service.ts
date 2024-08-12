@@ -88,7 +88,9 @@ export class ScalingService {
 	}
 
 	async findJobsByStatus(statuses: JobStatus[]) {
-		return await this.queue.getJobs(statuses);
+		const jobs = await this.queue.getJobs(statuses);
+
+		return jobs.filter((job) => job !== null);
 	}
 
 	async stopJob(job: Job) {
