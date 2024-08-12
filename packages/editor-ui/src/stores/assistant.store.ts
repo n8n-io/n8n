@@ -35,7 +35,7 @@ const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatWidth = ref<number>(275);
+	const chatWidth = ref<number>(325);
 
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
