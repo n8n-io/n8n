@@ -86,7 +86,7 @@
     "@google-cloud/secret-manager": "^5.6.0",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
-    "@n8n/localtunnel": "2.1.0",
+    "@n8n/localtunnel": "3.0.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "0.3.20-10",
