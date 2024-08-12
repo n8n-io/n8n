@@ -49,12 +49,15 @@ const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
 });
 
+const node = computed(() => {
+	return props.error.node || ndvStore.activeNode;
+});
+
 const parameters = computed<INodeProperties[]>(() => {
-	const node = ndvStore.activeNode;
-	if (!node) {
+	if (!node.value) {
 		return [];
 	}
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
 
 	if (nodeType === null) {
 		return [];
@@ -79,13 +82,12 @@ const hasManyInputItems = computed(() => {
 });
 
 const nodeDefaultName = computed(() => {
-	const node = props.error?.node;
-	if (!node) {
+	if (!node.value) {
 		return 'Node';
 	}
 
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	return nodeType?.defaults?.name || node.name;
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+	return nodeType?.defaults?.name || node.value.name;
 });
 
 const prepareRawMessages = computed(() => {
@@ -117,8 +119,10 @@ const prepareRawMessages = computed(() => {
 });
 
 const isAskAssistantAvailable = computed(() => {
-	const isCustomNode =
-		props.error.node?.type === undefined || isCommunityPackageName(props.error.node);
+	if (!node.value) {
+		return false;
+	}
+	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value);
 	return assistantStore.canShowAssistantButtons && !isCustomNode;
 });
 
@@ -415,7 +419,6 @@ function copySuccess() {
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
-	const node = props.error.node || ndvStore.activeNode;
 	const errorPayload: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
@@ -424,7 +427,7 @@ async function onAskAssistantClick() {
 			description: description ?? '',
 			type: 'type' in props.error ? props.error.type : undefined,
 		},
-		node,
+		node: node.value,
 	};
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
@@ -439,7 +442,7 @@ async function onAskAssistantClick() {
 		task: 'error',
 		has_existing_session: false,
 		workflow_id: workflowsStore.workflowId,
-		node_type: node.type,
+		node_type: node.value.type,
 		error: props.error,
 	});
 }
