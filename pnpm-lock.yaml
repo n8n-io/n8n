@@ -9823,8 +9823,8 @@ packages:
   map-stream@0.1.0:
     resolution: {integrity: sha512-CkYQrPYZfWnu/DAmVCpTSX/xHpKZ80eKh2lAkyA6AJTef6bW+6JpbQZN5rofum7da+SyN1bi5ctTm+lTfcCW3g==}
 
-  mappersmith@2.40.0:
-    resolution: {integrity: sha512-Es99fy0E52fxmhRvCyed7WVlSyuz6ME/wOsRpSmi0GcbMEZ6y5D2GL4+qNGPCc2P270J5yw8L2zg+K4BWACcHg==}
+  mappersmith@2.43.4:
+    resolution: {integrity: sha512-IyUw53aE3/SPH3eOkqSuD+Hcstpcl4dpxDDgZsPz65R2SlOikq0VHxo3kMPzUVvw7cCHunTmlpNXl5n/KzPcpg==}
 
   mark.js@8.11.1:
     resolution: {integrity: sha512-1I+1qpDt4idfgLQG+BNWmrqku+7/2bi5nLf4YwF8y8zXvmfiTBY3PV3ZibfrjBueCByROpuBjLLFCajqkgYoLQ==}
@@ -16214,7 +16214,7 @@ snapshots:
   '@kafkajs/confluent-schema-registry@1.0.6':
     dependencies:
       avsc: 5.7.6
-      mappersmith: 2.40.0
+      mappersmith: 2.43.4
 
   '@kurkle/color@0.3.2': {}
 
@@ -23978,7 +23978,7 @@ snapshots:
 
   map-stream@0.1.0: {}
 
-  mappersmith@2.40.0: {}
+  mappersmith@2.43.4: {}
 
   mark.js@8.11.1: {}
 
