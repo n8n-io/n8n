@@ -368,6 +368,7 @@ p {
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
+	word-break: break-word;
 
 	li {
 		margin-left: var(--spacing-xs);
@@ -378,7 +379,6 @@ p {
 	border-bottom: var(--border-base);
 	padding: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
-	word-break: break-word;
 }
 
 .blockBody {

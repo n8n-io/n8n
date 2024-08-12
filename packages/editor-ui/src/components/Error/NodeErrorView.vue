@@ -424,7 +424,7 @@ async function onAskAssistantClick() {
 			name: props.error.name,
 			message,
 			lineNumber,
-			description: description ?? '',
+			description: description ?? getErrorDescription(),
 			type: 'type' in props.error ? props.error.type : undefined,
 		},
 		node: node.value,
