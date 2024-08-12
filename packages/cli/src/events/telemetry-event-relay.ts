@@ -95,6 +95,10 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
+			'user-transactional-email-sent': (event) => this.userTransactionalEmailSent(event),
+			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
+			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
+			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 		});
 	}
 
@@ -952,6 +956,42 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			message_type: messageType,
 			public_api: publicApi,
+		});
+	}
+
+	private userTransactionalEmailSent({
+		userId,
+		messageType,
+		publicApi,
+	}: RelayEventMap['user-transactional-email-sent']) {
+		this.telemetry.track('User sent transactional email', {
+			user_id: userId,
+			message_type: messageType,
+			public_api: publicApi,
+		});
+	}
+
+	// #endregion
+
+	// #region Click
+
+	private userInviteEmailClick({ invitee }: RelayEventMap['user-invite-email-click']) {
+		this.telemetry.track('User clicked invite link from email', {
+			user_id: invitee.id,
+		});
+	}
+
+	private userPasswordResetEmailClick({ user }: RelayEventMap['user-password-reset-email-click']) {
+		this.telemetry.track('User clicked password reset link from email', {
+			user_id: user.id,
+		});
+	}
+
+	private userPasswordResetRequestClick({
+		user,
+	}: RelayEventMap['user-password-reset-request-click']) {
+		this.telemetry.track('User requested password reset while logged out', {
+			user_id: user.id,
 		});
 	}
 
