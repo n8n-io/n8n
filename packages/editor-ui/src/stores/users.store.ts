@@ -258,17 +258,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		addUsers([usersById.value[userId]]);
 	};
 
-	const updateCurrentUserPassword = async ({
-		password,
-		currentPassword,
-	}: {
-		password: string;
-		currentPassword: string;
-	}) => {
-		await usersApi.updateCurrentUserPassword(rootStore.restApiContext, {
-			newPassword: password,
-			currentPassword,
-		});
+	const updateCurrentUserPassword = async (params: usersApi.UpdateUserPasswordParams) => {
+		await usersApi.updateCurrentUserPassword(rootStore.restApiContext, params);
 	};
 
 	const deleteUser = async (params: { id: string; transferId?: string }) => {
