@@ -24,6 +24,9 @@ import type { CommunityPackages } from '@/Interfaces';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Logger } from '@/Logger';
 import { OrchestrationService } from './orchestration.service';
+import { License } from '@/License';
+
+const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -51,20 +54,15 @@ export class CommunityPackagesService {
 
 	missingPackages: string[] = [];
 
-	private readonly registry: string;
-
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly orchestrationService: OrchestrationService,
-		globalConfig: GlobalConfig,
-	) {
-		const { reinstallMissing, registry } = globalConfig.nodes.communityPackages;
-		this.reinstallMissingPackages = reinstallMissing;
-		this.registry = registry;
-	}
+		private readonly license: License,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	get hasMissingPackages() {
 		return this.missingPackages.length > 0;
@@ -283,7 +281,8 @@ export class CommunityPackagesService {
 
 		if (missingPackages.size === 0) return;
 
-		if (this.reinstallMissingPackages) {
+		const { reinstallMissing } = this.globalConfig.nodes.communityPackages;
+		if (reinstallMissing) {
 			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
 			try {
 				// Optimistic approach - stop if any installation fails
@@ -325,13 +324,22 @@ export class CommunityPackagesService {
 		await this.orchestrationService.publish('community-package-uninstall', { packageName });
 	}
 
+	private getNpmRegistry() {
+		let { registry } = this.globalConfig.nodes.communityPackages;
+		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
+			this.logger.warn('Not licensed to use custom NPM registry');
+			registry = DEFAULT_REGISTRY;
+		}
+		return registry;
+	}
+
 	private async installOrUpdatePackage(
 		packageName: string,
 		options: { version?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
 		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
-		const command = `npm install ${packageName}@${packageVersion} --registry=${this.registry}`;
+		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
 
 		try {
 			await this.executeNpmCommand(command);
@@ -384,7 +392,7 @@ export class CommunityPackagesService {
 
 	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.executeNpmCommand(
-			`npm install ${packageName}@${packageVersion} --registry=${this.registry}`,
+			`npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`,
 		);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();

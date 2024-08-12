@@ -20,6 +20,7 @@ import { InstalledNodesRepository } from '@db/repositories/installedNodes.reposi
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { License } from '@/License';
 
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
@@ -39,6 +40,7 @@ const execMock = ((...args) => {
 }) as typeof exec;
 
 describe('CommunityPackagesService', () => {
+	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
 		nodes: {
 			communityPackages: {
@@ -75,6 +77,7 @@ describe('CommunityPackagesService', () => {
 		mock(),
 		loadNodesAndCredentials,
 		mock(),
+		license,
 		globalConfig,
 	);
 
@@ -394,6 +397,7 @@ describe('CommunityPackagesService', () => {
 			installedPackage.packageName = mockPackageName();
 
 			mocked(exec).mockImplementation(execMock);
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 			//
 			// ACT
