@@ -174,7 +174,7 @@ export async function executeWebhook(
 		'firstEntryJson',
 	);
 
-	if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
+	if (!['onReceived', 'lastNode', 'responseNode', 'formPage'].includes(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
@@ -503,6 +503,12 @@ export async function executeWebhook(
 			executionId,
 			responsePromise,
 		);
+
+		if (responseMode === 'formPage' && !didSendResponse) {
+			res.redirect(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			process.nextTick(() => res.end());
+			didSendResponse = true;
+		}
 
 		Container.get(Logger).verbose(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,

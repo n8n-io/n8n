@@ -222,6 +222,11 @@ export const formRespondMode: INodeProperties = {
 			description: 'As soon as this node receives the form submission',
 		},
 		{
+			name: 'Form Page',
+			value: 'formPage',
+			description: 'Next form page',
+		},
+		{
 			name: 'Workflow Finishes',
 			value: 'lastNode',
 			description: 'When the last node of the workflow is executed',

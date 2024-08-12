@@ -719,6 +719,9 @@
 							}
 
 							if (response.status === 200) {
+								if(response.redirected) {
+									window.location.replace(response.url);
+								}
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
 									window.location.replace(redirectUrl.href);
