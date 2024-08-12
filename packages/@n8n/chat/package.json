@@ -45,7 +45,6 @@
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
-    "@types/markdown-it": "^12.2.3",
     "@vitest/coverage-v8": "catalog:frontend",
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:frontend",
