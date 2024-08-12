@@ -64,6 +64,9 @@ catalogs:
     vue:
       specifier: ^3.4.21
       version: 3.4.21
+    vue-markdown-render:
+      specifier: ^2.2.1
+      version: 2.2.1
     vue-tsc:
       specifier: ^2.0.19
       version: 2.0.19
@@ -222,8 +225,8 @@ importers:
         specifier: catalog:frontend
         version: 3.4.21(typescript@5.5.2)
       vue-markdown-render:
-        specifier: ^2.1.1
-        version: 2.1.1(vue@3.4.21(typescript@5.5.2))
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.4.21(typescript@5.5.2))
     devDependencies:
       '@iconify-json/mdi':
         specifier: ^1.1.54
@@ -1332,8 +1335,8 @@ importers:
         specifier: 2.2.4
         version: 2.2.4(vue@3.4.21(typescript@5.5.2))
       vue-markdown-render:
-        specifier: ^2.0.1
-        version: 2.0.1(typescript@5.5.2)
+        specifier: catalog:frontend
+        version: 2.2.1(vue@3.4.21(typescript@5.5.2))
       vue-router:
         specifier: ^4.2.2
         version: 4.2.2(vue@3.4.21(typescript@5.5.2))
@@ -7472,9 +7475,6 @@ packages:
   ent@2.2.0:
     resolution: {integrity: sha512-GHrMyVZQWvTIdDtpiEXdHZnFQKzeO09apj8Cbl4pKWy4i0Oprcq17usfDt5aO63swf0JOeMWjWQE/LzgSRuWpA==}
 
-  entities@2.1.0:
-    resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
-
   entities@2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==}
 
@@ -9587,9 +9587,6 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkify-it@3.0.3:
-    resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==}
-
   linkify-it@4.0.1:
     resolution: {integrity: sha512-C7bfi1UZmoj8+PQx22XyeXCuBlokoyWQL5pWSP+EI6nzRylyThouddufc2c1NDIcP9k5agmN9fLpA7VNJfIiqw==}
 
@@ -9832,12 +9829,12 @@ packages:
   markdown-it-task-lists@2.1.1:
     resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
 
-  markdown-it@12.3.2:
-    resolution: {integrity: sha512-TchMembfxfNVpHkbtriWltGWc+m3xszaRD0CZup7GFFhzIgQqxIfn3eGj1yZpfuflzPvfkt611B2Q/Bsk1YnGg==}
-    hasBin: true
-
   markdown-it@13.0.1:
     resolution: {integrity: sha512-lTlxriVoy2criHP0JKRhO2VDG9c2ypWCsT237eDiLqi09rmbKoUetyGHq2uOIRoRS//kfoJckS0eUzzkDR+k2Q==}
+    hasBin: true
+
+  markdown-it@13.0.2:
+    resolution: {integrity: sha512-FtwnEuuK+2yVU7goGn/MJ0WBZMM9ZPgU9spqlFs7/A/pDIUNSOQZhUgOqYCficIuR2QaFnrt8LHqBWsbTAoI5w==}
     hasBin: true
 
   markdown-to-jsx@7.3.2:
@@ -12929,11 +12926,8 @@ packages:
     peerDependencies:
       vue: '>=3.0.0'
 
-  vue-markdown-render@2.0.1:
-    resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
-
-  vue-markdown-render@2.1.1:
-    resolution: {integrity: sha512-szuJVbCwgIpVsggd8IHGB2lLo8BH8Ojd+wakaOTASNxdYcccKxoMcvDqUsLoGwgKDY8yJf0U/+ppffEYxsEHkA==}
+  vue-markdown-render@2.2.1:
+    resolution: {integrity: sha512-XkYnC0PMdbs6Vy6j/gZXSvCuOS0787Se5COwXlepRqiqPiunyCIeTPQAO2XnB4Yl04EOHXwLx5y6IuszMWSgyQ==}
     peerDependencies:
       vue: ^3.3.4
 
@@ -21017,8 +21011,6 @@ snapshots:
 
   ent@2.2.0: {}
 
-  entities@2.1.0: {}
-
   entities@2.2.0: {}
 
   entities@3.0.1: {}
@@ -23709,10 +23701,6 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkify-it@3.0.3:
-    dependencies:
-      uc.micro: 1.0.6
-
   linkify-it@4.0.1:
     dependencies:
       uc.micro: 1.0.6
@@ -23980,15 +23968,15 @@ snapshots:
 
   markdown-it-task-lists@2.1.1: {}
 
-  markdown-it@12.3.2:
+  markdown-it@13.0.1:
     dependencies:
       argparse: 2.0.1
-      entities: 2.1.0
-      linkify-it: 3.0.3
+      entities: 3.0.1
+      linkify-it: 4.0.1
       mdurl: 1.0.1
       uc.micro: 1.0.6
 
-  markdown-it@13.0.1:
+  markdown-it@13.0.2:
     dependencies:
       argparse: 2.0.1
       entities: 3.0.1
@@ -27451,16 +27439,9 @@ snapshots:
     dependencies:
       vue: 3.4.21(typescript@5.5.2)
 
-  vue-markdown-render@2.0.1(typescript@5.5.2):
+  vue-markdown-render@2.2.1(vue@3.4.21(typescript@5.5.2)):
     dependencies:
-      markdown-it: 12.3.2
-      vue: 3.4.21(typescript@5.5.2)
-    transitivePeerDependencies:
-      - typescript
-
-  vue-markdown-render@2.1.1(vue@3.4.21(typescript@5.5.2)):
-    dependencies:
-      markdown-it: 12.3.2
+      markdown-it: 13.0.2
       vue: 3.4.21(typescript@5.5.2)
 
   vue-router@4.2.2(vue@3.4.21(typescript@5.5.2)):
