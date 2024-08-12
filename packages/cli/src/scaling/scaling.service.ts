@@ -75,8 +75,6 @@ export class ScalingService {
 
 			await sleep(500);
 		}
-
-		this.logger.info('[ScalingService] Stopped workers');
 	}
 
 	async pingQueue() {
