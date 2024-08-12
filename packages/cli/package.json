@@ -145,7 +145,7 @@
     "p-cancelable": "2.1.1",
     "p-lazy": "3.1.0",
     "pg": "8.11.3",
-    "picocolors": "1.0.0",
+    "picocolors": "1.0.1",
     "pkce-challenge": "3.0.0",
     "posthog-node": "3.2.1",
     "prom-client": "13.2.0",
