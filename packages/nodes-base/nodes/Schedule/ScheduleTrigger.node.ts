@@ -403,6 +403,13 @@ export class ScheduleTrigger implements INodeType {
 								},
 								hint: 'Format: [Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
+							{
+								displayName: 'Rule Name',
+								name: 'ruleName',
+								type: 'string',
+								default: '',
+								placeholder: 'eg. backup',
+							},
 						],
 					},
 				],
@@ -437,6 +444,7 @@ export class ScheduleTrigger implements INodeType {
 				Minute: momentTz.format('mm'),
 				Second: momentTz.format('ss'),
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
+				Rule: recurrence.ruleName,
 			};
 
 			this.emit([this.helpers.returnJsonArray([resultData])]);
@@ -446,10 +454,12 @@ export class ScheduleTrigger implements INodeType {
 			interval,
 			cronExpression: toCronExpression(interval),
 			recurrence: intervalToRecurrence(interval, i),
+			ruleName: interval.ruleName || `Rule ${i + 1}`,
 		}));
 
 		if (this.getMode() !== 'manual') {
-			for (const { interval, cronExpression, recurrence } of rules) {
+			for (const { interval, cronExpression, recurrence, ruleName } of rules) {
+				recurrence.ruleName = ruleName;
 				try {
 					this.helpers.registerCron(cronExpression, () => executeTrigger(recurrence));
 				} catch (error) {
@@ -465,7 +475,8 @@ export class ScheduleTrigger implements INodeType {
 			return {};
 		} else {
 			const manualTriggerFunction = async () => {
-				const { interval, cronExpression, recurrence } = rules[0];
+				const { interval, cronExpression, recurrence, ruleName } = rules[0];
+				recurrence.ruleName = ruleName;
 				if (interval.field === 'cronExpression') {
 					try {
 						sendAt(cronExpression);
