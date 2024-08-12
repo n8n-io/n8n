@@ -96,8 +96,16 @@ const importFileRef = ref<HTMLInputElement | undefined>();
 const tagsEventBus = createEventBus();
 const sourceControlModalEventBus = createEventBus();
 
-const nodeViewSwitcher = useLocalStorage('NodeView.switcher', import.meta.env.DEV ? 'true' : '');
+const nodeViewSwitcher = useLocalStorage('NodeView.switcher', '');
 const nodeViewVersion = useLocalStorage('NodeView.version', '1');
+
+const isNodeViewSwitcherEnabled = computed(() => {
+	return (
+		import.meta.env.DEV ||
+		nodeViewSwitcher.value === 'true' ||
+		settingsStore.deploymentType === 'n8n-internal'
+	);
+});
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -184,7 +192,7 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 		disabled: !onWorkflowPage.value || isNewWorkflow.value,
 	});
 
-	if (nodeViewSwitcher.value === 'true') {
+	if (isNodeViewSwitcherEnabled.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SWITCH_NODE_VIEW_VERSION,
 			label:
