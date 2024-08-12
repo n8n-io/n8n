@@ -5,7 +5,6 @@ import config from '@/config';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { InternalHooks } from '@/InternalHooks';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { License } from '@/License';
@@ -18,7 +17,6 @@ import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 config.set('executions.mode', 'queue');
 config.set('binaryDataManager.availableModes', 'filesystem');
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const binaryDataService = mockInstance(BinaryDataService);
 const externalHooks = mockInstance(ExternalHooks);
