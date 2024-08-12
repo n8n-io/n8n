@@ -5,6 +5,8 @@ import config from '@/config';
 import * as BullModule from 'bull';
 import type { Job, JobData, JobOptions, JobQueue } from '../types';
 import { ApplicationError } from 'n8n-workflow';
+import { mockInstance } from '@test/mocking';
+import { GlobalConfig } from '@n8n/config';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -16,6 +18,21 @@ jest.mock('bull', () => ({
 }));
 
 describe('ScalingService', () => {
+	const globalConfig = mockInstance(GlobalConfig, {
+		queue: {
+			bull: {
+				prefix: 'bull',
+				redis: {
+					clusterNodes: '',
+					host: 'localhost',
+					password: '',
+					port: 6379,
+					tls: false,
+				},
+			},
+		},
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		config.set('generic.instanceType', 'main');
@@ -26,8 +43,8 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
-			const { prefix, settings } = config.get('queue.bull');
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
+			const { prefix, settings } = globalConfig.queue.bull;
 			const Bull = jest.mocked(BullModule.default);
 
 			/**
@@ -54,7 +71,7 @@ describe('ScalingService', () => {
 			 * Arrange
 			 */
 			config.set('generic.instanceType', 'worker');
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
@@ -73,7 +90,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 
 			/**
@@ -88,7 +105,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 
 			/**
@@ -108,7 +125,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 
 			/**
@@ -128,7 +145,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
@@ -151,7 +168,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			const jobId = '123';
 			queue.getJob.mockResolvedValue(mock<Job>({ id: jobId }));
@@ -174,7 +191,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			queue.getJobs.mockResolvedValue([mock<Job>({ id: '123' })]);
 
@@ -195,7 +212,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			// @ts-expect-error - Untyped but possible Redis response
 			queue.getJobs.mockResolvedValue([mock<Job>(), null]);
@@ -217,7 +234,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
 
@@ -237,7 +254,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(false) });
 
@@ -257,7 +274,7 @@ describe('ScalingService', () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock());
+			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
 			await scalingService.setupQueue();
 			const job = mock<Job>({
 				isActive: jest.fn().mockImplementation(() => {
