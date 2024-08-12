@@ -60,7 +60,9 @@ export class MfaService {
 		if (mfaToken) {
 			const decryptedSecret = this.cipher.decrypt(user.mfaSecret!);
 			return this.totp.verifySecret({ secret: decryptedSecret, token: mfaToken });
-		} else if (mfaRecoveryCode) {
+		}
+
+		if (mfaRecoveryCode) {
 			const validCodes = user.mfaRecoveryCodes.map((code) => this.cipher.decrypt(code));
 			const index = validCodes.indexOf(mfaRecoveryCode);
 			if (index === -1) return false;
@@ -70,6 +72,7 @@ export class MfaService {
 			await this.authUserRepository.save(user);
 			return true;
 		}
+
 		return false;
 	}
 
