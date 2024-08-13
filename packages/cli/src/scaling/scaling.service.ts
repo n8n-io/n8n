@@ -4,7 +4,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
-import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
@@ -280,7 +280,7 @@ export class ScalingService {
 			}
 		}, waitMs);
 
-		const wait = [this.queueRecoverySettings.waitMs / (60 * 1000), 'min'].join(' ');
+		const wait = [this.queueRecoverySettings.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
 		this.logger.debug(`[ScalingService] Scheduled queue recovery check for next ${wait}`);
 	}
