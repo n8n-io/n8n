@@ -143,6 +143,19 @@ export = {
 					);
 					where.id = In(workflowIds);
 				}
+
+				if (projectId) {
+					const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+						req.user,
+						['workflow:read'],
+					);
+
+					const workflowIds = workflows
+						.filter((workflow) => workflow.projectId === projectId)
+						.map((workflow) => workflow.id);
+
+					where.id = In(workflowIds);
+				}
 			} else {
 				const options: { workflowIds?: string[] } = {};
 
