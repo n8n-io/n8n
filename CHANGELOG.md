@@ -1,3 +1,12 @@
+## [1.54.1](https://github.com/n8n-io/n8n/compare/n8n@1.54.0...n8n@1.54.1) (2024-08-13)
+
+
+### Bug Fixes
+
+* **n8n Form Trigger Node:** Fix issue preventing v1 node from working ([#10364](https://github.com/n8n-io/n8n/issues/10364)) ([6b1b967](https://github.com/n8n-io/n8n/commit/6b1b9675e0a758da595db889fe10eb5c5af2a116))
+
+
+
 # [1.54.0](https://github.com/n8n-io/n8n/compare/n8n@1.53.0...n8n@1.54.0) (2024-08-07)
 
 
