@@ -23,8 +23,13 @@
 						:description="i18n.baseText(`${resourceKey}.empty.description` as BaseTextKey)"
 						:button-text="i18n.baseText(`${resourceKey}.empty.button` as BaseTextKey)"
 						button-type="secondary"
+						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
-					/>
+					>
+						<template #disabledButtonTooltip>
+							{{ i18n.baseText(`${resourceKey}.empty.button.disabled.tooltip` as BaseTextKey) }}
+						</template>
+					</n8n-action-box>
 				</slot>
 			</div>
 			<PageViewLayoutList v-else :overflow="type !== 'list'">
