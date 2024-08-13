@@ -7,6 +7,7 @@ import type { Job, JobData, JobOptions, JobQueue } from '../types';
 import { ApplicationError } from 'n8n-workflow';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import type { JobProcessor } from '../job-processor';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -100,23 +101,27 @@ describe('ScalingService', () => {
 		});
 	});
 
-	describe('pauseQueue', () => {
-		it('should pause the queue', async () => {
+	describe('stop', () => {
+		it('should pause the queue and check for running jobs', async () => {
 			/**
 			 * Arrange
 			 */
-			const scalingService = new ScalingService(mock(), mock(), mock(), globalConfig);
+			const jobProcessor = mock<JobProcessor>();
+			const scalingService = new ScalingService(mock(), mock(), jobProcessor, globalConfig);
 			await scalingService.setupQueue();
+			jobProcessor.getRunningJobIds.mockReturnValue([]);
+			const getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
 
 			/**
 			 * Act
 			 */
-			await scalingService.pauseQueue();
+			await scalingService.stop();
 
 			/**
 			 * Assert
 			 */
 			expect(queue.pause).toHaveBeenCalledWith(true, true);
+			expect(getRunningJobsCountSpy).toHaveBeenCalled();
 		});
 	});
 
