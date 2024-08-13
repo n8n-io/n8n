@@ -15,8 +15,8 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { N8nInstanceType } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvaluator';
@@ -315,7 +315,7 @@ export abstract class BaseCommand extends Command {
 		this.exit(exitCode);
 	}
 
-	private onTerminationSignal(signal: string) {
+	protected onTerminationSignal(signal: string) {
 		return async () => {
 			if (this.shutdownService.isShuttingDown()) {
 				this.logger.info(`Received ${signal}. Already shutting down...`);

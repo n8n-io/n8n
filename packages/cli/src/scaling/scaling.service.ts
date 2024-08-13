@@ -10,6 +10,7 @@ import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
 import type { JobQueue, Job, JobData, JobOptions, JobMessage, JobStatus, JobId } from './types';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class ScalingService {
@@ -21,6 +22,7 @@ export class ScalingService {
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly jobProcessor: JobProcessor,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	// #region Lifecycle
@@ -30,12 +32,12 @@ export class ScalingService {
 		const { RedisClientService } = await import('@/services/redis/redis-client.service');
 		const service = Container.get(RedisClientService);
 
-		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const bullPrefix = this.globalConfig.queue.bull.prefix;
 		const prefix = service.toValidPrefix(bullPrefix);
 
 		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
-			settings: config.get('queue.bull.settings'),
+			settings: this.globalConfig.queue.bull.settings,
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
@@ -86,7 +88,9 @@ export class ScalingService {
 	}
 
 	async findJobsByStatus(statuses: JobStatus[]) {
-		return await this.queue.getJobs(statuses);
+		const jobs = await this.queue.getJobs(statuses);
+
+		return jobs.filter((job) => job !== null);
 	}
 
 	async stopJob(job: Job) {
@@ -133,7 +137,7 @@ export class ScalingService {
 		let latestAttemptTs = 0;
 		let cumulativeTimeoutMs = 0;
 
-		const MAX_TIMEOUT_MS = config.getEnv('queue.bull.redis.timeoutThreshold');
+		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
 		const RESET_LENGTH_MS = 30_000;
 
 		this.queue.on('error', (error: Error) => {

@@ -14,7 +14,6 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -30,7 +29,6 @@ import { EventService } from '@/events/event.service';
 export class AuthController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
@@ -179,7 +177,6 @@ export class AuthController {
 			throw new BadRequestError('Invalid request');
 		}
 
-		this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
 		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
 		const { firstName, lastName } = inviter;

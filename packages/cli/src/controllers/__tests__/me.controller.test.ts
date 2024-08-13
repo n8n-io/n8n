@@ -9,22 +9,25 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
 import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
+import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import { MfaService } from '@/Mfa/mfa.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 const browserId = 'test-browser-id';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
 	const userRepository = mockInstance(UserRepository);
+	const mockMfaService = mockInstance(MfaService);
+	mockInstance(AuthUserRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
@@ -181,7 +184,7 @@ describe('MeController', () => {
 
 		it('should update the password in the DB, and issue a new cookie', async () => {
 			const req = mock<MeRequest.Password>({
-				user: mock({ password: passwordHash }),
+				user: mock({ password: passwordHash, mfaEnabled: false }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 				browserId,
 			});
@@ -214,6 +217,52 @@ describe('MeController', () => {
 				fieldsChanged: ['password'],
 			});
 		});
+
+		describe('mfa enabled', () => {
+			it('should throw BadRequestError if mfa code is missing', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
+				});
+
+				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+					new BadRequestError('Two-factor code is required to change password.'),
+				);
+			});
+
+			it('should throw ForbiddenError if invalid mfa code is given', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: { currentPassword: 'old_password', newPassword: 'NewPassword123', mfaCode: '123' },
+				});
+				mockMfaService.validateMfa.mockResolvedValue(false);
+
+				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
+					new ForbiddenError('Invalid two-factor code.'),
+				);
+			});
+
+			it('should succeed when mfa code is correct', async () => {
+				const req = mock<MeRequest.Password>({
+					user: mock({ password: passwordHash, mfaEnabled: true }),
+					body: {
+						currentPassword: 'old_password',
+						newPassword: 'NewPassword123',
+						mfaCode: 'valid',
+					},
+					browserId,
+				});
+				const res = mock<Response>();
+				userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				mockMfaService.validateMfa.mockResolvedValue(true);
+
+				const result = await controller.updatePassword(req, res);
+
+				expect(result).toEqual({ success: true });
+				expect(req.user.password).not.toBe(passwordHash);
+			});
+		});
 	});
 
 	describe('storeSurveyAnswers', () => {
@@ -224,6 +273,26 @@ describe('MeController', () => {
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(
 				new BadRequestError('Personalization answers are mandatory'),
 			);
+		});
+
+		it('should throw BadRequestError on XSS attempt', async () => {
+			const req = mock<MeRequest.SurveyAnswers>({
+				body: { 'test-answer': '<script>alert("XSS")</script>' },
+			});
+
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+		});
+	});
+
+	describe('updateCurrentUserSettings', () => {
+		it('should throw BadRequestError on XSS attempt', async () => {
+			const req = mock<AuthenticatedRequest>({
+				body: {
+					userActivated: '<script>alert("XSS")</script>',
+				},
+			});
+
+			await expect(controller.updateCurrentUserSettings(req)).rejects.toThrowError(BadRequestError);
 		});
 	});
 
