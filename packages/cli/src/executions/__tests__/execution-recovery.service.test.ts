@@ -10,7 +10,6 @@ import * as testDb from '@test-integration/testDb';
 
 import { mock } from 'jest-mock-extended';
 import { OrchestrationService } from '@/services/orchestration.service';
-import config from '@/config';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Push } from '@/push';
@@ -41,7 +40,6 @@ describe('ExecutionRecoveryService', () => {
 			instanceSettings,
 			push,
 			executionRepository,
-			orchestrationService,
 			mock(),
 		);
 	});
@@ -53,72 +51,10 @@ describe('ExecutionRecoveryService', () => {
 	afterEach(async () => {
 		jest.restoreAllMocks();
 		await testDb.truncate(['Execution', 'ExecutionData', 'Workflow']);
-		executionRecoveryService.shutdown();
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('scheduleQueueRecovery', () => {
-		describe('queue mode', () => {
-			it('if leader, should schedule queue recovery', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).toHaveBeenCalled();
-			});
-
-			it('if follower, should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'queue');
-				instanceSettings.markAsFollower();
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).not.toHaveBeenCalled();
-			});
-		});
-
-		describe('regular mode', () => {
-			it('should do nothing', () => {
-				/**
-				 * Arrange
-				 */
-				config.set('executions.mode', 'regular');
-				const scheduleSpy = jest.spyOn(executionRecoveryService, 'scheduleQueueRecovery');
-
-				/**
-				 * Act
-				 */
-				executionRecoveryService.init();
-
-				/**
-				 * Assert
-				 */
-				expect(scheduleSpy).not.toHaveBeenCalled();
-			});
-		});
 	});
 
 	describe('recoverFromLogs', () => {
