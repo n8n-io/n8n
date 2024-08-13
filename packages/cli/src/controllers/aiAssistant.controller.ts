@@ -12,8 +12,16 @@ export class AiAssistantController {
 	@Post('/chat')
 	async chat(req: AiAssistantRequest.Chat, res: Response) {
 		try {
-			const buffer = await this.aiAssistantService.chat(req.body, req.user);
-			res.send(buffer);
+			await this.aiAssistantService.chat(
+				req.body,
+				req.user,
+				(streamRes: string) => {
+					res.write(streamRes);
+				},
+				() => {
+					res.end();
+				},
+			);
 		} catch (e) {
 			throw new BadRequestError('Something went wrong');
 		}

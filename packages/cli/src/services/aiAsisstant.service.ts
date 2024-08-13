@@ -32,13 +32,18 @@ export class AiAssistantService {
 		});
 	}
 
-	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser) {
+	async chat(
+		payload: AiAssistantSDK.ChatRequestPayload,
+		user: IUser,
+		onResponse: (res: string) => void,
+		onDone: () => void,
+	) {
 		if (!this.client) {
 			await this.init();
 		}
 		assert(this.client, 'Assistant client not setup');
 
-		return await this.client.chat(payload, { id: user.id });
+		await this.client.chat(payload, { id: user.id }, onResponse, onDone);
 	}
 
 	async applySuggestion(payload: AiAssistantRequest.SuggestionPayload, user: IUser) {
