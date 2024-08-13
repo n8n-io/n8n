@@ -36,6 +36,7 @@ const startNewSession = async () => {
 		workflow_id: workflowsStore.workflowId,
 		node_type: props.data.context.node.type,
 		error: props.data.context.error,
+		chat_session_id: assistantStore.currentSessionId,
 	});
 	close();
 };
@@ -46,7 +47,7 @@ const startNewSession = async () => {
 		<template #header>
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
 			<span :class="$style.assistantIcon"><AssistantIcon size="medium" /></span>
-			<AssistantText size="xlarge" :text="i18n.baseText('aiAssistant.name')" />
+			<AssistantText size="xlarge" :text="i18n.baseText('aiAssistant.assistant')" />
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part2') }}
 		</template>
 		<template #content>
