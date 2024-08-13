@@ -413,7 +413,7 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
-		test('should call `exec` with the default registry when not licensed', async () => {
+		test('should throw when not licensed', async () => {
 			//
 			// ARRANGE
 			//
@@ -422,18 +422,16 @@ describe('CommunityPackagesService', () => {
 			//
 			// ACT
 			//
-			await communityPackagesService.updatePackage(installedPackage.packageName, installedPackage);
+			const promise = communityPackagesService.updatePackage(
+				installedPackage.packageName,
+				installedPackage,
+			);
 
 			//
 			// ASSERT
 			//
-
-			expect(exec).toHaveBeenCalledTimes(1);
-			expect(exec).toHaveBeenNthCalledWith(
-				1,
-				`npm install ${installedPackage.packageName}@latest --registry=https://registry.npmjs.org`,
-				expect.any(Object),
-				expect.any(Function),
+			await expect(promise).rejects.toThrow(
+				'Your license does not allow for feat:communityNodes:customRegistry.',
 			);
 		});
 	});

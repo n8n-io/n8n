@@ -14,12 +14,14 @@ import { toError } from '@/utils';
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import {
+	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/Interfaces';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Logger } from '@/Logger';
@@ -325,10 +327,9 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmRegistry() {
-		let { registry } = this.globalConfig.nodes.communityPackages;
+		const { registry } = this.globalConfig.nodes.communityPackages;
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
-			this.logger.warn('Not licensed to use custom NPM registry');
-			registry = DEFAULT_REGISTRY;
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
 		return registry;
 	}
