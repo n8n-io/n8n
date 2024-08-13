@@ -1,5 +1,5 @@
 import Container, { Service } from 'typedi';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 import { License } from '../License';
 import { N8N_VERSION } from '../constants';
@@ -31,7 +31,7 @@ export class AiAssistantService {
 		});
 	}
 
-	async chat(payload: object, user: IUser) {
+	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser) {
 		if (!this.client) {
 			await this.init();
 		}
