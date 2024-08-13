@@ -210,7 +210,14 @@ function growInput() {
 			<div v-else :class="$style.placeholder">
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
-					<p>{{ t('assistantChat.placeholder.1') }}</p>
+					<p>
+						{{
+							t('assistantChat.placeholder.1', [
+								`${user?.firstName }`,
+								t('assistantChat.aiAssistantName'),
+							])
+						}}
+					</p>
 					<p>
 						{{ t('assistantChat.placeholder.2') }}
 						<InlineAskAssistantButton size="small" :static="true" />
