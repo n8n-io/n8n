@@ -1,4 +1,5 @@
 import { CredentialsModal, WorkflowPage } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const credentialsModal = new CredentialsModal();
@@ -11,18 +12,25 @@ export const getProjectTabs = () => cy.getByTestId('project-tabs').find('a');
 export const getProjectTabWorkflows = () => getProjectTabs().filter('a[href$="/workflows"]');
 export const getProjectTabCredentials = () => getProjectTabs().filter('a[href$="/credentials"]');
 export const getProjectTabSettings = () => getProjectTabs().filter('a[href$="/settings"]');
-export const getProjectSettingsNameInput = () => cy.getByTestId('project-settings-name-input');
+export const getProjectSettingsNameInput = () =>
+	cy.getByTestId('project-settings-name-input').find('input');
 export const getProjectSettingsSaveButton = () => cy.getByTestId('project-settings-save-button');
 export const getProjectSettingsCancelButton = () =>
 	cy.getByTestId('project-settings-cancel-button');
 export const getProjectSettingsDeleteButton = () =>
 	cy.getByTestId('project-settings-delete-button');
 export const getProjectMembersSelect = () => cy.getByTestId('project-members-select');
-export const addProjectMember = (email: string) => {
+export const addProjectMember = (email: string, role?: string) => {
 	getProjectMembersSelect().click();
 	getProjectMembersSelect().get('.el-select-dropdown__item').contains(email.toLowerCase()).click();
+
+	if (role) {
+		cy.getByTestId(`user-list-item-${email}`)
+			.find('[data-test-id="projects-settings-user-role-select"]')
+			.click();
+		getVisibleSelect().find('li').contains(role).click();
+	}
 };
-export const getProjectNameInput = () => cy.get('#projectName').find('input');
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
 export const getResourceMoveConfirmModal = () =>
 	cy.getByTestId('project-move-resource-confirm-modal');
@@ -31,12 +39,7 @@ export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-
 export function createProject(name: string) {
 	getAddProjectButton().click();
 
-	getProjectNameInput()
-		.should('be.visible')
-		.should('be.focused')
-		.should('have.value', 'My project')
-		.clear()
-		.type(name);
+	getProjectSettingsNameInput().should('be.visible').clear().type(name);
 	getProjectSettingsSaveButton().click();
 }
 
