@@ -14,19 +14,6 @@ describe('createEventBus()', () => {
 
 			expect(handler).toHaveBeenCalled();
 		});
-
-		it('should return unregister fn', () => {
-			const handler = vi.fn();
-			const eventName = 'test';
-
-			const unregister = eventBus.on(eventName, handler);
-
-			unregister();
-
-			eventBus.emit(eventName, {});
-
-			expect(handler).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('once()', () => {

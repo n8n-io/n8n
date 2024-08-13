@@ -10,26 +10,45 @@ export type Payloads<ListenerMap> = {
 
 // TODO: Fix all usages of `createEventBus` and convert `any` to `unknown`
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface EventBus<ListenerMap extends Payloads<ListenerMap> = Record<string, any>> {
-	on: <EventName extends keyof ListenerMap & string>(
-		eventName: EventName,
-		fn: Listener<ListenerMap[EventName]>,
-	) => UnregisterFn;
+class EventBusImpl<ListenerMap extends Payloads<ListenerMap> = Record<string, any>> {
+	private readonly handlers = new Map<string, CallbackFn[]>();
 
-	once: <EventName extends keyof ListenerMap & string>(
-		eventName: EventName,
-		fn: Listener<ListenerMap[EventName]>,
-	) => UnregisterFn;
+	off(eventName: string, fn: CallbackFn) {
+		const eventFns = this.handlers.get(eventName);
 
-	off: <EventName extends keyof ListenerMap & string>(
-		eventName: EventName,
-		fn: Listener<ListenerMap[EventName]>,
-	) => void;
+		if (eventFns) {
+			eventFns.splice(eventFns.indexOf(fn) >>> 0, 1);
+		}
+	}
 
-	emit: <EventName extends keyof ListenerMap & string>(
-		eventName: EventName,
-		event?: ListenerMap[EventName],
-	) => void;
+	on(eventName: string, fn: CallbackFn) {
+		let eventFns = this.handlers.get(eventName);
+
+		if (!eventFns) {
+			eventFns = [fn];
+		} else {
+			eventFns.push(fn);
+		}
+
+		this.handlers.set(eventName, eventFns);
+	}
+
+	once(eventName: string, fn: CallbackFn) {
+		this.on(eventName, (...args: unknown[]) => {
+			this.off(eventName, fn);
+			fn(...args);
+		});
+	}
+
+	emit<T = Event>(eventName: string, event?: T) {
+		const eventFns = this.handlers.get(eventName);
+
+		if (eventFns) {
+			eventFns.slice().forEach(async (handler) => {
+				await handler(event);
+			});
+		}
+	}
 }
 
 /**
@@ -46,54 +65,11 @@ export function createEventBus<
 	// TODO: Fix all usages of `createEventBus` and convert `any` to `unknown`
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ListenerMap extends Payloads<ListenerMap> = Record<string, any>,
->(): EventBus<ListenerMap> {
-	const handlers = new Map<string, CallbackFn[]>();
-
-	function off(eventName: string, fn: CallbackFn) {
-		const eventFns = handlers.get(eventName);
-
-		if (eventFns) {
-			eventFns.splice(eventFns.indexOf(fn) >>> 0, 1);
-		}
-	}
-
-	function on(eventName: string, fn: CallbackFn): UnregisterFn {
-		let eventFns = handlers.get(eventName);
-
-		if (!eventFns) {
-			eventFns = [fn];
-		} else {
-			eventFns.push(fn);
-		}
-
-		handlers.set(eventName, eventFns);
-
-		return () => off(eventName, fn);
-	}
-
-	function once(eventName: string, fn: CallbackFn): UnregisterFn {
-		const unregister = on(eventName, (...args: unknown[]) => {
-			unregister();
-			fn(...args);
-		});
-
-		return unregister;
-	}
-
-	function emit<T = Event>(eventName: string, event?: T) {
-		const eventFns = handlers.get(eventName);
-
-		if (eventFns) {
-			eventFns.slice().forEach(async (handler) => {
-				await handler(event);
-			});
-		}
-	}
-
-	return {
-		on,
-		once,
-		off,
-		emit,
-	};
+>() {
+	return new EventBusImpl<ListenerMap>();
 }
+
+// TODO: Fix all usages of `createEventBus` and convert `any` to `unknown`
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EventBus<ListenerMap extends Payloads<ListenerMap> = Record<string, any>> =
+	InstanceType<typeof EventBusImpl<ListenerMap>>;
