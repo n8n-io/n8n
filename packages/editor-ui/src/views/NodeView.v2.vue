@@ -10,7 +10,7 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
-import { type RouteLocation, useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
