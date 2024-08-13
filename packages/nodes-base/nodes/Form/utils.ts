@@ -165,7 +165,9 @@ export async function formWebhook(
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		await validateWebhookAuthentication(context, authProperty);
+		if (node.typeVersion > 1) {
+			await validateWebhookAuthentication(context, authProperty);
+		}
 	} catch (error) {
 		if (error instanceof WebhookAuthorizationError) {
 			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
