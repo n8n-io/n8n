@@ -4,12 +4,21 @@ import type {
 	INodeTypeDescription,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, Node } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, Node, updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
 import { prepareFormReturnItem, renderForm } from '../Form/utils';
 
 import type { FormField } from './interfaces';
+
+const pageProperties = updateDisplayOptions(
+	{
+		show: {
+			operation: ['page'],
+		},
+	},
+	[formTitle, formDescription, formFields],
+);
 
 export class Form extends Node {
 	description: INodeTypeDescription = {
@@ -52,15 +61,24 @@ export class Form extends Node {
 				type: 'notice',
 				default: '',
 			},
-			formTitle,
-			formDescription,
-			formFields,
 			{
-				displayName: 'Resume Form Url',
-				name: 'resumeFormUrl',
-				type: 'hidden',
-				default: '={{ $execution.resumeFormUrl }}',
+				displayName: 'Page Type',
+				name: 'operation',
+				type: 'options',
+				default: 'page',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Form Page',
+						value: 'page',
+					},
+					{
+						name: 'Form Completion Screen',
+						value: 'completion',
+					},
+				],
 			},
+			...pageProperties,
 		],
 	};
 
@@ -83,7 +101,7 @@ export class Form extends Node {
 			const hasNextPage = connectedNodes.some((node) => node.type === 'n8n-nodes-base.form');
 
 			if (hasNextPage) {
-				redirectUrl = context.getNodeParameter('resumeFormUrl', '') as string;
+				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
 			}
 
 			renderForm({
@@ -112,6 +130,28 @@ export class Form extends Node {
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const operation = context.getNodeParameter('operation', 0);
+
+		const parentNodes = context.getParentNodes(context.getNode().name);
+		const hasFormTrigger = parentNodes.some((node) => node.type === 'n8n-nodes-base.formTrigger');
+
+		if (!hasFormTrigger) {
+			throw new NodeOperationError(
+				context.getNode(),
+				'Form Trigger node must be set before this node',
+			);
+		}
+
+		const childNodes = context.getChildNodes(context.getNode().name);
+		const hasNextPage = childNodes.some((node) => node.type === 'n8n-nodes-base.form');
+
+		if (operation === 'completion' && hasNextPage) {
+			throw new NodeOperationError(
+				context.getNode(),
+				'Completion has to be the last Form node in the workflow',
+			);
+		}
+
 		const waitTill = new Date(WAIT_TIME_UNLIMITED);
 		await context.putExecutionToWait(waitTill);
 		return [context.getInputData()];

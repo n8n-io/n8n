@@ -1056,6 +1056,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: string) => string | undefined;
+	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
 	getQueryData(): object;
 	getRequestObject(): express.Request;
