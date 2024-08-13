@@ -60,10 +60,11 @@ export function createEventBus<
 		},
 
 		once(eventName, fn) {
-			this.on(eventName, (payload) => {
-				this.off(eventName, fn);
+			const handler: typeof fn = (payload) => {
+				this.off(eventName, handler);
 				fn(payload);
-			});
+			};
+			this.on(eventName, handler);
 		},
 
 		off(eventName, fn) {
