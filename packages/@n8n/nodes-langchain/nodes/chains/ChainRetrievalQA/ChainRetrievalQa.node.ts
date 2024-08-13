@@ -155,7 +155,7 @@ export class ChainRetrievalQa implements INodeType {
 				name: 'customQAPrompt',
 				type: 'boolean',
 				default: false,
-				description: 'Enable to customize the Question and Answer prompt',
+				description: 'Whether to enable customization of the Question and Answer prompt',
 			},
 			{
 				displayName: 'Question and Answer Prompt Type',
