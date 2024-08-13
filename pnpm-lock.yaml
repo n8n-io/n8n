@@ -1713,8 +1713,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/tournament':
-        specifier: 1.0.3
-        version: 1.0.3
+        specifier: 1.0.5
+        version: 1.0.5
       '@n8n_io/riot-tmpl':
         specifier: 4.0.0
         version: 4.0.0
@@ -4146,9 +4146,9 @@ packages:
     resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
     engines: {node: '>=18.10'}
 
-  '@n8n/tournament@1.0.3':
-    resolution: {integrity: sha512-GnmDD5wKAxKfxnSzhENHPn5n91/1c3/psnuT7D+jHHVQdMe8qaCcSq15rcGRfDfTf2v+BZBT0yeyK8Cfexr9yw==}
-    engines: {node: '>=18.10', pnpm: '>=8.6'}
+  '@n8n/tournament@1.0.5':
+    resolution: {integrity: sha512-IPBHa7gC0wwHVct/dnBquHz+uMCDZaZ05cor1D/rjlwaOe/PVu5mtoZaPHYuR98R3W1/IyxC5PuBd0JizDP9gg==}
+    engines: {node: '>=20.15', pnpm: '>=9.5'}
 
   '@n8n/typeorm@0.3.20-10':
     resolution: {integrity: sha512-YYQKkafEGqNAG+VgtGbJOWpcyF4ZsRJ+Q7qXigTXZFQb4xpL/+t0BXEMhy8Gw0OEjnZI5cbLGHcQtj7Xlfg7dw==}
@@ -16636,7 +16636,7 @@ snapshots:
       '@types/retry': 0.12.5
       retry: 0.13.1
 
-  '@n8n/tournament@1.0.3':
+  '@n8n/tournament@1.0.5':
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
       ast-types: 0.16.1
