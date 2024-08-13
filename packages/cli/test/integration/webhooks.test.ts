@@ -7,7 +7,7 @@ import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
-import { WaitingForms } from '@/WaitingForms';
+import { WaitingForms } from '@/webhooks/WaitingForms';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 
 import { mockInstance } from '@test/mocking';
