@@ -213,7 +213,7 @@ function growInput() {
 					<p>
 						{{
 							t('assistantChat.placeholder.1', [
-								`${user?.firstName }`,
+								`${user?.firstName}`,
 								t('assistantChat.aiAssistantName'),
 							])
 						}}
