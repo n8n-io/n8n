@@ -10,6 +10,7 @@ import { GlobalConfig } from '@n8n/config';
 import { InstanceSettings } from 'n8n-core';
 import type { OrchestrationService } from '@/services/orchestration.service';
 import Container from 'typedi';
+import type { JobProcessor } from '../job-processor';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },
@@ -37,7 +38,8 @@ describe('ScalingService', () => {
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
-	let orchestrationService = mock<OrchestrationService>({ isMultiMainSetupEnabled: false });
+	const orchestrationService = mock<OrchestrationService>({ isMultiMainSetupEnabled: false });
+	const jobProcessor = mock<JobProcessor>();
 	let scalingService: ScalingService;
 
 	beforeEach(() => {
@@ -46,7 +48,7 @@ describe('ScalingService', () => {
 		scalingService = new ScalingService(
 			mock(),
 			mock(),
-			mock(),
+			jobProcessor,
 			globalConfig,
 			mock(),
 			instanceSettings,
@@ -127,23 +129,26 @@ describe('ScalingService', () => {
 	});
 
 	describe('stop', () => {
-		it('should pause the queue and stop queue recovery', async () => {
+		it('should pause the queue, check for running jobs, and stop queue recovery', async () => {
 			/**
 			 * Arrange
 			 */
 			await scalingService.setupQueue();
+			jobProcessor.getRunningJobIds.mockReturnValue([]);
 			const stopQueueRecoverySpy = jest.spyOn(scalingService, 'stopQueueRecovery');
+			const getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
 
 			/**
 			 * Act
 			 */
-			await scalingService.pauseQueue();
+			await scalingService.stop();
 
 			/**
 			 * Assert
 			 */
 			expect(queue.pause).toHaveBeenCalledWith(true, true);
 			expect(stopQueueRecoverySpy).toHaveBeenCalled();
+			expect(getRunningJobsCountSpy).toHaveBeenCalled();
 		});
 	});
 

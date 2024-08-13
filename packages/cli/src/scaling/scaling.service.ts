@@ -1,5 +1,5 @@
 import Container, { Service } from 'typedi';
-import { ApplicationError, BINARY_ENCODING, jsonStringify } from 'n8n-workflow';
+import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { Logger } from '@/Logger';
@@ -82,7 +82,7 @@ export class ScalingService {
 	}
 
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
-	async pauseQueue() {
+	async stop() {
 		await this.queue.pause(true, true);
 
 		this.logger.debug('[ScalingService] Queue paused');
@@ -90,6 +90,17 @@ export class ScalingService {
 		this.stopQueueRecovery();
 
 		this.logger.debug('[ScalingService] Queue recovery stopped');
+		let count = 0;
+
+		while (this.getRunningJobsCount() !== 0) {
+			if (count++ % 4 === 0) {
+				this.logger.info(
+					`Waiting for ${this.getRunningJobsCount()} active executions to finish...`,
+				);
+			}
+
+			await sleep(500);
+		}
 	}
 
 	async pingQueue() {
@@ -138,6 +149,10 @@ export class ScalingService {
 			this.logger.error('[ScalingService] Failed to stop job', { ...props, error });
 			return false;
 		}
+	}
+
+	getRunningJobsCount() {
+		return this.jobProcessor.getRunningJobIds().length;
 	}
 
 	// #endregion
