@@ -17,7 +17,7 @@ import VariablesRow from '@/components/VariablesRow.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 const settingsStore = useSettingsStore();
@@ -39,7 +39,10 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
 const loading = ref(false);
-const permissions = getVariablesPermissions(usersStore.currentUser);
+
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 
 const isFeatureEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
@@ -49,7 +52,7 @@ const variablesToResources = computed((): IResource[] =>
 	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
 );
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{

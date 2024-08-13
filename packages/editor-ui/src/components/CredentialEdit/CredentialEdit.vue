@@ -145,8 +145,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -169,7 +168,6 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
-import type { CredentialScope } from '@n8n/permissions';
 
 type Props = {
 	modalName: string;
@@ -395,14 +393,11 @@ const requiredPropertiesFilled = computed(() => {
 	return true;
 });
 
-const credentialPermissions = computed<PermissionsMap<CredentialScope>>(() => {
-	if (loading.value) {
-		return {} as PermissionsMap<CredentialScope>;
-	}
-
-	return getCredentialPermissions(
-		(credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse,
-	);
+const credentialPermissions = computed(() => {
+	return getResourcePermissions(
+		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
+			?.scopes,
+	).credential;
 });
 
 const sidebarItems = computed(() => {
