@@ -4,24 +4,14 @@ import type {
 	INodeTypeDescription,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, Node } from 'n8n-workflow';
 
-import {
-	formDescription,
-	formFields,
-	respondWithOptions,
-	formRespondMode,
-	formTitle,
-} from '../Form/common.descriptions';
-import { formWebhook } from '../Form/utils';
+import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
+import { prepareFormReturnItem, renderForm } from '../Form/utils';
 
-import { Webhook } from '../Webhook/Webhook.node';
+import type { FormField } from './interfaces';
 
-const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
-
-export class Form extends Webhook {
-	authPropertyName = 'authentication';
-
+export class Form extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form Page',
 		name: 'form',
@@ -39,7 +29,7 @@ export class Form extends Webhook {
 				name: 'default',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: webhookPath,
+				path: '',
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
@@ -47,57 +37,78 @@ export class Form extends Webhook {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: '={{$parameter["responseMode"]}}',
-				responseData: '={{$parameter["responseMode"] === "lastNode" ? "noData" : undefined}}',
-				path: webhookPath,
+				responseMode: 'onReceived',
+				path: '',
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
 			},
 		],
 		properties: [
-			//TODO check if form trigger is authenticated
 			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'hidden',
-				default: 'none',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'n8n Form Trigger node must be set before this node',
+				name: 'triggerNotice',
+				type: 'notice',
+				default: '',
 			},
 			formTitle,
 			formDescription,
 			formFields,
-			formRespondMode,
 			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add option',
-				default: {},
-				options: [
-					{
-						...respondWithOptions,
-						displayOptions: {
-							hide: {
-								'/responseMode': ['responseNode'],
-							},
-						},
-					},
-					{
-						displayName: 'Webhook Suffix',
-						name: 'webhookSuffix',
-						type: 'string',
-						default: '',
-						placeholder: 'webhook',
-						description:
-							'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes.',
-					},
-				],
+				displayName: 'Resume Form Url',
+				name: 'resumeFormUrl',
+				type: 'hidden',
+				default: '={{ $execution.resumeFormUrl }}',
 			},
 		],
 	};
 
 	async webhook(context: IWebhookFunctions) {
-		return await formWebhook(context, this.authPropertyName);
+		const res = context.getResponseObject();
+
+		const mode = context.getMode() === 'manual' ? 'test' : 'production';
+		const fields = context.getNodeParameter('formFields.values', []) as FormField[];
+		const method = context.getRequestObject().method;
+
+		if (method === 'GET') {
+			const title = context.getNodeParameter('formTitle', '') as string;
+			const description = context.getNodeParameter('formDescription', '') as string;
+			const responseMode = 'onReceived';
+
+			let redirectUrl;
+
+			const connectedNodes = context.getChildNodes(context.getNode().name);
+
+			const hasNextPage = connectedNodes.some((node) => node.type === 'n8n-nodes-base.form');
+
+			if (hasNextPage) {
+				redirectUrl = context.getNodeParameter('resumeFormUrl', '') as string;
+			}
+
+			renderForm({
+				context,
+				res,
+				formTitle: title,
+				formDescription: description,
+				formFields: fields,
+				responseMode,
+				mode,
+				redirectUrl,
+				appendAttribution: true,
+			});
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		const returnItem = await prepareFormReturnItem(context, fields, mode, true);
+
+		return {
+			webhookResponse: { status: 200 },
+			workflowData: [[returnItem]],
+		};
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
