@@ -14,13 +14,14 @@ import {
 	ChatPromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
-	PromptTemplate
-} from "@langchain/core/prompts";
+	PromptTemplate,
+} from '@langchain/core/prompts';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getPromptInputByType } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
 
-const QA_PROMPT_TEMPLATE = "Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.\n\n{context}\n\nQuestion: {question}\nHelpful Answer:";
+const QA_PROMPT_TEMPLATE =
+	"Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.\n\n{context}\n\nQuestion: {question}\nHelpful Answer:";
 const CHAT_PROMPT_TEMPLATE = `Use the following pieces of context to answer the users question. 
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 ----------------
@@ -169,9 +170,9 @@ export class ChainRetrievalQa implements INodeType {
 						description: 'Uses a standard prompt template (for non-Chat Models)',
 					},
 					{
-						name: "Chat Prompt",
+						name: 'Chat Prompt',
 						value: 'chatPrompt',
-						description: "Uses a system message template (for Chat Models)",
+						description: 'Uses a system message template (for Chat Models)',
 					},
 				],
 				displayOptions: {
@@ -200,7 +201,8 @@ export class ChainRetrievalQa implements INodeType {
 				name: 'chatPromptTemplate',
 				type: 'string',
 				default: CHAT_PROMPT_TEMPLATE,
-				description: 'Template string for the Question and Answer prompt as a system message (for Chat Models)',
+				description:
+					'Template string for the Question and Answer prompt as a system message (for Chat Models)',
 				typeOptions: {
 					rows: 8,
 				},
@@ -229,38 +231,43 @@ export class ChainRetrievalQa implements INodeType {
 		const items = this.getInputData();
 
 		const customQAPrompt = this.getNodeParameter('customQAPrompt', 0, false) as boolean;
-		
+
 		const chainParameters = {} as {
 			prompt?: PromptTemplate | ChatPromptTemplate;
 		};
 
-		if(customQAPrompt){
+		if (customQAPrompt) {
 			const qAPromptType = this.getNodeParameter('qAPromptType', 0) as string;
 
-			if(qAPromptType == 'standardPrompt'){
-				const standardPromptTemplateParameter = this.getNodeParameter('standardPromptTemplate', 0) as string;
+			if (qAPromptType == 'standardPrompt') {
+				const standardPromptTemplateParameter = this.getNodeParameter(
+					'standardPromptTemplate',
+					0,
+				) as string;
 
 				const standardPromptTemplate = new PromptTemplate({
 					template: standardPromptTemplateParameter,
-					inputVariables: ['context', 'question']
+					inputVariables: ['context', 'question'],
 				});
 
 				chainParameters.prompt = standardPromptTemplate;
-			}
-			else if(qAPromptType == 'chatPrompt'){
-				const chatPromptTemplateParameter = this.getNodeParameter('chatPromptTemplate', 0) as string;
+			} else if (qAPromptType == 'chatPrompt') {
+				const chatPromptTemplateParameter = this.getNodeParameter(
+					'chatPromptTemplate',
+					0,
+				) as string;
 
 				const messages = [
 					SystemMessagePromptTemplate.fromTemplate(chatPromptTemplateParameter),
-					HumanMessagePromptTemplate.fromTemplate("{question}"),
+					HumanMessagePromptTemplate.fromTemplate('{question}'),
 				];
-		
+
 				const chatPromptTemplate = ChatPromptTemplate.fromMessages(messages);
 
 				chainParameters.prompt = chatPromptTemplate;
 			}
 		}
-		
+
 		const chain = RetrievalQAChain.fromLLM(model, retriever, chainParameters);
 
 		const returnData: INodeExecutionData[] = [];
