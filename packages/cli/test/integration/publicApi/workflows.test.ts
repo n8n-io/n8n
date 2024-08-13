@@ -267,8 +267,30 @@ describe('GET /workflows', () => {
 		}
 	});
 
-	test('should return all user-accessible workflows filtered by `projectId`', async () => {
-		license.setQuota('quota:maxTeamProjects', 2);
+	test('for owner, should return all workflows filtered by `projectId`', async () => {
+		license.setQuota('quota:maxTeamProjects', -1);
+		const firstProject = await Container.get(ProjectService).createTeamProject('First', owner);
+		const secondProject = await Container.get(ProjectService).createTeamProject('Second', member);
+
+		await Promise.all([
+			createWorkflow({ name: 'First workflow' }, firstProject),
+			createWorkflow({ name: 'Second workflow' }, secondProject),
+		]);
+
+		const firstResponse = await authOwnerAgent.get(`/workflows?projectId=${firstProject.id}`);
+		const secondResponse = await authOwnerAgent.get(`/workflows?projectId=${secondProject.id}`);
+
+		expect(firstResponse.statusCode).toBe(200);
+		expect(firstResponse.body.data.length).toBe(1);
+		expect(firstResponse.body.data[0].name).toBe('First workflow');
+
+		expect(secondResponse.statusCode).toBe(200);
+		expect(secondResponse.body.data.length).toBe(1);
+		expect(secondResponse.body.data[0].name).toBe('Second workflow');
+	});
+
+	test('for member, should return all member-accessible workflows filtered by `projectId`', async () => {
+		license.setQuota('quota:maxTeamProjects', -1);
 		const otherProject = await Container.get(ProjectService).createTeamProject(
 			'Other project',
 			member,

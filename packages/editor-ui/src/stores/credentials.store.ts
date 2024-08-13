@@ -206,7 +206,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const httpOnlyCredentialTypes = computed(() => {
-		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
+		return allCredentialTypes.value.filter(
+			(credentialType) => credentialType.httpRequestNode && !credentialType.httpRequestNode.hidden,
+		);
 	});
 
 	// #endregion
