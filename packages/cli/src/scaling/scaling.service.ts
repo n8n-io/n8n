@@ -90,6 +90,7 @@ export class ScalingService {
 		this.stopQueueRecovery();
 
 		this.logger.debug('[ScalingService] Queue recovery stopped');
+
 		let count = 0;
 
 		while (this.getRunningJobsCount() !== 0) {
