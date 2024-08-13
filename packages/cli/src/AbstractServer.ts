@@ -17,7 +17,7 @@ import { WaitingForms } from '@/WaitingForms';
 import { TestWebhooks } from '@/webhooks/TestWebhooks';
 import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
 import { createWebhookHandlerFor } from '@/webhooks/WebhookRequestHandler';
-import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
+import { LiveWebhooks } from '@/webhooks/LiveWebhooks';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
 import { ServiceUnavailableError } from './errors/response-errors/service-unavailable.error';
@@ -181,12 +181,12 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			const activeWebhooksRequestHandler = createWebhookHandlerFor(Container.get(ActiveWebhooks));
-			// Register a handler for active forms
-			this.app.all(`/${this.endpointForm}/:path(*)`, activeWebhooksRequestHandler);
+			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
+			// Register a handler for live forms
+			this.app.all(`/${this.endpointForm}/:path(*)`, liveWebhooksRequestHandler);
 
-			// Register a handler for active webhooks
-			this.app.all(`/${this.endpointWebhook}/:path(*)`, activeWebhooksRequestHandler);
+			// Register a handler for live webhooks
+			this.app.all(`/${this.endpointWebhook}/:path(*)`, liveWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
 			this.app.all(

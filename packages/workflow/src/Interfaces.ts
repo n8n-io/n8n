@@ -308,6 +308,7 @@ export interface ICredentialTestRequestData {
 type ICredentialHttpRequestNode = {
 	name: string;
 	docsUrl: string;
+	hidden?: boolean;
 } & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
 
 export interface ICredentialType {
