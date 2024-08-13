@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	EventNamesAiNodesType,
 	IDataObject,
@@ -181,10 +181,6 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-function isINode(obj: unknown): obj is INodeType {
-	return typeof obj === 'object' && obj !== null && 'execute' in obj;
-}
-
 type NestedObject = { [key: string]: any };
 
 function encodeDotNotation(key: string): string {
@@ -282,7 +278,11 @@ export function convertNodeToTool(
 	}
 	const schema = z.object(schemaObj);
 
-	const toolDescription = ctx.getNodeParameter('toolDescription', 0) as string;
+	const toolDescription = ctx.getNodeParameter(
+		'toolDescription',
+		0,
+		node.description.description,
+	) as string;
 
 	const tool = new DynamicStructuredTool({
 		name: node.description.name,
@@ -344,7 +344,7 @@ export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNam
 
 	for (const tool of connectedTools) {
 		// @ts-ignore
-		if (isINode(tool?.nodeType)) {
+		if (NodeHelpers.isINodeType(tool?.nodeType)) {
 			// @ts-ignore
 			console.log('tool params', tool.connectedNode.parameters);
 			// @ts-ignore

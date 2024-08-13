@@ -66,9 +66,21 @@ export class NodeTypes implements INodeTypes {
 
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
-			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
-			NodeHelpers.applySpecialNodeParameters(loaded);
+			const loaded: INodeType | IVersionedNodeType = loadClassInIsolation(sourcePath, className);
+			if (NodeHelpers.isINodeType(loaded)) NodeHelpers.applySpecialNodeParameters(loaded);
+
 			loadedNodes[type] = { sourcePath, type: loaded };
+
+			if (loaded.description.usableAsTool) {
+				const wrappedNode = NodeHelpers.convertNodeToAiTool(loaded);
+				if (!NodeHelpers.isINodeType(loaded) && !NodeHelpers.isINodeType(wrappedNode)) {
+					Object.entries(loaded.nodeVersions).forEach(([key, node]) => {
+						wrappedNode.nodeVersions[key as unknown as number] = NodeHelpers.convertNodeToAiTool(node);
+					});
+				}
+				loadedNodes[type + 'Tool'] = { sourcePath, type: wrappedNode };
+			}
+
 			return loadedNodes[type];
 		}
 
