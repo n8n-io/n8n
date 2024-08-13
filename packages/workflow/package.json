@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@n8n/permissions": "workspace:*",
-    "@n8n/tournament": "1.0.3",
+    "@n8n/tournament": "1.0.5",
     "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
     "axios": "catalog:",
