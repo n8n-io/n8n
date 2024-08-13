@@ -2521,6 +2521,7 @@
 	"mfa.setup.step2.toast.setupFinished.message": "Two-factor authentication enabled",
 	"mfa.setup.step2.toast.setupFinished.error.message": "Error enabling two-factor authentication",
 	"mfa.setup.step2.toast.tokenExpired.error.message": "MFA token expired. Close the modal and enable MFA again",
+	"mfa.prompt.code.modal.title": "Two-factor code required",
 	"settings.personal.mfa.section.title": "Two-factor authentication (2FA)",
 	"settings.personal.personalisation": "Personalisation",
 	"settings.personal.theme": "Theme",

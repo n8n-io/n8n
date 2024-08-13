@@ -353,6 +353,7 @@ export type LoginRequest = AuthlessRequest<
 export declare namespace MFA {
 	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
