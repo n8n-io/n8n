@@ -111,6 +111,10 @@
 	--color-sticky-border-7: var(--prim-gray-120);
 
 	// AI Assistant
+	--color-askAssistant-button-background: var(--color-background-xlight);
+	--color-askAssistant-button-background-hover: var(--color-background-xlight);
+	--color-askAssistant-button-background-active: var(--color-background-xlight);
+
 	--color-assistant-highlight-1: #5b60e8;
 	--color-assistant-highlight-2: #aa7bec;
 	--color-assistant-highlight-3: #ec7b8e;
@@ -125,6 +129,18 @@
 		var(--color-assistant-highlight-3) 0%,
 		var(--color-assistant-highlight-2) 50%,
 		var(--color-assistant-highlight-1) 100%
+	);
+	--color-assistant-inner-highlight-hover: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.12) 0%,
+		rgba(170, 123, 236, 0.12) 50.5%,
+		rgba(91, 96, 232, 0.12) 100%
+	);
+	--color-assistant-inner-highlight-active: linear-gradient(
+		108.82deg,
+		rgba(236, 123, 142, 0.25) 0%,
+		rgba(170, 123, 236, 0.25) 50.5%,
+		rgba(91, 96, 232, 0.25) 100%
 	);
 
 	// NodeIcon

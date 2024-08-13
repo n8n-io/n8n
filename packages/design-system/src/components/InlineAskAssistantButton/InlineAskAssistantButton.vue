@@ -53,7 +53,7 @@ const onClick = () => {
 	>
 		<div>
 			<div :style="{ padding: sizes[size].padding }">
-				<AssistantIcon :size="size" :class="$style.icon" />
+				<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
 				<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
 				<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
 			</div>
@@ -71,9 +71,10 @@ const onClick = () => {
 	background: var(--color-assistant-highlight-gradient);
 
 	> div {
-		background: var(--color-background-xlight);
+		background-color: var(--color-askAssistant-button-background);
 		border-radius: inherit;
 		height: 100%;
+		overflow: hidden;
 
 		> div {
 			height: 100%;
@@ -90,25 +91,24 @@ const onClick = () => {
 		cursor: pointer;
 		background: var(--color-assistant-highlight-reverse);
 
+		> div {
+			background: var(--color-askAssistant-button-background-hover);
+		}
+
 		> div > div {
-			background: linear-gradient(
-				108.82deg,
-				rgba(236, 123, 142, 0.12) 0%,
-				rgba(170, 123, 236, 0.12) 50.5%,
-				rgba(91, 96, 232, 0.12) 100%
-			);
+			background: var(--color-assistant-inner-highlight-hover);
 		}
 	}
 
 	&:active {
 		background: var(--color-assistant-highlight-gradient);
+
+		> div {
+			background: var(--color-askAssistant-button-background-active);
+		}
+
 		> div > div {
-			background: linear-gradient(
-				108.82deg,
-				rgba(236, 123, 142, 0.25) 0%,
-				rgba(170, 123, 236, 0.25) 50.5%,
-				rgba(91, 96, 232, 0.25) 100%
-			);
+			background: var(--color-assistant-inner-highlight-active);
 		}
 	}
 }
