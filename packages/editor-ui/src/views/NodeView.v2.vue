@@ -1359,14 +1359,14 @@ function registerCustomActions() {
 
 	registerCustomAction({
 		key: 'openSelectiveNodeCreator',
-		action: async ({
+		action: ({
 			connectiontype: connectionType,
 			node,
 		}: {
 			connectiontype: NodeConnectionType;
 			node: string;
 		}) => {
-			await onOpenSelectiveNodeCreator(node, connectionType);
+			void onOpenSelectiveNodeCreator(node, connectionType);
 		},
 	});
 
@@ -1376,7 +1376,7 @@ function registerCustomActions() {
 			ndvStore.activeNodeName = null;
 
 			void nextTick(() => {
-				onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
 			});
 		},
 	});
