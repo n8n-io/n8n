@@ -53,3 +53,14 @@ export type RunningJob = {
 };
 
 export type RunningJobSummary = Omit<RunningJob, 'run'>;
+
+export type QueueRecoveryContext = {
+	/** ID of timeout for next scheduled recovery cycle. */
+	timeout?: NodeJS.Timeout;
+
+	/** Number of in-progress executions to check per cycle. */
+	batchSize: number;
+
+	/** Time (in milliseconds) to wait until the next cycle. */
+	waitMs: number;
+};
