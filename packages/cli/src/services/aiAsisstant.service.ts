@@ -35,7 +35,7 @@ export class AiAssistantService {
 	async chat(
 		payload: AiAssistantSDK.ChatRequestPayload,
 		user: IUser,
-		onResponse: (res: string) => void,
+		onResponseUpdated: (res: string) => void,
 		onDone: () => void,
 	) {
 		if (!this.client) {
@@ -43,7 +43,7 @@ export class AiAssistantService {
 		}
 		assert(this.client, 'Assistant client not setup');
 
-		await this.client.chat(payload, { id: user.id }, onResponse, onDone);
+		await this.client.chat(payload, { id: user.id }, onResponseUpdated, onDone);
 	}
 
 	async applySuggestion(payload: AiAssistantRequest.SuggestionPayload, user: IUser) {
