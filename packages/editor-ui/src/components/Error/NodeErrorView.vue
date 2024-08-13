@@ -437,14 +437,18 @@ async function onAskAssistantClick() {
 		return;
 	}
 	await assistantStore.initErrorHelper(errorPayload);
-	telemetry.track('User opened assistant', {
-		source: 'error',
-		task: 'error',
-		has_existing_session: false,
-		workflow_id: workflowsStore.workflowId,
-		node_type: node.value.type,
-		error: props.error,
-	});
+	telemetry.track(
+		'User opened assistant',
+		{
+			source: 'error',
+			task: 'error',
+			has_existing_session: false,
+			workflow_id: workflowsStore.workflowId,
+			node_type: node.value.type,
+			error: props.error,
+		},
+		{ withPostHog: true },
+	);
 }
 </script>
 
