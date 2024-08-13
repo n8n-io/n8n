@@ -3,7 +3,7 @@
 		:name="modalName"
 		:title="title"
 		:center="true"
-		width="460px"
+		width="520"
 		:event-bus="modalBus"
 		@enter="onSubmit"
 	>
@@ -147,7 +147,7 @@ export default defineComponent({
 			return false;
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects.filter(
+			return this.projectsStore.projects.filter(
 				(project) =>
 					project.name !==
 					`${this.userToDelete?.firstName} ${this.userToDelete?.lastName} <${this.userToDelete?.email}>`,

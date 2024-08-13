@@ -160,12 +160,11 @@ export class UserService {
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						Container.get(InternalHooks).onEmailFailed({
+						this.eventService.emit('email-failed', {
 							user: owner,
-							message_type: 'New user invite',
-							public_api: false,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
-						this.eventService.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,

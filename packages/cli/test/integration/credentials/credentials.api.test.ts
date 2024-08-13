@@ -142,7 +142,13 @@ describe('GET /credentials', () => {
 			// Team cred
 			expect(cred1.id).toBe(savedCredential1.id);
 			expect(cred1.scopes).toEqual(
-				['credential:move', 'credential:read', 'credential:update', 'credential:delete'].sort(),
+				[
+					'credential:move',
+					'credential:read',
+					'credential:update',
+					'credential:share',
+					'credential:delete',
+				].sort(),
 			);
 
 			// Shared cred
@@ -387,6 +393,21 @@ describe('GET /credentials', () => {
 				.expect(200);
 
 			expect(response2.body.data).toHaveLength(0);
+		});
+
+		test('should return homeProject when filtering credentials by projectId', async () => {
+			const project = await createTeamProject(undefined, member);
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			await shareCredentialWithProjects(credential, [project]);
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(member)
+				.get('/credentials')
+				.query(`filter={ "projectId": "${project.id}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0].homeProject).not.toBeNull();
 		});
 
 		test('should return all credentials in a team project that member is part of', async () => {

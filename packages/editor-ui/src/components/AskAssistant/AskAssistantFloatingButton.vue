@@ -28,12 +28,16 @@ const lastUnread = computed(() => {
 
 const onClick = () => {
 	assistantStore.openChat();
-	telemetry.track('User opened assistant', {
-		source: 'canvas',
-		task: 'placeholder',
-		has_existing_session: !assistantStore.isSessionEnded,
-		workflow_id: workflowStore.workflowId,
-	});
+	telemetry.track(
+		'User opened assistant',
+		{
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: !assistantStore.isSessionEnded,
+			workflow_id: workflowStore.workflowId,
+		},
+		{ withPostHog: true },
+	);
 };
 </script>
 
