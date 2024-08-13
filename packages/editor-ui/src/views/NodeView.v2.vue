@@ -8,8 +8,9 @@ import {
 	onMounted,
 	ref,
 	useCssModule,
+	watch,
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteLocation, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -44,6 +45,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -288,6 +290,7 @@ async function initializeRoute() {
 	nodeHelpers.updateNodesParameterIssues();
 
 	await loadCredentials();
+	await initializeDebugMode();
 }
 
 async function initializeWorkspaceForNewWorkflow() {
@@ -306,7 +309,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		await openWorkflow(workflowData);
-		await initializeDebugMode();
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -748,6 +750,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 	resetWorkspace();
 
+	await initializeData();
 	await initializeWorkspace({
 		...workflowData,
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
@@ -1369,6 +1372,21 @@ function registerCustomActions() {
 	// 	},
 	// });
 }
+
+/**
+ * Routing
+ */
+
+watch(
+	() => route.name,
+	async () => {
+		if (!checkIfEditingIsAllowed()) {
+			return;
+		}
+
+		await initializeRoute();
+	},
+);
 
 /**
  * Lifecycle
