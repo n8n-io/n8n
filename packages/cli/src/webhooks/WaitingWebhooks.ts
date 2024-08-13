@@ -62,17 +62,19 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		if (execution.status === 'running') {
-			// throw new ConflictError(`The execution "${executionId} is running already.`);
-			res.send(`
-				<script>
-					setTimeout(function() {
-						window.location.reload();
-					}, 1);
-				</script>
-			`);
-			return {
-				noWebhookResponse: true,
-			};
+			if (this.includeForms) {
+				res.send(`
+					<script>
+						setTimeout(function() {
+							window.location.reload();
+						}, 1);
+					</script>
+				`);
+				return {
+					noWebhookResponse: true,
+				};
+			}
+			throw new ConflictError(`The execution "${executionId} is running already.`);
 		}
 
 		if (execution.finished || execution.data.resultData.error) {

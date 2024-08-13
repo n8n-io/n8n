@@ -14,6 +14,7 @@ import { validateWebhookAuthentication } from '../Webhook/utils';
 
 import { DateTime } from 'luxon';
 import isbot from 'isbot';
+import type { Response } from 'express';
 
 export function prepareFormData({
 	formTitle,
@@ -140,99 +141,12 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	}
 };
 
-export async function formWebhook(
+export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
-	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+	formFields: FormField[],
+	mode: 'test' | 'production',
+	useWorkflowTimezone: boolean = false,
 ) {
-	const node = context.getNode();
-	const options = context.getNodeParameter('options', {}) as {
-		ignoreBots?: boolean;
-		respondWithOptions?: {
-			values: {
-				respondWith: 'text' | 'redirect';
-				formSubmittedText: string;
-				redirectUrl: string;
-			};
-		};
-		formSubmittedText?: string;
-		useWorkflowTimezone?: boolean;
-		appendAttribution?: boolean;
-	};
-	const res = context.getResponseObject();
-	const req = context.getRequestObject();
-
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
-		}
-		await validateWebhookAuthentication(context, authProperty);
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
-			res.end(error.message);
-			return { noWebhookResponse: true };
-		}
-		throw error;
-	}
-
-	const mode = context.getMode() === 'manual' ? 'test' : 'production';
-	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
-	const method = context.getRequestObject().method;
-
-	checkResponseModeConfiguration(context);
-
-	//Show the form on GET request
-	if (method === 'GET') {
-		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = (context.getNodeParameter('formDescription', '') as string)
-			.replace(/\\n/g, '\n')
-			.replace(/<br>/g, '\n');
-		const instanceId = context.getInstanceId();
-		const responseMode = context.getNodeParameter('responseMode', '') as string;
-
-		let formSubmittedText;
-		let redirectUrl;
-		let appendAttribution = true;
-
-		if (options.respondWithOptions) {
-			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
-			if (values.respondWith === 'text') {
-				formSubmittedText = values.formSubmittedText as string;
-			}
-			if (values.respondWith === 'redirect') {
-				redirectUrl = values.redirectUrl as string;
-			}
-		} else {
-			formSubmittedText = options.formSubmittedText as string;
-		}
-
-		if (options.appendAttribution === false) {
-			appendAttribution = false;
-		}
-
-		const useResponseData = responseMode === 'responseNode';
-
-		const query = context.getRequestObject().query as IDataObject;
-
-		const data = prepareFormData({
-			formTitle,
-			formDescription,
-			formSubmittedText,
-			redirectUrl,
-			formFields,
-			testRun: mode === 'test',
-			query,
-			instanceId,
-			useResponseData,
-			appendAttribution,
-		});
-
-		res.render('form-trigger', data);
-		return {
-			noWebhookResponse: true,
-		};
-	}
-
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 
@@ -312,21 +226,155 @@ export async function formWebhook(
 		returnItem.json[field.fieldLabel] = value;
 	}
 
+	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
+	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
+
+	returnItem.json.formMode = mode;
+
+	return returnItem;
+}
+
+export function renderForm({
+	context,
+	res,
+	formTitle,
+	formDescription,
+	formFields,
+	responseMode,
+	mode,
+	formSubmittedText,
+	redirectUrl,
+	appendAttribution,
+}: {
+	context: IWebhookFunctions;
+	res: Response;
+	formTitle: string;
+	formDescription: string;
+	formFields: FormField[];
+	responseMode: string;
+	mode: 'test' | 'production';
+	formSubmittedText?: string;
+	redirectUrl?: string;
+	appendAttribution?: boolean;
+}) {
+	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
+	const instanceId = context.getInstanceId();
+
+	const useResponseData = responseMode === 'responseNode';
+
+	const query = context.getRequestObject().query as IDataObject;
+
+	const data = prepareFormData({
+		formTitle,
+		formDescription,
+		formSubmittedText,
+		redirectUrl,
+		formFields,
+		testRun: mode === 'test',
+		query,
+		instanceId,
+		useResponseData,
+		appendAttribution,
+	});
+
+	res.render('form-trigger', data);
+}
+
+export async function formWebhook(
+	context: IWebhookFunctions,
+	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+) {
+	const node = context.getNode();
+	const options = context.getNodeParameter('options', {}) as {
+		ignoreBots?: boolean;
+		respondWithOptions?: {
+			values: {
+				respondWith: 'text' | 'redirect';
+				formSubmittedText: string;
+				redirectUrl: string;
+			};
+		};
+		formSubmittedText?: string;
+		useWorkflowTimezone?: boolean;
+		appendAttribution?: boolean;
+	};
+	const res = context.getResponseObject();
+	const req = context.getRequestObject();
+
+	try {
+		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+			throw new WebhookAuthorizationError(403);
+		}
+		await validateWebhookAuthentication(context, authProperty);
+	} catch (error) {
+		if (error instanceof WebhookAuthorizationError) {
+			res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+			res.end(error.message);
+			return { noWebhookResponse: true };
+		}
+		throw error;
+	}
+
+	const mode = context.getMode() === 'manual' ? 'test' : 'production';
+	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
+	const method = context.getRequestObject().method;
+
+	checkResponseModeConfiguration(context);
+
+	//Show the form on GET request
+	if (method === 'GET') {
+		const formTitle = context.getNodeParameter('formTitle', '') as string;
+		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const responseMode = context.getNodeParameter('responseMode', '') as string;
+
+		let formSubmittedText;
+		let redirectUrl;
+		let appendAttribution = true;
+
+		if (options.respondWithOptions) {
+			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
+			if (values.respondWith === 'text') {
+				formSubmittedText = values.formSubmittedText as string;
+			}
+			if (values.respondWith === 'redirect') {
+				redirectUrl = values.redirectUrl as string;
+			}
+		} else {
+			formSubmittedText = options.formSubmittedText as string;
+		}
+
+		if (options.appendAttribution === false) {
+			appendAttribution = false;
+		}
+
+		renderForm({
+			context,
+			res,
+			formTitle,
+			formDescription,
+			formFields,
+			responseMode,
+			mode,
+			formSubmittedText,
+			redirectUrl,
+			appendAttribution,
+		});
+
+		return {
+			noWebhookResponse: true,
+		};
+	}
+
 	let { useWorkflowTimezone } = options;
 
 	if (useWorkflowTimezone === undefined && node.typeVersion > 2) {
 		useWorkflowTimezone = true;
 	}
 
-	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
-	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
-
-	returnItem.json.formMode = mode;
-
-	const webhookResponse: IDataObject = { status: 200 };
+	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
 
 	return {
-		webhookResponse,
+		webhookResponse: { status: 200 },
 		workflowData: [[returnItem]],
 	};
 }
