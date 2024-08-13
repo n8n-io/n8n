@@ -1,5 +1,6 @@
 import Container, { Service } from 'typedi';
-import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 import { License } from '../License';
 import { N8N_VERSION } from '../constants';
