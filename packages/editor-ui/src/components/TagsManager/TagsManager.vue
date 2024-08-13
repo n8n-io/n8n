@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 import type { ITag } from '@/Interface';
 
@@ -38,12 +38,18 @@ import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
 import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
-import { mapStores } from 'pinia';
+
 import { useTagsStore } from '@/stores/tags.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'TagsManager',
+	props: {
+		tagsStore: {
+			type: Function as PropType<typeof useTagsStore>,
+			default: useTagsStore,
+		},
+	},
 	components: {
 		TagsView,
 		NoTagsView,
@@ -54,8 +60,11 @@ export default defineComponent({
 			...useToast(),
 		};
 	},
-	data() {
-		const tagIds = useTagsStore().allTags.map((tag) => tag.id);
+	data(props) {
+		const tagsStore = props.tagsStore();
+
+		const tagIds = tagsStore.allTags.map((tag) => tag.id);
+
 		return {
 			tagIds,
 			isCreating: false,
@@ -67,7 +76,6 @@ export default defineComponent({
 		void this.tagsStore.fetchAll({ force: true, withUsageCount: true });
 	},
 	computed: {
-		...mapStores(useTagsStore),
 		isLoading(): boolean {
 			return this.tagsStore.isLoading;
 		},

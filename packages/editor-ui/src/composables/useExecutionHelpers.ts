@@ -21,7 +21,7 @@ export function useExecutionHelpers() {
 			label: 'Status unknown',
 			runningTime: '',
 			showTimestamp: true,
-			tags: execution.tags,
+			tags: execution.annotation?.tags ?? [],
 		};
 
 		if (execution.status === 'new') {

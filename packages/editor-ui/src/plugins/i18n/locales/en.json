@@ -28,6 +28,8 @@
 			"clientSecret": "Client Secret"
 		}
 	},
+	"generic.annotations": "Annotations",
+	"generic.annotationData": "Annotation data",
 	"generic.any": "Any",
 	"generic.cancel": "Cancel",
 	"generic.close": "Close",
@@ -51,6 +53,7 @@
 	"generic.beta": "beta",
 	"generic.yes": "Yes",
 	"generic.no": "No",
+	"generic.rating": "Rating",
 	"generic.retry": "Retry",
 	"generic.error": "Something went wrong",
 	"generic.settings": "Settings",
@@ -748,6 +751,7 @@
 	"executionView.onPaste.title": "Cannot paste here",
 	"executionView.onPaste.message": "This view is read-only. Switch to <i>Workflow</i> tab to be able to edit the current workflow",
 	"executionView.notFound.message": "Execution with id '{executionId}' could not be found!",
+	"executionsFilter.annotation.tags": "Annotation tags",
 	"executionsFilter.selectStatus": "Select Status",
 	"executionsFilter.selectWorkflow": "Select Workflow",
 	"executionsFilter.start": "Execution start",

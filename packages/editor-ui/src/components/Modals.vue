@@ -13,6 +13,7 @@ import {
 	INVITE_USER_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -101,6 +102,10 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
+			<TagsManager />
+		</ModalRoot>
+
+		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
 			<TagsManager />
 		</ModalRoot>
 

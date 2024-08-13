@@ -1583,6 +1583,7 @@ export type ExecutionFilterType = {
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];
+	annotationTags: string[];
 	metadata: ExecutionFilterMetadata[];
 };
 

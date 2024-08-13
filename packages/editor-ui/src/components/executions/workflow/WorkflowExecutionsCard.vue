@@ -56,7 +56,20 @@
 						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</n8n-text>
 				</div>
-				<N8nTags v-if="executionUIDetails.tags" :tags="executionUIDetails.tags"></N8nTags>
+				<div :class="$style.annotation">
+					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
+						<FontAwesomeIcon
+							v-if="execution.annotation.vote == 'up'"
+							:class="$style.highlight"
+							icon="thumbs-up"
+						/>
+						<FontAwesomeIcon v-else :class="$style.highlight" icon="thumbs-down" />
+					</div>
+					<N8nTags
+						v-if="executionUIDetails.tags.length > 0"
+						:tags="executionUIDetails.tags"
+					></N8nTags>
+				</div>
 			</div>
 			<div :class="$style.icons">
 				<n8n-action-dropdown
@@ -71,7 +84,7 @@
 					<template #content>
 						<span>{{ $locale.baseText('executionsList.test') }}</span>
 					</template>
-					<font-awesome-icon
+					<FontAwesomeIcon
 						v-if="execution.mode === 'manual'"
 						:class="[$style.icon, $style.manual]"
 						icon="flask"
@@ -87,16 +100,16 @@ import { defineComponent } from 'vue';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
-import N8nTags from '@/components/N8nTags/Tags.vue';
-import N8nTag from '@/components/N8nTags/Tag.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default defineComponent({
 	name: 'WorkflowExecutionsCard',
 	components: {
+		FontAwesomeIcon,
 		ExecutionsTime,
 	},
 	props: {
@@ -247,6 +260,20 @@ export default defineComponent({
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
 		}
 	}
+
+	.annotation {
+		display: flex;
+		flex-direction: row;
+		gap: var(--spacing-3xs);
+		align-items: center;
+		margin: var(--spacing-4xs) 0 0;
+
+		.ratingIcon {
+			.highlight {
+				color: var(--color-primary);
+			}
+		}
+	}
 }
 
 .executionLink {
@@ -295,6 +322,7 @@ export default defineComponent({
 		margin-left: var(--spacing-2xs);
 	}
 }
+
 .showGap {
 	margin-bottom: var(--spacing-2xs);
 	.executionLink {

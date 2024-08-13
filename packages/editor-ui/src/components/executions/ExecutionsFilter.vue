@@ -15,6 +15,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -52,6 +53,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
 	workflowId: 'all',
 	tags: [],
+	annotationTags: [],
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
@@ -136,6 +138,11 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 // We just emit the updated filter
 const onTagsChange = (tags: string[]) => {
 	filter.tags = tags;
+	emit('filterChanged', filter);
+};
+
+const onAnnotationTagsChange = (tags: string[]) => {
+	filter.annotationTags = tags;
 	emit('filterChanged', filter);
 };
 
@@ -246,6 +253,20 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-end-date-picker"
 					/>
 				</div>
+			</div>
+			<div :class="$style.group">
+				<label for="execution-filter-annotation-tags">{{
+					locale.baseText('executionsFilter.annotation.tags')
+				}}</label>
+				<TagsDropdown
+					id="execution-filter-annotation-tags"
+					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+					:model-value="filter.tags"
+					:create-enabled="false"
+					:tags-store="useAnnotationTagsStore"
+					data-test-id="executions-filter-annotation-tags-select"
+					@update:model-value="onAnnotationTagsChange"
+				/>
 			</div>
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">

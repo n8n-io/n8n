@@ -1,4 +1,4 @@
-import * as tagsApi from '@/api/tags';
+import { createTagsApi } from '@/api/tags';
 import { STORES } from '@/constants';
 import type { ITag } from '@/Interface';
 import { defineStore } from 'pinia';
@@ -6,109 +6,129 @@ import { useRootStore } from './root.store';
 import { computed, ref } from 'vue';
 import { useWorkflowsStore } from './workflows.store';
 
-export const useTagsStore = defineStore(STORES.TAGS, () => {
-	const tagsById = ref<Record<string, ITag>>({});
-	const loading = ref(false);
-	const fetchedAll = ref(false);
-	const fetchedUsageCount = ref(false);
+const apiMapping = {
+	[STORES.TAGS]: createTagsApi('/tags'),
+	[STORES.ANNOTATION_TAGS]: createTagsApi('/annotation-tags'),
+};
 
-	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
+const createTagsStore = (id: STORES.TAGS | STORES.ANNOTATION_TAGS) => {
+	const tagsApi = apiMapping[id];
 
-	// Computed
+	return defineStore(
+		id,
+		() => {
+			const tagsById = ref<Record<string, ITag>>({});
+			const loading = ref(false);
+			const fetchedAll = ref(false);
+			const fetchedUsageCount = ref(false);
 
-	const allTags = computed(() => {
-		return Object.values(tagsById.value).sort((a, b) => a.name.localeCompare(b.name));
-	});
+			const rootStore = useRootStore();
+			const workflowsStore = useWorkflowsStore();
 
-	const isLoading = computed(() => loading.value);
+			// Computed
 
-	const hasTags = computed(() => Object.keys(tagsById.value).length > 0);
+			const allTags = computed(() => {
+				return Object.values(tagsById.value).sort((a, b) => a.name.localeCompare(b.name));
+			});
 
-	// Methods
+			const isLoading = computed(() => loading.value);
 
-	const setAllTags = (loadedTags: ITag[]) => {
-		tagsById.value = loadedTags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
-			accu[tag.id] = tag;
+			const hasTags = computed(() => Object.keys(tagsById.value).length > 0);
 
-			return accu;
-		}, {});
-		fetchedAll.value = true;
-	};
+			// Methods
 
-	const upsertTags = (toUpsertTags: ITag[]) => {
-		toUpsertTags.forEach((toUpsertTag) => {
-			const tagId = toUpsertTag.id;
-			const currentTag = tagsById.value[tagId];
-			if (currentTag) {
-				const newTag = {
-					...currentTag,
-					...toUpsertTag,
-				};
-				tagsById.value = {
-					...tagsById.value,
-					[tagId]: newTag,
-				};
-			} else {
-				tagsById.value = {
-					...tagsById.value,
-					[tagId]: toUpsertTag,
-				};
-			}
-		});
-	};
+			const setAllTags = (loadedTags: ITag[]) => {
+				tagsById.value = loadedTags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
+					accu[tag.id] = tag;
 
-	const deleteTag = (id: string) => {
-		const { [id]: deleted, ...rest } = tagsById.value;
-		tagsById.value = rest;
-	};
+					return accu;
+				}, {});
+				fetchedAll.value = true;
+			};
 
-	const fetchAll = async (params?: { force?: boolean; withUsageCount?: boolean }) => {
-		const { force = false, withUsageCount = false } = params || {};
-		if (!force && fetchedAll.value && fetchedUsageCount.value === withUsageCount) {
-			return Object.values(tagsById.value);
-		}
+			const upsertTags = (toUpsertTags: ITag[]) => {
+				toUpsertTags.forEach((toUpsertTag) => {
+					const tagId = toUpsertTag.id;
+					const currentTag = tagsById.value[tagId];
+					if (currentTag) {
+						const newTag = {
+							...currentTag,
+							...toUpsertTag,
+						};
+						tagsById.value = {
+							...tagsById.value,
+							[tagId]: newTag,
+						};
+					} else {
+						tagsById.value = {
+							...tagsById.value,
+							[tagId]: toUpsertTag,
+						};
+					}
+				});
+			};
 
-		loading.value = true;
-		const retrievedTags = await tagsApi.getTags(rootStore.restApiContext, Boolean(withUsageCount));
-		setAllTags(retrievedTags);
-		loading.value = false;
-		return retrievedTags;
-	};
+			const deleteTag = (id: string) => {
+				const { [id]: deleted, ...rest } = tagsById.value;
+				tagsById.value = rest;
+			};
 
-	const create = async (name: string) => {
-		const createdTag = await tagsApi.createTag(rootStore.restApiContext, { name });
-		upsertTags([createdTag]);
-		return createdTag;
-	};
+			const fetchAll = async (params?: { force?: boolean; withUsageCount?: boolean }) => {
+				const { force = false, withUsageCount = false } = params || {};
+				if (!force && fetchedAll.value && fetchedUsageCount.value === withUsageCount) {
+					return Object.values(tagsById.value);
+				}
 
-	const rename = async ({ id, name }: { id: string; name: string }) => {
-		const updatedTag = await tagsApi.updateTag(rootStore.restApiContext, id, { name });
-		upsertTags([updatedTag]);
-		return updatedTag;
-	};
+				loading.value = true;
+				const retrievedTags = await tagsApi.getTags(
+					rootStore.restApiContext,
+					Boolean(withUsageCount),
+				);
+				setAllTags(retrievedTags);
+				loading.value = false;
+				return retrievedTags;
+			};
 
-	const deleteTagById = async (id: string) => {
-		const deleted = await tagsApi.deleteTag(rootStore.restApiContext, id);
+			const create = async (name: string) => {
+				const createdTag = await tagsApi.createTag(rootStore.restApiContext, { name });
+				upsertTags([createdTag]);
+				return createdTag;
+			};
 
-		if (deleted) {
-			deleteTag(id);
-			workflowsStore.removeWorkflowTagId(id);
-		}
+			const rename = async ({ id, name }: { id: string; name: string }) => {
+				const updatedTag = await tagsApi.updateTag(rootStore.restApiContext, id, { name });
+				upsertTags([updatedTag]);
+				return updatedTag;
+			};
 
-		return deleted;
-	};
+			const deleteTagById = async (id: string) => {
+				const deleted = await tagsApi.deleteTag(rootStore.restApiContext, id);
 
-	return {
-		allTags,
-		isLoading,
-		hasTags,
-		tagsById,
-		fetchAll,
-		create,
-		rename,
-		deleteTagById,
-		upsertTags,
-		deleteTag,
-	};
-});
+				if (deleted) {
+					deleteTag(id);
+					workflowsStore.removeWorkflowTagId(id);
+				}
+
+				return deleted;
+			};
+
+			return {
+				allTags,
+				isLoading,
+				hasTags,
+				tagsById,
+				fetchAll,
+				create,
+				rename,
+				deleteTagById,
+				upsertTags,
+				deleteTag,
+			};
+		},
+		{},
+	);
+};
+
+export const useTagsStore = createTagsStore(STORES.TAGS);
+
+export const useAnnotationTagsStore = createTagsStore(STORES.ANNOTATION_TAGS);

@@ -23,6 +23,7 @@ import type {
 import { parse, stringify } from 'flatted';
 import { GlobalConfig } from '@n8n/config';
 import {
+	AnnotationVote,
 	ApplicationError,
 	type ExecutionStatus,
 	type ExecutionSummary,
@@ -722,28 +723,50 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const qb = this.toQueryBuilderWithAnnotations(query);
-		console.log(qb.getQuery());
 
-		const rawExecutionsWithTags: Array<ExecutionSummary & { tagId: string; tagName: string }> =
-			await qb.getRawMany();
+		const rawExecutionsWithTags: Array<
+			ExecutionSummary & {
+				'annotation.id': number;
+				'annotation.vote': AnnotationVote;
+				'annotation.tags.id': string;
+				'annotation.tags.name': string;
+			}
+		> = await qb.getRawMany();
 
 		// FIXME: This needs refactoring
 		const executions = rawExecutionsWithTags.reduce(
-			(acc, { tagId, tagName, ...row }) => {
+			(
+				acc,
+				{
+					'annotation.id': _,
+					'annotation.vote': vote,
+					'annotation.tags.id': tagId,
+					'annotation.tags.name': tagName,
+					...row
+				},
+			) => {
 				const existingExecution = acc.find((e) => e.id === row.id);
+
 				if (existingExecution) {
 					if (tagId) {
-						existingExecution.tags.push({ id: tagId, name: tagName });
+						existingExecution.annotation = existingExecution.annotation ?? {
+							vote,
+							tags: [] as Array<{ id: string; name: string }>,
+						};
+						existingExecution.annotation.tags.push({ id: tagId, name: tagName });
 					}
 				} else {
 					acc.push({
 						...row,
-						tags: tagId ? [{ id: tagId, name: tagName }] : [],
+						annotation: {
+							vote,
+							tags: tagId ? [{ id: tagId, name: tagName }] : [],
+						},
 					});
 				}
 				return acc;
 			},
-			[] as Array<ExecutionSummary & { tags: Array<{ id: string; name: string }> }>,
+			[] as ExecutionSummary[],
 		);
 
 		return executions.map((execution) => this.toSummary(execution));
@@ -909,7 +932,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return this.manager
 			.createQueryBuilder()
-			.select(['e.*', 'ate.id AS "tagId"', 'ate.name AS "tagName"'])
+			.select(['e.*', 'ate.id AS "annotation.tags.id"', 'ate.name AS "annotation.tags.name"'])
 			.from(`(${subQuery.getQuery()})`, 'e')
 			.setParameters(subQuery.getParameters())
 			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e."annotation.id"')

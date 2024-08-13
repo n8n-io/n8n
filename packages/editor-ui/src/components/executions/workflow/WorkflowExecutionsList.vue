@@ -20,6 +20,7 @@
 				@stop-execution="onStopExecution"
 			/>
 		</div>
+		<WorkflowExecutionAnnotationSidebar v-if="execution" :execution="execution" />
 	</div>
 </template>
 
