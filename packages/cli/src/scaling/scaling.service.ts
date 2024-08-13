@@ -16,7 +16,7 @@ import type {
 	JobMessage,
 	JobStatus,
 	JobId,
-	QueueRecoverySettings,
+	QueueRecoveryContext,
 } from './types';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
@@ -260,13 +260,13 @@ export class ScalingService {
 
 	// #region Queue recovery
 
-	private readonly queueRecoverySettings: QueueRecoverySettings = {
+	private readonly queueRecoveryContext: QueueRecoveryContext = {
 		batchSize: config.getEnv('executions.queueRecovery.batchSize'),
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
-	scheduleQueueRecovery(waitMs = this.queueRecoverySettings.waitMs) {
-		this.queueRecoverySettings.timeout = setTimeout(async () => {
+	scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
+		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
 				const nextWaitMs = await this.recoverFromQueue();
 				this.scheduleQueueRecovery(nextWaitMs);
@@ -280,13 +280,13 @@ export class ScalingService {
 			}
 		}, waitMs);
 
-		const wait = [this.queueRecoverySettings.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
+		const wait = [this.queueRecoveryContext.waitMs / Time.minutes.toMilliseconds, 'min'].join(' ');
 
 		this.logger.debug(`[ScalingService] Scheduled queue recovery check for next ${wait}`);
 	}
 
 	stopQueueRecovery() {
-		clearTimeout(this.queueRecoverySettings.timeout);
+		clearTimeout(this.queueRecoveryContext.timeout);
 	}
 
 	/**
@@ -294,7 +294,7 @@ export class ScalingService {
 	 * but absent from the queue. Return time until next recovery cycle.
 	 */
 	private async recoverFromQueue() {
-		const { waitMs, batchSize } = this.queueRecoverySettings;
+		const { waitMs, batchSize } = this.queueRecoveryContext;
 
 		const storedIds = await this.executionRepository.getInProgressExecutionIds(batchSize);
 
@@ -329,7 +329,7 @@ export class ScalingService {
 		// if this cycle used up the whole batch size, it is possible for there to be
 		// dangling executions outside this check, so speed up next cycle
 
-		return storedIds.length >= this.queueRecoverySettings.batchSize ? waitMs / 2 : waitMs;
+		return storedIds.length >= this.queueRecoveryContext.batchSize ? waitMs / 2 : waitMs;
 	}
 
 	private toErrorMsg(error: unknown) {
