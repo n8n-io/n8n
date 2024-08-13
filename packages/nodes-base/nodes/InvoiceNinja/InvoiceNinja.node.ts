@@ -300,9 +300,12 @@ export class InvoiceNinja implements INodeType {
 		// select them easily
 		async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			const returnData: INodePropertyOptions[] = [];
-			const payments = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/payments');
+			const qs: IDataObject = { };
+			// Only select payments that can be matched to transactions
+			qs.match_transactions = true;
+			const payments = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/payments', undefined, qs);
 			for (const payment of payments) {
-				const paymentName = [payment.date, payment.amount]
+				const paymentName = [payment.number, payment.date, payment.amount]
 					.filter((e) => e)
 					.join(' - ');
 				const paymentId = payment.id as string;
