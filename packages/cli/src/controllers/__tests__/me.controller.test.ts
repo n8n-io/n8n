@@ -17,7 +17,7 @@ import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
 import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 import { MfaService } from '@/Mfa/mfa.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 const browserId = 'test-browser-id';
 
@@ -230,16 +230,14 @@ describe('MeController', () => {
 				);
 			});
 
-			it('should throw ForbiddenError if invalid mfa code is given', async () => {
+			it('should throw InvalidMfaCodeError if invalid mfa code is given', async () => {
 				const req = mock<MeRequest.Password>({
 					user: mock({ password: passwordHash, mfaEnabled: true }),
 					body: { currentPassword: 'old_password', newPassword: 'NewPassword123', mfaCode: '123' },
 				});
 				mockMfaService.validateMfa.mockResolvedValue(false);
 
-				await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
-					new ForbiddenError('Invalid two-factor code.'),
-				);
+				await expect(controller.updatePassword(req, mock())).rejects.toThrow(InvalidMfaCodeError);
 			});
 
 			it('should succeed when mfa code is correct', async () => {
