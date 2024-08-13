@@ -25,6 +25,7 @@ import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 import type { ScopesField } from './services/role.service';
+import { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -612,7 +613,7 @@ export declare namespace NpsSurveyRequest {
 // ----------------------------------
 
 export declare namespace AiAssistantRequest {
-	type Chat = AuthenticatedRequest<{}, {}, object>;
+	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
 
 	type SuggestionPayload = { sessionId: string; suggestionId: string };
 	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
