@@ -47,7 +47,6 @@
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.js",
       "dist/nodes/chains/InformationExtractor/InformationExtractor.node.js",
       "dist/nodes/chains/TextClassifier/TextClassifier.node.js",
-      "dist/nodes/wrappedTools.node.js",
       "dist/nodes/code/Code.node.js",
       "dist/nodes/document_loaders/DocumentDefaultDataLoader/DocumentDefaultDataLoader.node.js",
       "dist/nodes/document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node.js",
