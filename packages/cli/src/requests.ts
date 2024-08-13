@@ -224,7 +224,7 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string; token?: string }
+		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
@@ -353,6 +353,7 @@ export type LoginRequest = AuthlessRequest<
 export declare namespace MFA {
 	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},

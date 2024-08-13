@@ -20,12 +20,12 @@ import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 
 /**
- * Service for handling the execution of production webhooks, i.e. webhooks
+ * Service for handling the execution of live webhooks, i.e. webhooks
  * that belong to activated workflows and use the production URL
  * (https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls)
  */
 @Service()
-export class ActiveWebhooks implements IWebhookManager {
+export class LiveWebhooks implements IWebhookManager {
 	constructor(
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,

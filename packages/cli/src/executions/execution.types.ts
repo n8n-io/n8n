@@ -93,23 +93,6 @@ export namespace ExecutionSummaries {
 	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 }
 
-export type QueueRecoverySettings = {
-	/**
-	 * ID of timeout for next scheduled recovery cycle.
-	 */
-	timeout?: NodeJS.Timeout;
-
-	/**
-	 * Number of in-progress executions to check per cycle.
-	 */
-	batchSize: number;
-
-	/**
-	 * Time (in milliseconds) to wait before the next cycle.
-	 */
-	waitMs: number;
-};
-
 export type StopResult = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;

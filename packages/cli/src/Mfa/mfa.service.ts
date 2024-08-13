@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { Cipher } from 'n8n-core';
 import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { TOTPService } from './totp.service';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 @Service()
 export class MfaService {
@@ -60,7 +61,9 @@ export class MfaService {
 		if (mfaToken) {
 			const decryptedSecret = this.cipher.decrypt(user.mfaSecret!);
 			return this.totp.verifySecret({ secret: decryptedSecret, token: mfaToken });
-		} else if (mfaRecoveryCode) {
+		}
+
+		if (mfaRecoveryCode) {
 			const validCodes = user.mfaRecoveryCodes.map((code) => this.cipher.decrypt(code));
 			const index = validCodes.indexOf(mfaRecoveryCode);
 			if (index === -1) return false;
@@ -70,6 +73,7 @@ export class MfaService {
 			await this.authUserRepository.save(user);
 			return true;
 		}
+
 		return false;
 	}
 
@@ -79,11 +83,16 @@ export class MfaService {
 		return await this.authUserRepository.save(user);
 	}
 
-	async disableMfa(userId: string) {
-		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
-		user.mfaEnabled = false;
-		user.mfaSecret = null;
-		user.mfaRecoveryCodes = [];
-		return await this.authUserRepository.save(user);
+	async disableMfa(userId: string, mfaToken: string) {
+		const isValidToken = await this.validateMfa(userId, mfaToken, undefined);
+		if (!isValidToken) {
+			throw new InvalidMfaCodeError();
+		}
+
+		await this.authUserRepository.update(userId, {
+			mfaEnabled: false,
+			mfaSecret: null,
+			mfaRecoveryCodes: [],
+		});
 	}
 }

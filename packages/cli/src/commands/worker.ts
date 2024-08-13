@@ -2,7 +2,7 @@ import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
-import { sleep, ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -61,23 +61,6 @@ export class Worker extends BaseCommand {
 
 		try {
 			await this.externalHooks?.run('n8n.stop', []);
-
-			const hardStopTimeMs = Date.now() + this.gracefulShutdownTimeoutInS * 1000;
-
-			// Wait for active workflow executions to finish
-			let count = 0;
-			while (this.jobProcessor.getRunningJobIds().length !== 0) {
-				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((hardStopTimeMs - Date.now()) / 1000);
-					this.logger.info(
-						`Waiting for ${
-							Object.keys(this.jobProcessor.getRunningJobIds()).length
-						} active executions to finish... (max wait ${waitLeft} more seconds)`,
-					);
-				}
-
-				await sleep(500);
-			}
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

@@ -10,6 +10,7 @@ import type { URLSearchParams } from 'url';
 import type { RequestBodyMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 
+import type { Scope } from '@n8n/permissions';
 import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -308,6 +309,7 @@ export interface ICredentialTestRequestData {
 type ICredentialHttpRequestNode = {
 	name: string;
 	docsUrl: string;
+	hidden?: boolean;
 } & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
 
 export interface ICredentialType {
@@ -2462,6 +2464,7 @@ export interface ExecutionSummary {
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
+	scopes?: Scope[];
 }
 
 export interface IExecutionSummaryNodeExecutionResult {

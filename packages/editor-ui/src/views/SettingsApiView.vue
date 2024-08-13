@@ -49,7 +49,7 @@
 					/>
 				</div>
 			</n8n-card>
-			<div v-if="!isRedactedApiKey" :class="$style.hint">
+			<div :class="$style.hint">
 				<n8n-text size="small">
 					{{
 						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
