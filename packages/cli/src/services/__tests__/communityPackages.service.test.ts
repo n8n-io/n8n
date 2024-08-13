@@ -51,10 +51,9 @@ describe('CommunityPackagesService', () => {
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
+	const nodeName = randomName();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	installedNodesRepository.create.mockImplementation(() => {
-		const nodeName = randomName();
-
 		return Object.assign(new InstalledNodes(), {
 			name: nodeName,
 			type: nodeName,
@@ -378,25 +377,22 @@ describe('CommunityPackagesService', () => {
 	};
 
 	describe('updateNpmModule', () => {
-		const packageDirectoryLoader = mock<PackageDirectoryLoader>();
+		const installedPackage = mock<InstalledPackages>({ packageName: mockPackageName() });
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: nodeName, version: 1 }],
+		});
 
 		beforeEach(async () => {
 			jest.clearAllMocks();
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			mocked(exec).mockImplementation(execMock);
 		});
 
-		test('should call `exec` with the correct command ', async () => {
+		test('should call `exec` with the correct command and registry', async () => {
 			//
 			// ARRANGE
 			//
-			const nodeName = randomName();
-			packageDirectoryLoader.loadedNodes = [{ name: nodeName, version: 1 }];
-
-			const installedPackage = new InstalledPackages();
-			installedPackage.packageName = mockPackageName();
-
-			mocked(exec).mockImplementation(execMock);
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 			//
@@ -412,6 +408,30 @@ describe('CommunityPackagesService', () => {
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
 				`npm install ${installedPackage.packageName}@latest --registry=some.random.host`,
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		test('should call `exec` with the default registry when not licensed', async () => {
+			//
+			// ARRANGE
+			//
+			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
+
+			//
+			// ACT
+			//
+			await communityPackagesService.updatePackage(installedPackage.packageName, installedPackage);
+
+			//
+			// ASSERT
+			//
+
+			expect(exec).toHaveBeenCalledTimes(1);
+			expect(exec).toHaveBeenNthCalledWith(
+				1,
+				`npm install ${installedPackage.packageName}@latest --registry=https://registry.npmjs.org`,
 				expect.any(Object),
 				expect.any(Function),
 			);
