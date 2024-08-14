@@ -31,6 +31,7 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -65,6 +66,7 @@ import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentials
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
+import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 </script>
 
 <template>
@@ -144,6 +146,10 @@ import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSess
 
 		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
 			<MfaSetupModal />
+		</ModalRoot>
+
+		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
+			<PromptMfaCodeModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
