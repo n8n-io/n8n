@@ -1,7 +1,7 @@
 import { Config, Env, Nested } from '../decorators';
 
 @Config
-export class SmtpAuth {
+class SmtpAuth {
 	/** SMTP login username */
 	@Env('N8N_SMTP_USER')
 	user = '';
@@ -20,7 +20,7 @@ export class SmtpAuth {
 }
 
 @Config
-export class SmtpConfig {
+class SmtpConfig {
 	/** SMTP server host */
 	@Env('N8N_SMTP_HOST')
 	host = '';
@@ -65,7 +65,7 @@ export class TemplateConfig {
 }
 
 @Config
-export class EmailConfig {
+class EmailConfig {
 	/** How to send emails */
 	@Env('N8N_EMAIL_MODE')
 	mode: '' | 'smtp' = 'smtp';
@@ -75,4 +75,10 @@ export class EmailConfig {
 
 	@Nested
 	template: TemplateConfig;
+}
+
+@Config
+export class UserManagementConfig {
+	@Nested
+	emails: EmailConfig;
 }
