@@ -92,7 +92,7 @@ export class AiTransform implements INodeType {
 				code = this.getNodeParameter(codeParameterName, index) as string;
 
 				if (!code) {
-					const instructions = this.getNodeParameter('generate', index) as string;
+					const instructions = this.getNodeParameter('instructions', index) as string;
 					if (!instructions) {
 						throw new NodeOperationError(node, 'Missing instructions to generate code', {
 							description:
