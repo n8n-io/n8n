@@ -20,6 +20,7 @@ import { InstalledNodesRepository } from '@db/repositories/installedNodes.reposi
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { License } from '@/License';
 
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
@@ -39,19 +40,20 @@ const execMock = ((...args) => {
 }) as typeof exec;
 
 describe('CommunityPackagesService', () => {
+	const license = mock<License>();
 	const globalConfig = mock<GlobalConfig>({
 		nodes: {
 			communityPackages: {
 				reinstallMissing: false,
+				registry: 'some.random.host',
 			},
 		},
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 
+	const nodeName = randomName();
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	installedNodesRepository.create.mockImplementation(() => {
-		const nodeName = randomName();
-
 		return Object.assign(new InstalledNodes(), {
 			name: nodeName,
 			type: nodeName,
@@ -74,6 +76,7 @@ describe('CommunityPackagesService', () => {
 		mock(),
 		loadNodesAndCredentials,
 		mock(),
+		license,
 		globalConfig,
 	);
 
@@ -374,25 +377,23 @@ describe('CommunityPackagesService', () => {
 	};
 
 	describe('updateNpmModule', () => {
-		const packageDirectoryLoader = mock<PackageDirectoryLoader>();
+		const installedPackage = mock<InstalledPackages>({ packageName: mockPackageName() });
+		const packageDirectoryLoader = mock<PackageDirectoryLoader>({
+			loadedNodes: [{ name: nodeName, version: 1 }],
+		});
 
 		beforeEach(async () => {
 			jest.clearAllMocks();
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			mocked(exec).mockImplementation(execMock);
 		});
 
-		test('should call `exec` with the correct command ', async () => {
+		test('should call `exec` with the correct command and registry', async () => {
 			//
 			// ARRANGE
 			//
-			const nodeName = randomName();
-			packageDirectoryLoader.loadedNodes = [{ name: nodeName, version: 1 }];
-
-			const installedPackage = new InstalledPackages();
-			installedPackage.packageName = mockPackageName();
-
-			mocked(exec).mockImplementation(execMock);
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 
 			//
 			// ACT
@@ -406,9 +407,31 @@ describe('CommunityPackagesService', () => {
 			expect(exec).toHaveBeenCalledTimes(1);
 			expect(exec).toHaveBeenNthCalledWith(
 				1,
-				`npm install ${installedPackage.packageName}@latest`,
+				`npm install ${installedPackage.packageName}@latest --registry=some.random.host`,
 				expect.any(Object),
 				expect.any(Function),
+			);
+		});
+
+		test('should throw when not licensed', async () => {
+			//
+			// ARRANGE
+			//
+			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
+
+			//
+			// ACT
+			//
+			const promise = communityPackagesService.updatePackage(
+				installedPackage.packageName,
+				installedPackage,
+			);
+
+			//
+			// ASSERT
+			//
+			await expect(promise).rejects.toThrow(
+				'Your license does not allow for feat:communityNodes:customRegistry.',
 			);
 		});
 	});
