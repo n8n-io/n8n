@@ -15,6 +15,8 @@ import type {
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
+	NodeParameterValueType,
+	IDataObject,
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { NodeExecuteFunctions } from 'n8n-core';
@@ -156,6 +158,24 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
+	/** Returns the result of the action handler */
+	async getActionResult(
+		handler: string,
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+		currentNodeParameters: INodeParameters,
+		payload: IDataObject | string | undefined,
+		credentials?: INodeCredentials,
+	): Promise<NodeParameterValueType> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const method = this.getMethod('actionHandler', handler, nodeType);
+		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
+		const thisArgs = this.getThisArg(path, additionalData, workflow);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return method.call(thisArgs, payload);
+	}
+
 	private getMethod(
 		type: 'resourceMapping',
 		methodName: string,
@@ -175,9 +195,14 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
+	private getMethod(
+		type: 'actionHandler',
+		methodName: string,
+		nodeType: INodeType,
+	): (this: ILoadOptionsFunctions, payload?: string) => Promise<NodeParameterValueType>;
 
 	private getMethod(
-		type: 'resourceMapping' | 'listSearch' | 'loadOptions',
+		type: 'resourceMapping' | 'listSearch' | 'loadOptions' | 'actionHandler',
 		methodName: string,
 		nodeType: INodeType,
 	) {
