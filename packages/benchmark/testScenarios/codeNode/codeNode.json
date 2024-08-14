@@ -1,0 +1,36 @@
+{
+	"createdAt": "2024-08-06T13:37:07.119Z",
+	"updatedAt": "2024-08-06T13:39:27.000Z",
+	"name": "Code Node",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "$input.item.json.myNewField = Math.random();\n\nreturn $input.item;"
+			},
+			"id": "7d100719-8d9e-497d-a365-78c793c244d6",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [980, 400]
+		},
+		{
+			"parameters": { "path": "code-node", "responseMode": "lastNode", "options": {} },
+			"id": "1e172d8f-f6cd-43ec-8257-e6a8212add00",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [760, 400],
+			"webhookId": "224a56e0-f929-4f01-b49e-d91861b1b8d7"
+		}
+	],
+	"connections": { "Webhook": { "main": [[{ "node": "Code", "type": "main", "index": 0 }]] } },
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": { "templateCredsSetupCompleted": true },
+	"pinData": {},
+	"versionId": "a91dfe67-971d-425f-9066-feab46150f95",
+	"triggerCount": 1,
+	"tags": []
+}
