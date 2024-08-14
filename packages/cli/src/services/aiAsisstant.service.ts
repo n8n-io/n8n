@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
@@ -11,15 +11,20 @@ import type { AiAssistantRequest } from '@/requests';
 export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
+	private licenseService: License;
+
+	constructor(licenseService: License) {
+		this.licenseService = licenseService;
+	}
+
 	async init() {
-		const licenseService = Container.get(License);
-		const aiAssistantEnabled = licenseService.isAiAssistantEnabled();
+		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
 		if (!aiAssistantEnabled) {
 			return;
 		}
 
-		const licenseCert = await licenseService.loadCertStr();
-		const consumerId = licenseService.getConsumerId();
+		const licenseCert = await this.licenseService.loadCertStr();
+		const consumerId = this.licenseService.getConsumerId();
 		const baseUrl = config.get('aiAssistant.baseUrl');
 		const logLevel = config.getEnv('logs.level');
 
