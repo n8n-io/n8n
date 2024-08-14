@@ -1,22 +1,27 @@
 <script lang="ts" setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
+import {
+	CHANGE_PASSWORD_MODAL_KEY,
+	MFA_DOCS_URL,
+	MFA_SETUP_MODAL_KEY,
+	PROMPT_MFA_CODE_MODAL_KEY,
+} from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import { ref } from 'vue';
-import { computed } from 'vue';
-import { onMounted } from 'vue';
+import { createFormEventBus } from 'n8n-design-system/utils';
+import type { MfaModalEvents } from '@/event-bus/mfa';
+import { promptMfaCodeBus } from '@/event-bus/mfa';
 
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
-const formBus = ref(createEventBus());
+const formBus = ref(createFormEventBus());
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
 const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
@@ -154,9 +159,16 @@ function openPasswordModal() {
 function onMfaEnableClick() {
 	uiStore.openModal(MFA_SETUP_MODAL_KEY);
 }
-async function onMfaDisableClick() {
+
+async function disableMfa(payload: MfaModalEvents['closed']) {
+	if (!payload) {
+		// User closed the modal without submitting the form
+		return;
+	}
+
 	try {
-		await usersStore.disabledMfa();
+		await usersStore.disableMfa(payload.mfaCode);
+
 		showToast({
 			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
 			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
@@ -167,6 +179,16 @@ async function onMfaDisableClick() {
 		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
 	}
 }
+
+async function onMfaDisableClick() {
+	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+
+	promptMfaCodeBus.once('closed', disableMfa);
+}
+
+onBeforeUnmount(() => {
+	promptMfaCodeBus.off('closed', disableMfa);
+});
 </script>
 
 <template>

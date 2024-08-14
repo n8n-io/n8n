@@ -12,6 +12,7 @@ import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -20,9 +21,11 @@ export class EnterpriseCredentialsService {
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
 
 	async shareWithProjects(
+		user: User,
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 		entityManager?: EntityManager,
@@ -30,19 +33,35 @@ export class EnterpriseCredentialsService {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
 		const projects = await em.find(Project, {
-			where: { id: In(shareWithIds), type: 'personal' },
+			where: [
+				{
+					id: In(shareWithIds),
+					type: 'team',
+					// if user can see all projects, don't check project access
+					// if they can't, find projects they can list
+					...(user.hasGlobalScope('project:list')
+						? {}
+						: {
+								projectRelations: {
+									userId: user.id,
+									role: In(this.roleService.rolesWithScope('project', 'project:list')),
+								},
+							}),
+				},
+				{
+					id: In(shareWithIds),
+					type: 'personal',
+				},
+			],
 		});
 
-		const newSharedCredentials = projects
-			// We filter by role === 'project:personalOwner' above and there should
-			// always only be one owner.
-			.map((project) =>
-				this.sharedCredentialsRepository.create({
-					credentialsId: credential.id,
-					role: 'credential:user',
-					projectId: project.id,
-				}),
-			);
+		const newSharedCredentials = projects.map((project) =>
+			this.sharedCredentialsRepository.create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
+			}),
+		);
 
 		return await em.save(newSharedCredentials);
 	}

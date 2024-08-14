@@ -78,6 +78,12 @@ export type RelayEventMap = {
 		runData?: IRun;
 	};
 
+	'workflow-sharing-updated': {
+		workflowId: string;
+		userIdSharer: string;
+		userIdList: string[];
+	};
+
 	// #endregion
 
 	// #region Node
@@ -201,6 +207,17 @@ export type RelayEventMap = {
 		user: UserLike;
 	};
 
+	'user-transactional-email-sent': {
+		userId: string;
+		messageType:
+			| 'Reset password'
+			| 'New user invite'
+			| 'Resend invite'
+			| 'Workflow shared'
+			| 'Credentials shared';
+		publicApi: boolean;
+	};
+
 	// #endregion
 
 	// #region Public API
@@ -234,6 +251,7 @@ export type RelayEventMap = {
 			| 'Resend invite'
 			| 'Workflow shared'
 			| 'Credentials shared';
+		publicApi: boolean;
 	};
 
 	// #endregion

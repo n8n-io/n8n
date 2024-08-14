@@ -172,14 +172,13 @@ import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
+import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CredentialScope } from '@n8n/permissions';
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -194,7 +193,7 @@ type Props = {
 	credentialProperties: INodeProperties[];
 	credentialData: ICredentialDataDecryptedObject;
 	credentialId?: string;
-	credentialPermissions?: PermissionsMap<CredentialScope>;
+	credentialPermissions: PermissionsRecord['credential'];
 	parentTypes?: string[];
 	showValidationWarning?: boolean;
 	authError?: string;
@@ -212,7 +211,7 @@ const props = withDefaults(defineProps<Props>(), {
 	credentialId: '',
 	authError: '',
 	showValidationWarning: false,
-	credentialPermissions: () => ({}) as PermissionsMap<CredentialScope>,
+	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];

@@ -16,7 +16,7 @@ import type PCancelable from 'p-cancelable';
  */
 @Service()
 export class JobProcessor {
-	private readonly runningJobs: { [jobId: JobId]: RunningJob } = {};
+	private readonly runningJobs: Record<JobId, RunningJob> = {};
 
 	constructor(
 		private readonly logger: Logger,

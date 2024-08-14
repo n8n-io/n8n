@@ -43,6 +43,7 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	relations: [],
 });
 const projectRoleTranslations = ref<{ [key: string]: string }>({
+	'project:viewer': locale.baseText('projects.settings.role.viewer'),
 	'project:editor': locale.baseText('projects.settings.role.editor'),
 	'project:admin': locale.baseText('projects.settings.role.admin'),
 });
@@ -59,7 +60,7 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.projects.filter((project) => project.id !== projectsStore.currentProjectId),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
@@ -302,6 +303,7 @@ onMounted(() => {
 								class="mr-2xs"
 								:model-value="user?.role || projectRoles[0].role"
 								size="small"
+								data-test-id="projects-settings-user-role-select"
 								@update:model-value="onRoleAction(user, $event)"
 							>
 								<N8nOption
