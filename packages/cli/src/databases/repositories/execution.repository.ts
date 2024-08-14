@@ -270,6 +270,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
+	/**
+	 * Insert a new execution and its execution data using a transaction.
+	 */
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
 		const { identifiers: inserted } = await this.insert(rest);

@@ -25,7 +25,7 @@ export class LmChatGooglePalm implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {

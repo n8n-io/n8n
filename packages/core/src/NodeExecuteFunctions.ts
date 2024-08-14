@@ -1342,7 +1342,9 @@ export async function requestOAuth2(
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
 		credentials.grantType === 'clientCredentials' &&
-		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+		(oauthTokenData === undefined ||
+			Object.keys(oauthTokenData).length === 0 ||
+			oauthTokenData.access_token === '') // stub
 	) {
 		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
@@ -3324,7 +3326,7 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-function isFilePathBlocked(filePath: string): boolean {
+export function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -3340,10 +3342,10 @@ function isFilePathBlocked(filePath: string): boolean {
 		return true;
 	}
 
-	//restrict access to .n8n folder and other .env config related paths
+	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
 	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder];
+		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
+		const restrictedPaths = [n8nFolder, staticCacheDir];
 
 		if (process.env[CONFIG_FILES]) {
 			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));

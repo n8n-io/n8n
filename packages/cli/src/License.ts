@@ -55,7 +55,7 @@ export class License {
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
 		if (config.getEnv('multiMainSetup.enabled')) {
-			return autoRenewEnabled && config.getEnv('instanceRole') === 'leader';
+			return autoRenewEnabled && this.instanceSettings.isLeader;
 		}
 
 		return autoRenewEnabled;
@@ -303,6 +303,10 @@ export class License {
 
 	isProjectRoleViewerLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
+	}
+
+	isCustomNpmRegistryEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
 	getCurrentEntitlements() {

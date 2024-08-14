@@ -35,14 +35,15 @@
 				@action="onNoticeAction"
 			/>
 
-			<n8n-button
-				v-else-if="parameter.type === 'button'"
-				class="parameter-item"
-				block
-				@click="onButtonAction(parameter)"
-			>
-				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
-			</n8n-button>
+			<div v-else-if="parameter.type === 'button'" class="parameter-item">
+				<ButtonParameter
+					:parameter="parameter"
+					:path="path"
+					:value="getParameterValue(parameter.name)"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -177,6 +178,7 @@ import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCo
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
+import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -483,14 +485,6 @@ function onNoticeAction(action: string) {
  * Handles default node button parameter type actions
  * @param parameter
  */
-function onButtonAction(parameter: INodeProperties) {
-	const action: string | undefined = parameter.typeOptions?.action;
-
-	switch (action) {
-		default:
-			return;
-	}
-}
 
 function shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
 	// TODO: For now, hide all fields that are used in authentication fields displayOptions

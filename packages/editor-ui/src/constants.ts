@@ -60,6 +60,7 @@ export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
@@ -92,7 +93,6 @@ export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
-export const COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/manual-install/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
@@ -191,6 +191,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
+export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -210,7 +211,11 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
 
-export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
+export const NODES_USING_CODE_NODE_EDITOR = [
+	CODE_NODE_TYPE,
+	AI_CODE_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 

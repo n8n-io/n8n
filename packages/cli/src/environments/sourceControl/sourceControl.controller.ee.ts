@@ -12,7 +12,7 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import type { ImportResult } from './types/importResult';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

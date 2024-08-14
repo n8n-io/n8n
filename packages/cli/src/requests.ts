@@ -224,7 +224,7 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string; token?: string }
+		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
@@ -306,7 +306,7 @@ export declare namespace UserRequest {
 		{ id: string; email: string; identifier: string },
 		{},
 		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
+		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
@@ -353,6 +353,7 @@ export type LoginRequest = AuthlessRequest<
 export declare namespace MFA {
 	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
@@ -417,6 +418,12 @@ export declare namespace DynamicNodeParametersRequest {
 	/** POST dynamic-node-parameters/resource-mapper-fields */
 	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
+	}>;
+
+	/** POST /dynamic-node-parameters/action-result */
+	type ActionResult = BaseRequest<{
+		handler: string;
+		payload: IDataObject | string | undefined;
 	}>;
 }
 

@@ -1,4 +1,3 @@
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { ClearLicenseCommand } from '@/commands/license/clear';
@@ -6,7 +5,6 @@ import { ClearLicenseCommand } from '@/commands/license/clear';
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const license = mockInstance(License);
 const command = setupTestCommand(ClearLicenseCommand);

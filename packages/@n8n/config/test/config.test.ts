@@ -108,6 +108,8 @@ describe('GlobalConfig', () => {
 		nodes: {
 			communityPackages: {
 				enabled: true,
+				registry: 'https://registry.npmjs.org',
+				reinstallMissing: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -171,6 +173,44 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+		},
+		cache: {
+			backend: 'auto',
+			memory: {
+				maxSize: 3145728,
+				ttl: 3600000,
+			},
+			redis: {
+				prefix: 'redis',
+				ttl: 3600000,
+			},
+		},
+		queue: {
+			health: {
+				active: false,
+				port: 5678,
+			},
+			bull: {
+				redis: {
+					db: 0,
+					host: 'localhost',
+					password: '',
+					port: 6379,
+					timeoutThreshold: 10_000,
+					username: '',
+					clusterNodes: '',
+					tls: false,
+				},
+				queueRecoveryInterval: 60,
+				gracefulShutdownTimeout: 30,
+				prefix: 'bull',
+				settings: {
+					lockDuration: 30_000,
+					lockRenewTime: 15_000,
+					stalledInterval: 30_000,
+					maxStalledCount: 1,
+				},
+			},
 		},
 	};
 

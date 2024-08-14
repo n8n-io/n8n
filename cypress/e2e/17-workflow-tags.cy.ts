@@ -1,4 +1,5 @@
 import { WorkflowPage } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 
@@ -67,5 +68,21 @@ describe('Workflow tags', () => {
 		wf.getters.tagsInDropdown().filter('.selected').first().click();
 		cy.get('body').click(0, 0);
 		wf.getters.tagPills().should('have.length', TEST_TAGS.length - 1);
+	});
+
+	it('should not show non existing tag as a selectable option', () => {
+		const NON_EXISTING_TAG = 'My Test Tag';
+
+		wf.getters.createTagButton().click();
+		wf.actions.addTags(TEST_TAGS);
+		cy.get('body').click(0, 0);
+		wf.getters.workflowTags().click();
+		wf.getters.tagsDropdown().find('input:focus').type(NON_EXISTING_TAG);
+
+		getVisibleSelect()
+			.find('li')
+			.should('have.length', 2)
+			.filter(`:contains("${NON_EXISTING_TAG}")`)
+			.should('not.have.length');
 	});
 });

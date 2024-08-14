@@ -25,22 +25,30 @@ class CommunityPackagesConfig {
 	/** Whether to enable community packages */
 	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
 	enabled: boolean = true;
+
+	/** NPM registry URL to pull community packages from */
+	@Env('N8N_COMMUNITY_PACKAGES_REGISTRY')
+	registry: string = 'https://registry.npmjs.org';
+
+	/** Whether to reinstall any missing community packages */
+	@Env('N8N_REINSTALL_MISSING_PACKAGES')
+	reinstallMissing: boolean = false;
 }
 
 @Config
 export class NodesConfig {
 	/** Node types to load. Includes all if unspecified. @example '["n8n-nodes-base.hackerNews"]' */
 	@Env('NODES_INCLUDE')
-	readonly include: JsonStringArray = [];
+	include: JsonStringArray = [];
 
 	/** Node types not to load. Excludes none if unspecified. @example '["n8n-nodes-base.hackerNews"]' */
 	@Env('NODES_EXCLUDE')
-	readonly exclude: JsonStringArray = [];
+	exclude: JsonStringArray = [];
 
 	/** Node type to use as error trigger */
 	@Env('NODES_ERROR_TRIGGER_TYPE')
-	readonly errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
+	errorTriggerType = 'n8n-nodes-base.errorTrigger';
 
 	@Nested
-	readonly communityPackages: CommunityPackagesConfig;
+	communityPackages: CommunityPackagesConfig;
 }

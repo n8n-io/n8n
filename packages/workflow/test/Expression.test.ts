@@ -74,7 +74,9 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				expect(evaluate('={{Reflect}}')).toEqual({});
 				expect(evaluate('={{Proxy}}')).toEqual({});
 
-				expect(evaluate('={{constructor}}')).toEqual({});
+				expect(() => evaluate('={{constructor}}')).toThrowError(
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
+				);
 
 				expect(evaluate('={{escape}}')).toEqual({});
 				expect(evaluate('={{unescape}}')).toEqual({});
@@ -166,7 +168,7 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				const testFn = jest.fn();
 				Object.assign(global, { testFn });
 				expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
-					new ExpressionError('Arbitrary code execution detected'),
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
 				);
 				expect(testFn).not.toHaveBeenCalled();
 			});

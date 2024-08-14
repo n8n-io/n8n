@@ -26,13 +26,12 @@ import {
 	updateTags,
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { InternalHooks } from '@/InternalHooks';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { z } from 'zod';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -119,9 +118,9 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			Container.get(InternalHooks).onUserRetrievedWorkflow({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-workflow', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json(workflow);
@@ -142,6 +141,19 @@ export = {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
 					);
+					where.id = In(workflowIds);
+				}
+
+				if (projectId) {
+					const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+						req.user,
+						['workflow:read'],
+					);
+
+					const workflowIds = workflows
+						.filter((workflow) => workflow.projectId === projectId)
+						.map((workflow) => workflow.id);
+
 					where.id = In(workflowIds);
 				}
 			} else {
@@ -185,9 +197,9 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			Container.get(InternalHooks).onUserRetrievedAllWorkflows({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-workflows', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({
