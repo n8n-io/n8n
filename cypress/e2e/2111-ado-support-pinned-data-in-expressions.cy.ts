@@ -113,23 +113,24 @@ describe('ADO-2111 expressions should support pinned data', () => {
 		workflowPage.actions.openNode('NotPinnedWithExpressions');
 		ndv.getters.nodeParameters().find('parameter-expression-preview-value').should('not.exist');
 
-		ndv.getters.parameterInput('value').eq(0).click();
+		ndv.getters.expressionExpanders().eq(0).click();
 		ndv.getters
-			.inlineExpressionEditorOutput()
+			.expressionModalOutput()
+			.eq(0)
 			.should(
 				'have.text',
 				'[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][undefined]',
 			);
-
 		// close open expression
-		ndv.getters.inputLabel().eq(0).click();
+		ndv.getters.expressionModalOutput().type('{esc}');
 
-		ndv.getters.parameterInput('value').eq(1).click({ force: true });
+		ndv.getters.expressionExpanders().eq(1).click();
 		ndv.getters
-			.inlineExpressionEditorOutput()
+			.expressionModalOutput()
+			.eq(1)
 			.should(
 				'have.text',
-				'[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][undefined]',
+				'0,0[Execute node ‘PinnedSet’ for preview][Execute node ‘PinnedSet’ for preview][Execute previous nodes for preview][Execute previous nodes for preview][Execute previous nodes for preview]',
 			);
 	});
 });
