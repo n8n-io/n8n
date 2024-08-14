@@ -110,9 +110,6 @@ async function onSubmit() {
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		// TODO: remove before merging
-		console.log('model', model);
-
 		const payload = {
 			question: createPrompt(prompt.value),
 			context: {
@@ -121,7 +118,7 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			model: 'gpt-4o',
+			model,
 			n8nVersion: version,
 		};
 		switch (type) {

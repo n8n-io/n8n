@@ -208,7 +208,7 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AI_TRANSFORM_NODE_TYPE) {
+		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
 			nodeItem.prompts = { instructions: node.parameters.instructions as string };
 		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
