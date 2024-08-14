@@ -141,7 +141,7 @@ export default defineComponent({
 		'banners banners rightsidebar'
 		'sidebar header rightsidebar'
 		'sidebar content rightsidebar';
-	grid-auto-columns: fit-content($sidebar-expanded-width) minmax(100px, auto) minmax(0, max-content);
+	grid-auto-columns: minmax(0, max-content) minmax(100px, auto) minmax(0, max-content);
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
