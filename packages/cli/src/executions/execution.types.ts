@@ -1,6 +1,11 @@
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionStatus, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	AnnotationVote,
+	ExecutionStatus,
+	IDataObject,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
@@ -31,6 +36,7 @@ export declare namespace ExecutionRequest {
 	type ExecutionUpdatePayload = {
 		id: number;
 		tags: string[];
+		vote: AnnotationVote;
 	};
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {

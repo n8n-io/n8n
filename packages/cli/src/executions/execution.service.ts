@@ -8,6 +8,7 @@ import type {
 	IRunExecutionData,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	AnnotationVote,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -41,6 +42,7 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
 import { AnnotationTagMappingRepository } from '@db/repositories/annotationTagMapping.repository';
+import { ExecutionAnnotationRepository } from '@db/repositories/executionAnnotation.repository';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -87,6 +89,7 @@ export class ExecutionService {
 		private readonly logger: Logger,
 		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
 		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -482,7 +485,13 @@ export class ExecutionService {
 		return await this.executionRepository.stopDuringRun(execution);
 	}
 
-	public async update(executionId: string, updateData: { tags: string[] }) {
+	public async annotate(executionId: string, updateData: { tags: string[]; vote: AnnotationVote }) {
+		// FIXME: wrap in transaction
+		await this.executionAnnotationRepository.upsert(
+			{ execution: { id: executionId }, vote: updateData.vote },
+			['execution'],
+		);
+
 		if (updateData.tags) {
 			await this.annotationTagMappingRepository.overwriteTags(executionId, updateData.tags);
 		}

@@ -12,7 +12,6 @@ export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapp
 
 	async overwriteTags(executionId: string, tagIds: string[]) {
 		return await this.manager.transaction(async (tx) => {
-			await tx.upsert(ExecutionAnnotation, { execution: { id: executionId } }, ['execution']);
 			const annotation = await tx.findOne(ExecutionAnnotation, {
 				where: { execution: { id: executionId } },
 			});

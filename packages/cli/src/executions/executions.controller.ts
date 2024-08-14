@@ -111,12 +111,10 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		const { tags } = req.body;
+		const { tags, vote } = req.body;
 
-		if (tags) {
-			const updatedExecution = await this.executionService.update(req.params.id, { tags });
-
-			return updatedExecution;
+		if (tags || vote) {
+			return await this.executionService.annotate(req.params.id, { tags, vote });
 		} else {
 			throw new BadRequestError('No annotation provided');
 		}
