@@ -573,7 +573,7 @@ export const schema = {
 		baseUrl: {
 			doc: 'Base URL of the AI assistant service',
 			format: String,
-			default: 'https://ai-assistant.n8n.io',
+			default: '',
 			env: 'N8N_AI_ASSISTANT_BASE_URL',
 		},
 	},
