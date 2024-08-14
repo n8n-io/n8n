@@ -131,7 +131,7 @@ export const bankTransactionFields: INodeProperties[] = [
 	/*                                  bankTransaction:get                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Bank Transacrion ID',
+		displayName: 'Bank Transaction ID',
 		name: 'bankTransactionId',
 		type: 'string',
 		default: '',
@@ -181,7 +181,20 @@ export const bankTransactionFields: INodeProperties[] = [
 	/*                                 bankTransaction:matchPayment               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment',
+		displayName: 'Bank Transaction ID',
+		name: 'bankTransactionId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['bank_transaction'],
+				operation: ['matchPayment'],
+			},
+		},
+	},
+	{
+		displayName: 'Payment ID',
 		name: 'paymentId',
 		type: 'options',
 		description:
@@ -190,5 +203,11 @@ export const bankTransactionFields: INodeProperties[] = [
 			loadOptionsMethod: 'getPayments',
 		},
 		default: '',
+		displayOptions: {
+			show: {
+				resource: ['bank_transaction'],
+				operation: ['matchPayment'],
+			},
+		},
 	},
 ];
