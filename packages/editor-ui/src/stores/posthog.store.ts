@@ -6,7 +6,11 @@ import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
-import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
+import {
+	ASK_AI_EXPERIMENT,
+	EXPERIMENTS_TO_TRACK,
+	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
+} from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { useDebounce } from '@/composables/useDebounce';
 
@@ -36,6 +40,14 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
 		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
+	};
+
+	const isAiEnabled = () => {
+		const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+			(getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+		);
+
+		return isAiExperimentEnabled && settingsStore.settings.ai.enabled;
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
@@ -183,6 +195,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		isAiEnabled,
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
