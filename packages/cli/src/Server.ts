@@ -41,6 +41,7 @@ import '@/controllers/activeWorkflows.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binaryData.controller';
 import '@/controllers/curl.controller';
+import '@/controllers/aiAssistant.controller';
 import '@/controllers/dynamicNodeParameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';

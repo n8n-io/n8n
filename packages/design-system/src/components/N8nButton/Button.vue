@@ -13,8 +13,8 @@
 		}"
 	>
 		<span v-if="loading || icon" :class="$style.icon">
-			<N8nSpinner v-if="loading" :size="size" />
-			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
+			<N8nSpinner v-if="loading" :size="iconSize" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
@@ -55,6 +55,8 @@ watchEffect(() => {
 const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
 const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
 const isDisabled = computed(() => props.disabled || props.loading);
+
+const iconSize = computed(() => (props.size === 'mini' ? 'xsmall' : props.size));
 
 const classes = computed(() => {
 	return (

@@ -7,8 +7,10 @@
 			variant="marble"
 			:colors="getColors(colors)"
 		/>
-		<span v-else :class="[$style.empty, $style[size]]" />
-		<span v-if="name" :class="$style.initials">{{ initials }}</span>
+		<div v-else :class="[$style.empty, $style[size]]"></div>
+		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
+			{{ initials }}
+		</span>
 	</span>
 </template>
 
@@ -20,7 +22,7 @@ import { getInitials } from '../../utils/labelUtil';
 interface AvatarProps {
 	firstName: string;
 	lastName: string;
-	size?: string;
+	size?: 'xsmall' | 'small' | 'medium' | 'large';
 	colors?: string[];
 }
 
@@ -47,6 +49,7 @@ const getColors = (colors: string[]): string[] => {
 };
 
 const sizes: { [size: string]: number } = {
+	xsmall: 20,
 	small: 28,
 	large: 48,
 	medium: 40,
@@ -76,6 +79,15 @@ const getSize = (size: string): number => sizes[size];
 	color: var(--color-avatar-font);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
+}
+
+.text-xsmall {
+	font-size: 6px;
+}
+
+.xsmall {
+	height: var(--spacing-m);
+	width: var(--spacing-m);
 }
 
 .small {

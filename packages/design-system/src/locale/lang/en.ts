@@ -23,4 +23,27 @@ export default {
 		'You can style with <a href="https://docs.n8n.io/workflows/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
 	'datatable.pageSize': 'Page size',
+	'codeDiff.couldNotReplace': 'Could not replace code',
+	'codeDiff.codeReplaced': 'Code replaced',
+	'codeDiff.replaceMyCode': 'Replace my code',
+	'codeDiff.replacing': 'Replacing...',
+	'codeDiff.undo': 'Undo',
+	'betaTag.beta': 'beta',
+	'askAssistantButton.askAssistant': 'Ask Assistant',
+	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
+	'assistantChat.aiAssistantLabel': 'AI Assistant',
+	'assistantChat.aiAssistantName': 'Ava',
+	'assistantChat.sessionEndMessage.1':
+		'This Assistant session has ended. To start a new session with the Assistant, click an',
+	'assistantChat.sessionEndMessage.2': 'button in n8n',
+	'assistantChat.you': 'You',
+	'assistantChat.quickRepliesTitle': 'Quick reply 👇',
+	'assistantChat.placeholder.1': (options: string[]) =>
+		`Hi ${options[0][0] || 'there'}, I'm ${options[0][1]} and I'm here to assist you with building workflows.`,
+	'assistantChat.placeholder.2':
+		"Whenever you encounter a task that I can help with, you'll see the",
+	'assistantChat.placeholder.3': 'button.',
+	'assistantChat.placeholder.4': 'Clicking it starts a chat session with me.',
+	'assistantChat.inputPlaceholder': 'Enter your response...',
+	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;

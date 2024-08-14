@@ -2679,6 +2679,9 @@ export interface IN8nUISettings {
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	aiAssistant: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};

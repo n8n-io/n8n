@@ -1,8 +1,9 @@
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, type GenericValue, type IDataObject } from 'n8n-workflow';
+import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
+import type { ChatRequest } from '@/types/assistant.types';
 
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
@@ -191,3 +192,63 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 
 	return returnData;
 }
+
+export const streamRequest = async (
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: ChatRequest.RequestPayload,
+	onChunk?: (chunk: ChatRequest.ResponsePayload) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+	separator = '⧉⇋⇋➽⌑⧉§§\n',
+): Promise<void> => {
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	};
+	if (browserId) {
+		headers['browser-id'] = browserId;
+	}
+	const assistantRequest: RequestInit = {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	};
+	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
+
+	if (response.ok && response.body) {
+		// Handle the streaming response
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder('utf-8');
+
+		async function readStream() {
+			const { done, value } = await reader.read();
+			if (done) {
+				onDone?.();
+				return;
+			}
+
+			const chunk = decoder.decode(value);
+			const splitChunks = chunk.split(separator);
+
+			for (const splitChunk of splitChunks) {
+				if (splitChunk && onChunk) {
+					try {
+						onChunk(jsonParse(splitChunk, { errorMessage: 'Invalid json chunk in stream' }));
+					} catch (e: unknown) {
+						if (e instanceof Error) {
+							console.log(`${e.message}: ${splitChunk}`);
+							onError?.(e);
+						}
+					}
+				}
+			}
+			await readStream();
+		}
+
+		// Start reading the stream
+		await readStream();
+	} else if (onError) {
+		onError(new Error(response.statusText));
+	}
+};
