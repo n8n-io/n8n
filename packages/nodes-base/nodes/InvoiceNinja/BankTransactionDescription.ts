@@ -71,7 +71,7 @@ export const bankTransactionFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'Bank Integration ID',
+				displayName: 'Bank Integration Name or ID',
 				name: 'bankIntegrationId',
 				type: 'options',
 				description:
@@ -194,7 +194,7 @@ export const bankTransactionFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Payment ID',
+		displayName: 'Payment Name or ID',
 		name: 'paymentId',
 		type: 'options',
 		description:
