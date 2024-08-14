@@ -112,6 +112,15 @@ export class InvoiceNinja implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Bank Transaction',
+						value: 'bank_transaction',
+						displayOptions: {
+							show: {
+								apiVersion: ['v5'],
+							},
+						},
+					},
+					{
 						name: 'Client',
 						value: 'client',
 					},
@@ -134,15 +143,6 @@ export class InvoiceNinja implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-					},
-					{
-						name: 'Bank Transaction',
-						value: 'bank_transaction',
-						displayOptions: {
-							show: {
-								apiVersion: ['v5'],
-							},
-						},
 					},
 				],
 				default: 'client',
@@ -300,10 +300,17 @@ export class InvoiceNinja implements INodeType {
 		// select them easily
 		async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			const returnData: INodePropertyOptions[] = [];
-			const qs: IDataObject = { };
+			const qs: IDataObject = {};
 			// Only select payments that can be matched to transactions
 			qs.match_transactions = true;
-			const payments = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/payments', undefined, qs);
+			const payments = await invoiceNinjaApiRequestAllItems.call(
+				this,
+				'data',
+				'GET',
+				'/payments',
+				undefined,
+				qs,
+			);
 			for (const payment of payments) {
 				const paymentName = [payment.number, payment.date, payment.amount]
 					.filter((e) => e)
@@ -922,14 +929,14 @@ export class InvoiceNinja implements INodeType {
 					const resourceEndpoint = '/bank_transactions';
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const body: IBankTransaction = { };
+						const body: IBankTransaction = {};
 						if (additionalFields.amount) {
 							body.amount = additionalFields.amount as number;
 						}
 						if (additionalFields.baseType) {
 							body.base_type = additionalFields.baseType as string;
 						}
-						if(additionalFields.bankIntegrationId) {
+						if (additionalFields.bankIntegrationId) {
 							body.bank_integration_id = additionalFields.bankIntegrationId as number;
 						}
 						if (additionalFields.client) {
@@ -938,7 +945,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.email) {
 							body.description = additionalFields.description as string;
 						}
-		
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
@@ -982,7 +988,13 @@ export class InvoiceNinja implements INodeType {
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', resourceEndpoint, {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								resourceEndpoint,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -998,14 +1010,13 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'matchPayment') {
 						const bankTransactionId = this.getNodeParameter('bankTransactionId', i) as string;
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
-						const body: IBankTransaction = { };
+						const body: IBankTransaction = {};
 						if (bankTransactionId) {
-							body.id = bankTransactionId as string; 
+							body.id = bankTransactionId as string;
 						}
 						if (paymentId) {
 							body.paymentId = paymentId as string;
 						}
-		
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
@@ -1178,7 +1189,13 @@ export class InvoiceNinja implements INodeType {
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', resourceEndpoint, {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								resourceEndpoint,
+								{},
+								qs
+							);
 							responseData = responseData.data;
 						}
 					}
