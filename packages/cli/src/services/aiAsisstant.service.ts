@@ -11,9 +11,7 @@ import type { AiAssistantRequest } from '@/requests';
 export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
-	private licenseService: License;
-
-	constructor(licenseService: License) {
+	constructor(private readonly licenseService: License) {
 		this.licenseService = licenseService;
 	}
 
