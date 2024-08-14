@@ -6,6 +6,7 @@ import { License } from '../License';
 import { N8N_VERSION } from '../constants';
 import config from '@/config';
 import type { AiAssistantRequest } from '@/requests';
+import type { Response } from 'undici';
 
 @Service()
 export class AiAssistantService {
@@ -35,7 +36,7 @@ export class AiAssistantService {
 		});
 	}
 
-	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser) {
+	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser): Promise<Response> {
 		if (!this.client) {
 			await this.init();
 		}
