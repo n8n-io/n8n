@@ -1194,7 +1194,7 @@ export class InvoiceNinja implements INodeType {
 								'GET',
 								resourceEndpoint,
 								{},
-								qs
+								qs,
 							);
 							responseData = responseData.data;
 						}
