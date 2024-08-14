@@ -40,7 +40,43 @@ const pageProperties = updateDisplayOptions(
 	],
 );
 
+const completionProperties = updateDisplayOptions(
+	{
+		show: {
+			operation: ['completion'],
+		},
+	},
+	[
+		{
+			displayName: 'Completion Title',
+			name: 'completionTitle',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Completion Message',
+			name: 'completionMessage',
+			type: 'string',
+			default: '',
+			typeOptions: {
+				rows: 2,
+			},
+		},
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [{ ...formTitle, required: false }],
+		},
+	],
+);
+
 export class Form extends Node {
+	nodeInputData: INodeExecutionData[] = [];
+
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form Page',
 		name: 'form',
@@ -99,6 +135,7 @@ export class Form extends Node {
 				],
 			},
 			...pageProperties,
+			...completionProperties,
 		],
 	};
 
@@ -107,6 +144,7 @@ export class Form extends Node {
 
 		const mode = context.getMode() === 'manual' ? 'test' : 'production';
 		const fields = context.getNodeParameter('formFields.values', []) as FormField[];
+		const operation = context.getNodeParameter('operation', '') as string;
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const trigger = parentNodes.find(
@@ -114,6 +152,35 @@ export class Form extends Node {
 		) as NodeTypeAndVersion;
 
 		const method = context.getRequestObject().method;
+
+		if (operation === 'completion') {
+			const completionTitle = context.getNodeParameter('completionTitle', '') as string;
+			const completionMessage = context.getNodeParameter('completionMessage', '') as string;
+			const options = context.getNodeParameter('options', {}) as {
+				formTitle: string;
+			};
+			let title = options.formTitle;
+			if (!title) {
+				title = context.evaluateExpression(
+					`{{ $('${trigger?.name}').params.formTitle }}`,
+				) as string;
+			}
+			const appendAttribution = context.evaluateExpression(
+				`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+			) as boolean;
+
+			res.render('form-trigger-completion', {
+				title: completionTitle,
+				message: completionMessage,
+				formTitle: title,
+				appendAttribution,
+			});
+
+			return {
+				webhookResponse: { status: 200 },
+				workflowData: [this.nodeInputData],
+			};
+		}
 
 		if (method === 'GET') {
 			const options = context.getNodeParameter('options', {}) as {
@@ -196,6 +263,10 @@ export class Form extends Node {
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const operation = context.getNodeParameter('operation', 0);
+
+		if (operation === 'completion') {
+			this.nodeInputData = context.getInputData();
+		}
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const hasFormTrigger = parentNodes.some((node) => node.type === 'n8n-nodes-base.formTrigger');

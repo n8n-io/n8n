@@ -49,6 +49,7 @@ describe('FormTrigger, formWebhook', () => {
 
 		expect(mockRender).toHaveBeenCalledWith('form-trigger', {
 			appendAttribution: true,
+			buttonLabel: 'Submit form',
 			formDescription: 'Test Description',
 			formFields: [
 				{
@@ -191,6 +192,7 @@ describe('FormTrigger, prepareFormData', () => {
 			query,
 			instanceId: 'test-instance',
 			useResponseData: true,
+			buttonLabel: 'Submit form',
 		});
 
 		expect(result).toEqual({
@@ -246,6 +248,7 @@ describe('FormTrigger, prepareFormData', () => {
 			],
 			useResponseData: true,
 			appendAttribution: true,
+			buttonLabel: 'Submit form',
 			redirectUrl: 'https://example.com/thank-you',
 		});
 	});
@@ -268,6 +271,7 @@ describe('FormTrigger, prepareFormData', () => {
 			formFields,
 			testRun: true,
 			query: {},
+			buttonLabel: 'Submit form',
 		});
 
 		expect(result).toEqual({
@@ -291,6 +295,7 @@ describe('FormTrigger, prepareFormData', () => {
 			],
 			useResponseData: undefined,
 			appendAttribution: true,
+			buttonLabel: 'Submit form',
 		});
 	});
 
