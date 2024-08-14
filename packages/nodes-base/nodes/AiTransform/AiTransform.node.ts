@@ -32,7 +32,7 @@ export class AiTransform implements INodeType {
 		properties: [
 			{
 				displayName: 'Instructions',
-				name: 'generate',
+				name: 'instructions',
 				type: 'button',
 				default: '',
 				description:

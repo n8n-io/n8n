@@ -10,6 +10,7 @@ import { getSchemas, getParentNodes } from './utils';
 import { ASK_AI_EXPERIMENT } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { useRootStore } from '@/stores/root.store';
+import { useTelemetry } from '@/composables/useTelemetry';
 import { generateCodeForPrompt } from '@/api/ai';
 
 import { format } from 'prettier';
@@ -109,6 +110,9 @@ async function onSubmit() {
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
+		// TODO: remove before merging
+		console.log('model', model);
+
 		const payload = {
 			question: createPrompt(prompt.value),
 			context: {
@@ -117,7 +121,7 @@ async function onSubmit() {
 				ndvPushRef: useNDVStore().pushRef,
 				pushRef: rootStore.pushRef,
 			},
-			model,
+			model: 'gpt-4o',
 			n8nVersion: version,
 		};
 		switch (type) {
@@ -144,6 +148,11 @@ async function onSubmit() {
 				};
 
 				emit('valueChanged', updateInformation);
+
+				useTelemetry().trackAiTransform('generationFinished', {
+					prompt: prompt.value,
+					code: formattedCode,
+				});
 				break;
 			default:
 				return;
@@ -156,6 +165,11 @@ async function onSubmit() {
 
 		stopLoading();
 	} catch (error) {
+		useTelemetry().trackAiTransform('generationFinished', {
+			prompt: prompt.value,
+			code: '',
+			hasError: true,
+		});
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
