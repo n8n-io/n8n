@@ -45,7 +45,7 @@ import { createFormEventBus } from 'n8n-design-system';
 
 const i18n = useI18n();
 
-const formBus = ref(createFormEventBus());
+const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 
 const formFields: IFormInputs = [
@@ -69,7 +69,7 @@ function onSubmit(values: { mfaCode: string }) {
 }
 
 function onClickSave() {
-	formBus.value.emit('submit');
+	formBus.emit('submit');
 }
 
 function onFormReady(isReady: boolean) {
