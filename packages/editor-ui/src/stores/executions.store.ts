@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { IDataObject, ExecutionSummary } from 'n8n-workflow';
+import type { IDataObject, ExecutionSummary, AnnotationVote } from 'n8n-workflow';
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
@@ -184,6 +184,13 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	async function annotateExecution(
+		id: string,
+		data: { tags?: string[]; vote?: AnnotationVote },
+	): Promise<void> {
+		await makeRestApiRequest(rootStore.restApiContext, 'PATCH', `/executions/${id}`, data);
+	}
+
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
 		return await makeRestApiRequest(
 			rootStore.restApiContext,
@@ -244,6 +251,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	return {
 		loading,
+		annotateExecution,
 		executionsById,
 		executions,
 		executionsCount,

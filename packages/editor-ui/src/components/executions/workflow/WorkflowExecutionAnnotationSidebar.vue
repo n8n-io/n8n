@@ -13,27 +13,53 @@
 			<div :class="$style.vote">
 				<div>{{ $locale.baseText('generic.rating') }}:</div>
 				<div :class="$style.ratingIcon">
-					<FontAwesomeIcon :class="{ [$style.highlight]: vote === 'up' }" icon="thumbs-up" />
-					<FontAwesomeIcon :class="{ [$style.highlight]: vote === 'down' }" icon="thumbs-down" />
+					<n8n-icon-button
+						:class="{ [$style.highlight]: vote === 'up' }"
+						type="tertiary"
+						text
+						size="medium"
+						icon="thumbs-up"
+						@click="onVote('up')"
+					/>
+					<n8n-icon-button
+						:class="{ [$style.highlight]: vote === 'down' }"
+						type="tertiary"
+						text
+						size="medium"
+						icon="thumbs-down"
+						@click="onVote('down')"
+					/>
 				</div>
 			</div>
-			<div :class="$style.tags" data-test-id="execution-annotation-tags-container">
-				<N8nTags
-					v-if="activeExecution?.annotation?.tags && activeExecution?.annotation.tags.length > 0"
-					:tags="activeExecution?.annotation?.tags"
-				></N8nTags>
-				<!--				<span class="add-tag clickable" data-test-id="new-tag-link">-->
-				<!--					+ {{ $locale.baseText('workflowDetails.addTag') }}-->
-				<!--				</span>-->
-				<!--				<TagsContainer-->
-				<!--					v-else-->
-				<!--					:key="execution.id"-->
-				<!--					:tag-ids="execution.annotation?.tags.map(({ id }) => id) ?? []"-->
-				<!--					:clickable="true"-->
-				<!--					:responsive="true"-->
-				<!--					data-test-id="execution-annotation-tags"-->
-				<!--				/>-->
-			</div>
+			<span class="tags" data-test-id="annotation-tags-container">
+				<AnnotationTagsDropdown
+					ref="dropdown"
+					v-if="activeExecution?.annotation"
+					:v-model="tagIds"
+					:create-enabled="true"
+					:event-bus="tagsEventBus"
+					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
+				/>
+			</span>
+			<!--			<div :class="$style.tags" data-test-id="execution-annotation-tags-container">-->
+			<!--				<N8nTags-->
+			<!--					v-if="activeExecution?.annotation?.tags && activeExecution?.annotation.tags.length > 0"-->
+			<!--					:tags="activeExecution?.annotation?.tags"-->
+			<!--				></N8nTags>-->
+			<!--								<span class="add-tag clickable" data-test-id="new-tag-link">-->
+			<!--									+ {{ $locale.baseText('workflowDetails.addTag') }}-->
+			<!--								</span>-->
+			<!--								<TagsContainer-->
+			<!--									v-else-->
+			<!--									:key="execution.id"-->
+			<!--									:tag-ids="execution.annotation?.tags.map(({ id }) => id) ?? []"-->
+			<!--									:clickable="true"-->
+			<!--									:responsive="true"-->
+			<!--									data-test-id="execution-annotation-tags"-->
+			<!--								/>-->
+			<!--			</div>-->
 		</div>
 		<div :class="$style.section">
 			<div :class="$style.heading">
@@ -69,7 +95,7 @@
 </template>
 
 <script lang="ts">
-import type { ExecutionSummary } from 'n8n-workflow';
+import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -78,10 +104,12 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import TagsContainer from '@/components/TagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
-	components: { FontAwesomeIcon, TagsContainer, AnnotationTagsDropdown },
+	components: { WorkflowTagsDropdown, FontAwesomeIcon, TagsContainer, AnnotationTagsDropdown },
 	props: {
 		execution: {
 			type: Object as PropType<ExecutionSummary>,
@@ -100,6 +128,21 @@ export default defineComponent({
 		},
 		activeExecution() {
 			return this.executionsStore.activeExecution;
+		},
+		tagIds() {
+			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];
+		},
+	},
+	data() {
+		return {
+			tagsEventBus: createEventBus(),
+		};
+	},
+	methods: {
+		async onVote(vote: AnnotationVote) {
+			if (this.activeExecution) {
+				await this.executionsStore.annotateExecution(this.activeExecution?.id, { vote });
+			}
 		},
 	},
 });
@@ -159,11 +202,11 @@ export default defineComponent({
 	display: flex;
 	flex-direction: row;
 	justify-content: space-between;
+	align-items: center;
 
 	.ratingIcon {
 		display: flex;
 		flex-direction: row;
-		gap: var(--spacing-xs);
 
 		.highlight {
 			color: var(--color-primary);
