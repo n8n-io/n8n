@@ -137,7 +137,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-post-execute` for finished execution', () => {
+		it('should log on `workflow-post-execute` for successful execution', () => {
 			const payload = mock<RelayEventMap['workflow-post-execute']>({
 				executionId: 'some-id',
 				userId: 'some-id',
@@ -166,7 +166,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-post-execute` event for unfinished execution', () => {
+		it('should log on `workflow-post-execute` event for failed execution', () => {
 			const runData = mock<IRun>({
 				status: 'error',
 				mode: 'manual',
