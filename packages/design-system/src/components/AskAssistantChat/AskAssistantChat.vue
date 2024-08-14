@@ -348,6 +348,10 @@ p {
 .info {
 	font-size: var(--font-size-s);
 	color: var(--color-text-base);
+
+	button {
+		display: inline-flex;
+	}
 }
 
 .back:hover {
@@ -450,6 +454,10 @@ p {
 	> button,
 	> span {
 		margin-right: var(--spacing-3xs);
+	}
+
+	button {
+		display: inline-flex;
 	}
 }
 
