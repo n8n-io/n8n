@@ -630,8 +630,8 @@ importers:
         specifier: 0.3.20-10
         version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)
       '@n8n_io/ai-assistant-sdk':
-        specifier: 1.9.0
-        version: 1.9.0
+        specifier: 1.9.2
+        version: 1.9.2
       '@n8n_io/license-sdk':
         specifier: 2.13.0
         version: 2.13.0
@@ -4224,8 +4224,8 @@ packages:
     engines: {node: '>=18.10', pnpm: '>=9.6'}
     hasBin: true
 
-  '@n8n_io/ai-assistant-sdk@1.9.0':
-    resolution: {integrity: sha512-2mWjupt16wjvPfa3XasvKAWLduUT1d1b2SbsA5TIbGFssmBkGHMPvmz30rRN7+OAs4+4d/MyAkSvud4HvZGdlw==}
+  '@n8n_io/ai-assistant-sdk@1.9.2':
+    resolution: {integrity: sha512-OnREzgzZFmKkuWh+XHifGBts9EiATR+IAmNuOP5kLv7S9fQE0fGggt/qwcXgDjTMEcJn9Xu++rVAtcrDb4VwHQ==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.13.0':
@@ -12579,6 +12579,10 @@ packages:
     resolution: {integrity: sha512-/0BWqR8rJNRysS5lqVmfc7eeOErcOP4tZpATVjJOojjHZ71gSYVAtFhEmadcIjwMIUehh5NFyKGsXCnXIajtbA==}
     engines: {node: '>=18.17'}
 
+  undici@6.19.7:
+    resolution: {integrity: sha512-HR3W/bMGPSr90i8AAp2C4DM3wChFdJPLrWYpIS++LxS8K+W535qftjt+4MyjNYHeWabMj1nvtmLIi7l++iq91A==}
+    engines: {node: '>=18.17'}
+
   unicode-canonical-property-names-ecmascript@2.0.0:
     resolution: {integrity: sha512-yY5PpDlfVIU5+y/BSCxAJRBIS1Zc2dDG3Ujq+sR0U+JjUevW2JhocOF+soROYDSaAezOzOKuyyixhD6mBknSmQ==}
     engines: {node: '>=4'}
@@ -16736,7 +16740,9 @@ snapshots:
       acorn: 8.12.1
       acorn-walk: 8.3.2
 
-  '@n8n_io/ai-assistant-sdk@1.9.0': {}
+  '@n8n_io/ai-assistant-sdk@1.9.2':
+    dependencies:
+      undici: 6.19.7
 
   '@n8n_io/license-sdk@2.13.0':
     dependencies:
@@ -27105,6 +27111,8 @@ snapshots:
       '@fastify/busboy': 2.0.0
 
   undici@6.18.1: {}
+
+  undici@6.19.7: {}
 
   unicode-canonical-property-names-ecmascript@2.0.0: {}
 
