@@ -4,6 +4,7 @@ import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 import type { ChatRequest } from '@/types/assistant.types';
+import { assert } from '@/utils/assert';
 
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
 let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
@@ -214,41 +215,46 @@ export const streamRequest = async (
 		credentials: 'include',
 		body: JSON.stringify(payload),
 	};
-	const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
+	try {
+		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
 
-	if (response.ok && response.body) {
-		// Handle the streaming response
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder('utf-8');
+		if (response.ok && response.body) {
+			// Handle the streaming response
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder('utf-8');
 
-		async function readStream() {
-			const { done, value } = await reader.read();
-			if (done) {
-				onDone?.();
-				return;
-			}
+			async function readStream() {
+				const { done, value } = await reader.read();
+				if (done) {
+					onDone?.();
+					return;
+				}
 
-			const chunk = decoder.decode(value);
-			const splitChunks = chunk.split(separator);
+				const chunk = decoder.decode(value);
+				const splitChunks = chunk.split(separator);
 
-			for (const splitChunk of splitChunks) {
-				if (splitChunk && onChunk) {
-					try {
-						onChunk(jsonParse(splitChunk, { errorMessage: 'Invalid json chunk in stream' }));
-					} catch (e: unknown) {
-						if (e instanceof Error) {
-							console.log(`${e.message}: ${splitChunk}`);
-							onError?.(e);
+				for (const splitChunk of splitChunks) {
+					if (splitChunk && onChunk) {
+						try {
+							onChunk(jsonParse(splitChunk, { errorMessage: 'Invalid json chunk in stream' }));
+						} catch (e: unknown) {
+							if (e instanceof Error) {
+								console.log(`${e.message}: ${splitChunk}`);
+								onError?.(e);
+							}
 						}
 					}
 				}
+				await readStream();
 			}
-			await readStream();
-		}
 
-		// Start reading the stream
-		await readStream();
-	} else if (onError) {
-		onError(new Error(response.statusText));
+			// Start reading the stream
+			await readStream();
+		} else if (onError) {
+			onError(new Error(response.statusText));
+		}
+	} catch (e: unknown) {
+		assert(e instanceof Error);
+		onError?.(e);
 	}
 };
