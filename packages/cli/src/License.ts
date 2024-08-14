@@ -249,6 +249,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
 	}
 
+	isAiAssistantEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_ASSISTANT);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}

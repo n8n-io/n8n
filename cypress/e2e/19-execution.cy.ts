@@ -275,7 +275,6 @@ describe('Execution', () => {
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
 		successToast().should('be.visible');
-		clearNotifications();
 
 		// Clear execution data
 		workflowPage.getters.clearExecutionDataButton().should('be.visible');

@@ -17,13 +17,14 @@ import N8nIcon from '../N8nIcon';
 const TYPE = ['dots', 'ring'] as const;
 
 interface SpinnerProps {
-	size?: Exclude<TextSize, 'xsmall' | 'mini' | 'xlarge'>;
+	size?: Exclude<TextSize, 'mini' | 'xlarge'>;
 	type?: (typeof TYPE)[number];
 }
 
 defineOptions({ name: 'N8nSpinner' });
 withDefaults(defineProps<SpinnerProps>(), {
 	type: 'dots',
+	size: 'medium',
 });
 </script>
 
