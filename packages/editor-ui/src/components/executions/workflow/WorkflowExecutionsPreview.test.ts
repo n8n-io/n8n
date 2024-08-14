@@ -12,7 +12,7 @@ import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
 import { FontAwesomePlugin } from '@/plugins/icons';
 import { GlobalComponentsPlugin } from '@/plugins/components';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IWorkflowDb } from '@/Interface';
+import type { ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 
 let pinia: ReturnType<typeof createPinia>;
 
@@ -49,7 +49,7 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const executionDataFactory = (): ExecutionSummary => ({
+const executionDataFactory = (): ExecutionSummaryWithScopes => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
