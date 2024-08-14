@@ -349,10 +349,10 @@ importers:
         version: 0.0.10(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       '@langchain/community':
         specifier: 0.2.20
-        version: 0.2.20(wowgvfxtiu4vww53wbp4ny5rre)
+        version: 0.2.20(32xju6nqoe2wrsbntqq2x5vcke)
       '@langchain/core':
         specifier: 0.2.18
-        version: 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+        version: 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@langchain/google-genai':
         specifier: 0.0.23
         version: 0.0.23(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
@@ -370,25 +370,25 @@ importers:
         version: 0.0.2(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       '@langchain/openai':
         specifier: 0.2.5
-        version: 0.2.5(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))
+        version: 0.2.5(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))
       '@langchain/pinecone':
         specifier: 0.0.8
-        version: 0.0.8(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+        version: 0.0.8(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@langchain/qdrant':
         specifier: ^0.0.5
-        version: 0.0.5(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(typescript@5.5.2)
+        version: 0.0.5(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(typescript@5.5.2)
       '@langchain/redis':
         specifier: 0.0.5
-        version: 0.0.5(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+        version: 0.0.5(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@langchain/textsplitters':
         specifier: 0.0.3
-        version: 0.0.3(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+        version: 0.0.3(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@mozilla/readability':
         specifier: ^0.5.0
         version: 0.5.0
       '@n8n/typeorm':
         specifier: 0.3.20-10
-        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.25
         version: 3.9.25
@@ -402,7 +402,7 @@ importers:
         specifier: 2.43.4
         version: 2.43.4
       '@types/pg':
-        specifier: ^8.11.3
+        specifier: ^8.11.6
         version: 8.11.6
       '@xata.io/client':
         specifier: 0.28.4
@@ -439,7 +439,7 @@ importers:
         version: 2.1.0
       langchain:
         specifier: 0.2.11
-        version: 0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4)
+        version: 0.2.11(6hdkxymucpmkiknmt5geracdu4)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -459,8 +459,8 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       pg:
-        specifier: 8.11.3
-        version: 8.11.3
+        specifier: 8.12.0
+        version: 8.12.0
       redis:
         specifier: 4.6.12
         version: 4.6.12
@@ -628,7 +628,7 @@ importers:
         version: link:../@n8n/permissions
       '@n8n/typeorm':
         specifier: 0.3.20-10
-        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)
+        version: 0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.13.0
         version: 2.13.0
@@ -753,8 +753,8 @@ importers:
         specifier: 'catalog:'
         version: 3.4.4
       mysql2:
-        specifier: 3.10.0
-        version: 3.10.0
+        specifier: 3.11.0
+        version: 3.11.0
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -792,8 +792,8 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
       pg:
-        specifier: 8.11.3
-        version: 8.11.3
+        specifier: 8.12.0
+        version: 8.12.0
       picocolors:
         specifier: 1.0.1
         version: 1.0.1
@@ -1550,8 +1550,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2
       mysql2:
-        specifier: 3.10.0
-        version: 3.10.0
+        specifier: 3.11.0
+        version: 3.11.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -1571,11 +1571,11 @@ importers:
         specifier: 2.16.105
         version: 2.16.105
       pg:
-        specifier: 8.11.3
-        version: 8.11.3
+        specifier: 8.12.0
+        version: 8.12.0
       pg-promise:
-        specifier: 10.15.4
-        version: 10.15.4
+        specifier: 11.9.1
+        version: 11.9.1
       promise-ftp:
         specifier: 1.3.5
         version: 1.3.5(promise-ftp-common@1.1.5)
@@ -6221,8 +6221,8 @@ packages:
   assert-never@1.2.1:
     resolution: {integrity: sha512-TaTivMB6pYI1kXwrFlEhLeGfOqoDNdTxjCdwRfFFkEA30Eu+k48W34nlok2EYWJfFFzqaEmichdNM7th6M5HNw==}
 
-  assert-options@0.8.0:
-    resolution: {integrity: sha512-qSELrEaEz4sGwTs4Qh+swQkjiHAysC4rot21+jzXU86dJzNG+FDqBzyS3ohSoTRf4ZLA3FSwxQdiuNl5NXUtvA==}
+  assert-options@0.8.1:
+    resolution: {integrity: sha512-5lNGRB5g5i2bGIzb+J1QQE1iKU/WEMVBReFIc5pPDWjcPj23otPL0eI6PB2v7QPi0qU6Mhym5D3y0ZiSIOf3GA==}
     engines: {node: '>=10.0.0'}
 
   assert-plus@1.0.0:
@@ -6287,6 +6287,10 @@ packages:
 
   aws-sign2@0.7.0:
     resolution: {integrity: sha512-08kcGqnYf/YmjoRhfxyu+CLxBjUtHLXLXX/vUfx9l2LYzG3c1m61nrpyFUZI6zeS+Li/wWMMidD9KgrqtGq3mA==}
+
+  aws-ssl-profiles@1.1.1:
+    resolution: {integrity: sha512-+H+kuK34PfMaI9PNU/NSjBKL5hh/KDM9J72kwYeYEm0A8B1AC4fuCy3qsjnA7lxklgyXsB68yn8Z2xoZEjgwCQ==}
+    engines: {node: '>= 6.0.0'}
 
   aws4@1.11.0:
     resolution: {integrity: sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==}
@@ -6484,10 +6488,6 @@ packages:
 
   buffer-more-ints@1.0.0:
     resolution: {integrity: sha512-EMetuGFz5SLsT0QTnXzINh4Ksr+oo4i+UGTXEshiGCQWnsgSs7ZhJ8fzlwQ+OzEMs0MpDAMr1hxnblp5a4vcHg==}
-
-  buffer-writer@2.0.0:
-    resolution: {integrity: sha512-a7ZpuTZU1TRtnwyCNW3I5dc0wWNC3VR9S++Ewyk2HHZdrO3CQJqSpd+95Us590V6AL7JqUAH2IwZ/398PmNFgw==}
-    engines: {node: '>=4'}
 
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
@@ -10178,8 +10178,8 @@ packages:
     resolution: {integrity: sha512-+MrqnJRtxdF+xngFfUUkIMQrUUL0KsxbADUkn23Z/4ibGg192Q+z+CQyiYwvWTsYjJygmMR8+w3ZDa98Zh6ESg==}
     engines: {node: '>=12.0.0'}
 
-  mysql2@3.10.0:
-    resolution: {integrity: sha512-qx0mfWYt1DpTPkw8mAcHW/OwqqyNqBLBHvY5IjN8+icIYTjt6znrgYJ+gxqNNRpVknb5Wc/gcCM4XjbCR0j5tw==}
+  mysql2@3.11.0:
+    resolution: {integrity: sha512-J9phbsXGvTOcRVPR95YedzVSxJecpW5A5+cQ57rhHIFXteTP10HCs+VBjS7DHIKfEaI1zQ5tlVrquCd64A6YvA==}
     engines: {node: '>= 8.0'}
 
   mz@2.7.0:
@@ -10592,9 +10592,6 @@ packages:
     resolution: {integrity: sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==}
     engines: {node: '>=6'}
 
-  packet-reader@1.0.0:
-    resolution: {integrity: sha512-HAKu/fG3HpHFO0AA8WE8q2g+gBJaZ9MG7fcKk+IJPLTGAD6Psw4443l+9DGRbOIh3/aXr7Phy0TjilYivJo5XQ==}
-
   pako@0.2.9:
     resolution: {integrity: sha512-NUcwaKxUxWrZLpDG+z/xZaCgQITkA/Dv4V/T6bw7VON6l1Xz/VnrBqrYjZQ12TamKHzITTfOEIYUj48y2KXImA==}
 
@@ -10731,32 +10728,32 @@ packages:
   pg-cloudflare@1.1.1:
     resolution: {integrity: sha512-xWPagP/4B6BgFO+EKz3JONXv3YDgvkbVrGw2mTo3D6tVDQRh1e7cqVGvyR3BE+eQgAvx1XhW/iEASj4/jCWl3Q==}
 
-  pg-connection-string@2.6.2:
-    resolution: {integrity: sha512-ch6OwaeaPYcova4kKZ15sbJ2hKb/VP48ZD2gE7i1J+L4MspCtBMAx8nMgz7bksc7IojCIIWuEhHibSMFH8m8oA==}
+  pg-connection-string@2.6.4:
+    resolution: {integrity: sha512-v+Z7W/0EO707aNMaAEfiGnGL9sxxumwLl2fJvCQtMn9Fxsg+lPpPkdcyBSv/KFgpGdYkMfn+EI1Or2EHjpgLCA==}
 
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
 
-  pg-minify@1.6.2:
-    resolution: {integrity: sha512-1KdmFGGTP6jplJoI8MfvRlfvMiyBivMRP7/ffh4a11RUFJ7kC2J0ZHlipoKiH/1hz+DVgceon9U2qbaHpPeyPg==}
-    engines: {node: '>=8.0'}
+  pg-minify@1.6.5:
+    resolution: {integrity: sha512-u0UE8veaCnMfJmoklqneeBBopOAPG3/6DHqGVHYAhz8DkJXh9dnjPlz25fRxn4e+6XVzdOp7kau63Rp52fZ3WQ==}
+    engines: {node: '>=14.0.0'}
 
   pg-numeric@1.0.2:
     resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
     engines: {node: '>=4'}
 
-  pg-pool@3.6.1:
-    resolution: {integrity: sha512-jizsIzhkIitxCGfPRzJn1ZdcosIt3pz9Sh3V01fm1vZnbnCMgmGl5wvGGdNN2EL9Rmb0EcFoCkixH4Pu+sP9Og==}
+  pg-pool@3.6.2:
+    resolution: {integrity: sha512-Htjbg8BlwXqSBQ9V8Vjtc+vzf/6fVUuak/3/XXKA9oxZprwW3IMDQTGHP+KDmVL7rtd+R1QjbnCFPuTHm3G4hg==}
     peerDependencies:
       pg: '>=8.0'
 
-  pg-promise@10.15.4:
-    resolution: {integrity: sha512-BKlHCMCdNUmF6gagVbehRWSEiVcZzPVltEx14OJExR9Iz9/1R6KETDWLLGv2l6yRqYFnEZZy1VDjRhArzeIGrw==}
-    engines: {node: '>=12.0'}
+  pg-promise@11.9.1:
+    resolution: {integrity: sha512-qvMmyDvWd64X0a25hCuWV40GLMbgeYf4z7ZmzxQqGHtUIlzMtxcMtaBHAMr7XVOL62wFv2ZVKW5pFruD/4ZAOg==}
+    engines: {node: '>=14.0'}
 
-  pg-protocol@1.6.0:
-    resolution: {integrity: sha512-M+PDm637OY5WM307051+bsDia5Xej6d9IR4GwJse1qA1DIhiKlksvrneZOYQq42OM+spubpcNYEo2FcKQrDk+Q==}
+  pg-protocol@1.6.1:
+    resolution: {integrity: sha512-jPIlvgoD63hrEuihvIg+tJhoGjUsLPn6poJY9N5CnlPd91c2T18T/9zBtLxZSb1EhYxBRoZJtzScCaWlYLtktg==}
 
   pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
@@ -10766,17 +10763,8 @@ packages:
     resolution: {integrity: sha512-cRL3JpS3lKMGsKaWndugWQoLOCoP+Cic8oseVcbr0qhPzYD5DWXK+RZ9LY9wxRf7RQia4SCwQlXk0q6FCPrVng==}
     engines: {node: '>=10'}
 
-  pg@8.11.3:
-    resolution: {integrity: sha512-+9iuvG8QfaaUrrph+kpF24cXkH1YOOUeArRNYIxq1viYHZagBxrTno7cecY1Fa44tJeZvaoG+Djpkc3JwehN5g==}
-    engines: {node: '>= 8.0.0'}
-    peerDependencies:
-      pg-native: '>=3.0.1'
-    peerDependenciesMeta:
-      pg-native:
-        optional: true
-
-  pg@8.8.0:
-    resolution: {integrity: sha512-UXYN0ziKj+AeNNP7VDMwrehpACThH7LUl/p8TDFpEUuSejCUIwGSfxpHsPvtM6/WXFy6SU4E5RG4IJV/TZAGjw==}
+  pg@8.12.0:
+    resolution: {integrity: sha512-A+LHUSnwnxrnL/tZ+OLfqR1SxLN3c/pgDztZ47Rpbsd4jUytsTtwQo/TLPRzPJMp/1pbhYVhH9cuSZLAajNfjQ==}
     engines: {node: '>= 8.0.0'}
     peerDependencies:
       pg-native: '>=3.0.1'
@@ -11817,9 +11805,9 @@ packages:
   spdx-license-ids@3.0.12:
     resolution: {integrity: sha512-rr+VVSXtRhO4OHbXUiAF7xW3Bo9DuuF6C5jH+q/x15j2jniycgKbxU09Hr0WqlSLUs4i4ltHGXqTe7VHclYWyA==}
 
-  spex@3.2.0:
-    resolution: {integrity: sha512-9srjJM7NaymrpwMHvSmpDeIK5GoRMX/Tq0E8aOlDPS54dDnDUIp30DrP9SphMPEETDLzEM9+4qo+KipmbtPecg==}
-    engines: {node: '>=4.5'}
+  spex@3.3.0:
+    resolution: {integrity: sha512-VNiXjFp6R4ldPbVRYbpxlD35yRHceecVXlct1J4/X80KuuPnW2AXMq3sGwhnJOhKkUsOxAT6nRGfGE5pocVw5w==}
+    engines: {node: '>=10.0.0'}
 
   split-on-first@1.1.0:
     resolution: {integrity: sha512-43ZssAJaMusuKWL8sKUBQXHWOpq8d6CfN/u1p4gUzfJkM05C8rxTmYrkIPTXapZpORA6LkkzcUulJ8FqA7Uudw==}
@@ -15796,8 +15784,8 @@ snapshots:
       url-join: 4.0.1
       zod: 3.23.8
     optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      langchain: 0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4)
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(6hdkxymucpmkiknmt5geracdu4)
     transitivePeerDependencies:
       - encoding
 
@@ -16224,7 +16212,7 @@ snapshots:
   '@langchain/anthropic@0.2.9(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
       '@anthropic-ai/sdk': 0.22.0(encoding@0.1.13)
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       fast-xml-parser: 4.3.5
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
@@ -16236,23 +16224,23 @@ snapshots:
 
   '@langchain/cohere@0.0.10(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       cohere-ai: 7.10.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
       - langchain
       - openai
 
-  '@langchain/community@0.2.20(wowgvfxtiu4vww53wbp4ny5rre)':
+  '@langchain/community@0.2.20(32xju6nqoe2wrsbntqq2x5vcke)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))
       binary-extensions: 2.2.0
       expr-eval: 2.0.2
       flat: 5.0.2
       js-yaml: 4.1.0
-      langchain: 0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4)
-      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(6hdkxymucpmkiknmt5geracdu4)
+      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       uuid: 10.0.0
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
@@ -16288,9 +16276,9 @@ snapshots:
       jsonwebtoken: 9.0.2
       lodash: 4.17.21
       mammoth: 1.7.2
-      mysql2: 3.10.0
+      mysql2: 3.11.0
       pdf-parse: 1.1.1
-      pg: 8.11.3
+      pg: 8.12.0
       redis: 4.6.12
       ws: 8.17.1
     transitivePeerDependencies:
@@ -16313,6 +16301,24 @@ snapshots:
       - pyodide
       - supports-color
 
+  '@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))':
+    dependencies:
+      ansi-styles: 5.2.0
+      camelcase: 6.3.0
+      decamelize: 1.2.0
+      js-tiktoken: 1.0.12
+      langsmith: 0.1.39(@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      ml-distance: 4.0.1
+      mustache: 4.2.0
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      uuid: 10.0.0
+      zod: 3.23.8
+      zod-to-json-schema: 3.23.0(zod@3.23.8)
+    transitivePeerDependencies:
+      - langchain
+      - openai
+
   '@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)':
     dependencies:
       ansi-styles: 5.2.0
@@ -16331,27 +16337,9 @@ snapshots:
       - langchain
       - openai
 
-  '@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))':
+  '@langchain/google-common@0.0.22(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.39(@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      ml-distance: 4.0.1
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.0(zod@3.23.8)
-    transitivePeerDependencies:
-      - langchain
-      - openai
-
-  '@langchain/google-common@0.0.22(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
-    dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       uuid: 10.0.0
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     transitivePeerDependencies:
@@ -16359,10 +16347,10 @@ snapshots:
       - openai
       - zod
 
-  '@langchain/google-gauth@0.0.21(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
+  '@langchain/google-gauth@0.0.21(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/google-common': 0.0.22(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/google-common': 0.0.22(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
       google-auth-library: 8.9.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -16374,7 +16362,7 @@ snapshots:
   '@langchain/google-genai@0.0.23(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
       '@google/generative-ai': 0.7.1
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     transitivePeerDependencies:
       - langchain
@@ -16383,8 +16371,8 @@ snapshots:
 
   '@langchain/google-vertexai@0.0.21(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/google-gauth': 0.0.21(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/google-gauth': 0.0.21(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
     transitivePeerDependencies:
       - encoding
       - langchain
@@ -16394,8 +16382,8 @@ snapshots:
 
   '@langchain/groq@0.0.15(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))
       groq-sdk: 0.3.2(encoding@0.1.13)
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
@@ -16407,7 +16395,7 @@ snapshots:
 
   '@langchain/mistralai@0.0.27(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@mistralai/mistralai': 0.4.0(encoding@0.1.13)
       uuid: 10.0.0
       zod: 3.23.8
@@ -16419,16 +16407,16 @@ snapshots:
 
   '@langchain/ollama@0.0.2(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       ollama: 0.5.6
       uuid: 10.0.0
     transitivePeerDependencies:
       - langchain
       - openai
 
-  '@langchain/openai@0.2.5(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))':
+  '@langchain/openai@0.2.5(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       js-tiktoken: 1.0.12
       openai: 4.53.0(encoding@0.1.13)
       zod: 3.23.8
@@ -16451,9 +16439,9 @@ snapshots:
       - supports-color
     optional: true
 
-  '@langchain/pinecone@0.0.8(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))':
+  '@langchain/pinecone@0.0.8(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@pinecone-database/pinecone': 3.0.0
       flat: 5.0.2
       uuid: 10.0.0
@@ -16461,9 +16449,9 @@ snapshots:
       - langchain
       - openai
 
-  '@langchain/qdrant@0.0.5(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))(typescript@5.5.2)':
+  '@langchain/qdrant@0.0.5(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))(typescript@5.5.2)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       '@qdrant/js-client-rest': 1.9.0(typescript@5.5.2)
       uuid: 9.0.1
     transitivePeerDependencies:
@@ -16471,10 +16459,18 @@ snapshots:
       - openai
       - typescript
 
-  '@langchain/redis@0.0.5(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))':
+  '@langchain/redis@0.0.5(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       redis: 4.6.13
+    transitivePeerDependencies:
+      - langchain
+      - openai
+
+  '@langchain/textsplitters@0.0.3(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))':
+    dependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      js-tiktoken: 1.0.12
     transitivePeerDependencies:
       - langchain
       - openai
@@ -16487,14 +16483,6 @@ snapshots:
       - langchain
       - openai
     optional: true
-
-  '@langchain/textsplitters@0.0.3(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))':
-    dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      js-tiktoken: 1.0.12
-    transitivePeerDependencies:
-      - langchain
-      - openai
 
   '@lezer/common@1.1.0': {}
 
@@ -16643,7 +16631,7 @@ snapshots:
       esprima-next: 5.8.4
       recast: 0.22.0
 
-  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)':
+  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.12)(sqlite3@5.1.7)':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16666,14 +16654,14 @@ snapshots:
       '@sentry/node': 7.87.0
       ioredis: 5.3.2
       mssql: 10.0.2
-      mysql2: 3.10.0
-      pg: 8.11.3
+      mysql2: 3.11.0
+      pg: 8.12.0
       redis: 4.6.12
       sqlite3: 5.1.7
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.10.0)(pg@8.11.3)(redis@4.6.14)(sqlite3@5.1.7)':
+  '@n8n/typeorm@0.3.20-10(@sentry/node@7.87.0)(ioredis@5.3.2)(mssql@10.0.2)(mysql2@3.11.0)(pg@8.12.0)(redis@4.6.14)(sqlite3@5.1.7)':
     dependencies:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
@@ -16696,8 +16684,8 @@ snapshots:
       '@sentry/node': 7.87.0
       ioredis: 5.3.2
       mssql: 10.0.2
-      mysql2: 3.10.0
-      pg: 8.11.3
+      mysql2: 3.11.0
+      pg: 8.12.0
       redis: 4.6.14
       sqlite3: 5.1.7
     transitivePeerDependencies:
@@ -18701,7 +18689,7 @@ snapshots:
   '@types/pg@8.11.6':
     dependencies:
       '@types/node': 18.16.16
-      pg-protocol: 1.6.0
+      pg-protocol: 1.6.1
       pg-types: 4.0.2
 
   '@types/phoenix@1.6.4': {}
@@ -19593,7 +19581,7 @@ snapshots:
 
   assert-never@1.2.1: {}
 
-  assert-options@0.8.0: {}
+  assert-options@0.8.1: {}
 
   assert-plus@1.0.0: {}
 
@@ -19652,6 +19640,8 @@ snapshots:
   avsc@5.7.6: {}
 
   aws-sign2@0.7.0: {}
+
+  aws-ssl-profiles@1.1.1: {}
 
   aws4@1.11.0: {}
 
@@ -19903,8 +19893,6 @@ snapshots:
   buffer-from@1.1.2: {}
 
   buffer-more-ints@1.0.0: {}
-
-  buffer-writer@2.0.0: {}
 
   buffer@5.7.1:
     dependencies:
@@ -23524,43 +23512,17 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.2.11(axios@1.7.3)(openai@4.53.0):
+  langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4):
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
-      '@langchain/openai': 0.2.5(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))
-      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))
+      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       binary-extensions: 2.2.0
       js-tiktoken: 1.0.12
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
       langchainhub: 0.0.8
-      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
-      ml-distance: 4.0.1
-      openapi-types: 12.1.3
-      p-retry: 4.6.2
-      uuid: 10.0.0
-      yaml: 2.3.4
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.0(zod@3.23.8)
-    optionalDependencies:
-      axios: 1.7.3(debug@3.2.7)
-    transitivePeerDependencies:
-      - encoding
-      - openai
-      - supports-color
-    optional: true
-
-  langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4):
-    dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))
-      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      binary-extensions: 2.2.0
-      js-tiktoken: 1.0.12
-      js-yaml: 4.1.0
-      jsonpointer: 5.0.1
-      langchainhub: 0.0.8
-      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
+      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
       ml-distance: 4.0.1
       openapi-types: 12.1.3
       p-retry: 4.6.2
@@ -23573,7 +23535,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.535.0
       '@langchain/anthropic': 0.2.9(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       '@langchain/cohere': 0.0.10(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
-      '@langchain/community': 0.2.20(wowgvfxtiu4vww53wbp4ny5rre)
+      '@langchain/community': 0.2.20(32xju6nqoe2wrsbntqq2x5vcke)
       '@langchain/google-genai': 0.0.23(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
       '@langchain/google-vertexai': 0.0.21(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
       '@langchain/groq': 0.0.15(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
@@ -23601,7 +23563,46 @@ snapshots:
       - openai
       - supports-color
 
+  langchain@0.2.11(axios@1.7.3)(openai@4.53.0):
+    dependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
+      '@langchain/openai': 0.2.5(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))
+      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
+      binary-extensions: 2.2.0
+      js-tiktoken: 1.0.12
+      js-yaml: 4.1.0
+      jsonpointer: 5.0.1
+      langchainhub: 0.0.8
+      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
+      ml-distance: 4.0.1
+      openapi-types: 12.1.3
+      p-retry: 4.6.2
+      uuid: 10.0.0
+      yaml: 2.3.4
+      zod: 3.23.8
+      zod-to-json-schema: 3.23.0(zod@3.23.8)
+    optionalDependencies:
+      axios: 1.7.3(debug@3.2.7)
+    transitivePeerDependencies:
+      - encoding
+      - openai
+      - supports-color
+    optional: true
+
   langchainhub@0.0.8: {}
+
+  langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)):
+    dependencies:
+      '@types/uuid': 9.0.7
+      commander: 10.0.1
+      lodash.set: 4.3.2
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      uuid: 9.0.1
+    optionalDependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(6hdkxymucpmkiknmt5geracdu4)
+      openai: 4.53.0(encoding@0.1.13)
 
   langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0):
     dependencies:
@@ -23617,17 +23618,16 @@ snapshots:
       openai: 4.53.0(encoding@0.1.13)
     optional: true
 
-  langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)):
+  langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13)):
     dependencies:
       '@types/uuid': 9.0.7
       commander: 10.0.1
-      lodash.set: 4.3.2
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.1
     optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      langchain: 0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4)
+      '@langchain/core': 0.2.18(langchain@0.2.11(6hdkxymucpmkiknmt5geracdu4))(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(6hdkxymucpmkiknmt5geracdu4)
       openai: 4.53.0(encoding@0.1.13)
 
   langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0):
@@ -23640,18 +23640,6 @@ snapshots:
     optionalDependencies:
       '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.3)(openai@4.53.0))(openai@4.53.0)
       langchain: 0.2.11(axios@1.7.3)(openai@4.53.0)
-      openai: 4.53.0(encoding@0.1.13)
-
-  langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13)):
-    dependencies:
-      '@types/uuid': 9.0.7
-      commander: 10.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 9.0.1
-    optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4))(openai@4.53.0(encoding@0.1.13))
-      langchain: 0.2.11(cv2sdxknx6u4tk4xue5ivzkdh4)
       openai: 4.53.0(encoding@0.1.13)
 
   lazy-ass@1.6.0: {}
@@ -24319,8 +24307,9 @@ snapshots:
 
   mylas@2.1.13: {}
 
-  mysql2@3.10.0:
+  mysql2@3.11.0:
     dependencies:
+      aws-ssl-profiles: 1.1.1
       denque: 2.1.0
       generate-function: 2.3.1
       iconv-lite: 0.6.3
@@ -24794,8 +24783,6 @@ snapshots:
 
   p-try@2.2.0: {}
 
-  packet-reader@1.0.0: {}
-
   pako@0.2.9: {}
 
   pako@1.0.11: {}
@@ -24868,7 +24855,7 @@ snapshots:
 
   path-scurry@1.10.1:
     dependencies:
-      lru-cache: 9.1.2
+      lru-cache: 10.2.2
       minipass: 7.0.2
 
   path-to-regexp@0.1.7: {}
@@ -24918,32 +24905,28 @@ snapshots:
   pg-cloudflare@1.1.1:
     optional: true
 
-  pg-connection-string@2.6.2: {}
+  pg-connection-string@2.6.4: {}
 
   pg-int8@1.0.1: {}
 
-  pg-minify@1.6.2: {}
+  pg-minify@1.6.5: {}
 
   pg-numeric@1.0.2: {}
 
-  pg-pool@3.6.1(pg@8.11.3):
+  pg-pool@3.6.2(pg@8.12.0):
     dependencies:
-      pg: 8.11.3
+      pg: 8.12.0
 
-  pg-pool@3.6.1(pg@8.8.0):
+  pg-promise@11.9.1:
     dependencies:
-      pg: 8.8.0
-
-  pg-promise@10.15.4:
-    dependencies:
-      assert-options: 0.8.0
-      pg: 8.8.0
-      pg-minify: 1.6.2
-      spex: 3.2.0
+      assert-options: 0.8.1
+      pg: 8.12.0
+      pg-minify: 1.6.5
+      spex: 3.3.0
     transitivePeerDependencies:
       - pg-native
 
-  pg-protocol@1.6.0: {}
+  pg-protocol@1.6.1: {}
 
   pg-types@2.2.0:
     dependencies:
@@ -24963,27 +24946,15 @@ snapshots:
       postgres-interval: 3.0.0
       postgres-range: 1.1.4
 
-  pg@8.11.3:
+  pg@8.12.0:
     dependencies:
-      buffer-writer: 2.0.0
-      packet-reader: 1.0.0
-      pg-connection-string: 2.6.2
-      pg-pool: 3.6.1(pg@8.11.3)
-      pg-protocol: 1.6.0
+      pg-connection-string: 2.6.4
+      pg-pool: 3.6.2(pg@8.12.0)
+      pg-protocol: 1.6.1
       pg-types: 2.2.0
       pgpass: 1.0.5
     optionalDependencies:
       pg-cloudflare: 1.1.1
-
-  pg@8.8.0:
-    dependencies:
-      buffer-writer: 2.0.0
-      packet-reader: 1.0.0
-      pg-connection-string: 2.6.2
-      pg-pool: 3.6.1(pg@8.8.0)
-      pg-protocol: 1.6.0
-      pg-types: 2.2.0
-      pgpass: 1.0.5
 
   pgpass@1.0.5:
     dependencies:
@@ -26252,7 +26223,7 @@ snapshots:
 
   spdx-license-ids@3.0.12: {}
 
-  spex@3.2.0: {}
+  spex@3.3.0: {}
 
   split-on-first@1.1.0: {}
 
