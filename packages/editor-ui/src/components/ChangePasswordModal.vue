@@ -34,12 +34,12 @@ import { useToast } from '@/composables/useToast';
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import Modal from '@/components/Modal.vue';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
 import type { IFormInputs, IFormInput } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 
 const config = ref<IFormInputs | null>(null);
-const formBus = createEventBus();
+const formBus = createFormEventBus();
 const modalBus = createEventBus();
 const password = ref('');
 const loading = ref(false);
