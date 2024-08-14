@@ -66,8 +66,10 @@ watch(
 
 onMounted(() => {
 	const select = selectRef.value?.$refs?.innerSelect as { $refs: { input: Element } } | undefined;
+
 	if (select) {
 		const input = select.$refs.input as Element | undefined;
+
 		if (input) {
 			input.setAttribute('maxlength', `${MAX_TAG_NAME_LENGTH}`);
 			input.addEventListener('keydown', (e: Event) => {
@@ -109,6 +111,7 @@ function onCreate() {
 }
 
 function onTagsUpdated(selected: string[]) {
+	console.log({ selected });
 	const manage = selected.find((value) => value === MANAGE_KEY);
 	const create = selected.find((value) => value === CREATE_KEY);
 
@@ -159,7 +162,7 @@ function onRemoveTag() {
 }
 
 function onClickOutside(e: Event) {
-	const tagsDropdown = document.querySelector(`.tags-dropdown[data-dropdown-key=${dropdownId}]`);
+	const tagsDropdown = document.querySelector(`.tags-dropdown-${dropdownId}`);
 
 	const clickInsideTagsDropdowns =
 		tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
@@ -187,9 +190,8 @@ function onClickOutside(e: Event) {
 			multiple
 			:allow-create="createEnabled"
 			:reserve-keyword="false"
-			:data-dropdown-key="dropdownId"
 			loading-text="..."
-			popper-class="tags-dropdown"
+			:popper-class="['tags-dropdown', 'tags-dropdown-' + dropdownId]"
 			data-test-id="tags-dropdown"
 			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"

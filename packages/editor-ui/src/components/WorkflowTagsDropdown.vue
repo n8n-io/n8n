@@ -55,6 +55,7 @@ async function handleCreateTag(name: string) {
 }
 
 function handleManageTags() {
+	console.log('MANAGE');
 	uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 }
 

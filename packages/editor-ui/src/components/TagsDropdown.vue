@@ -16,7 +16,7 @@
 			:allow-create="createEnabled"
 			:reserve-keyword="false"
 			loading-text="..."
-			popper-class="tags-dropdown"
+			:popper-class="tags - dropdown"
 			data-test-id="tags-dropdown"
 			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"

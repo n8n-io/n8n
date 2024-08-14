@@ -1,8 +1,7 @@
 <template>
 	<Modal
-		id="tags-manager-modal"
-		:title="i18n.baseText('tagsManager.manageTags')"
-		:name="TAGS_MANAGER_MODAL_KEY"
+		:title="i18n.baseText(titleLocaleKey)"
+		:name="modalKey"
 		:event-bus="modalBus"
 		min-width="620px"
 		min-height="420px"
@@ -14,6 +13,7 @@
 					v-if="hasTags || isCreating"
 					:is-loading="isLoading"
 					:tags="tags"
+					:usage-locale-key="usageLocaleKey"
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"
@@ -34,11 +34,14 @@ import type { ITag } from '@/Interface';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';
 import NoTagsView from '@/components/TagsManager/NoTagsView.vue';
 import Modal from '@/components/Modal.vue';
-import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useI18n } from '@/composables/useI18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 interface TagsManagerProps {
+	modalKey: string;
+	usageLocaleKey: BaseTextKey;
+	titleLocaleKey: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
 	onFetchTags: () => Promise<void>;
@@ -47,7 +50,10 @@ interface TagsManagerProps {
 	onDeleteTag: (id: string) => Promise<boolean>;
 }
 
-const props = defineProps<TagsManagerProps>();
+const props = withDefaults(defineProps<TagsManagerProps>(), {
+	titleLocaleKey: 'tagsManager.manageTags',
+	usageLocaleKey: 'tagsView.inUse',
+});
 
 const emit = defineEmits<{
 	'update:tags': [tags: ITag[]];

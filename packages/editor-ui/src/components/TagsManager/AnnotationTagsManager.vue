@@ -1,6 +1,8 @@
 <template>
 	<TagsManagerPure
-		:modal-key="TAGS_MANAGER_MODAL_KEY"
+		title-locale-key="annotationTagsManager.manageTags"
+		usage-locale-key="annotationTagsView.inUse"
+		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"
 		:on-fetch-tags="fetchTags"
@@ -15,14 +17,14 @@
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { useTagsStore } from '@/stores/tags.store';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 import TagsManagerPure from './TagsManagerPure.vue';
 import type { ITag } from '@/Interface';
-import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
-const tagsStore = useTagsStore();
+const tagsStore = useAnnotationTagsStore();
 
 const tags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);

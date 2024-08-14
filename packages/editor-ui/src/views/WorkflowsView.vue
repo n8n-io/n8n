@@ -149,9 +149,9 @@
 import { defineComponent } from 'vue';
 import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
-import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -181,7 +181,7 @@ const WorkflowsView = defineComponent({
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
-		TagsDropdown,
+		WorkflowTagsDropdown,
 		ProjectTabs,
 	},
 	data() {

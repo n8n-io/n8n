@@ -45,7 +45,8 @@ import CredentialsSelectModal from '@/components/CredentialsSelectModal.vue';
 import DuplicateWorkflowDialog from '@/components/DuplicateWorkflowDialog.vue';
 import ModalRoot from '@/components/ModalRoot.vue';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
-import TagsManager from '@/components/TagsManager/TagsManager.vue';
+import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
+import AnnotationTagsManager from '@/components/TagsManager/AnnotationTagsManager.vue';
 import UpdatesPanel from '@/components/UpdatesPanel.vue';
 import NpsSurvey from '@/components/NpsSurvey.vue';
 import WorkflowLMChat from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
@@ -64,7 +65,6 @@ import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/Wor
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
-import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 </script>
 
 <template>
@@ -107,7 +107,7 @@ import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vu
 		</ModalRoot>
 
 		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
-			<TagsManager />
+			<AnnotationTagsManager />
 		</ModalRoot>
 
 		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">

@@ -99,6 +99,8 @@
 	"activationModal.yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
 	"activationModal.yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
 	"activationModal.yourWorkflowWillNowRegularlyCheck": "Your workflow will now regularly check {serviceName} for events and trigger executions for them.",
+	"annotationTagsManager.manageTags": "Manage annotation tags",
+	"annotationTagsView.inUse": "{count} execution | {count} executions",
 	"auth.changePassword": "Change password",
 	"auth.changePassword.currentPassword": "Current password",
 	"auth.changePassword.error": "Problem changing the password",

@@ -75,13 +75,13 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import TagsDropdown from '@/components/TagsDropdown.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
+import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
-	components: { FontAwesomeIcon, TagsContainer, TagsDropdown },
+	components: { FontAwesomeIcon, TagsContainer, AnnotationTagsDropdown },
 	props: {
 		execution: {
 			type: Object as PropType<ExecutionSummary>,

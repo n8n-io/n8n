@@ -39,6 +39,10 @@ export default defineComponent({
 	name: 'TagsView',
 	components: { TagsTableHeader, TagsTable },
 	props: {
+		usageLocaleKey: {
+			type: String,
+			default: 'tagsView.inUse',
+		},
 		tags: {
 			type: Array as () => ITag[],
 			required: true,
@@ -73,7 +77,7 @@ export default defineComponent({
 		rows(): ITagRow[] {
 			const getUsage = (count: number | undefined) =>
 				count && count > 0
-					? this.$locale.baseText('tagsView.inUse', { adjustToNumber: count })
+					? this.$locale.baseText(this.usageLocaleKey, { adjustToNumber: count })
 					: this.$locale.baseText('tagsView.notBeingUsed');
 
 			const disabled = this.isCreateEnabled || !!this.updateId || !!this.deleteId;

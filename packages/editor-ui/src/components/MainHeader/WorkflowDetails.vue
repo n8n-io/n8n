@@ -21,7 +21,7 @@ import TagsContainer from '@/components/TagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 

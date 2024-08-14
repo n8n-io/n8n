@@ -4,7 +4,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import { ANNOTATION_TAGS_MANAGER_MODAL_KEY, TAGS_MANAGER_MODAL_KEY } from '@/constants';
+import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '@/constants';
 import type { EventBus } from 'n8n-design-system';
 
 interface TagsDropdownWrapperProps {
