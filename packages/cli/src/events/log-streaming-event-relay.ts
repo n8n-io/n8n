@@ -118,7 +118,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			workflowName: workflow.name,
 		};
 
-		console.log('payload.success', payload.success);
 		if (payload.success) {
 			void this.eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.success',
