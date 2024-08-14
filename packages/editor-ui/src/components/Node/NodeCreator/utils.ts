@@ -9,7 +9,6 @@ import type {
 import {
 	AI_CATEGORY_AGENTS,
 	AI_SUBCATEGORY,
-	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 } from '@/constants';
@@ -19,8 +18,6 @@ import { sublimeSearch } from '@/utils/sortUtils';
 import type { NodeViewItemSection } from './viewsData';
 import { i18n } from '@/plugins/i18n';
 import { sortBy } from 'lodash-es';
-
-import { usePostHog } from '@/stores/posthog.store';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,
@@ -77,11 +74,6 @@ export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 }
 
 export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
-	const aiEnabled = usePostHog().isAiEnabled();
-	if (!aiEnabled) {
-		items = items.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE);
-	}
-
 	// In order to support the old search we need to remove the 'trigger' part
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 

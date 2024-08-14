@@ -50,9 +50,7 @@ export class ManualChatTrigger implements INodeType {
 				name: 'openChat',
 				type: 'button',
 				typeOptions: {
-					buttonConfig: {
-						action: 'openChat',
-					},
+					action: 'openChat',
 				},
 				default: '',
 			},
