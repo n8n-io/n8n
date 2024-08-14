@@ -111,7 +111,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<TagsDropdown
+				<WorkflowTagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 					:model-value="filters.tags"
 					:create-enabled="false"

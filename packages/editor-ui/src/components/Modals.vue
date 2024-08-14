@@ -64,6 +64,7 @@ import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/Wor
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
+import WorkflowTagsManager from '@/components/TagsManager/WorkflowTagsManager.vue';
 </script>
 
 <template>
@@ -102,7 +103,7 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 		</ModalRoot>
 
 		<ModalRoot :name="TAGS_MANAGER_MODAL_KEY">
-			<TagsManager />
+			<WorkflowTagsManager />
 		</ModalRoot>
 
 		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">

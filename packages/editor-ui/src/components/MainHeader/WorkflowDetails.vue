@@ -635,7 +635,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<TagsDropdown
+			<WorkflowTagsDropdown
 				v-if="isTagsEditEnabled && !readOnly"
 				ref="dropdown"
 				v-model="appliedTagIds"

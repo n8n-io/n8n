@@ -85,10 +85,6 @@ const CREATE_KEY = '__create';
 export default defineComponent({
 	name: 'TagsDropdown',
 	props: {
-		tagsStore: {
-			type: Function,
-			default: useTagsStore,
-		},
 		placeholder: {},
 		modelValue: {
 			type: Array as PropType<string[]>,
@@ -111,7 +107,7 @@ export default defineComponent({
 	setup(props, { emit }) {
 		const i18n = useI18n();
 		const { showError } = useToast();
-		const tagsStore = props.tagsStore();
+		const tagsStore = useTagsStore();
 		const uiStore = useUIStore();
 
 		const { isLoading } = storeToRefs(tagsStore);

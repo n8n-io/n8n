@@ -1906,6 +1906,8 @@
 	"tagsManager.couldNotDeleteTag": "Could not delete tag",
 	"tagsManager.done": "Done",
 	"tagsManager.manageTags": "Manage tags",
+	"tagsManager.showError.onFetch.title": "Could not fetch tags",
+	"tagsManager.showError.onFetch.message": "A problem occurred when trying to fetch tags",
 	"tagsManager.showError.onCreate.message": "A problem occurred when trying to create the tag '{escapedName}'",
 	"tagsManager.showError.onCreate.title": "Could not create tag",
 	"tagsManager.showError.onDelete.message": "A problem occurred when trying to delete the tag '{escapedName}'",
