@@ -1,10 +1,12 @@
 import { Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AiAssistantService } from '@/services/aiAsisstant.service';
 import { AiAssistantRequest } from '@/requests';
 import { Response } from 'express';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { Readable, promises } from 'node:stream';
+import { InternalServerError } from 'express-openapi-validator/dist/openapi.validator';
+import { strict as assert } from 'node:assert';
+import { ErrorReporterProxy } from 'n8n-workflow';
 
 @RestController('/ai-assistant')
 export class AiAssistantController {
@@ -21,7 +23,9 @@ export class AiAssistantController {
 			}
 		} catch (e) {
 			// todo add sentry reporting
-			throw new BadRequestError('Something went wrong');
+			assert(e instanceof Error);
+			ErrorReporterProxy.error(e);
+			throw new InternalServerError({ message: `Something went wrong: ${e.message}` });
 		}
 	}
 
@@ -32,8 +36,9 @@ export class AiAssistantController {
 		try {
 			return await this.aiAssistantService.applySuggestion(req.body, req.user);
 		} catch (e) {
-			// todo add sentry reporting
-			throw new BadRequestError('Something went wrong');
+			assert(e instanceof Error);
+			ErrorReporterProxy.error(e);
+			throw new InternalServerError({ message: `Something went wrong: ${e.message}` });
 		}
 	}
 }
