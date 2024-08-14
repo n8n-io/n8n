@@ -78,6 +78,12 @@ export type RelayEventMap = {
 		runData?: IRun;
 	};
 
+	'workflow-sharing-updated': {
+		workflowId: string;
+		userIdSharer: string;
+		userIdList: string[];
+	};
+
 	// #endregion
 
 	// #region Node
@@ -234,6 +240,7 @@ export type RelayEventMap = {
 			| 'Resend invite'
 			| 'Workflow shared'
 			| 'Credentials shared';
+		publicApi: boolean;
 	};
 
 	// #endregion

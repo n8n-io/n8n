@@ -26,6 +26,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useToast } from '@/composables/useToast';
 
 const MAX_CHAT_WIDTH = 425;
 const MIN_CHAT_WIDTH = 250;
@@ -33,7 +34,7 @@ const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatWidth = ref<number>(275);
+	const chatWidth = ref<number>(325);
 
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
@@ -244,6 +245,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
+			telemetry.track('Assistant session started', {
+				chat_session_id: currentSessionId.value,
+				task: 'error',
+			});
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
 		}
@@ -469,6 +474,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = true;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
+			checkIfNodeNDVIsOpen(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
@@ -501,11 +507,26 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
+			checkIfNodeNDVIsOpen(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
 		}
 		codeDiffMessage.replacing = false;
+	}
+
+	function checkIfNodeNDVIsOpen(errorNodeName: string) {
+		if (errorNodeName !== ndvStore.activeNodeName) {
+			useToast().showMessage({
+				type: 'success',
+				title: locale.baseText('aiAssistant.codeUpdated.message.title'),
+				message: locale.baseText('aiAssistant.codeUpdated.message.body', {
+					interpolate: { nodeName: errorNodeName },
+				}),
+				dangerouslyUseHTMLString: true,
+				duration: 4000,
+			});
+		}
 	}
 
 	return {

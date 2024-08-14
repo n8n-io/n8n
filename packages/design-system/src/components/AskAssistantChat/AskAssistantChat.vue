@@ -54,7 +54,7 @@ const sessionEnded = computed(() => {
 	return isEndOfSessionEvent(props.messages?.[props.messages.length - 1]);
 });
 
-const sendButtonDisabled = computed(() => {
+const sendDisabled = computed(() => {
 	return !textInputValue.value || props.streaming || sessionEnded.value;
 });
 
@@ -67,12 +67,11 @@ function onQuickReply(opt: ChatUI.QuickReply) {
 }
 
 function onSendMessage() {
-	if (textInputValue.value && !props.streaming) {
-		emit('message', textInputValue.value, undefined);
-		textInputValue.value = '';
-		if (chatInput.value) {
-			chatInput.value.style.height = 'auto';
-		}
+	if (sendDisabled.value) return;
+	emit('message', textInputValue.value, undefined);
+	textInputValue.value = '';
+	if (chatInput.value) {
+		chatInput.value.style.height = 'auto';
 	}
 }
 
@@ -211,7 +210,14 @@ function growInput() {
 			<div v-else :class="$style.placeholder">
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
-					<p>{{ t('assistantChat.placeholder.1') }}</p>
+					<p>
+						{{
+							t('assistantChat.placeholder.1', [
+								`${user?.firstName}`,
+								t('assistantChat.aiAssistantName'),
+							])
+						}}
+					</p>
 					<p>
 						{{ t('assistantChat.placeholder.2') }}
 						<InlineAskAssistantButton size="small" :static="true" />
@@ -235,14 +241,15 @@ function growInput() {
 				rows="1"
 				wrap="hard"
 				@keydown.enter.exact.prevent="onSendMessage"
-				@input="growInput"
+				@input.prevent="growInput"
+				@keydown.stop
 			/>
 			<n8n-icon-button
 				:class="{ [$style.sendButton]: true }"
 				icon="paper-plane"
 				type="text"
 				size="large"
-				:disabled="sendButtonDisabled"
+				:disabled="sendDisabled"
 				@click="onSendMessage"
 			/>
 		</div>
@@ -341,6 +348,10 @@ p {
 .info {
 	font-size: var(--font-size-s);
 	color: var(--color-text-base);
+
+	button {
+		display: inline-flex;
+	}
 }
 
 .back:hover {
@@ -368,6 +379,7 @@ p {
 	background-color: var(--color-foreground-xlight);
 	border: var(--border-base);
 	border-radius: var(--border-radius-base);
+	word-break: break-word;
 
 	li {
 		margin-left: var(--spacing-xs);
@@ -376,9 +388,8 @@ p {
 
 .blockTitle {
 	border-bottom: var(--border-base);
-	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-xs) var(--spacing-2xs);
+	padding: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
-	word-break: break-word;
 }
 
 .blockBody {
@@ -443,6 +454,10 @@ p {
 	> button,
 	> span {
 		margin-right: var(--spacing-3xs);
+	}
+
+	button {
+		display: inline-flex;
 	}
 }
 

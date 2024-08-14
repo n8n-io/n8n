@@ -330,6 +330,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 					type: 'success',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 			} else if (runDataExecuted.finished !== true) {
 				titleChange.titleSet(workflow.name as string, 'ERROR');
@@ -440,9 +441,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-							dangerouslyUseHTMLString: true,
-							appendTo: '#content',
-							customClass: 'content-toast',
 						});
 					}
 				}

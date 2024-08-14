@@ -200,6 +200,7 @@ export const streamRequest = async (
 	onChunk?: (chunk: ChatRequest.ResponsePayload) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
+	separator = '⧉⇋⇋➽⌑⧉§§\n',
 ): Promise<void> => {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
@@ -228,7 +229,7 @@ export const streamRequest = async (
 			}
 
 			const chunk = decoder.decode(value);
-			const splitChunks = chunk.split('\n');
+			const splitChunks = chunk.split(separator);
 
 			for (const splitChunk of splitChunks) {
 				if (splitChunk && onChunk) {

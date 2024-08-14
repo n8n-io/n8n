@@ -26,8 +26,6 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 
 async function onUserMessage(content: string, quickReplyType?: string) {
 	await assistantStore.sendMessage({ text: content, quickReplyType });
-	const isFeedback = quickReplyType === 'all-good' || quickReplyType === 'still-stuck';
-	const isPositive = !isFeedback ? null : quickReplyType === 'all-good';
 	const task = 'error';
 	const solutionCount =
 		task === 'error'
@@ -35,14 +33,15 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 				).length
 			: null;
-	telemetry.track('User gave feedback', {
-		task: 'error',
-		is_quick_reply: !!quickReplyType,
-		is_feedback: isFeedback,
-		is_positive: isPositive,
-		solution_count: solutionCount,
-		response: content,
-	});
+	if (quickReplyType === 'all-good' || quickReplyType === 'still-stuck') {
+		telemetry.track('User gave feedback', {
+			task,
+			is_quick_reply: !!quickReplyType,
+			is_positive: quickReplyType === 'all-good',
+			solution_count: solutionCount,
+			response: content,
+		});
+	}
 }
 
 async function onCodeReplace(index: number) {
