@@ -63,6 +63,7 @@ export const schemaGetExecutionsQueryFilter = {
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
 		tags: { type: 'array', items: { type: 'string' } },
+		annotationTags: { type: 'array', items: { type: 'string' } },
 	},
 	$defs: {
 		metadata: {

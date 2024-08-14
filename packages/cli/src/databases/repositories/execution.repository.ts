@@ -724,6 +724,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const qb = this.toQueryBuilderWithAnnotations(query);
 
+		// FIXME: This needs refactoring
 		const rawExecutionsWithTags: Array<
 			ExecutionSummary & {
 				'annotation.id': number;
@@ -733,7 +734,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		> = await qb.getRawMany();
 
-		// FIXME: This needs refactoring
 		const executions = rawExecutionsWithTags.reduce(
 			(
 				acc,
@@ -843,7 +843,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedBefore,
 			startedAfter,
 			metadata,
-			tags,
+			annotationTags,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -892,12 +892,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
-		if (tags?.length) {
+		if (annotationTags?.length) {
 			// If there is a filter by one or multiple tags, we need to join the annotations table
 			qb.innerJoin('execution.annotation', 'annotation');
 
 			// Add an inner join for each tag
-			for (const tag of tags) {
+			for (const tag of annotationTags) {
 				qb.innerJoin(
 					AnnotationTagMapping,
 					`atm_${tag}`,

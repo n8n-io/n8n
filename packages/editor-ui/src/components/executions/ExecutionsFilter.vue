@@ -7,7 +7,6 @@ import type {
 	IWorkflowDb,
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
-import TagsDropdown from '@/components/TagsDropdown.vue';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -15,7 +14,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
+import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -93,26 +92,17 @@ const statuses = computed(() => [
 ]);
 
 const countSelectedFilterProps = computed(() => {
-	let count = 0;
-	if (filter.status !== 'all') {
-		count++;
-	}
-	if (filter.workflowId !== 'all' && props.workflows.length) {
-		count++;
-	}
-	if (!isEmpty(filter.tags)) {
-		count++;
-	}
-	if (!isEmpty(filter.metadata)) {
-		count++;
-	}
-	if (!!filter.startDate) {
-		count++;
-	}
-	if (!!filter.endDate) {
-		count++;
-	}
-	return count;
+	const nonDefaultFilters = [
+		filter.status !== 'all',
+		filter.workflowId !== 'all' && props.workflows.length,
+		!isEmpty(filter.tags),
+		!isEmpty(filter.annotationTags),
+		!isEmpty(filter.metadata),
+		!!filter.startDate,
+		!!filter.endDate,
+	].filter(Boolean);
+
+	return nonDefaultFilters.length;
 });
 
 // vModel.metadata is a text input and needs a debounced emit to avoid too many requests
@@ -136,13 +126,13 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 
 // Can't use v-model on TagsDropdown component and thus vModel.tags is useless
 // We just emit the updated filter
-const onTagsChange = (tags: string[]) => {
-	filter.tags = tags;
+const onTagsChange = () => {
+	// filter.tags = tags;
 	emit('filterChanged', filter);
 };
 
-const onAnnotationTagsChange = (tags: string[]) => {
-	filter.annotationTags = tags;
+const onAnnotationTagsChange = () => {
+	// filter.annotationTags = tags;
 	emit('filterChanged', filter);
 };
 
@@ -201,10 +191,10 @@ onBeforeMount(() => {
 			</div>
 			<div v-if="showTags" :class="$style.group">
 				<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
-				<TagsDropdown
+				<WorkflowTagsDropdown
 					id="execution-filter-tags"
+					v-model="filter.tags"
 					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-					:model-value="filter.tags"
 					:create-enabled="false"
 					data-test-id="executions-filter-tags-select"
 					@update:model-value="onTagsChange"
@@ -258,12 +248,11 @@ onBeforeMount(() => {
 				<label for="execution-filter-annotation-tags">{{
 					locale.baseText('executionsFilter.annotation.tags')
 				}}</label>
-				<TagsDropdown
+				<AnnotationTagsDropdown
 					id="execution-filter-annotation-tags"
 					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-					:model-value="filter.tags"
+					v-model="filter.annotationTags"
 					:create-enabled="false"
-					:tags-store="useAnnotationTagsStore"
 					data-test-id="executions-filter-annotation-tags-select"
 					@update:model-value="onAnnotationTagsChange"
 				/>

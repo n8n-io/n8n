@@ -9,6 +9,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		startDate: '',
 		endDate: '',
 		tags: [],
+		annotationTags: [],
 		metadata: [],
 	};
 }
@@ -23,6 +24,10 @@ export const executionFilterToQueryFilter = (
 
 	if (!isEmpty(filter.tags)) {
 		queryFilter.tags = filter.tags;
+	}
+
+	if (!isEmpty(filter.annotationTags)) {
+		queryFilter.annotationTags = filter.annotationTags;
 	}
 
 	if (!isEmpty(filter.metadata)) {
