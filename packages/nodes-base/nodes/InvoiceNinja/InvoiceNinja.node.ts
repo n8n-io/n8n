@@ -308,7 +308,7 @@ export class InvoiceNinja implements INodeType {
 				'data',
 				'GET',
 				'/payments',
-				undefined,
+				{},
 				qs,
 			);
 			for (const payment of payments) {
