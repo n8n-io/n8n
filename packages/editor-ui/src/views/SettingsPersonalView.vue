@@ -21,7 +21,7 @@ const { showToast, showError } = useToast();
 
 const hasAnyBasicInfoChanges = ref<boolean>(false);
 const formInputs = ref<null | IFormInputs>(null);
-const formBus = ref(createFormEventBus());
+const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
 const themeOptions = ref<Array<{ name: ThemeOption; label: string }>>([
@@ -151,7 +151,7 @@ async function updatePersonalisationSettings() {
 	uiStore.setTheme(currentSelectedTheme.value);
 }
 function onSaveClick() {
-	formBus.value.emit('submit');
+	formBus.emit('submit');
 }
 function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
