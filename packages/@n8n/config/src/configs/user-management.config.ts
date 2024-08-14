@@ -1,4 +1,4 @@
-import { Config, Env, Nested } from 'decorators';
+import { Config, Env, Nested } from '../decorators';
 
 @Config
 class SmtpAuth {
