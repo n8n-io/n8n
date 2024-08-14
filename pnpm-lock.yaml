@@ -1709,9 +1709,6 @@ importers:
 
   packages/workflow:
     dependencies:
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../@n8n/permissions
       '@n8n/tournament':
         specifier: 1.0.5
         version: 1.0.5

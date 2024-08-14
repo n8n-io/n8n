@@ -10,7 +10,6 @@ import type { URLSearchParams } from 'url';
 import type { RequestBodyMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 
-import type { Scope } from '@n8n/permissions';
 import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -1230,25 +1229,12 @@ export interface ILoadOptions {
 	};
 }
 
-export type NodePropertyAction = {
-	type: 'askAiCodeGeneration';
-	handler?: string;
-	target?: string;
-};
-
 export interface INodePropertyTypeOptions {
-	// Supported by: button
-	buttonConfig?: {
-		action?: string | NodePropertyAction;
-		label?: string; // otherwise "displayName" is used
-		hasInputField?: boolean;
-		inputFieldMaxLength?: number; // Supported if hasInputField is true
-	};
+	action?: string; // Supported by: button
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
-	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -1539,12 +1525,6 @@ export interface INodeType {
 		};
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
-		};
-		actionHandler?: {
-			[functionName: string]: (
-				this: ILoadOptionsFunctions,
-				payload: IDataObject | string | undefined,
-			) => Promise<NodeParameterValueType>;
 		};
 	};
 	webhookMethods?: {
@@ -2464,7 +2444,6 @@ export interface ExecutionSummary {
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
-	scopes?: Scope[];
 }
 
 export interface IExecutionSummaryNodeExecutionResult {

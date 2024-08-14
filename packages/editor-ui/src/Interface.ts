@@ -385,9 +385,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummary[];
+	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
 }
 
@@ -1550,11 +1552,6 @@ export declare namespace DynamicNodeParameters {
 
 	interface ResourceMapperFieldsRequest extends BaseRequest {
 		methodName: string;
-	}
-
-	interface ActionResultRequest extends BaseRequest {
-		handler: string;
-		payload: IDataObject | string | undefined;
 	}
 }
 

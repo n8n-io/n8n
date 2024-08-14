@@ -419,12 +419,6 @@ export declare namespace DynamicNodeParametersRequest {
 	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
 	}>;
-
-	/** POST /dynamic-node-parameters/action-result */
-	type ActionResult = BaseRequest<{
-		handler: string;
-		payload: IDataObject | string | undefined;
-	}>;
 }
 
 // ----------------------------------

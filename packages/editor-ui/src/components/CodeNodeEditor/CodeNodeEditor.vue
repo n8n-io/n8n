@@ -60,12 +60,13 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { CODE_NODE_TYPE } from '@/constants';
+import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 import { useMessage } from '@/composables/useMessage';
+import { useSettingsStore } from '@/stores/settings.store';
 import AskAI from './AskAI/AskAI.vue';
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { useCompleter } from './completer';
@@ -113,6 +114,7 @@ const { autocompletionExtension } = useCompleter(() => props.mode, editor);
 const { createLinter } = useLinter(() => props.mode, editor);
 
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -189,7 +191,13 @@ onBeforeUnmount(() => {
 });
 
 const aiEnabled = computed(() => {
-	return posthog.isAiEnabled() && props.language === 'javaScript';
+	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
+		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
+	);
+
+	return (
+		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
+	);
 });
 
 const placeholder = computed(() => {
