@@ -13,6 +13,7 @@ import type { SharedWorkflowRepository } from '@/databases/repositories/sharedWo
 import type { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { RelayEventMap } from '@/events/relay-event-map';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { N8N_VERSION } from '@/constants';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -694,7 +695,7 @@ describe('TelemetryEventRelay', () => {
 				is_manual: false,
 				success: false,
 				user_id: 'user123',
-				version_cli: '1.54.0',
+				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
 			});
 		});
