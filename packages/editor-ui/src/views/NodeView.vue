@@ -4746,7 +4746,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-l);
+	bottom: var(--spacing-s);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {
