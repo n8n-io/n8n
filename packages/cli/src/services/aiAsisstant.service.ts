@@ -1,18 +1,19 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
 import { License } from '../License';
 import { N8N_VERSION } from '../constants';
 import config from '@/config';
+import type { AiAssistantRequest } from '@/requests';
+import type { Response } from 'undici';
 
 @Service()
 export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
-	private licenseService: License;
-
-	constructor() {
-		this.licenseService = Container.get(License);
+	constructor(private readonly licenseService: License) {
+		this.licenseService = licenseService;
 	}
 
 	async init() {
@@ -35,12 +36,21 @@ export class AiAssistantService {
 		});
 	}
 
-	async chat(payload: object, user: IUser) {
+	async chat(payload: AiAssistantSDK.ChatRequestPayload, user: IUser): Promise<Response> {
 		if (!this.client) {
 			await this.init();
 		}
 		assert(this.client, 'Assistant client not setup');
 
-		await this.client.chat(payload, { id: user.id });
+		return await this.client.chat(payload, { id: user.id });
+	}
+
+	async applySuggestion(payload: AiAssistantRequest.SuggestionPayload, user: IUser) {
+		if (!this.client) {
+			await this.init();
+		}
+		assert(this.client, 'Assistant client not setup');
+
+		return await this.client.applySuggestion(payload, { id: user.id });
 	}
 }
