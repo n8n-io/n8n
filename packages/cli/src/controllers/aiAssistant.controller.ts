@@ -10,7 +10,7 @@ import { Readable, promises } from 'node:stream';
 export class AiAssistantController {
 	constructor(private readonly aiAssistantService: AiAssistantService) {}
 
-	@Post('/chat')
+	@Post('/chat', { rateLimit: { limit: 100 } })
 	async chat(req: AiAssistantRequest.Chat, res: Response) {
 		try {
 			const stream = await this.aiAssistantService.chat(req.body, req.user);
