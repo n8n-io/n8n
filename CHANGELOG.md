@@ -1,3 +1,12 @@
+## [1.54.2](https://github.com/n8n-io/n8n/compare/n8n@1.54.1...n8n@1.54.2) (2024-08-14)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Fix issues with some tools not populating ([#10406](https://github.com/n8n-io/n8n/issues/10406)) ([dfc5596](https://github.com/n8n-io/n8n/commit/dfc5596258addc2aa9513d76d09c275041a84c8e))
+
+
+
 ## [1.54.1](https://github.com/n8n-io/n8n/compare/n8n@1.54.0...n8n@1.54.1) (2024-08-13)
 
 
