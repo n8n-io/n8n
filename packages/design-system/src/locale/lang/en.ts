@@ -29,7 +29,7 @@ export default {
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
 	'betaTag.beta': 'beta',
-	'askAssistantButton.askAssistant': 'Ask Ava',
+	'askAssistantButton.askAssistant': 'Ask Assistant',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'AI Assistant',
 	'assistantChat.aiAssistantName': 'Ava',

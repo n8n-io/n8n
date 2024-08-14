@@ -122,7 +122,7 @@ const isAskAssistantAvailable = computed(() => {
 	if (!node.value) {
 		return false;
 	}
-	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value);
+	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 	return assistantStore.canShowAssistantButtons && !isCustomNode;
 });
 
