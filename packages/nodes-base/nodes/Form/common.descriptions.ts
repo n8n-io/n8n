@@ -212,7 +212,7 @@ export const formFields: INodeProperties = {
 };
 
 export const formRespondMode: INodeProperties = {
-	displayName: 'Respond When',
+	displayName: 'Respond',
 	name: 'responseMode',
 	type: 'options',
 	options: [
@@ -220,11 +220,6 @@ export const formRespondMode: INodeProperties = {
 			name: 'Form Is Submitted',
 			value: 'onReceived',
 			description: 'As soon as this node receives the form submission',
-		},
-		{
-			name: 'Form Page',
-			value: 'formPage',
-			description: 'Next form page',
 		},
 		{
 			name: 'Workflow Finishes',

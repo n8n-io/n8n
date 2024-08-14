@@ -27,6 +27,7 @@ export function prepareFormData({
 	instanceId,
 	useResponseData,
 	appendAttribution = true,
+	buttonLabel,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -38,6 +39,7 @@ export function prepareFormData({
 	instanceId?: string;
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
+	buttonLabel?: string;
 }) {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -57,6 +59,7 @@ export function prepareFormData({
 		formFields: [],
 		useResponseData,
 		appendAttribution,
+		buttonLabel,
 	};
 
 	if (redirectUrl) {
@@ -245,6 +248,7 @@ export function renderForm({
 	formSubmittedText,
 	redirectUrl,
 	appendAttribution,
+	buttonLabel,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -256,6 +260,7 @@ export function renderForm({
 	formSubmittedText?: string;
 	redirectUrl?: string;
 	appendAttribution?: boolean;
+	buttonLabel?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -275,6 +280,7 @@ export function renderForm({
 		instanceId,
 		useResponseData,
 		appendAttribution,
+		buttonLabel,
 	});
 
 	res.render('form-trigger', data);
@@ -297,6 +303,7 @@ export async function formWebhook(
 		formSubmittedText?: string;
 		useWorkflowTimezone?: boolean;
 		appendAttribution?: boolean;
+		buttonLabel?: string;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -349,6 +356,12 @@ export async function formWebhook(
 			appendAttribution = false;
 		}
 
+		let buttonLabel = 'Submit form';
+
+		if (options.buttonLabel) {
+			buttonLabel = options.buttonLabel;
+		}
+
 		renderForm({
 			context,
 			res,
@@ -360,6 +373,7 @@ export async function formWebhook(
 			formSubmittedText,
 			redirectUrl,
 			appendAttribution,
+			buttonLabel,
 		});
 
 		return {

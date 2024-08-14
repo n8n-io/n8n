@@ -125,6 +125,12 @@ const descriptionV2: INodeTypeDescription = {
 						'Whether to include the link “Form automated with n8n” at the bottom of the form',
 				},
 				{
+					displayName: 'Button Label',
+					name: 'buttonLabel',
+					type: 'string',
+					default: 'Submit form',
+				},
+				{
 					...respondWithOptions,
 					displayOptions: {
 						hide: {

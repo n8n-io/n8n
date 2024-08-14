@@ -40,6 +40,7 @@ export type FormTriggerData = {
 	formFields: FormTriggerInput[];
 	useResponseData?: boolean;
 	appendAttribution?: boolean;
+	buttonLabel?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

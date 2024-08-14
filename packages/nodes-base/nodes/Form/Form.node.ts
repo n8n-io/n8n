@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookFunctions,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import { WAIT_TIME_UNLIMITED, Node, updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
 
@@ -17,7 +18,26 @@ const pageProperties = updateDisplayOptions(
 			operation: ['page'],
 		},
 	},
-	[formTitle, formDescription, formFields],
+	[
+		formFields,
+		{
+			displayName: 'Options',
+			name: 'options',
+			type: 'collection',
+			placeholder: 'Add option',
+			default: {},
+			options: [
+				{ ...formTitle, required: false },
+				formDescription,
+				{
+					displayName: 'Button Label',
+					name: 'buttonLabel',
+					type: 'string',
+					default: 'Submit form',
+				},
+			],
+		},
+	],
 );
 
 export class Form extends Node {
@@ -87,11 +107,43 @@ export class Form extends Node {
 
 		const mode = context.getMode() === 'manual' ? 'test' : 'production';
 		const fields = context.getNodeParameter('formFields.values', []) as FormField[];
+
+		const parentNodes = context.getParentNodes(context.getNode().name);
+		const trigger = parentNodes.find(
+			(node) => node.type === 'n8n-nodes-base.formTrigger',
+		) as NodeTypeAndVersion;
+
 		const method = context.getRequestObject().method;
 
 		if (method === 'GET') {
-			const title = context.getNodeParameter('formTitle', '') as string;
-			const description = context.getNodeParameter('formDescription', '') as string;
+			const options = context.getNodeParameter('options', {}) as {
+				formTitle: string;
+				formDescription: string;
+				buttonLabel: string;
+			};
+
+			let title = options.formTitle;
+			if (!title) {
+				title = context.evaluateExpression(
+					`{{ $('${trigger?.name}').params.formTitle }}`,
+				) as string;
+			}
+
+			let description = options.formDescription;
+			if (!description) {
+				description = context.evaluateExpression(
+					`{{ $('${trigger?.name}').params.formDescription }}`,
+				) as string;
+			}
+
+			let buttonLabel = options.buttonLabel;
+			if (!buttonLabel) {
+				buttonLabel =
+					(context.evaluateExpression(
+						`{{ $('${trigger?.name}').params.options?.buttonLabel }}`,
+					) as string) || 'Submit form';
+			}
+
 			const responseMode = 'onReceived';
 
 			let redirectUrl;
@@ -104,6 +156,10 @@ export class Form extends Node {
 				redirectUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
 			}
 
+			const appendAttribution = context.evaluateExpression(
+				`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
+			) as boolean;
+
 			renderForm({
 				context,
 				res,
@@ -113,7 +169,8 @@ export class Form extends Node {
 				responseMode,
 				mode,
 				redirectUrl,
-				appendAttribution: true,
+				appendAttribution,
+				buttonLabel,
 			});
 
 			return {
@@ -121,7 +178,15 @@ export class Form extends Node {
 			};
 		}
 
-		const returnItem = await prepareFormReturnItem(context, fields, mode, true);
+		let useWorkflowTimezone = context.evaluateExpression(
+			`{{ $('${trigger?.name}').params.options?.useWorkflowTimezone }}`,
+		) as boolean;
+
+		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {
+			useWorkflowTimezone = true;
+		}
+
+		const returnItem = await prepareFormReturnItem(context, fields, mode, useWorkflowTimezone);
 
 		return {
 			webhookResponse: { status: 200 },

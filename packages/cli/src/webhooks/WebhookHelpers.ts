@@ -148,14 +148,57 @@ export async function executeWebhook(
 	}
 
 	// Get the responseMode
-	const responseMode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseMode,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'onReceived',
-	) as WebhookResponseMode;
+	let responseMode;
+
+	//if formTrigger node, check if there is a next page, if so set responseMode to formPage to redirect to next page later
+	if (nodeType.description.name === 'formTrigger') {
+		let hasNextPage = false;
+		for (const node of Object.keys(workflow.nodes)) {
+			if (workflow.nodes[node].type === 'n8n-nodes-base.form') {
+				hasNextPage = true;
+				break;
+			}
+		}
+
+		if (hasNextPage) {
+			responseMode = 'formPage';
+		}
+	}
+
+	// if (nodeType.description.name === 'form' && req.method === 'POST') {
+	// 	let isLastPage = true;
+	// 	for (const node of workflow.getChildNodes(workflowStartNode.name)) {
+	// 		if (workflow.nodes[node].type === 'n8n-nodes-base.form') {
+	// 			isLastPage = false;
+	// 			break;
+	// 		}
+	// 	}
+
+	// 	if (isLastPage) {
+	// 		const triggerName = workflow.getParentNodes(workflowStartNode.name)[0];
+
+	// 		responseMode = workflow.expression.getSimpleParameterValue(
+	// 			workflow.nodes[triggerName],
+	// 			'={{$parameter["responseMode"]}}',
+	// 			executionMode,
+	// 			additionalKeys,
+	// 			undefined,
+	// 			'onReceived',
+	// 		) as WebhookResponseMode;
+	// 	}
+	// }
+
+	if (!responseMode) {
+		responseMode = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			webhookData.webhookDescription.responseMode,
+			executionMode,
+			additionalKeys,
+			undefined,
+			'onReceived',
+		) as WebhookResponseMode;
+	}
+
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode as string,
