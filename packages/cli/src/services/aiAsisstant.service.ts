@@ -12,9 +12,7 @@ import type { Response } from 'undici';
 export class AiAssistantService {
 	private client: AiAssistantClient | undefined;
 
-	constructor(private readonly licenseService: License) {
-		this.licenseService = licenseService;
-	}
+	constructor(private readonly licenseService: License) {}
 
 	async init() {
 		const aiAssistantEnabled = this.licenseService.isAiAssistantEnabled();
