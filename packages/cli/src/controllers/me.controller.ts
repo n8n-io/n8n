@@ -24,7 +24,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventService } from '@/events/event.service';
 import { MfaService } from '@/Mfa/mfa.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -155,7 +155,7 @@ export class MeController {
 
 			const isMfaTokenValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
 			if (!isMfaTokenValid) {
-				throw new ForbiddenError('Invalid two-factor code.');
+				throw new InvalidMfaCodeError();
 			}
 		}
 

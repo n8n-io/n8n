@@ -23,7 +23,7 @@
 							placeholder="Select Execution Order"
 							size="medium"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-execution-order"
 						>
@@ -53,7 +53,7 @@
 							v-model="workflowSettings.errorWorkflow"
 							placeholder="Select Workflow"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-error-workflow"
 						>
@@ -82,7 +82,7 @@
 						<el-col :span="14" class="ignore-key-press">
 							<n8n-select
 								v-model="workflowSettings.callerPolicy"
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:placeholder="$locale.baseText('workflowSettings.selectOption')"
 								filterable
 								:limit-popper-width="true"
@@ -110,7 +110,7 @@
 						<el-col :span="14">
 							<n8n-input
 								v-model="workflowSettings.callerIds"
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								data-test-id="workflow-caller-policy-workflow-ids"
@@ -134,7 +134,7 @@
 							v-model="workflowSettings.timezone"
 							placeholder="Select Timezone"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-timezone"
 						>
@@ -163,7 +163,7 @@
 							v-model="workflowSettings.saveDataErrorExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-failed-executions"
 						>
@@ -192,7 +192,7 @@
 							v-model="workflowSettings.saveDataSuccessExecution"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-success-executions"
 						>
@@ -221,7 +221,7 @@
 							v-model="workflowSettings.saveManualExecutions"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-manual-executions"
 						>
@@ -250,7 +250,7 @@
 							v-model="workflowSettings.saveExecutionProgress"
 							:placeholder="$locale.baseText('workflowSettings.selectOption')"
 							filterable
-							:disabled="readOnlyEnv"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-save-execution-progress"
 						>
@@ -278,7 +278,7 @@
 						<div>
 							<el-switch
 								ref="inputField"
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
@@ -303,7 +303,7 @@
 						</el-col>
 						<el-col :span="4">
 							<n8n-input
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
 								:min="0"
 								@update:model-value="(value: string) => setTimeout('hours', value)"
@@ -313,7 +313,7 @@
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
@@ -324,7 +324,7 @@
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input
-								:disabled="readOnlyEnv"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
@@ -340,7 +340,7 @@
 		<template #footer>
 			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
-					:disabled="readOnlyEnv"
+					:disabled="readOnlyEnv || !workflowPermissions.update"
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
 					float="right"
@@ -379,12 +379,10 @@ import { useRootStore } from '@/stores/root.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { ProjectTypes } from '@/types/projects.types';
+import { getResourcePermissions } from '@/permissions';
 
 export default defineComponent({
 	name: 'WorkflowSettings',
@@ -489,8 +487,8 @@ export default defineComponent({
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
-		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(this.workflow);
+		workflowPermissions() {
+			return getResourcePermissions(this.workflow?.scopes).workflow;
 		},
 	},
 	async mounted() {
@@ -515,17 +513,17 @@ export default defineComponent({
 		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
 		this.isLoading = true;
-		const promises = [];
-		promises.push(this.loadWorkflows());
-		promises.push(this.loadSaveDataErrorExecutionOptions());
-		promises.push(this.loadSaveDataSuccessExecutionOptions());
-		promises.push(this.loadSaveExecutionProgressOptions());
-		promises.push(this.loadSaveManualOptions());
-		promises.push(this.loadTimezones());
-		promises.push(this.loadWorkflowCallerPolicyOptions());
 
 		try {
-			await Promise.all(promises);
+			await Promise.all([
+				this.loadWorkflows(),
+				this.loadSaveDataErrorExecutionOptions(),
+				this.loadSaveDataSuccessExecutionOptions(),
+				this.loadSaveExecutionProgressOptions(),
+				this.loadSaveManualOptions(),
+				this.loadTimezones(),
+				this.loadWorkflowCallerPolicyOptions(),
+			]);
 		} catch (error) {
 			this.showError(
 				error,
