@@ -9,7 +9,7 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 @Service()
 export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 	async init(): Promise<void> {
-		await super.init('publisher');
+		await super.init('publisher(n8n)');
 	}
 
 	async publish(channel: string, message: string): Promise<void> {
