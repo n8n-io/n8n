@@ -72,7 +72,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
+	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
 	) as HTMLElement;

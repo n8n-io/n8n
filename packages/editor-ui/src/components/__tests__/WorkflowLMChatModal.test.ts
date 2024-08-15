@@ -116,7 +116,9 @@ describe('WorkflowLMChatModal', () => {
 			await fireEvent.click(chatSendButton);
 		}
 
-		await waitFor(() => expect(chatDialog.querySelectorAll('.chat-message')).toHaveLength(1));
+		await waitFor(() =>
+			expect(chatDialog.querySelectorAll('.chat-message-from-user')).toHaveLength(1),
+		);
 
 		expect(chatDialog.querySelector('.chat-message')).toHaveTextContent('Hello!');
 	});
