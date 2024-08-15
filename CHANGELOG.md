@@ -1,3 +1,14 @@
+## [1.55.1](https://github.com/n8n-io/n8n/compare/n8n@1.55.0...n8n@1.55.1) (2024-08-15)
+
+
+### Bug Fixes
+
+* **core:** Fix payload property in `workflow-post-execute` event ([#10413](https://github.com/n8n-io/n8n/issues/10413)) ([94423be](https://github.com/n8n-io/n8n/commit/94423be77e34624779d6ab068aff322d4ab2407f))
+* **core:** Use explicit types in configs to ensure valid decorator metadata ([#10433](https://github.com/n8n-io/n8n/issues/10433)) ([c32ba82](https://github.com/n8n-io/n8n/commit/c32ba823df6808592b6825486bb177663a093f28))
+* Project Viewer always seeing a connection error when testing credentials ([#10417](https://github.com/n8n-io/n8n/issues/10417)) ([5edd513](https://github.com/n8n-io/n8n/commit/5edd51368179411c16b54b622b1f391bbdc77dd9))
+
+
+
 # [1.55.0](https://github.com/n8n-io/n8n/compare/n8n@1.54.0...n8n@1.55.0) (2024-08-14)
 
 
