@@ -175,7 +175,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 		});
 
-		return sharedWorkflows.map((sw) => sw.workflow);
+		return sharedWorkflows.map((sw) => ({ ...sw.workflow, projectId: sw.projectId }));
 	}
 
 	/**
@@ -199,5 +199,14 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				relations: { project: true },
 			})
 		)?.project;
+	}
+
+	async getRelationsByWorkflowIdsAndProjectIds(workflowIds: string[], projectIds: string[]) {
+		return await this.find({
+			where: {
+				workflowId: In(workflowIds),
+				projectId: In(projectIds),
+			},
+		});
 	}
 }

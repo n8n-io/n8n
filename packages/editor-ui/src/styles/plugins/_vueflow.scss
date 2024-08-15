@@ -1,0 +1,20 @@
+.vue-flow__resize-control.line {
+	border-color: transparent;
+}
+
+.vue-flow__resize-control.handle {
+	background-color: transparent;
+}
+
+.vue-flow__minimap {
+	margin-bottom: calc(48px + 2 * var(--spacing-xs));
+
+	.minimap-node-default {
+		fill: var(--color-foreground-dark);
+	}
+
+	.minimap-node-n8n-nodes-base-stickyNote {
+		opacity: 0.05;
+		fill: var(--color-background-dark);
+	}
+}

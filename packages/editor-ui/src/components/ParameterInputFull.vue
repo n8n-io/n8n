@@ -24,13 +24,12 @@
 		<DraggableTarget
 			type="mapping"
 			:disabled="isDropDisabled"
-			:sticky="true"
-			:sticky-offset="isExpression ? [26, 3] : [3, 3]"
+			sticky
+			:sticky-offset="[3, 3]"
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
 				<ParameterInputWrapper
-					ref="param"
 					:parameter="parameter"
 					:model-value="value"
 					:path="path"
@@ -79,7 +78,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-
 import type { IUpdateInformation } from '@/Interface';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -88,7 +86,6 @@ import ParameterOptions from '@/components/ParameterOptions.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useSegment } from '@/stores/segment.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { hasExpressionMapping, hasOnlyListMode, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -122,8 +119,8 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 });
 const emit = defineEmits<{
-	(event: 'blur'): void;
-	(event: 'update', value: IUpdateInformation): void;
+	blur: [];
+	update: [value: IUpdateInformation];
 }>();
 
 const i18n = useI18n();
@@ -142,7 +139,11 @@ const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
 const isResourceLocator = computed(() => props.parameter.type === 'resourceLocator');
 const isDropDisabled = computed(
-	() => props.parameter.noDataExpression || props.isReadOnly || isResourceLocator.value,
+	() =>
+		props.parameter.noDataExpression ||
+		props.isReadOnly ||
+		isResourceLocator.value ||
+		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
 const showExpressionSelector = computed(() =>
@@ -272,9 +273,6 @@ function onDrop(newParamValue: string) {
 					hasExpressionMapping(prevValue),
 				success: true,
 			});
-
-			const segment = useSegment();
-			segment.track(segment.EVENTS.MAPPED_DATA);
 		}
 		forceShowExpression.value = false;
 	}, 200);

@@ -6,6 +6,7 @@ import { omit } from '@/utils/typesUtils';
 import type {
 	ConnectionTypes,
 	INode,
+	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
@@ -179,13 +180,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 			(acc, node) => {
 				const inputTypes = node.inputs;
 				if (Array.isArray(inputTypes)) {
-					inputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
-						const outputType = typeof value === 'string' ? value : value.type;
-						if (!acc[outputType]) {
-							acc[outputType] = [];
-						}
-						acc[outputType].push(node.name);
-					});
+					inputTypes.forEach(
+						(value: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						},
+					);
 				}
 
 				return acc;
@@ -300,6 +303,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getNodeParameterActionResult = async (
+		sendData: DynamicNodeParameters.ActionResultRequest,
+	) => {
+		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
+	};
+
 	// #endregion
 
 	return {
@@ -318,6 +327,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
+		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
 		getNodesInformation,

@@ -98,45 +98,6 @@ describe('Current Workflow Executions', () => {
 			.should('be.visible');
 	});
 
-	it('should auto load more items if there is space and auto scroll', () => {
-		cy.viewport(1280, 960);
-		executionsTab.actions.createManualExecutions(24);
-
-		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		executionsTab.actions.switchToExecutionsTab();
-
-		cy.wait(['@getExecutions']);
-		executionsTab.getters.executionListItems().its('length').should('be.gte', 10);
-
-		cy.getByTestId('current-executions-list').scrollTo('bottom');
-		cy.wait(['@getExecutions']);
-		executionsTab.getters.executionListItems().should('have.length', 24);
-
-		executionsTab.getters.executionListItems().eq(14).click();
-		cy.wait(['@getExecution']);
-		cy.reload();
-
-		cy.wait(['@getExecutions']);
-		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
-		executionsTab.getters.executionListItems().should('have.length', 24);
-		executionsTab.getters.executionListItems().first().should('not.be.visible');
-		cy.getByTestId('current-executions-list').scrollTo(0, 0);
-		executionsTab.getters.executionListItems().first().should('be.visible');
-		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
-
-		executionsTab.actions.switchToEditorTab();
-		executionsTab.actions.switchToExecutionsTab();
-
-		cy.wait(['@getExecutions']);
-		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
-		executionsTab.getters.executionListItems().should('have.length', 24);
-		executionsTab.getters.executionListItems().first().should('not.be.visible');
-		cy.getByTestId('current-executions-list').scrollTo(0, 0);
-		executionsTab.getters.executionListItems().first().should('be.visible');
-		executionsTab.getters.executionListItems().eq(14).should('not.be.visible');
-	});
-
 	it('should show workflow data in executions tab after hard reload and modify name and tags', () => {
 		executionsTab.actions.switchToExecutionsTab();
 		checkMainHeaderELements();
@@ -221,6 +182,50 @@ describe('Current Workflow Executions', () => {
 			.workflowNameInputContainer()
 			.invoke('attr', 'title')
 			.should('eq', newWorkflowName);
+	});
+
+	it('should load items and auto scroll after filter change', () => {
+		createMockExecutions();
+		createMockExecutions();
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait(['@getExecutions']);
+
+		executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
+
+		executionsTab.getters.executionListItems().eq(10).click();
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-status-select').should('be.visible').click();
+		getVisibleSelect().find('li:contains("Error")').click();
+
+		executionsTab.getters.executionListItems().should('have.length', 5);
+		executionsTab.getters.successfulExecutionListItems().should('have.length', 1);
+		executionsTab.getters.failedExecutionListItems().should('have.length', 4);
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-status-select').should('be.visible').click();
+		getVisibleSelect().find('li:contains("Success")').click();
+
+		// check if the list is scrolled
+		executionsTab.getters.executionListItems().eq(10).should('be.visible');
+		executionsTab.getters.executionsList().then(($el) => {
+			const { scrollTop, scrollHeight, clientHeight } = $el[0];
+			expect(scrollTop).to.be.greaterThan(0);
+			expect(scrollTop + clientHeight).to.be.lessThan(scrollHeight);
+
+			// scroll to the bottom
+			$el[0].scrollTo(0, scrollHeight);
+			executionsTab.getters.executionListItems().should('have.length', 18);
+			executionsTab.getters.successfulExecutionListItems().should('have.length', 18);
+			executionsTab.getters.failedExecutionListItems().should('have.length', 0);
+		});
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-reset-button').should('be.visible').click();
+		executionsTab.getters.executionListItems().eq(11).should('be.visible');
 	});
 });
 

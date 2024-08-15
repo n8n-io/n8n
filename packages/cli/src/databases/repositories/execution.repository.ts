@@ -20,6 +20,7 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
+import { GlobalConfig } from '@n8n/config';
 import {
 	ApplicationError,
 	type ExecutionStatus,
@@ -27,6 +28,8 @@ import {
 	type IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
+import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -42,6 +45,7 @@ import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import { separate } from '@/utils';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -110,6 +114,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	constructor(
 		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -155,7 +160,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -165,7 +172,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				} as IExecutionResponse;
 			});
 		} else if (options?.includeData) {
-			return executions.map((execution) => {
+			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+			this.reportInvalidExecutions(invalid);
+			return valid.map((execution) => {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
@@ -180,6 +189,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			const { executionData, ...rest } = execution;
 			return rest;
 		});
+	}
+
+	reportInvalidExecutions(executions: ExecutionEntity[]) {
+		if (executions.length === 0) return;
+
+		ErrorReporter.error(
+			new ApplicationError('Found executions without executionData', {
+				extra: { executionIds: executions.map(({ id }) => id) },
+			}),
+		);
 	}
 
 	async findSingleExecution(
@@ -251,6 +270,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
+	/**
+	 * Insert a new execution and its execution data using a transaction.
+	 */
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
 		const { identifiers: inserted } = await this.insert(rest);
@@ -465,7 +487,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			status: Not('crashed'),
 		};
 
-		const dbType = config.getEnv('database.type');
+		const dbType = this.globalConfig.database.type;
 		if (dbType === 'sqlite') {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
@@ -609,8 +631,35 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async cancel(executionId: string) {
-		await this.update({ id: executionId }, { status: 'canceled', stoppedAt: new Date() });
+	async stopBeforeRun(execution: IExecutionResponse) {
+		execution.status = 'canceled';
+		execution.stoppedAt = new Date();
+
+		await this.update(
+			{ id: execution.id },
+			{ status: execution.status, stoppedAt: execution.stoppedAt },
+		);
+
+		return execution;
+	}
+
+	async stopDuringRun(execution: IExecutionResponse) {
+		const error = new ExecutionCancelledError(execution.id);
+
+		execution.data ??= { resultData: { runData: {} } };
+		execution.data.resultData.error = {
+			...error,
+			message: error.message,
+			stack: error.stack,
+		};
+
+		execution.stoppedAt = new Date();
+		execution.waitTill = null;
+		execution.status = 'canceled';
+
+		await this.updateExistingExecution(execution.id, execution);
+
+		return execution;
 	}
 
 	async cancelMany(executionIds: string[]) {
@@ -687,7 +736,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
+		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
 		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 

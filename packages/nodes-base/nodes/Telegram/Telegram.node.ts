@@ -1289,6 +1289,26 @@ export class Telegram implements INodeType {
 														default: '',
 														description: 'HTTP or tg:// URL to be opened when button is pressed',
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1365,6 +1385,26 @@ export class Telegram implements INodeType {
 														default: false,
 														description: "Whether the user's request_location",
 													},
+													{
+														displayName: 'Web App',
+														name: 'web_app',
+														type: 'collection',
+														placeholder: 'Set Telegram Web App URL',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																displayName: 'URL',
+																name: 'url',
+																type: 'string',
+																default: '',
+																description: 'An HTTPS URL of a Web App to be opened',
+															},
+														],
+														description: 'Launch the Telegram Web App',
+													},
 												],
 											},
 										],
@@ -1380,7 +1420,7 @@ export class Telegram implements INodeType {
 				displayName: 'Reply Keyboard Options',
 				name: 'replyKeyboardOptions',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						replyMarkup: ['replyKeyboard'],

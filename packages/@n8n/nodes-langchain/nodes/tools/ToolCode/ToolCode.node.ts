@@ -6,6 +6,7 @@ import type {
 	SupplyData,
 	ExecutionError,
 } from 'n8n-workflow';
+
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
@@ -17,19 +18,20 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom Code Tool',
+		displayName: 'Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
 		defaults: {
-			name: 'Custom Code Tool',
+			name: 'Code Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -207,7 +209,7 @@ export class ToolCode implements INodeType {
 					try {
 						response = await runFunction(query);
 					} catch (error: unknown) {
-						executionError = error as ExecutionError;
+						executionError = new NodeOperationError(this.getNode(), error as ExecutionError);
 						response = `There was an error: "${executionError.message}"`;
 					}
 
@@ -228,6 +230,7 @@ export class ToolCode implements INodeType {
 					} else {
 						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
 					}
+
 					return response;
 				},
 			}),

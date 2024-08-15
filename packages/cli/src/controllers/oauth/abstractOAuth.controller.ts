@@ -5,9 +5,7 @@ import { Credentials } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { jsonParse, ApplicationError } from 'n8n-workflow';
 
-import config from '@/config';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -20,6 +18,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { UrlService } from '@/services/url.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { GlobalConfig } from '@n8n/config';
 
 export interface CsrfStateParam {
 	cid: string;
@@ -37,10 +36,11 @@ export abstract class AbstractOAuthController {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly urlService: UrlService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	get baseUrl() {
-		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${config.getEnv('endpoints.rest')}`;
+		const restUrl = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}`;
 		return `${restUrl}/oauth${this.oauthVersion}-credential`;
 	}
 
@@ -70,8 +70,8 @@ export abstract class AbstractOAuthController {
 		return credential;
 	}
 
-	protected async getAdditionalData(user: User) {
-		return await WorkflowExecuteAdditionalData.getBase(user.id);
+	protected async getAdditionalData() {
+		return await WorkflowExecuteAdditionalData.getBase();
 	}
 
 	protected async getDecryptedData(
@@ -118,7 +118,7 @@ export abstract class AbstractOAuthController {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	protected createCsrfState(credentialsId: string): [string, string] {
+	createCsrfState(credentialsId: string): [string, string] {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfStateParam = {

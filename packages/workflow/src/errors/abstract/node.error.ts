@@ -167,7 +167,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		}
 
 		// if code is provided and it is in the list of common errors set the message and return early
-		if (code && COMMON_ERRORS[code.toUpperCase()]) {
+		if (code && typeof code === 'string' && COMMON_ERRORS[code.toUpperCase()]) {
 			newMessage = COMMON_ERRORS[code] as string;
 			messages.push(message);
 			return [newMessage, messages];

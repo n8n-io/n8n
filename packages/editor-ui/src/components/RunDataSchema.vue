@@ -7,11 +7,12 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
-import type {
-	ConnectionTypes,
-	IConnectedNode,
-	IDataObject,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type ConnectionTypes,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
@@ -27,13 +28,13 @@ type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
 	data?: IDataObject[];
-	mappingEnabled: boolean;
-	runIndex: number;
-	outputIndex: number;
-	totalRuns: number;
+	mappingEnabled?: boolean;
+	runIndex?: number;
+	outputIndex?: number;
+	totalRuns?: number;
 	paneType: 'input' | 'output';
-	connectionType: ConnectionTypes;
-	search: string;
+	connectionType?: ConnectionTypes;
+	search?: string;
 };
 
 type SchemaNode = {
@@ -51,6 +52,12 @@ const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 1,
 	node: null,
 	data: undefined,
+	runIndex: 0,
+	outputIndex: 0,
+	totalRuns: 1,
+	connectionType: NodeConnectionType.Main,
+	search: '',
+	mappingEnabled: false,
 });
 
 const draggingPath = ref<string>('');
@@ -66,7 +73,9 @@ const { getSchemaForExecutionData, filterSchema } = useDataSchema();
 const { getNodeInputData } = useNodeHelpers();
 const { debounce } = useDebounce();
 
-const emit = defineEmits<{ (event: 'clear:search'): void }>();
+const emit = defineEmits<{
+	'clear:search': [];
+}>();
 
 const nodeSchema = computed(() =>
 	filterSchema(getSchemaForExecutionData(props.data ?? []), props.search),
@@ -119,7 +128,15 @@ const loadNodeData = async (node: INodeUi) => {
 	const pinData = workflowsStore.pinDataByNodeName(node.name);
 	const data =
 		pinData ??
-		executionDataToJson(getNodeInputData(node, 0, 0, props.paneType, props.connectionType) ?? []);
+		executionDataToJson(
+			getNodeInputData(
+				node,
+				props.runIndex,
+				props.outputIndex,
+				props.paneType,
+				props.connectionType,
+			) ?? [],
+		);
 
 	nodesData.value[node.name] = {
 		schema: getSchemaForExecutionData(data),
@@ -275,6 +292,7 @@ watch(
 
 					<div :class="$style.title">
 						{{ currentNode.node.name }}
+						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
@@ -319,8 +337,16 @@ watch(
 					>
 						<div :class="$style.innerSchema" @transitionstart.stop>
 							<div
-								v-if="isDataEmpty(currentNode.schema)"
-								:class="$style.empty"
+								v-if="currentNode.node.disabled"
+								:class="$style.notice"
+								data-test-id="run-data-schema-disabled"
+							>
+								{{ i18n.baseText('dataMapping.schemaView.disabled') }}
+							</div>
+
+							<div
+								v-else-if="isDataEmpty(currentNode.schema)"
+								:class="$style.notice"
 								data-test-id="run-data-schema-empty"
 							>
 								{{ i18n.baseText('dataMapping.schemaView.emptyData') }}
@@ -395,9 +421,7 @@ watch(
 	--title-spacing-left: 38px;
 	display: flex;
 	flex-direction: column;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
 	container: schema / inline-size;
-	min-height: 100%;
 
 	&.animating {
 		overflow: hidden;
@@ -411,7 +435,7 @@ watch(
 		scroll-margin-top: var(--header-height);
 	}
 
-	.empty {
+	.notice {
 		padding-left: var(--spacing-l);
 	}
 }
@@ -432,13 +456,14 @@ watch(
 	}
 }
 
-.empty {
+.notice {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 }
 
 .innerSchema {
 	min-height: 0;
+	min-width: 0;
 
 	> div {
 		margin-bottom: var(--spacing-xs);
@@ -460,7 +485,6 @@ watch(
 	top: 0;
 	z-index: 1;
 	padding-bottom: var(--spacing-2xs);
-	padding-right: var(--spacing-s);
 	background: var(--color-run-data-background);
 }
 

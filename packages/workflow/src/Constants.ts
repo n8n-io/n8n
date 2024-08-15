@@ -31,10 +31,13 @@ export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
+export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
+export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
+export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -43,7 +46,12 @@ export const STARTING_NODE_TYPES = [
 	START_NODE_TYPE,
 ];
 
-export const SCRIPTING_NODE_TYPES = [FUNCTION_NODE_TYPE, FUNCTION_ITEM_NODE_TYPE, CODE_NODE_TYPE];
+export const SCRIPTING_NODE_TYPES = [
+	FUNCTION_NODE_TYPE,
+	FUNCTION_ITEM_NODE_TYPE,
+	CODE_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+];
 
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
@@ -53,6 +61,7 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	CODE_NODE_TYPE,
 	FUNCTION_NODE_TYPE,
 	FUNCTION_ITEM_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
 ]);
 
 //@n8n/n8n-nodes-langchain

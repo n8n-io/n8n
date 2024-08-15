@@ -44,7 +44,7 @@ describe('Data mapping', () => {
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', "{{ $json.timestamp }} {{ $json['Readable date'] }}");
+			.should('have.text', "{{ $json['Readable date'] }}{{ $json.timestamp }}");
 	});
 
 	it('maps expressions from table json, and resolves value based on hover', () => {
@@ -145,8 +145,8 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
+			.should('have.text', '{{ $json.input }}{{ $json.input[0].count }}');
+		ndv.actions.validateExpressionPreview('value', '[object Object]0');
 	});
 
 	it('maps expressions from schema view', () => {
@@ -170,8 +170,8 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
+			.should('have.text', '{{ $json.input }}{{ $json.input[0].count }}');
+		ndv.actions.validateExpressionPreview('value', '[object Object]0');
 	});
 
 	it('maps expressions from previous nodes', () => {
@@ -200,17 +200,17 @@ describe('Data mapping', () => {
 			.inlineExpressionEditorInput()
 			.should(
 				'have.text',
-				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }} {{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}`,
+				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`,
 			);
 
 		ndv.actions.selectInputNode('Set');
 
 		ndv.getters.executingLoader().should('not.exist');
 		ndv.getters.inputDataContainer().should('exist');
-		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '[object Object]0');
 
 		ndv.getters.inputTbodyCell(2, 0).realHover();
-		ndv.actions.validateExpressionPreview('value', '1 [object Object]');
+		ndv.actions.validateExpressionPreview('value', '[object Object]1');
 	});
 
 	it('maps keys to path', () => {
@@ -284,8 +284,8 @@ describe('Data mapping', () => {
 		ndv.actions.mapToParameter('value');
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.input[0].count }} {{ $json.input }}');
-		ndv.actions.validateExpressionPreview('value', '0 [object Object]');
+			.should('have.text', '{{ $json.input }}{{ $json.input[0].count }}');
+		ndv.actions.validateExpressionPreview('value', '[object Object]0');
 	});
 
 	it('renders expression preview when a previous node is selected', () => {
@@ -317,19 +317,12 @@ describe('Data mapping', () => {
 		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
-		ndv.actions.clearParameterInput('value');
-		cy.get('body').type('{esc}');
-
 		ndv.getters.parameterInput('includeOtherFields').find('input[type="checkbox"]').should('exist');
 		ndv.getters.parameterInput('includeOtherFields').find('input[type="text"]').should('not.exist');
-		ndv.getters
-			.inputDataContainer()
-			.should('exist')
-			.find('span')
-			.contains('count')
-			.realMouseDown()
-			.realMouseMove(100, 100);
-		cy.wait(50);
+		const pill = ndv.getters.inputDataContainer().find('span').contains('count');
+		pill.should('be.visible');
+		pill.realMouseDown();
+		pill.realMouseMove(100, 100);
 
 		ndv.getters
 			.parameterInput('includeOtherFields')
@@ -340,13 +333,36 @@ describe('Data mapping', () => {
 			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
+			.should('include', 'dashed rgb(90, 76, 194)');
 
 		ndv.getters
 			.parameterInput('value')
 			.find('input[type="text"]')
 			.should('exist')
 			.invoke('css', 'border')
-			.then((border) => expect(border).to.include('dashed rgb(90, 76, 194)'));
+			.should('include', 'dashed rgb(90, 76, 194)');
+	});
+
+	it('maps expressions to a specific location in the editor', () => {
+		cy.fixture('Test_workflow_3.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.openNode('Set');
+		ndv.actions.clearParameterInput('value');
+		ndv.actions.typeIntoParameterInput('value', '=');
+		ndv.actions.typeIntoParameterInput('value', 'hello world{enter}{enter}newline');
+
+		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
+
+		ndv.actions.mapToParameter('value');
+
+		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
+		ndv.actions.mapToParameter('value', 'bottom');
+
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.should('have.text', '{{ $json.input[0].count }}hello worldnewline{{ $json.input }}');
 	});
 });

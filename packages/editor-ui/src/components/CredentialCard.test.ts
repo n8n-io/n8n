@@ -1,9 +1,12 @@
 import { setActivePinia } from 'pinia';
+import { within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialsResponse } from '@/Interface';
 import type { ProjectSharingData } from '@/types/projects.types';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -19,9 +22,12 @@ const createCredential = (overrides = {}): ICredentialsResponse => ({
 });
 
 describe('CredentialCard', () => {
+	let projectsStore: ReturnType<typeof useProjectsStore>;
+
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		projectsStore = useProjectsStore();
 	});
 
 	it('should render name and home project name', () => {
@@ -54,5 +60,29 @@ describe('CredentialCard', () => {
 
 		expect(heading).toHaveTextContent(data.name);
 		expect(badge).toHaveTextContent('John Doe');
+	});
+
+	it('should show Move action only if there is resource permission and not on community plan', async () => {
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+
+		const data = createCredential({
+			scopes: ['credential:move'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Move');
 	});
 });

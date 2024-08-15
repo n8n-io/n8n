@@ -1,8 +1,10 @@
 import { deepCopy } from 'n8n-workflow';
-import config from '@/config';
+import { GlobalConfig } from '@n8n/config';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
+
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -25,26 +27,24 @@ import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/events/event.service';
 
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
+		private readonly globalConfig: GlobalConfig,
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
 		private readonly license: License,
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -65,7 +65,7 @@ export class CredentialsController {
 
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
-		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
+		const requestedName = req.query.name ?? this.globalConfig.credentials.defaultName;
 
 		return {
 			name: await this.namingService.getUniqueCredentialName(requestedName),
@@ -127,11 +127,11 @@ export class CredentialsController {
 		const mergedCredentials = deepCopy(credentials);
 		const decryptedData = this.credentialsService.decrypt(storedCredential);
 
-		// When a sharee opens a credential, the fields and the credential data are missing
-		// so the payload will be empty
+		// When a sharee (or project viewer) opens a credential, the fields and the
+		// credential data are missing so the payload will be empty
 		// We need to replace the credential contents with the db version if that's the case
 		// So the credential can be tested properly
-		this.credentialsService.replaceCredentialContentsForSharee(
+		await this.credentialsService.replaceCredentialContentsForSharee(
 			req.user,
 			storedCredential,
 			decryptedData,
@@ -160,18 +160,17 @@ export class CredentialsController {
 			req.body.projectId,
 		);
 
-		void this.internalHooks.onUserCreatedCredentials({
+		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
+			credential.id,
+		);
+
+		this.eventService.emit('credentials-created', {
 			user: req.user,
-			credential_name: newCredential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-			public_api: false,
-		});
-		this.eventRelay.emit('credentials-created', {
-			user: req.user,
-			credentialName: newCredential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			publicApi: false,
+			projectId: project?.id,
+			projectType: project?.type,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);
@@ -221,15 +220,8 @@ export class CredentialsController {
 
 		this.logger.verbose('Credential updated', { credentialId });
 
-		void this.internalHooks.onUserUpdatedCredentials({
+		this.eventService.emit('credentials-updated', {
 			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-		});
-		this.eventRelay.emit('credentials-updated', {
-			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
@@ -262,15 +254,8 @@ export class CredentialsController {
 
 		await this.credentialsService.delete(credential);
 
-		void this.internalHooks.onUserDeletedCredentials({
+		this.eventService.emit('credentials-deleted', {
 			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-		});
-		this.eventRelay.emit('credentials-deleted', {
-			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 		});
@@ -306,25 +291,22 @@ export class CredentialsController {
 		let newShareeIds: string[] = [];
 
 		await Db.transaction(async (trx) => {
-			const currentPersonalProjectIDs = credential.shared
+			const currentProjectIds = credential.shared
 				.filter((sc) => sc.role === 'credential:user')
 				.map((sc) => sc.projectId);
-			const newPersonalProjectIds = shareWithIds;
+			const newProjectIds = shareWithIds;
 
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIds, (id) => id],
-			);
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
 			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIds, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
+				[newProjectIds, (id) => id],
+				[currentProjectIds, (id) => id],
 			);
 
 			const deleteResult = await trx.delete(SharedCredentials, {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;
@@ -333,22 +315,12 @@ export class CredentialsController {
 			newShareeIds = toShare;
 		});
 
-		void this.internalHooks.onUserSharedCredentials({
+		this.eventService.emit('credentials-shared', {
 			user: req.user,
-			credential_name: credential.name,
-			credential_type: credential.type,
-			credential_id: credential.id,
-			user_id_sharer: req.user.id,
-			user_ids_sharees_added: newShareeIds,
-			sharees_removed: amountRemoved,
-		});
-		this.eventRelay.emit('credentials-shared', {
-			user: req.user,
-			credentialName: credential.name,
 			credentialType: credential.type,
 			credentialId: credential.id,
 			userIdSharer: req.user.id,
-			userIdsShareesRemoved: newShareeIds,
+			userIdsShareesAdded: newShareeIds,
 			shareesRemoved: amountRemoved,
 		});
 

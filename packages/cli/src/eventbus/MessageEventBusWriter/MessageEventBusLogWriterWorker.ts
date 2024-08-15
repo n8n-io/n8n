@@ -6,7 +6,6 @@ import type { MessageEventBusLogWriterOptions } from './MessageEventBusLogWriter
 let logFileBasePath = '';
 let loggingPaused = true;
 let keepFiles = 10;
-let fileStatTimer: NodeJS.Timer;
 let maxLogFileSizeInKB = 102400;
 
 function setLogFileBasePath(basePath: string) {
@@ -117,7 +116,7 @@ if (!isMainThread) {
 					if (logFileBasePath) {
 						renameAndCreateLogs();
 						loggingPaused = false;
-						fileStatTimer = setInterval(async () => {
+						setInterval(async () => {
 							await checkFileSize(buildLogFileNameWithCounter());
 						}, 5000);
 					}

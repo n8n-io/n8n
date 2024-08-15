@@ -17,7 +17,7 @@ import type { RedisServicePubSubPublisher } from './services/redis/RedisServiceP
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { UsageMetricsService } from './services/usageMetrics.service';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -38,7 +38,7 @@ export class License {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly usageMetricsService: UsageMetricsService,
+		private readonly licenseMetricsService: LicenseMetricsService,
 	) {}
 
 	/**
@@ -55,7 +55,7 @@ export class License {
 		 * This ensures the mains do not cause a 429 (too many requests) on license init.
 		 */
 		if (config.getEnv('multiMainSetup.enabled')) {
-			return autoRenewEnabled && config.getEnv('multiMainSetup.instanceType') === 'leader';
+			return autoRenewEnabled && this.instanceSettings.isLeader;
 		}
 
 		return autoRenewEnabled;
@@ -82,10 +82,10 @@ export class License {
 			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
-			? async () => await this.usageMetricsService.collectUsageMetrics()
+			? async () => await this.licenseMetricsService.collectUsageMetrics()
 			: async () => [];
 		const collectPassthroughData = isMainInstance
-			? async () => await this.usageMetricsService.collectPassthroughData()
+			? async () => await this.licenseMetricsService.collectPassthroughData()
 			: async () => ({});
 
 		const renewalEnabled = this.renewalEnabled(instanceType);
@@ -249,6 +249,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
 	}
 
+	isAiAssistantEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.AI_ASSISTANT);
+	}
+
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
 	}
@@ -305,6 +309,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.PROJECT_ROLE_VIEWER);
 	}
 
+	isCustomNpmRegistryEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
@@ -336,6 +344,10 @@ export class License {
 		return entitlements.find(
 			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
 		);
+	}
+
+	getConsumerId() {
+		return this.manager?.getConsumerId() ?? 'unknown';
 	}
 
 	// Helper functions for computed data

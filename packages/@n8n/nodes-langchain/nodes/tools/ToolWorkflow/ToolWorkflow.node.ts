@@ -28,19 +28,20 @@ import {
 } from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom n8n Workflow Tool',
+		displayName: 'Call n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Custom n8n Workflow Tool',
+			name: 'Call n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -492,7 +493,7 @@ export class ToolWorkflow implements INodeType {
 		if (useSchema) {
 			try {
 				// We initialize these even though one of them will always be empty
-				// it makes it easer to navigate the ternary operator
+				// it makes it easier to navigate the ternary operator
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 

@@ -359,7 +359,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 export function isSubNodeType(
 	typeDescription: Pick<INodeTypeDescription, 'outputs'> | null,
 ): boolean {
-	if (!typeDescription || !typeDescription.outputs || typeof typeDescription.outputs === 'string') {
+	if (!typeDescription?.outputs || typeof typeDescription.outputs === 'string') {
 		return false;
 	}
 	const outputTypes = getConnectionTypes(typeDescription.outputs);
@@ -520,6 +520,9 @@ const checkConditions = (
 				}
 				if (key === 'regex') {
 					return new RegExp(targetValue as string).test(propertyValue as string);
+				}
+				if (key === 'exists') {
+					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
 				}
 				return false;
 			});

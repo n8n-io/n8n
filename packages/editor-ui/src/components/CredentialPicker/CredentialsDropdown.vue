@@ -12,10 +12,10 @@ const props = defineProps<{
 	selectedCredentialId: string | null;
 }>();
 
-const $emit = defineEmits({
-	credentialSelected: (_credentialId: string) => true,
-	newCredential: () => true,
-});
+const emit = defineEmits<{
+	credentialSelected: [credentialId: string];
+	newCredential: [];
+}>();
 
 const i18n = useI18n();
 
@@ -23,9 +23,9 @@ const NEW_CREDENTIALS_TEXT = `- ${i18n.baseText('nodeCredentials.createNew')} -`
 
 const onCredentialSelected = (credentialId: string) => {
 	if (credentialId === NEW_CREDENTIALS_TEXT) {
-		$emit('newCredential');
+		emit('newCredential');
 	} else {
-		$emit('credentialSelected', credentialId);
+		emit('credentialSelected', credentialId);
 	}
 };
 </script>

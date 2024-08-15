@@ -35,14 +35,15 @@
 				@action="onNoticeAction"
 			/>
 
-			<n8n-button
-				v-else-if="parameter.type === 'button'"
-				class="parameter-item"
-				block
-				@click="onButtonAction(parameter)"
-			>
-				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
-			</n8n-button>
+			<div v-else-if="parameter.type === 'button'" class="parameter-item">
+				<ButtonParameter
+					:parameter="parameter"
+					:path="path"
+					:value="getParameterValue(parameter.name)"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
 
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
@@ -67,7 +68,7 @@
 				/>
 				<Suspense v-if="!asyncLoadingError">
 					<template #default>
-						<CollectionParameter
+						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"
 							:parameter="parameter"
 							:values="getParameterValue(parameter.name)"
@@ -76,7 +77,7 @@
 							:is-read-only="isReadOnly"
 							@value-changed="valueChanged"
 						/>
-						<FixedCollectionParameter
+						<LazyFixedCollectionParameter
 							v-else-if="parameter.type === 'fixedCollection'"
 							:parameter="parameter"
 							:values="getParameterValue(parameter.name)"
@@ -177,6 +178,7 @@ import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCo
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import ImportCurlParameter from '@/components/ImportCurlParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
+import ButtonParameter from '@/components/ButtonParameter/ButtonParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -192,10 +194,10 @@ import {
 import { get, set } from 'lodash-es';
 import { useRouter } from 'vue-router';
 
-const FixedCollectionParameter = defineAsyncComponent(
+const LazyFixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(
+const LazyCollectionParameter = defineAsyncComponent(
 	async () => await import('./CollectionParameter.vue'),
 );
 
@@ -205,16 +207,16 @@ type Props = {
 	path?: string;
 	hideDelete?: boolean;
 	indent?: boolean;
-	isReadOnly: boolean;
+	isReadOnly?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
 };
 
 const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
 const emit = defineEmits<{
-	(event: 'activate'): void;
-	(event: 'valueChanged', value: IUpdateInformation): void;
-	(event: 'parameterBlur', value: string): void;
+	activate: [];
+	valueChanged: [value: IUpdateInformation];
+	parameterBlur: [value: string];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -227,7 +229,7 @@ const workflowHelpers = useWorkflowHelpers({ router });
 
 onErrorCaptured((e, component) => {
 	if (
-		!['FixedCollectionParameter', 'CollectionParameter'].includes(
+		!['LazyFixedCollectionParameter', 'LazyCollectionParameter'].includes(
 			component?.$options.name as string,
 		)
 	) {
@@ -483,14 +485,6 @@ function onNoticeAction(action: string) {
  * Handles default node button parameter type actions
  * @param parameter
  */
-function onButtonAction(parameter: INodeProperties) {
-	const action: string | undefined = parameter.typeOptions?.action;
-
-	switch (action) {
-		default:
-			return;
-	}
-}
 
 function shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
 	// TODO: For now, hide all fields that are used in authentication fields displayOptions

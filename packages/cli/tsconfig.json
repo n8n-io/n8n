@@ -2,7 +2,6 @@
 	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"rootDir": ".",
-		"preserveSymlinks": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",
@@ -22,6 +21,7 @@
 		{ "path": "../workflow/tsconfig.build.json" },
 		{ "path": "../core/tsconfig.build.json" },
 		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
+		{ "path": "../@n8n/config/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }

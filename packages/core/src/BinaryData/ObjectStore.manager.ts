@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { toBuffer } from './utils';
+import { binaryToBuffer } from './utils';
 import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
 
 import type { Readable } from 'node:stream';
@@ -22,7 +22,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.toFileId(workflowId, executionId);
-		const buffer = await this.toBuffer(bufferOrStream);
+		const buffer = await binaryToBuffer(bufferOrStream);
 
 		await this.objectStoreService.put(fileId, buffer, metadata);
 
@@ -99,9 +99,5 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
 
 		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
-	}
-
-	private async toBuffer(bufferOrStream: Buffer | Readable) {
-		return await toBuffer(bufferOrStream);
 	}
 }

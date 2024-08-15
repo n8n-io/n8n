@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
@@ -91,9 +90,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
-
-	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', 1);
 
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
@@ -204,7 +200,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler005(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					eventBus.logWriter.worker?.removeListener('message', handler005);
@@ -221,7 +217,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler006(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();

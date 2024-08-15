@@ -16,12 +16,7 @@ module.exports = {
 
 	overrides: [
 		{
-			files: [
-				'**/*.test.ts',
-				'**/test/**/*.ts',
-				'**/__tests__/**/*.ts',
-				'**/*.stories.ts',
-			],
+			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
 			},
@@ -60,6 +55,17 @@ module.exports = {
 		'vue/prop-name-casing': ['error', 'camelCase'],
 		'vue/attribute-hyphenation': ['error', 'always'],
 		'import/no-extraneous-dependencies': 'warn',
+		'vue/define-emits-declaration': ['error', 'type-literal'],
+		'vue/require-macro-variable-name': [
+			'error',
+			{
+				defineProps: 'props',
+				defineEmits: 'emit',
+				defineSlots: 'slots',
+				useSlots: 'slots',
+				useAttrs: 'attrs',
+			},
+		],
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',

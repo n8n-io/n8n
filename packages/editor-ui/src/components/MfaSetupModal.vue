@@ -254,7 +254,7 @@ const onSetupClick = async () => {
 
 const getMfaQR = async () => {
 	try {
-		const response = await userStore.getMfaQR();
+		const response = await userStore.fetchMfaQR();
 		qrCode.value = response.qrCode;
 		secret.value = response.secret;
 		recoveryCodes.value = response.recoveryCodes;

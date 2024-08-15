@@ -8,7 +8,9 @@ import { useTelemetry } from '@/composables/useTelemetry';
 
 vi.mock('@/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({
-		isModalOpen: vi.fn().mockReturnValue(() => true),
+		modalsById: vi.fn().mockReturnValue(() => {
+			open: true;
+		}),
 		closeModal: vi.fn(),
 	}),
 }));
@@ -47,6 +49,7 @@ describe('ProjectMoveResourceConfirmModal', () => {
 					id: '1',
 				},
 				projectId: '1',
+				projectName: 'My Project',
 			},
 		};
 		const { getByRole, getAllByRole } = renderComponent({ props });

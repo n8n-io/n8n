@@ -8,12 +8,13 @@
 		:type-props="{ itemSize: 80 }"
 		:shareable="isShareable"
 		:initialize="initialize"
-		:disabled="readOnlyEnv"
+		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
+		:loading="loading"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs v-if="showProjectTabs" />
+			<ProjectTabs />
 		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
@@ -60,17 +61,12 @@
 							: $locale.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</n8n-heading>
-				<n8n-text size="large" color="text-base">
-					{{
-						$locale.baseText(
-							readOnlyEnv
-								? 'workflows.empty.description.readOnlyEnv'
-								: 'workflows.empty.description',
-						)
-					}}
-				</n8n-text>
+				<n8n-text size="large" color="text-base">{{ emptyListDescription }}</n8n-text>
 			</div>
-			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div
+				v-if="!readOnlyEnv && projectPermissions.workflow.create"
+				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
+			>
 				<a
 					v-if="isSalesUser"
 					:href="getTemplateRepositoryURL()"
@@ -146,7 +142,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
@@ -161,8 +157,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
-
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
+import { getResourcePermissions } from '@/permissions';
 
 interface Filters {
 	search: string;
@@ -194,6 +189,7 @@ const WorkflowsView = defineComponent({
 				tags: [],
 			} as Filters,
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -213,11 +209,11 @@ const WorkflowsView = defineComponent({
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
-		allWorkflows(): IWorkflowDb[] {
-			return this.workflowsStore.allWorkflows;
+		allWorkflows(): IResource[] {
+			return this.workflowsStore.allWorkflows as IResource[];
 		},
 		isShareable(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
@@ -255,17 +251,24 @@ const WorkflowsView = defineComponent({
 			}
 			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
-		showProjectTabs() {
-			return (
-				!!this.$route.params.projectId ||
-				!!this.allWorkflows.length ||
-				this.projectsStore.myProjects.length > 1
-			);
-		},
 		addWorkflowButtonText() {
 			return this.projectsStore.currentProject
 				? this.$locale.baseText('workflows.project.add')
 				: this.$locale.baseText('workflows.add');
+		},
+		projectPermissions() {
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
+		},
+		emptyListDescription() {
+			if (this.readOnlyEnv) {
+				return this.$locale.baseText('workflows.empty.description.readOnlyEnv');
+			} else if (!this.projectPermissions.workflow.create) {
+				return this.$locale.baseText('workflows.empty.description.noPermission');
+			} else {
+				return this.$locale.baseText('workflows.empty.description');
+			}
 		},
 	},
 	watch: {
@@ -274,9 +277,6 @@ const WorkflowsView = defineComponent({
 			handler() {
 				this.saveFiltersOnQueryString();
 			},
-		},
-		'filters.tags'() {
-			this.sendFiltersTelemetry('tags');
 		},
 		'$route.params.projectId'() {
 			void this.initialize();
@@ -323,11 +323,13 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		async initialize() {
+			this.loading = true;
 			await Promise.all([
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
 			]);
+			this.loading = false;
 		},
 		onClickTag(tagId: string) {
 			if (!this.filters.tags.includes(tagId)) {
@@ -356,9 +358,6 @@ const WorkflowsView = defineComponent({
 			}
 
 			return matches;
-		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 		saveFiltersOnQueryString() {
 			const query: { [key: string]: string } = {};

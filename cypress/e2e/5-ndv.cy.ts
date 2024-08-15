@@ -1,10 +1,8 @@
-import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, NOTION_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 import { clickCreateNewCredential } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
-import { successToast } from '../pages/notifications';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -339,38 +337,6 @@ describe('NDV', () => {
 		});
 	});
 
-	it('should not retrieve remote options when required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
-
-		ndv.getters.inputPanel().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false });
-		// Remote options dropdown should not be visible
-		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
-	});
-
-	it('should retrieve remote options when non-required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-		ndv.getters.parameterInput('remoteOptions').click();
-
-		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
-
-		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
-
-		ndv.getters.parameterInput('remoteOptions').click();
-		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
-	});
-
 	it('should flag issues as soon as params are set', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -631,8 +597,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().find('label').eq(2).click({ force: true });
 		ndv.getters
 			.outputDataContainer()
-			.findChildByTestId('run-data-schema-item')
-			.find('> span')
+			.findChildByTestId('run-data-schema-item-value')
 			.should('include.text', '<?xml version="1.0" encoding="UTF-8"?>');
 	});
 
@@ -739,23 +704,6 @@ describe('NDV', () => {
 		});
 	});
 
-	it('Stop listening for trigger event from NDV', () => {
-		cy.intercept('POST', '/rest/workflows/**/run').as('workflowRun');
-		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
-			keepNdvOpen: true,
-			action: 'On Changes To A Specific File',
-			isTrigger: true,
-		});
-		ndv.getters.triggerPanelExecuteButton().should('exist');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
-		ndv.getters.triggerPanelExecuteButton().realClick();
-		cy.wait('@workflowRun').then(() => {
-			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
-			successToast().should('exist');
-		});
-	});
-
 	it('should allow selecting item for expressions', () => {
 		workflowPage.actions.visit();
 
@@ -781,5 +729,34 @@ describe('NDV', () => {
 
 		ndv.actions.expressionSelectItem(1);
 		ndv.getters.inlineExpressionEditorOutput().should('have.text', '1');
+	});
+
+	it('should show data from the correct output in schema view', () => {
+		cy.createFixtureWorkflow('Test_workflow_multiple_outputs.json');
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Only Item 1');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem1');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 2');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem2');
+		ndv.actions.close();
+
+		workflowPage.actions.openNode('Only Item 3');
+		ndv.getters.inputPanel().should('be.visible');
+		ndv.getters
+			.inputPanel()
+			.find('[data-test-id=run-data-schema-item]')
+			.should('contain.text', 'onlyOnItem3');
 	});
 });

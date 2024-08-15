@@ -1,20 +1,17 @@
-import { Request, Response, NextFunction } from 'express';
-import config from '@/config';
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventRelay } from '@/eventbus/event-relay.service';
+import { EventService } from '@/events/event.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -37,21 +34,9 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 export class CommunityPackagesController {
 	constructor(
 		private readonly push: Push,
-		private readonly internalHooks: InternalHooks,
 		private readonly communityPackagesService: CommunityPackagesService,
-		private readonly eventRelay: EventRelay,
+		private readonly eventService: EventService,
 	) {}
-
-	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
-	@Middleware()
-	checkIfCommunityNodesEnabled(req: Request, res: Response, next: NextFunction) {
-		if (config.getEnv('executions.mode') === 'queue' && req.method !== 'GET')
-			res.status(400).json({
-				status: 'error',
-				message: 'Package management is disabled when running in "queue" mode',
-			});
-		else next();
-	}
 
 	@Post('/')
 	@GlobalScope('communityPackage:install')
@@ -101,22 +86,14 @@ export class CommunityPackagesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.communityPackagesService.installNpmModule(
+			installedPackage = await this.communityPackagesService.installPackage(
 				parsed.packageName,
 				parsed.version,
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			void this.internalHooks.onCommunityPackageInstallFinished({
-				user: req.user,
-				input_string: name,
-				package_name: parsed.packageName,
-				success: false,
-				package_version: parsed.version,
-				failure_reason: errorMessage,
-			});
-			this.eventRelay.emit('community-package-installed', {
+			this.eventService.emit('community-package-installed', {
 				user: req.user,
 				inputString: name,
 				packageName: parsed.packageName,
@@ -144,17 +121,7 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageInstallFinished({
-			user: req.user,
-			input_string: name,
-			package_name: parsed.packageName,
-			success: true,
-			package_version: parsed.version,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
-		});
-		this.eventRelay.emit('community-package-installed', {
+		this.eventService.emit('community-package-installed', {
 			user: req.user,
 			inputString: name,
 			packageName: parsed.packageName,
@@ -227,7 +194,7 @@ export class CommunityPackagesController {
 		}
 
 		try {
-			await this.communityPackagesService.removeNpmModule(name, installedPackage);
+			await this.communityPackagesService.removePackage(name, installedPackage);
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -245,15 +212,7 @@ export class CommunityPackagesController {
 			});
 		});
 
-		void this.internalHooks.onCommunityPackageDeleteFinished({
-			user: req.user,
-			package_name: name,
-			package_version: installedPackage.installedVersion,
-			package_node_names: installedPackage.installedNodes.map((node) => node.name),
-			package_author: installedPackage.authorName,
-			package_author_email: installedPackage.authorEmail,
-		});
-		this.eventRelay.emit('community-package-deleted', {
+		this.eventService.emit('community-package-deleted', {
 			user: req.user,
 			packageName: name,
 			packageVersion: installedPackage.installedVersion,
@@ -280,7 +239,7 @@ export class CommunityPackagesController {
 		}
 
 		try {
-			const newInstalledPackage = await this.communityPackagesService.updateNpmModule(
+			const newInstalledPackage = await this.communityPackagesService.updatePackage(
 				this.communityPackagesService.parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 			);
@@ -300,16 +259,7 @@ export class CommunityPackagesController {
 				});
 			});
 
-			void this.internalHooks.onCommunityPackageUpdateFinished({
-				user: req.user,
-				package_name: name,
-				package_version_current: previouslyInstalledPackage.installedVersion,
-				package_version_new: newInstalledPackage.installedVersion,
-				package_node_names: newInstalledPackage.installedNodes.map((node) => node.name),
-				package_author: newInstalledPackage.authorName,
-				package_author_email: newInstalledPackage.authorEmail,
-			});
-			this.eventRelay.emit('community-package-updated', {
+			this.eventService.emit('community-package-updated', {
 				user: req.user,
 				packageName: name,
 				packageVersionCurrent: previouslyInstalledPackage.installedVersion,
