@@ -68,8 +68,8 @@ function onEnter() {
 	}
 }
 
-onClickOutside(inputRef, (event) => {
-	if (event.type === 'click' && inputRef.value) {
+onClickOutside(inputRef, () => {
+	if (inputRef.value) {
 		emit('blur', inputRef.value.value);
 	}
 });
