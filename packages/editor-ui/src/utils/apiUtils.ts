@@ -13,6 +13,7 @@ if (!browserId && 'randomUUID' in crypto) {
 }
 
 export const NO_NETWORK_ERROR_CODE = 999;
+export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
 export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
@@ -200,7 +201,7 @@ export async function streamRequest<T>(
 	onChunk?: (chunk: T) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
-	separator = '⧉⇋⇋➽⌑⧉§§\n',
+	separator = STREAM_SEPERATOR,
 ): Promise<void> {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
