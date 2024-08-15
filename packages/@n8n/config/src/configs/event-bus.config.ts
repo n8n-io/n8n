@@ -4,22 +4,22 @@ import { Config, Env, Nested } from '../decorators';
 class LogWriterConfig {
 	/* of event log files to keep */
 	@Env('N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT')
-	keepLogCount = 3;
+	keepLogCount: number = 3;
 
 	/** Max size (in KB) of an event log file before a new one is started */
 	@Env('N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB')
-	maxFileSizeInKB = 10240; // 10 MB
+	maxFileSizeInKB: number = 10240; // 10 MB
 
 	/** Basename of event log file */
 	@Env('N8N_EVENTBUS_LOGWRITER_LOGBASENAME')
-	logBaseName = 'n8nEventLog';
+	logBaseName: string = 'n8nEventLog';
 }
 
 @Config
 export class EventBusConfig {
 	/** How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. `0` to disable */
 	@Env('N8N_EVENTBUS_CHECKUNSENTINTERVAL')
-	checkUnsentInterval = 0;
+	checkUnsentInterval: number = 0;
 
 	/** Endpoint to retrieve n8n version information from */
 	@Nested

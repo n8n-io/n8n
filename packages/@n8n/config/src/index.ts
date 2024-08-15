@@ -51,19 +51,19 @@ export class GlobalConfig {
 
 	/** Path n8n is deployed to */
 	@Env('N8N_PATH')
-	path = '/';
+	path: string = '/';
 
 	/** Host name n8n can be reached */
 	@Env('N8N_HOST')
-	host = 'localhost';
+	host: string = 'localhost';
 
 	/** HTTP port n8n can be reached */
 	@Env('N8N_PORT')
-	port = 5678;
+	port: number = 5678;
 
 	/** IP address n8n should listen on */
 	@Env('N8N_LISTEN_ADDRESS')
-	listen_address = '0.0.0.0';
+	listen_address: string = '0.0.0.0';
 
 	/** HTTP Protocol via which n8n can be reached */
 	@Env('N8N_PROTOCOL')
