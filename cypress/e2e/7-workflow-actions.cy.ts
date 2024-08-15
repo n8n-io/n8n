@@ -156,11 +156,10 @@ describe('Workflow Actions', () => {
 				WorkflowPage.getters.workflowNameInput().type('{selectall}');
 				WorkflowPage.getters.workflowNameInput().type('Test');
 				WorkflowPage.getters.saveButton().click();
-				WorkflowPage.getters.workflowNameInput().should('have.value', oldName);
+				WorkflowPage.getters.workflowNameInput().should('have.value', 'Test');
 				cy.visit(WorkflowPages.url);
-				// Workflow rename should be ignored (no duplicate save)
-				WorkflowPages.getters.workflowCards().contains(String('Test')).should('not.exist');
-				WorkflowPages.getters.workflowCards().contains(String(oldName)).should('exist');
+				// There should be no workflow with the old name (duplicate save)
+				WorkflowPages.getters.workflowCards().contains(String(oldName)).should('not.exist');
 			});
 	});
 
