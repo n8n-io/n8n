@@ -142,7 +142,12 @@ describe('LogStreamingEventRelay', () => {
 				executionId: 'some-id',
 				userId: 'some-id',
 				workflow: mock<IWorkflowBase>({ id: 'some-id', name: 'some-name' }),
-				runData: mock<IRun>({ status: 'success', mode: 'manual', data: { resultData: {} } }),
+				runData: mock<IRun>({
+					finished: true,
+					status: 'success',
+					mode: 'manual',
+					data: { resultData: {} },
+				}),
 			});
 
 			eventService.emit('workflow-post-execute', payload);
@@ -153,7 +158,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.workflow.success',
 				payload: {
 					...rest,
-					success: true,
+					success: true, // same as finished
 					isManual: true,
 					workflowName: 'some-name',
 					workflowId: 'some-id',
@@ -161,10 +166,11 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflow-post-execute` event for unsuccessful execution', () => {
+		it('should log on `workflow-post-execute` event for failed execution', () => {
 			const runData = mock<IRun>({
 				status: 'error',
 				mode: 'manual',
+				finished: false,
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
@@ -193,7 +199,7 @@ describe('LogStreamingEventRelay', () => {
 				eventName: 'n8n.workflow.failed',
 				payload: {
 					...rest,
-					success: false,
+					success: false, // same as finished
 					isManual: true,
 					workflowName: 'some-name',
 					workflowId: 'some-id',
