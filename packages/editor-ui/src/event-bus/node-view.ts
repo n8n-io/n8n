@@ -2,7 +2,8 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 
-export type CallbackFn = () => void;
+/** Callback function called after workflow has been save */
+export type OnSaveWorkflowFn = () => void;
 
 export interface NodeViewEventBusEvents {
 	/** Command to create a new workflow */
@@ -12,7 +13,7 @@ export interface NodeViewEventBusEvents {
 	openChat: never;
 
 	/** Command to save the current workflow */
-	saveWorkflow: CallbackFn;
+	saveWorkflow: OnSaveWorkflowFn;
 
 	/** Command to import a workflow from given data */
 	importWorkflowData: IDataObject;
