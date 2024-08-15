@@ -1,3 +1,13 @@
+## [1.54.3](https://github.com/n8n-io/n8n/compare/n8n@1.54.2...n8n@1.54.3) (2024-08-15)
+
+
+### Bug Fixes
+
+* **core:** Fix payload property in `workflow-post-execute` event ([#10413](https://github.com/n8n-io/n8n/issues/10413)) ([829d8b9](https://github.com/n8n-io/n8n/commit/829d8b9a12ba58e94eff08466f57abe8a6c89b91))
+* Project Viewer always seeing a connection error when testing credentials ([#10417](https://github.com/n8n-io/n8n/issues/10417)) ([b89b65a](https://github.com/n8n-io/n8n/commit/b89b65aaf5e8eef3701013e73b018ba2e9c05743))
+
+
+
 ## [1.54.2](https://github.com/n8n-io/n8n/compare/n8n@1.54.1...n8n@1.54.2) (2024-08-14)
 
 
