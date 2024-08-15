@@ -1,4 +1,3 @@
-import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -25,7 +24,5 @@ export interface NodeViewEventBusEvents {
 
 	'runWorkflowButton:mouseleave': never;
 }
-
-export type NodeViewEventBus = EventBus<NodeViewEventBusEvents>;
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();
