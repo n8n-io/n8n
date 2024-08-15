@@ -502,9 +502,8 @@ export class ExecutionService {
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeAnnotation: true,
+			includeData: true,
 		});
-
-		console.log({ execution });
 
 		return execution;
 	}
