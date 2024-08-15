@@ -36,7 +36,7 @@ export declare namespace ExecutionRequest {
 	type ExecutionUpdatePayload = {
 		id: number;
 		tags: string[];
-		vote: AnnotationVote;
+		vote: AnnotationVote | null;
 	};
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {

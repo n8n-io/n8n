@@ -113,7 +113,7 @@ export class ExecutionsController {
 
 		const { tags, vote } = req.body;
 
-		if (tags || vote) {
+		if (tags || vote !== undefined) {
 			return await this.executionService.annotate(req.params.id, { tags, vote });
 		} else {
 			throw new BadRequestError('No annotation provided');

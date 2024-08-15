@@ -19,7 +19,7 @@
 						text
 						size="medium"
 						icon="thumbs-up"
-						@click="onVote('up')"
+						@click="onVoteClick('up')"
 					/>
 					<n8n-icon-button
 						:class="{ [$style.highlight]: vote === 'down' }"
@@ -27,14 +27,14 @@
 						text
 						size="medium"
 						icon="thumbs-down"
-						@click="onVote('down')"
+						@click="onVoteClick('down')"
 					/>
 				</div>
 			</div>
 			<span class="tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
 					v-if="isTagsEditEnabled"
-					v-model="tagIds"
+					v-model="appliedTagIds"
 					ref="dropdown"
 					:create-enabled="true"
 					:event-bus="tagsEventBus"
@@ -52,7 +52,7 @@
 
 				<AnnotationTagsContainer
 					v-else
-					:key="activeExecution.id"
+					:key="activeExecution?.id"
 					:tag-ids="tagIds"
 					:clickable="true"
 					:responsive="true"
@@ -60,24 +60,6 @@
 					@click="onTagsEditEnable"
 				/>
 			</span>
-
-			<!--			<div :class="$style.tags" data-test-id="execution-annotation-tags-container">-->
-			<!--				<N8nTags-->
-			<!--					v-if="activeExecution?.annotation?.tags && activeExecution?.annotation.tags.length > 0"-->
-			<!--					:tags="activeExecution?.annotation?.tags"-->
-			<!--				></N8nTags>-->
-			<!--								<span class="add-tag clickable" data-test-id="new-tag-link">-->
-			<!--									+ {{ $locale.baseText('workflowDetails.addTag') }}-->
-			<!--								</span>-->
-			<!--								<TagsContainer-->
-			<!--									v-else-->
-			<!--									:key="execution.id"-->
-			<!--									:tag-ids="execution.annotation?.tags.map(({ id }) => id) ?? []"-->
-			<!--									:clickable="true"-->
-			<!--									:responsive="true"-->
-			<!--									data-test-id="execution-annotation-tags"-->
-			<!--								/>-->
-			<!--			</div>-->
 		</div>
 		<div :class="$style.section">
 			<div :class="$style.heading">
@@ -115,6 +97,15 @@ import AnnotationTagsContainer from '@/components/AnnotationTagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 
+const hasChanged = (prev: string[], curr: string[]) => {
+	if (prev.length !== curr.length) {
+		return true;
+	}
+
+	const set = new Set(prev);
+	return curr.reduce((acc, val) => acc || !set.has(val), false);
+};
+
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
 	components: {
@@ -148,15 +139,24 @@ export default defineComponent({
 		return {
 			tagsEventBus: createEventBus(),
 			isTagsEditEnabled: false,
+			appliedTagIds: [] as string[],
+			tagsSaving: false,
 		};
 	},
 	methods: {
-		async onVote(vote: AnnotationVote) {
-			if (this.activeExecution) {
-				await this.executionsStore.annotateExecution(this.activeExecution?.id, { vote });
+		async onVoteClick(vote: AnnotationVote) {
+			if (!this.activeExecution) {
+				return;
 			}
+
+			// If user clicked on the same vote, remove it
+			// so that vote buttons act as toggle buttons
+			const voteToSet = vote === this.vote ? null : vote;
+
+			await this.executionsStore.annotateExecution(this.activeExecution.id, { vote: voteToSet });
 		},
 		onTagsEditEnable() {
+			this.appliedTagIds = this.tagIds;
 			this.isTagsEditEnabled = true;
 
 			setTimeout(() => {
@@ -164,36 +164,32 @@ export default defineComponent({
 			}, 0);
 		},
 		async onTagsBlur() {
+			if (!this.activeExecution) {
+				return;
+			}
+
+			const current = (this.tagIds ?? []) as string[];
+			const tags = this.appliedTagIds;
+
+			if (!hasChanged(current, tags)) {
+				this.isTagsEditEnabled = false;
+				return;
+			}
+
+			if (this.tagsSaving) {
+				return;
+			}
+
+			this.tagsSaving = true;
+
+			await this.executionsStore.annotateExecution(this.activeExecution.id, { tags });
+
+			this.tagsSaving = false;
 			this.isTagsEditEnabled = false;
 		},
 		onTagsEditEsc() {
 			this.isTagsEditEnabled = false;
 		},
-
-		// async onTagsBlur() {
-		// 	const current = (props.workflow.tags ?? []) as string[];
-		// 	const tags = appliedTagIds;
-		// 	if (!hasChanged(current, tags)) {
-		// 		this.isTagsEditEnabled = false;
-		//
-		// 		return;
-		// 	}
-		// 	if (tagsSaving) {
-		// 		return;
-		// 	}
-		// 	tagsSaving = true;
-		//
-		// 	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
-		// 	telemetry.track('User edited workflow tags', {
-		// 		workflow_id: props.workflow.id,
-		// 		new_tag_count: tags.length,
-		// 	});
-		//
-		// 	tagsSaving = false;
-		// 	if (saved) {
-		// 		isTagsEditEnabled = false;
-		// 	}
-		// },
 	},
 });
 </script>
@@ -315,6 +311,18 @@ export default defineComponent({
 	:deep(.el-skeleton__item) {
 		height: 60px;
 		border-radius: 0;
+	}
+}
+
+.add-tag {
+	font-size: 12px;
+	padding: 20px 0; // to be more clickable
+	color: $custom-font-very-light;
+	font-weight: 600;
+	white-space: nowrap;
+
+	&:hover {
+		color: $color-primary;
 	}
 }
 </style>

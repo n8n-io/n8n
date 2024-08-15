@@ -22,15 +22,18 @@ import type {
 } from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
 import { GlobalConfig } from '@n8n/config';
-import {
+import type {
 	AnnotationVote,
-	ApplicationError,
-	type ExecutionStatus,
-	type ExecutionSummary,
-	type IRunExecutionData,
+	ExecutionStatus,
+	ExecutionSummary,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
-import { ExecutionCancelledError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import {
+	ExecutionCancelledError,
+	ErrorReporterProxy as ErrorReporter,
+	ApplicationError,
+} from 'n8n-workflow';
 
 import type {
 	ExecutionPayload,
@@ -276,25 +279,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				}
 			: annotation;
 
-		if (options?.includeData && options?.unflattenData) {
-			return {
-				...rest,
-				data: parse(execution.executionData.data) as IRunExecutionData,
-				workflowData: execution.executionData.workflowData,
-				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				annotation: sanitizedAnnotation,
-			} as IExecutionResponse;
-		} else if (options?.includeData) {
-			return {
-				...rest,
-				data: execution.executionData.data,
-				workflowData: execution.executionData.workflowData,
-				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				annotation: sanitizedAnnotation,
-			} as IExecutionFlattedDb;
-		}
-
-		return rest;
+		return {
+			...rest,
+			...(options?.includeData
+				? {
+						data: options?.unflattenData
+							? (parse(executionData.data) as IRunExecutionData)
+							: executionData.data,
+						workflowData: executionData?.workflowData,
+						customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+					}
+				: null),
+			...(options?.includeAnnotation ? { annotation: sanitizedAnnotation } : null),
+		};
 	}
 
 	/**

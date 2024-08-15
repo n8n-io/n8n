@@ -2,13 +2,13 @@ import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
-	IWorkflowBase,
+	AnnotationVote,
 	ExecutionError,
+	ExecutionStatus,
 	INode,
 	IRunExecutionData,
+	IWorkflowBase,
 	WorkflowExecuteMode,
-	ExecutionStatus,
-	AnnotationVote,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -486,7 +486,10 @@ export class ExecutionService {
 		return await this.executionRepository.stopDuringRun(execution);
 	}
 
-	public async annotate(executionId: string, updateData: { tags: string[]; vote: AnnotationVote }) {
+	public async annotate(
+		executionId: string,
+		updateData: { tags: string[]; vote: AnnotationVote | null },
+	) {
 		// FIXME: wrap in transaction
 		await this.executionAnnotationRepository.upsert(
 			{ execution: { id: executionId }, vote: updateData.vote },
@@ -497,6 +500,12 @@ export class ExecutionService {
 			await this.annotationTagMappingRepository.overwriteTags(executionId, updateData.tags);
 		}
 
-		return true;
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeAnnotation: true,
+		});
+
+		console.log({ execution });
+
+		return execution;
 	}
 }

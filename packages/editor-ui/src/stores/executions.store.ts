@@ -81,9 +81,12 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const allExecutions = computed(() => [...currentExecutions.value, ...executions.value]);
 
 	function addExecution(execution: ExecutionSummary) {
-		executionsById.value[execution.id] = {
-			...execution,
-			mode: execution.mode,
+		executionsById.value = {
+			...executionsById.value,
+			[execution.id]: {
+				...execution,
+				mode: execution.mode,
+			},
 		};
 	}
 
@@ -186,9 +189,20 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function annotateExecution(
 		id: string,
-		data: { tags?: string[]; vote?: AnnotationVote },
+		data: { tags?: string[]; vote?: AnnotationVote | null },
 	): Promise<void> {
-		await makeRestApiRequest(rootStore.restApiContext, 'PATCH', `/executions/${id}`, data);
+		const updatedExecution: ExecutionSummary = await makeRestApiRequest(
+			rootStore.restApiContext,
+			'PATCH',
+			`/executions/${id}`,
+			data,
+		);
+
+		addExecution(updatedExecution);
+
+		if (updatedExecution.id === activeExecution.value?.id) {
+			activeExecution.value = updatedExecution;
+		}
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {

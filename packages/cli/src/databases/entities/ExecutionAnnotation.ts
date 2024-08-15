@@ -11,7 +11,7 @@ import {
 import { ExecutionEntity } from './ExecutionEntity';
 import type { AnnotationTagEntity } from './AnnotationTagEntity';
 import type { AnnotationTagMapping } from './AnnotationTagMapping';
-import { AnnotationVote } from 'n8n-workflow';
+import type { AnnotationVote } from 'n8n-workflow';
 
 @Entity({ name: 'execution_annotations' })
 export class ExecutionAnnotation {
@@ -19,7 +19,7 @@ export class ExecutionAnnotation {
 	id: number;
 
 	@Column({ type: 'varchar', nullable: true })
-	vote: AnnotationVote;
+	vote: AnnotationVote | null;
 
 	@Column({ type: 'varchar', nullable: true })
 	note: string;
