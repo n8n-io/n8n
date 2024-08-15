@@ -4,7 +4,7 @@ import { Config, Env, Nested } from '../decorators';
 class LoggingConfig {
 	/** Whether database logging is enabled. */
 	@Env('DB_LOGGING_ENABLED')
-	enabled = false;
+	enabled: boolean = false;
 
 	/**
 	 * Database logging level. Requires `DB_LOGGING_MAX_EXECUTION_TIME` to be higher than `0`.
@@ -16,7 +16,7 @@ class LoggingConfig {
 	 * Only queries that exceed this time (ms) will be logged. Set `0` to disable.
 	 */
 	@Env('DB_LOGGING_MAX_EXECUTION_TIME')
-	maxQueryExecutionTime = 0;
+	maxQueryExecutionTime: number = 0;
 }
 
 @Config
@@ -26,38 +26,38 @@ class PostgresSSLConfig {
 	 * If `DB_POSTGRESDB_SSL_CA`, `DB_POSTGRESDB_SSL_CERT`, or `DB_POSTGRESDB_SSL_KEY` are defined, `DB_POSTGRESDB_SSL_ENABLED` defaults to `true`.
 	 */
 	@Env('DB_POSTGRESDB_SSL_ENABLED')
-	enabled = false;
+	enabled: boolean = false;
 
 	/** SSL certificate authority */
 	@Env('DB_POSTGRESDB_SSL_CA')
-	ca = '';
+	ca: string = '';
 
 	/** SSL certificate */
 	@Env('DB_POSTGRESDB_SSL_CERT')
-	cert = '';
+	cert: string = '';
 
 	/** SSL key */
 	@Env('DB_POSTGRESDB_SSL_KEY')
-	key = '';
+	key: string = '';
 
 	/** If unauthorized SSL connections should be rejected */
 	@Env('DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED')
-	rejectUnauthorized = true;
+	rejectUnauthorized: boolean = true;
 }
 
 @Config
 class PostgresConfig {
 	/** Postgres database name */
 	@Env('DB_POSTGRESDB_DATABASE')
-	database = 'n8n';
+	database: string = 'n8n';
 
 	/** Postgres database host */
 	@Env('DB_POSTGRESDB_HOST')
-	host = 'localhost';
+	host: string = 'localhost';
 
 	/** Postgres database password */
 	@Env('DB_POSTGRESDB_PASSWORD')
-	password = '';
+	password: string = '';
 
 	/** Postgres database port */
 	@Env('DB_POSTGRESDB_PORT')
@@ -65,15 +65,15 @@ class PostgresConfig {
 
 	/** Postgres database user */
 	@Env('DB_POSTGRESDB_USER')
-	user = 'postgres';
+	user: string = 'postgres';
 
 	/** Postgres database schema */
 	@Env('DB_POSTGRESDB_SCHEMA')
-	schema = 'public';
+	schema: string = 'public';
 
 	/** Postgres database pool size */
 	@Env('DB_POSTGRESDB_POOL_SIZE')
-	poolSize = 2;
+	poolSize: number = 2;
 
 	@Nested
 	ssl: PostgresSSLConfig;
@@ -83,15 +83,15 @@ class PostgresConfig {
 class MysqlConfig {
 	/** @deprecated MySQL database name */
 	@Env('DB_MYSQLDB_DATABASE')
-	database = 'n8n';
+	database: string = 'n8n';
 
 	/** MySQL database host */
 	@Env('DB_MYSQLDB_HOST')
-	host = 'localhost';
+	host: string = 'localhost';
 
 	/** MySQL database password */
 	@Env('DB_MYSQLDB_PASSWORD')
-	password = '';
+	password: string = '';
 
 	/** MySQL database port */
 	@Env('DB_MYSQLDB_PORT')
@@ -99,14 +99,14 @@ class MysqlConfig {
 
 	/** MySQL database user */
 	@Env('DB_MYSQLDB_USER')
-	user = 'root';
+	user: string = 'root';
 }
 
 @Config
 class SqliteConfig {
 	/** SQLite database file name */
 	@Env('DB_SQLITE_DATABASE')
-	database = 'database.sqlite';
+	database: string = 'database.sqlite';
 
 	/** SQLite database pool size. Set to `0` to disable pooling. */
 	@Env('DB_SQLITE_POOL_SIZE')
@@ -116,7 +116,7 @@ class SqliteConfig {
 	 * Enable SQLite WAL mode.
 	 */
 	@Env('DB_SQLITE_ENABLE_WAL')
-	enableWAL = this.poolSize > 1;
+	enableWAL: boolean = this.poolSize > 1;
 
 	/**
 	 * Run `VACUUM` on startup to rebuild the database, reducing file size and optimizing indexes.
@@ -124,7 +124,7 @@ class SqliteConfig {
 	 * @warning Long-running blocking operation that will increase startup time.
 	 */
 	@Env('DB_SQLITE_VACUUM_ON_STARTUP')
-	executeVacuumOnStartup = false;
+	executeVacuumOnStartup: boolean = false;
 }
 
 @Config
@@ -135,7 +135,7 @@ export class DatabaseConfig {
 
 	/** Prefix for table names */
 	@Env('DB_TABLE_PREFIX')
-	tablePrefix = '';
+	tablePrefix: string = '';
 
 	@Nested
 	logging: LoggingConfig;
