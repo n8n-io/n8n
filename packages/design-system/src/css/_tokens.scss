@@ -79,6 +79,7 @@
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-selected: var(--prim-gray-70);
+	--color-canvas-selected-transparent: hsla(var(--prim-gray-h), 47%, 30%, 0.1);
 
 	// Nodes
 	--color-node-background: var(--color-background-xlight);
