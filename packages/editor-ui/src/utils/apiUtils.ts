@@ -194,15 +194,15 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedRespo
 	return returnData;
 }
 
-export const streamRequest = async (
+export async function streamRequest<T>(
 	context: IRestApiContext,
 	apiEndpoint: string,
-	payload: ChatRequest.RequestPayload,
-	onChunk?: (chunk: ChatRequest.ResponsePayload) => void,
+	payload: object,
+	onChunk?: (chunk: T) => void,
 	onDone?: () => void,
 	onError?: (e: Error) => void,
 	separator = '⧉⇋⇋➽⌑⧉§§\n',
-): Promise<void> => {
+): Promise<void> {
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 	};
@@ -223,23 +223,36 @@ export const streamRequest = async (
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder('utf-8');
 
+			let buffer = '';
+
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
 					onDone?.();
 					return;
 				}
-
 				const chunk = decoder.decode(value);
-				const splitChunks = chunk.split(separator);
+				buffer += chunk;
 
+				const splitChunks = buffer.split(separator);
+
+				buffer = '';
 				for (const splitChunk of splitChunks) {
-					if (splitChunk && onChunk) {
+					if (splitChunk) {
+						let data: T;
 						try {
-							onChunk(jsonParse(splitChunk, { errorMessage: 'Invalid json chunk in stream' }));
+							data = jsonParse<T>(splitChunk, { errorMessage: 'Invalid json' });
+						} catch (e) {
+							// incomplete json. append to buffer to complete
+							buffer += splitChunk;
+
+							continue;
+						}
+
+						try {
+							onChunk?.(data);
 						} catch (e: unknown) {
 							if (e instanceof Error) {
-								console.log(`${e.message}: ${splitChunk}`);
 								onError?.(e);
 							}
 						}
