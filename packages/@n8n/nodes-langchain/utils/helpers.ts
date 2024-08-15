@@ -13,7 +13,6 @@ import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import { N8nTool } from './N8nTool';
-import { DynamicTool } from '@langchain/core/tools';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -195,8 +194,6 @@ export const getConnectedTools = async (
 	const finalTools = [];
 
 	for (const tool of connectedTools) {
-		if (!(tool instanceof DynamicTool) && !(tool instanceof N8nTool)) continue;
-
 		const { name } = tool;
 		if (seenNames.has(name)) {
 			throw new NodeOperationError(

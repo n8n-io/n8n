@@ -54,7 +54,8 @@ export class MeController {
 	 */
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
-		const { id: userId, email: currentEmail } = req.user;
+		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
+
 		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
@@ -76,17 +77,28 @@ export class MeController {
 
 		await validateEntity(payload);
 
+		const isEmailBeingChanged = email !== currentEmail;
+
 		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled()) {
-			if (email !== currentEmail) {
-				this.logger.debug(
-					'Request to update user failed because SAML user may not change their email',
-					{
-						userId,
-						payload,
-					},
-				);
-				throw new BadRequestError('SAML user may not change their email');
+		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {
+			this.logger.debug(
+				'Request to update user failed because SAML user may not change their email',
+				{
+					userId,
+					payload,
+				},
+			);
+			throw new BadRequestError('SAML user may not change their email');
+		}
+
+		if (mfaEnabled && isEmailBeingChanged) {
+			if (!payload.mfaCode) {
+				throw new BadRequestError('Two-factor code is required to change email');
+			}
+
+			const isMfaTokenValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
+			if (!isMfaTokenValid) {
+				throw new InvalidMfaCodeError();
 			}
 		}
 
@@ -102,8 +114,9 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const fieldsChanged = (Object.keys(payload) as Array<keyof UserUpdatePayload>).filter(
-			(key) => payload[key] !== preUpdateUser[key],
+		const changeableFields = ['email', 'firstName', 'lastName'] as const;
+		const fieldsChanged = changeableFields.filter(
+			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged });

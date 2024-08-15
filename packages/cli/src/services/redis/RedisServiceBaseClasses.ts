@@ -32,6 +32,8 @@ class RedisServiceBase {
 				this.logger.warn('Error with Redis: ', error);
 			}
 		});
+
+		this.isInitialized = true;
 	}
 
 	async destroy(): Promise<void> {

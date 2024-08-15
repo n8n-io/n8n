@@ -385,9 +385,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummary[];
+	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
 }
 
