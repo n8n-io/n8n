@@ -18,7 +18,12 @@ import {
 	checkForSchemaChanges,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
+import {
+	cellFormat,
+	handlingExtraData,
+	locationDefine,
+	useAppendOption,
+} from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -212,14 +217,7 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			{
-				displayName: 'Use Append',
-				name: 'useAppend',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
-			},
+			useAppendOption,
 		],
 	},
 ];
