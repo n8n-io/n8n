@@ -280,7 +280,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'updateFieldsUi',
 		type: 'collection',
 		required: true,
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				resource: ['message'],

@@ -4,8 +4,11 @@ import { mock } from 'jest-mock-extended';
 
 import type { BaseCommand } from '@/commands/BaseCommand';
 import * as testDb from '../testDb';
-import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { mockInstance } from '@test/mocking';
+import { InternalHooks } from '@/InternalHooks';
+
+mockInstance(InternalHooks);
 
 export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	const config = mock<Config>();

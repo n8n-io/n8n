@@ -1,7 +1,7 @@
 <template>
 	<el-dialog
 		:model-value="uiStore.modalsById[name].open"
-		:before-close="closeDialog"
+		:before-close="onCloseDialog"
 		:class="{
 			'dialog-wrapper': true,
 			scrollable: scrollable,
@@ -34,7 +34,7 @@
 			class="modal-content"
 			@keydown.stop
 			@keydown.enter="handleEnter"
-			@keydown.esc="closeDialog"
+			@keydown.esc="onCloseDialog"
 		>
 			<slot v-if="!loading" name="content" />
 			<div v-else :class="$style.loader">
@@ -182,7 +182,10 @@ export default defineComponent({
 				this.$emit('enter');
 			}
 		},
-		async closeDialog() {
+		async onCloseDialog() {
+			await this.closeDialog();
+		},
+		async closeDialog(returnData?: unknown) {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
 				if (shouldClose === false) {
@@ -191,6 +194,7 @@ export default defineComponent({
 				}
 			}
 			this.uiStore.closeModal(this.name);
+			this.eventBus?.emit('closed', returnData);
 		},
 		getCustomClass() {
 			let classes = this.customClass || '';

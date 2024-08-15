@@ -81,6 +81,28 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['document'],
+				operation: ['delete'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Bulk Delete',
+				name: 'bulkOperation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use the bulk operation to delete the document/s',
+			},
+		],
+	},
 
 	// ----------------------------------------
 	//              document: get
@@ -130,7 +152,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -242,7 +264,7 @@ export const documentFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -645,6 +667,13 @@ export const documentFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Bulk Create',
+				name: 'bulkOperation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use the bulk operation to create the document/s',
+			},
+			{
 				displayName: 'Pipeline ID',
 				name: 'pipeline',
 				description: 'ID of the pipeline to use to preprocess incoming documents',
@@ -802,6 +831,13 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Bulk Update',
+				name: 'bulkOperation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use the bulk operation to update the document/s',
+			},
 			{
 				displayName: 'Refresh',
 				name: 'refresh',

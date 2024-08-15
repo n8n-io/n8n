@@ -26,13 +26,14 @@ import {
 	updateTags,
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { InternalHooks } from '@/InternalHooks';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
+import { z } from 'zod';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 export = {
 	createWorkflow: [
@@ -58,13 +59,29 @@ export = {
 			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
-			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, project, true);
 			Container.get(EventService).emit('workflow-created', {
 				workflow: createdWorkflow,
 				user: req.user,
+				publicApi: true,
+				projectId: project.id,
+				projectType: project.type,
 			});
 
 			return res.json(createdWorkflow);
+		},
+	],
+	transferWorkflow: [
+		projectScope('workflow:move', 'workflow'),
+		async (req: WorkflowRequest.Transfer, res: express.Response) => {
+			const body = z.object({ destinationProjectId: z.string() }).parse(req.body);
+
+			await Container.get(EnterpriseWorkflowService).transferOne(
+				req.user,
+				req.params.workflowId,
+				body.destinationProjectId,
+			);
+
+			res.status(204).send();
 		},
 	],
 	deleteWorkflow: [
@@ -101,9 +118,9 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedWorkflow({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-workflow', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json(workflow);
@@ -112,7 +129,7 @@ export = {
 	getWorkflows: [
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active, tags, name } = req.query;
+			const { offset = 0, limit = 100, active, tags, name, projectId } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
@@ -124,6 +141,19 @@ export = {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
 					);
+					where.id = In(workflowIds);
+				}
+
+				if (projectId) {
+					const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+						req.user,
+						['workflow:read'],
+					);
+
+					const workflowIds = workflows
+						.filter((workflow) => workflow.projectId === projectId)
+						.map((workflow) => workflow.id);
+
 					where.id = In(workflowIds);
 				}
 			} else {
@@ -145,6 +175,10 @@ export = {
 					workflows = workflows.filter((wf) => workflowIds.includes(wf.id));
 				}
 
+				if (projectId) {
+					workflows = workflows.filter((w) => w.projectId === projectId);
+				}
+
 				if (!workflows.length) {
 					return res.status(200).json({
 						data: [],
@@ -163,9 +197,9 @@ export = {
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			});
 
-			void Container.get(InternalHooks).onUserRetrievedAllWorkflows({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-workflows', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({
@@ -239,11 +273,10 @@ export = {
 			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
 			Container.get(EventService).emit('workflow-saved', {
 				user: req.user,
-				workflowId: updateData.id,
-				workflowName: updateData.name,
+				workflow: updateData,
+				publicApi: true,
 			});
 
 			return res.json(updatedWorkflow);

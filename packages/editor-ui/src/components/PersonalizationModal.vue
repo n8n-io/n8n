@@ -144,7 +144,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus, createFormEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useUsageStore } from '@/stores/usage.store';
@@ -180,7 +180,7 @@ export default defineComponent({
 			showAllIndustryQuestions: true,
 			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
-			formBus: createEventBus(),
+			formBus: createFormEventBus(),
 			domainBlocklist: [] as string[],
 		};
 	},

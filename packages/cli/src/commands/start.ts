@@ -8,7 +8,6 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
-import { GlobalConfig } from '@n8n/config';
 import { jsonParse, randomString } from 'n8n-workflow';
 
 import config from '@/config';
@@ -17,7 +16,6 @@ import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
@@ -32,8 +30,7 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -67,6 +64,8 @@ export class Start extends BaseCommand {
 	protected activeWorkflowManager: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
+
+	override needsCommunityPackages = true;
 
 	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
@@ -109,7 +108,7 @@ export class Start extends BaseCommand {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
-			await Container.get(InternalHooks).onN8nStop();
+			Container.get(EventService).emit('instance-stopped');
 
 			await Container.get(ActiveExecutions).shutdown();
 
@@ -124,8 +123,7 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const n8nPath = this.globalConfig.path;
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -151,7 +149,9 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -176,6 +176,22 @@ export class Start extends BaseCommand {
 			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 		}
 
+		const { flags } = await this.parse(Start);
+		const { communityPackages } = this.globalConfig.nodes;
+		// cli flag overrides the config env variable
+		if (flags.reinstallMissingPackages) {
+			if (communityPackages.enabled) {
+				this.logger.warn(
+					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
+				);
+				communityPackages.reinstallMissing = true;
+			} else {
+				this.logger.warn(
+					'`--reinstallMissingPackages` was passed, but community packages are disabled',
+				);
+			}
+		}
+
 		await super.init();
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
@@ -184,10 +200,7 @@ export class Start extends BaseCommand {
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 
-		if (
-			!config.getEnv('license.autoRenewEnabled') &&
-			config.getEnv('multiMainSetup.instanceType') === 'leader'
-		) {
+		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
 			this.logger.warn(
 				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
 			);
@@ -204,14 +217,14 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 	}
 
 	async initOrchestration() {
 		if (config.getEnv('executions.mode') === 'regular') {
-			config.set('multiMainSetup.instanceType', 'leader');
+			this.instanceSettings.markAsLeader();
 			return;
 		}
 
@@ -252,18 +265,9 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const globalConfig = Container.get(GlobalConfig);
-
-		if (globalConfig.nodes.communityPackages.enabled) {
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
-			await Container.get(CommunityPackagesService).setMissingPackages({
-				reinstallMissingPackages: flags.reinstallMissingPackages,
-			});
-		}
-
-		const { type: dbType } = globalConfig.database;
+		const { type: dbType } = this.globalConfig.database;
 		if (dbType === 'sqlite') {
-			const shouldRunVacuum = globalConfig.database.sqlite.executeVacuumOnStartup;
+			const shouldRunVacuum = this.globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
@@ -283,7 +287,7 @@ export class Start extends BaseCommand {
 			}
 
 			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const port = config.getEnv('port');
+			const { port } = this.globalConfig;
 
 			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
@@ -300,7 +304,6 @@ export class Start extends BaseCommand {
 		await this.server.start();
 
 		Container.get(PruningService).init();
-		Container.get(ExecutionRecoveryService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -327,7 +330,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 
