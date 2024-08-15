@@ -31,6 +31,7 @@ import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useRBACStore } from '@/stores/rbac.store';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
@@ -40,7 +41,7 @@ export default defineComponent({
 	components: { TagsTableHeader, TagsTable },
 	props: {
 		usageLocaleKey: {
-			type: String,
+			type: String as () => BaseTextKey,
 			default: 'tagsView.inUse',
 		},
 		tags: {

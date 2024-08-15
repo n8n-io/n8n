@@ -1,5 +1,5 @@
 <template>
-	<TagsManagerPure
+	<TagsManager
 		:modal-key="TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"
@@ -16,7 +16,7 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useTagsStore } from '@/stores/tags.store';
-import TagsManagerPure from './TagsManagerPure.vue';
+import TagsManager from './TagsManager.vue';
 import type { ITag } from '@/Interface';
 import { TAGS_MANAGER_MODAL_KEY } from '@/constants';
 

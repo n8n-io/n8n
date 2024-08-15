@@ -1,5 +1,5 @@
 <template>
-	<TagsManagerPure
+	<TagsManager
 		title-locale-key="annotationTagsManager.manageTags"
 		usage-locale-key="annotationTagsView.inUse"
 		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
@@ -18,7 +18,7 @@ import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
-import TagsManagerPure from './TagsManagerPure.vue';
+import TagsManager from './TagsManager.vue';
 import type { ITag } from '@/Interface';
 import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '@/constants';
 

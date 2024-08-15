@@ -71,7 +71,7 @@ void tagsStore.fetchAll();
 </script>
 
 <template>
-	<TagsDropdownPure
+	<TagsDropdown
 		v-model="selectedTags"
 		:placeholder="placeholder"
 		:create-enabled="createEnabled"

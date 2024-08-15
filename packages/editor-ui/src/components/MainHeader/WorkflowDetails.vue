@@ -17,7 +17,7 @@ import type { PermissionsMap } from '@/permissions';
 import type { WorkflowScope } from '@n8n/permissions';
 
 import ShortenName from '@/components/ShortenName.vue';
-import TagsContainer from '@/components/TagsContainer.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
@@ -652,7 +652,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
-			<TagsContainer
+			<WorkflowTagsContainer
 				v-else
 				:key="workflow.id"
 				:tag-ids="workflowTagIds"
