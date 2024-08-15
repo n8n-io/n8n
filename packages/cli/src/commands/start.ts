@@ -16,7 +16,6 @@ import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
@@ -31,7 +30,6 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -110,7 +108,7 @@ export class Start extends BaseCommand {
 				await Container.get(OrchestrationService).shutdown();
 			}
 
-			await Container.get(InternalHooks).onN8nStop();
+			Container.get(EventService).emit('instance-stopped');
 
 			await Container.get(ActiveExecutions).shutdown();
 
@@ -306,7 +304,6 @@ export class Start extends BaseCommand {
 		await this.server.start();
 
 		Container.get(PruningService).init();
-		Container.get(ExecutionRecoveryService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -333,7 +330,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 

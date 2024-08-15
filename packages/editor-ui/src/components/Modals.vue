@@ -15,6 +15,7 @@ import {
 	TAGS_MANAGER_MODAL_KEY,
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
+	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -31,6 +32,7 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from '@/components/AboutModal.vue';
@@ -65,6 +67,8 @@ import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/Wor
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
+import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
+import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 </script>
 
 <template>
@@ -148,6 +152,10 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 
 		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
 			<MfaSetupModal />
+		</ModalRoot>
+
+		<ModalRoot :name="PROMPT_MFA_CODE_MODAL_KEY">
+			<PromptMfaCodeModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
@@ -248,6 +256,11 @@ import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveRe
 					:modal-name="modalName"
 					:data="data"
 				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
+			<template #default="{ modalName, data }">
+				<NewAssistantSessionModal :name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

@@ -31,7 +31,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
 import { UrlService } from './url.service';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/PublicApi';
 
 @Service()
@@ -50,7 +50,7 @@ export class FrontendService {
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly urlService: UrlService,
-		private readonly internalHooks: InternalHooks,
+		private readonly eventService: EventService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -160,6 +160,9 @@ export class FrontendService {
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			aiAssistant: {
+				enabled: false,
+			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
@@ -244,7 +247,7 @@ export class FrontendService {
 	}
 
 	getSettings(pushRef?: string): IN8nUISettings {
-		this.internalHooks.onFrontendSettingsAPI(pushRef);
+		this.eventService.emit('session-started', { pushRef });
 
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -279,6 +282,7 @@ export class FrontendService {
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -329,6 +333,10 @@ export class FrontendService {
 
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
+		}
+
+		if (isAiAssistantEnabled) {
+			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');

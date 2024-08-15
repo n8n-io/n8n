@@ -45,7 +45,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			);
 
 			const redisClient = redisClientService.createClient({
-				type: 'client(cache)',
+				type: 'cache(n8n)',
 				extraOptions: { keyPrefix: prefix },
 			});
 

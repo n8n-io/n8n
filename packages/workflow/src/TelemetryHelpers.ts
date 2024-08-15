@@ -13,6 +13,7 @@ import type {
 import { ApplicationError } from './errors/application.error';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -207,7 +208,9 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
+		if (node.type === AI_TRANSFORM_NODE_TYPE && options?.isCloudDeployment) {
+			nodeItem.prompts = { instructions: node.parameters.instructions as string };
+		} else if (node.type === AGENT_LANGCHAIN_NODE_TYPE) {
 			nodeItem.agent = (node.parameters.agent as string) ?? 'conversationalAgent';
 		} else if (node.type === MERGE_NODE_TYPE) {
 			nodeItem.operation = node.parameters.mode as string;

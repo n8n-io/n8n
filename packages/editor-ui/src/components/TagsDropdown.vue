@@ -10,7 +10,6 @@ import { v4 as uuid } from 'uuid';
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
-	createEnabled: boolean;
 	eventBus: EventBus | null;
 	allTags: ITag[];
 	isLoading: boolean;
@@ -22,7 +21,6 @@ const i18n = useI18n();
 const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	placeholder: '',
 	modelValue: () => [],
-	createEnabled: false,
 	eventBus: null,
 });
 
@@ -187,7 +185,6 @@ function onClickOutside(e: Event) {
 			:filter-method="filterOptions"
 			filterable
 			multiple
-			:allow-create="createEnabled"
 			:reserve-keyword="false"
 			loading-text="..."
 			:popper-class="['tags-dropdown', 'tags-dropdown-' + dropdownId]"
@@ -197,7 +194,7 @@ function onClickOutside(e: Event) {
 			@remove-tag="onRemoveTag"
 		>
 			<N8nOption
-				v-if="options.length === 0 && filter && createEnabled"
+				v-if="options.length === 0 && filter"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -209,11 +206,11 @@ function onClickOutside(e: Event) {
 				</span>
 			</N8nOption>
 			<N8nOption v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{
+				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</N8nOption>
 
 			<N8nOption

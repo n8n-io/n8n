@@ -42,6 +42,7 @@ import '@/controllers/annotationTags.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binaryData.controller';
 import '@/controllers/curl.controller';
+import '@/controllers/aiAssistant.controller';
 import '@/controllers/dynamicNodeParameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -212,8 +213,8 @@ export class Server extends AbstractServer {
 		setupPushHandler(restEndpoint, app);
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const { Queue } = await import('@/Queue');
-			await Container.get(Queue).init();
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			await Container.get(ScalingService).setupQueue();
 		}
 
 		await handleMfaDisable();

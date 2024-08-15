@@ -50,6 +50,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup build cache
+        if: inputs.collectCoverage != true
         uses: rharkor/caching-for-turbo@v1.5
 
       - name: Build

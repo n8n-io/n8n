@@ -25,6 +25,7 @@ import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 import type { ScopesField } from './services/role.service';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -42,6 +43,11 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
+
+	@IsOptional()
+	@Expose()
+	@IsString({ message: 'Two factor code must be a string.' })
+	mfaCode?: string;
 }
 
 export class UserSettingsUpdatePayload {
@@ -224,7 +230,7 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string; token?: string }
+		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
@@ -353,6 +359,7 @@ export type LoginRequest = AuthlessRequest<
 export declare namespace MFA {
 	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
@@ -417,6 +424,12 @@ export declare namespace DynamicNodeParametersRequest {
 	/** POST dynamic-node-parameters/resource-mapper-fields */
 	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
+	}>;
+
+	/** POST /dynamic-node-parameters/action-result */
+	type ActionResult = BaseRequest<{
+		handler: string;
+		payload: IDataObject | string | undefined;
 	}>;
 }
 
@@ -610,4 +623,15 @@ export declare namespace NpsSurveyRequest {
 	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
 	// once some schema validation is added
 	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
+}
+
+// ----------------------------------
+//             /ai-assistant
+// ----------------------------------
+
+export declare namespace AiAssistantRequest {
+	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
+
+	type SuggestionPayload = { sessionId: string; suggestionId: string };
+	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
 }

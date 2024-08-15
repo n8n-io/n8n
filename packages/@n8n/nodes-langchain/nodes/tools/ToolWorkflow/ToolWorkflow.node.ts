@@ -493,7 +493,7 @@ export class ToolWorkflow implements INodeType {
 		if (useSchema) {
 			try {
 				// We initialize these even though one of them will always be empty
-				// it makes it easer to navigate the ternary operator
+				// it makes it easier to navigate the ternary operator
 				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
 				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
 

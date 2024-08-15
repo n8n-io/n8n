@@ -1,7 +1,6 @@
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
-import { flushPromises } from '@test/flushPromises';
 import { PostHogClient } from '@/posthog';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
@@ -35,7 +34,7 @@ describe('Telemetry', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		startPulseSpy.mockRestore();
-		await telemetry.trackN8nStop();
+		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
@@ -50,14 +49,7 @@ describe('Telemetry', () => {
 	});
 
 	afterEach(async () => {
-		await telemetry.trackN8nStop();
-	});
-
-	describe('trackN8nStop', () => {
-		test('should call track method', async () => {
-			await telemetry.trackN8nStop();
-			expect(spyTrack).toHaveBeenCalledTimes(1);
-		});
+		await telemetry.stopTracking();
 	});
 
 	describe('trackWorkflowExecution', () => {
@@ -264,162 +256,6 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime2);
 			expect(execBuffer['1'].prod_success?.first).toEqual(execTime1);
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
-		});
-	});
-
-	describe('pulse', () => {
-		let pulseSpy: jest.SpyInstance;
-		beforeAll(() => {
-			startPulseSpy.mockRestore();
-		});
-
-		beforeEach(() => {
-			fakeJestSystemTime(testDateTime);
-			pulseSpy = jest.spyOn(Telemetry.prototype as any, 'pulse').mockName('pulseSpy');
-		});
-
-		afterEach(() => {
-			pulseSpy.mockClear();
-		});
-
-		xtest('should trigger pulse in intervals', async () => {
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			jest.advanceTimersToNextTimer();
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledWith('pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-
-			jest.advanceTimersToNextTimer();
-
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(2);
-			expect(spyTrack).toHaveBeenCalledTimes(2);
-			expect(spyTrack).toHaveBeenCalledWith('pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-		});
-
-		xtest('should track workflow counts correctly', async () => {
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			let execBuffer = telemetry.getCountsBuffer();
-
-			// expect clear counters on start
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			const payload = {
-				workflow_id: '1',
-				is_manual: true,
-				success: true,
-				error_node_type: 'custom-nodes-base.node-type',
-			};
-
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.is_manual = false;
-			payload.success = true;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.is_manual = true;
-			payload.success = false;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.is_manual = false;
-			payload.success = false;
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			payload.workflow_id = '2';
-			telemetry.trackWorkflowExecution(payload);
-			telemetry.trackWorkflowExecution(payload);
-
-			expect(spyTrack).toHaveBeenCalledTimes(0);
-			expect(pulseSpy).toBeCalledTimes(0);
-
-			jest.advanceTimersToNextTimer();
-
-			execBuffer = telemetry.getCountsBuffer();
-
-			await flushPromises();
-
-			expect(pulseSpy).toBeCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledTimes(3);
-			expect(spyTrack).toHaveBeenNthCalledWith(
-				1,
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: '1',
-					user_id: undefined,
-					manual_error: {
-						count: 2,
-						first: testDateTime,
-					},
-					manual_success: {
-						count: 2,
-						first: testDateTime,
-					},
-					prod_error: {
-						count: 2,
-						first: testDateTime,
-					},
-					prod_success: {
-						count: 2,
-						first: testDateTime,
-					},
-				},
-				{ withPostHog: true },
-			);
-			expect(spyTrack).toHaveBeenNthCalledWith(
-				2,
-				'Workflow execution count',
-				{
-					event_version: '2',
-					workflow_id: '2',
-					user_id: undefined,
-					prod_error: {
-						count: 2,
-						first: testDateTime,
-					},
-				},
-				{ withPostHog: true },
-			);
-			expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse', {
-				plan_name_current: 'Community',
-				quota: -1,
-				usage: 0,
-			});
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			// Adding a second step here because we believe PostHog may use timers for sending data
-			// and adding posthog to the above metric was causing the pulseSpy timer to not be ran
-			jest.advanceTimersToNextTimer();
-
-			execBuffer = telemetry.getCountsBuffer();
-			expect(Object.keys(execBuffer).length).toBe(0);
-
-			// @TODO: Flushing promises here is not working
-
-			// expect(pulseSpy).toBeCalledTimes(2);
-			// expect(spyTrack).toHaveBeenCalledTimes(4);
-			// expect(spyTrack).toHaveBeenNthCalledWith(4, 'pulse', {
-			// 	plan_name_current: 'Community',
-			// 	quota: -1,
-			// 	usage: 0,
-			// });
 		});
 	});
 });

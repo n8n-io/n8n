@@ -19,6 +19,7 @@ import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '@test/mocking';
 import type { Project } from '@/databases/entities/Project';
+import type { EventService } from '@/events/event.service';
 
 describe('WorkflowStatisticsService', () => {
 	const fakeUser = mock<User>({ id: 'abcde-fghij' });
@@ -44,20 +45,14 @@ describe('WorkflowStatisticsService', () => {
 	mocked(ownershipService.getProjectOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
+	const eventService = mock<EventService>();
 	const workflowStatisticsService = new WorkflowStatisticsService(
 		mock(),
 		new WorkflowStatisticsRepository(dataSource, globalConfig),
 		ownershipService,
 		userService,
+		eventService,
 	);
-
-	const onFirstProductionWorkflowSuccess = jest.fn();
-	const onFirstWorkflowDataLoad = jest.fn();
-	workflowStatisticsService.on(
-		'telemetry.onFirstProductionWorkflowSuccess',
-		onFirstProductionWorkflowSuccess,
-	);
-	workflowStatisticsService.on('telemetry.onFirstWorkflowDataLoad', onFirstWorkflowDataLoad);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -97,11 +92,10 @@ describe('WorkflowStatisticsService', () => {
 
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
 			expect(updateSettingsMock).toHaveBeenCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(1);
-			expect(onFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
-				project_id: fakeProject.id,
-				user_id: fakeUser.id,
-				workflow_id: workflow.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-production-workflow-succeeded', {
+				projectId: fakeProject.id,
+				workflowId: workflow.id,
+				userId: fakeUser.id,
 			});
 		});
 
@@ -124,7 +118,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 			};
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		test('should not send metrics for updated entries', async () => {
@@ -147,7 +141,7 @@ describe('WorkflowStatisticsService', () => {
 			};
 			mockDBCall(2);
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			expect(onFirstProductionWorkflowSuccess).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -164,13 +158,12 @@ describe('WorkflowStatisticsService', () => {
 				parameters: {},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: fakeUser.id,
-				project_id: fakeProject.id,
-				workflow_id: workflowId,
-				node_type: node.type,
-				node_id: node.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: fakeUser.id,
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
 			});
 		});
 
@@ -192,15 +185,14 @@ describe('WorkflowStatisticsService', () => {
 				},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(1);
-			expect(onFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
-				user_id: fakeUser.id,
-				project_id: fakeProject.id,
-				workflow_id: workflowId,
-				node_type: node.type,
-				node_id: node.id,
-				credential_type: 'testCredentials',
-				credential_id: node.credentials.testCredentials.id,
+			expect(eventService.emit).toHaveBeenCalledWith('first-workflow-data-loaded', {
+				userId: fakeUser.id,
+				project: fakeProject.id,
+				workflowId,
+				nodeType: node.type,
+				nodeId: node.id,
+				credentialType: 'testCredentials',
+				credentialId: node.credentials.testCredentials.id,
 			});
 		});
 
@@ -217,7 +209,7 @@ describe('WorkflowStatisticsService', () => {
 				parameters: {},
 			};
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
-			expect(onFirstWorkflowDataLoad).toBeCalledTimes(0);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 });

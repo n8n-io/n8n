@@ -308,6 +308,7 @@ export interface ICredentialTestRequestData {
 type ICredentialHttpRequestNode = {
 	name: string;
 	docsUrl: string;
+	hidden?: boolean;
 } & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
 
 export interface ICredentialType {
@@ -1228,12 +1229,25 @@ export interface ILoadOptions {
 	};
 }
 
+export type NodePropertyAction = {
+	type: 'askAiCodeGeneration';
+	handler?: string;
+	target?: string;
+};
+
 export interface INodePropertyTypeOptions {
-	action?: string; // Supported by: button
+	// Supported by: button
+	buttonConfig?: {
+		action?: string | NodePropertyAction;
+		label?: string; // otherwise "displayName" is used
+		hasInputField?: boolean;
+		inputFieldMaxLength?: number; // Supported if hasInputField is true
+	};
 	containerClass?: string; // Supported by: notice
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
+	editorIsReadOnly?: boolean; // Supported by: string
 	sqlDialect?: SQLDialect; // Supported by: sqlEditor
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
@@ -1524,6 +1538,12 @@ export interface INodeType {
 		};
 		resourceMapping?: {
 			[functionName: string]: (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		actionHandler?: {
+			[functionName: string]: (
+				this: ILoadOptionsFunctions,
+				payload: IDataObject | string | undefined,
+			) => Promise<NodeParameterValueType>;
 		};
 	};
 	webhookMethods?: {
@@ -2687,6 +2707,9 @@ export interface IN8nUISettings {
 	executionMode: 'regular' | 'queue';
 	pushBackend: 'sse' | 'websocket';
 	communityNodesEnabled: boolean;
+	aiAssistant: {
+		enabled: boolean;
+	};
 	deployment: {
 		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};

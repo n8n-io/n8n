@@ -61,11 +61,12 @@ export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
-
+export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
@@ -191,6 +192,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const SIMULATE_NODE_TYPE = 'n8n-nodes-base.simulate';
 export const SIMULATE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.simulateTrigger';
+export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -210,7 +212,11 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
 
-export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
+export const NODES_USING_CODE_NODE_EDITOR = [
+	CODE_NODE_TYPE,
+	AI_CODE_NODE_TYPE,
+	AI_TRANSFORM_NODE_TYPE,
+];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
@@ -629,6 +635,7 @@ export const enum STORES {
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
 	PUSH = 'push',
+	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 }
 
@@ -669,10 +676,17 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '021_ai_debug_helper',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
+	AI_ASSISTANT_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

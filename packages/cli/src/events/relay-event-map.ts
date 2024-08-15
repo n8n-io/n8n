@@ -13,9 +13,34 @@ export type UserLike = {
 };
 
 export type RelayEventMap = {
-	// #region Server
+	// #region Lifecycle
 
 	'server-started': {};
+
+	'session-started': {
+		pushRef?: string;
+	};
+
+	'instance-stopped': {};
+
+	'instance-owner-setup': {
+		userId: string;
+	};
+
+	'first-production-workflow-succeeded': {
+		projectId: string;
+		workflowId: string;
+		userId: string;
+	};
+
+	'first-workflow-data-loaded': {
+		userId: string;
+		workflowId: string;
+		nodeType: string;
+		nodeId: string;
+		credentialType?: string;
+		credentialId?: string;
+	};
 
 	// #endregion
 
@@ -51,6 +76,12 @@ export type RelayEventMap = {
 		userId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
+	};
+
+	'workflow-sharing-updated': {
+		workflowId: string;
+		userIdSharer: string;
+		userIdList: string[];
 	};
 
 	// #endregion
@@ -176,6 +207,17 @@ export type RelayEventMap = {
 		user: UserLike;
 	};
 
+	'user-transactional-email-sent': {
+		userId: string;
+		messageType:
+			| 'Reset password'
+			| 'New user invite'
+			| 'Resend invite'
+			| 'Workflow shared'
+			| 'Credentials shared';
+		publicApi: boolean;
+	};
+
 	// #endregion
 
 	// #region Public API
@@ -209,6 +251,7 @@ export type RelayEventMap = {
 			| 'Resend invite'
 			| 'Workflow shared'
 			| 'Credentials shared';
+		publicApi: boolean;
 	};
 
 	// #endregion

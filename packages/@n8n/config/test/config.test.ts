@@ -108,6 +108,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			communityPackages: {
 				enabled: true,
+				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
@@ -184,6 +185,33 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		queue: {
+			health: {
+				active: false,
+				port: 5678,
+			},
+			bull: {
+				redis: {
+					db: 0,
+					host: 'localhost',
+					password: '',
+					port: 6379,
+					timeoutThreshold: 10_000,
+					username: '',
+					clusterNodes: '',
+					tls: false,
+				},
+				queueRecoveryInterval: 60,
+				gracefulShutdownTimeout: 30,
+				prefix: 'bull',
+				settings: {
+					lockDuration: 30_000,
+					lockRenewTime: 15_000,
+					stalledInterval: 30_000,
+					maxStalledCount: 1,
+				},
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
@@ -204,6 +232,7 @@ describe('GlobalConfig', () => {
 			DB_POSTGRESDB_USER: 'n8n',
 			DB_TABLE_PREFIX: 'test_',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
+			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({

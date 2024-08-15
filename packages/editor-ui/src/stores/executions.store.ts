@@ -4,6 +4,7 @@ import type { IDataObject, ExecutionSummary, AnnotationVote } from 'n8n-workflow
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
+	ExecutionSummaryWithScopes,
 	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -34,7 +35,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const autoRefreshTimeout = ref<NodeJS.Timeout | null>(null);
 	const autoRefreshDelay = ref(4 * 1000); // Refresh data every 4 secs
 
-	const executionsById = ref<Record<string, ExecutionSummary>>({});
+	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
@@ -57,7 +58,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}, {}),
 	);
 
-	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
+	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
@@ -80,7 +81,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const allExecutions = computed(() => [...currentExecutions.value, ...executions.value]);
 
-	function addExecution(execution: ExecutionSummary) {
+	function addExecution(execution: ExecutionSummaryWithScopes) {
 		executionsById.value = {
 			...executionsById.value,
 			[execution.id]: {
@@ -90,7 +91,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
-	function addCurrentExecution(execution: ExecutionSummary) {
+	function addCurrentExecution(execution: ExecutionSummaryWithScopes) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
 			mode: execution.mode,
