@@ -47,7 +47,7 @@ export class NodesConfig {
 
 	/** Node type to use as error trigger */
 	@Env('NODES_ERROR_TRIGGER_TYPE')
-	errorTriggerType = 'n8n-nodes-base.errorTrigger';
+	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
 	@Nested
 	communityPackages: CommunityPackagesConfig;
