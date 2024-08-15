@@ -7,6 +7,10 @@ describe('CanvasChatButton', () => {
 	it('should render correctly', () => {
 		const wrapper = renderComponent();
 
+		expect(wrapper.getByTestId('zoom-in-button')).toBeVisible();
+		expect(wrapper.getByTestId('zoom-out-button')).toBeVisible();
+		expect(wrapper.getByTestId('zoom-to-fit')).toBeVisible();
+
 		expect(wrapper.html()).toMatchSnapshot();
 	});
 
