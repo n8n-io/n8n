@@ -63,6 +63,13 @@ const isMultiInputNode = computed(() => {
 	return nodeType !== null && nodeType.inputs.length > 1;
 });
 
+const getNodeDisplayName = (nodeName: string) => {
+	const inputNumber = ndvStore.ndvNodeInputNumber[nodeName];
+	if (!inputNumber) return title(nodeName);
+	const maxLength = 18;
+	return `${title(nodeName, maxLength)} [Input ${ndvStore.ndvNodeInputNumber[nodeName]}]`;
+};
+
 function getMultipleNodesText(nodeName: string): string {
 	if (
 		!nodeName ||
@@ -90,8 +97,8 @@ function getMultipleNodesText(nodeName: string): string {
 	return `(${connectedInputs.join(' & ')})`;
 }
 
-function title(nodeName: string) {
-	const truncated = nodeName.substring(0, 30);
+function title(nodeName: string, length = 30) {
+	const truncated = nodeName.substring(0, length);
 	if (truncated.length < nodeName.length) {
 		return `${truncated}...`;
 	}
@@ -135,7 +142,7 @@ function onInputNodeChange(value: string) {
 			:key="node.name"
 			:value="node.name"
 			:class="[$style.node, { [$style.disabled]: node.disabled }]"
-			:label="`${title(node.name)} ${getMultipleNodesText(node.name)}`"
+			:label="`${getNodeDisplayName(node.name)} ${getMultipleNodesText(node.name)}`"
 			data-test-id="ndv-input-option"
 		>
 			<NodeIcon
@@ -146,7 +153,7 @@ function onInputNodeChange(value: string) {
 				:class="$style.icon"
 			/>
 			<span :class="$style.title">
-				{{ title(node.name) }}
+				{{ getNodeDisplayName(node.name) }}
 				<span v-if="node.disabled">({{ i18n.baseText('node.disabled') }})</span>
 			</span>
 

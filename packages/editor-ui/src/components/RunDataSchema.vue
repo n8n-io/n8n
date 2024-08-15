@@ -110,6 +110,12 @@ const filteredNodes = computed(() =>
 	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
 );
 
+const getNodeDisplayName = (nodeName: string) => {
+	return ndvStore.ndvNodeInputNumber[nodeName]
+		? `${nodeName} [Input ${ndvStore.ndvNodeInputNumber[nodeName]}]`
+		: nodeName;
+};
+
 const isDataEmpty = (schema: Schema | null) => {
 	if (!schema) return true;
 	// Utilize the generated schema instead of looping over the entire data again
@@ -291,7 +297,7 @@ watch(
 					</div>
 
 					<div :class="$style.title">
-						{{ currentNode.node.name }}
+						{{ getNodeDisplayName(currentNode.node.name) }}
 						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
 					</div>
 					<font-awesome-icon
