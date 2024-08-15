@@ -270,4 +270,4 @@ export async function streamRequest<T>(
 		assert(e instanceof Error);
 		onError?.(e);
 	}
-};
+}
