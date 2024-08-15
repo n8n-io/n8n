@@ -74,13 +74,18 @@
 				<n8n-input-label
 					v-for="attr in Object.keys(activeExecution?.customData)"
 					v-bind:key="attr"
-					v-bind="{ label: attr, tooltipText: 'more info...' }"
+					v-bind="{ label: attr }"
 					:class="$style.customDataEntry"
 				>
 					<n8n-text size="small" color="text-base">
 						{{ activeExecution?.customData[attr] }}
 					</n8n-text>
 				</n8n-input-label>
+			</div>
+			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
+				<n8n-text color="text-base" size="medium" align="center">
+					{{ $locale.baseText('executionAnnotationView.data.notFound') }}
+				</n8n-text>
 			</div>
 		</div>
 	</div>
