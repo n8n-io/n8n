@@ -38,6 +38,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { userHasScope } from '@/permissions/checkAccess';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -599,28 +600,20 @@ export class CredentialsService {
 		);
 	}
 
-	replaceCredentialContentsForSharee(
+	async replaceCredentialContentsForSharee(
 		user: User,
 		credential: CredentialsEntity,
 		decryptedData: ICredentialDataDecryptedObject,
 		mergedCredentials: ICredentialsDecrypted,
 	) {
-		credential.shared.forEach((sharedCredentials) => {
-			if (sharedCredentials.role === 'credential:owner') {
-				if (sharedCredentials.project.type === 'personal') {
-					// Find the owner of this personal project
-					sharedCredentials.project.projectRelations.forEach((projectRelation) => {
-						if (
-							projectRelation.role === 'project:personalOwner' &&
-							projectRelation.user.id !== user.id
-						) {
-							// If we realize that the current user does not own this credential
-							// We replace the payload with the stored decrypted data
-							mergedCredentials.data = decryptedData;
-						}
-					});
-				}
-			}
-		});
+		// We may want to change this to 'credential:decrypt' if that gets added, but this
+		// works for now. The only time we wouldn't want to do this is if the user
+		// could actually be testing the credential before saving it, so this should cover
+		// the cases we need it for.
+		if (
+			!(await userHasScope(user, ['credential:update'], false, { credentialId: credential.id }))
+		) {
+			mergedCredentials.data = decryptedData;
+		}
 	}
 }

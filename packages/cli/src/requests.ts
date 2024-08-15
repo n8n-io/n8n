@@ -43,6 +43,11 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
+
+	@IsOptional()
+	@Expose()
+	@IsString({ message: 'Two factor code must be a string.' })
+	mfaCode?: string;
 }
 
 export class UserSettingsUpdatePayload {

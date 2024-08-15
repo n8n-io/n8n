@@ -2,7 +2,8 @@ import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import type { RedisClientType } from './RedisServiceBaseClasses';
+import type { RedisClientType } from './redis.types';
+
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { GlobalConfig } from '@n8n/config';
