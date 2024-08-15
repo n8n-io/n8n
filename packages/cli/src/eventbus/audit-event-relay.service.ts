@@ -38,6 +38,8 @@ export class AuditEventRelay {
 		this.eventService.on('user-password-reset-request-click', (event) =>
 			this.userPasswordResetRequestClick(event),
 		);
+		this.eventService.on('user-mfa-enabled', (event) => this.userMfaEnabled(event));
+		this.eventService.on('user-mfa-enabled', (event) => this.userMfaDisabled(event));
 		this.eventService.on('public-api-key-created', (event) => this.publicApiKeyCreated(event));
 		this.eventService.on('public-api-key-deleted', (event) => this.publicApiKeyDeleted(event));
 		this.eventService.on('email-failed', (event) => this.emailFailed(event));
@@ -59,6 +61,7 @@ export class AuditEventRelay {
 		this.eventService.on('execution-started-during-bootup', (event) =>
 			this.executionStartedDuringBootup(event),
 		);
+		this.eventService.on('execution-started-manual', (event) => this.executionStartedManual(event));
 	}
 
 	/**
@@ -273,6 +276,25 @@ export class AuditEventRelay {
 	}
 
 	/**
+	 * MFA
+	 */
+	@Redactable()
+	private userMfaEnabled({ user }: Event['user-mfa-enabled']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.mfa.enabled',
+			payload: user,
+		});
+	}
+
+	@Redactable()
+	private userMfaDisabled({ user }: Event['user-mfa-disabled']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.mfa.disabled',
+			payload: user,
+		});
+	}
+
+	/**
 	 * Emailing
 	 */
 
@@ -363,6 +385,22 @@ export class AuditEventRelay {
 		void this.eventBus.sendExecutionEvent({
 			eventName: 'n8n.execution.started-during-bootup',
 			payload: { executionId },
+		});
+	}
+
+	/**
+	 * Execution Audit
+	 */
+
+	@Redactable()
+	private executionStartedManual({
+		user,
+		executionId,
+		workflow,
+	}: Event['execution-started-manual']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.manual',
+			payload: { user, executionId, workflow },
 		});
 	}
 }

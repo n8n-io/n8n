@@ -35,6 +35,7 @@ import { Logger } from '@/Logger';
 import type { Project } from '@/databases/entities/Project';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
+import { EventService } from '@/eventbus/event.service';
 
 @Service()
 export class WorkflowExecutionService {
@@ -47,6 +48,7 @@ export class WorkflowExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly eventService: EventService,
 	) {}
 
 	async runWorkflow(
@@ -148,6 +150,12 @@ export class WorkflowExecutionService {
 		}
 
 		const executionId = await this.workflowRunner.run(data);
+
+		this.eventService.emit('execution-started-manual', {
+			user,
+			executionId,
+			workflow: workflowData,
+		});
 
 		return {
 			executionId,

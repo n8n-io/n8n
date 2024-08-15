@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { Cipher } from 'n8n-core';
 import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { TOTPService } from './totp.service';
+import { EventService } from '@/eventbus/event.service';
 
 @Service()
 export class MfaService {
@@ -10,6 +11,7 @@ export class MfaService {
 		private authUserRepository: AuthUserRepository,
 		public totp: TOTPService,
 		private cipher: Cipher,
+		private readonly eventService: EventService,
 	) {}
 
 	generateRecoveryCodes(n = 10) {
@@ -76,7 +78,8 @@ export class MfaService {
 	async enableMfa(userId: string) {
 		const user = await this.authUserRepository.findOneByOrFail({ id: userId });
 		user.mfaEnabled = true;
-		return await this.authUserRepository.save(user);
+		await this.authUserRepository.save(user);
+		this.eventService.emit('user-mfa-enabled', { user });
 	}
 
 	async disableMfa(userId: string) {
@@ -84,6 +87,7 @@ export class MfaService {
 		user.mfaEnabled = false;
 		user.mfaSecret = null;
 		user.mfaRecoveryCodes = [];
-		return await this.authUserRepository.save(user);
+		await this.authUserRepository.save(user);
+		this.eventService.emit('user-mfa-disabled', { user });
 	}
 }

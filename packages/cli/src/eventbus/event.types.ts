@@ -255,8 +255,6 @@ export type Event = {
 		success: boolean;
 	};
 
-	'variable-created': {};
-
 	'external-secrets-provider-settings-saved': {
 		userId?: string;
 		vaultType: string;
@@ -293,6 +291,130 @@ export type Event = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
+	};
+
+	'project-created': {
+		user: UserLike;
+		projectId: string;
+	};
+
+	'project-updated': {
+		user: UserLike;
+		projectId: string;
+		projectName: string;
+	};
+
+	'project-deleted': {
+		user: UserLike;
+		projectId: string;
+	};
+
+	// 'project-user-added': {
+	// 	user: UserLike;
+	// 	projectId: string;
+
+	// };
+
+	'workflow-transfered': {
+		user: UserLike;
+		workflowId: string;
+		sourceProjectId: string;
+		destinationProjectId: string;
+	};
+
+	'credential-transfered': {
+		user: UserLike;
+		credentialId: string;
+		sourceProjectId: string;
+		destinationProjectId: string;
+	};
+
+	'external-secret-store-created': {
+		user: UserLike;
+		type: string;
+	};
+
+	'external-secret-store-updated': {
+		user: UserLike;
+		type: string;
+	};
+
+	'external-secret-store-deleted': {
+		user: UserLike;
+		type: string;
+	};
+
+	'environment-created': {
+		user: UserLike;
+	};
+
+	'environment-updated': {
+		user: UserLike;
+	};
+
+	'environment-removed': {
+		user: UserLike;
+	};
+
+	'environment-pushed': {
+		user: UserLike;
+	};
+
+	'environment-pulled': {
+		user: UserLike;
+	};
+
+	'workflow-restored': {
+		user: UserLike;
+		workflowId: string;
+		revisionId: string;
+	};
+
+	'workflow-enabled': {
+		user: UserLike;
+		workflowId: string;
+	};
+
+	'workflow-disabled': {
+		user: UserLike;
+		workflowId: string;
+	};
+
+	'variable-created': {
+		user: UserLike;
+		variableId: string;
+		name: string;
+	};
+
+	'variable-updated': {
+		user: UserLike;
+		variableId: string;
+		name: string;
+	};
+
+	'variable-deleted': {
+		user: UserLike;
+		variableId: string;
+		name: string;
+	};
+
+	// 'execution-deleted': {
+	// 	user: UserLike;
+	// 	executionIds: string[];
+	// };
+
+	'execution-started-manual': {
+		user: UserLike;
+		executionId: string;
+		workflow: IWorkflowBase;
+	};
+
+	'user-mfa-enabled': {
+		user: UserLike;
+	};
+
+	'user-mfa-disabled': {
+		user: UserLike;
 	};
 
 	/**
