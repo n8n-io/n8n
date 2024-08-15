@@ -33,16 +33,34 @@
 			</div>
 			<span class="tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
+					v-if="isTagsEditEnabled"
+					v-model="tagIds"
 					ref="dropdown"
-					v-if="activeExecution?.annotation"
-					:v-model="tagIds"
 					:create-enabled="true"
 					:event-bus="tagsEventBus"
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					class="tags-edit"
 					data-test-id="workflow-tags-dropdown"
+					@blur="onTagsBlur"
+					@esc="onTagsEditEsc"
+				/>
+				<div v-else-if="tagIds.length === 0">
+					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
+						+ {{ $locale.baseText('workflowDetails.addTag') }}
+					</span>
+				</div>
+
+				<AnnotationTagsContainer
+					v-else
+					:key="activeExecution.id"
+					:tag-ids="tagIds"
+					:clickable="true"
+					:responsive="true"
+					data-test-id="execution-annotation-tags"
+					@click="onTagsEditEnable"
 				/>
 			</span>
+
 			<!--			<div :class="$style.tags" data-test-id="execution-annotation-tags-container">-->
 			<!--				<N8nTags-->
 			<!--					v-if="activeExecution?.annotation?.tags && activeExecution?.annotation.tags.length > 0"-->
@@ -67,21 +85,13 @@
 					{{ $locale.baseText('generic.annotationData') }}
 				</n8n-heading>
 			</div>
-			<!--			<div-->
-			<!--				v-if="!loading && executions.length === 0"-->
-			<!--				:class="$style.noResultsContainer"-->
-			<!--				data-test-id="execution-annotation-data-empty"-->
-			<!--			>-->
-			<!--				<n8n-text color="text-base" size="medium" align="center">-->
-			<!--					{{ $locale.baseText('executionsLandingPage.noResults') }}-->
-			<!--				</n8n-text>-->
-			<!--			</div>-->
 			<div
 				v-if="activeExecution?.customData && Object.keys(activeExecution?.customData).length > 0"
 				:class="$style.metadata"
 			>
 				<n8n-input-label
 					v-for="attr in Object.keys(activeExecution?.customData)"
+					v-bind:key="attr"
 					v-bind="{ label: attr, tooltipText: 'more info...' }"
 					:class="$style.customDataEntry"
 				>
@@ -101,15 +111,16 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import TagsContainer from '@/components/TagsContainer.vue';
+import AnnotationTagsContainer from '@/components/AnnotationTagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
-	components: { WorkflowTagsDropdown, FontAwesomeIcon, TagsContainer, AnnotationTagsDropdown },
+	components: {
+		AnnotationTagsContainer,
+		AnnotationTagsDropdown,
+	},
 	props: {
 		execution: {
 			type: Object as PropType<ExecutionSummary>,
@@ -136,6 +147,7 @@ export default defineComponent({
 	data() {
 		return {
 			tagsEventBus: createEventBus(),
+			isTagsEditEnabled: false,
 		};
 	},
 	methods: {
@@ -144,6 +156,44 @@ export default defineComponent({
 				await this.executionsStore.annotateExecution(this.activeExecution?.id, { vote });
 			}
 		},
+		onTagsEditEnable() {
+			this.isTagsEditEnabled = true;
+
+			setTimeout(() => {
+				this.tagsEventBus.emit('focus');
+			}, 0);
+		},
+		async onTagsBlur() {
+			this.isTagsEditEnabled = false;
+		},
+		onTagsEditEsc() {
+			this.isTagsEditEnabled = false;
+		},
+
+		// async onTagsBlur() {
+		// 	const current = (props.workflow.tags ?? []) as string[];
+		// 	const tags = appliedTagIds;
+		// 	if (!hasChanged(current, tags)) {
+		// 		this.isTagsEditEnabled = false;
+		//
+		// 		return;
+		// 	}
+		// 	if (tagsSaving) {
+		// 		return;
+		// 	}
+		// 	tagsSaving = true;
+		//
+		// 	const saved = await workflowHelpers.saveCurrentWorkflow({ tags });
+		// 	telemetry.track('User edited workflow tags', {
+		// 		workflow_id: props.workflow.id,
+		// 		new_tag_count: tags.length,
+		// 	});
+		//
+		// 	tagsSaving = false;
+		// 	if (saved) {
+		// 		isTagsEditEnabled = false;
+		// 	}
+		// },
 	},
 });
 </script>

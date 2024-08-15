@@ -111,7 +111,6 @@ function onCreate() {
 }
 
 function onTagsUpdated(selected: string[]) {
-	console.log({ selected });
 	const manage = selected.find((value) => value === MANAGE_KEY);
 	const create = selected.find((value) => value === CREATE_KEY);
 
