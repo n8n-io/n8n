@@ -13,7 +13,7 @@ import type {
 
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@db/utils/customValidators';
+import { NoXss } from '@db/utils/no-xss.validator';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole } from '@db/entities/User';
 import type { GlobalRole, User } from '@db/entities/User';

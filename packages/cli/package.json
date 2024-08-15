@@ -155,6 +155,7 @@
     "reflect-metadata": "0.2.2",
     "replacestream": "4.0.3",
     "samlify": "2.8.9",
+    "sanitize-html": "2.12.1",
     "semver": "7.5.4",
     "shelljs": "0.8.5",
     "simple-git": "3.17.0",
