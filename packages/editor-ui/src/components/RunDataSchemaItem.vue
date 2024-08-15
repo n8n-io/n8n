@@ -199,6 +199,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	gap: var(--spacing-2xs);
 	align-items: baseline;
 	flex-grow: 1;
+	min-width: 0;
 }
 
 .sub {
@@ -213,6 +214,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: inline-flex;
 	flex-direction: column;
 	order: -1;
+	min-width: 0;
 
 	.innerSub > div:first-child {
 		margin-top: var(--spacing-2xs);
@@ -247,7 +249,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
-	min-width: 0;
 	max-width: 50%;
 
 	path {
