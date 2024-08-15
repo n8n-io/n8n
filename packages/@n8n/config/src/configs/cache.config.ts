@@ -4,22 +4,22 @@ import { Config, Env, Nested } from '../decorators';
 class MemoryConfig {
 	/** Max size of memory cache in bytes */
 	@Env('N8N_CACHE_MEMORY_MAX_SIZE')
-	maxSize = 3 * 1024 * 1024; // 3 MiB
+	maxSize: number = 3 * 1024 * 1024; // 3 MiB
 
 	/** Time to live (in milliseconds) for data cached in memory. */
 	@Env('N8N_CACHE_MEMORY_TTL')
-	ttl = 3600 * 1000; // 1 hour
+	ttl: number = 3600 * 1000; // 1 hour
 }
 
 @Config
 class RedisConfig {
 	/** Prefix for cache keys in Redis. */
 	@Env('N8N_CACHE_REDIS_KEY_PREFIX')
-	prefix = 'redis';
+	prefix: string = 'redis';
 
 	/** Time to live (in milliseconds) for data cached in Redis. 0 for no TTL. */
 	@Env('N8N_CACHE_REDIS_TTL')
-	ttl = 3600 * 1000; // 1 hour
+	ttl: number = 3600 * 1000; // 1 hour
 }
 
 @Config
