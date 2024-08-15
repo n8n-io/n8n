@@ -7,8 +7,10 @@ export interface MfaModalClosedEventPayload {
 }
 
 export interface MfaModalEvents {
+	/** Command to request closing of the modal */
 	close: MfaModalClosedEventPayload | undefined;
 
+	/** Event that the modal has been closed */
 	closed: MfaModalClosedEventPayload | undefined;
 }
 

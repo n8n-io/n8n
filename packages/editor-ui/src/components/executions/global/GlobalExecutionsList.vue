@@ -7,7 +7,7 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
@@ -16,7 +16,7 @@ import { getResourcePermissions } from '@/permissions';
 
 const props = withDefaults(
 	defineProps<{
-		executions: ExecutionSummary[];
+		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
 		total: number;
 		estimated: boolean;
@@ -165,7 +165,7 @@ function getExecutionWorkflowName(execution: ExecutionSummary): string {
 }
 
 function getExecutionWorkflowPermissions(
-	execution: ExecutionSummary,
+	execution: ExecutionSummaryWithScopes,
 ): PermissionsRecord['workflow'] {
 	return getResourcePermissions(execution.scopes).workflow;
 }

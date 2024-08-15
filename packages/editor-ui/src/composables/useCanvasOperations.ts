@@ -444,7 +444,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 
 		const nodesWithTypeVersion = nodes.map((node) => {
-			const typeVersion = resolveNodeVersion(requireNodeTypeDescription(node.type));
+			const typeVersion =
+				node.typeVersion ?? resolveNodeVersion(requireNodeTypeDescription(node.type));
 			return {
 				...node,
 				typeVersion,
@@ -478,6 +479,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
+				console.error(error);
 				continue;
 			}
 
