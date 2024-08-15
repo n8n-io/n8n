@@ -1,3 +1,12 @@
+## [1.54.4](https://github.com/n8n-io/n8n/compare/n8n@1.54.3...n8n@1.54.4) (2024-08-15)
+
+
+### Bug Fixes
+
+* **core:** Use explicit types in configs to ensure valid decorator metadata ([#10433](https://github.com/n8n-io/n8n/issues/10433)) ([b5b5295](https://github.com/n8n-io/n8n/commit/b5b529511eee0ac4783f3d5a3c687eb444ab1ee8))
+
+
+
 ## [1.54.3](https://github.com/n8n-io/n8n/compare/n8n@1.54.2...n8n@1.54.3) (2024-08-15)
 
 
