@@ -7,7 +7,6 @@ import { useCanvasNode } from '@/composables/useCanvasNode';
 const nodeHelpers = useNodeHelpers();
 
 const {
-	pinnedDataCount,
 	hasPinnedData,
 	issues,
 	hasIssues,
@@ -51,7 +50,6 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		:class="[$style.status, $style.pinnedData]"
 	>
 		<FontAwesomeIcon icon="thumbtack" />
-		<span v-if="pinnedDataCount > 1" :class="$style.count"> {{ pinnedDataCount }}</span>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
 		<!-- Do nothing, unknown means the node never executed -->
