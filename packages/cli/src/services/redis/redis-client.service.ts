@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import type { RedisClient } from './redis.types';
+import type { RedisClientType } from './redis.types';
 
 import { OnShutdown } from '@/decorators/OnShutdown';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
@@ -17,7 +17,7 @@ export class RedisClientService {
 		private readonly globalConfig: GlobalConfig,
 	) {}
 
-	createClient(arg: { type: RedisClient; extraOptions?: RedisOptions }) {
+	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
 		const client =
 			this.clusterNodes().length > 0
 				? this.createClusterClient(arg)
@@ -56,7 +56,7 @@ export class RedisClientService {
 		type,
 		extraOptions,
 	}: {
-		type: RedisClient;
+		type: RedisClientType;
 		extraOptions?: RedisOptions;
 	}) {
 		const options = this.getOptions({ extraOptions });

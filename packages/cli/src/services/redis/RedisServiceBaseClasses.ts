@@ -4,7 +4,7 @@ import { Service } from 'typedi';
 import config from '@/config';
 import { Logger } from '@/Logger';
 import { RedisClientService } from './redis-client.service';
-import type { RedisClient } from './redis.types';
+import type { RedisClientType } from './redis.types';
 
 export type RedisServiceMessageHandler =
 	| ((channel: string, message: string) => void)
@@ -21,7 +21,7 @@ class RedisServiceBase {
 		private readonly redisClientService: RedisClientService,
 	) {}
 
-	async init(type: RedisClient): Promise<void> {
+	async init(type: RedisClientType): Promise<void> {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
@@ -49,7 +49,7 @@ class RedisServiceBase {
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
 	senderId: string;
 
-	async init(type: RedisClient): Promise<void> {
+	async init(type: RedisClientType): Promise<void> {
 		await super.init(type);
 		this.senderId = config.get('redis.queueModeId');
 	}

@@ -1,4 +1,4 @@
-export type RedisClient = n8nRedisClient | BullRedisClient;
+export type RedisClientType = n8nRedisClientType | BullRedisClientType;
 
 /**
  * Redis client used by n8n.
@@ -7,7 +7,7 @@ export type RedisClient = n8nRedisClient | BullRedisClient;
  * - `publisher(n8n)` to send messages into scaling mode communication channels
  * - `cache(n8n)` for caching operations (variables, resource ownership, etc.)
  */
-type n8nRedisClient = 'subscriber(n8n)' | 'publisher(n8n)' | 'cache(n8n)';
+type n8nRedisClientType = 'subscriber(n8n)' | 'publisher(n8n)' | 'cache(n8n)';
 
 /**
  * Redis client used internally by Bull. Suffixed with `(bull)` at `ScalingService.setupQueue`.
@@ -16,4 +16,4 @@ type n8nRedisClient = 'subscriber(n8n)' | 'publisher(n8n)' | 'cache(n8n)';
  * - `client(bull)` for general queue operations
  * - `bclient(bull)` for blocking operations when processing jobs
  */
-type BullRedisClient = 'subscriber(bull)' | 'client(bull)' | 'bclient(bull)';
+type BullRedisClientType = 'subscriber(bull)' | 'client(bull)' | 'bclient(bull)';
