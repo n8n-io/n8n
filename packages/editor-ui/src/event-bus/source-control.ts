@@ -5,6 +5,4 @@ export interface SourceControlEventBusEvents {
 	pull: never;
 }
 
-export type SourceControlEventBus = EventBus<SourceControlEventBusEvents>;
-
 export const sourceControlEventBus = createEventBus<SourceControlEventBusEvents>();
