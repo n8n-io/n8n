@@ -1,3 +1,13 @@
+## [1.55.3](https://github.com/n8n-io/n8n/compare/n8n@1.55.2...n8n@1.55.3) (2024-08-16)
+
+
+### Bug Fixes
+
+* **core:** Fix XSS validation and separate URL validation ([#10424](https://github.com/n8n-io/n8n/issues/10424)) ([4833fcb](https://github.com/n8n-io/n8n/commit/4833fcbadf4d5e7d7a11f6d4f737769163de912b))
+* **editor:** Fix flaky mapping tests ([#10453](https://github.com/n8n-io/n8n/issues/10453)) ([2ed97c3](https://github.com/n8n-io/n8n/commit/2ed97c360db02af8086f9bce6ab79631a83b936f))
+
+
+
 ## [1.55.2](https://github.com/n8n-io/n8n/compare/n8n@1.55.1...n8n@1.55.2) (2024-08-16)
 
 
