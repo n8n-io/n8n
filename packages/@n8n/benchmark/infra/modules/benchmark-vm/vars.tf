@@ -29,8 +29,3 @@ variable "tags" {
   description = "Tags to apply to all resources created by this module"
   type        = map(string)
 }
-
-locals {
-  # Install docker and add benchmark user to docker group
-  init_script = file("${path.module}/init.sh")
-}

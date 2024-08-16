@@ -69,10 +69,10 @@ resource "azurerm_network_interface_security_group_association" "ssh" {
 # Disk
 
 resource "azurerm_managed_disk" "data" {
-  name                 = "${var.prefix}-vm"
+  name                 = "${var.prefix}-disk"
   location             = var.location
   resource_group_name  = var.resource_group_name
-  storage_account_type = "Premium_LRS"
+  storage_account_type = "PremiumV2_LRS"
   create_option        = "Empty"
   disk_size_gb         = "16"
   zone                 = 1
@@ -84,7 +84,7 @@ resource "azurerm_virtual_machine_data_disk_attachment" "data" {
   managed_disk_id    = azurerm_managed_disk.data.id
   virtual_machine_id = azurerm_linux_virtual_machine.main.id
   lun                = "1"
-  caching            = "ReadWrite"
+  caching            = "None"
 }
 
 # VM
@@ -95,6 +95,7 @@ resource "azurerm_linux_virtual_machine" "main" {
   resource_group_name   = var.resource_group_name
   network_interface_ids = [azurerm_network_interface.main.id]
   dedicated_host_id     = var.dedicated_host_id
+  zone                  = 1
 
   size = var.vm_size
 
@@ -104,8 +105,6 @@ resource "azurerm_linux_virtual_machine" "main" {
     username   = "benchmark"
     public_key = var.ssh_public_key
   }
-
-  custom_data = base64encode(local.init_script)
 
   os_disk {
     caching              = "ReadWrite"

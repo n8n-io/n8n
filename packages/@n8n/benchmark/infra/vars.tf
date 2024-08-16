@@ -5,6 +5,7 @@ variable "location" {
 
 variable "resource_group_name" {
   description = "Name of the resource group"
+  default     = "n8n-benchmarking"
 }
 
 variable "host_size_family" {
@@ -23,15 +24,10 @@ variable "number_of_vms" {
   default     = 1
 }
 
-variable "custom_data" {
-  description = "Script to install Docker"
-  default     = "#!/bin/bash\napt-get update\napt-get install -y docker.io\n"
-}
-
 locals {
   common_tags = {
     Id        = "N8nBenchmark"
     Terraform = "true"
-    Owner     = "Benchmark"
+    Owner     = "Catalysts"
   }
 }
