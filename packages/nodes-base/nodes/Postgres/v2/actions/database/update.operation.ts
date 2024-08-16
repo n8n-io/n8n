@@ -82,7 +82,7 @@ const properties: INodeProperties[] = [
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
 		},
 		default: '',
-		hint: 'The column that identifies the row(s) to modify',
+		hint: 'The column to use when matching rows in Postgres to the input items of this node. Usually an ID.',
 		displayOptions: {
 			show: {
 				'@version': [2, 2.1],
