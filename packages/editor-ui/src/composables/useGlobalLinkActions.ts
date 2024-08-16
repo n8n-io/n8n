@@ -10,7 +10,7 @@ const state = reactive({
 	delegatedClickHandler: null as null | ((e: MouseEvent) => void),
 });
 
-export default () => {
+export function useGlobalLinkActions() {
 	function registerCustomAction({ key, action }: { key: string; action: Function }) {
 		state.customActions[key] = action;
 	}
@@ -76,4 +76,4 @@ export default () => {
 		registerCustomAction,
 		unregisterCustomAction,
 	};
-};
+}
