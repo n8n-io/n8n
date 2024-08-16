@@ -29,6 +29,9 @@ export async function clockifyApiRequest(
 		uri: `${BASE_URL}/${resource}`,
 		json: true,
 		useQuerystring: true,
+		qsStringifyOptions: {
+			arrayFormat: 'repeat',
+		},
 	};
 	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
 }
@@ -45,7 +48,7 @@ export async function clockifyApiRequestAllItems(
 
 	let responseData;
 
-	query['page-size'] = 50;
+	query['page-size'] = query.limit ? Math.min(parseInt(query.limit as string), 1000) : 1000;
 
 	query.page = 1;
 
@@ -56,7 +59,7 @@ export async function clockifyApiRequestAllItems(
 
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 
 		query.page++;
