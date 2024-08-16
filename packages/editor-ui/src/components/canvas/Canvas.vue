@@ -459,6 +459,8 @@ watch(() => props.readOnly, setReadonly, {
 			pannable
 			zoomable
 			:node-class-name="minimapNodeClassnameFn"
+			mask-color="var(--color-background-base)"
+			:node-border-radius="16"
 		/>
 
 		<CanvasControlButtons

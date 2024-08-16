@@ -23,41 +23,35 @@ function onResetZoom() {
 }
 </script>
 <template>
-	<Controls>
-		<template #icon-zoom-in>
-			<KeyboardShortcutTooltip
-				:label="$locale.baseText('nodeView.zoomIn')"
-				:shortcut="{ keys: ['+'] }"
-			>
-				<N8nIconButton
-					type="tertiary"
-					size="large"
-					icon="search-plus"
-					data-test-id="zoom-in-button"
-				/>
-			</KeyboardShortcutTooltip>
-		</template>
-		<template #icon-zoom-out>
-			<KeyboardShortcutTooltip
-				:label="$locale.baseText('nodeView.zoomOut')"
-				:shortcut="{ keys: ['-'] }"
-			>
-				<N8nIconButton
-					type="tertiary"
-					size="large"
-					icon="search-minus"
-					data-test-id="zoom-out-button"
-				/>
-			</KeyboardShortcutTooltip>
-		</template>
-		<template #icon-fit-view>
-			<KeyboardShortcutTooltip
-				:label="$locale.baseText('nodeView.zoomToFit')"
-				:shortcut="{ keys: ['1'] }"
-			>
-				<N8nIconButton type="tertiary" size="large" icon="expand" data-test-id="zoom-to-fit" />
-			</KeyboardShortcutTooltip>
-		</template>
+	<Controls :show-zoom="false" :show-fit-view="false">
+		<KeyboardShortcutTooltip
+			:label="$locale.baseText('nodeView.zoomIn')"
+			:shortcut="{ keys: ['+'] }"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="search-plus"
+				data-test-id="zoom-in-button"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="$locale.baseText('nodeView.zoomOut')"
+			:shortcut="{ keys: ['-'] }"
+		>
+			<N8nIconButton
+				type="tertiary"
+				size="large"
+				icon="search-minus"
+				data-test-id="zoom-out-button"
+			/>
+		</KeyboardShortcutTooltip>
+		<KeyboardShortcutTooltip
+			:label="$locale.baseText('nodeView.zoomToFit')"
+			:shortcut="{ keys: ['1'] }"
+		>
+			<N8nIconButton type="tertiary" size="large" icon="expand" data-test-id="zoom-to-fit" />
+		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
 			v-if="isResetZoomVisible"
 			:label="$locale.baseText('nodeView.resetZoom')"
@@ -78,27 +72,5 @@ function onResetZoom() {
 .vue-flow__controls {
 	display: flex;
 	gap: var(--spacing-xs);
-	box-shadow: none;
-
-	.button {
-		transition-property: transform, background, border, color;
-		transition-duration: 300ms;
-		transition-timing-function: ease;
-
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-}
-
-.vue-flow__controls-button {
-	border: 0;
-	padding: 0;
-	width: 42px;
-	height: 42px;
-	svg {
-		max-height: 16px;
-		max-width: 16px;
-	}
 }
 </style>
