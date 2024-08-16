@@ -152,6 +152,8 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 			x: options?.abs ? xDiff : originalLocation.right + xDiff,
 			y: options?.abs ? yDiff : originalLocation.top + yDiff,
 		};
+		// Clicking on the input panel to make sure all popovers are closed before dragging
+		cy.getByTestId('ndv-input-panel').click();
 		if (options?.realMouse) {
 			element.realMouseDown();
 			element.realMouseMove(newPosition.x, newPosition.y);
@@ -190,6 +192,8 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, optio
 			const pageY = coords.top + coords.height / 2;
 
 			if (draggableSelector) {
+				// Clicking on the input panel to make sure all popovers are closed before dragging
+				cy.getByTestId('ndv-input-panel').click();
 				// We can't use realMouseDown here because it hangs headless run
 				cy.get(draggableSelector).trigger('mousedown');
 			}
