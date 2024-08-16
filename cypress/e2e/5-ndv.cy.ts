@@ -582,7 +582,13 @@ describe('NDV', () => {
 		ndv.getters.outputTableRow(1).find('mark').should('have.text', '<lib');
 
 		ndv.getters.outputDisplayMode().find('label').eq(1).should('include.text', 'JSON');
-		ndv.getters.outputDisplayMode().find('label').eq(1).click();
+		ndv.getters
+			.outputDisplayMode()
+			.find('label')
+			.eq(1)
+			.scrollIntoView()
+			.should('be.visible')
+			.click();
 
 		ndv.getters.outputDataContainer().find('.json-data').should('exist');
 		ndv.getters
