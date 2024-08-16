@@ -295,33 +295,33 @@ export class InvoiceNinja implements INodeType {
 				}
 				return returnData;
 			},
-		},
-		// Get all the available users to display them to user so that they can
-		// select them easily
-		async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-			const returnData: INodePropertyOptions[] = [];
-			const qs: IDataObject = {};
-			// Only select payments that can be matched to transactions
-			qs.match_transactions = true;
-			const payments = await invoiceNinjaApiRequestAllItems.call(
-				this,
-				'data',
-				'GET',
-				'/payments',
-				{},
-				qs,
-			);
-			for (const payment of payments) {
-				const paymentName = [payment.number, payment.date, payment.amount]
-					.filter((e) => e)
-					.join(' - ');
-				const paymentId = payment.id as string;
-				returnData.push({
-					name: paymentName,
-					value: paymentId,
-				});
-			}
-			return returnData;
+			// Get all the available users to display them to user so that they can
+			// select them easily
+			async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs: IDataObject = {};
+				// Only select payments that can be matched to transactions
+				qs.match_transactions = true;
+				const payments = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					'/payments',
+					{},
+					qs,
+				);
+				for (const payment of payments) {
+					const paymentName = [payment.number, payment.date, payment.amount]
+						.filter((e) => e)
+						.join(' - ');
+					const paymentId = payment.id as string;
+					returnData.push({
+						name: paymentName,
+						value: paymentId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
