@@ -3,8 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 /**
  * Add new indices:
  *
- * - `status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (default query)
- * - `workflowId, status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (filter query)
+ * - `status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (default query) and for `ExecutionRepository.findManyByRangeQuery` (filter query)
  * - `waitTill, status` for `ExecutionRepository.getWaitingExecutions`
  * - `stoppedAt, deletedAt, status` for `ExecutionRepository.softDeletePrunableExecutions`
  *
@@ -34,7 +33,6 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 export class RefactorExecutionIndices1723796243146 implements ReversibleMigration {
 	async up({ schemaBuilder, isPostgres, isSqlite, isMysql }: MigrationContext) {
 		await schemaBuilder.createIndex('execution_entity', ['status', 'startedAt']);
-		await schemaBuilder.createIndex('execution_entity', ['workflowId', 'status', 'startedAt']);
 		await schemaBuilder.createIndex('execution_entity', ['waitTill', 'status']);
 		await schemaBuilder.createIndex('execution_entity', ['stoppedAt', 'deletedAt', 'status']);
 
@@ -81,7 +79,6 @@ export class RefactorExecutionIndices1723796243146 implements ReversibleMigratio
 
 	async down({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropIndex('execution_entity', ['status', 'startedAt']);
-		await schemaBuilder.dropIndex('execution_entity', ['workflowId', 'status', 'startedAt']);
 		await schemaBuilder.dropIndex('execution_entity', ['waitTill', 'status']);
 		await schemaBuilder.dropIndex('execution_entity', ['stoppedAt', 'deletedAt', 'status']);
 
