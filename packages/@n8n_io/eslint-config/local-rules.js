@@ -492,6 +492,29 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-untyped-config-class-field': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description: 'Enforce explicit typing of config class fields',
+				recommended: 'error',
+			},
+			messages: {
+				noUntypedConfigClassField:
+					'Class field must have an explicit type annotation, e.g. `field: type = value`. See: https://github.com/n8n-io/n8n/pull/10433',
+			},
+		},
+		create(context) {
+			return {
+				PropertyDefinition(node) {
+					if (!node.typeAnnotation) {
+						context.report({ node: node.key, messageId: 'noUntypedConfigClassField' });
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>

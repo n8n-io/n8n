@@ -16,6 +16,16 @@ import { createFormEventBus } from 'n8n-design-system/utils';
 import type { MfaModalEvents } from '@/event-bus/mfa';
 import { promptMfaCodeBus } from '@/event-bus/mfa';
 
+type UserBasicDetailsForm = {
+	firstName: string;
+	lastName: string;
+	email: string;
+};
+
+type UserBasicDetailsWithMfa = UserBasicDetailsForm & {
+	mfaCode?: string;
+};
+
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 
@@ -114,12 +124,17 @@ onMounted(() => {
 function onInput() {
 	hasAnyBasicInfoChanges.value = true;
 }
+
 function onReadyToSubmit(ready: boolean) {
 	readyToSubmit.value = ready;
 }
-async function onSubmit(form: { firstName: string; lastName: string; email: string }) {
+
+/** Saves users basic info and personalization settings */
+async function saveUserSettings(params: UserBasicDetailsWithMfa) {
 	try {
-		await Promise.all([updateUserBasicInfo(form), updatePersonalisationSettings()]);
+		// The MFA code might be invalid so we update the user's basic info first
+		await updateUserBasicInfo(params);
+		await updatePersonalisationSettings();
 
 		showToast({
 			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
@@ -130,19 +145,43 @@ async function onSubmit(form: { firstName: string; lastName: string; email: stri
 		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
 	}
 }
-async function updateUserBasicInfo(form: { firstName: string; lastName: string; email: string }) {
+
+async function onSubmit(form: UserBasicDetailsForm) {
+	if (!usersStore.currentUser?.mfaEnabled) {
+		await saveUserSettings(form);
+		return;
+	}
+
+	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+
+	promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
+		if (!payload) {
+			// User closed the modal without submitting the form
+			return;
+		}
+
+		await saveUserSettings({
+			...form,
+			mfaCode: payload.mfaCode,
+		});
+	});
+}
+
+async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
 	if (!hasAnyBasicInfoChanges.value || !usersStore.currentUserId) {
 		return;
 	}
 
 	await usersStore.updateUser({
 		id: usersStore.currentUserId,
-		firstName: form.firstName,
-		lastName: form.lastName,
-		email: form.email,
+		firstName: userBasicInfo.firstName,
+		lastName: userBasicInfo.lastName,
+		email: userBasicInfo.email,
+		mfaCode: userBasicInfo.mfaCode,
 	});
 	hasAnyBasicInfoChanges.value = false;
 }
+
 async function updatePersonalisationSettings() {
 	if (!hasAnyPersonalisationChanges.value) {
 		return;
@@ -150,12 +189,15 @@ async function updatePersonalisationSettings() {
 
 	uiStore.setTheme(currentSelectedTheme.value);
 }
+
 function onSaveClick() {
 	formBus.emit('submit');
 }
+
 function openPasswordModal() {
 	uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 }
+
 function onMfaEnableClick() {
 	uiStore.openModal(MFA_SETUP_MODAL_KEY);
 }
