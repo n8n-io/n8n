@@ -9,7 +9,7 @@ import type {
 	UserUpdatePayload,
 } from '@/requests';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
-import { NoXss } from './databases/utils/customValidators';
+import { NoXss } from '@/validators/no-xss.validator';
 
 export async function validateEntity(
 	entity:
