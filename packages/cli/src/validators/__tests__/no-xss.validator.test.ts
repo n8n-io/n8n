@@ -15,13 +15,15 @@ describe('NoXss', () => {
 
 	const entity = new Entity();
 
-	describe('Scripts and URLs', () => {
-		const MALICIOUS_STRINGS = ['http://google.com', '<script src/>', 'www.domain.tld'];
+	describe('Scripts', () => {
+		const XSS_STRINGS = ['<script src/>', "<script>alert('xss')</script>"];
 
-		for (const str of MALICIOUS_STRINGS) {
+		for (const str of XSS_STRINGS) {
 			test(`should block ${str}`, async () => {
 				entity.name = str;
-				const [error] = await validate(entity);
+				const errors = await validate(entity);
+				expect(errors).toHaveLength(1);
+				const [error] = errors;
 				expect(error.property).toEqual('name');
 				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
 			});
