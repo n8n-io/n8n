@@ -367,13 +367,12 @@ describe('Data mapping', () => {
 			.should('have.text', '{{ $json.input[0].count }}hello worldnewline');
 		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.actions.validateExpressionPreview('value', '0hello world\n\nnewline');
-		cy.getByTestId('ndv-input-panel').click();
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
-		ndv.actions.mapToParameter('value', 'bottom');
+		ndv.actions.mapToParameter('value', 'center');
 
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.input[0].count }}hello worldnewline{{ $json.input }}');
+			.should('have.text', '{{ $json.input[0].count }}hello world{{ $json.input }}newline');
 	});
 });
