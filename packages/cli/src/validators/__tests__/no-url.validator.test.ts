@@ -10,7 +10,7 @@ describe('NoUrl', () => {
 	const entity = new Entity();
 
 	describe('URLs', () => {
-		const URLS = ['http://google.com', 'www.domain.tld'];
+		const URLS = ['http://google.com', 'www.domain.tld', 'n8n.io'];
 
 		for (const str of URLS) {
 			test(`should block ${str}`, async () => {
