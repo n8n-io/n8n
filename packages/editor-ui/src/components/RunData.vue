@@ -196,7 +196,7 @@
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isSchemaView
+				!isInputSchemaView
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -281,7 +281,15 @@
 						})
 					}}
 				</n8n-text>
-				<slot v-else-if="$slots['content']" name="content"></slot>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						compact
+					/>
+					<slot name="content"></slot>
+				</div>
 				<NodeErrorView
 					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
@@ -427,6 +435,7 @@
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					:class="$style.schema"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -1147,7 +1156,7 @@ export default defineComponent({
 			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
 			const errorsToTrack = ['unknown error'];
 
-			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
+			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
 					`User encountered an error: "${error.message}"`,
 					{
@@ -1776,6 +1785,13 @@ export default defineComponent({
 	height: 100%;
 }
 
+.inlineError {
+	line-height: var(--font-line-height-xloose);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
 .outputs {
 	display: flex;
 	flex-direction: column;
@@ -1992,6 +2008,10 @@ export default defineComponent({
 	margin-bottom: var(--spacing-xs);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
+}
+
+.schema {
+	padding: 0 var(--spacing-s);
 }
 </style>
 

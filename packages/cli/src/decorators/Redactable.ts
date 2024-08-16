@@ -1,5 +1,5 @@
 import { RedactableError } from '@/errors/redactable.error';
-import type { UserLike } from '@/eventbus/event.types';
+import type { UserLike } from '@/events/relay-event-map';
 
 function toRedactable(userLike: UserLike) {
 	return {
@@ -14,7 +14,7 @@ function toRedactable(userLike: UserLike) {
 type FieldName = 'user' | 'inviter' | 'invitee';
 
 /**
- * Mark redactable properties in a `{ user: UserLike }` field in an `AuditEventRelay`
+ * Mark redactable properties in a `{ user: UserLike }` field in an `LogStreamingEventRelay`
  * method arg. These properties will be later redacted by the log streaming
  * destination based on user prefs. Only for `n8n.audit.*` logs.
  *

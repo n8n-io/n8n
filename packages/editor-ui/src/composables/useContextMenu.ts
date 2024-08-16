@@ -10,6 +10,7 @@ import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
 import { usePinnedData } from './usePinnedData';
 import { isPresent } from '../utils/typesUtils';
+import { getResourcePermissions } from '@/permissions';
 
 export type ContextMenuTarget =
 	| { source: 'canvas'; nodeIds: string[] }
@@ -46,8 +47,15 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 
 	const i18n = useI18n();
 
+	const workflowPermissions = computed(
+		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+	);
+
 	const isReadOnly = computed(
-		() => sourceControlStore.preferences.branchReadOnly || uiStore.isReadOnlyView,
+		() =>
+			sourceControlStore.preferences.branchReadOnly ||
+			uiStore.isReadOnlyView ||
+			!workflowPermissions.value.update,
 	);
 
 	const targetNodeIds = computed(() => {

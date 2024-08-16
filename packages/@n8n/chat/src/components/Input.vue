@@ -247,6 +247,10 @@ function onOpenFileDialog() {
 	justify-content: center;
 	transition: color var(--chat--transition-duration) ease;
 
+	svg {
+		min-width: fit-content;
+	}
+
 	&:hover,
 	&:focus {
 		background: var(

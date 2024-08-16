@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.52.0",
+  "version": "1.55.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -13,7 +13,7 @@
     "build:backend": "turbo run build:backend",
     "build:frontend": "turbo run build:frontend",
     "build:nodes": "turbo run build:nodes",
-    "typecheck": "turbo --filter=!n8n typecheck",
+    "typecheck": "turbo typecheck",
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
@@ -63,7 +63,7 @@
     ],
     "overrides": {
       "@types/node": "^18.16.16",
-      "axios": "1.6.7",
+      "axios": "1.7.3",
       "chokidar": "3.5.2",
       "esbuild": "^0.20.2",
       "formidable": "3.5.1",

@@ -8,12 +8,14 @@ import { RoleService } from '@/services/role.service';
 import type { Scope } from '@n8n/permissions';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @Service()
 export class WorkflowSharingService {
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly roleService: RoleService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	/**
@@ -27,11 +29,16 @@ export class WorkflowSharingService {
 	async getSharedWorkflowIds(
 		user: User,
 		options:
-			| { scopes: Scope[] }
-			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[] },
+			| { scopes: Scope[]; projectId?: string }
+			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[]; projectId?: string },
 	): Promise<string[]> {
+		const { projectId } = options;
+
 		if (user.hasGlobalScope('workflow:read')) {
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({ select: ['workflowId'] });
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({
+				select: ['workflowId'],
+				...(projectId && { where: { projectId } }),
+			});
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
 
@@ -58,5 +65,29 @@ export class WorkflowSharingService {
 		});
 
 		return sharedWorkflows.map(({ workflowId }) => workflowId);
+	}
+
+	async getSharedWorkflowScopes(
+		workflowIds: string[],
+		user: User,
+	): Promise<Array<[string, Scope[]]>> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
+		const sharedWorkflows =
+			await this.sharedWorkflowRepository.getRelationsByWorkflowIdsAndProjectIds(
+				workflowIds,
+				projectRelations.map((p) => p.projectId),
+			);
+
+		return workflowIds.map((workflowId) => {
+			return [
+				workflowId,
+				this.roleService.combineResourceScopes(
+					'workflow',
+					user,
+					sharedWorkflows.filter((s) => s.workflowId === workflowId),
+					projectRelations,
+				),
+			];
+		});
 	}
 }

@@ -88,6 +88,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isSamlLoginEnabled = computed(() => saml.value.loginEnabled);
 
+	const isAiAssistantEnabled = computed(() => settings.value.aiAssistant?.enabled);
+
 	const showSetupPage = computed(() => userManagement.value.showSetupOnFirstLoad);
 
 	const deploymentType = computed(() => settings.value.deployment?.type || 'default');
@@ -401,6 +403,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		logLevel,
 		isTelemetryEnabled,
 		isMfaFeatureEnabled,
+		isAiAssistantEnabled,
 		areTagsEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,

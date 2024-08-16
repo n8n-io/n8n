@@ -7,6 +7,9 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
+	| 'community-package-install'
+	| 'community-package-update'
+	| 'community-package-uninstall'
 	| 'display-workflow-activation' // multi-main only
 	| 'display-workflow-deactivation' // multi-main only
 	| 'add-webhooks-triggers-and-pollers' // multi-main only
@@ -26,7 +29,11 @@ export type RedisServiceBaseCommand =
 			senderId: string;
 			command: Exclude<
 				RedisServiceCommand,
-				'relay-execution-lifecycle-event' | 'clear-test-webhooks'
+				| 'relay-execution-lifecycle-event'
+				| 'clear-test-webhooks'
+				| 'community-package-install'
+				| 'community-package-update'
+				| 'community-package-uninstall'
 			>;
 			payload?: {
 				[key: string]: string | number | boolean | string[] | number[] | boolean[];
@@ -41,6 +48,14 @@ export type RedisServiceBaseCommand =
 			senderId: string;
 			command: 'clear-test-webhooks';
 			payload: { webhookKey: string; workflowEntity: IWorkflowDb; pushRef: string };
+	  }
+	| {
+			senderId: string;
+			command:
+				| 'community-package-install'
+				| 'community-package-update'
+				| 'community-package-uninstall';
+			payload: { packageName: string; packageVersion: string };
 	  };
 
 export type RedisServiceWorkerResponseObject = {

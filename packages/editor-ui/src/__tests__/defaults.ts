@@ -121,4 +121,7 @@ export const defaultSettings: IN8nUISettings = {
 	security: {
 		blockFileAccessToN8nFiles: false,
 	},
+	aiAssistant: {
+		enabled: false,
+	},
 };

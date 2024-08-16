@@ -3,7 +3,7 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Core Nodes"],
-	"alias": ["_Form", "form", "table", "submit", "post"],
+	"alias": ["table", "submit", "post"],
 	"resources": {
 		"primaryDocumentation": [
 			{

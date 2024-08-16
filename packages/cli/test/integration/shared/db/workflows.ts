@@ -9,6 +9,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -157,7 +158,7 @@ export async function createWorkflowWithTrigger(
 					position: [780, 300],
 				},
 			],
-			connections: { Cron: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+			connections: { Cron: { main: [[{ node: 'Set', type: NodeConnectionType.Main, index: 0 }]] } },
 			...attributes,
 		},
 		user,

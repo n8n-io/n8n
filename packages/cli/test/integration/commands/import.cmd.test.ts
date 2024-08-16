@@ -1,6 +1,5 @@
 import { nanoid } from 'nanoid';
 
-import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
@@ -11,7 +10,6 @@ import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
 import { createMember, createOwner } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportWorkflowsCommand);
 

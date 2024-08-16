@@ -8,6 +8,7 @@ import {
 	onMounted,
 	ref,
 	useCssModule,
+	watch,
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -17,6 +18,7 @@ import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/Canvas
 import { useI18n } from '@/composables/useI18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
@@ -134,6 +136,7 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
+const { registerCustomAction } = useGlobalLinkActions();
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
@@ -288,6 +291,7 @@ async function initializeRoute() {
 	nodeHelpers.updateNodesParameterIssues();
 
 	await loadCredentials();
+	await initializeDebugMode();
 }
 
 async function initializeWorkspaceForNewWorkflow() {
@@ -306,7 +310,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		const workflowData = await workflowsStore.fetchWorkflow(id);
 
 		await openWorkflow(workflowData);
-		await initializeDebugMode();
 
 		if (workflowData.meta?.onboardingId) {
 			trackOpenWorkflowFromOnboardingTemplate();
@@ -748,6 +751,7 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: IWork
 
 	resetWorkspace();
 
+	await initializeData();
 	await initializeWorkspace({
 		...workflowData,
 		nodes: NodeViewUtils.getFixedNodesList<INodeUi>(workflowData.nodes),
@@ -800,6 +804,7 @@ async function onAddNodesAndConnections(
 	}
 
 	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
+	await nextTick();
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
 	const mappedConnections: CanvasConnectionCreateData[] = connections.map(({ from, to }) => {
@@ -839,6 +844,10 @@ async function onSwitchActiveNode(nodeName: string) {
 
 async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
+}
+
+async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
@@ -1344,30 +1353,52 @@ function onClickPane(position: CanvasNode['position']) {
  */
 
 function registerCustomActions() {
-	// @TODO Implement these
-	// this.registerCustomAction({
-	// 	key: 'openNodeDetail',
-	// 	action: ({ node }: { node: string }) => {
-	// 		this.nodeSelectedByName(node, true);
-	// 	},
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'openSelectiveNodeCreator',
-	// 	action: this.openSelectiveNodeCreator,
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'showNodeCreator',
-	// 	action: () => {
-	// 		this.ndvStore.activeNodeName = null;
-	//
-	// 		void this.$nextTick(() => {
-	// 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TAB);
-	// 		});
-	// 	},
-	// });
+	registerCustomAction({
+		key: 'openNodeDetail',
+		action: ({ node }: { node: string }) => {
+			setNodeActiveByName(node);
+		},
+	});
+
+	registerCustomAction({
+		key: 'openSelectiveNodeCreator',
+		action: ({
+			connectiontype: connectionType,
+			node,
+		}: {
+			connectiontype: NodeConnectionType;
+			node: string;
+		}) => {
+			void onOpenSelectiveNodeCreator(node, connectionType);
+		},
+	});
+
+	registerCustomAction({
+		key: 'showNodeCreator',
+		action: () => {
+			ndvStore.activeNodeName = null;
+
+			void nextTick(() => {
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+			});
+		},
+	});
 }
+
+/**
+ * Routing
+ */
+
+watch(
+	() => route.name,
+	async () => {
+		if (!checkIfEditingIsAllowed()) {
+			return;
+		}
+
+		await initializeRoute();
+	},
+);
 
 /**
  * Lifecycle

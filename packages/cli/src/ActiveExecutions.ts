@@ -12,6 +12,7 @@ import {
 	ExecutionCancelledError,
 	sleep,
 } from 'n8n-workflow';
+import { strict as assert } from 'node:assert';
 
 import type {
 	ExecutionPayload,
@@ -74,9 +75,7 @@ export class ActiveExecutions {
 			}
 
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
-			if (executionId === undefined) {
-				throw new ApplicationError('There was an issue assigning an execution id to the execution');
-			}
+			assert(executionId);
 
 			await this.concurrencyControl.throttle({ mode, executionId });
 			executionStatus = 'running';

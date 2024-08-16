@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -24,7 +24,6 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import { Queue } from '@/Queue';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -40,6 +39,8 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/License';
+import type { User } from '@/databases/entities/User';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -83,7 +84,6 @@ export class ExecutionService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly queue: Queue,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -92,6 +92,7 @@ export class ExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {}
 
 	async findOne(
@@ -468,14 +469,30 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		const job = await this.queue.findRunningJobBy({ executionId: execution.id });
+		const { ScalingService } = await import('@/scaling/scaling.service');
+		const scalingService = Container.get(ScalingService);
+		const jobs = await scalingService.findJobsByStatus(['active', 'waiting']);
+
+		const job = jobs.find(({ data }) => data.executionId === execution.id);
 
 		if (job) {
-			await this.queue.stopJob(job);
+			await scalingService.stopJob(job);
 		} else {
 			this.logger.debug('Job to stop not in queue', { executionId: execution.id });
 		}
 
 		return await this.executionRepository.stopDuringRun(execution);
+	}
+
+	async addScopes(user: User, summaries: ExecutionSummaries.ExecutionSummaryWithScopes[]) {
+		const workflowIds = [...new Set(summaries.map((s) => s.workflowId))];
+
+		const scopes = Object.fromEntries(
+			await this.workflowSharingService.getSharedWorkflowScopes(workflowIds, user),
+		);
+
+		for (const s of summaries) {
+			s.scopes = scopes[s.workflowId] ?? [];
+		}
 	}
 }

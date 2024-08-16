@@ -2,7 +2,6 @@
 	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"rootDir": ".",
-		"preserveSymlinks": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",

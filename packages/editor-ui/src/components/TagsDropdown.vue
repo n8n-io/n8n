@@ -13,7 +13,6 @@
 			:filter-method="filterOptions"
 			filterable
 			multiple
-			:allow-create="createEnabled"
 			:reserve-keyword="false"
 			loading-text="..."
 			popper-class="tags-dropdown"
@@ -23,7 +22,7 @@
 			@remove-tag="onRemoveTag"
 		>
 			<n8n-option
-				v-if="options.length === 0 && filter && createEnabled"
+				v-if="options.length === 0 && filter"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -35,11 +34,11 @@
 				</span>
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{
+				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -89,10 +88,6 @@ export default defineComponent({
 		modelValue: {
 			type: Array as PropType<string[]>,
 			default: () => [],
-		},
-		createEnabled: {
-			type: Boolean,
-			default: false,
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,

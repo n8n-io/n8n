@@ -33,8 +33,11 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	const knownCredentials = loader.known.credentials;
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => {
 		const credentialType = data.type;
-		if (knownCredentials[credentialType.name].supportedNodes?.length > 0) {
-			delete credentialType.httpRequestNode;
+		if (
+			knownCredentials[credentialType.name].supportedNodes?.length > 0 &&
+			credentialType.httpRequestNode
+		) {
+			credentialType.httpRequestNode.hidden = true;
 		}
 		return credentialType;
 	});
