@@ -36,7 +36,7 @@ describe('Personal Settings', () => {
 		});
 	});
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	it.skip('not allow malicious values for personal data', () => {
+	it('not allow malicious values for personal data', () => {
 		cy.visit('/settings/personal');
 		INVALID_NAMES.forEach((name) => {
 			cy.getByTestId('personal-data-form').find('input[name="firstName"]').clear().type(name);
