@@ -41,7 +41,7 @@ describe('Personal Settings', () => {
 			cy.getByTestId('personal-data-form').find('input[name="firstName"]').clear().type(name);
 			cy.getByTestId('personal-data-form').find('input[name="lastName"]').clear().type(name);
 			cy.getByTestId('save-settings-button').click();
-			errorToast().should('contain', 'Malicious firstName | Malicious lastName');
+			errorToast().should('contain', 'Potentially malicious string | Potentially malicious string');
 			errorToast().find('.el-notification__closeBtn').click();
 		});
 	});
