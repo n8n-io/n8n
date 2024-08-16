@@ -824,6 +824,9 @@ importers:
       samlify:
         specifier: 2.8.9
         version: 2.8.9
+      sanitize-html:
+        specifier: 2.12.1
+        version: 2.12.1
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -22445,7 +22448,7 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 5.0.3
       domutils: 3.0.1
-      entities: 4.4.0
+      entities: 4.5.0
 
   http-cache-semantics@4.1.1:
     optional: true
