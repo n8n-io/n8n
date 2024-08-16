@@ -120,6 +120,6 @@ describe('WorkflowLMChatModal', () => {
 			expect(chatDialog.querySelectorAll('.chat-message-from-user')).toHaveLength(1),
 		);
 
-		expect(chatDialog.querySelector('.chat-message')).toHaveTextContent('Hello!');
+		expect(chatDialog.querySelector('.chat-message-from-user')).toHaveTextContent('Hello!');
 	});
 });
