@@ -744,7 +744,6 @@ export default defineComponent({
 			if (this.node) {
 				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name));
 			}
-			// @ts-ignore
 			this.valueChanged({
 				value: name,
 				name: 'name',
