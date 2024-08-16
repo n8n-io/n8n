@@ -96,12 +96,52 @@ function parseFilterConditionValues(
 
 	const invalidTypeDescription = 'Try changing the type of comparison.';
 
+	const composeInvalidTypeDescription = (
+		type: string,
+		fromType: string,
+		valuePosition: 'first' | 'second',
+	) => {
+		fromType = fromType.toLocaleLowerCase();
+		const expectedType = withIndefiniteArticle(type);
+
+		let convertionFunction = '';
+		if (type === 'string') {
+			convertionFunction = '.toString()';
+		} else if (type === 'number') {
+			convertionFunction = '.toNumber()';
+		}
+
+		const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
+		if (strict) {
+			return `
+<p>Try either:</p>
+<ol>
+  <li>Enabling less strict type validation</li>
+  <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
+</ol>
+			`;
+		}
+		return invalidTypeDescription;
+	};
+
+	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {
+		return {
+			ok: false,
+			error: new FilterError(
+				`Comparison type expects ${withIndefiniteArticle(operator.type)} but both fields are ${withIndefiniteArticle(
+					typeof condition.leftValue,
+				)}`,
+				'Try changing the type of the comparison, or enabling less strict type validation',
+			),
+		};
+	}
+
 	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(operator.type, typeof condition.leftValue, leftValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(operator.type, typeof condition.leftValue, 'first'),
 			),
 		};
 	}
@@ -111,7 +151,7 @@ function parseFilterConditionValues(
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(rightType, typeof condition.rightValue, rightValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(rightType, typeof condition.rightValue, 'second'),
 			),
 		};
 	}
