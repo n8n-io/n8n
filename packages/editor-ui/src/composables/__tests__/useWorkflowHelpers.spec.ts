@@ -54,22 +54,6 @@ const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	connections: {},
 });
 
-// vi.mock('@/stores/workflows.store', () => ({
-// 	useWorkflowsStore: vi.fn(() => ({
-// 		workflowsById: {},
-// 		createNewWorkflow: vi.fn(() => {}),
-// 		addWorkflow: vi.fn(() => {}),
-// 		setActive: vi.fn(() => {}),
-// 		setWorkflowId: vi.fn(() => {}),
-// 		setWorkflowVersionId: vi.fn(() => {}),
-// 		setWorkflowName: vi.fn(() => {}),
-// 		setWorkflowSettings: vi.fn(() => {}),
-// 		setNodeValue: vi.fn(() => {}),
-// 		setWorkflowTagIds: vi.fn(() => {}),
-// 		getCurrentWorkflow: vi.fn(() => ({})),
-// 	})),
-// }));
-
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
