@@ -1,7 +1,7 @@
 import type { ValidationOptions, ValidatorConstraintInterface } from 'class-validator';
 import { registerDecorator, ValidatorConstraint } from 'class-validator';
 
-const URL_REGEX = /^(https?:\/\/|www\.)/i;
+const URL_REGEX = /^(https?:\/\/|www\.)|(\.[\p{L}\d-]+)/iu;
 
 @ValidatorConstraint({ name: 'NoUrl', async: false })
 class NoUrlConstraint implements ValidatorConstraintInterface {
