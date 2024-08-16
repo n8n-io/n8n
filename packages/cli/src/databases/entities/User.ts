@@ -25,6 +25,7 @@ import {
 } from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 import type { ProjectRelation } from './ProjectRelation';
+import { NoUrl } from '@/validators/no-url.validator';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -51,12 +52,14 @@ export class User extends WithTimestamps implements IUser {
 
 	@Column({ length: 32, nullable: true })
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
