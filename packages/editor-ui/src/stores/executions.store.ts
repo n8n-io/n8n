@@ -192,7 +192,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		id: string,
 		data: { tags?: string[]; vote?: AnnotationVote | null },
 	): Promise<void> {
-		const updatedExecution: ExecutionSummary = await makeRestApiRequest(
+		const updatedExecution: ExecutionSummaryWithScopes = await makeRestApiRequest(
 			rootStore.restApiContext,
 			'PATCH',
 			`/executions/${id}`,

@@ -12,24 +12,7 @@
 			</div>
 			<div :class="$style.vote">
 				<div>{{ $locale.baseText('generic.rating') }}:</div>
-				<div :class="$style.ratingIcon">
-					<n8n-icon-button
-						:class="{ [$style.highlight]: vote === 'up' }"
-						type="tertiary"
-						text
-						size="medium"
-						icon="thumbs-up"
-						@click="onVoteClick('up')"
-					/>
-					<n8n-icon-button
-						:class="{ [$style.highlight]: vote === 'down' }"
-						type="tertiary"
-						text
-						size="medium"
-						icon="thumbs-down"
-						@click="onVoteClick('down')"
-					/>
-				</div>
+				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
 			</div>
 			<span class="tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
@@ -101,6 +84,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import AnnotationTagsContainer from '@/components/AnnotationTagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
+import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -114,6 +98,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
 	components: {
+		VoteButtons,
 		AnnotationTagsContainer,
 		AnnotationTagsDropdown,
 	},

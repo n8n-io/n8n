@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useAnnotationTagsStore } from '@/stores/tags.store';
 import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '@/constants';
@@ -27,8 +25,6 @@ const emit = defineEmits<{
 	blur: [];
 }>();
 
-const i18n = useI18n();
-const { showError } = useToast();
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
 
@@ -41,17 +37,8 @@ const allTags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);
 const tagsById = computed(() => tagsStore.tagsById);
 
-async function handleCreateTag(name: string) {
-	try {
-		const newTag = await tagsStore.create(name);
-		selectedTags.value = [...selectedTags.value, newTag.id];
-	} catch (error) {
-		showError(
-			error,
-			i18n.baseText('tagsDropdown.showError.title'),
-			i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
-		);
-	}
+async function createTag(name: string) {
+	return await tagsStore.create(name);
 }
 
 function handleManageTags() {
@@ -79,7 +66,7 @@ void tagsStore.fetchAll();
 		:all-tags="allTags"
 		:is-loading="isLoading"
 		:tags-by-id="tagsById"
-		@create-tag="handleCreateTag"
+		:create-tag="createTag"
 		@manage-tags="handleManageTags"
 		@esc="handleEsc"
 		@blur="handleBlur"
