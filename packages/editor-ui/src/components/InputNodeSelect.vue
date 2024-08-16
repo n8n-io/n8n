@@ -63,11 +63,13 @@ const isMultiInputNode = computed(() => {
 	return nodeType !== null && nodeType.inputs.length > 1;
 });
 
-const getNodeDisplayName = (nodeName: string) => {
-	const inputNumber = ndvStore.ndvNodeInputNumber[nodeName];
-	if (!inputNumber) return title(nodeName);
-	const maxLength = 18;
-	return `${title(nodeName, maxLength)} [Input ${ndvStore.ndvNodeInputNumber[nodeName]}]`;
+const connectedTo = (nodeName: string) => {
+	const connections = ndvStore.ndvNodeInputNumber[nodeName];
+	if (!connections) return '';
+	if (connections.length === 1) {
+		return `Input ${ndvStore.ndvNodeInputNumber[nodeName]}`;
+	}
+	return `Inputs ${ndvStore.ndvNodeInputNumber[nodeName].join(', ')}`;
 };
 
 function getMultipleNodesText(nodeName: string): string {
@@ -142,7 +144,7 @@ function onInputNodeChange(value: string) {
 			:key="node.name"
 			:value="node.name"
 			:class="[$style.node, { [$style.disabled]: node.disabled }]"
-			:label="`${getNodeDisplayName(node.name)} ${getMultipleNodesText(node.name)}`"
+			:label="`${title(node.name)} ${getMultipleNodesText(node.name)}`"
 			data-test-id="ndv-input-option"
 		>
 			<NodeIcon
@@ -153,11 +155,13 @@ function onInputNodeChange(value: string) {
 				:class="$style.icon"
 			/>
 			<span :class="$style.title">
-				{{ getNodeDisplayName(node.name) }}
+				{{ title(node.name) }}
 				<span v-if="node.disabled">({{ i18n.baseText('node.disabled') }})</span>
 			</span>
-
-			<span :class="$style.subtitle">{{ subtitle(node.name, depth) }}</span>
+			<span v-if="connectedTo(node.name)" :class="$style.subtitle">{{
+				connectedTo(node.name)
+			}}</span>
+			<span v-else :class="$style.subtitle">{{ subtitle(node.name, depth) }}</span>
 		</n8n-option>
 	</n8n-select>
 </template>

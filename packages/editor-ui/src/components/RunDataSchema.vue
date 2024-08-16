@@ -110,10 +110,13 @@ const filteredNodes = computed(() =>
 	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
 );
 
-const getNodeDisplayName = (nodeName: string) => {
-	return ndvStore.ndvNodeInputNumber[nodeName]
-		? `${nodeName} [Input ${ndvStore.ndvNodeInputNumber[nodeName]}]`
-		: nodeName;
+const connectedTo = (nodeName: string) => {
+	const connections = ndvStore.ndvNodeInputNumber[nodeName];
+	if (!connections) return false;
+	if (connections.length === 1) {
+		return `(Input ${ndvStore.ndvNodeInputNumber[nodeName]})`;
+	}
+	return `(Inputs ${ndvStore.ndvNodeInputNumber[nodeName].join(', ')})`;
 };
 
 const isDataEmpty = (schema: Schema | null) => {
@@ -297,7 +300,10 @@ watch(
 					</div>
 
 					<div :class="$style.title">
-						{{ getNodeDisplayName(currentNode.node.name) }}
+						{{ currentNode.node.name }}
+						<span v-if="connectedTo(currentNode.node.name)" :class="$style.subtitle">{{
+							connectedTo(currentNode.node.name)
+						}}</span>
 						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
 					</div>
 					<font-awesome-icon
@@ -482,6 +488,13 @@ watch(
 	gap: var(--spacing-2xs);
 	flex-basis: 100%;
 	cursor: pointer;
+}
+
+.subtitle {
+	margin-left: auto;
+	padding-left: var(--spacing-2xs);
+	color: var(--color-text-light);
+	font-weight: var(--font-weight-regular);
 }
 
 .header {
