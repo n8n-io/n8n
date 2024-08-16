@@ -1,3 +1,13 @@
+## [1.55.2](https://github.com/n8n-io/n8n/compare/n8n@1.55.1...n8n@1.55.2) (2024-08-16)
+
+
+### Bug Fixes
+
+* **editor:** Add workflow scopes when initializing workflow  ([#10455](https://github.com/n8n-io/n8n/issues/10455)) ([97c5cae](https://github.com/n8n-io/n8n/commit/97c5cae507e4747ea4d72a9458c262dd4792b1fa))
+* **editor:** Buffer json chunks in stream response ([#10439](https://github.com/n8n-io/n8n/issues/10439)) ([efc6558](https://github.com/n8n-io/n8n/commit/efc6558c7e8a977f51a7726c5509cdd197f3c480))
+
+
+
 ## [1.55.1](https://github.com/n8n-io/n8n/compare/n8n@1.55.0...n8n@1.55.1) (2024-08-15)
 
 
