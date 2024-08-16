@@ -193,25 +193,28 @@ export const timeEntryFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
-				operation: ['get'],
 				resource: ['timeEntry'],
+				operation: ['get'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Consider Duration Format',
-				name: 'consider-duration-format',
+				displayName: 'Hydrated',
+				name: 'hydrated',
 				type: 'boolean',
 				default: false,
 				description:
-					"Whether to return the time entry's duration rounded to minutes or seconds based on duration format (hh:mm or hh:mm:ss) from workspace settings",
+					"Whether to return the time entry's project, task and tags in full and not just their IDs",
+			},
+		],
+	},
 			},
 			{
 				displayName: 'Hydrated',
@@ -246,8 +249,8 @@ export const timeEntryFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: ['update'],
 				resource: ['timeEntry'],
+				operation: ['update'],
 			},
 		},
 		default: {},
