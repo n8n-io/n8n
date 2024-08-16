@@ -1,10 +1,12 @@
 import set from 'lodash/set';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import {
+	ApplicationError,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 
@@ -101,7 +103,18 @@ export class IfV2 implements INodeType {
 				if (this.continueOnFail(error)) {
 					falseItems.push(item);
 				} else {
-					throw error;
+					if (error instanceof NodeOperationError) {
+						throw error;
+					}
+
+					if (error instanceof ApplicationError) {
+						set(error, 'context.itemIndex', itemIndex);
+						throw error;
+					}
+
+					throw new NodeOperationError(this.getNode(), error, {
+						itemIndex,
+					});
 				}
 			}
 		});
