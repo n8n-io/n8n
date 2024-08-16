@@ -15,7 +15,7 @@ describe('PAY-1858 context menu', () => {
 
 		cy.reload();
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
-		WorkflowPage.actions.deleteNodeFromContextMenu('Else');
+		WorkflowPage.actions.deleteNodeFromContextMenu('Code');
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 	});
 });
