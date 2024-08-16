@@ -58,7 +58,7 @@ import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-Move
 import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
-import { RefactorExecutionIndices1717498465932 } from '../common/1717498465932-RefactorExecutionIndices';
+import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 
 export const mysqlMigrations: Migration[] = [
@@ -121,6 +121,6 @@ export const mysqlMigrations: Migration[] = [
 	CreateProject1714133768519,
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
-	RefactorExecutionIndices1717498465932,
 	AddConstraintToExecutionMetadata1720101653148,
+	RefactorExecutionIndices1723796243146,
 ];

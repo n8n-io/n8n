@@ -31,7 +31,7 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
  *
  * - `deletedAt` for query at `ExecutionRepository.hardDeleteSoftDeletedExecutions`
  */
-export class RefactorExecutionIndices1717498465932 implements ReversibleMigration {
+export class RefactorExecutionIndices1723796243146 implements ReversibleMigration {
 	async up({ schemaBuilder, isPostgres, isSqlite, isMysql }: MigrationContext) {
 		await schemaBuilder.createIndex('execution_entity', ['status', 'startedAt']);
 		await schemaBuilder.createIndex('execution_entity', ['workflowId', 'status', 'startedAt']);
