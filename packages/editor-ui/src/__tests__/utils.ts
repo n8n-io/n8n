@@ -84,3 +84,9 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
 };
+
+export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
+	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
+	expect(selectedItem).toBeInTheDocument();
+	return selectedItem?.querySelector('p')?.textContent?.trim();
+};
