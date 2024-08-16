@@ -11,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment';
 import type { TDtableMetadataColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
@@ -126,7 +125,7 @@ export async function seaTableApiRequest(
 	}
 
 	// DEBUG-MODE OR API-REQUESTS
-	//console.log(options);
+	// console.log(options);
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
@@ -325,12 +324,6 @@ export function splitStringColumnsToArrays(
 				if (input === 'true' || input === 'on' || input === '1') {
 					row[column.name] = true;
 				}
-			}
-		}
-		if (column.type == 'date') {
-			if (typeof row[column.name] === 'string') {
-				const input = row[column.name] as string;
-				row[column.name] = moment(input, 'YYYY-mm-dd', true);
 			}
 		}
 	});
