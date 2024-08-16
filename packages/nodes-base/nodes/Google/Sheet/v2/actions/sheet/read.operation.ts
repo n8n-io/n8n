@@ -241,7 +241,7 @@ export async function execute(
 			if (nodeVersion < 4.5) {
 				returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
 			} else {
-				returnAllMatches = options.returnFirstMatch === false ? false : true;
+				returnAllMatches = options.returnFirstMatch ? false : true;
 			}
 
 			if (nodeVersion <= 4.1) {
