@@ -175,7 +175,7 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().invoke('text', '').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
