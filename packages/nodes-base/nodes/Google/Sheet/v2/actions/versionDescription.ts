@@ -20,7 +20,7 @@ export const versionDescription: INodeTypeDescription = {
 	hints: [
 		{
 			message:
-				"Use the 'Use Append' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
+				"Use the 'Minimise API Calls' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
 			displayCondition:
 				'={{$parameter["operation"] === "append" && !$parameter["options"]["useAppend"]}}',
 			whenToDisplay: 'beforeExecution',

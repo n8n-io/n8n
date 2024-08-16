@@ -47,7 +47,7 @@ import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFl
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { loadLanguage } from '@/plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';

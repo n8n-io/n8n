@@ -329,6 +329,14 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 }
 
 /**
+ * Minimap
+ */
+
+function minimapNodeClassnameFn(node: CanvasNode) {
+	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
+}
+
+/**
  * Lifecycle
  */
 
@@ -407,7 +415,16 @@ watch(() => props.readOnly, setReadonly, {
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
-		<MiniMap data-test-id="canvas-minimap" pannable />
+		<MiniMap
+			data-test-id="canvas-minimap"
+			aria-label="n8n Minimap"
+			:height="120"
+			:width="200"
+			:position="PanelPosition.BottomLeft"
+			pannable
+			zoomable
+			:node-class-name="minimapNodeClassnameFn"
+		/>
 
 		<Controls
 			data-test-id="canvas-controls"
