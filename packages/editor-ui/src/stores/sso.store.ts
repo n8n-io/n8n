@@ -70,7 +70,6 @@ export const useSSOStore = defineStore('sso', () => {
 
 	const updateUser = async (params: { firstName: string; lastName: string }) =>
 		await updateCurrentUser(rootStore.restApiContext, {
-			id: usersStore.currentUser!.id,
 			email: usersStore.currentUser!.email!,
 			...params,
 		});
