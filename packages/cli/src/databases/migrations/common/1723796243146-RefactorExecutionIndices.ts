@@ -4,8 +4,8 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
  * Add new indices:
  *
  * - `status, startedAt` for `ExecutionRepository.findManyByRangeQuery` (default query) and for `ExecutionRepository.findManyByRangeQuery` (filter query)
- * - `waitTill, status` for `ExecutionRepository.getWaitingExecutions`
- * - `stoppedAt, deletedAt, status` for `ExecutionRepository.softDeletePrunableExecutions`
+ * - `waitTill, status, deletedAt` for `ExecutionRepository.getWaitingExecutions`
+ * - `stoppedAt, status, deletedAt` for `ExecutionRepository.softDeletePrunableExecutions`
  *
  * Remove unused indices in sqlite:
  *
@@ -31,10 +31,32 @@ import type { MigrationContext, ReversibleMigration } from '@/databases/types';
  * - `deletedAt` for query at `ExecutionRepository.hardDeleteSoftDeletedExecutions`
  */
 export class RefactorExecutionIndices1723796243146 implements ReversibleMigration {
-	async up({ schemaBuilder, isPostgres, isSqlite, isMysql }: MigrationContext) {
+	async up({ schemaBuilder, isPostgres, isSqlite, isMysql, runQuery, escape }: MigrationContext) {
 		await schemaBuilder.createIndex('execution_entity', ['status', 'startedAt']);
-		await schemaBuilder.createIndex('execution_entity', ['waitTill', 'status']);
-		await schemaBuilder.createIndex('execution_entity', ['stoppedAt', 'deletedAt', 'status']);
+
+		if (isSqlite || isPostgres) {
+			const executionEntity = escape.tableName('execution_entity');
+
+			const waitTill = escape.columnName('waitTill');
+			const status = escape.columnName('status');
+			const deletedAt = escape.columnName('deletedAt');
+			const stoppedAt = escape.columnName('stoppedAt');
+
+			await runQuery(`
+				CREATE INDEX idx_execution_entity_wait_till_status_deleted_at
+				ON ${executionEntity} (${waitTill}, ${status}, ${deletedAt})
+				WHERE ${waitTill} IS NOT NULL AND ${deletedAt} IS NULL;
+			`);
+
+			await runQuery(`
+				CREATE INDEX idx_execution_entity_stopped_at_status_deleted_at
+				ON ${executionEntity} (${stoppedAt}, ${status}, ${deletedAt})
+				WHERE ${stoppedAt} IS NOT NULL AND ${deletedAt} IS NULL;
+			`);
+		} else if (isMysql) {
+			await schemaBuilder.createIndex('execution_entity', ['waitTill', 'status', 'deletedAt']);
+			await schemaBuilder.createIndex('execution_entity', ['stoppedAt', 'status', 'deletedAt']);
+		}
 
 		if (isSqlite) {
 			await schemaBuilder.dropIndex('execution_entity', ['waitTill'], {
