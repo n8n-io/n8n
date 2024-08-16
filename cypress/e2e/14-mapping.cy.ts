@@ -362,7 +362,11 @@ describe('Data mapping', () => {
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 		ndv.actions.mapToParameter('value');
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.should('have.text', '{{ $json.input[0].count }}hello worldnewline');
 		ndv.getters.inlineExpressionEditorInput().type('{esc}');
+		ndv.actions.validateExpressionPreview('value', '0hello world\n\nnewline');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
 		ndv.actions.mapToParameter('value', 'bottom');
