@@ -50,15 +50,17 @@
 				data-test-id="run-data-pane-header"
 				@click.stop
 			>
-				<LazyRunDataSearch
-					v-if="showIOSearch"
-					v-model="search"
-					:class="$style.search"
-					:pane-type="paneType"
-					:display-mode="displayMode"
-					:is-area-active="isPaneActive"
-					@focus="activatePane"
-				/>
+				<Suspense>
+					<LazyRunDataSearch
+						v-if="showIOSearch"
+						v-model="search"
+						:class="$style.search"
+						:pane-type="paneType"
+						:display-mode="displayMode"
+						:is-area-active="isPaneActive"
+						@focus="activatePane"
+					/>
+				</Suspense>
 
 				<n8n-radio-buttons
 					v-show="
