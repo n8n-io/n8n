@@ -6,10 +6,12 @@ import { N8nOption, N8nSelect } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
 import { v4 as uuid } from 'uuid';
+import { useToast } from '@/composables/useToast';
 
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
+	createTag: (name: string) => Promise<ITag>;
 	eventBus: EventBus | null;
 	allTags: ITag[];
 	isLoading: boolean;
@@ -17,6 +19,8 @@ interface TagsDropdownProps {
 }
 
 const i18n = useI18n();
+
+const { showError } = useToast();
 
 const props = withDefaults(defineProps<TagsDropdownProps>(), {
 	placeholder: '',
@@ -28,7 +32,6 @@ const emit = defineEmits<{
 	'update:modelValue': [selected: string[]];
 	esc: [];
 	blur: [];
-	'create-tag': [name: string];
 	'manage-tags': [];
 }>();
 
@@ -102,10 +105,20 @@ function filterOptions(value = '') {
 	void nextTick(() => focusFirstOption());
 }
 
-function onCreate() {
+async function onCreate() {
 	const name = filter.value;
-	emit('create-tag', name);
-	filter.value = '';
+	try {
+		const newTag = await props.createTag(name);
+		emit('update:modelValue', [...props.modelValue, newTag.id]);
+
+		filter.value = '';
+	} catch (error) {
+		showError(
+			error,
+			i18n.baseText('tagsDropdown.showError.title'),
+			i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
+		);
+	}
 }
 
 function onTagsUpdated(selected: string[]) {
@@ -117,7 +130,7 @@ function onTagsUpdated(selected: string[]) {
 		emit('manage-tags');
 		emit('blur');
 	} else if (create) {
-		onCreate();
+		void onCreate();
 	} else {
 		setTimeout(() => {
 			if (!preventUpdate.value) {
