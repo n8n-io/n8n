@@ -9,7 +9,14 @@ export function chatWithAssistant(
 	onDone: () => void,
 	onError: (e: Error) => void,
 ): void {
-	void streamRequest(ctx, '/ai-assistant/chat', payload, onMessageUpdated, onDone, onError);
+	void streamRequest<ChatRequest.ResponsePayload>(
+		ctx,
+		'/ai-assistant/chat',
+		payload,
+		onMessageUpdated,
+		onDone,
+		onError,
+	);
 }
 
 export async function replaceCode(
