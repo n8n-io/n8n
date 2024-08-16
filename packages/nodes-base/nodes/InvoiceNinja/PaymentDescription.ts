@@ -95,11 +95,6 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v4'],
-					},
-				},
 				options: [
 					{
 						name: 'ACH',
@@ -264,11 +259,6 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v5'],
-					},
-				},
 				options: [
 					{
 						name: 'Bank Transfer',
