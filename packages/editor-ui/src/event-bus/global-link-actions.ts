@@ -10,7 +10,7 @@ export type RegisterCustomActionOpts = {
 
 export interface GlobalLinkActionsEventBusEvents {
 	/** See useGlobalLinkActions.ts */
-	registerCustomAction: RegisterCustomActionOpts;
+	registerGlobalLinkAction: RegisterCustomActionOpts;
 }
 
-export const globalLinkActionsEventBus = createEventBus();
+export const globalLinkActionsEventBus = createEventBus<GlobalLinkActionsEventBusEvents>();
