@@ -158,10 +158,10 @@ function onInputNodeChange(value: string) {
 				{{ title(node.name) }}
 				<span v-if="node.disabled">({{ i18n.baseText('node.disabled') }})</span>
 			</span>
-			<span v-if="connectedTo(node.name)" :class="$style.subtitle">{{
-				connectedTo(node.name)
+
+			<span :class="$style.subtitle">{{
+				connectedTo(node.name) ? connectedTo(node.name) : subtitle(node.name, depth)
 			}}</span>
-			<span v-else :class="$style.subtitle">{{ subtitle(node.name, depth) }}</span>
 		</n8n-option>
 	</n8n-select>
 </template>

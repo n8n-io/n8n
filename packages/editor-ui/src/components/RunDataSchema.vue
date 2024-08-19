@@ -110,13 +110,22 @@ const filteredNodes = computed(() =>
 	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
 );
 
-const connectedTo = (nodeName: string) => {
-	const connections = ndvStore.ndvNodeInputNumber[nodeName];
-	if (!connections) return false;
-	if (connections.length === 1) {
-		return `(Input ${ndvStore.ndvNodeInputNumber[nodeName]})`;
+const nodeAdditionalInfo = (node: INodeUi) => {
+	const returnData: string[] = [];
+	if (node.disabled) {
+		returnData.push(i18n.baseText('node.disabled'));
 	}
-	return `(Inputs ${ndvStore.ndvNodeInputNumber[nodeName].join(', ')})`;
+
+	const connections = ndvStore.ndvNodeInputNumber[node.name];
+	if (connections) {
+		if (connections.length === 1) {
+			returnData.push(`Input ${connections}`);
+		} else {
+			returnData.push(`Inputs ${connections.join(', ')}`);
+		}
+	}
+
+	return returnData.length ? `(${returnData.join(' | ')})` : '';
 };
 
 const isDataEmpty = (schema: Schema | null) => {
@@ -301,10 +310,9 @@ watch(
 
 					<div :class="$style.title">
 						{{ currentNode.node.name }}
-						<span v-if="connectedTo(currentNode.node.name)" :class="$style.subtitle">{{
-							connectedTo(currentNode.node.name)
+						<span v-if="nodeAdditionalInfo(currentNode.node)" :class="$style.subtitle">{{
+							nodeAdditionalInfo(currentNode.node)
 						}}</span>
-						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
