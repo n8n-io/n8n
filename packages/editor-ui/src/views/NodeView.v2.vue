@@ -3,6 +3,7 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
+	onActivated,
 	onBeforeMount,
 	onBeforeUnmount,
 	onMounted,
@@ -1386,6 +1387,22 @@ function registerCustomActions() {
 }
 
 /**
+ * Unload
+ */
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+	if (isDemoRoute.value || window.preventNodeViewBeforeUnload) {
+		return;
+	} else if (uiStore.stateIsDirty) {
+		e.returnValue = true; //Gecko + IE
+		return true; //Gecko + Webkit, Safari, Chrome etc.
+	} else {
+		canvasStore.startLoading(i18n.baseText('nodeView.redirecting'));
+		return;
+	}
+}
+
+/**
  * Routing
  */
 
@@ -1408,6 +1425,10 @@ onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
+});
+
+onActivated(() => {
+	window.addEventListener('beforeunload', onBeforeUnload);
 });
 
 onMounted(async () => {
