@@ -6,7 +6,8 @@ export class AIAssistant extends BasePage {
 	getters = {
 		askAssistantFloatingButton: () => cy.getByTestId('ask-assistant-floating-button'),
 		askAssistantSidebar: () => cy.getByTestId('ask-assistant-sidebar'),
-		askAssistantSidebarResizer: () => this.getters.askAssistantSidebar().find('[class^=_resizer][data-dir=left]').first(),
+		askAssistantSidebarResizer: () =>
+			this.getters.askAssistantSidebar().find('[class^=_resizer][data-dir=left]').first(),
 		askAssistantChat: () => cy.getByTestId('ask-assistant-chat'),
 		placeholderMessage: () => cy.getByTestId('placeholder-message'),
 		closeChatButton: () => cy.getByTestId('close-chat-button'),
