@@ -154,10 +154,7 @@ function growInput() {
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
 						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span
-							v-if="message.role === 'user'"
-							v-html="renderMarkdown(message.content)"
-						></span>
+						<span v-if="message.role === 'user'" v-html="renderMarkdown(message.content)"></span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span
 							v-else
