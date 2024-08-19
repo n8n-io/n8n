@@ -94,8 +94,6 @@ function parseFilterConditionValues(
 		)} ${suffix}`;
 	};
 
-	const invalidTypeDescription = 'Try changing the type of comparison.';
-
 	const composeInvalidTypeDescription = (
 		type: string,
 		fromType: string,
@@ -109,10 +107,12 @@ function parseFilterConditionValues(
 			convertionFunction = '.toString()';
 		} else if (type === 'number') {
 			convertionFunction = '.toNumber()';
+		} else if (type === 'boolean') {
+			convertionFunction = '.toBoolean()';
 		}
 
-		const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
-		if (strict) {
+		if (strict && convertionFunction) {
+			const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
 			return `
 <p>Try either:</p>
 <ol>
@@ -120,8 +120,11 @@ function parseFilterConditionValues(
   <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
 </ol>
 			`;
+		} else if (strict) {
+			return 'Try changing the type of the comparison, or enabling less strict type validation';
 		}
-		return invalidTypeDescription;
+
+		return 'Try changing the type of comparison.';
 	};
 
 	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {

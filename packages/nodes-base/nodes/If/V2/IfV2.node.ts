@@ -9,6 +9,8 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
+import { looseTypeValidationProperty } from '../../../utils/descriptions';
+import { getTypeValidationParameter, getTypeValidationStrictness } from './utils';
 
 export class IfV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -16,7 +18,7 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: [2, 2.1],
 			defaults: {
 				name: 'If',
 				color: '#408000',
@@ -35,7 +37,16 @@ export class IfV2 implements INodeType {
 					typeOptions: {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
-							typeValidation: '={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
+							typeValidation: getTypeValidationStrictness(2.1),
+						},
+					},
+				},
+				{
+					...looseTypeValidationProperty,
+					default: false,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 2.1 } }],
 						},
 					},
 				},
@@ -54,11 +65,12 @@ export class IfV2 implements INodeType {
 							default: true,
 						},
 						{
-							displayName: 'Less Strict Type Validation',
-							description: 'Whether to try casting value types based on the selected operator',
-							name: 'looseTypeValidation',
-							type: 'boolean',
-							default: true,
+							...looseTypeValidationProperty,
+							displayOptions: {
+								show: {
+									'@version': [{ _cnd: { lt: 2.1 } }],
+								},
+							},
 						},
 					],
 				},
@@ -82,7 +94,10 @@ export class IfV2 implements INodeType {
 						extractValue: true,
 					}) as boolean;
 				} catch (error) {
-					if (!options.looseTypeValidation && !error.description) {
+					if (
+						!getTypeValidationParameter(2.1)(this, itemIndex, options.looseTypeValidation) &&
+						!error.description
+					) {
 						set(error, 'description', ENABLE_LESS_STRICT_TYPE_VALIDATION);
 					}
 					set(error, 'context.itemIndex', itemIndex);
