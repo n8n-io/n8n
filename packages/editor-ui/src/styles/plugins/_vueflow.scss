@@ -23,3 +23,25 @@
 		opacity: 0.2;
 	}
 }
+
+.vue-flow__pane {
+	&,
+	&.draggable {
+		cursor: default;
+	}
+
+	&.dragging {
+		cursor: grabbing;
+	}
+}
+
+.vue-flow__node {
+	&,
+	&.draggable {
+		cursor: pointer;
+	}
+
+	&.dragging {
+		cursor: grabbing;
+	}
+}
