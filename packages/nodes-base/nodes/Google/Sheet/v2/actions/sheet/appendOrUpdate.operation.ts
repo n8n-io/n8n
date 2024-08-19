@@ -338,8 +338,18 @@ export async function execute(
 		} else {
 			const valueToMatchOn =
 				nodeVersion < 4
-					? (this.getNodeParameter('valueToMatchOn', i) as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
+					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+
+			if (valueToMatchOn === '') {
+				throw new NodeOperationError(
+					this.getNode(),
+					"The 'Column to Match On' parameter is required",
+					{
+						itemIndex: i,
+					},
+				);
+			}
 
 			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
