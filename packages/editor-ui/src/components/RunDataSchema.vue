@@ -463,6 +463,7 @@ watch(
 
 .innerSchema {
 	min-height: 0;
+	min-width: 0;
 
 	> div {
 		margin-bottom: var(--spacing-xs);

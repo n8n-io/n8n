@@ -261,7 +261,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 } from '@/constants';
 
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -4746,7 +4746,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-l);
+	bottom: var(--spacing-s);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {

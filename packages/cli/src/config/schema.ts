@@ -569,6 +569,15 @@ export const schema = {
 		},
 	},
 
+	aiAssistant: {
+		baseUrl: {
+			doc: 'Base URL of the AI assistant service',
+			format: String,
+			default: '',
+			env: 'N8N_AI_ASSISTANT_BASE_URL',
+		},
+	},
+
 	expression: {
 		evaluator: {
 			doc: 'Expression evaluator to use',

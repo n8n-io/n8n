@@ -157,7 +157,7 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createFormEventBus } from 'n8n-design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 
 type TableRow = {
@@ -222,7 +222,7 @@ export default defineComponent({
 			loadingTable: false,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
-			formBus: createEventBus(),
+			formBus: createFormEventBus(),
 			readyToSubmit: false,
 			page: 0,
 			loginEnabled: false,

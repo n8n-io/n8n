@@ -5,3 +5,21 @@
 .vue-flow__resize-control.handle {
 	background-color: transparent;
 }
+
+.vue-flow__minimap {
+	height: 120px;
+	overflow: hidden;
+	margin-bottom: calc(48px + 2 * var(--spacing-xs));
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+	background: var(--color-background-light);
+
+	.minimap-node-default {
+		fill: var(--color-foreground-dark);
+	}
+
+	.minimap-node-n8n-nodes-base-stickyNote {
+		fill: var(--color-foreground-dark);
+		opacity: 0.2;
+	}
+}

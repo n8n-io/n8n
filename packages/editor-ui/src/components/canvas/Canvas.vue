@@ -1,9 +1,14 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasNode, CanvasNodeMoveEvent, ConnectStartEvent } from '@/types';
-import type { EdgeMouseEvent, NodeDragEvent, Connection, XYPosition } from '@vue-flow/core';
+import type {
+	EdgeMouseEvent,
+	NodeDragEvent,
+	Connection,
+	XYPosition,
+	ViewportTransform,
+} from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
-import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
 import Edge from './elements/edges/CanvasEdge.vue';
@@ -77,6 +82,9 @@ const {
 	removeSelectedNodes,
 	viewportRef,
 	fitView,
+	zoomIn,
+	zoomOut,
+	zoomTo,
 	setInteractive,
 	elementsSelectable,
 	project,
@@ -100,6 +108,10 @@ useKeybindings({
 	ctrl_enter: () => emit('run:workflow'),
 	ctrl_s: () => emit('save:workflow'),
 	ctrl_a: () => addSelectedNodes(graphNodes.value),
+	'+|=': async () => await onZoomIn(),
+	'-|_': async () => await onZoomOut(),
+	0: async () => await onResetZoom(),
+	1: async () => await onFitView(),
 	// @TODO implement arrow key shortcuts to modify selection
 });
 
@@ -257,6 +269,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
  * View
  */
 
+const zoom = ref(1);
+
 function onClickPane(event: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
 	const position = project({
@@ -268,7 +282,27 @@ function onClickPane(event: MouseEvent) {
 }
 
 async function onFitView() {
-	await fitView({ maxZoom: 1.2, padding: 0.1 });
+	await fitView({ maxZoom: 1.2, padding: 0.2 });
+}
+
+async function onZoomTo(zoomLevel: number) {
+	await zoomTo(zoomLevel);
+}
+
+async function onZoomIn() {
+	await zoomIn();
+}
+
+async function onZoomOut() {
+	await zoomOut();
+}
+
+async function onResetZoom() {
+	await onZoomTo(1);
+}
+
+function onViewportChange(viewport: ViewportTransform) {
+	zoom.value = viewport.zoom;
 }
 
 function setReadonly(value: boolean) {
@@ -329,6 +363,14 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 }
 
 /**
+ * Minimap
+ */
+
+function minimapNodeClassnameFn(node: CanvasNode) {
+	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
+}
+
+/**
  * Lifecycle
  */
 
@@ -374,6 +416,7 @@ watch(() => props.readOnly, setReadonly, {
 		@connect-end="onConnectEnd"
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
+		@viewport-change="onViewportChange"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
@@ -407,15 +450,30 @@ watch(() => props.readOnly, setReadonly, {
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
-		<MiniMap data-test-id="canvas-minimap" pannable />
+		<MiniMap
+			data-test-id="canvas-minimap"
+			aria-label="n8n Minimap"
+			:height="120"
+			:width="200"
+			:position="PanelPosition.BottomLeft"
+			pannable
+			zoomable
+			:node-class-name="minimapNodeClassnameFn"
+			mask-color="var(--color-background-base)"
+			:node-border-radius="16"
+		/>
 
-		<Controls
+		<CanvasControlButtons
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
-			:show-interactive="!readOnly"
+			:show-interactive="false"
+			:zoom="zoom"
 			@fit-view="onFitView"
-		></Controls>
+			@zoom-in="onZoomIn"
+			@zoom-out="onZoomOut"
+			@reset-zoom="onResetZoom"
+		/>
 
 		<Suspense>
 			<ContextMenu @action="onContextMenuAction" />
@@ -429,43 +487,6 @@ watch(() => props.readOnly, setReadonly, {
 
 	&.visible {
 		opacity: 1;
-	}
-}
-</style>
-
-<style lang="scss">
-.vue-flow__controls {
-	display: flex;
-	gap: var(--spacing-2xs);
-	box-shadow: none;
-}
-
-.vue-flow__controls-button {
-	width: 42px;
-	height: 42px;
-	border: var(--border-base);
-	border-radius: var(--border-radius-base);
-	padding: 0;
-	transition-property: transform, background, border, color;
-	transition-duration: 300ms;
-	transition-timing-function: ease;
-
-	&:hover {
-		border-color: var(--color-button-secondary-hover-active-border);
-		background-color: var(--color-button-secondary-active-background);
-		transform: scale(1.1);
-
-		svg {
-			fill: var(--color-primary);
-		}
-	}
-
-	svg {
-		max-height: 16px;
-		max-width: 16px;
-		transition-property: fill;
-		transition-duration: 300ms;
-		transition-timing-function: ease;
 	}
 }
 </style>

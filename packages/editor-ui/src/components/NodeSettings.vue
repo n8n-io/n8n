@@ -237,6 +237,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { importCurlEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
+import { ndvEventBus } from '@/event-bus';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -480,10 +481,12 @@ export default defineComponent({
 
 		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 		importCurlEventBus.on('setHttpNodeParameters', this.setHttpNodeParameters);
+		ndvEventBus.on('updateParameterValue', this.valueChanged);
 	},
 	beforeUnmount() {
 		this.eventBus?.off('openSettings', this.openSettings);
 		importCurlEventBus.off('setHttpNodeParameters', this.setHttpNodeParameters);
+		ndvEventBus.off('updateParameterValue', this.valueChanged);
 	},
 	methods: {
 		setHttpNodeParameters(parameters: NodeParameterValueType) {

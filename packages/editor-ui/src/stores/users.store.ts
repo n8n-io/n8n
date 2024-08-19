@@ -224,12 +224,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await usersApi.changePassword(rootStore.restApiContext, params);
 	};
 
-	const updateUser = async (params: {
-		id: string;
-		firstName: string;
-		lastName: string;
-		email: string;
-	}) => {
+	const updateUser = async (params: usersApi.UpdateCurrentUserParams) => {
 		const user = await usersApi.updateCurrentUser(rootStore.restApiContext, params);
 		addUsers([user]);
 	};

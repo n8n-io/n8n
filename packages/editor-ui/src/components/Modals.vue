@@ -14,6 +14,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
+	NEW_ASSISTANT_SESSION_MODAL,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -64,6 +65,7 @@ import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/Wor
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
+import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 </script>
 
@@ -248,6 +250,11 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 					:modal-name="modalName"
 					:data="data"
 				/>
+			</template>
+		</ModalRoot>
+		<ModalRoot :name="NEW_ASSISTANT_SESSION_MODAL">
+			<template #default="{ modalName, data }">
+				<NewAssistantSessionModal :name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 	</div>

@@ -108,6 +108,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			communityPackages: {
 				enabled: true,
+				registry: 'https://registry.npmjs.org',
 				reinstallMissing: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
@@ -231,6 +232,7 @@ describe('GlobalConfig', () => {
 			DB_POSTGRESDB_USER: 'n8n',
 			DB_TABLE_PREFIX: 'test_',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
+			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({

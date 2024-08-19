@@ -26,6 +26,10 @@ class CommunityPackagesConfig {
 	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
 	enabled: boolean = true;
 
+	/** NPM registry URL to pull community packages from */
+	@Env('N8N_COMMUNITY_PACKAGES_REGISTRY')
+	registry: string = 'https://registry.npmjs.org';
+
 	/** Whether to reinstall any missing community packages */
 	@Env('N8N_REINSTALL_MISSING_PACKAGES')
 	reinstallMissing: boolean = false;
@@ -43,7 +47,7 @@ export class NodesConfig {
 
 	/** Node type to use as error trigger */
 	@Env('NODES_ERROR_TRIGGER_TYPE')
-	errorTriggerType = 'n8n-nodes-base.errorTrigger';
+	errorTriggerType: string = 'n8n-nodes-base.errorTrigger';
 
 	@Nested
 	communityPackages: CommunityPackagesConfig;
