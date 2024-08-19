@@ -102,7 +102,7 @@ function growInput() {
 				</div>
 				<BetaTag />
 			</div>
-			<div :class="$style.back" @click="onClose">
+			<div :class="$style.back" @click="onClose" data-test-id="close-chat-button">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
@@ -207,7 +207,7 @@ function growInput() {
 				</div>
 			</div>
 
-			<div v-else :class="$style.placeholder">
+			<div v-else :class="$style.placeholder" data-test-id="placeholder-message">
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
 					<p>

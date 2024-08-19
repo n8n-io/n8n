@@ -128,6 +128,10 @@ export class WorkflowPage extends BasePage {
 		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
+		askAssistantFloatingButton: () => cy.getByTestId('ask-assistant-floating-button'),
+		askAssistantChat: () => cy.getByTestId('ask-assistant-chat'),
+		aiAssistantPlaceholderMessage: () => cy.getByTestId('placeholder-message'),
+		aiAssistantCloseButton: () => cy.getByTestId('close-chat-button'),
 	};
 
 	actions = {
