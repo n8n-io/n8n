@@ -102,7 +102,7 @@ function growInput() {
 				</div>
 				<BetaTag />
 			</div>
-			<div :class="$style.back" @click="onClose" data-test-id="close-chat-button">
+			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
@@ -152,7 +152,11 @@ function growInput() {
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
 						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span v-if="message.role === 'user'" v-html="renderMarkdown(message.content)"></span>
+						<span
+							v-if="message.role === 'user'"
+							data-test-id="chat-message-user"
+							v-html="renderMarkdown(message.content)"
+						></span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span
 							v-else

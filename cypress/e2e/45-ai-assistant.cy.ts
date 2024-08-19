@@ -92,4 +92,38 @@ describe('AI Assistant::enabled', () => {
 			.should('contain.text', 'Hey, this is an assistant message');
 		ndv.getters.nodeErrorViewAssistantButton().should('be.disabled');
 	});
+
+	it('should render chat input correctly', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addNodeToCanvas('Stop and error', true, true);
+		ndv.getters.parameterInput('errorMessage').type('This is an error message');
+		ndv.getters.nodeExecuteButton().click();
+		ndv.getters.nodeErrorViewAssistantButton().should('be.visible');
+		ndv.getters.nodeErrorViewAssistantButton().click();
+		cy.wait('@chatRequest');
+		// Send button should be disabled when input is empty
+		wf.getters.aiAssistantSendButton().should('be.disabled');
+		wf.getters.aiAssistantChatInput().type('Yo ');
+		wf.getters.aiAssistantSendButton().should('not.be.disabled');
+		wf.getters.aiAssistantChatInput().then((element) => {
+			const { height } = element[0].getBoundingClientRect();
+			// Shift + Enter should add a new line
+			wf.getters.aiAssistantChatInput().type('Hello{shift+enter}there');
+			wf.getters.aiAssistantChatInput().then((newElement) => {
+				const newHeight = newElement[0].getBoundingClientRect().height;
+				// Chat input should grow as user adds new lines
+				expect(newHeight).to.be.greaterThan(height);
+				wf.getters.aiAssistantSendButton().click();
+				cy.wait('@chatRequest');
+				// New lines should be rendered as <br> in the chat
+				wf.getters.aiAssistantUserMessages().should('have.length', 1);
+				wf.getters.aiAssistantUserMessages().eq(0).find('br').should('have.length', 1);
+				// Chat input should be cleared now
+				wf.getters.aiAssistantChatInput().should('have.value', '');
+			});
+		});
+	});
 });

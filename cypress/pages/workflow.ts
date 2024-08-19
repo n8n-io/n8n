@@ -138,6 +138,7 @@ export class WorkflowPage extends BasePage {
 		aiAssistantChatInput: () => cy.getByTestId('chat-input'),
 		aiAssistantSendButton: () => cy.getByTestId('send-message-button'),
 		aiAssistantChatMessages: () => cy.getByTestId('chat-message'),
+		aiAssistantUserMessages: () => cy.getByTestId('chat-message-user'),
 	};
 
 	actions = {
