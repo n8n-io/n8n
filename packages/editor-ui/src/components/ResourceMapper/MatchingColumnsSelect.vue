@@ -93,6 +93,7 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
+			nodeDisplayName: props.serviceName,
 		},
 	});
 });
