@@ -189,6 +189,19 @@ describe('AugmentObject', () => {
 
 			expect(originalObject).toEqual(copyOriginal);
 		});
+
+		test.only('should not re-use proxy arrays', () => {
+			const originalArray = [{ a: { b: 1 } }];
+			const augmented1 = augmentArray(originalArray);
+			const augmented2 = augmentArray([...augmented1]);
+			expect(augmented1).not.toBe(augmented2);
+			expect(augmented1).toEqual(augmented2);
+
+			augmented1[0].a.b = 2;
+			expect(augmented1[0].a.b).toEqual(2);
+			expect(augmented2[0].a.b).toEqual(1);
+			expect(augmented1).not.toEqual(augmented2);
+		});
 	});
 
 	describe('augmentObject', () => {
@@ -571,6 +584,19 @@ describe('AugmentObject', () => {
 			augmentedObject.x.z = 5;
 			expect('z' in augmentedObject.x).toBe(true);
 			expect('y' in augmentedObject.x).toBe(true);
+		});
+
+		test('should not re-use proxy objects', () => {
+			const originalObject = { a: 1, b: 2, c: { d: 3 } };
+			const augmented1 = augmentObject(originalObject);
+			const augmented2 = augmentObject(originalObject);
+			expect(augmented1).not.toBe(augmented2);
+			expect(augmented1).toEqual(augmented2);
+
+			augmented1.c.d = 4;
+			expect(augmented1.c.d).toEqual(4);
+			expect(augmented2.c.d).toEqual(3);
+			expect(augmented1).not.toEqual(augmented2);
 		});
 	});
 });
