@@ -45,20 +45,16 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 };
 
 export class WorkflowDataProxy {
-	private runExecutionData: IRunExecutionData | null;
-
-	private connectionInputData: INodeExecutionData[];
-
 	private timezone: string;
 
 	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
 		private workflow: Workflow,
-		runExecutionData: IRunExecutionData | null,
+		private runExecutionData: IRunExecutionData | null,
 		private runIndex: number,
 		private itemIndex: number,
 		private activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
+		private connectionInputData: INodeExecutionData[],
 		private siblingParameters: INodeParameters,
 		private mode: WorkflowExecuteMode,
 		private additionalKeys: IWorkflowDataProxyAdditionalKeys,
@@ -67,15 +63,10 @@ export class WorkflowDataProxy {
 		private selfData: IDataObject = {},
 		private contextNodeName: string = activeNodeName,
 	) {
-		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
-			? runExecutionData !== null
-				? augmentObject(runExecutionData)
-				: null
-			: runExecutionData;
-
-		this.connectionInputData = isScriptingNode(this.contextNodeName, workflow)
-			? augmentArray(connectionInputData)
-			: connectionInputData;
+		if (isScriptingNode(this.contextNodeName, workflow)) {
+			this.runExecutionData = runExecutionData && augmentObject(runExecutionData);
+			this.connectionInputData = augmentArray(connectionInputData);
+		}
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;

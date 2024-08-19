@@ -2,8 +2,6 @@ import type { IDataObject } from './Interfaces';
 
 const defaultPropertyDescriptor = Object.freeze({ enumerable: true, configurable: true });
 
-const augmentedObjects = new WeakSet<object>();
-
 function augment<T>(value: T): T {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if (value instanceof Date) return new Date(value.valueOf()) as T;
@@ -17,7 +15,7 @@ function augment<T>(value: T): T {
 }
 
 export function augmentArray<T>(data: T[]): T[] {
-	if (augmentedObjects.has(data)) return data;
+	if ('isAugmented' in data) return data;
 
 	let newData: unknown[] | undefined = undefined;
 
@@ -28,7 +26,7 @@ export function augmentArray<T>(data: T[]): T[] {
 		return newData;
 	}
 
-	const proxy = new Proxy(data, {
+	return new Proxy(data, {
 		deleteProperty(_target, key: string) {
 			return Reflect.deleteProperty(getData(), key);
 		},
@@ -54,6 +52,7 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
 		},
 		has(target, key) {
+			if (key === 'isAugmented') return true;
 			return Reflect.has(newData ?? target, key);
 		},
 		ownKeys(target) {
@@ -67,18 +66,15 @@ export function augmentArray<T>(data: T[]): T[] {
 			return Reflect.set(getData(), key, augment(newValue));
 		},
 	});
-
-	augmentedObjects.add(proxy);
-	return proxy;
 }
 
 export function augmentObject<T extends object>(data: T): T {
-	if (augmentedObjects.has(data)) return data;
+	if ('isAugmented' in data) return data;
 
 	const newData = {} as IDataObject;
 	const deletedProperties = new Set<string | symbol>();
 
-	const proxy = new Proxy(data, {
+	return new Proxy(data, {
 		get(target, key: string, receiver): unknown {
 			if (deletedProperties.has(key)) {
 				return undefined;
@@ -132,6 +128,7 @@ export function augmentObject<T extends object>(data: T): T {
 			return true;
 		},
 		has(target, key) {
+			if (key === 'isAugmented') return true;
 			if (deletedProperties.has(key)) return false;
 			return Reflect.has(newData, key) || Reflect.has(target, key);
 		},
@@ -148,7 +145,4 @@ export function augmentObject<T extends object>(data: T): T {
 			return Object.getOwnPropertyDescriptor(key in newData ? newData : data, key);
 		},
 	});
-
-	augmentedObjects.add(proxy);
-	return proxy;
 }

@@ -189,6 +189,20 @@ describe('AugmentObject', () => {
 
 			expect(originalObject).toEqual(copyOriginal);
 		});
+
+		test.only('should not re-use proxy arrays', () => {
+			const originalArray = [{ a: { b: 1 } }];
+			const augmented1 = augmentArray(originalArray);
+			const augmented2 = augmentArray([...augmented1]);
+			expect(augmented1).not.toBe(augmented2);
+			expect(augmented1[0]).not.toBe(augmented2[0]);
+			expect(augmented1).toEqual(augmented2);
+
+			augmented1[0].a.b = 2;
+			expect(augmented1[0].a.b).toEqual(2);
+			expect(augmented2[0].a.b).toEqual(1);
+			expect(augmented1).not.toEqual(augmented2);
+		});
 	});
 
 	describe('augmentObject', () => {

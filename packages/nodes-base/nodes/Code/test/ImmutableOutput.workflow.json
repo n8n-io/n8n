@@ -1,0 +1,73 @@
+{
+	"name": "Immutable Node Output",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5944cba0-f91c-4d1d-b91c-17ee02d6e838",
+			"name": "On clicking 'execute'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"jsCode": "for (const item of $input.all()) {\n  item.json.myNewField = 2;\n}\n\nreturn new Promise((resolve) => setTimeout(() => {\n  resolve($input.all())\n}, 100));"
+			},
+			"id": "d9e0867b-3527-4416-814a-c9b2e95240a0",
+			"name": "JS",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [980, 460]
+		},
+		{
+			"parameters": {
+				"jsCode": "for (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn new Promise((resolve) => setTimeout(() => {\n  resolve($input.all())\n}, 100));"
+			},
+			"id": "e1b8e262-0c0f-41f9-ba69-4fe6676b7037",
+			"name": "JS1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [720, 460]
+		}
+	],
+	"pinData": {
+		"JS1": [
+			{
+				"json": {
+					"myNewField": 1
+				}
+			}
+		],
+		"JS": [
+			{
+				"json": {
+					"myNewField": 2
+				}
+			}
+		]
+	},
+	"connections": {
+		"On clicking 'execute'": {
+			"main": [
+				[
+					{
+						"node": "JS1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"JS1": {
+			"main": [
+				[
+					{
+						"node": "JS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
