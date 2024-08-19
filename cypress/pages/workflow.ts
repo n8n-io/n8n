@@ -129,9 +129,15 @@ export class WorkflowPage extends BasePage {
 		colors: () => cy.getByTestId('color'),
 		contextMenuAction: (action: string) => cy.getByTestId(`context-menu-item-${action}`),
 		askAssistantFloatingButton: () => cy.getByTestId('ask-assistant-floating-button'),
+		askAssistantSidebar: () => cy.getByTestId('ask-assistant-sidebar'),
+		askAssistantSidebarResizer: () => this.getters.askAssistantSidebar().find('[class^=_resizer][data-dir=left]').first(),
 		askAssistantChat: () => cy.getByTestId('ask-assistant-chat'),
 		aiAssistantPlaceholderMessage: () => cy.getByTestId('placeholder-message'),
 		aiAssistantCloseButton: () => cy.getByTestId('close-chat-button'),
+		aiAssistantChatInputWrapper: () => cy.getByTestId('chat-input-wrapper'),
+		aiAssistantChatInput: () => cy.getByTestId('chat-input'),
+		aiAssistantSendButton: () => cy.getByTestId('send-message-button'),
+		aiAssistantChatMessages: () => cy.getByTestId('chat-message'),
 	};
 
 	actions = {

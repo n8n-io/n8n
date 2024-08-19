@@ -108,7 +108,12 @@ function growInput() {
 		</div>
 		<div :class="$style.body">
 			<div v-if="messages?.length" :class="$style.messages">
-				<div v-for="(message, i) in messages" :key="i" :class="$style.message">
+				<div
+					v-for="(message, i) in messages"
+					:key="i"
+					:class="$style.message"
+					data-test-id="chat-message"
+				>
 					<div
 						v-if="
 							!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
@@ -232,6 +237,7 @@ function growInput() {
 		<div
 			v-if="messages?.length"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+			data-test-id="chat-input-wrapper"
 		>
 			<textarea
 				ref="chatInput"
@@ -240,6 +246,7 @@ function growInput() {
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
 				wrap="hard"
+				data-test-id="chat-input"
 				@keydown.enter.exact.prevent="onSendMessage"
 				@input.prevent="growInput"
 				@keydown.stop
@@ -249,6 +256,7 @@ function growInput() {
 				icon="paper-plane"
 				type="text"
 				size="large"
+				data-test-id="send-message-button"
 				:disabled="sendDisabled"
 				@click="onSendMessage"
 			/>

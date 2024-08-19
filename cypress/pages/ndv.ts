@@ -138,6 +138,8 @@ export class NDV extends BasePage {
 			cy.getByTestId(`fixed-collection-${paramName}`),
 		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
 		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
+		nodeErrorViewAssistantButton: () =>
+			cy.getByTestId('node-error-view-ask-assistant-button').find('button').first(),
 	};
 
 	actions = {
