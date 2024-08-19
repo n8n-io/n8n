@@ -77,11 +77,44 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(`The execution "${executionId} is running already.`);
 		}
 
-		if (execution.finished || execution.data.resultData.error) {
-			throw new ConflictError(`The execution "${executionId} has finished already.`);
+		if (execution.data.resultData.error) {
+			throw new ConflictError(`The execution "${executionId} has finished with error.`);
 		}
 
-		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+		let completionPage;
+		if (execution.finished) {
+			const { workflowData } = execution;
+			const workflow = new Workflow({
+				id: workflowData.id,
+				name: workflowData.name,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: workflowData.active,
+				nodeTypes: this.nodeTypes,
+				staticData: workflowData.staticData,
+				settings: workflowData.settings,
+			});
+
+			const connectedNodes = workflow.getParentNodes(
+				execution.data.resultData.lastNodeExecuted as string,
+			);
+
+			completionPage = Object.keys(workflow.nodes).find((nodeName) => {
+				const node = workflow.nodes[nodeName];
+				return (
+					connectedNodes.includes(nodeName) &&
+					node.type === 'n8n-nodes-base.form' &&
+					node.parameters.operation === 'completion'
+				);
+			});
+
+			if (!completionPage) {
+				throw new ConflictError(`The execution "${executionId} has finished already.`);
+			}
+		}
+
+		const lastNodeExecuted =
+			completionPage || (execution.data.resultData.lastNodeExecuted as string);
 
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again

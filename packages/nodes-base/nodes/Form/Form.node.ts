@@ -177,8 +177,7 @@ export class Form extends Node {
 			});
 
 			return {
-				webhookResponse: { status: 200 },
-				workflowData: [this.nodeInputData],
+				noWebhookResponse: true,
 			};
 		}
 
@@ -288,8 +287,11 @@ export class Form extends Node {
 			);
 		}
 
-		const waitTill = new Date(WAIT_TIME_UNLIMITED);
-		await context.putExecutionToWait(waitTill);
+		if (operation !== 'completion') {
+			const waitTill = new Date(WAIT_TIME_UNLIMITED);
+			await context.putExecutionToWait(waitTill);
+		}
+
 		return [context.getInputData()];
 	}
 }

@@ -165,29 +165,6 @@ export async function executeWebhook(
 		}
 	}
 
-	// if (nodeType.description.name === 'form' && req.method === 'POST') {
-	// 	let isLastPage = true;
-	// 	for (const node of workflow.getChildNodes(workflowStartNode.name)) {
-	// 		if (workflow.nodes[node].type === 'n8n-nodes-base.form') {
-	// 			isLastPage = false;
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	if (isLastPage) {
-	// 		const triggerName = workflow.getParentNodes(workflowStartNode.name)[0];
-
-	// 		responseMode = workflow.expression.getSimpleParameterValue(
-	// 			workflow.nodes[triggerName],
-	// 			'={{$parameter["responseMode"]}}',
-	// 			executionMode,
-	// 			additionalKeys,
-	// 			undefined,
-	// 			'onReceived',
-	// 		) as WebhookResponseMode;
-	// 	}
-	// }
-
 	if (!responseMode) {
 		responseMode = workflow.expression.getSimpleParameterValue(
 			workflowStartNode,
