@@ -94,6 +94,12 @@ function parseFilterConditionValues(
 		)} ${suffix}`;
 	};
 
+	const getTypeDescription = (isStrict: boolean) => {
+		if (isStrict)
+			return 'Try changing the type of the comparison, or enabling less strict type validation.';
+		return 'Try changing the type of the comparison.';
+	};
+
 	const composeInvalidTypeDescription = (
 		type: string,
 		fromType: string,
@@ -120,11 +126,9 @@ function parseFilterConditionValues(
   <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
 </ol>
 			`;
-		} else if (strict) {
-			return 'Try changing the type of the comparison, or enabling less strict type validation';
 		}
 
-		return 'Try changing the type of comparison.';
+		return getTypeDescription(strict);
 	};
 
 	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {
@@ -134,7 +138,7 @@ function parseFilterConditionValues(
 				`Comparison type expects ${withIndefiniteArticle(operator.type)} but both fields are ${withIndefiniteArticle(
 					typeof condition.leftValue,
 				)}`,
-				'Try changing the type of the comparison, or enabling less strict type validation',
+				getTypeDescription(strict),
 			),
 		};
 	}
