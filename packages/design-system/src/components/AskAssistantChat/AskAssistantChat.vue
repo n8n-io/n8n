@@ -112,7 +112,9 @@ function growInput() {
 					v-for="(message, i) in messages"
 					:key="i"
 					:class="$style.message"
-					data-test-id="chat-message"
+					:data-test-id="
+						message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
+					"
 				>
 					<div
 						v-if="
@@ -154,7 +156,6 @@ function growInput() {
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span
 							v-if="message.role === 'user'"
-							data-test-id="chat-message-user"
 							v-html="renderMarkdown(message.content)"
 						></span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
@@ -167,7 +168,11 @@ function growInput() {
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
 					</div>
-					<div v-else-if="message.type === 'error'" :class="$style.error">
+					<div
+						v-else-if="message.type === 'error'"
+						:class="$style.error"
+						data-test-id="chat-message-system"
+					>
 						<span>⚠️ {{ message.content }}</span>
 					</div>
 					<div v-else-if="message.type === 'code-diff'">
@@ -182,7 +187,11 @@ function growInput() {
 							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
-					<div v-else-if="isEndOfSessionEvent(message)" :class="$style.endOfSessionText">
+					<div
+						v-else-if="isEndOfSessionEvent(message)"
+						:class="$style.endOfSessionText"
+						data-test-id="chat-message-system"
+					>
 						<span>
 							{{ t('assistantChat.sessionEndMessage.1') }}
 						</span>
@@ -202,7 +211,7 @@ function growInput() {
 						:class="$style.quickReplies"
 					>
 						<div :class="$style.quickRepliesTitle">{{ t('assistantChat.quickRepliesTitle') }}</div>
-						<div v-for="opt in message.quickReplies" :key="opt.type">
+						<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
 							<n8n-button
 								v-if="opt.text"
 								type="secondary"

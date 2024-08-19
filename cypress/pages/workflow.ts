@@ -137,8 +137,15 @@ export class WorkflowPage extends BasePage {
 		aiAssistantChatInputWrapper: () => cy.getByTestId('chat-input-wrapper'),
 		aiAssistantChatInput: () => cy.getByTestId('chat-input'),
 		aiAssistantSendButton: () => cy.getByTestId('send-message-button'),
-		aiAssistantChatMessages: () => cy.getByTestId('chat-message'),
+		aiAssistantChatMessagesAll: () => cy.get('[data-test-id^=chat-message]'),
+		aiAssistantChatMessagesAssistant: () => cy.getByTestId('chat-message-assistant'),
 		aiAssistantUserMessages: () => cy.getByTestId('chat-message-user'),
+		aiAssistantQuickReplies: () => cy.getByTestId('quick-replies').find('button'),
+		newAssistantSessionModal: () => cy.getByTestId('new-assistant-session-modal'),
+		aiAssistantCodeDiffs: () => cy.getByTestId('code-diff-suggestion'),
+		aiAssistantApplyCodeDiffButtons: () => cy.getByTestId('replace-code-button'),
+		aiAssistantUndoReplaceCodeButtons: () => cy.getByTestId('undo-replace-button'),
+		aiAssistantCodeReplacedMessage: () => cy.getByTestId('code-replaced-message'),
 	};
 
 	actions = {
