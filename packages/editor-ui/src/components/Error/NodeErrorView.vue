@@ -216,17 +216,13 @@ function getErrorDescription(): string {
 function addItemIndexSuffix(message: string): string {
 	let itemIndexSuffix = '';
 
-	const ITEM_INDEX_SUFFIX_TEXT = '[item ';
-
-	if (
-		hasManyInputItems.value &&
-		!message.includes(ITEM_INDEX_SUFFIX_TEXT) &&
-		props.error?.context?.itemIndex !== undefined
-	) {
-		itemIndexSuffix = ` [item ${props.error.context.itemIndex}]`;
+	if (hasManyInputItems.value && props.error?.context?.itemIndex !== undefined) {
+		itemIndexSuffix = `item ${props.error.context.itemIndex}`;
 	}
 
-	return message + itemIndexSuffix;
+	if (message.includes(itemIndexSuffix)) return message;
+
+	return `${message} [${itemIndexSuffix}]`;
 }
 
 function getErrorMessage(): string {
