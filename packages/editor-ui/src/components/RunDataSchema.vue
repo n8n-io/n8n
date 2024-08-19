@@ -110,6 +110,24 @@ const filteredNodes = computed(() =>
 	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
 );
 
+const nodeAdditionalInfo = (node: INodeUi) => {
+	const returnData: string[] = [];
+	if (node.disabled) {
+		returnData.push(i18n.baseText('node.disabled'));
+	}
+
+	const connections = ndvStore.ndvNodeInputNumber[node.name];
+	if (connections) {
+		if (connections.length === 1) {
+			returnData.push(`Input ${connections}`);
+		} else {
+			returnData.push(`Inputs ${connections.join(', ')}`);
+		}
+	}
+
+	return returnData.length ? `(${returnData.join(' | ')})` : '';
+};
+
 const isDataEmpty = (schema: Schema | null) => {
 	if (!schema) return true;
 	// Utilize the generated schema instead of looping over the entire data again
@@ -292,7 +310,9 @@ watch(
 
 					<div :class="$style.title">
 						{{ currentNode.node.name }}
-						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
+						<span v-if="nodeAdditionalInfo(currentNode.node)" :class="$style.subtitle">{{
+							nodeAdditionalInfo(currentNode.node)
+						}}</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
@@ -476,6 +496,13 @@ watch(
 	gap: var(--spacing-2xs);
 	flex-basis: 100%;
 	cursor: pointer;
+}
+
+.subtitle {
+	margin-left: auto;
+	padding-left: var(--spacing-2xs);
+	color: var(--color-text-light);
+	font-weight: var(--font-weight-regular);
 }
 
 .header {
