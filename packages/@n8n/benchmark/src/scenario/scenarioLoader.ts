@@ -48,7 +48,7 @@ export class ScenarioLoader {
 	private loadAndValidateScenarioManifest(
 		scenarioManifestPath: string,
 	): [ScenarioManifest, null] | [null, string[]] {
-		const scenario = JSON.parse(fs.readFileSync(scenarioManifestPath, 'utf8'));
+		const scenario = JSON.parse(fs.readFileSync(scenarioManifestPath, 'utf8')) as Scenario;
 		const validationErrors: string[] = [];
 
 		if (!scenario.name) {
