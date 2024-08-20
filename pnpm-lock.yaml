@@ -6,9 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@types/basic-auth':
-      specifier: ^1.1.3
-      version: 1.1.3
     '@types/express':
       specifier: ^4.17.21
       version: 4.17.21
@@ -21,15 +18,9 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
-    basic-auth:
-      specifier: 2.0.1
-      version: 2.0.1
     fast-glob:
       specifier: 3.2.12
       version: 3.2.12
-    form-data:
-      specifier: 4.0.0
-      version: 4.0.0
     lodash:
       specifier: 4.17.21
       version: 4.17.21
@@ -48,28 +39,6 @@ catalogs:
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
-  frontend:
-    '@vitest/coverage-v8':
-      specifier: ^1.6.0
-      version: 1.6.0
-    vite:
-      specifier: ^5.2.12
-      version: 5.2.12
-    vitest:
-      specifier: ^1.6.0
-      version: 1.6.0
-    vitest-mock-extended:
-      specifier: ^1.3.1
-      version: 1.3.1
-    vue:
-      specifier: ^3.4.21
-      version: 3.4.21
-    vue-markdown-render:
-      specifier: ^2.2.1
-      version: 2.2.1
-    vue-tsc:
-      specifier: ^2.0.19
-      version: 2.0.19
 
 overrides:
   '@types/node': ^18.16.16
@@ -652,7 +621,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.7.3
-        version: 1.7.3(debug@3.2.7)
+        version: 1.7.3(debug@4.3.6)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -824,9 +793,6 @@ importers:
       samlify:
         specifier: 2.8.9
         version: 2.8.9
-      sanitize-html:
-        specifier: 2.12.1
-        version: 2.12.1
       semver:
         specifier: ^7.5.4
         version: 7.6.0
@@ -875,6 +841,9 @@ importers:
       xmllint-wasm:
         specifier: 3.0.1
         version: 3.0.1
+      xss:
+        specifier: ^1.0.14
+        version: 1.0.14
       yamljs:
         specifier: 0.3.0
         version: 0.3.0
@@ -2166,10 +2135,6 @@ packages:
     resolution: {integrity: sha512-aK4s3Xxjrx3daZr3VylxejK3vG5ExXck5WOHDJ8in/k9AqlfIyFMMT1uG7u8mNjX+QRILTIn0/Xgschfh/dQ9g==}
     engines: {node: '>=12.0.0'}
 
-  '@azure/msal-browser@3.10.0':
-    resolution: {integrity: sha512-mnmi8dCXVNZI+AGRq0jKQ3YiodlIC4W9npr6FCB9WN6NQT+6rq+cIlxgUb//BjLyzKsnYo+i4LROGeMyU+6v1A==}
-    engines: {node: '>=0.8.0'}
-
   '@azure/msal-browser@3.19.0':
     resolution: {integrity: sha512-3unHlh3qWtXbqks/TLq3qGWzxfmwRfk9tXSGvVCcHHnCH5QKtcg/JiDIeP/1B2qFlqnSgtYY0JPLy9EIVoZ7Ag==}
     engines: {node: '>=0.8.0'}
@@ -2178,16 +2143,8 @@ packages:
     resolution: {integrity: sha512-b4M/tqRzJ4jGU91BiwCsLTqChveUEyFK3qY2wGfZ0zBswIBZjAxopx5CYt5wzZFKuN15HqRDYXQbztttuIC3nA==}
     engines: {node: '>=0.8.0'}
 
-  '@azure/msal-common@14.7.1':
-    resolution: {integrity: sha512-v96btzjM7KrAu4NSEdOkhQSTGOuNUIIsUdB8wlyB9cdgl5KqEKnTonHUZ8+khvZ6Ap542FCErbnTyDWl8lZ2rA==}
-    engines: {node: '>=0.8.0'}
-
   '@azure/msal-node@2.11.0':
     resolution: {integrity: sha512-yNRCp4Do4CGSBe1WXq4DWhfa/vYZCUgGrweYLC5my/6eDnYMt0fYGPHuTMw0iRslQGXF3CecGAxXp7ab57V4zg==}
-    engines: {node: '>=16'}
-
-  '@azure/msal-node@2.6.4':
-    resolution: {integrity: sha512-nNvEPx009/80UATCToF+29NZYocn01uKrB91xtFr7bSqkqO1PuQGXRyYwryWRztUrYZ1YsSbw9A+LmwOhpVvcg==}
     engines: {node: '>=16'}
 
   '@azure/storage-blob@12.11.0':
@@ -14300,8 +14257,8 @@ snapshots:
       '@azure/core-tracing': 1.0.1
       '@azure/core-util': 1.7.0
       '@azure/logger': 1.0.3
-      '@azure/msal-browser': 3.10.0
-      '@azure/msal-node': 2.6.4
+      '@azure/msal-browser': 3.19.0
+      '@azure/msal-node': 2.11.0
       events: 3.3.0
       jws: 4.0.0
       open: 8.4.0
@@ -14365,27 +14322,15 @@ snapshots:
     dependencies:
       tslib: 2.6.2
 
-  '@azure/msal-browser@3.10.0':
-    dependencies:
-      '@azure/msal-common': 14.7.1
-
   '@azure/msal-browser@3.19.0':
     dependencies:
       '@azure/msal-common': 14.13.0
 
   '@azure/msal-common@14.13.0': {}
 
-  '@azure/msal-common@14.7.1': {}
-
   '@azure/msal-node@2.11.0':
     dependencies:
       '@azure/msal-common': 14.13.0
-      jsonwebtoken: 9.0.2
-      uuid: 8.3.2
-
-  '@azure/msal-node@2.6.4':
-    dependencies:
-      '@azure/msal-common': 14.7.1
       jsonwebtoken: 9.0.2
       uuid: 8.3.2
 
@@ -17204,7 +17149,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.0.7(tslib@2.6.2)':
     dependencies:
-      axios: 1.7.3(debug@3.2.7)
+      axios: 1.7.3(debug@4.3.6)
       axios-retry: 3.7.0
       component-type: 1.2.1
       join-component: 1.1.0
@@ -19400,7 +19345,7 @@ snapshots:
 
   agentkeepalive@4.2.1:
     dependencies:
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       depd: 1.1.2
       humanize-ms: 1.2.1
     transitivePeerDependencies:
@@ -20711,6 +20656,10 @@ snapshots:
       ms: 2.1.3
     optionalDependencies:
       supports-color: 8.1.1
+
+  debug@4.3.4:
+    dependencies:
+      ms: 2.1.2
 
   debug@4.3.4(supports-color@8.1.1):
     dependencies:
@@ -22572,7 +22521,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.7.3(debug@3.2.7)
+      axios: 1.7.3(debug@4.3.6)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -23687,7 +23636,7 @@ snapshots:
       '@types/node': 18.16.16
       '@types/uuid': 9.0.7
       asn1: 0.2.6
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
       strict-event-emitter-types: 2.0.0
       uuid: 9.0.1
     transitivePeerDependencies:
@@ -24311,7 +24260,7 @@ snapshots:
     dependencies:
       '@tediousjs/connection-string': 0.5.0
       commander: 11.1.0
-      debug: 4.3.5(supports-color@8.1.1)
+      debug: 4.3.6
       rfdc: 1.3.0
       tarn: 3.0.2
       tedious: 16.7.1
@@ -25118,7 +25067,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.7.3(debug@3.2.7)
+      axios: 1.7.3(debug@4.3.6)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -26109,7 +26058,7 @@ snapshots:
     dependencies:
       '@kwsites/file-exists': 1.1.1
       '@kwsites/promise-deferred': 1.1.1
-      debug: 4.3.4(supports-color@8.1.1)
+      debug: 4.3.4
     transitivePeerDependencies:
       - supports-color
 
