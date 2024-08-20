@@ -1,11 +1,16 @@
+import xss from 'xss';
 import type { ValidationOptions, ValidatorConstraintInterface } from 'class-validator';
 import { registerDecorator, ValidatorConstraint } from 'class-validator';
-import sanitizeHtml from 'sanitize-html';
 
 @ValidatorConstraint({ name: 'NoXss', async: false })
 class NoXssConstraint implements ValidatorConstraintInterface {
 	validate(value: string) {
-		return value === sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} });
+		return (
+			value ===
+			xss(value, {
+				whiteList: {}, // no tags are allowed
+			})
+		);
 	}
 
 	defaultMessage() {
