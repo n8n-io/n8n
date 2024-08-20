@@ -82,14 +82,24 @@ export class WaitingForms extends WaitingWebhooks {
 				execution.data.resultData.lastNodeExecuted as string,
 			);
 
-			completionPage = Object.keys(workflow.nodes).find((nodeName) => {
-				const node = workflow.nodes[nodeName];
-				return (
-					connectedNodes.includes(nodeName) &&
-					node.type === 'n8n-nodes-base.form' &&
-					node.parameters.operation === 'completion'
-				);
-			});
+			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			const lastNode = workflow.nodes[execution.data.resultData.lastNodeExecuted as string];
+
+			if (
+				lastNode.type === 'n8n-nodes-base.form' &&
+				lastNode.parameters.operation === 'completion'
+			) {
+				completionPage = lastNodeExecuted;
+			} else {
+				completionPage = Object.keys(workflow.nodes).find((nodeName) => {
+					const node = workflow.nodes[nodeName];
+					return (
+						connectedNodes.includes(nodeName) &&
+						node.type === 'n8n-nodes-base.form' &&
+						node.parameters.operation === 'completion'
+					);
+				});
+			}
 
 			if (!completionPage) {
 				throw new ConflictError(`The execution "${executionId} has finished already.`);
