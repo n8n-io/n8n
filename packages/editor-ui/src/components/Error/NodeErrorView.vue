@@ -462,7 +462,11 @@ async function onAskAssistantClick() {
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
-			<div v-if="isAskAssistantAvailable" class="node-error-view__assistant-button">
+			<div
+				v-if="isAskAssistantAvailable"
+				class="node-error-view__assistant-button"
+				data-test-id="node-error-view-ask-assistant-button"
+			>
 				<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
 			</div>
 		</div>
