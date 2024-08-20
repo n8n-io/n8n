@@ -94,7 +94,7 @@ export type RedisServiceWorkerResponseObject = {
 				workflowId: string;
 			};
 	  }
-);
+) & { targets?: string[] };
 
 export type RedisServiceCommandObject = {
 	targets?: string[];
