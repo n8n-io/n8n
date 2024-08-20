@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # NOTE:
 # 	This Dockerfile needs to be built in the root of the repository
 # 	`docker build -t n8n-benchmark -f packages/benchmark/Dockerfile .`
@@ -36,9 +37,6 @@ COPY --chown=node:node ./patches /app/patches
 COPY --chown=node:node ./scripts /app/scripts
 
 RUN pnpm install --frozen-lockfile
-
-# Package.json
-COPY --chown=node:node ./packages/benchmark/package.json /app/packages/benchmark/package.json
 
 # TS config files
 COPY --chown=node:node ./tsconfig.json /app/tsconfig.json
