@@ -69,4 +69,15 @@ describe('NoXss', () => {
 			});
 		}
 	});
+
+	describe('Miscellanous strings', () => {
+		const VALID_MISCELLANEOUS_STRINGS = ['CI/CD'];
+
+		for (const str of VALID_MISCELLANEOUS_STRINGS) {
+			test(`should allow ${str}`, async () => {
+				entity.name = str;
+				await expect(validate(entity)).resolves.toBeEmptyArray();
+			});
+		}
+	});
 });
