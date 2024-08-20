@@ -52,4 +52,4 @@ A benchmark scenario defines one or multiple steps to execute and measure. It co
 - Any test data that is imported before the scenario is run
 - A [`k6`](https://grafana.com/docs/k6/latest/using-k6/http-requests/) script which executes the steps and receives `API_BASE_URL` environment variable in runtime.
 
-Available test scenarios are located in [`./testScenarios`](./testScenarios/).
+Available scenarios are located in [`./scenarios`](./scenarios/).

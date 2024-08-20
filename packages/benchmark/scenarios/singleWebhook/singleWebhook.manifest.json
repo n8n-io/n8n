@@ -1,6 +1,7 @@
 {
+	"$schema": "../scenario.schema.json",
 	"name": "SingleWebhook",
 	"description": "A single webhook trigger that responds with a 200 status code",
-	"testData": { "workflowFiles": ["singleWebhook.json"] },
-	"testScriptPath": "singleWebhook.script.ts"
+	"scenarioData": { "workflowFiles": ["singleWebhook.json"] },
+	"scriptPath": "singleWebhook.script.ts"
 }

@@ -45,7 +45,7 @@ COPY --chown=node:node ./packages/benchmark/tsconfig.build.json /app/packages/be
 # Source files
 COPY --chown=node:node ./packages/benchmark/src /app/packages/benchmark/src
 COPY --chown=node:node ./packages/benchmark/bin /app/packages/benchmark/bin
-COPY --chown=node:node ./packages/benchmark/testScenarios /app/packages/benchmark/testScenarios
+COPY --chown=node:node ./packages/benchmark/scenarios /app/packages/benchmark/scenarios
 
 WORKDIR /app/packages/benchmark
 RUN pnpm build
