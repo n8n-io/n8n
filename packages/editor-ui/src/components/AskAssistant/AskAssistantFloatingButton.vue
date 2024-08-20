@@ -45,6 +45,7 @@ const onClick = () => {
 	<div
 		v-if="assistantStore.canShowAssistantButtons && !assistantStore.isAssistantOpen"
 		:class="$style.container"
+		data-test-id="ask-assistant-floating-button"
 	>
 		<n8n-tooltip
 			:z-index="4000"
