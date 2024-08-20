@@ -89,7 +89,7 @@
 					<n8n-card
 						hoverable
 						data-test-id="browse-sales-templates-card"
-						@click="trackCategoryLinkClick('Sales')"
+						@click="trackEmptyCardClick('courses')"
 					>
 						<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
 						<n8n-text size="large" class="mt-xs" color="text-dark">
@@ -106,7 +106,7 @@
 					<n8n-card
 						hoverable
 						data-test-id="browse-sales-templates-card"
-						@click="trackCategoryLinkClick('Sales')"
+						@click="trackEmptyCardClick('templates')"
 					>
 						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
 						<n8n-text size="large" class="mt-xs" color="text-dark">
@@ -163,7 +163,7 @@
 import { defineComponent } from 'vue';
 import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -177,6 +177,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface Filters {
 	search: string;
@@ -221,6 +222,7 @@ const WorkflowsView = defineComponent({
 			useTagsStore,
 			useProjectsStore,
 			useTemplatesStore,
+			usePostHog,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -265,7 +267,10 @@ const WorkflowsView = defineComponent({
 			return undefined;
 		},
 		isOnboardingExperimentEnabled() {
-			return true;
+			return (
+				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+				MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
+			);
 		},
 		isSalesUser() {
 			if (!this.userRole) {
@@ -334,9 +339,18 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+			this.trackEmptyCardClick('blank');
 		},
 		getTemplateRepositoryURL() {
 			return this.templatesStore.websiteTemplateRepositoryURL;
+		},
+		trackEmptyCardClick(option: 'blank' | 'templates' | 'courses') {
+			this.$telemetry.track('User clicked empty page option', {
+				option,
+			});
+			if (option === 'templates' && this.isSalesUser) {
+				this.trackCategoryLinkClick('Sales');
+			}
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
