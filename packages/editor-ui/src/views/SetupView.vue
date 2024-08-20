@@ -99,7 +99,8 @@ export default defineComponent({
 			try {
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				const isPartOfOnboardingExperiment =
-					this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) === MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant;
+					this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+					MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant;
 				this.loading = true;
 				await this.usersStore.createOwner(
 					values as { firstName: string; lastName: string; email: string; password: string },
