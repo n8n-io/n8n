@@ -5,7 +5,13 @@ import type {
 	IWebhookFunctions,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, Node, updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
+import {
+	WAIT_TIME_UNLIMITED,
+	Node,
+	updateDisplayOptions,
+	NodeOperationError,
+	jsonParse,
+} from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
 import { prepareFormReturnItem, renderForm } from '../Form/utils';
@@ -19,7 +25,31 @@ const pageProperties = updateDisplayOptions(
 		},
 	},
 	[
-		formFields,
+		{
+			displayName: 'Use JSON',
+			name: 'useJson',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to use JSON as input to specify the form fields',
+		},
+		{
+			displayName: 'JSON',
+			name: 'jsonOutput',
+			type: 'json',
+			typeOptions: {
+				rows: 5,
+			},
+			default:
+				'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
+			validateType: 'array',
+			ignoreValidationDuringExecution: true,
+			displayOptions: {
+				show: {
+					useJson: [true],
+				},
+			},
+		},
+		{ ...formFields, displayOptions: { show: { useJson: [false] } } },
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -142,9 +172,18 @@ export class Form extends Node {
 	async webhook(context: IWebhookFunctions) {
 		const res = context.getResponseObject();
 
-		const mode = context.getMode() === 'manual' ? 'test' : 'production';
-		const fields = context.getNodeParameter('formFields.values', []) as FormField[];
 		const operation = context.getNodeParameter('operation', '') as string;
+		const mode = context.getMode() === 'manual' ? 'test' : 'production';
+		const useJson = context.getNodeParameter('useJson', false) as boolean;
+
+		let fields: FormField[];
+		if (useJson) {
+			fields = jsonParse<FormField[]>(context.getNodeParameter('jsonOutput', '') as string, {
+				acceptJSObject: true,
+			});
+		} else {
+			fields = context.getNodeParameter('formFields.values', []) as FormField[];
+		}
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const trigger = parentNodes.find(
