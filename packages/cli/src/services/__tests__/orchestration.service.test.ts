@@ -19,6 +19,7 @@ import { Push } from '@/push';
 import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { mockInstance } from '@test/mocking';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
 
 const instanceSettings = Container.get(InstanceSettings);
 const redisClientService = mockInstance(RedisClientService);
@@ -96,8 +97,9 @@ describe('Orchestration Service', () => {
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
 			JSON.stringify(workerRestartEventBusResponse),
+			mock<MainResponseReceivedHandlerOptions>(),
 		);
-		expect(response.command).toEqual('restartEventBus');
+		expect(response?.command).toEqual('restartEventBus');
 	});
 
 	test('should handle command messages from others', async () => {
