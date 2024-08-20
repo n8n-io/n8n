@@ -32,7 +32,7 @@ export default class RunCommand extends Command {
 			},
 		);
 
-		const allScenarios = scenarioLoader.loadAllScenarios(config.get('testScenariosPath'));
+		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
 
 		await scenarioRunner.runManyScenarios(allScenarios);
 	}

@@ -9,7 +9,7 @@ export default class ListCommand extends Command {
 		const config = loadConfig();
 		const scenarioLoader = new ScenarioLoader();
 
-		const allScenarios = scenarioLoader.loadAllScenarios(config.get('testScenariosPath'));
+		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
 
 		console.log('Available test scenarios:');
 		console.log('');

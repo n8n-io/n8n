@@ -7,7 +7,7 @@ export class ScenarioLoader {
 	/**
 	 * Loads all scenarios from the given path
 	 */
-	loadAllScenarios(pathToScenarios: string): Scenario[] {
+	loadAll(pathToScenarios: string): Scenario[] {
 		pathToScenarios = path.resolve(pathToScenarios);
 		const scenarioFolders = fs
 			.readdirSync(pathToScenarios, { withFileTypes: true })
