@@ -771,8 +771,6 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 		};
 
-		console.log('info', info);
-
 		const firstWorkflow = await this.workflowRepository.findOne({
 			select: ['createdAt'],
 			order: { createdAt: 'ASC' },
