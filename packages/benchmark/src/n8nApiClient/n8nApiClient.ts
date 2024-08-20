@@ -4,15 +4,15 @@ export class N8nApiClient {
 	constructor(public readonly apiBaseUrl: string) {}
 
 	async waitForInstanceToBecomeOnline(): Promise<void> {
-		const healthEndpoint = 'healthz';
-		const startTime = Date.now();
-		const intervalMs = 1000;
-		const timeout = 60000;
+		const HEALTH_ENDPOINT = 'healthz';
+		const START_TIME = Date.now();
+		const INTERVAL_MS = 1000;
+		const TIMEOUT_MS = 60_000;
 
-		while (Date.now() - startTime < timeout) {
+		while (Date.now() - START_TIME < TIMEOUT_MS) {
 			try {
 				const response = await axios.request({
-					url: `${this.apiBaseUrl}/${healthEndpoint}`,
+					url: `${this.apiBaseUrl}/${HEALTH_ENDPOINT}`,
 					method: 'GET',
 				});
 
@@ -21,11 +21,11 @@ export class N8nApiClient {
 				}
 			} catch {}
 
-			console.log(`n8n instance not online yet, retrying in ${intervalMs / 1000} seconds...`);
-			await this.delay(intervalMs);
+			console.log(`n8n instance not online yet, retrying in ${INTERVAL_MS / 1000} seconds...`);
+			await this.delay(INTERVAL_MS);
 		}
 
-		throw new Error(`n8n instance did not come online within ${timeout / 1000} seconds`);
+		throw new Error(`n8n instance did not come online within ${TIMEOUT_MS / 1000} seconds`);
 	}
 
 	async setupOwnerIfNeeded(loginDetails: { email: string; password: string }) {

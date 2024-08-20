@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { Scenario } from '@/types/scenario';
 import { Workflow } from '@/n8nApiClient/n8nApiClient.types';
 
@@ -24,8 +24,12 @@ export class ScenarioDataFileLoader {
 	private loadSingleWorkflowFromFile(workflowFilePath: string): Workflow {
 		const fileContent = fs.readFileSync(workflowFilePath, 'utf8');
 
-		const workflow = JSON.parse(fileContent);
-
-		return workflow;
+		try {
+			return JSON.parse(fileContent);
+		} catch (error) {
+			throw new Error(
+				`Failed to parse workflow file ${workflowFilePath}: ${error instanceof Error ? error.message : error}`,
+			);
+		}
 	}
 }

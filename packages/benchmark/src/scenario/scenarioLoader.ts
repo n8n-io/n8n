@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import * as path from 'path';
 import { createHash } from 'node:crypto';
 import type { Scenario, ScenarioManifest } from '@/types/scenario';

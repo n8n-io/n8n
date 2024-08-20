@@ -24,7 +24,7 @@ export class ScenarioDataImporter {
 	 * Imports a single workflow into n8n removing any existing workflows with the same name
 	 */
 	private async importWorkflow(opts: { existingWorkflows: Workflow[]; workflow: Workflow }) {
-		const existingWorkflows = this.tryFindExistingWorkflows(opts.existingWorkflows, opts.workflow);
+		const existingWorkflows = this.findExistingWorkflows(opts.existingWorkflows, opts.workflow);
 		if (existingWorkflows.length > 0) {
 			for (const toDelete of existingWorkflows) {
 				await this.workflowApiClient.deleteWorkflow(toDelete.id);
@@ -35,12 +35,11 @@ export class ScenarioDataImporter {
 			...opts.workflow,
 			name: this.getBenchmarkWorkflowName(opts.workflow),
 		});
-		const activeWorkflow = await this.workflowApiClient.activateWorkflow(createdWorkflow);
 
-		return activeWorkflow;
+		return await this.workflowApiClient.activateWorkflow(createdWorkflow);
 	}
 
-	private tryFindExistingWorkflows(
+	private findExistingWorkflows(
 		existingWorkflows: Workflow[],
 		workflowToImport: Workflow,
 	): Workflow[] {
