@@ -49,10 +49,9 @@ export class AuthenticatedN8nApiClient extends N8nApiClient {
 		});
 	}
 
-	async delete<T>(endpoint: string, data?: unknown) {
+	async delete<T>(endpoint: string) {
 		return await this.authenticatedRequest<T>(endpoint, {
 			method: 'DELETE',
-			data,
 		});
 	}
 
