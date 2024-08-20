@@ -5,7 +5,12 @@ import { registerDecorator, ValidatorConstraint } from 'class-validator';
 @ValidatorConstraint({ name: 'NoXss', async: false })
 class NoXssConstraint implements ValidatorConstraintInterface {
 	validate(value: string) {
-		return value === xss(value);
+		return (
+			value ===
+			xss(value, {
+				whiteList: {}, // no tags are allowed
+			})
+		);
 	}
 
 	defaultMessage() {
