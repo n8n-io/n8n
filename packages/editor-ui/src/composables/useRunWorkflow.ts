@@ -282,7 +282,9 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 					if (node.type === FORM_TRIGGER_NODE_TYPE) {
 						const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						if (nodeType?.webhooks?.length) {
-							testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+							try {
+								testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+							} catch (error) {}
 						}
 					}
 
