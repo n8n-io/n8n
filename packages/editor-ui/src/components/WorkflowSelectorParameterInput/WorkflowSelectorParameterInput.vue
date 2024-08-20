@@ -6,6 +6,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeParameterResourceLocator,
+	INodeProperties,
 	NodeParameterValue,
 	ResourceLocatorModes,
 } from 'n8n-workflow';
@@ -29,6 +30,7 @@ interface Props {
 	expressionDisplayValue?: string;
 	forceShowExpression?: boolean;
 	parameterIssues?: string[];
+	parameter: INodeProperties;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -186,7 +188,11 @@ onClickOutside(dropdown, () => {
 </script>
 
 <template>
-	<div ref="container" :class="$style.container">
+	<div
+		ref="container"
+		:class="$style.container"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
 		<ResourceLocatorDropdown
 			ref="dropdown"
 			:show="isDropdownVisible"
