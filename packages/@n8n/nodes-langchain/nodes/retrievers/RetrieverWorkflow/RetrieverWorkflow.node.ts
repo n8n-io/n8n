@@ -9,6 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	SupplyData,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 
 import { BaseRetriever, type BaseRetrieverInput } from '@langchain/core/retrievers';
@@ -41,7 +42,7 @@ export class RetrieverWorkflow implements INodeType {
 		name: 'retrieverWorkflow',
 		icon: 'fa:box-open',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Use an n8n Workflow as Retriever',
 		defaults: {
 			name: 'Workflow Retriever',
@@ -105,11 +106,27 @@ export class RetrieverWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
+			},
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: '',
+				required: true,
+				description:
+					"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
 
 			// ----------------------------------
@@ -301,11 +318,21 @@ export class RetrieverWorkflow implements INodeType {
 
 				const workflowInfo: IExecuteWorkflowInfo = {};
 				if (source === 'database') {
-					// Read workflow from database
-					workflowInfo.id = this.executeFunctions.getNodeParameter(
-						'workflowId',
-						itemIndex,
-					) as string;
+					const nodeVersion = this.executeFunctions.getNode().typeVersion;
+					if (nodeVersion === 1) {
+						workflowInfo.id = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+						) as string;
+					} else {
+						const { value } = this.executeFunctions.getNodeParameter(
+							'workflowId',
+							itemIndex,
+							{},
+						) as INodeParameterResourceLocator;
+						workflowInfo.id = value as string;
+					}
+
 					baseMetadata.workflowId = workflowInfo.id;
 				} else if (source === 'parameter') {
 					// Read workflow from parameter
