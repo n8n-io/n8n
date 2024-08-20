@@ -11,7 +11,7 @@ import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -20,7 +20,7 @@ import {
 	isEmailCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
+} from '@/sso/sso-helpers';
 
 import type { LdapConfig } from './types';
 import {

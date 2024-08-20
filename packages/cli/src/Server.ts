@@ -24,15 +24,15 @@ import type { APIRequest } from '@/requests';
 import { ControllerRegistry } from '@/decorators';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import type { ICredentialsOverwrite } from '@/Interfaces';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import * as ResponseHelper from '@/ResponseHelper';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import * as ResponseHelper from '@/response-helper';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { isLdapEnabled } from '@/Ldap/helpers.ee';
-import { AbstractServer } from '@/AbstractServer';
+import { isLdapEnabled } from '@/ldap/helpers.ee';
+import { AbstractServer } from '@/abstract-server';
 import { PostHogClient } from '@/posthog';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { handleMfaDisable, isMfaFeatureEnabled } from '@/Mfa/helpers';
+import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
@@ -61,9 +61,9 @@ import '@/controllers/workflowStatistics.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/eventBus.controller';
 import '@/executions/executions.controller';
-import '@/ExternalSecrets/ExternalSecrets.controller.ee';
+import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';
-import '@/workflows/workflowHistory/workflowHistory.controller.ee';
+import '@/workflows/workflow-history/workflow-history.controller.ee';
 import '@/workflows/workflows.controller';
 import { EventService } from './events/event.service';
 
@@ -115,8 +115,8 @@ export class Server extends AbstractServer {
 		}
 
 		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/Ldap/ldap.service.ee');
-			await import('@/Ldap/ldap.controller.ee');
+			const { LdapService } = await import('@/ldap/ldap.service.ee');
+			await import('@/ldap/ldap.controller.ee');
 			await Container.get(LdapService).init();
 		}
 

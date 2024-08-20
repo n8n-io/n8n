@@ -13,11 +13,11 @@ import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
-} from '@/sso/ssoHelpers';
-import { License } from '@/License';
+} from '@/sso/sso-helpers';
+import { License } from '@/license';
 import { UserService } from '@/services/user.service';
-import { MfaService } from '@/Mfa/mfa.service';
-import { Logger } from '@/Logger';
+import { MfaService } from '@/mfa/mfa.service';
+import { Logger } from '@/logger';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

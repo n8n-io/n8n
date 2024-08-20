@@ -11,11 +11,11 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialsHelper } from '@/credentials-helper';
 import { Agent as HTTPSAgent } from 'https';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
-import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
+import * as SecretsHelpers from '@/external-secrets/external-secrets-helper.ee';
 import Container from 'typedi';
 
 export const isMessageEventBusDestinationWebhookOptions = (

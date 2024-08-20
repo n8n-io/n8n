@@ -6,17 +6,17 @@ import config from '@/config';
 import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
-import { License } from '@/License';
+import { License } from '@/license';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
+import { Logger } from '@/logger';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ExternalHooks } from '@/external-hooks';
 import { EventService } from '@/events/event.service';
 
 @RestController('/invitations')

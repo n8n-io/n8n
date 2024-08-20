@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';

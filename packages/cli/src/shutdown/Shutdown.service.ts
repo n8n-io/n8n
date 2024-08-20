@@ -1,7 +1,7 @@
 import { Container, Service } from 'typedi';
 import { ApplicationError, ErrorReporterProxy, assert } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { LOWEST_SHUTDOWN_PRIORITY, HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 
 type HandlerFn = () => Promise<void> | void;

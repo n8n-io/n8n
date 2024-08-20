@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type express from 'express';
 
-import { CredentialsHelper } from '@/CredentialsHelper';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialTypes } from '@/credential-types';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import { projectScope } from '../../shared/middlewares/global.middleware';

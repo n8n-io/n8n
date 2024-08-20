@@ -1,6 +1,6 @@
 import Container, { Service } from 'typedi';
-import { OnShutdown } from '@/decorators/OnShutdown';
-import { ShutdownService } from '@/shutdown/Shutdown.service';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { ShutdownService } from '@/shutdown/shutdown.service';
 import { mock } from 'jest-mock-extended';
 
 describe('OnShutdown', () => {

@@ -17,7 +17,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { License } from '@/License';
+import { License } from '@/license';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';

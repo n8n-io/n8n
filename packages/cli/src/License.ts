@@ -2,7 +2,7 @@ import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 import Container, { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import config from '@/config';
 import {
 	LICENSE_FEATURES,
@@ -16,7 +16,7 @@ import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } fr
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 type FeatureReturnType = Partial<

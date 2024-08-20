@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 
 import { Reset } from '@/commands/user-management/reset';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';

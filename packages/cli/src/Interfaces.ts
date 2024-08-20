@@ -25,7 +25,7 @@ import type {
 	StartNodeData,
 } from 'n8n-workflow';
 
-import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import type { WorkflowExecute } from 'n8n-core';
 
@@ -39,7 +39,7 @@ import type { CredentialsRepository } from '@db/repositories/credentials.reposit
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { ExternalHooks } from './ExternalHooks';
+import type { ExternalHooks } from './external-hooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { RunningJobSummary } from './scaling/types';

@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity, validateRecordNoXss } from '@/GenericHelpers';
+import { validateEntity, validateRecordNoXss } from '@/generic-helpers';
 import type { User } from '@db/entities/User';
 import {
 	AuthenticatedRequest,
@@ -15,15 +15,15 @@ import {
 	UserUpdatePayload,
 } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
-import { ExternalHooks } from '@/ExternalHooks';
+import { Logger } from '@/logger';
+import { ExternalHooks } from '@/external-hooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventService } from '@/events/event.service';
-import { MfaService } from '@/Mfa/mfa.service';
+import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 export const API_KEY_PREFIX = 'n8n_api_';
