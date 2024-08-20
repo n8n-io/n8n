@@ -28,7 +28,6 @@
     "axios": "catalog:",
     "convict": "6.2.4",
     "dotenv": "8.6.0",
-    "n8n-workflow": "workspace:*",
     "zx": "^8.1.4"
   },
   "devDependencies": {

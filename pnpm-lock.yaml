@@ -221,9 +221,6 @@ importers:
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../workflow
       zx:
         specifier: ^8.1.4
         version: 8.1.4
