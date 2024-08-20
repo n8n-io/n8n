@@ -2,6 +2,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -237,6 +238,9 @@ export class NocoDB implements INodeType {
 						new Error(`Error while fetching ${version === 3 ? 'bases' : 'projects'}!`, {
 							cause: e,
 						}),
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -257,12 +261,18 @@ export class NocoDB implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							new Error('Error while fetching tables!', { cause: e }),
+							{
+								level: 'warning',
+							},
 						);
 					}
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
 						`No  ${version === 3 ? 'base' : 'project'} selected!`,
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -279,7 +289,7 @@ export class NocoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let returnAll = false;
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 
 		let qs: IDataObject = {};
 
@@ -395,7 +405,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...body);
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -458,7 +468,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...responseData);
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -521,6 +531,7 @@ export class NocoDB implements INodeType {
 								this,
 								responseData as IDataObject[],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							data.push(...response);
 						}
@@ -530,7 +541,7 @@ export class NocoDB implements INodeType {
 						return [data];
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ json: { error: error.toString() } });
 					} else {
 						throw error;
@@ -584,6 +595,7 @@ export class NocoDB implements INodeType {
 								this,
 								[responseData as IDataObject],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							const newItem = {
 								binary: data[0].binary,
@@ -605,7 +617,7 @@ export class NocoDB implements INodeType {
 							newItems.push(...executionData);
 						}
 					} catch (error) {
-						if (this.continueOnFail()) {
+						if (this.continueOnFail(error)) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.toString() }),
 								{ itemData: { item: i } },
@@ -747,7 +759,7 @@ export class NocoDB implements INodeType {
 						returnData.push(...body);
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						returnData.push({ error: error.toString() });
 					}
 					throw new NodeApiError(this.getNode(), error as JsonObject);

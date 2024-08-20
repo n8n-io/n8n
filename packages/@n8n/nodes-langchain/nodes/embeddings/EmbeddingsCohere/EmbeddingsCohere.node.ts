@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { CohereEmbeddings } from 'langchain/embeddings/cohere';
+import { CohereEmbeddings } from '@langchain/cohere';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -14,7 +14,7 @@ export class EmbeddingsCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Cohere',
 		name: 'embeddingsCohere',
-		icon: 'file:cohere.svg',
+		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Use Cohere Embeddings',
@@ -67,16 +67,32 @@ export class EmbeddingsCohere implements INodeType {
 				default: 'embed-english-v2.0',
 				options: [
 					{
-						name: 'Embed-English-v2.0(4096 Dimensions)',
-						value: 'embed-english-v2.0',
-					},
-					{
-						name: 'Embed-English-Light-v2.0(1024 Dimensions)',
+						name: 'Embed-English-Light-v2.0 (1024 Dimensions)',
 						value: 'embed-english-light-v2.0',
 					},
 					{
-						name: 'Embed-Multilingual-v2.0(768 Dimensions)',
+						name: 'Embed-English-Light-v3.0 (384 Dimensions)',
+						value: 'embed-english-light-v3.0',
+					},
+					{
+						name: 'Embed-English-v2.0 (4096 Dimensions)',
+						value: 'embed-english-v2.0',
+					},
+					{
+						name: 'Embed-English-v3.0 (1024 Dimensions)',
+						value: 'embed-english-v3.0',
+					},
+					{
+						name: 'Embed-Multilingual-Light-v3.0 (384 Dimensions)',
+						value: 'embed-multilingual-light-v3.0',
+					},
+					{
+						name: 'Embed-Multilingual-v2.0 (768 Dimensions)',
 						value: 'embed-multilingual-v2.0',
+					},
+					{
+						name: 'Embed-Multilingual-v3.0 (1024 Dimensions)',
+						value: 'embed-multilingual-v3.0',
 					},
 				],
 			},
@@ -86,10 +102,10 @@ export class EmbeddingsCohere implements INodeType {
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
-		const credentials = await this.getCredentials('cohereApi');
+		const credentials = (await this.getCredentials('cohereApi')) as { apiKey: string };
 		const embeddings = new CohereEmbeddings({
-			apiKey: credentials.apiKey as string,
-			modelName,
+			apiKey: credentials.apiKey,
+			model: modelName,
 		});
 
 		return {

@@ -1,16 +1,16 @@
 import {
+	AI_TRANSFORM_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	WEBHOOK_NODE_TYPE,
 	OTHER_TRIGGER_NODES_SUBCATEGORY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRANSFORM_DATA_SUBCATEGORY,
-	FILES_SUBCATEGORY,
 	FLOWS_CONTROL_SUBCATEGORY,
-	HELPERS_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
@@ -29,12 +29,42 @@ import {
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	CONVERT_TO_FILE_NODE_TYPE,
+	EXTRACT_FROM_FILE_NODE_TYPE,
+	SET_NODE_TYPE,
+	CODE_NODE_TYPE,
+	DATETIME_NODE_TYPE,
+	FILTER_NODE_TYPE,
+	REMOVE_DUPLICATES_NODE_TYPE,
+	SPLIT_OUT_NODE_TYPE,
+	LIMIT_NODE_TYPE,
+	SUMMARIZE_NODE_TYPE,
+	AGGREGATE_NODE_TYPE,
+	MERGE_NODE_TYPE,
+	HTML_NODE_TYPE,
+	MARKDOWN_NODE_TYPE,
+	XML_NODE_TYPE,
+	CRYPTO_NODE_TYPE,
+	IF_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	HELPERS_SUBCATEGORY,
+	RSS_READ_NODE_TYPE,
+	EMAIL_SEND_NODE_TYPE,
+	EDIT_IMAGE_NODE_TYPE,
+	COMPRESSION_NODE_TYPE,
+	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
+	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Themed } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import { useTemplatesStore } from '@/stores/templates.store';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { camelCase } from 'lodash-es';
+import { usePostHog } from '@/stores/posthog.store';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -47,17 +77,29 @@ export interface NodeViewItem {
 	type: string;
 	properties: {
 		name?: string;
-		title: string;
-		icon: string;
+		title?: string;
+		icon?: Themed<string>;
 		iconProps?: {
 			color?: string;
 		};
+		info?: string;
+		url?: string;
 		connectionType?: NodeConnectionType;
 		panelClass?: string;
 		group?: string[];
 		sections?: NodeViewItemSection[];
 		description?: string;
+		displayName?: string;
+		tag?: {
+			type: string;
+			text: string;
+		};
 		forceIncludeNodes?: string[];
+		iconData?: {
+			type: string;
+			icon?: string;
+			fileBuffer?: string;
+		};
 	};
 	category?: string | string[];
 }
@@ -72,7 +114,9 @@ interface NodeView {
 
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
 	return nodes
-		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.filter(
+			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
+		)
 		.map((node) => ({
 			key: node.name,
 			type: 'node',
@@ -84,6 +128,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				description: node.description,
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
+				iconUrl: node.iconUrl,
 			},
 		}))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
@@ -92,6 +137,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const templatesStore = useTemplatesStore();
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
@@ -100,10 +146,24 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
-		info: i18n.baseText('nodeCreator.aiPanel.infoBox'),
 		items: [
-			...chainNodes,
+			{
+				key: 'ai_templates_root',
+				type: 'link',
+				properties: {
+					title: i18n.baseText('nodeCreator.aiPanel.linkItem.title'),
+					icon: 'box-open',
+					description: i18n.baseText('nodeCreator.aiPanel.linkItem.description'),
+					name: 'ai_templates_root',
+					url: templatesStore.getWebsiteCategoryURL(undefined, 'AdvancedAI'),
+					tag: {
+						type: 'info',
+						text: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerTag'),
+					},
+				},
+			},
 			...agentNodes,
+			...chainNodes,
 			{
 				key: AI_OTHERS_NODE_CREATOR_VIEW,
 				type: 'view',
@@ -116,6 +176,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		],
 	};
 }
+
 export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
@@ -129,6 +190,17 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 		};
 	}
 
+	function getSubcategoryInfo(subcategory: string) {
+		const localeKey = `nodeCreator.subcategoryInfos.${camelCase(subcategory)}` as BaseTextKey;
+
+		const info = i18n.baseText(localeKey);
+
+		// Return undefined if the locale key is not found
+		if (info === localeKey) return undefined;
+
+		return info;
+	}
+
 	return {
 		value: AI_OTHERS_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiOtherNodes'),
@@ -139,6 +211,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
+					info: getSubcategoryInfo(AI_CATEGORY_DOCUMENT_LOADERS),
 					icon: 'file-import',
 					...getAISubcategoryProperties(NodeConnectionType.AiDocument),
 				},
@@ -148,6 +221,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_LANGUAGE_MODELS,
+					info: getSubcategoryInfo(AI_CATEGORY_LANGUAGE_MODELS),
 					icon: 'language',
 					...getAISubcategoryProperties(NodeConnectionType.AiLanguageModel),
 				},
@@ -157,6 +231,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_MEMORY,
+					info: getSubcategoryInfo(AI_CATEGORY_MEMORY),
 					icon: 'brain',
 					...getAISubcategoryProperties(NodeConnectionType.AiMemory),
 				},
@@ -166,6 +241,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_OUTPUTPARSER,
+					info: getSubcategoryInfo(AI_CATEGORY_OUTPUTPARSER),
 					icon: 'list',
 					...getAISubcategoryProperties(NodeConnectionType.AiOutputParser),
 				},
@@ -175,6 +251,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_RETRIEVERS,
+					info: getSubcategoryInfo(AI_CATEGORY_RETRIEVERS),
 					icon: 'search',
 					...getAISubcategoryProperties(NodeConnectionType.AiRetriever),
 				},
@@ -184,17 +261,27 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
+					info: getSubcategoryInfo(AI_CATEGORY_TEXT_SPLITTERS),
 					icon: 'grip-lines-vertical',
 					...getAISubcategoryProperties(NodeConnectionType.AiTextSplitter),
 				},
 			},
 			{
-				key: AI_CATEGORY_TOOLS,
 				type: 'subcategory',
+				key: AI_CATEGORY_TOOLS,
+				category: CORE_NODES_CATEGORY,
 				properties: {
 					title: AI_CATEGORY_TOOLS,
+					info: getSubcategoryInfo(AI_CATEGORY_TOOLS),
 					icon: 'tools',
 					...getAISubcategoryProperties(NodeConnectionType.AiTool),
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE, AI_CODE_TOOL_LANGCHAIN_NODE_TYPE],
+						},
+					],
 				},
 			},
 			{
@@ -202,6 +289,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_EMBEDDING,
+					info: getSubcategoryInfo(AI_CATEGORY_EMBEDDING),
 					icon: 'vector-square',
 					...getAISubcategoryProperties(NodeConnectionType.AiEmbedding),
 				},
@@ -211,6 +299,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
+					info: getSubcategoryInfo(AI_CATEGORY_VECTOR_STORES),
 					icon: 'project-diagram',
 					...getAISubcategoryProperties(NodeConnectionType.AiVectorStore),
 				},
@@ -227,7 +316,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	};
 }
 
-export function TriggerView(nodes: SimplifiedNodeType[]) {
+export function TriggerView() {
 	const i18n = useI18n();
 
 	const view: NodeView = {
@@ -235,6 +324,18 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
 		items: [
+			{
+				key: MANUAL_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: MANUAL_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
+					icon: 'fa:mouse-pointer',
+				},
+			},
 			{
 				key: DEFAULT_SUBCATEGORY,
 				type: 'subcategory',
@@ -289,18 +390,6 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 				},
 			},
 			{
-				key: MANUAL_TRIGGER_NODE_TYPE,
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: MANUAL_TRIGGER_NODE_TYPE,
-					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
-					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
-					icon: 'fa:mouse-pointer',
-				},
-			},
-			{
 				key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				type: 'node',
 				category: [CORE_NODES_CATEGORY],
@@ -310,6 +399,18 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
 					icon: 'fa:sign-out-alt',
+				},
+			},
+			{
+				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.triggerHelperPanel.manualChatTriggerDescription'),
+					icon: 'fa:comments',
 				},
 			},
 			{
@@ -330,6 +431,13 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
+	const popularItemsSubcategory = [SET_NODE_TYPE, CODE_NODE_TYPE, DATETIME_NODE_TYPE];
+	const aiEnabled = usePostHog().isAiEnabled();
+
+	if (aiEnabled) {
+		popularItemsSubcategory.push(AI_TRANSFORM_NODE_TYPE);
+	}
+
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
@@ -340,6 +448,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: 'App Regular Nodes',
 					icon: 'globe',
+					forceIncludeNodes: [RSS_READ_NODE_TYPE, EMAIL_SEND_NODE_TYPE],
 				},
 			},
 			{
@@ -353,7 +462,52 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [],
+							items: popularItemsSubcategory,
+						},
+						{
+							key: 'addOrRemove',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.addOrRemove'),
+							items: [
+								FILTER_NODE_TYPE,
+								REMOVE_DUPLICATES_NODE_TYPE,
+								SPLIT_OUT_NODE_TYPE,
+								LIMIT_NODE_TYPE,
+							],
+						},
+						{
+							key: 'combine',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.combine'),
+							items: [SUMMARIZE_NODE_TYPE, AGGREGATE_NODE_TYPE, MERGE_NODE_TYPE],
+						},
+						{
+							key: 'convert',
+							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
+							items: [
+								HTML_NODE_TYPE,
+								MARKDOWN_NODE_TYPE,
+								XML_NODE_TYPE,
+								CRYPTO_NODE_TYPE,
+								EXTRACT_FROM_FILE_NODE_TYPE,
+								CONVERT_TO_FILE_NODE_TYPE,
+								COMPRESSION_NODE_TYPE,
+								EDIT_IMAGE_NODE_TYPE,
+							],
+						},
+					],
+				},
+			},
+			{
+				type: 'subcategory',
+				key: FLOWS_CONTROL_SUBCATEGORY,
+				category: CORE_NODES_CATEGORY,
+				properties: {
+					title: FLOWS_CONTROL_SUBCATEGORY,
+					icon: 'code-branch',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [FILTER_NODE_TYPE, IF_NODE_TYPE, SPLIT_IN_BATCHES_NODE_TYPE, MERGE_NODE_TYPE],
 						},
 					],
 				},
@@ -365,24 +519,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: HELPERS_SUBCATEGORY,
 					icon: 'toolbox',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FLOWS_CONTROL_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'code-branch',
-				},
-			},
-			{
-				type: 'subcategory',
-				key: FILES_SUBCATEGORY,
-				category: CORE_NODES_CATEGORY,
-				properties: {
-					title: FILES_SUBCATEGORY,
-					icon: 'file-alt',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, CODE_NODE_TYPE],
+						},
+					],
 				},
 			},
 		],
@@ -397,8 +540,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
 				icon: 'robot',
 				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+				tag: {
+					type: 'success',
+					text: i18n.baseText('nodeCreator.aiPanel.newTag'),
+				},
+				borderless: true,
 			},
-		});
+		} as NodeViewItem);
 
 	view.items.push({
 		key: TRIGGER_NODE_CREATOR_VIEW,

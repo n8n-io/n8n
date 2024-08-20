@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
@@ -7,11 +7,29 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 77 }"
+		:loading="loading"
+		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #header>
+			<ProjectTabs />
+		</template>
+		<template #add-button="{ disabled }">
+			<div>
+				<n8n-button
+					size="large"
+					block
+					:disabled="disabled"
+					data-test-id="resources-list-add"
+					@click="addCredential"
+				>
+					{{ addCredentialButtonText }}
+				</n8n-button>
+			</div>
+		</template>
 		<template #default="{ data }">
-			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -23,13 +41,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:modelValue="filters.type"
+					ref="typeInput"
+					:model-value="filters.type"
 					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
-					@update:modelValue="setKeyValue('type', $event)"
+					@update:model-value="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"
@@ -40,42 +58,46 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import { defineComponent } from 'vue';
 
+import type { IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
+import { CREDENTIAL_SELECT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-
-type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
+import { useProjectsStore } from '@/stores/projects.store';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
+import useEnvironmentsStore from '@/stores/environments.ee.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { getResourcePermissions } from '@/permissions';
 
 export default defineComponent({
 	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
 		CredentialCard,
+		ProjectTabs,
 	},
 	data() {
 		return {
 			filters: {
 				search: '',
-				ownedBy: '',
-				sharedWith: '',
+				homeProject: '',
 				type: '',
 			},
 			sourceControlStoreUnsubscribe: () => {},
+			loading: false,
 		};
 	},
 	computed: {
@@ -83,12 +105,22 @@ export default defineComponent({
 			useCredentialsStore,
 			useNodeTypesStore,
 			useUIStore,
-			useUsersStore,
 			useSourceControlStore,
 			useExternalSecretsStore,
+			useProjectsStore,
 		),
-		allCredentials(): ICredentialsResponse[] {
-			return this.credentialsStore.allCredentials;
+		allCredentials(): IResource[] {
+			return this.credentialsStore.allCredentials.map((credential) => ({
+				id: credential.id,
+				name: credential.name,
+				value: '',
+				updatedAt: credential.updatedAt,
+				createdAt: credential.createdAt,
+				homeProject: credential.homeProject,
+				scopes: credential.scopes,
+				type: credential.type,
+				sharedWithProjects: credential.sharedWithProjects,
+			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;
@@ -96,6 +128,36 @@ export default defineComponent({
 		credentialTypesById(): ICredentialTypeMap {
 			return this.credentialsStore.credentialTypesById;
 		},
+		addCredentialButtonText() {
+			return this.projectsStore.currentProject
+				? this.$locale.baseText('credentials.project.add')
+				: this.$locale.baseText('credentials.add');
+		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		projectPermissions() {
+			return getResourcePermissions(
+				this.projectsStore.currentProject?.scopes ?? this.projectsStore.personalProject?.scopes,
+			);
+		},
+	},
+	watch: {
+		'$route.params.projectId'() {
+			void this.initialize();
+		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
 		addCredential() {
@@ -106,16 +168,22 @@ export default defineComponent({
 			});
 		},
 		async initialize() {
+			this.loading = true;
+			const isVarsEnabled =
+				useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables];
+
 			const loadPromises = [
-				this.credentialsStore.fetchAllCredentials(),
+				this.credentialsStore.fetchAllCredentials(
+					this.$route?.params?.projectId as string | undefined,
+				),
 				this.credentialsStore.fetchCredentialTypes(false),
 				this.externalSecretsStore.fetchAllSecrets(),
 				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
+				isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 			];
 
 			await Promise.all(loadPromises);
-
-			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			this.loading = false;
 		},
 		onFilter(
 			resource: ICredentialsResponse,
@@ -139,26 +207,6 @@ export default defineComponent({
 
 			return matches;
 		},
-		sendFiltersTelemetry(source: string) {
-			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
-		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
-	},
-	mounted() {
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

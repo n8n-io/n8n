@@ -24,6 +24,12 @@ describe('InstanceSettings', () => {
 			readSpy.mockReturnValue('{"encryptionKey":"test_key"');
 			expect(() => new InstanceSettings()).toThrowError();
 		});
+
+		it('should throw if the env and file keys do not match', () => {
+			readSpy.mockReturnValue(JSON.stringify({ encryptionKey: 'key_1' }));
+			process.env.N8N_ENCRYPTION_KEY = 'key_2';
+			expect(() => new InstanceSettings()).toThrowError();
+		});
 	});
 
 	describe('If the settings file does not exist', () => {

@@ -1,12 +1,12 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
-			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="getIconSize" />
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
 			</div>
-			<n8n-text size="small">
+			<N8nText size="small">
 				<slot />
-			</n8n-text>
+			</N8nText>
 			&nbsp;
 			<slot name="actions" />
 		</div>
@@ -15,72 +15,58 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
+import type { IconSize } from 'n8n-design-system/types/icon';
 
-const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
+const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
+export type CalloutTheme = (typeof THEMES)[number];
+
+const CALLOUT_DEFAULT_ICONS: Record<string, string> = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',
 	danger: 'exclamation-triangle',
 };
 
-export default defineComponent({
-	name: 'n8n-callout',
-	components: {
-		N8nText,
-		N8nIcon,
-	},
-	props: {
-		theme: {
-			type: String,
-			required: true,
-			validator: (value: string): boolean =>
-				['info', 'success', 'secondary', 'warning', 'danger', 'custom'].includes(value),
-		},
-		icon: {
-			type: String,
-		},
-		iconSize: {
-			type: String,
-			default: 'medium',
-		},
-		iconless: {
-			type: Boolean,
-		},
-		slim: {
-			type: Boolean,
-		},
-		roundCorners: {
-			type: Boolean,
-			default: true,
-		},
-	},
-	computed: {
-		classes(): string[] {
-			return [
-				'n8n-callout',
-				this.$style.callout,
-				this.$style[this.theme],
-				this.slim ? this.$style.slim : '',
-				this.roundCorners ? this.$style.round : '',
-			];
-		},
-		getIcon(): string {
-			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
-		},
-		getIconSize(): string {
-			if (this.iconSize) {
-				return this.iconSize;
-			}
-			if (this.theme === 'secondary') {
-				return 'medium';
-			}
-			return 'large';
-		},
-	},
+interface CalloutProps {
+	theme: CalloutTheme;
+	icon?: string;
+	iconSize?: IconSize;
+	iconless?: boolean;
+	slim?: boolean;
+	roundCorners?: boolean;
+}
+
+defineOptions({ name: 'N8nCallout' });
+const props = withDefaults(defineProps<CalloutProps>(), {
+	iconSize: 'medium',
+	roundCorners: true,
+});
+
+const $style = useCssModule();
+const classes = computed(() => [
+	'n8n-callout',
+	$style.callout,
+	$style[props.theme],
+	props.slim ? $style.slim : '',
+	props.roundCorners ? $style.round : '',
+]);
+
+const getIcon = computed(
+	() => props.icon ?? CALLOUT_DEFAULT_ICONS?.[props.theme] ?? CALLOUT_DEFAULT_ICONS.info,
+);
+
+const getIconSize = computed<IconSize>(() => {
+	if (props.iconSize) {
+		return props.iconSize;
+	}
+	if (props.theme === 'secondary') {
+		return 'medium';
+	}
+	return 'large';
 });
 </script>
 

@@ -4,16 +4,16 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import type { MispCredentials } from './types';
 
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -22,7 +22,7 @@ export async function mispApiRequest(
 		'mispApi',
 	)) as MispCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -77,6 +77,57 @@ export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: 
 	}
 
 	return responseData;
+}
+
+export async function mispApiRestSearch(
+	this: IExecuteFunctions,
+	resource: 'attributes' | 'events' | 'objects',
+	itemIndex: number,
+) {
+	let body: IDataObject = {};
+	const useJson = this.getNodeParameter('useJson', itemIndex) as boolean;
+
+	if (useJson) {
+		const json = this.getNodeParameter('jsonOutput', itemIndex);
+		if (typeof json === 'string') {
+			body = jsonParse(json);
+		} else {
+			body = json as IDataObject;
+		}
+	} else {
+		const value = this.getNodeParameter('value', itemIndex) as string;
+		const additionalFields = this.getNodeParameter('additionalFields', itemIndex);
+
+		body.value = value;
+
+		if (Object.keys(additionalFields).length) {
+			if (additionalFields.tags) {
+				additionalFields.tags = (additionalFields.tags as string)
+					.split(',')
+					.map((tag) => tag.trim());
+			}
+			Object.assign(body, additionalFields);
+		}
+	}
+
+	const endpoint = `/${resource}/restSearch`;
+	const { response } = await mispApiRequest.call(this, 'POST', endpoint, body);
+
+	if (response) {
+		if (resource === 'attributes') {
+			return response.Attribute;
+		}
+
+		if (resource === 'events') {
+			return (response as IDataObject[]).map((event) => event.Event);
+		}
+
+		if (resource === 'objects') {
+			return (response as IDataObject[]).map((obj) => obj.Object);
+		}
+	} else {
+		return [];
+	}
 }
 
 export function throwOnEmptyUpdate(

@@ -1,21 +1,35 @@
-import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
-import {
-	AGENT_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
-} from '@/constants';
-import { createComponentRenderer } from '@/__tests__/render';
-import { fireEvent, waitFor } from '@testing-library/vue';
-import { uuid } from '@jsplumb/util';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createPinia, setActivePinia } from 'pinia';
+import { fireEvent, waitFor } from '@testing-library/vue';
+import { mock } from 'vitest-mock-extended';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
+
+import WorkflowLMChatModal from '@/components/WorkflowLMChat/WorkflowLMChat.vue';
+import { WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
+import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { testingNodeTypes, mockNodeTypesToArray } from '@/__tests__/defaults';
+
+import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
+import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+
+const connections: IConnections = {
+	'Chat Trigger': {
+		main: [
+			[
+				{
+					node: 'Agent',
+					type: NodeConnectionType.Main,
+					index: 0,
+				},
+			],
+		],
+	},
+};
 
 const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 	props: {
@@ -26,40 +40,14 @@ const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 
 async function createPiniaWithAINodes(options = { withConnections: true, withAgentNode: true }) {
 	const { withConnections, withAgentNode } = options;
-	const workflowId = uuid();
-	const workflow = createTestWorkflow({
-		id: workflowId,
-		name: 'Test Workflow',
-		connections: withConnections
-			? {
-					'On new manual Chat Message': {
-						main: [
-							[
-								{
-									node: 'Agent',
-									type: 'main',
-									index: 0,
-								},
-							],
-						],
-					},
-			  }
-			: {},
-		active: true,
-		nodes: [
-			createTestNode({
-				name: 'On new manual Chat Message',
-				type: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-			}),
-			...(withAgentNode
-				? [
-						createTestNode({
-							name: 'Agent',
-							type: AGENT_NODE_TYPE,
-						}),
-				  ]
-				: []),
-		],
+
+	const chatTriggerNode = mockNodes[4];
+	const agentNode = mockNodes[5];
+	const nodes: INode[] = [chatTriggerNode];
+	if (withAgentNode) nodes.push(agentNode);
+	const workflow = mock<IWorkflowDb>({
+		nodes,
+		...(withConnections ? { connections } : {}),
 	});
 
 	const pinia = createPinia();
@@ -69,12 +57,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 
-	nodeTypesStore.setNodeTypes(
-		mockNodeTypesToArray({
-			[MANUAL_CHAT_TRIGGER_NODE_TYPE]: testingNodeTypes[MANUAL_CHAT_TRIGGER_NODE_TYPE],
-			[AGENT_NODE_TYPE]: testingNodeTypes[AGENT_NODE_TYPE],
-		}),
-	);
+	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
 
 	await useSettingsStore().getSettings();
@@ -99,36 +82,6 @@ describe('WorkflowLMChatModal', () => {
 		server.shutdown();
 	});
 
-	it('should render correctly when Agent Node not present', async () => {
-		renderComponent({
-			pinia: await createPiniaWithAINodes({
-				withConnections: false,
-				withAgentNode: false,
-			}),
-		});
-
-		await waitFor(() =>
-			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
-			),
-		);
-	});
-
-	it('should render correctly when Agent Node present but not connected to Manual Chat Node', async () => {
-		renderComponent({
-			pinia: await createPiniaWithAINodes({
-				withConnections: false,
-				withAgentNode: true,
-			}),
-		});
-
-		await waitFor(() =>
-			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
-			),
-		);
-	});
-
 	it('should render correctly', async () => {
 		const wrapper = renderComponent({
 			pinia: await createPiniaWithAINodes(),
@@ -143,7 +96,10 @@ describe('WorkflowLMChatModal', () => {
 
 	it('should send and display chat message', async () => {
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithAINodes(),
+			pinia: await createPiniaWithAINodes({
+				withConnections: true,
+				withAgentNode: true,
+			}),
 		});
 
 		await waitFor(() =>
@@ -151,14 +107,17 @@ describe('WorkflowLMChatModal', () => {
 		);
 
 		const chatDialog = wrapper.getByTestId('workflow-lm-chat-dialog');
-		const chatSendButton = wrapper.getByTestId('workflow-chat-send-button');
-		const chatInput = wrapper.getByTestId('workflow-chat-input');
+		const chatInputsContainer = wrapper.getByTestId('lm-chat-inputs');
+		const chatSendButton = chatInputsContainer.querySelector('.chat-input-send-button');
+		const chatInput = chatInputsContainer.querySelector('textarea');
 
-		await fireEvent.update(chatInput, 'Hello!');
-		await fireEvent.click(chatSendButton);
+		if (chatInput && chatSendButton) {
+			await fireEvent.update(chatInput, 'Hello!');
+			await fireEvent.click(chatSendButton);
+		}
 
-		await waitFor(() => expect(chatDialog.querySelectorAll('.message')).toHaveLength(1));
+		await waitFor(() => expect(chatDialog.querySelectorAll('.chat-message')).toHaveLength(1));
 
-		expect(chatDialog.querySelector('.message')).toHaveTextContent('Hello!');
+		expect(chatDialog.querySelector('.chat-message')).toHaveTextContent('Hello!');
 	});
 });

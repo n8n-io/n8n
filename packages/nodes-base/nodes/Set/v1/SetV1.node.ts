@@ -118,7 +118,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -150,7 +150,7 @@ export class SetV1 implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (items.length === 0) {
-			items.push({ json: {} });
+			items.push({ json: {}, pairedItem: { item: 0 } });
 		}
 
 		const returnData: INodeExecutionData[] = [];

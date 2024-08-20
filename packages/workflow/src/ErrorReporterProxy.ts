@@ -5,13 +5,17 @@ interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
+const { NODE_ENV } = process.env;
+const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
+
 const instance: ErrorReporter = {
 	report: (error) => {
 		if (error instanceof Error) {
 			let e = error;
 			do {
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
+				if (inDevelopment) console.log(e, meta);
+				else Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);
 		}
@@ -33,5 +37,10 @@ export const error = (e: unknown, options?: ReportingOptions) => {
 	if (toReport) instance.report(toReport, options);
 };
 
+export const info = (msg: string, options?: ReportingOptions) => {
+	Logger.info(msg);
+	instance.report(msg, options);
+};
+
 export const warn = (warning: Error | string, options?: ReportingOptions) =>
-	error(warning, { level: 'warning', ...options });
+	error(warning, { ...options, level: 'warning' });

@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -15,13 +15,13 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
  */
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	option: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
@@ -92,7 +92,7 @@ export async function getFileSha(
 
 export async function githubApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -113,4 +113,9 @@ export async function githubApiRequestAllItems(
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('next'));
 	return returnData;
+}
+
+export function isBase64(content: string) {
+	const base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+	return base64regex.test(content);
 }

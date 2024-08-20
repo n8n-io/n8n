@@ -8,10 +8,8 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import type { ClientOptions } from 'openai';
-import { OpenAI } from 'langchain/llms/openai';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { OpenAI, type ClientOptions } from '@langchain/openai';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -29,7 +27,8 @@ export class LmOpenAi implements INodeType {
 		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
-		icon: 'file:openAi.svg',
+		hidden: true,
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'For advanced usage with an AI chain',
@@ -39,7 +38,8 @@ export class LmOpenAi implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -66,7 +66,13 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					'This node is using OpenAI completions which are now deprecated. Please use the OpenAI Chat Model node instead.',
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -95,6 +101,18 @@ export class LmOpenAi implements INodeType {
 						type: 'body',
 						property: 'model',
 						value: '={{$parameter.model.value}}',
+					},
+				},
+			},
+			{
+				displayName:
+					'When using non OpenAI models via Base URL override, not all models might be chat-compatible or support other features, like tools calling or JSON response format.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'/options.baseURL': [{ _cnd: { exists: true } }],
 					},
 				},
 			},
@@ -199,7 +217,7 @@ export class LmOpenAi implements INodeType {
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
-					if (!model.owned_by?.startsWith('system')) continue;
+					if (!options.baseURL && !model.owned_by?.startsWith('system')) continue;
 					results.push({
 						name: model.id,
 						value: model.id,
@@ -241,10 +259,11 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

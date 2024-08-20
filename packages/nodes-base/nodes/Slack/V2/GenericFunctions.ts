@@ -1,34 +1,36 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
+	IHttpRequestMethods,
+	IRequestOptions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: object = {},
-	query: object = {},
+	query: IDataObject = {},
 	headers: {} | undefined = undefined,
 	option: {} = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		uri: `https://slack.com/api${resource}`,
+		uri: resource.startsWith('https') ? resource : `https://slack.com/api${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -64,7 +66,7 @@ export async function slackApiRequest(
 				{
 					description:
 						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
-					severity: 'warning',
+					level: 'warning',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
@@ -73,10 +75,11 @@ export async function slackApiRequest(
 				'Your Slack credential is missing required Oauth Scopes',
 				{
 					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
-					severity: 'warning',
+					level: 'warning',
 				},
 			);
 		}
+
 		throw new NodeOperationError(
 			this.getNode(),
 			'Slack error response: ' + JSON.stringify(response.error),
@@ -86,13 +89,14 @@ export async function slackApiRequest(
 		Object.assign(response, { message_timestamp: response.ts });
 		delete response.ts;
 	}
+
 	return response;
 }
 
 export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -158,7 +162,7 @@ export function getMessageContent(
 			};
 			break;
 		case 'block':
-			content = jsonParse(this.getNodeParameter('blocksUi', i) as string);
+			content = this.getNodeParameter('blocksUi', i, {}, { ensureType: 'object' }) as IDataObject;
 
 			if (includeLinkToWorkflow && Array.isArray(content.blocks)) {
 				content.blocks.push({
@@ -174,7 +178,21 @@ export function getMessageContent(
 			}
 			break;
 		case 'attachment':
-			content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
+			const attachmentsUI = this.getNodeParameter('attachments', i) as IDataObject[];
+
+			const attachments: IDataObject[] = [];
+
+			for (const attachment of attachmentsUI) {
+				if (attachment.fields !== undefined) {
+					if ((attachment?.fields as IDataObject)?.item) {
+						attachment.fields = (attachment?.fields as IDataObject)?.item as IDataObject[];
+					}
+				}
+				attachments.push(attachment);
+			}
+
+			content = { attachments } as IDataObject;
+
 			if (includeLinkToWorkflow && Array.isArray(content.attachments)) {
 				content.attachments.push({
 					text: automatedMessage,

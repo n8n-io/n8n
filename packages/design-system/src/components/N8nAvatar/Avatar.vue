@@ -1,74 +1,60 @@
 <template>
 	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
 		<Avatar
-			v-if="firstName"
+			v-if="name"
 			:size="getSize(size)"
-			:name="firstName + ' ' + lastName"
+			:name="name"
 			variant="marble"
 			:colors="getColors(colors)"
 		/>
 		<div v-else :class="[$style.empty, $style[size]]"></div>
-		<span v-if="firstName" :class="$style.initials">{{ initials }}</span>
+		<span v-if="firstName || lastName" :class="[$style.initials, $style[`text-${size}`]]">
+			{{ initials }}
+		</span>
 	</span>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed } from 'vue';
 import Avatar from 'vue-boring-avatars';
+import { getInitials } from '../../utils/labelUtil';
+
+interface AvatarProps {
+	firstName: string;
+	lastName: string;
+	size?: 'xsmall' | 'small' | 'medium' | 'large';
+	colors?: string[];
+}
+
+defineOptions({ name: 'N8nAvatar' });
+const props = withDefaults(defineProps<AvatarProps>(), {
+	firstName: '',
+	lastName: '',
+	size: 'medium',
+	colors: () => [
+		'--color-primary',
+		'--color-secondary',
+		'--color-avatar-accent-1',
+		'--color-avatar-accent-2',
+		'--color-primary-tint-1',
+	],
+});
+
+const name = computed(() => `${props.firstName} ${props.lastName}`.trim());
+const initials = computed(() => getInitials(name.value));
+
+const getColors = (colors: string[]): string[] => {
+	const style = getComputedStyle(document.body);
+	return colors.map((color: string) => style.getPropertyValue(color));
+};
 
 const sizes: { [size: string]: number } = {
+	xsmall: 20,
 	small: 28,
 	large: 48,
 	medium: 40,
 };
-
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'n8n-avatar',
-	props: {
-		firstName: {
-			type: String,
-			default: '',
-		},
-		lastName: {
-			type: String,
-			default: '',
-		},
-		size: {
-			type: String,
-			default: 'medium',
-		},
-		colors: {
-			default: () => [
-				'--color-primary',
-				'--color-secondary',
-				'--color-avatar-accent-1',
-				'--color-avatar-accent-2',
-				'--color-primary-tint-1',
-			],
-		},
-	},
-	components: {
-		Avatar,
-	},
-	computed: {
-		initials() {
-			return (
-				(this.firstName ? this.firstName.charAt(0) : '') +
-				(this.lastName ? this.lastName.charAt(0) : '')
-			);
-		},
-	},
-	methods: {
-		getColors(colors: string[]): string[] {
-			const style = getComputedStyle(document.body);
-			return colors.map((color: string) => style.getPropertyValue(color));
-		},
-		getSize(size: string): number {
-			return sizes[size];
-		},
-	},
-});
+const getSize = (size: string): number => sizes[size];
 </script>
 
 <style lang="scss" module>
@@ -80,6 +66,7 @@ export default defineComponent({
 }
 
 .empty {
+	display: block;
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
 	opacity: 0.3;
@@ -90,7 +77,17 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-avatar-font);
-	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
+	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
+	text-transform: uppercase;
+}
+
+.text-xsmall {
+	font-size: 6px;
+}
+
+.xsmall {
+	height: var(--spacing-m);
+	width: var(--spacing-m);
 }
 
 .small {

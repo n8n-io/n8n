@@ -52,6 +52,7 @@ export class Ssh implements INodeType {
 		displayName: 'SSH',
 		name: 'ssh',
 		icon: 'fa:terminal',
+		iconColor: 'black',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -191,7 +192,7 @@ export class Ssh implements INodeType {
 				default: 'upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -203,8 +204,7 @@ export class Ssh implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
 				displayName: 'Target Directory',
@@ -239,7 +239,7 @@ export class Ssh implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'File Property',
 				displayOptions: {
 					show: {
 						resource: ['file'],
@@ -256,7 +256,7 @@ export class Ssh implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						resource: ['file'],
@@ -466,7 +466,7 @@ export class Ssh implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail()) {
+					if (this.continueOnFail(error)) {
 						if (resource === 'file' && operation === 'download') {
 							items[i] = {
 								json: {

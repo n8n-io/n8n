@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { twistApiRequest } from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -746,7 +746,7 @@ export class Twist implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

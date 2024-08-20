@@ -7,10 +7,20 @@ export async function setWorkflowSharedWith(
 	id: string,
 	data: IShareWorkflowsPayload,
 ): Promise<IWorkflowsShareResponse> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'PUT',
 		`/workflows/${id}/share`,
 		data as unknown as IDataObject,
 	);
+}
+
+export async function moveWorkflowToProject(
+	context: IRestApiContext,
+	id: string,
+	destinationProjectId: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PUT', `/workflows/${id}/transfer`, {
+		destinationProjectId,
+	});
 }

@@ -20,9 +20,10 @@ import {
 } from './constants';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 import type { User } from '@db/entities/User';
-import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
 import { Logger } from '@/Logger';
 import { ApplicationError } from 'n8n-workflow';
+import { OwnershipService } from '@/services/ownership.service';
+import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 
 @Service()
 export class SourceControlGitService {
@@ -30,7 +31,11 @@ export class SourceControlGitService {
 
 	private gitOptions: Partial<SimpleGitOptions> = {};
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly ownershipService: OwnershipService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
+	) {}
 
 	/**
 	 * Run pre-checks before initialising git
@@ -63,12 +68,7 @@ export class SourceControlGitService {
 		sshFolder: string;
 		sshKeyName: string;
 	}): Promise<void> {
-		const {
-			sourceControlPreferences: sourceControlPreferences,
-			gitFolder,
-			sshKeyName,
-			sshFolder,
-		} = options;
+		const { sourceControlPreferences: sourceControlPreferences, gitFolder, sshFolder } = options;
 		this.logger.debug('GitService.init');
 		if (this.git !== null) {
 			return;
@@ -79,8 +79,30 @@ export class SourceControlGitService {
 
 		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
+		await this.setGitSshCommand(gitFolder, sshFolder);
+
+		if (!(await this.checkRepositorySetup())) {
+			await (this.git as unknown as SimpleGit).init();
+		}
+		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
+			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				await this.initRepository(sourceControlPreferences, instanceOwner);
+			}
+		}
+	}
+
+	/**
+	 * Update the SSH command with the path to the temp file containing the private key from the DB.
+	 */
+	async setGitSshCommand(
+		gitFolder = this.sourceControlPreferencesService.gitFolder,
+		sshFolder = this.sourceControlPreferencesService.sshFolder,
+	) {
+		const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
+
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
-		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;
+		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${privateKeyPath}`;
 
 		this.gitOptions = {
 			baseDir: gitFolder,
@@ -92,21 +114,8 @@ export class SourceControlGitService {
 		const { simpleGit } = await import('simple-git');
 
 		this.git = simpleGit(this.gitOptions)
-			// Tell git not to ask for any information via the terminal like for
-			// example the username. As nobody will be able to answer it would
-			// n8n keep on waiting forever.
 			.env('GIT_SSH_COMMAND', sshCommand)
 			.env('GIT_TERMINAL_PROMPT', '0');
-
-		if (!(await this.checkRepositorySetup())) {
-			await this.git.init();
-		}
-		if (!(await this.hasRemote(sourceControlPreferences.repositoryUrl))) {
-			if (sourceControlPreferences.connected && sourceControlPreferences.repositoryUrl) {
-				const user = await getInstanceOwner();
-				await this.initRepository(sourceControlPreferences, user);
-			}
-		}
 	}
 
 	resetService() {
@@ -167,6 +176,7 @@ export class SourceControlGitService {
 		}
 		try {
 			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
+			this.logger.debug(`Git remote added: ${sourceControlPreferences.repositoryUrl}`);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
 				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
@@ -180,6 +190,9 @@ export class SourceControlGitService {
 				: SOURCE_CONTROL_DEFAULT_NAME,
 			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
 		);
+
+		await this.trackRemoteIfReady(sourceControlPreferences.branchName);
+
 		if (sourceControlPreferences.initRepo) {
 			try {
 				const branches = await this.getBranches();
@@ -189,6 +202,28 @@ export class SourceControlGitService {
 			} catch (error) {
 				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
+		}
+	}
+
+	/**
+	 * If this is a new local repository being set up after remote is ready,
+	 * then set this local to start tracking remote's target branch.
+	 */
+	private async trackRemoteIfReady(targetBranch: string) {
+		if (!this.git) return;
+
+		await this.fetch();
+
+		const { currentBranch, branches: remoteBranches } = await this.getBranches();
+
+		if (!currentBranch && remoteBranches.some((b) => b === targetBranch)) {
+			await this.git.checkout(targetBranch);
+
+			const upstream = [SOURCE_CONTROL_ORIGIN, targetBranch].join('/');
+
+			await this.git.branch([`--set-upstream-to=${upstream}`, targetBranch]);
+
+			this.logger.info('Set local git repository to track remote', { upstream });
 		}
 	}
 
@@ -209,7 +244,7 @@ export class SourceControlGitService {
 			// Get remote branches
 			const { branches } = await this.git.branch(['-r']);
 			const remoteBranches = Object.keys(branches)
-				.map((name) => name.split('/')[1])
+				.map((name) => name.split('/').slice(1).join('/'))
 				.filter((name) => name !== 'HEAD');
 
 			const { current } = await this.git.branch();
@@ -229,7 +264,7 @@ export class SourceControlGitService {
 		}
 		await this.git.checkout(branch);
 		await this.git.branch([`--set-upstream-to=${SOURCE_CONTROL_ORIGIN}/${branch}`, branch]);
-		return this.getBranches();
+		return await this.getBranches();
 	}
 
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
@@ -250,7 +285,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.remote;
-			return this.git.diffSummary(['...' + target, '--ignore-all-space']);
+			return await this.git.diffSummary(['...' + target, '--ignore-all-space']);
 		}
 		return;
 	}
@@ -262,7 +297,7 @@ export class SourceControlGitService {
 		const currentBranch = await this.getCurrentBranch();
 		if (currentBranch.remote) {
 			const target = currentBranch.current;
-			return this.git.diffSummary([target, '--ignore-all-space']);
+			return await this.git.diffSummary([target, '--ignore-all-space']);
 		}
 		return;
 	}
@@ -271,19 +306,20 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (fetch)');
 		}
-		return this.git.fetch();
+		await this.setGitSshCommand();
+		return await this.git.fetch();
 	}
 
 	async pull(options: { ffOnly: boolean } = { ffOnly: true }): Promise<PullResult> {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (pull)');
 		}
+		await this.setGitSshCommand();
 		const params = {};
 		if (options.ffOnly) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Object.assign(params, { '--ff-only': true });
 		}
-		return this.git.pull(params);
+		return await this.git.pull(params);
 	}
 
 	async push(
@@ -296,10 +332,11 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized ({)');
 		}
+		await this.setGitSshCommand();
 		if (force) {
-			return this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
+			return await this.git.push(SOURCE_CONTROL_ORIGIN, branch, ['-f']);
 		}
-		return this.git.push(SOURCE_CONTROL_ORIGIN, branch);
+		return await this.git.push(SOURCE_CONTROL_ORIGIN, branch);
 	}
 
 	async stage(files: Set<string>, deletedFiles?: Set<string>): Promise<string> {
@@ -313,7 +350,7 @@ export class SourceControlGitService {
 				this.logger.debug(`Git rm: ${(error as Error).message}`);
 			}
 		}
-		return this.git.add(Array.from(files));
+		return await this.git.add(Array.from(files));
 	}
 
 	async resetBranch(
@@ -323,9 +360,9 @@ export class SourceControlGitService {
 			throw new ApplicationError('Git is not initialized (Promise)');
 		}
 		if (options?.hard) {
-			return this.git.raw(['reset', '--hard', options.target]);
+			return await this.git.raw(['reset', '--hard', options.target]);
 		}
-		return this.git.raw(['reset', options.target]);
+		return await this.git.raw(['reset', options.target]);
 		// built-in reset method does not work
 		// return this.git.reset();
 	}
@@ -334,7 +371,7 @@ export class SourceControlGitService {
 		if (!this.git) {
 			throw new ApplicationError('Git is not initialized (commit)');
 		}
-		return this.git.commit(message);
+		return await this.git.commit(message);
 	}
 
 	async status(): Promise<StatusResult> {

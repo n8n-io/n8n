@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1138,7 +1139,7 @@ export class Gitlab implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1151,8 +1152,7 @@ export class Gitlab implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property in which to save the binary data of the received file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 			{
 				displayName: 'Additional Parameters',
@@ -1184,7 +1184,7 @@ export class Gitlab implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -1214,7 +1214,7 @@ export class Gitlab implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1227,7 +1227,7 @@ export class Gitlab implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Commit Message',
@@ -1337,7 +1337,7 @@ export class Gitlab implements INodeType {
 		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
 		// 	}
 		// } catch (error) {
-		// 	if (this.continueOnFail()) {
+		// 	if (this.continueOnFail(error)) {
 		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
 		// 	}
 		// 	throw new NodeOperationError(this.getNode(), error as Error);
@@ -1374,7 +1374,7 @@ export class Gitlab implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 
@@ -1755,7 +1755,7 @@ export class Gitlab implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)

@@ -7,16 +7,16 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Cohere } from 'langchain/llms/cohere';
-import { logWrapper } from '../../../utils/logWrapper';
+import { Cohere } from '@langchain/cohere';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmCohere',
-		icon: 'file:cohere.svg',
+		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Language Model Cohere',
@@ -26,7 +26,8 @@ export class LmCohere implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -97,10 +98,11 @@ export class LmCohere implements INodeType {
 		const model = new Cohere({
 			apiKey: credentials.apiKey as string,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

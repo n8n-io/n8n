@@ -21,16 +21,21 @@ export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
+export * from './TypeValidation';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
 	deepCopy,
 	jsonParse,
 	jsonStringify,
+	replaceCircularReferences,
 	sleep,
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,
+	updateDisplayOptions,
+	randomInt,
+	randomString,
 } from './utils';
 export {
 	isINodeProperties,
@@ -40,13 +45,21 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceMapperValue,
+	isFilterValue,
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';
 export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
+export * from './NodeParameters/FilterParameter';
 
-export type { DocMetadata, NativeDoc } from './Extensions';
+export type {
+	DocMetadata,
+	NativeDoc,
+	DocMetadataArgument,
+	DocMetadataExample,
+	Extension,
+} from './Extensions';
 
 declare module 'http' {
 	export interface IncomingMessage {

@@ -1,15 +1,17 @@
-import type { ColumnOptions } from 'typeorm';
+import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+import type { ColumnOptions } from '@n8n/typeorm';
 import {
 	BeforeInsert,
 	BeforeUpdate,
 	CreateDateColumn,
 	PrimaryColumn,
 	UpdateDateColumn,
-} from 'typeorm';
-import config from '@/config';
+} from '@n8n/typeorm';
+import type { Class } from 'n8n-core';
 import { generateNanoId } from '../utils/generators';
 
-const dbType = config.getEnv('database.type');
+export const { type: dbType } = Container.get(GlobalConfig).database;
 
 const timestampSyntax = {
 	sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
@@ -27,9 +29,7 @@ const tsColumnOptions: ColumnOptions = {
 	type: datetimeColumnType,
 };
 
-type Constructor<T> = new (...args: any[]) => T;
-
-function mixinStringId<T extends Constructor<{}>>(base: T) {
+function mixinStringId<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
 		@PrimaryColumn('varchar')
 		id: string;
@@ -44,7 +44,7 @@ function mixinStringId<T extends Constructor<{}>>(base: T) {
 	return Derived;
 }
 
-function mixinTimestamps<T extends Constructor<{}>>(base: T) {
+function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
 		@CreateDateColumn(tsColumnOptions)
 		createdAt: Date;

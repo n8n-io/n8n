@@ -1,13 +1,14 @@
-import type { EnterpriseEditionFeature } from '@/constants';
 import type { Resource, ScopeOptions, Scope } from '@n8n/permissions';
-import type { IRole } from '@/Interface';
+import type { EnterpriseEditionFeatureValue, IRole } from '@/Interface';
 
-export type AuthenticatedPermissionOptions = {};
+export type AuthenticatedPermissionOptions = {
+	bypass?: () => boolean;
+};
 export type CustomPermissionOptions<C = {}> = RBACPermissionCheck<C>;
 export type DefaultUserMiddlewareOptions = {};
 export type InstanceOwnerMiddlewareOptions = {};
 export type EnterprisePermissionOptions = {
-	feature?: EnterpriseEditionFeature | EnterpriseEditionFeature[];
+	feature?: EnterpriseEditionFeatureValue | EnterpriseEditionFeatureValue[];
 	mode?: 'oneOf' | 'allOf';
 };
 export type GuestPermissionOptions = {};

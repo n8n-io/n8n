@@ -1,72 +1,102 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, type StyleValue, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { NodePanelType } from '@/Interface';
+import type { IRunDataDisplayMode, NodePanelType } from '@/Interface';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Props = {
 	modelValue: string;
 	paneType?: NodePanelType;
+	displayMode?: IRunDataDisplayMode;
 	isAreaActive?: boolean;
 };
 
-const INITIAL_WIDTH = '34px';
+const COLLAPSED_WIDTH = '30px';
+const OPEN_WIDTH = '204px';
+const OPEN_MIN_WIDTH = '120px';
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: Props['modelValue']): void;
-	(event: 'focus'): void;
+	'update:modelValue': [value: Props['modelValue']];
+	focus: [];
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
 	paneType: 'output',
+	displayMode: 'schema',
 	isAreaActive: false,
 });
 
 const locale = useI18n();
+const { debounce } = useDebounce();
 
 const inputRef = ref<HTMLInputElement | null>(null);
-const maxWidth = ref(INITIAL_WIDTH);
+const search = ref(props.modelValue ?? '');
 const opened = ref(false);
-const focused = ref(false);
-const placeholder = computed(() =>
-	props.paneType === 'input'
-		? locale.baseText('ndv.search.placeholder.input')
-		: locale.baseText('ndv.search.placeholder.output'),
+const placeholder = computed(() => {
+	if (props.paneType === 'output') {
+		return locale.baseText('ndv.search.placeholder.output');
+	}
+
+	if (props.displayMode === 'schema') {
+		return locale.baseText('ndv.search.placeholder.input.schema');
+	}
+
+	return locale.baseText('ndv.search.placeholder.input');
+});
+
+const style = computed<StyleValue>(() =>
+	opened.value ? { maxWidth: OPEN_WIDTH, minWidth: OPEN_MIN_WIDTH } : { maxWidth: COLLAPSED_WIDTH },
 );
 
 const documentKeyHandler = (event: KeyboardEvent) => {
-	const isTargetAnyFormElement =
+	const isTargetFormElementOrEditable =
 		event.target instanceof HTMLInputElement ||
 		event.target instanceof HTMLTextAreaElement ||
-		event.target instanceof HTMLSelectElement;
-	if (event.key === '/' && !focused.value && props.isAreaActive && !isTargetAnyFormElement) {
+		event.target instanceof HTMLSelectElement ||
+		(event.target as HTMLElement)?.getAttribute?.('contentEditable') === 'true';
+
+	if (event.key === '/' && props.isAreaActive && !isTargetFormElementOrEditable) {
 		inputRef.value?.focus();
 		inputRef.value?.select();
 	}
 };
 
+const debouncedEmitUpdate = debounce(async (value: string) => emit('update:modelValue', value), {
+	debounceTime: 300,
+	trailing: true,
+});
+
 const onSearchUpdate = (value: string) => {
-	emit('update:modelValue', value);
+	search.value = value;
+	void debouncedEmitUpdate(value);
 };
+
 const onFocus = () => {
 	opened.value = true;
-	focused.value = true;
-	maxWidth.value = '30%';
 	inputRef.value?.select();
 	emit('focus');
 };
+
 const onBlur = () => {
-	focused.value = false;
 	if (!props.modelValue) {
 		opened.value = false;
-		maxWidth.value = INITIAL_WIDTH;
 	}
 };
+
 onMounted(() => {
 	document.addEventListener('keyup', documentKeyHandler);
 });
+
 onUnmounted(() => {
 	document.removeEventListener('keyup', documentKeyHandler);
 });
+
+watch(
+	() => props.modelValue,
+	(value) => {
+		search.value = value;
+	},
+);
 </script>
 
 <template>
@@ -77,11 +107,11 @@ onUnmounted(() => {
 			[$style.ioSearch]: true,
 			[$style.ioSearchOpened]: opened,
 		}"
-		:style="{ maxWidth }"
-		:modelValue="modelValue"
+		:style="style"
+		:model-value="search"
 		:placeholder="placeholder"
 		size="small"
-		@update:modelValue="onSearchUpdate"
+		@update:model-value="onSearchUpdate"
 		@focus="onFocus"
 		@blur="onBlur"
 	>
@@ -92,10 +122,9 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .ioSearch {
-	margin-right: var(--spacing-s);
 	transition: max-width 0.3s $ease-out-expo;
 
 	.ioSearchIcon {
@@ -103,8 +132,17 @@ onUnmounted(() => {
 		cursor: pointer;
 	}
 
+	:global(.el-input__prefix) {
+		left: 8px;
+	}
+
+	&:global(.el-input--prefix .el-input__inner) {
+		padding-left: 30px;
+	}
+
 	input {
 		border: 0;
+		opacity: 0;
 		background: transparent;
 		cursor: pointer;
 	}
@@ -114,10 +152,12 @@ onUnmounted(() => {
 	.ioSearchIcon {
 		cursor: default;
 	}
+
 	input {
 		border: var(--input-border-color, var(--border-color-base))
 			var(--input-border-style, var(--border-style-base)) var(--border-width-base);
 		background: var(--input-background-color, var(--color-foreground-xlight));
+		opacity: 1;
 		cursor: text;
 	}
 }

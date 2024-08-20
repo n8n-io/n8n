@@ -5,17 +5,17 @@
 		</div>
 		<div :class="$style.text">
 			<input
+				ref="inputRef"
 				:placeholder="placeholder"
 				:value="modelValue"
 				:class="$style.input"
-				ref="inputRef"
 				autofocus
 				data-test-id="node-creator-search-bar"
 				tabindex="0"
 				@input="onInput"
 			/>
 		</div>
-		<div :class="$style.suffix" v-if="modelValue.length > 0" @click="clear">
+		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
 			<button :class="[$style.clear, $style.clickable]">
 				<font-awesome-icon icon="times-circle" />
 			</button>
@@ -38,7 +38,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'update:modelValue', value: string): void;
+	'update:modelValue': [value: string];
 }>();
 
 const state = reactive({
@@ -130,7 +130,7 @@ defineExpose({
 }
 
 .clear {
-	background-color: $node-creator-search-clear-color;
+	background-color: transparent;
 	padding: 0;
 	border: none;
 	cursor: pointer;

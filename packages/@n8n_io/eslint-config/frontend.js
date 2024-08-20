@@ -4,7 +4,7 @@
 module.exports = {
 	plugins: ['vue'],
 
-	extends: ['plugin:vue/vue3-essential', '@vue/typescript', './base'],
+	extends: ['plugin:vue/vue3-recommended', '@vue/typescript', './base'],
 
 	env: {
 		browser: true,
@@ -16,9 +16,9 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['src/**/*.vue'],
+			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts', '**/*.stories.ts'],
 			rules: {
-				'n8n-local-rules/dangerously-use-html-string-missing': 'error',
+				'import/no-extraneous-dependencies': 'off',
 			},
 		},
 	],
@@ -36,7 +36,36 @@ module.exports = {
 		'vue/v-slot-style': 'error',
 		'vue/no-unused-components': 'error',
 		'vue/multi-word-component-names': 'off',
+		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-explicit-any': 'error',
+		'vue/component-name-in-template-casing': [
+			'error',
+			'PascalCase',
+			{
+				registeredComponentsOnly: true,
+			},
+		],
+		'vue/no-reserved-component-names': [
+			'error',
+			{
+				disallowVueBuiltInComponents: true,
+				disallowVue3BuiltInComponents: false,
+			},
+		],
+		'vue/prop-name-casing': ['error', 'camelCase'],
+		'vue/attribute-hyphenation': ['error', 'always'],
+		'import/no-extraneous-dependencies': 'warn',
+		'vue/define-emits-declaration': ['error', 'type-literal'],
+		'vue/require-macro-variable-name': [
+			'error',
+			{
+				defineProps: 'props',
+				defineEmits: 'emit',
+				defineSlots: 'slots',
+				useSlots: 'slots',
+				useAttrs: 'attrs',
+			},
+		],
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',
@@ -52,5 +81,6 @@ module.exports = {
 		'vue/no-side-effects-in-computed-properties': 'warn',
 		'vue/no-v-text-v-html-on-component': 'warn',
 		'vue/return-in-computed-property': 'warn',
+		'n8n-local-rules/no-plain-errors': 'off',
 	},
 };

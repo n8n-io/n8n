@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 
 export type CredentialOption = {
@@ -8,21 +7,15 @@ export type CredentialOption = {
 	typeDisplayName: string | undefined;
 };
 
-const props = defineProps({
-	credentialOptions: {
-		type: Array as PropType<CredentialOption[]>,
-		required: true,
-	},
-	selectedCredentialId: {
-		type: String,
-		required: false,
-	},
-});
+const props = defineProps<{
+	credentialOptions: CredentialOption[];
+	selectedCredentialId: string | null;
+}>();
 
-const $emit = defineEmits({
-	credentialSelected: (_credentialId: string) => true,
-	newCredential: () => true,
-});
+const emit = defineEmits<{
+	credentialSelected: [credentialId: string];
+	newCredential: [];
+}>();
 
 const i18n = useI18n();
 
@@ -30,9 +23,9 @@ const NEW_CREDENTIALS_TEXT = `- ${i18n.baseText('nodeCredentials.createNew')} -`
 
 const onCredentialSelected = (credentialId: string) => {
 	if (credentialId === NEW_CREDENTIALS_TEXT) {
-		$emit('newCredential');
+		emit('newCredential');
 	} else {
-		$emit('credentialSelected', credentialId);
+		emit('credentialSelected', credentialId);
 	}
 };
 </script>
@@ -40,13 +33,13 @@ const onCredentialSelected = (credentialId: string) => {
 <template>
 	<n8n-select
 		size="small"
-		:modelValue="props.selectedCredentialId"
-		@update:modelValue="onCredentialSelected"
+		:model-value="props.selectedCredentialId"
+		@update:model-value="onCredentialSelected"
 	>
 		<n8n-option
 			v-for="item in props.credentialOptions"
-			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:key="item.id"
+			:data-test-id="`node-credentials-select-item-${item.id}`"
 			:label="item.name"
 			:value="item.id"
 		>
@@ -56,8 +49,8 @@ const onCredentialSelected = (credentialId: string) => {
 			</div>
 		</n8n-option>
 		<n8n-option
-			data-test-id="node-credentials-select-item-new"
 			:key="NEW_CREDENTIALS_TEXT"
+			data-test-id="node-credentials-select-item-new"
 			:value="NEW_CREDENTIALS_TEXT"
 			:label="NEW_CREDENTIALS_TEXT"
 		>

@@ -1,102 +1,25 @@
-import type express from 'express';
-import type {
-	ExecutionError,
-	INode,
-	IRunExecutionData,
-	Workflow,
-	WorkflowExecuteMode,
-} from 'n8n-workflow';
-import { validate } from 'class-validator';
-import { Container } from 'typedi';
-import { Like } from 'typeorm';
-import config from '@/config';
-import type { ExecutionPayload, ICredentialsDb, IWorkflowDb } from '@/Interfaces';
+import { ValidationError, validate } from 'class-validator';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import type { UserUpdatePayload } from '@/requests';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type {
+	UserRoleChangePayload,
+	UserSettingsUpdatePayload,
+	UserUpdatePayload,
+} from '@/requests';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
-
-/**
- * Returns the base URL n8n is reachable from
- */
-export function getBaseUrl(): string {
-	const protocol = config.getEnv('protocol');
-	const host = config.getEnv('host');
-	const port = config.getEnv('port');
-	const path = config.getEnv('path');
-
-	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
-		return `${protocol}://${host}${path}`;
-	}
-	return `${protocol}://${host}:${port}${path}`;
-}
-
-/**
- * Returns the session id if one is set
- */
-export function getSessionId(req: express.Request): string | undefined {
-	return req.headers.sessionid as string | undefined;
-}
-
-/**
- * Generate a unique name for a workflow or credentials entity.
- *
- * - If the name does not yet exist, it returns the requested name.
- * - If the name already exists once, it returns the requested name suffixed with 2.
- * - If the name already exists more than once with suffixes, it looks for the max suffix
- * and returns the requested name with max suffix + 1.
- */
-
-export async function generateUniqueName(
-	requestedName: string,
-	entityType: 'workflow' | 'credentials',
-) {
-	const findConditions = {
-		select: ['name' as const],
-		where: {
-			name: Like(`${requestedName}%`),
-		},
-	};
-
-	const found: Array<WorkflowEntity | ICredentialsDb> =
-		entityType === 'workflow'
-			? await Container.get(WorkflowRepository).find(findConditions)
-			: await Container.get(CredentialsRepository).find(findConditions);
-
-	// name is unique
-	if (found.length === 0) {
-		return requestedName;
-	}
-
-	const maxSuffix = found.reduce((acc, { name }) => {
-		const parts = name.split(`${requestedName} `);
-
-		if (parts.length > 2) return acc;
-
-		const suffix = Number(parts[1]);
-
-		if (!isNaN(suffix) && Math.ceil(suffix) > acc) {
-			acc = Math.ceil(suffix);
-		}
-
-		return acc;
-	}, 0);
-
-	// name is duplicate but no numeric suffixes exist yet
-	if (maxSuffix === 0) {
-		return `${requestedName} 2`;
-	}
-
-	return `${requestedName} ${maxSuffix + 1}`;
-}
+import { NoXss } from '@/validators/no-xss.validator';
 
 export async function validateEntity(
-	entity: WorkflowEntity | CredentialsEntity | TagEntity | User | UserUpdatePayload,
+	entity:
+		| WorkflowEntity
+		| CredentialsEntity
+		| TagEntity
+		| User
+		| UserUpdatePayload
+		| UserRoleChangePayload
+		| UserSettingsUpdatePayload,
 ): Promise<void> {
 	const errors = await validate(entity);
 
@@ -113,85 +36,38 @@ export async function validateEntity(
 	}
 }
 
-/**
- * Create an error execution
- *
- * @param {INode} node
- * @param {IWorkflowDb} workflowData
- * @param {Workflow} workflow
- * @param {WorkflowExecuteMode} mode
- * @returns
- * @memberof ActiveWorkflowRunner
- */
+export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
 
-export async function createErrorExecution(
-	error: ExecutionError,
-	node: INode,
-	workflowData: IWorkflowDb,
-	workflow: Workflow,
-	mode: WorkflowExecuteMode,
-): Promise<void> {
-	const saveDataErrorExecutionDisabled = workflowData?.settings?.saveDataErrorExecution === 'none';
+class StringWithNoXss {
+	@NoXss()
+	value: string;
 
-	if (saveDataErrorExecutionDisabled) return;
-
-	const executionData: IRunExecutionData = {
-		startData: {
-			destinationNode: node.name,
-			runNodeFilter: [node.name],
-		},
-		executionData: {
-			contextData: {},
-			metadata: {},
-			nodeExecutionStack: [
-				{
-					node,
-					data: {
-						main: [
-							[
-								{
-									json: {},
-									pairedItem: {
-										item: 0,
-									},
-								},
-							],
-						],
-					},
-					source: null,
-				},
-			],
-			waitingExecution: {},
-			waitingExecutionSource: {},
-		},
-		resultData: {
-			runData: {
-				[node.name]: [
-					{
-						startTime: 0,
-						executionTime: 0,
-						error,
-						source: [],
-					},
-				],
-			},
-			error,
-			lastNodeExecuted: node.name,
-		},
-	};
-
-	const fullExecutionData: ExecutionPayload = {
-		data: executionData,
-		mode,
-		finished: false,
-		startedAt: new Date(),
-		workflowData,
-		workflowId: workflow.id,
-		stoppedAt: new Date(),
-		status: 'error',
-	};
-
-	await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+	constructor(value: string) {
+		this.value = value;
+	}
 }
 
-export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
+// Temporary solution until we implement payload validation middleware
+export async function validateRecordNoXss(record: Record<string, string>) {
+	const errors: ValidationError[] = [];
+
+	for (const [key, value] of Object.entries(record)) {
+		const stringWithNoXss = new StringWithNoXss(value);
+		const validationErrors = await validate(stringWithNoXss);
+
+		if (validationErrors.length > 0) {
+			const error = new ValidationError();
+			error.property = key;
+			error.constraints = validationErrors[0].constraints;
+			errors.push(error);
+		}
+	}
+
+	if (errors.length > 0) {
+		const errorMessages = errors
+			.map((error) => `${error.property}: ${Object.values(error.constraints ?? {}).join(', ')}`)
+			.join(' | ');
+
+		throw new BadRequestError(errorMessages);
+	}
+}

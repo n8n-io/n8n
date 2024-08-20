@@ -10,7 +10,7 @@ import {
 	PrimaryColumn,
 	Relation,
 	DeleteDateColumn,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
 import type { ExecutionData } from './ExecutionData';
@@ -40,7 +40,7 @@ export class ExecutionEntity {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column('varchar', { nullable: true })
+	@Column('varchar')
 	status: ExecutionStatus;
 
 	@Column(datetimeColumnType)

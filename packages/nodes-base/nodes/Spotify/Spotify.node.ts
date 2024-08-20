@@ -4,11 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
-import { isoCountryCodes } from './IsoCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
@@ -789,7 +790,7 @@ export class Spotify implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll: boolean;
 		let propertyName = '';
@@ -1312,7 +1313,7 @@ export class Spotify implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

@@ -5,18 +5,73 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import type { ClientOptions } from 'openai';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { OpenAIEmbeddings } from '@langchain/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+const modelParameter: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'options',
+	description:
+		'The model which will generate the embeddings. <a href="https://platform.openai.com/docs/models/overview">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
+						},
+						{
+							type: 'filter',
+							properties: {
+								pass: "={{ $responseItem.id.includes('embed') }}",
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.id}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: 'text-embedding-3-small',
+};
 
 export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings OpenAI',
 		name: 'embeddingsOpenAi',
-		icon: 'file:openAi.svg',
+		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -48,8 +103,30 @@ export class EmbeddingsOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL:
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
+			{
+				...modelParameter,
+				default: 'text-embedding-ada-002',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				...modelParameter,
+				displayOptions: {
+					hide: {
+						'@version': [1],
+					},
+				},
+			},
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -115,6 +192,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings(
 			{
+				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
 				openAIApiKey: credentials.apiKey as string,
 				...options,
 			},

@@ -1,37 +1,29 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
 import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
-import { useLoadingService } from '@/composables/useLoadingService';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
-	(e: 'change', value: boolean): void;
+	change: [value: boolean];
 }>();
 
-const props = defineProps({
-	provider: {
-		type: Object as PropType<ExternalSecretsProvider>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		provider: ExternalSecretsProvider;
+		eventBus?: EventBus;
+		disabled?: boolean;
+		beforeUpdate?: (value: boolean) => Promise<boolean>;
+	}>(),
+	{
+		eventBus: undefined,
+		disabled: false,
+		beforeUpdate: undefined,
 	},
-	eventBus: {
-		type: Object as PropType<EventBus>,
-		default: undefined,
-	},
-	disabled: {
-		type: Boolean,
-		default: false,
-	},
-	beforeUpdate: {
-		type: Function,
-		default: undefined,
-	},
-});
+);
 
-const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -54,7 +46,7 @@ async function onUpdateConnected(value: boolean) {
 
 		if (props.beforeUpdate) {
 			const result = await props.beforeUpdate(value);
-			if (result === false) {
+			if (!result) {
 				saving.value = false;
 				return;
 			}
@@ -72,7 +64,7 @@ async function onUpdateConnected(value: boolean) {
 </script>
 
 <template>
-	<div class="connection-switch" v-loading="saving">
+	<div v-loading="saving" class="connection-switch">
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"
@@ -87,7 +79,7 @@ async function onUpdateConnected(value: boolean) {
 			}}
 		</n8n-text>
 		<el-switch
-			:modelValue="provider.connected"
+			:model-value="provider.connected"
 			:title="
 				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
 					interpolate: { provider: provider.displayName },
@@ -95,7 +87,7 @@ async function onUpdateConnected(value: boolean) {
 			"
 			:disabled="disabled"
 			data-test-id="settings-external-secrets-connected-switch"
-			@update:modelValue="onUpdateConnected"
+			@update:model-value="onUpdateConnected"
 		>
 		</el-switch>
 	</div>

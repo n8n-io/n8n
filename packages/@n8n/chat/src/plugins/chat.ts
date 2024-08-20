@@ -1,10 +1,10 @@
 import type { Plugin } from 'vue';
 import { computed, nextTick, ref } from 'vue';
-import type { ChatMessage, ChatOptions } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { chatEventBus } from '@/event-buses';
-import * as api from '@/api';
-import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@/constants';
+import type { ChatMessage, ChatOptions } from '@n8n/chat/types';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import * as api from '@n8n/chat/api';
+import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@n8n/chat/constants';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ChatPlugin: Plugin<ChatOptions> = {
@@ -24,11 +24,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			})),
 		);
 
-		async function sendMessage(text: string) {
+		async function sendMessage(text: string, files: File[] = []) {
 			const sentMessage: ChatMessage = {
 				id: uuidv4(),
 				text,
 				sender: 'user',
+				files,
 				createdAt: new Date().toISOString(),
 			};
 
@@ -41,13 +42,24 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 			const sendMessageResponse = await api.sendMessage(
 				text,
+				files,
 				currentSessionId.value as string,
 				options,
 			);
 
+			let textMessage = sendMessageResponse.output ?? sendMessageResponse.text ?? '';
+
+			if (textMessage === '' && Object.keys(sendMessageResponse).length > 0) {
+				try {
+					textMessage = JSON.stringify(sendMessageResponse, null, 2);
+				} catch (e) {
+					// Failed to stringify the object so fallback to empty string
+				}
+			}
+
 			const receivedMessage: ChatMessage = {
 				id: uuidv4(),
-				text: sendMessageResponse.output,
+				text: textMessage,
 				sender: 'bot',
 				createdAt: new Date().toISOString(),
 			};
@@ -61,6 +73,10 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		}
 
 		async function loadPreviousSession() {
+			if (!options.loadPreviousSession) {
+				return;
+			}
+
 			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 			const timestamp = new Date().toISOString();

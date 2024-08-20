@@ -2,24 +2,28 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
-	IRole,
 	IUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, IUserSettings } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import type { ScopeLevel } from '@n8n/permissions';
+
+export interface IUpdateUserSettingsReqPayload {
+	allowSSOManualLogin?: boolean;
+	userActivated?: boolean;
+}
 
 export async function loginCurrentUser(
 	context: IRestApiContext,
 ): Promise<CurrentUserResponse | null> {
-	return makeRestApiRequest(context, 'GET', '/login');
+	return await makeRestApiRequest(context, 'GET', '/login');
 }
 
 export async function login(
 	context: IRestApiContext,
 	params: { email: string; password: string; mfaToken?: string; mfaRecoveryToken?: string },
 ): Promise<CurrentUserResponse> {
-	return makeRestApiRequest(context, 'POST', '/login', params);
+	return await makeRestApiRequest(context, 'POST', '/login', params);
 }
 
 export async function logout(context: IRestApiContext): Promise<void> {
@@ -30,14 +34,19 @@ export async function setupOwner(
 	context: IRestApiContext,
 	params: { firstName: string; lastName: string; email: string; password: string },
 ): Promise<CurrentUserResponse> {
-	return makeRestApiRequest(context, 'POST', '/owner/setup', params as unknown as IDataObject);
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		'/owner/setup',
+		params as unknown as IDataObject,
+	);
 }
 
 export async function validateSignupToken(
 	context: IRestApiContext,
 	params: { inviterId: string; inviteeId: string },
 ): Promise<{ inviter: { firstName: string; lastName: string } }> {
-	return makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
+	return await makeRestApiRequest(context, 'GET', '/resolve-signup-token', params);
 }
 
 export async function signup(
@@ -51,7 +60,7 @@ export async function signup(
 	},
 ): Promise<CurrentUserResponse> {
 	const { inviteeId, ...props } = params;
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/users/${params.inviteeId}`,
@@ -80,38 +89,46 @@ export async function changePassword(
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
 
+export type UpdateCurrentUserParams = {
+	firstName?: string;
+	lastName?: string;
+	email: string;
+	mfaCode?: string;
+};
+
 export async function updateCurrentUser(
 	context: IRestApiContext,
-	params: {
-		id?: string;
-		firstName?: string;
-		lastName?: string;
-		email: string;
-	},
+	params: UpdateCurrentUserParams,
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return makeRestApiRequest(context, 'PATCH', '/me/settings', settings as IDataObject);
+	settings: IUpdateUserSettingsReqPayload,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }
 
 export async function updateOtherUserSettings(
 	context: IRestApiContext,
 	userId: string,
-	settings: IUserResponse['settings'],
-): Promise<IUserResponse['settings']> {
-	return makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings as IDataObject);
+	settings: IUpdateUserSettingsReqPayload,
+): Promise<IUserSettings> {
+	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
+
+export type UpdateUserPasswordParams = {
+	newPassword: string;
+	currentPassword: string;
+	mfaCode?: string;
+};
 
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: UpdateUserPasswordParams,
 ): Promise<void> {
-	return makeRestApiRequest(context, 'PATCH', '/me/password', params);
+	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }
 
 export async function deleteUser(
@@ -122,21 +139,21 @@ export async function deleteUser(
 }
 
 export async function getUsers(context: IRestApiContext): Promise<IUserResponse[]> {
-	return makeRestApiRequest(context, 'GET', '/users');
+	return await makeRestApiRequest(context, 'GET', '/users');
 }
 
 export async function getInviteLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
 ): Promise<{ link: string }> {
-	return makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
+	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
 export async function getPasswordResetLink(
 	context: IRestApiContext,
 	{ id }: { id: string },
 ): Promise<{ link: string }> {
-	return makeRestApiRequest(context, 'GET', `/users/${id}/password-reset-link`);
+	return await makeRestApiRequest(context, 'GET', `/users/${id}/password-reset-link`);
 }
 
 export async function submitPersonalizationSurvey(
@@ -146,9 +163,14 @@ export async function submitPersonalizationSurvey(
 	await makeRestApiRequest(context, 'POST', '/me/survey', params as unknown as IDataObject);
 }
 
-export async function updateRole(
+export interface UpdateGlobalRolePayload {
+	id: string;
+	newRoleName: InvitableRoleName;
+}
+
+export async function updateGlobalRole(
 	context: IRestApiContext,
-	{ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } },
+	{ id, newRoleName }: UpdateGlobalRolePayload,
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRole: role });
+	return await makeRestApiRequest(context, 'PATCH', `/users/${id}/role`, { newRoleName });
 }

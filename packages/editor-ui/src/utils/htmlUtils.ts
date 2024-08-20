@@ -18,6 +18,10 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
+				// href is allowed but we need to sanitize certain protocols
+				if (name === 'href' && !value.match(/^https?:\/\//gm)) {
+					return '';
+				}
 				return `${name}="${friendlyAttrValue(value)}"`;
 			}
 
@@ -57,15 +61,9 @@ export const capitalizeFirstLetter = (text: string): string => {
 };
 
 export const getBannerRowHeight = async (): Promise<number> => {
-	return new Promise((resolve) => {
+	return await new Promise((resolve) => {
 		setTimeout(() => {
 			resolve(document.getElementById('banners')?.clientHeight ?? 0);
 		}, 0);
 	});
-};
-
-export const highlightText = (text: string, search = ''): string => {
-	const pattern = search.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
-	const regex = new RegExp(`(${pattern})`, 'gi');
-	return search ? text?.replace(regex, '<mark class="highlight">$1</mark>') : text;
 };

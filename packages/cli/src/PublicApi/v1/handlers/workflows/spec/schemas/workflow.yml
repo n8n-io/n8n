@@ -35,7 +35,6 @@ properties:
     $ref: './workflowSettings.yml'
   staticData:
     example: { lastId: 1 }
-    nullable: true
     anyOf:
       - type: string
         format: 'jsonString'
@@ -45,5 +44,5 @@ properties:
   tags:
     type: array
     items:
-      $ref: './tag.yml'
+      $ref: '../../../tags/spec/schemas/tag.yml'
     readOnly: true

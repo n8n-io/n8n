@@ -1,17 +1,17 @@
 import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
 import { Pinecone } from '@pinecone-database/pinecone';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');
 
 	const client = new Pinecone({
 		apiKey: credentials.apiKey as string,
-		environment: credentials.environment as string,
 	});
 
 	const indexes = await client.listIndexes();
 
-	const results = indexes.map((index) => ({
+	const results = (indexes.indexes ?? []).map((index) => ({
 		name: index.name,
 		value: index.name,
 	}));
@@ -46,6 +46,24 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 			value: path.replace('/', ''),
 		});
 	}
+
+	return { results };
+}
+
+export async function qdrantCollectionsSearch(this: ILoadOptionsFunctions) {
+	const credentials = await this.getCredentials('qdrantApi');
+
+	const client = new QdrantClient({
+		url: credentials.qdrantUrl as string,
+		apiKey: credentials.apiKey as string,
+	});
+
+	const response = await client.getCollections();
+
+	const results = response.collections.map((collection) => ({
+		name: collection.name,
+		value: collection.name,
+	}));
 
 	return { results };
 }

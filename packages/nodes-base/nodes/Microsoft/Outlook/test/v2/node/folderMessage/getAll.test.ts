@@ -10,7 +10,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequestAllItems: jest.fn(async function (method: string) {
+		microsoftApiRequestAllItems: jest.fn(async function () {
 			return [
 				{
 					'@odata.etag': 'W/"CQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFW3CAj"',
@@ -60,6 +60,6 @@ describe('Test MicrosoftOutlookV2, folderMessage => getAll', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

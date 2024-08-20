@@ -3,9 +3,9 @@ import type {
 	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import { capitalCase } from 'change-case';
 
@@ -14,13 +14,13 @@ import { capitalCase } from 'change-case';
  */
 export async function lemlistApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		uri: `https://api.lemlist.com/api${endpoint}`,
@@ -41,7 +41,7 @@ export async function lemlistApiRequest(
 		Object.assign(options, option);
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
 /**
@@ -49,7 +49,7 @@ export async function lemlistApiRequest(
  */
 export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject = {},
 ) {
@@ -71,16 +71,53 @@ export async function lemlistApiRequestAllItems(
 export function getEvents() {
 	const events = [
 		'*',
-		'emailsBounced',
+		'contacted',
+		'hooked',
+		'attracted',
+		'warmed',
+		'interested',
+		'skipped',
+		'notInterested',
+		'emailsSent',
+		'emailsOpened',
 		'emailsClicked',
+		'emailsReplied',
+		'emailsBounced',
+		'emailsSendFailed',
 		'emailsFailed',
+		'emailsUnsubscribed',
 		'emailsInterested',
 		'emailsNotInterested',
-		'emailsOpened',
-		'emailsReplied',
-		'emailsSendFailed',
-		'emailsSent',
-		'emailsUnsubscribed',
+		'opportunitiesDone',
+		'aircallCreated',
+		'aircallEnded',
+		'aircallDone',
+		'aircallInterested',
+		'aircallNotInterested',
+		'apiDone',
+		'apiInterested',
+		'apiNotInterested',
+		'apiFailed',
+		'linkedinVisitDone',
+		'linkedinVisitFailed',
+		'linkedinInviteDone',
+		'linkedinInviteFailed',
+		'linkedinInviteAccepted',
+		'linkedinReplied',
+		'linkedinSent',
+		'linkedinVoiceNoteDone',
+		'linkedinVoiceNoteFailed',
+		'linkedinInterested',
+		'linkedinNotInterested',
+		'linkedinSendFailed',
+		'manualInterested',
+		'manualNotInterested',
+		'paused',
+		'resumed',
+		'customDomainErrors',
+		'connectionIssue',
+		'sendLimitReached',
+		'lemwarmPaused',
 	];
 
 	return events.map((event: string) => ({

@@ -57,5 +57,5 @@ const onSubmit = async (values: { firstName: string; lastName: string }) => {
 </script>
 
 <template>
-	<AuthView :form="FORM_CONFIG" :formLoading="loading" @submit="onSubmit" />
+	<AuthView :form="FORM_CONFIG" :form-loading="loading" @submit="onSubmit" />
 </template>

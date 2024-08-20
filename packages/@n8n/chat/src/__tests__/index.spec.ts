@@ -14,9 +14,8 @@ import {
 	getChatWrapper,
 	getGetStartedButton,
 	getMountingTarget,
-} from '@/__tests__/utils';
-import { createChat } from '@/index';
-import { useChat } from '@/composables';
+} from '@n8n/chat/__tests__/utils';
+import { createChat } from '@n8n/chat/index';
 
 describe('createChat()', () => {
 	let app: ReturnType<typeof createChat>;
@@ -77,6 +76,7 @@ describe('createChat()', () => {
 
 			app = createChat({
 				mode: 'fullscreen',
+				showWelcomeScreen: true,
 			});
 
 			const getStartedButton = getGetStartedButton();
@@ -85,7 +85,9 @@ describe('createChat()', () => {
 			expect(fetchSpy.mock.calls[0][1]).toEqual(
 				expect.objectContaining({
 					method: 'POST',
-					headers: {},
+					headers: {
+						'Content-Type': 'application/json',
+					},
 					body: expect.stringContaining('"action":"loadPreviousSession"') as unknown,
 					mode: 'cors',
 					cache: 'no-cache',
@@ -111,9 +113,6 @@ describe('createChat()', () => {
 					const trigger = getChatWindowToggle();
 					await fireEvent.click(trigger as HTMLElement);
 				}
-
-				const getStartedButton = getGetStartedButton();
-				await fireEvent.click(getStartedButton as HTMLElement);
 
 				expect(getChatMessages().length).toBe(initialMessages.length);
 				expect(getChatMessageByText(initialMessages[0])).toBeInTheDocument();
@@ -144,11 +143,9 @@ describe('createChat()', () => {
 				}
 
 				expect(getChatMessageTyping()).not.toBeInTheDocument();
-
-				const getStartedButton = getGetStartedButton();
-				await fireEvent.click(getStartedButton as HTMLElement);
-
 				expect(getChatMessages().length).toBe(2);
+
+				await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
 
 				const textarea = getChatInputTextarea();
 				const sendButton = getChatInputSendButton();
@@ -159,7 +156,9 @@ describe('createChat()', () => {
 				expect(fetchSpy.mock.calls[1][1]).toEqual(
 					expect.objectContaining({
 						method: 'POST',
-						headers: {},
+						headers: {
+							'Content-Type': 'application/json',
+						},
 						body: expect.stringMatching(/"action":"sendMessage"/) as unknown,
 						mode: 'cors',
 						cache: 'no-cache',
@@ -182,9 +181,6 @@ describe('createChat()', () => {
 				const input = 'Teach me javascript!';
 				const output = '# Code\n```js\nconsole.log("Hello World!");\n```';
 
-				const chatStore = useChat();
-				console.log(chatStore);
-
 				const fetchSpy = vi.spyOn(window, 'fetch');
 				fetchSpy
 					.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
@@ -199,8 +195,7 @@ describe('createChat()', () => {
 					await fireEvent.click(trigger as HTMLElement);
 				}
 
-				const getStartedButton = getGetStartedButton();
-				await fireEvent.click(getStartedButton as HTMLElement);
+				await waitFor(() => expect(getChatInputTextarea()).toBeInTheDocument());
 
 				const textarea = getChatInputTextarea();
 				const sendButton = getChatInputSendButton();

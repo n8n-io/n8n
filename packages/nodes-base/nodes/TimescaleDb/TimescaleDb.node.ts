@@ -13,7 +13,7 @@ export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TimescaleDB',
 		name: 'timescaleDb',
-		icon: 'file:timescale.svg',
+		icon: { light: 'file:timescaleDb.svg', dark: 'file:timescaleDb.dark.svg' },
 		group: ['input'],
 		version: 1,
 		description: 'Add and update data in TimescaleDB',
@@ -22,6 +22,7 @@ export class TimescaleDb implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'timescaleDb',
@@ -67,7 +68,6 @@ export class TimescaleDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {

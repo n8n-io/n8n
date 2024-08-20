@@ -1,4 +1,3 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -8,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import {
@@ -101,7 +101,7 @@ export class PayPal implements INodeType {
 
 				const base64Key = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Basic ${base64Key}`,
 					},
@@ -242,7 +242,7 @@ export class PayPal implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

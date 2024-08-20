@@ -2,29 +2,29 @@
 	<aside :class="$style.floatingNodes">
 		<ul
 			v-for="connectionGroup in connectionGroups"
-			:class="[$style.nodesList, $style[connectionGroup]]"
 			:key="connectionGroup"
+			:class="[$style.nodesList, $style[connectionGroup]]"
 		>
 			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
 				<n8n-tooltip
-					:placement="tooltipPositionMapper[connectionGroup]"
 					v-if="node && nodeType"
-					:teleported="false"
 					:key="node.name"
+					:placement="tooltipPositionMapper[connectionGroup]"
+					:teleported="false"
 					:offset="60"
 				>
 					<template #content>{{ node.name }}</template>
 
 					<li
 						:class="$style.connectedNode"
-						@click="$emit('switchSelectedNode', node.name)"
 						data-test-id="floating-node"
 						:data-node-name="node.name"
 						:data-node-placement="connectionGroup"
+						@click="emit('switchSelectedNode', node.name)"
 					>
-						<node-icon
-							:nodeType="nodeType"
-							:nodeName="node.name"
+						<NodeIcon
+							:node-type="nodeType"
+							:node-name="node.name"
 							:tooltip-position="tooltipPositionMapper[connectionGroup]"
 							:size="35"
 							circle
@@ -46,19 +46,19 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
-	type: 'input' | 'sub-input' | 'sub-output' | 'output';
 }
 const enum FloatingNodePosition {
 	top = 'outputSub',
 	right = 'outputMain',
-	bottom = 'inputSub',
 	left = 'inputMain',
 }
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-const emit = defineEmits(['switchSelectedNode']);
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+}>();
 
 interface NodeConfig {
 	node: INodeUi;
@@ -77,7 +77,6 @@ function onKeyDown(e: KeyboardEvent) {
 		const mapper = {
 			ArrowUp: FloatingNodePosition.top,
 			ArrowRight: FloatingNodePosition.right,
-			ArrowDown: FloatingNodePosition.bottom,
 			ArrowLeft: FloatingNodePosition.left,
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
@@ -111,9 +110,6 @@ const connectedNodes = computed<
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingNodePosition.bottom]: getINodesFromNames(
-			workflow.getParentNodes(rootName, 'ALL_NON_MAIN'),
-		),
 		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
 	};
 });
@@ -121,15 +117,13 @@ const connectedNodes = computed<
 const connectionGroups = [
 	FloatingNodePosition.top,
 	FloatingNodePosition.right,
-	FloatingNodePosition.bottom,
 	FloatingNodePosition.left,
 ];
 const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
-	[FloatingNodePosition.bottom]: 'top',
 	[FloatingNodePosition.left]: 'right',
-};
+} as const;
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeyDown, true);
@@ -210,7 +204,7 @@ defineExpose({
 }
 .connectedNode {
 	border: var(--border-base);
-	background-color: var(--color-canvas-node-background);
+	background-color: var(--color-node-background);
 	border-radius: 100%;
 	padding: var(--spacing-s);
 	cursor: pointer;
@@ -226,9 +220,9 @@ defineExpose({
 		content: '';
 		position: absolute;
 		top: -35%;
-		right: -30%;
+		right: -15%;
 		bottom: -35%;
-		left: -30%;
+		left: -15%;
 		z-index: -1;
 	}
 	.outputMain &,

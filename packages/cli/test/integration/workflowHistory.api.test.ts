@@ -1,4 +1,3 @@
-import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 
 import * as testDb from './shared/testDb';
@@ -6,6 +5,7 @@ import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createWorkflowHistoryItem } from './shared/db/workflowHistory';
+import type { SuperAgentTest } from './shared/types';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -60,12 +60,13 @@ describe('GET /workflow-history/:workflowId', () => {
 		const versions = await Promise.all(
 			new Array(10)
 				.fill(undefined)
-				.map(async (_, i) =>
-					createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
+				.map(
+					async (_, i) =>
+						await createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
 				),
 		);
 
-		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0] as any;
 		delete last.nodes;
 		delete last.connections;
 
@@ -84,16 +85,17 @@ describe('GET /workflow-history/:workflowId', () => {
 		const versions = await Promise.all(
 			new Array(10)
 				.fill(undefined)
-				.map(async (_, i) =>
-					createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
+				.map(
+					async (_, i) =>
+						await createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
 				),
 		);
 
-		const versions2 = await Promise.all(
-			new Array(10).fill(undefined).map(async (_) => createWorkflowHistoryItem(workflow2.id)),
+		await Promise.all(
+			new Array(10).fill(undefined).map(async (_) => await createWorkflowHistoryItem(workflow2.id)),
 		);
 
-		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0] as any;
 		delete last.nodes;
 		delete last.connections;
 
@@ -111,12 +113,13 @@ describe('GET /workflow-history/:workflowId', () => {
 		const versions = await Promise.all(
 			new Array(10)
 				.fill(undefined)
-				.map(async (_, i) =>
-					createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
+				.map(
+					async (_, i) =>
+						await createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
 				),
 		);
 
-		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0] as any;
 		delete last.nodes;
 		delete last.connections;
 
@@ -134,12 +137,13 @@ describe('GET /workflow-history/:workflowId', () => {
 		const versions = await Promise.all(
 			new Array(10)
 				.fill(undefined)
-				.map(async (_, i) =>
-					createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
+				.map(
+					async (_, i) =>
+						await createWorkflowHistoryItem(workflow.id, { createdAt: new Date(Date.now() + i) }),
 				),
 		);
 
-		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[5]! as any;
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[5] as any;
 		delete last.nodes;
 		delete last.connections;
 

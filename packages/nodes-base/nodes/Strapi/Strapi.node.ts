@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -9,6 +7,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -99,7 +98,7 @@ export class Strapi implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as IDataObject;
-				let options = {} as OptionsWithUri;
+				let options: IRequestOptions = {};
 
 				const url = removeTrailingSlash(credentials.url as string);
 
@@ -390,7 +389,7 @@ export class Strapi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

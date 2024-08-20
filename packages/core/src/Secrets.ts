@@ -3,7 +3,7 @@ import { ExpressionError } from 'n8n-workflow';
 
 function buildSecretsValueProxy(value: IDataObject): unknown {
 	return new Proxy(value, {
-		get(target, valueName) {
+		get(_target, valueName) {
 			if (typeof valueName !== 'string') {
 				return;
 			}
@@ -27,7 +27,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 	return new Proxy(
 		{},
 		{
-			get(target, providerName) {
+			get(_target, providerName) {
 				if (typeof providerName !== 'string') {
 					return {};
 				}
@@ -35,7 +35,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 					return new Proxy(
 						{},
 						{
-							get(target2, secretName): IDataObject | undefined {
+							get(_target2, secretName) {
 								if (typeof secretName !== 'string') {
 									return;
 								}
@@ -47,7 +47,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 								}
 								const retValue = secretsHelpers.getSecret(providerName, secretName);
 								if (typeof retValue === 'object' && retValue !== null) {
-									return buildSecretsValueProxy(retValue) as IDataObject;
+									return buildSecretsValueProxy(retValue as IDataObject);
 								}
 								return retValue;
 							},

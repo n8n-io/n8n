@@ -1,15 +1,15 @@
-import type { OptionsWithUri } from 'request';
-
 import { simpleParser } from 'mailparser';
 
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INode,
 	INodeExecutionData,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -43,14 +43,14 @@ import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -265,7 +265,7 @@ export async function encodeEmail(email: IEmail) {
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -477,7 +477,6 @@ export function prepareEmailBody(
 export async function prepareEmailAttachments(
 	this: IExecuteFunctions,
 	options: IDataObject,
-	items: INodeExecutionData[],
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
@@ -536,7 +535,6 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 
 export async function replyToEmail(
 	this: IExecuteFunctions,
-	items: INodeExecutionData[],
 	gmailId: string,
 	options: IDataObject,
 	itemIndex: number,
@@ -558,7 +556,6 @@ export async function replyToEmail(
 		attachments = await prepareEmailAttachments.call(
 			this,
 			options.attachmentsUi as IDataObject,
-			items,
 			itemIndex,
 		);
 		if (attachments.length) {
@@ -638,7 +635,7 @@ export async function replyToEmail(
 		threadId,
 	};
 
-	return googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(

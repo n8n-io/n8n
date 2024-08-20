@@ -1,4 +1,4 @@
-import { BaseOutputParser, OutputParserException } from 'langchain/schema/output_parser';
+import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 
 export class ItemListOutputParser extends BaseOutputParser<string[]> {
 	lc_namespace = ['n8n-nodes-langchain', 'output_parsers', 'list_items'];

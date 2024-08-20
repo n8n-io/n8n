@@ -2,15 +2,17 @@
  * Creates event listeners for `data-action` attribute to allow for actions to be called from locale without using
  * unsafe onclick attribute
  */
-import { reactive, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { reactive, computed, onMounted, onUnmounted } from 'vue';
+import type { LinkActionFn, RegisterCustomActionOpts } from '@/event-bus';
 import { globalLinkActionsEventBus } from '@/event-bus';
 
 const state = reactive({
-	customActions: {} as Record<string, Function>,
+	customActions: {} as Record<string, LinkActionFn>,
+	delegatedClickHandler: null as null | ((e: MouseEvent) => void),
 });
 
-export default () => {
-	function registerCustomAction({ key, action }: { key: string; action: Function }) {
+export function useGlobalLinkActions() {
+	function registerCustomAction({ key, action }: RegisterCustomActionOpts) {
 		state.customActions[key] = action;
 	}
 	function unregisterCustomAction(key: string) {
@@ -50,21 +52,23 @@ export default () => {
 		}
 	}
 
-	const availableActions = computed<{ [key: string]: Function }>(() => ({
+	const availableActions = computed<{ [key: string]: LinkActionFn }>(() => ({
 		reload,
 		...state.customActions,
 	}));
 
 	onMounted(() => {
-		const instance = getCurrentInstance();
+		if (state.delegatedClickHandler) return;
+
+		state.delegatedClickHandler = delegateClick;
 		window.addEventListener('click', delegateClick);
 
 		globalLinkActionsEventBus.on('registerGlobalLinkAction', registerCustomAction);
 	});
 
 	onUnmounted(() => {
-		const instance = getCurrentInstance();
 		window.removeEventListener('click', delegateClick);
+		state.delegatedClickHandler = null;
 
 		globalLinkActionsEventBus.off('registerGlobalLinkAction', registerCustomAction);
 	});
@@ -73,4 +77,4 @@ export default () => {
 		registerCustomAction,
 		unregisterCustomAction,
 	};
-};
+}

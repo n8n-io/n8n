@@ -6,9 +6,8 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatGooglePaLM } from 'langchain/chat_models/googlepalm';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { ChatGooglePaLM } from '@langchain/community/chat_models/googlepalm';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,6 +15,7 @@ export class LmChatGooglePalm implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatGooglePalm',
 		icon: 'file:google.svg',
+		hidden: true,
 		group: ['transform'],
 		version: 1,
 		description: 'Chat Model Google PaLM',
@@ -25,7 +25,8 @@ export class LmChatGooglePalm implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -51,7 +52,13 @@ export class LmChatGooglePalm implements INodeType {
 			baseURL: '={{ $credentials.host }}',
 		},
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					"Google PaLM API is <a href='https://ai.google.dev/palm_docs/deprecation' target='_blank'>deprecated</a>. Please use Google Vertex or Google Gemini nodes instead.",
+				name: 'deprecated',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Model',
 				name: 'modelName',
@@ -156,10 +163,11 @@ export class LmChatGooglePalm implements INodeType {
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

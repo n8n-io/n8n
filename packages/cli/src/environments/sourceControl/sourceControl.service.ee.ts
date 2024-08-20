@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import path from 'path';
 import {
 	getTagsPath,
@@ -25,13 +25,12 @@ import { SourceControlPreferencesService } from './sourceControlPreferences.serv
 import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './sourceControlImport.service.ee';
 import type { User } from '@db/entities/User';
-import isEqual from 'lodash/isEqual';
 import type { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -39,6 +38,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class SourceControlService {
+	/** Path to SSH private key in filesystem. */
 	private sshKeyName: string;
 
 	private sshFolder: string;
@@ -52,6 +52,7 @@ export class SourceControlService {
 		private sourceControlExportService: SourceControlExportService,
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
+		private readonly eventService: EventService,
 	) {
 		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
 		this.gitFolder = gitFolder;
@@ -112,12 +113,12 @@ export class SourceControlService {
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
 			if (!options.keepKeyPair) {
-				await this.sourceControlPreferencesService.deleteKeyPairFiles();
+				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
-			throw Error(`Failed to disconnect from source control: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to disconnect from source control', { cause: error });
 		}
 	}
 
@@ -171,7 +172,7 @@ export class SourceControlService {
 			await this.initGitService();
 		}
 		await this.gitService.fetch();
-		return this.gitService.getBranches();
+		return await this.gitService.getBranches();
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
@@ -182,7 +183,7 @@ export class SourceControlService {
 			branchName: branch,
 			connected: branch?.length > 0,
 		});
-		return this.gitService.setBranch(branch);
+		return await this.gitService.setBranch(branch);
 	}
 
 	// will reset the branch to the remote branch and pull
@@ -291,7 +292,8 @@ export class SourceControlService {
 		});
 
 		// #region Tracking Information
-		void Container.get(InternalHooks).onSourceControlUserFinishedPushUI(
+		this.eventService.emit(
+			'source-control-user-finished-push-ui',
 			getTrackingInformationFromPostPushResult(statusResult),
 		);
 		// #endregion
@@ -368,7 +370,8 @@ export class SourceControlService {
 		}
 
 		// #region Tracking Information
-		void Container.get(InternalHooks).onSourceControlUserFinishedPullUI(
+		this.eventService.emit(
+			'source-control-user-finished-pull-ui',
 			getTrackingInformationFromPullResult(statusResult),
 		);
 		// #endregion
@@ -383,7 +386,7 @@ export class SourceControlService {
 	 * Does a comparison between the local and remote workfolder based on NOT the git status,
 	 * but certain parameters within the items being synced.
 	 * For workflows, it compares the versionIds
-	 * For credentials, it compares the name, type and nodeAccess
+	 * For credentials, it compares the name and type
 	 * For variables, it compares the name
 	 * For tags, it compares the name and mapping
 	 * @returns either SourceControlledFile[] if verbose is false,
@@ -421,11 +424,13 @@ export class SourceControlService {
 
 		// #region Tracking Information
 		if (options.direction === 'push') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPushUI(
+			this.eventService.emit(
+				'source-control-user-started-push-ui',
 				getTrackingInformationFromPrePushResult(sourceControlledFiles),
 			);
 		} else if (options.direction === 'pull') {
-			void Container.get(InternalHooks).onSourceControlUserStartedPullUI(
+			this.eventService.emit(
+				'source-control-user-started-pull-ui',
 				getTrackingInformationFromPullResult(sourceControlledFiles),
 			);
 		}
@@ -564,12 +569,7 @@ export class SourceControlService {
 		> = [];
 		credLocalIds.forEach((local) => {
 			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return (
-					remote.id === local.id &&
-					(remote.name !== local.name ||
-						remote.type !== local.type ||
-						!isEqual(remote.nodesAccess, local.nodesAccess))
-				);
+				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
 			});
 			if (mismatchingCreds) {
 				credModifiedInEither.push({

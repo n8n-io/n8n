@@ -1,18 +1,21 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { XataChatMessageHistory } from 'langchain/stores/message/xata';
-import { BufferMemory } from 'langchain/memory';
+import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
+import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { sessionIdOption, sessionKeyProperty, contextWindowLengthProperty } from '../descriptions';
+import { getSessionId } from '../../../utils/helpers';
+
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xata',
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -51,20 +54,57 @@ export class MemoryXata implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionId',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				...sessionIdOption,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			sessionKeyProperty,
+			{
+				...contextWindowLengthProperty,
+				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
 			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('xataApi');
+		const nodeVersion = this.getNode().typeVersion;
+
+		let sessionId;
+
+		if (nodeVersion >= 1.2) {
+			sessionId = getSessionId(this, itemIndex);
+		} else {
+			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		}
 
 		const xataClient = new BaseClient({
 			apiKey: credentials.apiKey as string,
 			branch: (credentials.branch as string) || 'main',
 			databaseURL: credentials.databaseEndpoint as string,
 		});
-
-		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 
 		const table = (credentials.databaseEndpoint as string).match(
 			/https:\/\/[^.]+\.[^.]+\.xata\.sh\/db\/([^\/:]+)/,
@@ -77,16 +117,28 @@ export class MemoryXata implements INodeType {
 			);
 		}
 
-		const memory = new BufferMemory({
-			chatHistory: new XataChatMessageHistory({
-				table: table[1],
-				sessionId,
-				client: xataClient,
-				apiKey: credentials.apiKey as string,
-			}),
+		const chatHistory = new XataChatMessageHistory({
+			table: table[1],
+			sessionId,
+			client: xataClient,
+			apiKey: credentials.apiKey as string,
+		});
+
+		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;
+		const kOptions =
+			this.getNode().typeVersion < 1.3
+				? {}
+				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
+
+		const memory = new memClass({
+			chatHistory,
 			memoryKey: 'chat_history',
 			returnMessages: true,
+			inputKey: 'input',
+			outputKey: 'output',
+			...kOptions,
 		});
+
 		return {
 			response: logWrapper(memory, this),
 		};

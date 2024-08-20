@@ -3,21 +3,8 @@ import type { Cluster } from 'ioredis';
 import { Service } from 'typedi';
 import config from '@/config';
 import { Logger } from '@/Logger';
-import { getDefaultRedisClient } from './RedisServiceHelper';
-
-export type RedisClientType =
-	| 'subscriber'
-	| 'client'
-	| 'bclient'
-	| 'subscriber(bull)'
-	| 'client(bull)'
-	| 'bclient(bull)'
-	| 'client(cache)'
-	| 'publisher'
-	| 'consumer'
-	| 'producer'
-	| 'list-sender'
-	| 'list-receiver';
+import { RedisClientService } from './redis-client.service';
+import type { RedisClientType } from './redis.types';
 
 export type RedisServiceMessageHandler =
 	| ((channel: string, message: string) => void)
@@ -29,24 +16,24 @@ class RedisServiceBase {
 
 	isInitialized = false;
 
-	constructor(protected readonly logger: Logger) {}
+	constructor(
+		protected readonly logger: Logger,
+		private readonly redisClientService: RedisClientService,
+	) {}
 
-	async init(type: RedisClientType = 'client'): Promise<void> {
+	async init(type: RedisClientType): Promise<void> {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		this.redisClient = await getDefaultRedisClient(undefined, type);
-
-		this.redisClient.on('close', () => {
-			this.logger.warn('Redis unavailable - trying to reconnect...');
-		});
+		this.redisClient = this.redisClientService.createClient({ type });
 
 		this.redisClient.on('error', (error) => {
 			if (!String(error).includes('ECONNREFUSED')) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				this.logger.warn('Error with Redis: ', error);
 			}
 		});
+
+		this.isInitialized = true;
 	}
 
 	async destroy(): Promise<void> {
@@ -62,7 +49,7 @@ class RedisServiceBase {
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
 	senderId: string;
 
-	async init(type: RedisClientType = 'client'): Promise<void> {
+	async init(type: RedisClientType): Promise<void> {
 		await super.init(type);
 		this.senderId = config.get('redis.queueModeId');
 	}

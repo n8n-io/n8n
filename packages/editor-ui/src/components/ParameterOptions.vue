@@ -17,30 +17,30 @@
 					placement="bottom-end"
 					size="small"
 					color="foreground-xdark"
-					iconSize="small"
+					icon-size="small"
 					:actions="actions"
-					:iconOrientation="iconOrientation"
-					@action="(action) => $emit('update:modelValue', action)"
+					:icon-orientation="iconOrientation"
+					@action="(action: string) => $emit('update:modelValue', action)"
 					@visible-change="onMenuToggle"
 				/>
 			</div>
 			<n8n-radio-buttons
 				v-if="shouldShowExpressionSelector"
 				size="small"
-				:modelValue="selectedView"
+				:model-value="selectedView"
 				:disabled="isReadOnly"
 				:options="[
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 				]"
-				@update:modelValue="onViewSelected"
+				@update:model-value="onViewSelected"
 			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import type { NodeParameterValueType } from 'n8n-workflow';
+import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
@@ -48,10 +48,11 @@ import { isValueExpression } from '@/utils/nodeTypesUtils';
 import { i18n } from '@/plugins/i18n';
 
 export default defineComponent({
-	name: 'parameter-options',
+	name: 'ParameterOptions',
 	props: {
 		parameter: {
-			type: Object,
+			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -87,6 +88,7 @@ export default defineComponent({
 			},
 		},
 	},
+	emits: ['update:modelValue', 'menu-expanded'],
 	computed: {
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
@@ -109,7 +111,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor)) {
+			if (['codeNodeEditor', 'sqlEditor'].includes(this.parameter.typeOptions?.editor ?? '')) {
 				return false;
 			}
 
@@ -203,6 +205,7 @@ export default defineComponent({
 <style lang="scss" module>
 .container {
 	display: flex;
+	min-height: 22px;
 }
 
 .loader {

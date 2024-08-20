@@ -4,7 +4,7 @@ export const optionsCollection: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Option',
+	placeholder: 'Add option',
 	default: {},
 	options: [
 		{
@@ -29,6 +29,16 @@ export const optionsCollection: INodeProperties = {
 			type: 'number',
 			default: 30,
 			description: 'Number of seconds reserved for connecting to the database',
+		},
+		{
+			displayName: 'Delay Closing Idle Connection',
+			name: 'delayClosingIdleConnection',
+			type: 'number',
+			default: 0,
+			description: 'Number of seconds to wait before idle connection would be eligible for closing',
+			typeOptions: {
+				minValue: 0,
+			},
 		},
 		{
 			displayName: 'Query Batching',
@@ -67,6 +77,17 @@ export const optionsCollection: INodeProperties = {
 			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
 				show: { '/operation': ['executeQuery'] },
+			},
+		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			displayName: 'Treat query parameters in single quotes as text',
+			name: 'treatQueryParametersInSingleQuotesAsText',
+			type: 'boolean',
+			default: false,
+			description: "Whether to treat query parameters enclosed in single quotes as text e.g. '$1'",
+			displayOptions: {
+				show: { queryReplacement: [{ _cnd: { exists: true } }] },
 			},
 		},
 		{
@@ -253,6 +274,10 @@ export const whereFixedCollection: INodeProperties = {
 							name: 'Is Null',
 							value: 'IS NULL',
 						},
+						{
+							name: 'Is Not Null',
+							value: 'IS NOT NULL',
+						},
 					],
 					default: 'equal',
 				},
@@ -260,6 +285,11 @@ export const whereFixedCollection: INodeProperties = {
 					displayName: 'Value',
 					name: 'value',
 					type: 'string',
+					displayOptions: {
+						hide: {
+							condition: ['IS NULL', 'IS NOT NULL'],
+						},
+					},
 					default: '',
 				},
 			],

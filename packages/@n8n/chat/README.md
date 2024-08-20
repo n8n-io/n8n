@@ -1,12 +1,18 @@
 # n8n Chat
 This is an embeddable Chat widget for n8n. It allows the execution of AI-Powered Workflows through a Chat window.
 
+**Windowed Example**
+![n8n Chat Windowed](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/%40n8n/chat/resources/images/windowed.png)
+
+**Fullscreen Example**
+![n8n Chat Fullscreen](https://raw.githubusercontent.com/n8n-io/n8n/master/packages/%40n8n/chat/resources/images/fullscreen.png)
+
 ## Prerequisites
-Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Webhook** node and return data using the **Respond to Webhook** node.
+Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Chat Trigger** node.
 
-Open the **Webhook** node and add your domain to the **Domain Allowlist** field. This makes sure that only requests from your domain are accepted.
+Open the **Chat Trigger** node and add your domain to the **Allowed Origins (CORS)** field. This makes sure that only requests from your domain are accepted.
 
-[See example workflow](https://github.com/n8n-io/n8n/blob/ai-beta/packages/%40n8n/chat/resources/workflow.json)
+[See example workflow](https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/chat/resources/workflow.json)
 
 > Make sure the workflow is **Active.**
 
@@ -17,8 +23,6 @@ Each request is accompanied by an `action` query parameter, where `action` can b
 - `loadPreviousSession` - When the user opens the Chatbot again and the previous chat session should be loaded
 - `sendMessage` - When the user sends a message
 
-We use the `Switch` node to handle the different actions.
-
 ## Installation
 
 Open the **Webhook** node and replace `YOUR_PRODUCTION_WEBHOOK_URL` with your production URL. This is the URL that the Chat widget will use to send requests to.
@@ -27,9 +31,9 @@ Open the **Webhook** node and replace `YOUR_PRODUCTION_WEBHOOK_URL` with your pr
 Add the following code to your HTML page.
 
 ```html
-<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
 <script type="module">
-	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
+	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 
 	createChat({
 		webhookUrl: 'YOUR_PRODUCTION_WEBHOOK_URL'
@@ -106,6 +110,10 @@ createChat({
 	},
 	target: '#n8n-chat',
 	mode: 'window',
+	chatInputKey: 'chatInput',
+	chatSessionKey: 'sessionId',
+	metadata: {},
+	showWelcomeScreen: false,
 	defaultLanguage: 'en',
 	initialMessages: [
 		'Hi there! 👋',
@@ -148,6 +156,21 @@ createChat({
   - In `window` mode, the Chat window will be embedded in the target element as a chat toggle button and a fixed size chat window.
   - In `fullscreen` mode, the Chat will take up the entire width and height of its target container.
 
+### `showWelcomeScreen`
+- **Type**: `boolean`
+- **Default**: `false`
+- **Description**: Whether to show the welcome screen when the Chat window is opened.
+
+### `chatSessionKey`
+- **Type**: `string`
+- **Default**: `'sessionId'`
+- **Description**: The key to use for sending the chat history session ID for the AI Memory node.
+
+### `chatInputKey`
+- **Type**: `string`
+- **Default**: `'chatInput'`
+- **Description**: The key to use for sending the chat input for the AI Agent node.
+
 ### `defaultLanguage`
 - **Type**: `string`
 - **Default**: `'en'`
@@ -187,12 +210,31 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--window--width: 400px;
 	--chat--window--height: 600px;
 
+	--chat--header-height: auto;
+	--chat--header--padding: var(--chat--spacing);
+	--chat--header--background: var(--chat--color-dark);
+	--chat--header--color: var(--chat--color-light);
+	--chat--header--border-top: none;
+	--chat--header--border-bottom: none;
+	--chat--header--border-bottom: none;
+	--chat--header--border-bottom: none;
+	--chat--heading--font-size: 2em;
+	--chat--header--color: var(--chat--color-light);
+	--chat--subtitle--font-size: inherit;
+	--chat--subtitle--line-height: 1.8;
+
 	--chat--textarea--height: 50px;
 
+	--chat--message--font-size: 1rem;
+	--chat--message--padding: var(--chat--spacing);
+	--chat--message--border-radius: var(--chat--border-radius);
+	--chat--message-line-height: 1.8;
 	--chat--message--bot--background: var(--chat--color-white);
 	--chat--message--bot--color: var(--chat--color-dark);
+	--chat--message--bot--border: none;
 	--chat--message--user--background: var(--chat--color-secondary);
 	--chat--message--user--color: var(--chat--color-white);
+	--chat--message--user--border: none;
 	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
 
 	--chat--toggle--background: var(--chat--color-primary);
@@ -218,10 +260,5 @@ body,
 ```
 
 ## License
-n8n Chat is [fair-code](http://faircode.io) distributed under the
-[**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
-
-Additional information about the license model can be found in the
-[docs](https://docs.n8n.io/reference/license/).
+You can find the license information [here](https://github.com/n8n-io/n8n/blob/master/README.md#license)

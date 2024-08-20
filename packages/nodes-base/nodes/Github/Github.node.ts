@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -8,7 +9,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
-import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
+import {
+	getFileSha,
+	githubApiRequest,
+	githubApiRequestAllItems,
+	isBase64,
+} from './GenericFunctions';
 
 import { getRepositories, getUsers } from './SearchFunctions';
 
@@ -16,7 +22,7 @@ export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		icon: 'file:github.svg',
+		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -251,6 +257,12 @@ export class Github implements INodeType {
 						description:
 							'Get the community profile of a repository with metrics, health score, description, license, etc',
 						action: 'Get the profile of a repository',
+					},
+					{
+						name: 'Get Pull Requests',
+						value: 'getPullRequests',
+						description: 'Returns pull requests of a repository',
+						action: 'Get pull requests of a repository',
 					},
 					{
 						name: 'List Popular Paths',
@@ -550,7 +562,7 @@ export class Github implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -580,7 +592,7 @@ export class Github implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -593,7 +605,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Commit Message',
@@ -699,7 +711,7 @@ export class Github implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -712,8 +724,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property in which to save the binary data of the received file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			{
@@ -897,11 +908,23 @@ export class Github implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						default: '',
-						description: 'The title of the issue',
+						displayName: 'Assignees',
+						name: 'assignees',
+						type: 'collection',
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Assignee',
+						},
+						default: { assignee: '' },
+						options: [
+							{
+								displayName: 'Assignees',
+								name: 'assignee',
+								type: 'string',
+								default: '',
+								description: 'User to assign issue to',
+							},
+						],
 					},
 					{
 						displayName: 'Body',
@@ -912,25 +935,6 @@ export class Github implements INodeType {
 						},
 						default: '',
 						description: 'The body of the issue',
-					},
-					{
-						displayName: 'State',
-						name: 'state',
-						type: 'options',
-						options: [
-							{
-								name: 'Closed',
-								value: 'closed',
-								description: 'Set the state to "closed"',
-							},
-							{
-								name: 'Open',
-								value: 'open',
-								description: 'Set the state to "open"',
-							},
-						],
-						default: 'open',
-						description: 'The state to set',
 					},
 					{
 						displayName: 'Labels',
@@ -952,27 +956,57 @@ export class Github implements INodeType {
 						],
 					},
 					{
-						displayName: 'Assignees',
-						name: 'assignees',
-						type: 'collection',
-						typeOptions: {
-							multipleValues: true,
-							multipleValueButtonText: 'Add Assignee',
-						},
-						default: { assignee: '' },
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
 						options: [
 							{
-								displayName: 'Assignees',
-								name: 'assignee',
-								type: 'string',
-								default: '',
-								description: 'User to assign issue to',
+								name: 'Closed',
+								value: 'closed',
+								description: 'Set the state to "closed"',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Set the state to "open"',
 							},
 						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'State Reason',
+						name: 'state_reason',
+						type: 'options',
+						options: [
+							{
+								name: 'Completed',
+								value: 'completed',
+								description: 'Issue is completed',
+							},
+							{
+								name: 'Not Planned',
+								value: 'not_planned',
+								description: 'Issue is not planned',
+							},
+							{
+								name: 'Reopened',
+								value: 'reopened',
+								description: 'Issue is reopened',
+							},
+						],
+						default: 'completed',
+						description: 'The reason for the state change',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The title of the issue',
 					},
 				],
 			},
-
 			// ----------------------------------
 			//         issue:get
 			// ----------------------------------
@@ -1322,7 +1356,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Return only issues with the given labels. Multiple lables can be separated by comma.',
+							'Return only issues with the given labels. Multiple labels can be separated by comma.',
 					},
 					{
 						displayName: 'Updated Since',
@@ -1401,6 +1435,130 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         repository:getPullRequests
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['repository'],
+						operation: ['getPullRequests'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['repository'],
+						operation: ['getPullRequests'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+			{
+				displayName: 'Filters',
+				name: 'getRepositoryPullRequestsFilters',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Filter',
+				},
+				displayOptions: {
+					show: {
+						operation: ['getPullRequests'],
+						resource: ['repository'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
+						options: [
+							{
+								name: 'All',
+								value: 'all',
+								description: 'Returns pull requests with any state',
+							},
+							{
+								name: 'Closed',
+								value: 'closed',
+								description: 'Return pull requests with "closed" state',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Return pull requests with "open" state',
+							},
+						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created',
+								value: 'created',
+								description: 'Sort by created date',
+							},
+							{
+								name: 'Updated',
+								value: 'updated',
+								description: 'Sort by updated date',
+							},
+							{
+								name: 'Popularity',
+								value: 'popularity',
+								description: 'Sort by number of comments',
+							},
+							{
+								name: 'Long-Running',
+								value: 'long-running',
+								description:
+									'Sort by date created and will limit the results to pull requests that have been open for more than a month and have had activity within the past month',
+							},
+						],
+						default: 'created',
+						description: 'The order the pull requests should be returned in',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+								description: 'Sort in ascending order',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+								description: 'Sort in descending order',
+							},
+						],
+						default: 'desc',
+						description: 'The sort order',
+					},
+				],
+			},
 			// ----------------------------------
 			//         rerview
 			// ----------------------------------
@@ -1734,6 +1892,7 @@ export class Github implements INodeType {
 		const overwriteDataOperationsArray = [
 			'file:list',
 			'repository:getIssues',
+			'repository:getPullRequests',
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
@@ -1747,7 +1906,7 @@ export class Github implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0);
@@ -1827,11 +1986,12 @@ export class Github implements INodeType {
 							// TODO: Does this work with filesystem mode
 							body.content = binaryData.data;
 						} else {
-							// Is text file
-							// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
-							body.content = Buffer.from(
-								this.getNodeParameter('fileContent', i) as string,
-							).toString('base64');
+							const fileContent = this.getNodeParameter('fileContent', i) as string;
+							if (isBase64(fileContent)) {
+								body.content = fileContent;
+							} else {
+								body.content = Buffer.from(fileContent).toString('base64');
+							}
 						}
 
 						endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
@@ -2075,6 +2235,22 @@ export class Github implements INodeType {
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
+					} else if (operation === 'getPullRequests') {
+						// ----------------------------------
+						//         getPullRequests
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs = this.getNodeParameter('getRepositoryPullRequestsFilters', i) as IDataObject;
+
+						endpoint = `/repos/${owner}/${repository}/pulls`;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
 					}
 				} else if (resource === 'review') {
 					if (operation === 'get') {
@@ -2204,6 +2380,7 @@ export class Github implements INodeType {
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
 							binary: {},
+							pairedItem: items[i].pairedItem,
 						};
 
 						if (items[i].binary !== undefined) {
@@ -2218,9 +2395,8 @@ export class Github implements INodeType {
 							path as string,
 						);
 
-						items[i] = newItem;
-
-						return [items];
+						returnData.push(newItem);
+						continue;
 					}
 				}
 
@@ -2239,7 +2415,7 @@ export class Github implements INodeType {
 					returnData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					if (
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)

@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -95,15 +96,15 @@ export class GoogleAnalyticsV1 implements INodeType {
 					'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
 				);
 
-				for (const dimesion of dimensions) {
+				for (const dimension of dimensions) {
 					if (
-						dimesion.attributes.type === 'DIMENSION' &&
-						dimesion.attributes.status !== 'DEPRECATED'
+						dimension.attributes.type === 'DIMENSION' &&
+						dimension.attributes.status !== 'DEPRECATED'
 					) {
 						returnData.push({
-							name: dimesion.attributes.uiName,
-							value: dimesion.id,
-							description: dimesion.attributes.description,
+							name: dimension.attributes.uiName,
+							value: dimension.id,
+							description: dimension.attributes.description,
 						});
 					}
 				}
@@ -153,7 +154,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
+		let method: IHttpRequestMethods = 'GET';
 		const qs: IDataObject = {};
 		let endpoint = '';
 		let responseData;
@@ -291,7 +292,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

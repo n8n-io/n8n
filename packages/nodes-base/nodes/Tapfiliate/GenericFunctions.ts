@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function tapfiliateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: IDataObject = {},
@@ -21,7 +21,7 @@ export async function tapfiliateApiRequest(
 ) {
 	const credentials = await this.getCredentials('tapfiliateApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Api-Key': credentials.apiKey,
 		},
@@ -48,7 +48,7 @@ export async function tapfiliateApiRequest(
 
 export async function tapfiliateApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: IDataObject = {},

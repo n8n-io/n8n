@@ -1,14 +1,14 @@
 <template>
 	<div v-if="aiData" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<el-tree
+			<ElTree
 				:data="executionTree"
 				:props="{ label: 'node' }"
 				default-expand-all
 				:indent="12"
-				@node-click="onItemClick"
 				:expand-on-click-node="false"
 				data-test-id="lm-chat-logs-tree"
+				@node-click="onItemClick"
 			>
 				<template #default="{ node, data }">
 					<div
@@ -20,8 +20,8 @@
 						:style="{ '--item-depth': data.depth }"
 					>
 						<button
-							:class="$style.treeToggle"
 							v-if="data.children.length"
+							:class="$style.treeToggle"
 							@click="toggleTreeItem(node)"
 						>
 							<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
@@ -31,13 +31,13 @@
 								{{ node.label }}
 							</template>
 							<span :class="$style.leafLabel">
-								<node-icon :node-type="getNodeType(data.node)!" :size="17" />
-								<span v-text="node.label" v-if="!slim" />
+								<NodeIcon :node-type="getNodeType(data.node)!" :size="17" />
+								<span v-if="!slim" v-text="node.label" />
 							</span>
 						</n8n-tooltip>
 					</div>
 				</template>
-			</el-tree>
+			</ElTree>
 		</div>
 		<div :class="$style.runData">
 			<div v-if="selectedRun.length === 0" :class="$style.empty">
@@ -56,7 +56,7 @@
 				:key="`${data.node}__${data.runIndex}__index`"
 				data-test-id="lm-chat-logs-entry"
 			>
-				<RunDataAiContent :inputData="data" :contentIndex="index" />
+				<RunDataAiContent :input-data="data" :content-index="index" />
 			</div>
 		</div>
 	</div>

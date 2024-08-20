@@ -16,8 +16,9 @@ export class ManualChatTrigger implements INodeType {
 		description: 'Runs the flow on new manual chat message',
 		eventTriggerDescription: '',
 		maxNodes: 1,
+		hidden: true,
 		defaults: {
-			name: 'On new manual Chat Message',
+			name: 'When chat message received',
 			color: '#909298',
 		},
 		codex: {
@@ -25,7 +26,7 @@ export class ManualChatTrigger implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.manualchattrigger/',
+						url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/',
 					},
 				],
 			},
@@ -49,7 +50,9 @@ export class ManualChatTrigger implements INodeType {
 				name: 'openChat',
 				type: 'button',
 				typeOptions: {
-					action: 'openChat',
+					buttonConfig: {
+						action: 'openChat',
+					},
 				},
 				default: '',
 			},

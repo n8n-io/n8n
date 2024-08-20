@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -208,7 +209,7 @@ export class Harvest implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 		let body: IDataObject | Buffer;
 		let qs: IDataObject;
 
@@ -1332,7 +1333,7 @@ export class Harvest implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

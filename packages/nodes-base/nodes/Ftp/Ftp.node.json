@@ -6,7 +6,7 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/ftp"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/ftp/"
 			}
 		],
 		"primaryDocumentation": [
@@ -15,7 +15,7 @@
 			}
 		]
 	},
-	"alias": ["SFTP"],
+	"alias": ["SFTP", "FTP", "Binary", "File", "Transfer"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

@@ -1,6 +1,12 @@
 import type { IWorkflowTemplateNode, IWorkflowTemplateNodeCredentials } from '@/Interface';
+import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
+import { getNodeTypeDisplayableCredentials } from '@/utils/nodes/nodeTransforms';
 import type { NormalizedTemplateNodeCredentials } from '@/utils/templates/templateTypes';
-import type { INodeCredentials, INodeCredentialsDetails } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeCredentials,
+	INodeCredentialsDetails,
+} from 'n8n-workflow';
 
 export type IWorkflowTemplateNodeWithCredentials = IWorkflowTemplateNode &
 	Required<Pick<IWorkflowTemplateNode, 'credentials'>>;
@@ -15,6 +21,11 @@ const credentialKeySymbol = Symbol('credentialKey');
  */
 export type TemplateCredentialKey = string & { [credentialKeySymbol]: never };
 
+export type TemplateNodeWithRequiredCredential = {
+	node: IWorkflowTemplateNode;
+	requiredCredentials: INodeCredentialDescription[];
+};
+
 /**
  * Forms a key from credential type name and credential name
  */
@@ -24,20 +35,16 @@ export const keyFromCredentialTypeAndName = (
 ): TemplateCredentialKey => `${credentialTypeName}-${credentialName}` as TemplateCredentialKey;
 
 /**
- * Checks if a template workflow node has credentials defined
- */
-export const hasNodeCredentials = (
-	node: IWorkflowTemplateNode,
-): node is IWorkflowTemplateNodeWithCredentials =>
-	!!node.credentials && Object.keys(node.credentials).length > 0;
-
-/**
  * Normalizes the credentials of a template node. Templates created with
  * different versions of n8n may have different credential formats.
  */
 export const normalizeTemplateNodeCredentials = (
-	credentials: IWorkflowTemplateNodeCredentials,
+	credentials?: IWorkflowTemplateNodeCredentials,
 ): NormalizedTemplateNodeCredentials => {
+	if (!credentials) {
+		return {};
+	}
+
 	return Object.fromEntries(
 		Object.entries(credentials).map(([key, value]) => {
 			return typeof value === 'string' ? [key, value] : [key, value.name];
@@ -57,26 +64,49 @@ export const normalizeTemplateNodeCredentials = (
  * replaceTemplateNodeCredentials(nodeCredentials, toReplaceByKey);
  * // => { twitterOAuth1Api: { id: "BrEOZ5Cje6VYh9Pc", name: "X OAuth account" } }
  */
-export const replaceTemplateNodeCredentials = (
-	nodeCredentials: IWorkflowTemplateNodeCredentials,
+export const getReplacedTemplateNodeCredentials = (
+	nodeCredentials: IWorkflowTemplateNodeCredentials | undefined,
 	toReplaceByKey: Record<TemplateCredentialKey, INodeCredentialsDetails>,
 ) => {
 	if (!nodeCredentials) {
 		return undefined;
 	}
 
-	const newNodeCredentials: INodeCredentials = {};
+	const replacedNodeCredentials: INodeCredentials = {};
 	const normalizedCredentials = normalizeTemplateNodeCredentials(nodeCredentials);
 	for (const credentialType in normalizedCredentials) {
 		const credentialNameInTemplate = normalizedCredentials[credentialType];
 		const key = keyFromCredentialTypeAndName(credentialType, credentialNameInTemplate);
 		const toReplaceWith = toReplaceByKey[key];
 		if (toReplaceWith) {
-			newNodeCredentials[credentialType] = toReplaceWith;
+			replacedNodeCredentials[credentialType] = toReplaceWith;
 		}
 	}
 
-	return newNodeCredentials;
+	return replacedNodeCredentials;
+};
+
+/**
+ * Returns credentials for the given node that are missing from it
+ * but are present in the given replacements
+ */
+export const getMissingTemplateNodeCredentials = (
+	nodeTypeProvider: NodeTypeProvider,
+	node: IWorkflowTemplateNode,
+	replacementsByKey: Record<TemplateCredentialKey, INodeCredentialsDetails>,
+): INodeCredentials => {
+	const nodeCredentialsToAdd: INodeCredentials = {};
+	const usableCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
+
+	for (const usableCred of usableCredentials) {
+		const credentialKey = keyFromCredentialTypeAndName(usableCred.name, '');
+
+		if (replacementsByKey[credentialKey]) {
+			nodeCredentialsToAdd[usableCred.name] = replacementsByKey[credentialKey];
+		}
+	}
+
+	return nodeCredentialsToAdd;
 };
 
 /**
@@ -84,17 +114,22 @@ export const replaceTemplateNodeCredentials = (
  * replacements
  */
 export const replaceAllTemplateNodeCredentials = (
+	nodeTypeProvider: NodeTypeProvider,
 	nodes: IWorkflowTemplateNode[],
 	toReplaceWith: Record<TemplateCredentialKey, INodeCredentialsDetails>,
 ) => {
 	return nodes.map((node) => {
-		if (hasNodeCredentials(node)) {
-			return {
-				...node,
-				credentials: replaceTemplateNodeCredentials(node.credentials, toReplaceWith),
-			};
-		}
+		const replacedCredentials = getReplacedTemplateNodeCredentials(node.credentials, toReplaceWith);
+		const newCredentials = getMissingTemplateNodeCredentials(nodeTypeProvider, node, toReplaceWith);
 
-		return node;
+		const credentials = {
+			...replacedCredentials,
+			...newCredentials,
+		};
+
+		return {
+			...node,
+			credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
+		};
 	});
 };

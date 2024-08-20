@@ -1,21 +1,21 @@
 <template>
 	<div :class="['n8n-tabs', $style.container]">
-		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
-			<n8n-icon icon="chevron-left" size="small" />
+		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+			<N8nIcon icon="chevron-left" size="small" />
 		</div>
-		<div :class="$style.next" v-if="canScrollRight" @click="scrollRight">
-			<n8n-icon icon="chevron-right" size="small" />
+		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+			<N8nIcon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div
 				v-for="option in options"
-				:key="option.value"
 				:id="option.value"
+				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
-						<div v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
 					</template>
 					<a
 						v-if="option.href"
@@ -26,120 +26,106 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"
-								><n8n-icon icon="external-link-alt" size="small"
-							/></span>
+							<span :class="$style.external">
+								<N8nIcon icon="external-link-alt" size="xsmall" />
+							</span>
 						</div>
 					</a>
-
+					<router-link
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</router-link>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
 						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../N8nIcon';
+import type { RouteLocationRaw } from 'vue-router';
 
-export interface N8nTabOptions {
+interface TabOptions {
 	value: string;
 	label?: string;
 	icon?: string;
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
+	to?: RouteLocationRaw;
 }
 
-export default defineComponent({
-	name: 'N8nTabs',
-	components: {
-		N8nIcon,
-	},
-	mounted() {
-		const container = this.$refs.tabs as HTMLDivElement | undefined;
-		if (container) {
-			container.addEventListener('scroll', (event: Event) => {
-				const width = container.clientWidth;
-				const scrollWidth = container.scrollWidth;
-				this.scrollPosition = (event.target as Element).scrollLeft;
+interface TabsProps {
+	modelValue?: string;
+	options?: TabOptions[];
+}
 
-				this.canScrollRight = scrollWidth - width > this.scrollPosition;
-			});
-
-			this.resizeObserver = new ResizeObserver(() => {
-				const width = container.clientWidth;
-				const scrollWidth = container.scrollWidth;
-				this.canScrollRight = scrollWidth - width > this.scrollPosition;
-			});
-			this.resizeObserver.observe(container);
-
-			const width = container.clientWidth;
-			const scrollWidth = container.scrollWidth;
-			this.canScrollRight = scrollWidth - width > this.scrollPosition;
-		}
-	},
-	unmounted() {
-		if (this.resizeObserver) {
-			this.resizeObserver.disconnect();
-		}
-	},
-	data() {
-		return {
-			scrollPosition: 0,
-			canScrollRight: false,
-			resizeObserver: null as ResizeObserver | null,
-		};
-	},
-	props: {
-		modelValue: {
-			type: String,
-			default: '',
-		},
-		options: {
-			type: Array as PropType<N8nTabOptions[]>,
-			default: (): N8nTabOptions[] => [],
-		},
-	},
-	methods: {
-		handleTooltipClick(tab: string, event: MouseEvent) {
-			this.$emit('tooltipClick', tab, event);
-		},
-		handleTabClick(tab: string) {
-			this.$emit('update:modelValue', tab);
-		},
-		scrollLeft() {
-			this.scroll(-50);
-		},
-		scrollRight() {
-			this.scroll(50);
-		},
-		scroll(left: number) {
-			const container = this.$refs.tabs as
-				| (HTMLDivElement & { scrollBy: ScrollByFunction })
-				| undefined;
-			if (container) {
-				container.scrollBy({ left, top: 0, behavior: 'smooth' });
-			}
-		},
-	},
+withDefaults(defineProps<TabsProps>(), {
+	options: () => [],
 });
 
-type ScrollByFunction = (arg: {
-	left: number;
-	top: number;
-	behavior: 'smooth' | 'instant' | 'auto';
-}) => void;
+const scrollPosition = ref(0);
+const canScrollRight = ref(false);
+const tabs = ref<Element | undefined>(undefined);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+	const container = tabs.value as Element;
+	if (container) {
+		container.addEventListener('scroll', (event: Event) => {
+			const width = container.clientWidth;
+			const scrollWidth = container.scrollWidth;
+			scrollPosition.value = (event.target as Element).scrollLeft;
+			canScrollRight.value = scrollWidth - width > scrollPosition.value;
+		});
+
+		resizeObserver = new ResizeObserver(() => {
+			const width = container.clientWidth;
+			const scrollWidth = container.scrollWidth;
+			canScrollRight.value = scrollWidth - width > scrollPosition.value;
+		});
+		resizeObserver.observe(container);
+
+		const width = container.clientWidth;
+		const scrollWidth = container.scrollWidth;
+		canScrollRight.value = scrollWidth - width > scrollPosition.value;
+	}
+});
+
+onUnmounted(() => {
+	resizeObserver?.disconnect();
+});
+
+const emit = defineEmits<{
+	tooltipClick: [tab: string, e: MouseEvent];
+	'update:modelValue': [tab: string];
+}>();
+
+const handleTooltipClick = (tab: string, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTabClick = (tab: string) => emit('update:modelValue', tab);
+
+const scroll = (left: number) => {
+	const container = tabs.value;
+	if (container) {
+		container.scrollBy({ left, top: 0, behavior: 'smooth' });
+	}
+};
+const scrollLeft = () => scroll(-50);
+const scrollRight = () => scroll(50);
 </script>
 
 <style lang="scss" module>
@@ -154,6 +140,7 @@ type ScrollByFunction = (arg: {
 	color: var(--color-text-base);
 	font-weight: var(--font-weight-bold);
 	display: flex;
+	align-items: center;
 	width: 100%;
 	position: absolute;
 	overflow-x: scroll;
@@ -169,23 +156,30 @@ type ScrollByFunction = (arg: {
 }
 
 .tab {
+	--active-tab-border-width: 2px;
 	display: block;
-	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
-	padding-bottom: var(--spacing-2xs);
+	padding: 0 var(--spacing-s);
+	padding-bottom: calc(var(--spacing-2xs) + var(--active-tab-border-width));
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
+	color: var(--color-text-base);
 	&:hover {
 		color: var(--color-primary);
+	}
+
+	span + span {
+		margin-left: var(--spacing-4xs);
 	}
 }
 
 .activeTab {
 	color: var(--color-primary);
-	border-bottom: var(--color-primary) 2px solid;
+	padding-bottom: var(--spacing-2xs);
+	border-bottom: var(--color-primary) var(--active-tab-border-width) solid;
 }
 
-.alignRight {
+.alignRight:not(.alignRight + .alignRight) {
 	margin-left: auto;
 }
 
@@ -195,15 +189,12 @@ type ScrollByFunction = (arg: {
 
 	&:hover {
 		color: var(--color-primary);
-
-		.external {
-			display: inline-block;
-		}
 	}
 }
 
 .external {
-	display: none;
+	display: inline-block;
+	margin-left: var(--spacing-5xs);
 }
 
 .button {

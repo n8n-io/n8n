@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import type { IRecord } from './v1/GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 

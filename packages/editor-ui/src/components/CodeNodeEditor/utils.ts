@@ -2,6 +2,7 @@ import type * as esprima from 'esprima-next';
 import type { Completion } from '@codemirror/autocomplete';
 import type { Node } from 'estree';
 import type { RangeNode } from './types';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export function walk<T extends RangeNode>(
 	node: Node | esprima.Program,
@@ -40,3 +41,15 @@ export const escape = (str: string) =>
 export const toVariableOption = (label: string) => ({ label, type: 'variable' });
 
 export const addVarType = (option: Completion) => ({ ...option, type: 'variable' });
+
+export const addInfoRenderer = (option: Completion): Completion => {
+	const { info } = option;
+	if (typeof info === 'string') {
+		option.info = () => {
+			const wrapper = document.createElement('span');
+			wrapper.innerHTML = sanitizeHtml(info);
+			return wrapper;
+		};
+	}
+	return option;
+};

@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Context } from '../GenericFunctions';
 import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
@@ -317,7 +317,10 @@ export class SyncHandler implements OperationHandler {
 			if (sectionId) {
 				command.args.section_id = sectionId;
 			} else {
-				throw new Error('Section ' + command.args.section + " doesn't exist on Todoist");
+				throw new ApplicationError(
+					'Section ' + command.args.section + " doesn't exist on Todoist",
+					{ level: 'warning' },
+				);
 			}
 		}
 	}

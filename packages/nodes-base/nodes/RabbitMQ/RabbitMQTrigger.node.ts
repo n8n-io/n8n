@@ -21,8 +21,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:rabbitmq.png',
+		icon: 'file:rabbitmq.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
@@ -63,7 +62,7 @@ export class RabbitMQTrigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Content Is Binary',

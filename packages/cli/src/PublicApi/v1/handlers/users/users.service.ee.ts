@@ -3,47 +3,59 @@ import { UserRepository } from '@db/repositories/user.repository';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
-
-export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
-	return {
-		user: ['id', 'email', 'firstName', 'lastName', 'createdAt', 'updatedAt', 'isPending'],
-		role: ['id', 'name', 'scope', 'createdAt', 'updatedAt'],
-	}[table];
-};
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 
 export async function getUser(data: {
 	withIdentifier: string;
 	includeRole?: boolean;
 }): Promise<User | null> {
-	return Container.get(UserRepository).findOne({
-		where: {
-			...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
-			...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
-		},
-		relations: data?.includeRole ? ['globalRole'] : undefined,
-	});
+	return await Container.get(UserRepository)
+		.findOne({
+			where: {
+				...(uuidValidate(data.withIdentifier) && { id: data.withIdentifier }),
+				...(!uuidValidate(data.withIdentifier) && { email: data.withIdentifier }),
+			},
+		})
+		.then((user) => {
+			if (user && !data?.includeRole) delete (user as Partial<User>).role;
+			return user;
+		});
 }
 
 export async function getAllUsersAndCount(data: {
 	includeRole?: boolean;
 	limit?: number;
 	offset?: number;
+	in?: string[];
 }): Promise<[User[], number]> {
+	const { in: _in } = data;
+
 	const users = await Container.get(UserRepository).find({
-		where: {},
-		relations: data?.includeRole ? ['globalRole'] : undefined,
+		where: { ...(_in && { id: In(_in) }) },
 		skip: data.offset,
 		take: data.limit,
 	});
+	if (!data?.includeRole) {
+		users.forEach((user) => {
+			delete (user as Partial<User>).role;
+		});
+	}
 	const count = await Container.get(UserRepository).count();
 	return [users, count];
 }
 
+const userProperties = [
+	'id',
+	'email',
+	'firstName',
+	'lastName',
+	'createdAt',
+	'updatedAt',
+	'isPending',
+];
 function pickUserSelectableProperties(user: User, options?: { includeRole: boolean }) {
-	return pick(
-		user,
-		getSelectableProperties('user').concat(options?.includeRole ? ['globalRole'] : []),
-	);
+	return pick(user, userProperties.concat(options?.includeRole ? ['role'] : []));
 }
 
 export function clean(user: User, options?: { includeRole: boolean }): Partial<User>;

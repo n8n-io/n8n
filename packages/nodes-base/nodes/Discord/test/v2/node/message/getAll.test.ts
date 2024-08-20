@@ -7,7 +7,7 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 const discordApiRequestSpy = jest.spyOn(transport, 'discordApiRequest');
 
-discordApiRequestSpy.mockImplementation(async (method: string, endpoint) => {
+discordApiRequestSpy.mockImplementation(async (method: string) => {
 	if (method === 'GET') {
 		return [
 			{
@@ -93,6 +93,6 @@ describe('Test DiscordV2, message => getAll', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

@@ -19,14 +19,13 @@ type Mode = 'manual' | 'raw';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Edit Fields (Set)',
 	name: 'set',
-	icon: 'fa:pen',
+	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2],
-	description: 'Change the structure of your items',
+	version: [3, 3.1, 3.2, 3.3, 3.4],
+	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
 		name: 'Edit Fields',
-		color: '#0000FF',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
@@ -44,7 +43,7 @@ const versionDescription: INodeTypeDescription = {
 					action: 'Edit item fields one by one',
 				},
 				{
-					name: 'JSON Output',
+					name: 'JSON',
 					value: 'raw',
 					description: 'Customize item output with JSON',
 					action: 'Customize item output with JSON',
@@ -96,6 +95,11 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			description: 'How to select the fields you want to include in your output items',
 			default: 'all',
+			displayOptions: {
+				show: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
 			options: [
 				{
 					name: 'All Input Fields',
@@ -114,6 +118,49 @@ const versionDescription: INodeTypeDescription = {
 				},
 				{
 					name: 'All Input Fields Except',
+					value: INCLUDE.EXCEPT,
+					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
+				},
+			],
+		},
+		{
+			displayName: 'Include Other Input Fields',
+			name: 'includeOtherFields',
+			type: 'boolean',
+			default: false,
+			description:
+				"Whether to pass to the output all the input fields (along with the fields set in 'Fields to Set')",
+			displayOptions: {
+				hide: {
+					'@version': [3, 3.1, 3.2],
+				},
+			},
+		},
+		{
+			displayName: 'Input Fields to Include',
+			name: 'include',
+			type: 'options',
+			description: 'How to select the fields you want to include in your output items',
+			default: 'all',
+			displayOptions: {
+				hide: {
+					'@version': [3, 3.1, 3.2],
+					'/includeOtherFields': [false],
+				},
+			},
+			options: [
+				{
+					name: 'All',
+					value: INCLUDE.ALL,
+					description: 'Also include all unchanged fields from the input',
+				},
+				{
+					name: 'Selected',
+					value: INCLUDE.SELECTED,
+					description: 'Also include the fields listed in the parameter “Fields to Include”',
+				},
+				{
+					name: 'All Except',
 					value: INCLUDE.EXCEPT,
 					description: 'Exclude the fields listed in the parameter “Fields to Exclude”',
 				},
@@ -153,15 +200,34 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
-					displayName: 'Include Binary Data',
+					displayName: 'Include Binary File',
 					name: 'includeBinary',
 					type: 'boolean',
 					default: true,
+					displayOptions: {
+						hide: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+						},
+					},
 					description: 'Whether binary data should be included if present in the input item',
+				},
+				{
+					displayName: 'Strip Binary Data',
+					name: 'stripBinary',
+					type: 'boolean',
+					default: true,
+					description:
+						'Whether binary data should be stripped from the input item. Only applies when "Include Other Input Fields" is enabled.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.4 } }],
+							'/includeOtherFields': [true],
+						},
+					},
 				},
 				{
 					displayName: 'Ignore Type Conversion Errors',
@@ -232,11 +298,16 @@ export class SetV2 implements INodeType {
 		}
 
 		for (let i = 0; i < items.length; i++) {
-			const include = this.getNodeParameter('include', i) as IncludeMods;
+			const includeOtherFields = this.getNodeParameter('includeOtherFields', i, false) as boolean;
+			const include = this.getNodeParameter('include', i, 'all') as IncludeMods;
 			const options = this.getNodeParameter('options', i, {});
 			const node = this.getNode();
 
-			options.include = include;
+			if (node.typeVersion >= 3.3) {
+				options.include = includeOtherFields ? include : 'none';
+			} else {
+				options.include = include;
+			}
 
 			const newItem = await setNode[mode].execute.call(
 				this,

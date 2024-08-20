@@ -6,7 +6,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
@@ -21,7 +21,6 @@ import {
 	stringContainsExpression,
 } from './sourceControlHelper.ee';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -30,6 +29,7 @@ import { Logger } from '@/Logger';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
+import type { ResourceOwner } from './types/resourceOwner';
 
 @Service()
 export class SourceControlExportService {
@@ -80,7 +80,7 @@ export class SourceControlExportService {
 
 	private async writeExportableWorkflowsToExportFolder(
 		workflowsToBeExported: WorkflowEntity[],
-		owners: Record<string, string>,
+		owners: Record<string, ResourceOwner>,
 	) {
 		await Promise.all(
 			workflowsToBeExported.map(async (e) => {
@@ -96,7 +96,7 @@ export class SourceControlExportService {
 					owner: owners[e.id],
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
-				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
 	}
@@ -105,25 +105,42 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-				relations: ['role', 'user'],
-				where: {
-					role: {
-						name: 'owner',
-						scope: 'workflow',
-					},
-					workflowId: In(workflowIds),
-				},
-			});
-			const workflows = await Container.get(WorkflowRepository).find({
-				where: {
-					id: In(workflowIds),
-				},
-			});
+			const sharedWorkflows =
+				await Container.get(SharedWorkflowRepository).findByWorkflowIds(workflowIds);
+			const workflows = await Container.get(WorkflowRepository).findByIds(workflowIds);
 
 			// determine owner of each workflow to be exported
-			const owners: Record<string, string> = {};
-			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+			const owners: Record<string, ResourceOwner> = {};
+			sharedWorkflows.forEach((e) => {
+				const project = e.project;
+
+				if (!project) {
+					throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+				}
+
+				if (project.type === 'personal') {
+					const ownerRelation = project.projectRelations.find(
+						(pr) => pr.role === 'project:personalOwner',
+					);
+					if (!ownerRelation) {
+						throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+					}
+					owners[e.workflowId] = {
+						type: 'personal',
+						personalEmail: ownerRelation.user.email,
+					};
+				} else if (project.type === 'team') {
+					owners[e.workflowId] = {
+						type: 'team',
+						teamId: project.id,
+						teamName: project.name,
+					};
+				} else {
+					throw new ApplicationError(
+						`Workflow belongs to unknown project type: ${project.type as string}`,
+					);
+				}
+			});
 
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(workflows, owners);
@@ -138,7 +155,7 @@ export class SourceControlExportService {
 				})),
 			};
 		} catch (error) {
-			throw Error(`Failed to export workflows to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export workflows to work folder', { cause: error });
 		}
 	}
 
@@ -168,7 +185,9 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', {
+				cause: error,
+			});
 		}
 	}
 
@@ -208,7 +227,7 @@ export class SourceControlExportService {
 				],
 			};
 		} catch (error) {
-			throw Error(`Failed to export variables to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export variables to work folder', { cause: error });
 		}
 	}
 
@@ -216,13 +235,14 @@ export class SourceControlExportService {
 		data: ICredentialDataDecryptedObject,
 	): ICredentialDataDecryptedObject => {
 		for (const [key] of Object.entries(data)) {
+			const value = data[key];
 			try {
-				if (data[key] === null) {
+				if (value === null) {
 					delete data[key]; // remove invalid null values
-				} else if (typeof data[key] === 'object') {
-					data[key] = this.replaceCredentialData(data[key] as ICredentialDataDecryptedObject);
-				} else if (typeof data[key] === 'string') {
-					data[key] = stringContainsExpression(data[key] as string) ? data[key] : '';
+				} else if (typeof value === 'object') {
+					data[key] = this.replaceCredentialData(value as ICredentialDataDecryptedObject);
+				} else if (typeof value === 'string') {
+					data[key] = stringContainsExpression(value) ? data[key] : '';
 				} else if (typeof data[key] === 'number') {
 					// TODO: leaving numbers in for now, but maybe we should remove them
 					continue;
@@ -239,12 +259,9 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await Container.get(SharedCredentialsRepository).find({
-				relations: ['credentials', 'role', 'user'],
-				where: {
-					credentialsId: In(credentialIds),
-				},
-			});
+			const credentialsToBeExported = await Container.get(
+				SharedCredentialsRepository,
+			).findByCredentialIds(credentialIds, 'credential:owner');
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -253,23 +270,51 @@ export class SourceControlExportService {
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported.map(async (sharedCredential) => {
-					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
-					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData();
-					const sanitizedData = this.replaceCredentialData(plainData);
-					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
-					const sanitizedCredential: ExportableCredential = {
-						id: sharedCredential.credentials.id,
-						name: sharedCredential.credentials.name,
-						type: sharedCredential.credentials.type,
-						data: sanitizedData,
-						nodesAccess: sharedCredential.credentials.nodesAccess,
+				credentialsToBeExported.map(async (sharing) => {
+					const { name, type, data, id } = sharing.credentials;
+					const credentials = new Credentials({ id, name }, type, data);
+
+					let owner: ResourceOwner | null = null;
+					if (sharing.project.type === 'personal') {
+						const ownerRelation = sharing.project.projectRelations.find(
+							(pr) => pr.role === 'project:personalOwner',
+						);
+						if (ownerRelation) {
+							owner = {
+								type: 'personal',
+								personalEmail: ownerRelation.user.email,
+							};
+						}
+					} else if (sharing.project.type === 'team') {
+						owner = {
+							type: 'team',
+							teamId: sharing.project.id,
+							teamName: sharing.project.name,
+						};
+					}
+
+					/**
+					 * Edge case: Do not export `oauthTokenData`, so that that the
+					 * pulling instance reconnects instead of trying to use stubbed values.
+					 */
+					const credentialData = credentials.getData();
+					const { oauthTokenData, ...rest } = credentialData;
+
+					const stub: ExportableCredential = {
+						id,
+						name,
+						type,
+						data: this.replaceCredentialData(rest),
+						ownedBy: owner,
 					};
-					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
-					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
+
+					const filePath = this.getCredentialsPath(id);
+					this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+
+					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
 				}),
 			);
+
 			return {
 				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,
@@ -280,7 +325,7 @@ export class SourceControlExportService {
 				missingIds,
 			};
 		} catch (error) {
-			throw Error(`Failed to export credentials to work folder: ${(error as Error).message}`);
+			throw new ApplicationError('Failed to export credentials to work folder', { cause: error });
 		}
 	}
 }

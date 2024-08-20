@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,
@@ -50,7 +50,7 @@ export class Mailchimp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
-		icon: 'file:mailchimp.svg',
+		icon: { light: 'file:mailchimp.svg', dark: 'file:mailchimp.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -356,7 +356,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -703,7 +703,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -785,7 +785,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1288,7 +1288,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1417,7 +1417,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -2189,7 +2189,7 @@ export class Mailchimp implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

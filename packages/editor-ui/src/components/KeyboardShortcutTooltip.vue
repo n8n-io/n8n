@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import type { KeyboardShortcut } from '@/Interface';
 import type { Placement } from 'element-plus';
-import type { KeyboardShortcut } from 'n8n-design-system/src/components/N8nKeyboardShortcut';
 
 interface Props {
 	label: string;

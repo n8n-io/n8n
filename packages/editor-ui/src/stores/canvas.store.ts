@@ -15,10 +15,11 @@ import {
 	scaleReset,
 	scaleSmaller,
 } from '@/utils/canvasUtils';
-import { START_NODE_TYPE } from '@/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
+	ConstrainFunction,
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
@@ -40,6 +41,7 @@ import {
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
+import { useLoadingService } from '@/composables/useLoadingService';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -47,10 +49,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 	const sourceControlStore = useSourceControlStore();
+	const loadingService = useLoadingService();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
-	const lastSelectedConnection = ref<Connection | null>(null);
+	const lastSelectedConnection = ref<Connection>();
+
 	const newNodeInsertPosition = ref<XYPosition | null>(null);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -59,16 +63,28 @@ export const useCanvasStore = defineStore('canvas', () => {
 			(node) => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
 		),
 	);
+	const aiNodes = computed<INodeUi[]>(() =>
+		nodes.value.filter((node) => node.type.includes('langchain')),
+	);
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 	const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+	const lastSelectedConnectionComputed = computed<Connection | undefined>(
+		() => lastSelectedConnection.value,
+	);
 
-	watch(readOnlyEnv, (readOnly) => {
+	const setReadOnly = (readOnly: boolean) => {
 		if (jsPlumbInstanceRef.value) {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
+			jsPlumbInstanceRef.value.setDragConstrainFunction(((pos: PointXY) =>
+				readOnly ? null : pos) as ConstrainFunction);
 		}
-	});
+	};
+
+	const setLastSelectedConnection = (connection: Connection | undefined) => {
+		lastSelectedConnection.value = connection;
+	};
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = getMidCanvasPosition(nodeViewScale.value, offset ?? [0, 0]);
@@ -89,6 +105,23 @@ export const useCanvasStore = defineStore('canvas', () => {
 		};
 	};
 
+	const getAutoAddManualTriggerNode = (): INodeUi | null => {
+		const manualTriggerNode = nodeTypesStore.getNodeType(MANUAL_TRIGGER_NODE_TYPE);
+
+		if (!manualTriggerNode) {
+			console.error('Could not find the manual trigger node');
+			return null;
+		}
+		return {
+			id: uuid(),
+			name: manualTriggerNode.defaults.name?.toString() ?? manualTriggerNode.displayName,
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			parameters: {},
+			position: canvasAddButtonPosition.value,
+			typeVersion: 1,
+		};
+	};
+
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
@@ -96,8 +129,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const sidebarWidth = isDemo.value
 			? 0
 			: uiStore.sidebarMenuCollapsed
-			  ? SIDEBAR_WIDTH
-			  : SIDEBAR_WIDTH_EXPANDED;
+				? SIDEBAR_WIDTH
+				: SIDEBAR_WIDTH_EXPANDED;
 
 		const relativeX = position[0] - sidebarWidth;
 		const relativeY = isDemo.value
@@ -205,7 +238,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					isDragging.value = true;
 
-					const isSelected = uiStore.isNodeSelected(nodeName);
+					const isSelected = uiStore.isNodeSelected[nodeName];
 
 					if (params.e && !isSelected) {
 						// Only the node which gets dragged directly gets an event, for all others it is
@@ -224,7 +257,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 					if (!nodeName) return;
 					const nodeData = workflowStore.getNodeByName(nodeName);
 					isDragging.value = false;
-					if (uiStore.isActionActive('dragActive') && nodeData) {
+					if (uiStore.isActionActive.dragActive && nodeData) {
 						const moveNodes = uiStore.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
 						if (!selectedNodeNames.includes(nodeData.name)) {
@@ -269,7 +302,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
 						}
-						if (uiStore.isActionActive('dragActive')) {
+						if (uiStore.isActionActive.dragActive) {
 							uiStore.removeActiveAction('dragActive');
 						}
 					}
@@ -277,24 +310,34 @@ export const useCanvasStore = defineStore('canvas', () => {
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
-		jsPlumbInstanceRef.value?.setDragConstrainFunction((pos: PointXY) => {
+		jsPlumbInstanceRef.value?.setDragConstrainFunction(((pos: PointXY) => {
 			const isReadOnly = uiStore.isReadOnlyView;
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
 				return null;
 			}
 			return pos;
-		});
+		}) as ConstrainFunction);
 	}
 
 	const jsPlumbInstance = computed(() => jsPlumbInstanceRef.value as BrowserJsPlumbInstance);
+
+	watch(readOnlyEnv, setReadOnly);
+
 	return {
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
-		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
+		isLoading: loadingService.isLoading,
+		aiNodes,
+		lastSelectedConnection: lastSelectedConnectionComputed,
+		setReadOnly,
+		setLastSelectedConnection,
+		startLoading: loadingService.startLoading,
+		setLoadingText: loadingService.setLoadingText,
+		stopLoading: loadingService.stopLoading,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
 		canvasPositionFromPagePosition,
@@ -305,5 +348,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
+		getAutoAddManualTriggerNode,
 	};
 });

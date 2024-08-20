@@ -1,3 +1,4 @@
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -5,8 +6,9 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
-import type pg from 'pg-promise/typescript/pg-subset';
+
+import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';
+import { configurePostgres } from './v2/transport';
 
 export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
 	let suffix = id.replace(/-/g, '_');
@@ -26,7 +28,7 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 	const channelName = (additionalFields.channelName as string) || `n8n_channel_${suffix}`;
 
 	if (channelName.includes('-')) {
-		throw new Error('Channel name cannot contain hyphens (-)');
+		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	return { functionName, triggerName, channelName };
@@ -34,7 +36,7 @@ export function prepareNames(id: string, mode: string, additionalFields: IDataOb
 
 export async function pgTriggerFunction(
 	this: ITriggerFunctions,
-	db: pgPromise.IDatabase<{}, pg.IClient>,
+	db: PgpDatabase,
 	additionalFields: IDataObject,
 	functionName: string,
 	triggerName: string,
@@ -63,7 +65,7 @@ export async function pgTriggerFunction(
 	const whichData = firesOn === 'DELETE' ? 'old' : 'new';
 
 	if (channelName.includes('-')) {
-		throw new Error('Channel name cannot contain hyphens (-)');
+		throw new ApplicationError('Channel name cannot contain hyphens (-)', { level: 'warning' });
 	}
 
 	const replaceIfExists = additionalFields.replaceIfExists ?? false;
@@ -78,37 +80,19 @@ export async function pgTriggerFunction(
 		await db.any(trigger, [target, functionName, firesOn, triggerName]);
 	} catch (error) {
 		if ((error as Error).message.includes('near "-"')) {
-			throw new Error('Names cannot contain hyphens (-)');
+			throw new ApplicationError('Names cannot contain hyphens (-)', { level: 'warning' });
 		}
 		throw error;
 	}
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('postgres');
-	const pgp = pgPromise({
-		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
-		noWarnings: true,
-	});
-	const config: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const options = this.getNodeParameter('options', {}) as {
+		connectionTimeout?: number;
+		delayClosingIdleConnection?: number;
 	};
-
-	if (credentials.allowUnauthorizedCerts === true) {
-		config.ssl = {
-			rejectUnauthorized: false,
-		};
-	} else {
-		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		config.sslmode = (credentials.ssl as string) || 'disable';
-	}
-
-	const db = pgp(config);
-	return { db, pgp };
+	return await configurePostgres.call(this, credentials, options);
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -132,7 +116,7 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 			[schema.value],
 		);
 	} catch (error) {
-		throw new Error(error as string);
+		throw new ApplicationError(error as string);
 	}
 	const results: INodeListSearchItems[] = (tableList as IDataObject[]).map((s) => ({
 		name: s.table_name as string,

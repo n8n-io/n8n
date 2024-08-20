@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { WikipediaQueryRun } from 'langchain/tools';
+import { WikipediaQueryRun } from '@langchain/community/tools/wikipedia_query_run';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -25,6 +25,7 @@ export class ToolWikipedia implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Other Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -43,8 +44,13 @@ export class ToolWikipedia implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const WikiTool = new WikipediaQueryRun();
+
+		WikiTool.description =
+			'A tool for interacting with and fetching data from the Wikipedia API. The input should always be a string query.';
+
 		return {
-			response: logWrapper(new WikipediaQueryRun(), this),
+			response: logWrapper(WikiTool, this),
 		};
 	}
 }

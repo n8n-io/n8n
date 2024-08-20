@@ -21,6 +21,22 @@ import type {
 
 import { BATCH_MODE } from './interfaces';
 
+export function escapeSqlIdentifier(identifier: string): string {
+	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
+
+	return parts
+		.map((part) => {
+			const trimmedPart = part.trim();
+
+			if (trimmedPart.startsWith('`') && trimmedPart.endsWith('`')) {
+				return trimmedPart;
+			}
+
+			return `\`${trimmedPart}\``;
+		})
+		.join('.');
+}
+
 export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
 	if (replacements === undefined) {
 		return { query: rawQuery, values: [] };
@@ -35,7 +51,7 @@ export const prepareQueryAndReplacements = (rawQuery: string, replacements?: Que
 	for (const match of matches) {
 		if (match.includes(':name')) {
 			const matchIndex = Number(match.replace('$', '').replace(':name', '')) - 1;
-			query = query.replace(match, `\`${replacements[matchIndex]}\``);
+			query = query.replace(match, escapeSqlIdentifier(replacements[matchIndex].toString()));
 		} else {
 			const matchIndex = Number(match.replace('$', '')) - 1;
 			query = query.replace(match, '?');
@@ -143,9 +159,9 @@ export function prepareOutput(
 	} else {
 		response
 			.filter((entry) => Array.isArray(entry))
-			.forEach((entry) => {
+			.forEach((entry, index) => {
 				const executionData = constructExecutionHelper(wrapData(entry), {
-					itemData,
+					itemData: Array.isArray(itemData) ? itemData[index] : itemData,
 				});
 
 				returnData.push(...executionData);
@@ -174,6 +190,14 @@ export function prepareOutput(
 
 	return returnData;
 }
+const END_OF_STATEMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
+export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
+	const statements = query
+		.replace(/\n/g, '')
+		.split(END_OF_STATEMENT)
+		.map((statement) => statement.trim());
+	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
+};
 
 export function configureQueryRunner(
 	this: IExecuteFunctions,
@@ -209,10 +233,15 @@ export function configureQueryRunner(
 
 				if (!response) return [];
 
-				const statements = singleQuery
-					.replace(/\n/g, '')
-					.split(';')
-					.filter((statement) => statement !== '');
+				let statements;
+				if ((options?.nodeVersion as number) <= 2.3) {
+					statements = singleQuery
+						.replace(/\n/g, '')
+						.split(';')
+						.filter((statement) => statement !== '');
+				} else {
+					statements = splitQueryToStatements(singleQuery);
+				}
 
 				if (Array.isArray(response)) {
 					if (statements.length === 1) response = [response];
@@ -235,7 +264,7 @@ export function configureQueryRunner(
 			} catch (err) {
 				const error = parseMySqlError.call(this, err, 0, formatedQueries);
 
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail(err)) throw error;
 				returnData.push({ json: { message: error.message, error: { ...error } } });
 			}
 		} else {
@@ -245,7 +274,13 @@ export function configureQueryRunner(
 					try {
 						const { query, values } = queryWithValues;
 						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formatedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formatedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
@@ -267,7 +302,7 @@ export function configureQueryRunner(
 					} catch (err) {
 						const error = parseMySqlError.call(this, err, index, [formatedQuery]);
 
-						if (!this.continueOnFail()) {
+						if (!this.continueOnFail(err)) {
 							connection.release();
 							throw error;
 						}
@@ -284,7 +319,13 @@ export function configureQueryRunner(
 					try {
 						const { query, values } = queryWithValues;
 						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formatedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formatedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
@@ -311,7 +352,7 @@ export function configureQueryRunner(
 							connection.release();
 						}
 
-						if (!this.continueOnFail()) throw error;
+						if (!this.continueOnFail(err)) throw error;
 						returnData.push(prepareErrorItem(queries[index], error as Error, index));
 
 						// Return here because we already rolled back the transaction
@@ -372,14 +413,16 @@ export function addWhereClauses(
 		}
 
 		let valueReplacement = ' ';
-		if (clause.condition !== 'IS NULL') {
+		if (clause.condition !== 'IS NULL' && clause.condition !== 'IS NOT NULL') {
 			valueReplacement = ' ?';
 			values.push(clause.value);
 		}
 
 		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
 
-		whereQuery += ` \`${clause.column}\` ${clause.condition}${valueReplacement}${operator}`;
+		whereQuery += ` ${escapeSqlIdentifier(clause.column)} ${
+			clause.condition
+		}${valueReplacement}${operator}`;
 	});
 
 	return [`${query}${whereQuery}`, replacements.concat(...values)];
@@ -398,7 +441,7 @@ export function addSortRules(
 	rules.forEach((rule, index) => {
 		const endWith = index === rules.length - 1 ? '' : ',';
 
-		orderByQuery += ` \`${rule.column}\` ${rule.direction}${endWith}`;
+		orderByQuery += ` ${escapeSqlIdentifier(rule.column)} ${rule.direction}${endWith}`;
 	});
 
 	return [`${query}${orderByQuery}`, replacements.concat(...values)];

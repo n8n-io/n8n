@@ -8,6 +8,7 @@ import SubcategoryItem from '../ItemTypes/SubcategoryItem.vue';
 import LabelItem from '../ItemTypes/LabelItem.vue';
 import ActionItem from '../ItemTypes/ActionItem.vue';
 import ViewItem from '../ItemTypes/ViewItem.vue';
+import LinkItem from '../ItemTypes/LinkItem.vue';
 import CategorizedItemsRenderer from './CategorizedItemsRenderer.vue';
 
 export interface Props {
@@ -25,9 +26,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
-	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;
-	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
+	selected: [element: INodeCreateElement, $e?: Event];
+	dragstart: [element: INodeCreateElement, $e: Event];
+	dragend: [element: INodeCreateElement, $e: Event];
 }>();
 
 const renderedItems = ref<INodeCreateElement[]>([]);
@@ -61,7 +62,23 @@ function wrappedEmit(
 ) {
 	if (props.disabled) return;
 
-	emit(event, element, $e);
+	switch (event) {
+		case 'dragstart':
+			if ($e) {
+				emit('dragstart', element, $e);
+				break;
+			}
+		case 'dragend':
+			if ($e) {
+				emit('dragend', element, $e);
+				break;
+			}
+		case 'selected':
+			emit('selected', element, $e);
+			break;
+		default:
+			emit(event, element, $e);
+	}
 }
 
 function beforeEnter(el: HTMLElement) {
@@ -125,46 +142,54 @@ watch(
 
 				<div
 					v-else
+					ref="iteratorItems"
 					:class="{
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid,
 						[$style.iteratorItem]: true,
 						[$style[item.type]]: true,
+						// Borderless is only applied to views
+						[$style.borderless]: item.type === 'view' && item.properties.borderless === true,
 					}"
-					ref="iteratorItems"
 					data-test-id="item-iterator-item"
 					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
 					:data-keyboard-nav-id="item.uuid"
 					@click="wrappedEmit('selected', item)"
 				>
-					<label-item v-if="item.type === 'label'" :item="item" />
-					<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+					<LabelItem v-if="item.type === 'label'" :item="item" />
+					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
-					<node-item
+					<NodeItem
 						v-if="item.type === 'node'"
-						:nodeType="item.properties"
+						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
 					/>
 
-					<action-item
+					<ActionItem
 						v-if="item.type === 'action'"
-						:nodeType="item.properties"
+						:node-type="item.properties"
 						:action="item.properties"
 						:active="true"
 					/>
 
-					<view-item
+					<ViewItem
 						v-else-if="item.type === 'view'"
 						:view="item.properties"
 						:class="$style.viewItem"
 					/>
+
+					<LinkItem
+						v-else-if="item.type === 'link'"
+						:link="item.properties"
+						:class="$style.linkItem"
+					/>
 				</div>
 			</div>
-			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
+			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
-	<div :class="$style.empty" v-else>
+	<div v-else :class="$style.empty">
 		<slot name="empty" />
 	</div>
 </template>
@@ -207,12 +232,14 @@ watch(
 		display: none;
 	}
 }
+
 .view {
 	position: relative;
 
 	&:last-child {
 		margin-top: var(--spacing-s);
 		padding-top: var(--spacing-xs);
+
 		&:after {
 			content: '';
 			position: absolute;
@@ -222,6 +249,36 @@ watch(
 			margin: auto;
 			bottom: 0;
 			border-top: 1px solid var(--color-foreground-base);
+		}
+	}
+}
+.link {
+	position: relative;
+
+	&:last-child {
+		margin-bottom: var(--spacing-s);
+		padding-bottom: var(--spacing-xs);
+
+		&:after {
+			content: '';
+			position: absolute;
+			left: var(--spacing-s);
+			right: var(--spacing-s);
+			top: 0;
+			margin: auto;
+			bottom: 0;
+			border-bottom: 1px solid var(--color-foreground-base);
+		}
+	}
+}
+
+.borderless {
+	&:last-child {
+		margin-top: 0;
+		padding-top: 0;
+
+		&:after {
+			content: none;
 		}
 	}
 }

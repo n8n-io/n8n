@@ -79,7 +79,6 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			typeOptions: {
 				editor: 'sqlEditor',
-				rows: 5,
 				sqlDialect: 'MySQL',
 			},
 			displayOptions: {
@@ -317,7 +316,7 @@ export class MySqlV1 implements INodeType {
 						);
 					}
 
-					return connection.query(rawQuery);
+					return await connection.query(rawQuery);
 				});
 
 				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
@@ -336,7 +335,7 @@ export class MySqlV1 implements INodeType {
 					[] as INodeExecutionData[],
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();
@@ -373,7 +372,7 @@ export class MySqlV1 implements INodeType {
 
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();
@@ -399,15 +398,16 @@ export class MySqlV1 implements INodeType {
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map(async (item) =>
-					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+				const queryQueue = updateItems.map(
+					async (item) =>
+						await connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
 				);
 				const queryResult = await Promise.all(queryQueue);
 				returnItems = this.helpers.returnJsonArray(
 					queryResult.map((result) => result[0]) as unknown as IDataObject[],
 				);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
 				} else {
 					await connection.end();

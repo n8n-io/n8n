@@ -1,17 +1,17 @@
 <template>
 	<div :class="['accordion', $style.container]">
 		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
-			<n8n-icon
+			<N8nIcon
 				v-if="headerIcon"
 				:icon="headerIcon.icon"
 				:color="headerIcon.color"
 				size="small"
 				class="mr-2xs"
 			/>
-			<n8n-text :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
+			<N8nText :class="$style.headerText" color="text-base" size="small" align="left" bold>{{
 				title
-			}}</n8n-text>
-			<n8n-icon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
+			}}</N8nText>
+			<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
 		</div>
 		<div
 			v-if="expanded"
@@ -23,90 +23,71 @@
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">
 						<template #content>
-							<div v-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+							<div @click="onTooltipClick(item.id, $event)" v-html="item.tooltip"></div>
 						</template>
-						<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
+						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</n8n-tooltip>
-					<n8n-text size="small" color="text-base">{{ item.label }}</n8n-text>
+					<N8nText size="small" color="text-base">{{ item.label }}</N8nText>
 				</div>
 			</div>
-			<n8n-text color="text-base" size="small" align="left">
+			<N8nText color="text-base" size="small" align="left">
 				<span v-html="description"></span>
-			</n8n-text>
+			</N8nText>
 			<slot name="customContent"></slot>
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { onMounted, ref } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import type { EventBus } from '../../utils';
-import { createEventBus } from '../../utils';
+import type { IconColor } from 'n8n-design-system/types/icon';
+import { createEventBus, type EventBus } from '../../utils';
 
-export interface IAccordionItem {
+interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
-	iconColor?: string;
+	iconColor?: IconColor;
 	tooltip?: string;
 }
 
-export default defineComponent({
-	name: 'n8n-info-accordion',
-	components: {
-		N8nText,
-		N8nIcon,
-	},
-	props: {
-		title: {
-			type: String,
-		},
-		description: {
-			type: String,
-		},
-		items: {
-			type: Array as PropType<IAccordionItem[]>,
-			default: () => [],
-		},
-		initiallyExpanded: {
-			type: Boolean,
-			default: false,
-		},
-		headerIcon: {
-			type: Object as PropType<{ icon: string; color: string }>,
-			required: false,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
-	},
-	mounted() {
-		this.eventBus.on('expand', () => {
-			this.expanded = true;
-		});
-		this.expanded = this.initiallyExpanded;
-	},
-	data() {
-		return {
-			expanded: false,
-		};
-	},
-	methods: {
-		toggle() {
-			this.expanded = !this.expanded;
-		},
-		onClick(e: MouseEvent) {
-			this.$emit('click:body', e);
-		},
-		onTooltipClick(item: string, event: MouseEvent) {
-			this.$emit('tooltipClick', item, event);
-		},
-	},
+interface InfoAccordionProps {
+	title?: string;
+	description?: string;
+	items?: IAccordionItem[];
+	initiallyExpanded?: boolean;
+	headerIcon?: { icon: string; color: IconColor };
+	eventBus?: EventBus;
+}
+
+defineOptions({ name: 'N8nInfoAccordion' });
+const props = withDefaults(defineProps<InfoAccordionProps>(), {
+	items: () => [],
+	initiallyExpanded: false,
+	eventBus: () => createEventBus(),
 });
+const emit = defineEmits<{
+	'click:body': [e: MouseEvent];
+	tooltipClick: [item: string, e: MouseEvent];
+}>();
+
+const expanded = ref(false);
+onMounted(() => {
+	props.eventBus.on('expand', () => {
+		expanded.value = true;
+	});
+	expanded.value = props.initiallyExpanded;
+});
+
+const toggle = () => {
+	expanded.value = !expanded.value;
+};
+
+const onClick = (e: MouseEvent) => emit('click:body', e);
+
+const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick', item, event);
 </script>
 
 <style lang="scss" module>

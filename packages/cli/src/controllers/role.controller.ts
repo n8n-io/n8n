@@ -1,24 +1,22 @@
-import { License } from '@/License';
 import { Get, RestController } from '@/decorators';
-import { RoleService } from '@/services/role.service';
-import { Service } from 'typedi';
+import { type AllRoleTypes, RoleService } from '@/services/role.service';
 
-@Service()
 @RestController('/roles')
 export class RoleController {
-	constructor(
-		private readonly roleService: RoleService,
-		private readonly license: License,
-	) {}
+	constructor(private readonly roleService: RoleService) {}
 
 	@Get('/')
-	async listRoles() {
-		return this.roleService.listRoles().map((role) => {
-			if (role.scope === 'global' && role.name === 'admin') {
-				return { ...role, isAvailable: this.license.isAdvancedPermissionsLicensed() };
-			}
-
-			return { ...role, isAvailable: true };
-		});
+	async getAllRoles() {
+		return Object.fromEntries(
+			Object.entries(this.roleService.getRoles()).map((e) => [
+				e[0],
+				(e[1] as AllRoleTypes[]).map((r) => ({
+					name: this.roleService.getRoleName(r),
+					role: r,
+					scopes: this.roleService.getRoleScopes(r),
+					licensed: this.roleService.isRoleLicensed(r),
+				})),
+			]),
+		);
 	}
 }

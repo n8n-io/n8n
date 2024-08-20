@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { spontitApiRequest } from './GenericFunctions';
 
 import { pushFields, pushOperations } from './PushDescription';
@@ -102,7 +102,7 @@ export class Spontit implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -7,14 +7,15 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
 				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			ref="iframeRef"
-			:src="`${rootStore.baseUrl}workflows/demo`"
+			:src="iframeSrc"
+			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		/>
@@ -25,34 +26,39 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import type { IWorkflowDb } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IWorkflowDb, IWorkflowTemplate } from '@/Interface';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
 	defineProps<{
 		loading?: boolean;
 		mode?: 'workflow' | 'execution';
-		workflow?: IWorkflowDb;
+		workflow?: IWorkflowDb | IWorkflowTemplate['workflow'];
 		executionId?: string;
 		executionMode?: string;
 		loaderType?: 'image' | 'spinner';
+		canOpenNDV?: boolean;
+		hideNodeIssues?: boolean;
 	}>(),
 	{
 		loading: false,
 		mode: 'workflow',
+		workflow: undefined,
+		executionId: undefined,
+		executionMode: undefined,
 		loaderType: 'image',
+		canOpenNDV: true,
+		hideNodeIssues: false,
 	},
 );
 
 const emit = defineEmits<{
-	(event: 'close'): void;
+	close: [];
 }>();
 
 const i18n = useI18n();
 const toast = useToast();
-const rootStore = useRootStore();
-const workflowsStore = useWorkflowsStore();
+const executionsStore = useExecutionsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
 const nodeViewDetailsOpened = ref(false);
@@ -61,11 +67,15 @@ const insideIframe = ref(false);
 const scrollX = ref(0);
 const scrollY = ref(0);
 
+const iframeSrc = computed(() => {
+	return `${window.BASE_PATH ?? '/'}workflows/demo`;
+});
+
 const showPreview = computed(() => {
 	return (
 		!props.loading &&
-		((props.mode === 'workflow' && props.workflow) ||
-			(props.mode === 'execution' && props.executionId)) &&
+		((props.mode === 'workflow' && !!props.workflow) ||
+			(props.mode === 'execution' && !!props.executionId)) &&
 		ready.value
 	);
 });
@@ -82,6 +92,8 @@ const loadWorkflow = () => {
 			JSON.stringify({
 				command: 'openWorkflow',
 				workflow: props.workflow,
+				canOpenNDV: props.canOpenNDV,
+				hideNodeIssues: props.hideNodeIssues,
 			}),
 			'*',
 		);
@@ -103,16 +115,17 @@ const loadExecution = () => {
 			JSON.stringify({
 				command: 'openExecution',
 				executionId: props.executionId,
-				executionMode: props.executionMode || '',
+				executionMode: props.executionMode ?? '',
+				canOpenNDV: props.canOpenNDV,
 			}),
 			'*',
 		);
 
-		if (workflowsStore.activeWorkflowExecution) {
+		if (executionsStore.activeExecution) {
 			iframeRef.value?.contentWindow?.postMessage?.(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: workflowsStore.activeWorkflowExecution,
+					executionId: executionsStore.activeExecution.id,
 				}),
 				'*',
 			);
@@ -136,21 +149,22 @@ const onMouseLeave = () => {
 };
 
 const receiveMessage = ({ data }: MessageEvent) => {
-	if (data?.includes('"command"')) {
-		try {
-			const json = JSON.parse(data);
-			if (json.command === 'n8nReady') {
-				ready.value = true;
-			} else if (json.command === 'openNDV') {
-				nodeViewDetailsOpened.value = true;
-			} else if (json.command === 'closeNDV') {
-				nodeViewDetailsOpened.value = false;
-			} else if (json.command === 'error') {
-				emit('close');
-			}
-		} catch (e) {
-			console.error(e);
+	if (!data?.includes?.('"command"')) {
+		return;
+	}
+	try {
+		const json = JSON.parse(data);
+		if (json.command === 'n8nReady') {
+			ready.value = true;
+		} else if (json.command === 'openNDV') {
+			nodeViewDetailsOpened.value = true;
+		} else if (json.command === 'closeNDV') {
+			nodeViewDetailsOpened.value = false;
+		} else if (json.command === 'error') {
+			emit('close');
 		}
+	} catch (e) {
+		console.error(e);
 	}
 };
 const onDocumentScroll = () => {
@@ -241,6 +255,10 @@ watch(
 
 .imageLoader {
 	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
 }
 
 .executionPreview {

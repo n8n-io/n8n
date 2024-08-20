@@ -7,15 +7,15 @@ export function getManualChatModal() {
 }
 
 export function getManualChatInput() {
-	return cy.getByTestId('workflow-chat-input');
+	return getManualChatModal().get('.chat-inputs textarea');
 }
 
 export function getManualChatSendButton() {
-	return getManualChatModal().getByTestId('workflow-chat-send-button');
+	return getManualChatModal().get('.chat-input-send-button');
 }
 
 export function getManualChatMessages() {
-	return getManualChatModal().get('.messages .message');
+	return getManualChatModal().get('.chat-messages-list .chat-message');
 }
 
 export function getManualChatModalCloseButton() {
@@ -24,6 +24,9 @@ export function getManualChatModalCloseButton() {
 
 export function getManualChatModalLogs() {
 	return getManualChatModal().getByTestId('lm-chat-logs');
+}
+export function getManualChatDialog() {
+	return getManualChatModal().getByTestId('workflow-lm-chat-dialog');
 }
 
 export function getManualChatModalLogsTree() {

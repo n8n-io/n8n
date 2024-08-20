@@ -9,30 +9,39 @@ import type {
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from 'langchain/tools';
+import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
+import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
+import type { JSONSchema7 } from 'json-schema';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-
+import type { DynamicZodObject } from '../../../types/zod.types';
+import { generateSchema, getSandboxWithZod } from '../../../utils/schemaParsing';
+import {
+	jsonSchemaExampleField,
+	schemaTypeField,
+	inputSchemaField,
+} from '../../../utils/descriptions';
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Custom n8n Workflow Tool',
+		displayName: 'Call n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Custom n8n Workflow Tool',
+			name: 'Call n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
+				Tools: ['Recommended Tools'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -50,11 +59,38 @@ export class ToolWorkflow implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
+				displayName:
+					'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',
+				name: 'noticeTemplateExample',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 				placeholder: 'My_Color_Tool',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. My_Color_Tool',
+				validateType: 'string-alphanumeric',
+				description:
+					'The name of the function to be called, could contain letters, numbers, and underscores only',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Description',
@@ -70,7 +106,7 @@ export class ToolWorkflow implements INodeType {
 
 			{
 				displayName:
-					'The workflow will receive "query" as input and the output of the last node will be returned as response',
+					'This tool will call the workflow you define below, and look in the last node for the response. The workflow needs to start with an Execute Workflow trigger',
 				name: 'executeNotice',
 				type: 'notice',
 				default: '',
@@ -87,9 +123,9 @@ export class ToolWorkflow implements INodeType {
 						description: 'Load the workflow from the database by ID',
 					},
 					{
-						name: 'Parameter',
+						name: 'Define Below',
 						value: 'parameter',
-						description: 'Load the workflow from a parameter',
+						description: 'Pass the JSON code of a workflow',
 					},
 				],
 				default: 'database',
@@ -111,6 +147,7 @@ export class ToolWorkflow implements INodeType {
 				default: '',
 				required: true,
 				description: 'The workflow to execute',
+				hint: 'Can be found in the URL of the workflow',
 			},
 
 			// ----------------------------------
@@ -119,9 +156,8 @@ export class ToolWorkflow implements INodeType {
 			{
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
-					editor: 'json',
 					rows: 10,
 				},
 				displayOptions: {
@@ -129,27 +165,30 @@ export class ToolWorkflow implements INodeType {
 						source: ['parameter'],
 					},
 				},
-				default: '\n\n\n',
+				default: '\n\n\n\n\n\n\n\n\n',
 				required: true,
 				description: 'The workflow JSON code to execute',
 			},
-			{
-				displayName: 'Response Property Name',
-				name: 'responsePropertyName',
-				type: 'string',
-				default: 'response',
-				description: 'The name of the property of the last node that will be returned as response',
-			},
-
 			// ----------------------------------
 			//         For all
 			// ----------------------------------
 			{
-				displayName: 'Workflow Values',
+				displayName: 'Field to Return',
+				name: 'responsePropertyName',
+				type: 'string',
+				default: 'response',
+				required: true,
+				hint: 'The field in the last-executed node of the workflow that contains the response',
+				description:
+					'Where to find the data that this tool should return. n8n will look in the output of the last-executed node of the workflow for a field with this name, and return its value.',
+			},
+			{
+				displayName: 'Extra Workflow Inputs',
 				name: 'fields',
 				placeholder: 'Add Value',
 				type: 'fixedCollection',
-				description: 'Set the values which should be made available in the workflow',
+				description:
+					"These will be output by the 'execute workflow' trigger of the workflow being called",
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
@@ -266,11 +305,9 @@ export class ToolWorkflow implements INodeType {
 							{
 								displayName: 'Value',
 								name: 'objectValue',
-								type: 'string',
+								type: 'json',
 								default: '={}',
 								typeOptions: {
-									editor: 'json',
-									editorLanguage: 'json',
 									rows: 2,
 								},
 								displayOptions: {
@@ -285,6 +322,21 @@ export class ToolWorkflow implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         Output Parsing
+			// ----------------------------------
+			{
+				displayName: 'Specify Input Schema',
+				name: 'specifyInputSchema',
+				type: 'boolean',
+				description:
+					'Whether to specify the schema for the function. This would require the LLM to provide the input in the correct format and would validate it against the schema.',
+				noDataExpression: true,
+				default: false,
+			},
+			{ ...schemaTypeField, displayOptions: { show: { specifyInputSchema: [true] } } },
+			jsonSchemaExampleField,
+			inputSchemaField,
 		],
 	};
 
@@ -292,12 +344,26 @@ export class ToolWorkflow implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
-		const runFunction = async (query: string): Promise<string> => {
+		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
+		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+		const runFunction = async (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
 			const responsePropertyName = this.getNodeParameter(
 				'responsePropertyName',
 				itemIndex,
 			) as string;
+
+			if (!responsePropertyName) {
+				throw new NodeOperationError(this.getNode(), "Field to return can't be empty", {
+					itemIndex,
+					description:
+						'Enter the name of a field in the last node of the workflow that contains the response to return',
+				});
+			}
 
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
@@ -349,7 +415,11 @@ export class ToolWorkflow implements INodeType {
 
 			let receivedData: INodeExecutionData;
 			try {
-				receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+				receivedData = (await this.executeWorkflow(
+					workflowInfo,
+					items,
+					runManager?.getChild(),
+				)) as INodeExecutionData;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
@@ -372,51 +442,86 @@ export class ToolWorkflow implements INodeType {
 			return response;
 		};
 
+		const toolHandler = async (
+			query: string | IDataObject,
+			runManager?: CallbackManagerForToolRun,
+		): Promise<string> => {
+			const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+
+			let response: string = '';
+			let executionError: ExecutionError | undefined;
+			try {
+				response = await runFunction(query, runManager);
+			} catch (error) {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				executionError = error;
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				response = `There was an error: "${error.message}"`;
+			}
+
+			if (typeof response === 'number') {
+				response = (response as number).toString();
+			}
+
+			if (isObject(response)) {
+				response = JSON.stringify(response, null, 2);
+			}
+
+			if (typeof response !== 'string') {
+				// TODO: Do some more testing. Issues here should actually fail the workflow
+				executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
+					description: `The response property should be a string, but it is an ${typeof response}`,
+				});
+				response = `There was an error: "${executionError.message}"`;
+			}
+
+			if (executionError) {
+				void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
+			} else {
+				void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			}
+			return response;
+		};
+
+		const functionBase = {
+			name,
+			description,
+			func: toolHandler,
+		};
+
+		if (useSchema) {
+			try {
+				// We initialize these even though one of them will always be empty
+				// it makes it easier to navigate the ternary operator
+				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
+				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as string;
+
+				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+				const jsonSchema =
+					schemaType === 'fromJson'
+						? generateSchema(jsonExample)
+						: jsonParse<JSONSchema7>(inputSchema);
+
+				const zodSchemaSandbox = getSandboxWithZod(this, jsonSchema, 0);
+				const zodSchema = (await zodSchemaSandbox.runCode()) as DynamicZodObject;
+
+				tool = new DynamicStructuredTool<typeof zodSchema>({
+					schema: zodSchema,
+					...functionBase,
+				});
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Error during parsing of JSON Schema. \n ' + error,
+				);
+			}
+		} else {
+			tool = new DynamicTool(functionBase);
+		}
+
 		return {
-			response: new DynamicTool({
-				name,
-				description,
-
-				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
-
-					let response: string = '';
-					let executionError: ExecutionError | undefined;
-					try {
-						response = await runFunction(query);
-					} catch (error) {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-						executionError = error;
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-						response = `There was an error: "${error.message}"`;
-					}
-
-					if (typeof response === 'number') {
-						response = (response as number).toString();
-					}
-
-					if (isObject(response)) {
-						response = JSON.stringify(response, null, 2);
-					}
-
-					if (typeof response !== 'string') {
-						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(
-							this.getNode(),
-							`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
-						);
-						response = `There was an error: "${executionError.message}"`;
-					}
-
-					if (executionError) {
-						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
-					} else {
-						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
-					}
-					return response;
-				},
-			}),
+			response: tool,
 		};
 	}
 }

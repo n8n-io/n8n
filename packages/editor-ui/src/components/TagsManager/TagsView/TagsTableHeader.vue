@@ -3,11 +3,11 @@
 		<el-col :span="10">
 			<n8n-input
 				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
-				:modelValue="search"
+				:model-value="search"
 				:disabled="disabled"
 				:maxlength="maxLength"
 				clearable
-				@update:modelValue="onSearchChange"
+				@update:model-value="onSearchChange"
 			>
 				<template #prefix>
 					<font-awesome-icon icon="search" />
@@ -16,44 +16,46 @@
 		</el-col>
 		<el-col :span="14">
 			<n8n-button
-				@click="onAddNew"
 				:disabled="disabled"
 				icon="plus"
 				:label="$locale.baseText('tagsTableHeader.addNew')"
 				size="large"
 				float="right"
+				@click="onAddNew"
 			/>
 		</el-col>
 	</el-row>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ref } from 'vue';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 
-export default defineComponent({
-	props: {
-		disabled: {
-			default: false,
-		},
-		search: {
-			default: '',
-		},
+withDefaults(
+	defineProps<{
+		disabled: boolean;
+		search: string;
+	}>(),
+	{
+		disabled: false,
+		search: '',
 	},
-	data() {
-		return {
-			maxLength: MAX_TAG_NAME_LENGTH,
-		};
-	},
-	methods: {
-		onAddNew() {
-			this.$emit('createEnable');
-		},
-		onSearchChange(search: string) {
-			this.$emit('searchChange', search);
-		},
-	},
-});
+);
+
+const emit = defineEmits<{
+	searchChange: [value: string];
+	createEnable: [];
+}>();
+
+const maxLength = ref(MAX_TAG_NAME_LENGTH);
+
+const onAddNew = () => {
+	emit('createEnable');
+};
+
+const onSearchChange = (search: string) => {
+	emit('searchChange', search);
+};
 </script>
 
 <style lang="scss" scoped>

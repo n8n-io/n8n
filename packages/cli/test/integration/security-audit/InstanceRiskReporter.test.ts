@@ -14,6 +14,7 @@ import config from '@/config';
 import { generateNanoId } from '@db/utils/generators';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
+import { NodeConnectionType } from 'n8n-workflow';
 
 let securityAuditService: SecurityAuditService;
 
@@ -102,7 +103,7 @@ test('should not report webhooks having basic or header auth', async () => {
 			],
 		};
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
@@ -156,7 +157,7 @@ test('should not report webhooks validated by direct children', async () => {
 						[
 							{
 								node: 'My Node',
-								type: 'main',
+								type: NodeConnectionType.Main,
 								index: 0,
 							},
 						],
@@ -165,7 +166,7 @@ test('should not report webhooks validated by direct children', async () => {
 			},
 		};
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);
@@ -251,9 +252,6 @@ test('should report security settings', async () => {
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
 			publicApiEnabled: false,
-		},
-		auth: {
-			authExcludeEndpoints: 'none',
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
 		telemetry: { diagnosticsEnabled: true },

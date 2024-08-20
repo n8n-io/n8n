@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.microsoftOneDriveTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftonedrivetrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Hey founders! Your business doesn't need you to operate",
+				"icon": " 🖥️",
+				"url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+			}
+		]
+	}
+}

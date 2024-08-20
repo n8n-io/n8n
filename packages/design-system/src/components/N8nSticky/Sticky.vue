@@ -9,192 +9,117 @@
 		:style="styles"
 		@keydown.prevent
 	>
-		<n8n-resize-wrapper
-			:isResizingEnabled="!readOnly"
-			:height="height"
-			:width="width"
-			:minHeight="minHeight"
-			:minWidth="minWidth"
-			:scale="scale"
-			:gridSize="gridSize"
-			@resizeend="onResizeEnd"
-			@resize="onResize"
-			@resizestart="onResizeStart"
+		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+			<N8nMarkdown
+				theme="sticky"
+				:content="modelValue"
+				:with-multi-breaks="true"
+				@markdown-click="onMarkdownClick"
+				@update-content="onUpdateModelValue"
+			/>
+		</div>
+		<div
+			v-show="editMode"
+			:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
+			@click.stop
+			@mousedown.stop
+			@mouseup.stop
+			@keydown.esc="onInputBlur"
+			@keydown.stop
 		>
-			<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
-				<n8n-markdown
-					theme="sticky"
-					:content="modelValue"
-					:withMultiBreaks="true"
-					@markdown-click="onMarkdownClick"
-				/>
-			</div>
-			<div
-				v-show="editMode"
-				@click.stop
-				@mousedown.stop
-				@mouseup.stop
-				@keydown.esc="onInputBlur"
-				@keydown.stop
-				@wheel.stop
-				:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
-			>
-				<n8n-input
-					:modelValue="modelValue"
-					type="textarea"
-					:rows="5"
-					@blur="onInputBlur"
-					@update:modelValue="onUpdateModelValue"
-					ref="input"
-				/>
-			</div>
-			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-				<n8n-text size="xsmall" aligh="right">
-					<span v-html="t('sticky.markdownHint')"></span>
-				</n8n-text>
-			</div>
-		</n8n-resize-wrapper>
+			<N8nInput
+				ref="input"
+				:model-value="modelValue"
+				:name="inputName"
+				type="textarea"
+				:rows="5"
+				@blur="onInputBlur"
+				@update:model-value="onUpdateModelValue"
+				@wheel="onInputScroll"
+			/>
+		</div>
+		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+			<N8nText size="xsmall" align="right">
+				<span v-html="t('sticky.markdownHint')"></span>
+			</N8nText>
+		</div>
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper from '../N8nResizeWrapper';
 import N8nText from '../N8nText';
-import Locale from '../../mixins/locale';
-import { defineComponent } from 'vue';
+import { useI18n } from '../../composables/useI18n';
+import { defaultStickyProps } from './constants';
+import type { StickyProps } from './types';
 
-export default defineComponent({
-	name: 'n8n-sticky',
-	mixins: [Locale],
-	props: {
-		modelValue: {
-			type: String,
-		},
-		height: {
-			type: Number,
-			default: 180,
-		},
-		width: {
-			type: Number,
-			default: 240,
-		},
-		minHeight: {
-			type: Number,
-			default: 80,
-		},
-		minWidth: {
-			type: Number,
-			default: 150,
-		},
-		scale: {
-			type: Number,
-			default: 1,
-		},
-		gridSize: {
-			type: Number,
-			default: 20,
-		},
-		id: {
-			type: String,
-			default: '0',
-		},
-		defaultText: {
-			type: String,
-		},
-		editMode: {
-			type: Boolean,
-			default: false,
-		},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-		backgroundColor: {
-			value: [Number, String],
-			default: 1,
-		},
-	},
-	components: {
-		N8nInput,
-		N8nMarkdown,
-		N8nResizeWrapper,
-		N8nText,
-	},
-	data() {
-		return {
-			isResizing: false,
-		};
-	},
-	computed: {
-		resHeight(): number {
-			if (this.height < this.minHeight) {
-				return this.minHeight;
-			}
-			return this.height;
-		},
-		resWidth(): number {
-			if (this.width < this.minWidth) {
-				return this.minWidth;
-			}
-			return this.width;
-		},
-		styles(): { height: string; width: string } {
-			const styles: { height: string; width: string } = {
-				height: `${this.resHeight}px`,
-				width: `${this.resWidth}px`,
-			};
+const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 
-			return styles;
-		},
-		shouldShowFooter(): boolean {
-			return this.resHeight > 100 && this.resWidth > 155;
-		},
-	},
-	methods: {
-		onDoubleClick() {
-			if (!this.readOnly) {
-				this.$emit('edit', true);
-			}
-		},
-		onInputBlur() {
-			if (!this.isResizing) {
-				this.$emit('edit', false);
-			}
-		},
-		onUpdateModelValue(value: string) {
-			this.$emit('update:modelValue', value);
-		},
-		onMarkdownClick(link: string, event: Event) {
-			this.$emit('markdown-click', link, event);
-		},
-		onResize(values: unknown[]) {
-			this.$emit('resize', values);
-		},
-		onResizeEnd(resizeEnd: unknown) {
-			this.isResizing = false;
-			this.$emit('resizeend', resizeEnd);
-		},
-		onResizeStart() {
-			this.isResizing = true;
-			this.$emit('resizestart');
-		},
-	},
-	watch: {
-		editMode(newMode, prevMode) {
-			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input) {
-					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.modelValue) {
-						textarea.select();
-					}
-					textarea.focus();
-				}
-			}, 100);
-		},
-	},
+const emit = defineEmits<{
+	edit: [editing: boolean];
+	'update:modelValue': [value: string];
+	'markdown-click': [link: string, e: Event];
+}>();
+
+const { t } = useI18n();
+const isResizing = ref(false);
+const input = ref<HTMLTextAreaElement | undefined>(undefined);
+
+const resHeight = computed((): number => {
+	return props.height < props.minHeight ? props.minHeight : props.height;
 });
+
+const resWidth = computed((): number => {
+	return props.width < props.minWidth ? props.minWidth : props.width;
+});
+
+const inputName = computed(() => (props.id ? `${props.id}-input` : undefined));
+
+const styles = computed((): { height: string; width: string } => ({
+	height: `${resHeight.value}px`,
+	width: `${resWidth.value}px`,
+}));
+
+const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+
+watch(
+	() => props.editMode,
+	(newMode, prevMode) => {
+		setTimeout(() => {
+			if (newMode && !prevMode && input.value) {
+				if (props.defaultText === props.modelValue) {
+					input.value.select();
+				}
+				input.value.focus();
+			}
+		}, 100);
+	},
+);
+
+const onDoubleClick = () => {
+	if (!props.readOnly) emit('edit', true);
+};
+
+const onInputBlur = () => {
+	if (!isResizing.value) emit('edit', false);
+};
+
+const onUpdateModelValue = (value: string) => {
+	emit('update:modelValue', value);
+};
+
+const onMarkdownClick = (link: string, event: Event) => {
+	emit('markdown-click', link, event);
+};
+
+const onInputScroll = (event: WheelEvent) => {
+	// Pass through zoom events but hold regular scrolling
+	if (!event.ctrlKey && !event.metaKey) {
+		event.stopPropagation();
+	}
+};
 </script>
 
 <style lang="scss" module>

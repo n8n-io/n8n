@@ -24,7 +24,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Dynamics CRM',
 		name: 'microsoftDynamicsCrm',
-		icon: 'file:dynamicsCrm.svg',
+		icon: { light: 'file:microsoftDynamicsCrm.svg', dark: 'file:microsoftDynamicsCrm.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -62,49 +62,49 @@ export class MicrosoftDynamicsCrm implements INodeType {
 	methods = {
 		loadOptions: {
 			async getAccountCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'accountcategorycode');
+				return await getPicklistOptions.call(this, 'account', 'accountcategorycode');
 			},
 			async getAccountRatingCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'accountratingcode');
+				return await getPicklistOptions.call(this, 'account', 'accountratingcode');
 			},
 			async getAddressTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'address1_addresstypecode');
+				return await getPicklistOptions.call(this, 'account', 'address1_addresstypecode');
 			},
 			async getBusinessTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'businesstypecode');
+				return await getPicklistOptions.call(this, 'account', 'businesstypecode');
 			},
 			async getCustomerSizeCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'customersizecode');
+				return await getPicklistOptions.call(this, 'account', 'customersizecode');
 			},
 			async getCustomerTypeCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'customertypecode');
+				return await getPicklistOptions.call(this, 'account', 'customertypecode');
 			},
 			async getIndustryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'industrycode');
+				return await getPicklistOptions.call(this, 'account', 'industrycode');
 			},
 			async getPaymentTermsCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'paymenttermscode');
+				return await getPicklistOptions.call(this, 'account', 'paymenttermscode');
 			},
 			async getPreferredAppointmentDayCodes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'preferredappointmentdaycode');
+				return await getPicklistOptions.call(this, 'account', 'preferredappointmentdaycode');
 			},
 			async getPreferredAppointmentTimeCodes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'preferredappointmenttimecode');
+				return await getPicklistOptions.call(this, 'account', 'preferredappointmenttimecode');
 			},
 			async getPreferredContactMethodCodes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'preferredcontactmethodcode');
+				return await getPicklistOptions.call(this, 'account', 'preferredcontactmethodcode');
 			},
 			async getShippingMethodCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'shippingmethodcode');
+				return await getPicklistOptions.call(this, 'account', 'shippingmethodcode');
 			},
 			async getTerritoryCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getPicklistOptions.call(this, 'account', 'territorycode');
+				return await getPicklistOptions.call(this, 'account', 'territorycode');
 			},
 			async getAccountFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const fields = await getEntityFields.call(this, 'account');
@@ -281,7 +281,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

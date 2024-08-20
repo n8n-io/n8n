@@ -1,5 +1,10 @@
 <template>
-	<ModalDrawer :name="VERSIONS_MODAL_KEY" direction="ltr" width="520px">
+	<ModalDrawer
+		:name="VERSIONS_MODAL_KEY"
+		direction="ltr"
+		width="520px"
+		data-test-id="version-updates-panel"
+	>
 		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
@@ -31,7 +36,7 @@
 				</p>
 
 				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
+					<font-awesome-icon icon="info-circle" class="mr-2xs" />
 					<span>
 						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>

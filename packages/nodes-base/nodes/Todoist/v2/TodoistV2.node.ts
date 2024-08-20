@@ -279,7 +279,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Additional Fields',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -390,7 +390,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'filters',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -731,7 +731,7 @@ export class TodoistV2 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

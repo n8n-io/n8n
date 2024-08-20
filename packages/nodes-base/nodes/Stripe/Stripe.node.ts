@@ -113,7 +113,7 @@ export class Stripe implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'customer');
+				return await loadResource.call(this, 'customer');
 			},
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -464,7 +464,7 @@ export class Stripe implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

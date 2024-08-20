@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { TextSplitter } from '@langchain/textsplitters';
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
@@ -33,7 +34,7 @@ export class DocumentJsonInputLoader implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentjsoninputloader/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/',
 					},
 				],
 			},
@@ -80,7 +81,12 @@ export class DocumentJsonInputLoader implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supply Data for JSON Input Loader');
-		const processor = new N8nJsonLoader(this);
+		const textSplitter = (await this.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as TextSplitter | undefined;
+
+		const processor = new N8nJsonLoader(this, undefined, textSplitter);
 
 		return {
 			response: logWrapper(processor, this),

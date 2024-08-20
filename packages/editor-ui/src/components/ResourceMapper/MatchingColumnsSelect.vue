@@ -53,8 +53,8 @@ watch(
 );
 
 const emit = defineEmits<{
-	(event: 'matchingColumnsChanged', value: string[]): void;
-	(event: 'refreshFieldList'): void;
+	matchingColumnsChanged: [value: string[]];
+	refreshFieldList: [];
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
@@ -93,6 +93,7 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
+			nodeDisplayName: props.serviceName,
 		},
 	});
 });
@@ -170,28 +171,28 @@ defineExpose({
 		<n8n-input-label
 			v-if="availableMatchingFields.length > 0"
 			:label="fieldLabel"
-			:tooltipText="fieldTooltip"
+			:tooltip-text="fieldTooltip"
 			:bold="false"
 			:required="false"
 			:size="labelSize"
 			color="text-dark"
 		>
 			<template #options>
-				<parameter-options
+				<ParameterOptions
 					:parameter="parameter"
-					:customActions="parameterActions"
+					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
-					:loadingMessage="fetchingFieldsLabel"
-					@update:modelValue="onParameterActionSelected"
+					:loading-message="fetchingFieldsLabel"
+					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 			<n8n-select
 				:multiple="resourceMapperTypeOptions?.multiKeyMatch === true"
-				:modelValue="state.selected"
+				:model-value="state.selected"
 				:size="props.inputSize"
 				:disabled="loading"
 				:teleported="teleported"
-				@update:modelValue="onSelectionChange"
+				@update:model-value="onSelectionChange"
 			>
 				<n8n-option
 					v-for="field in availableMatchingFields"

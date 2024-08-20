@@ -1,33 +1,33 @@
 <template>
 	<div
-		class="resource-locator"
 		ref="container"
+		class="resource-locator"
 		:data-test-id="`resource-locator-${parameter.name}`"
 	>
-		<resource-locator-dropdown
+		<ResourceLocatorDropdown
 			ref="dropdown"
-			:modelValue="modelValue ? modelValue.value : ''"
+			v-on-click-outside="hideResourceDropdown"
+			:model-value="modelValue ? modelValue.value : ''"
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
-			:filterRequired="requiresSearchFilter"
+			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
-			:hasMore="currentQueryHasMore"
-			:errorView="currentQueryError"
+			:has-more="currentQueryHasMore"
+			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
-			v-on-click-outside="hideResourceDropdown"
-			@update:modelValue="onListItemSelected"
+			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
-			@loadMore="loadResourcesDebounced"
+			@load-more="loadResourcesDebounced"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
 						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
-					<n8n-text size="small" color="text-base" v-if="hasCredential || credentialsNotSet">
+					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
 						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
 						<a v-if="credentialsNotSet" @click="createNewCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
@@ -44,15 +44,15 @@
 					[$style.multipleModes]: hasMultipleModes,
 				}"
 			>
+				<div :class="$style.background"></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
-						:modelValue="selectedMode"
-						filterable
+						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
-						@update:modelValue="onModeSelected"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
+						@update:model-value="onModeSelected"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -72,11 +72,11 @@
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-					<draggable-target
+					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -90,26 +90,26 @@
 							>
 								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
-									:modelValue="expressionDisplayValue"
-									:path="path"
-									isForRecordLocator
-									@update:modelValue="onInputChange"
-									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
+									:model-value="expressionDisplayValue"
+									:path="path"
+									:rows="3"
+									@update:model-value="onInputChange"
+									@modal-opener-click="$emit('modalOpenerClick')"
 								/>
 								<n8n-input
 									v-else
+									ref="input"
 									:class="{ [$style.selectInput]: isListMode }"
 									:size="inputSize"
-									:modelValue="valueToDisplay"
+									:model-value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
 									:title="displayTitle"
 									:placeholder="inputPlaceholder"
 									type="text"
-									ref="input"
 									data-test-id="rlc-input"
-									@update:modelValue="onInputChange"
+									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
@@ -126,8 +126,8 @@
 								</n8n-input>
 							</div>
 						</template>
-					</draggable-target>
-					<parameter-issues
+					</DraggableTarget>
+					<ParameterIssues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
@@ -139,19 +139,16 @@
 					</div>
 				</div>
 			</div>
-		</resource-locator-dropdown>
+		</ResourceLocatorDropdown>
 	</div>
 </template>
 
 <script lang="ts">
-import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -175,6 +172,10 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { ndvEventBus } from '@/event-bus';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -184,8 +185,7 @@ interface IResourceLocatorQuery {
 }
 
 export default defineComponent({
-	name: 'resource-locator',
-	mixins: [debounceHelper, workflowHelpers, nodeHelpers],
+	name: 'ResourceLocator',
 	components: {
 		DraggableTarget,
 		ExpressionParameterInput,
@@ -198,9 +198,7 @@ export default defineComponent({
 			required: true,
 		},
 		modelValue: {
-			type: [Object, String] as PropType<
-				INodeParameterResourceLocator | NodeParameterValue | undefined
-			>,
+			type: Object as PropType<INodeParameterResourceLocator>,
 		},
 		inputSize: {
 			type: String,
@@ -222,8 +220,7 @@ export default defineComponent({
 			default: '',
 		},
 		expressionComputedValue: {
-			type: String,
-			default: '',
+			type: {} as PropType<unknown>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -231,6 +228,7 @@ export default defineComponent({
 		},
 		expressionDisplayValue: {
 			type: String,
+			default: '',
 		},
 		forceShowExpression: {
 			type: Boolean,
@@ -249,6 +247,7 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		loadOptionsMethod: {
 			type: String,
@@ -257,6 +256,14 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 			default: () => createEventBus(),
 		},
+	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced, workflowHelpers };
 	},
 	data() {
 		return {
@@ -301,7 +308,8 @@ export default defineComponent({
 			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return false;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (nodeType) {
 				const usesCredentials =
 					nodeType.credentials !== undefined && nodeType.credentials.length > 0;
@@ -366,7 +374,7 @@ export default defineComponent({
 				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
-					const resolved = this.resolveExpression(expression);
+					const resolved = this.workflowHelpers.resolveExpression(expression);
 
 					return typeof resolved === 'string' ? resolved : null;
 				}
@@ -380,8 +388,8 @@ export default defineComponent({
 			filter: string;
 		} {
 			return {
-				parameters: this.node.parameters,
-				credentials: this.node.credentials,
+				parameters: this.node?.parameters ?? {},
+				credentials: this.node?.credentials ?? {},
 				filter: this.searchFilter,
 			};
 		},
@@ -403,7 +411,7 @@ export default defineComponent({
 			return this.cachedResponses[this.currentRequestKey] || null;
 		},
 		currentQueryResults(): IResourceLocatorResultExpanded[] {
-			const results = this.currentResponse ? this.currentResponse.results : [];
+			const results = this.currentResponse?.results ?? [];
 
 			return results.map(
 				(result: INodeListSearchItems): IResourceLocatorResultExpanded => ({
@@ -479,7 +487,7 @@ export default defineComponent({
 		this.eventBus.on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
 
-		useNDVStore().$subscribe((mutation, state) => {
+		useNDVStore().$subscribe((_mutation, _state) => {
 			// Update the width when main panel dimension change
 			this.setWidth();
 		});
@@ -499,10 +507,10 @@ export default defineComponent({
 				this.width = containerRef?.offsetWidth;
 			}
 		},
-		getLinkAlt(entity: string) {
+		getLinkAlt(entity: NodeParameterValue) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', {
-					interpolate: { entity, appName: this.appName },
+					interpolate: { entity: entity.toString(), appName: this.appName },
 				});
 			}
 			return this.$locale.baseText('resourceLocator.openResource', {
@@ -513,7 +521,7 @@ export default defineComponent({
 			this.cachedResponses = {};
 			this.trackEvent('User refreshed resource locator list');
 		},
-		onKeyDown(e: MouseEvent) {
+		onKeyDown(e: KeyboardEvent) {
 			if (this.resourceDropdownVisible && !this.isSearchable) {
 				this.eventBus.emit('keyDown', e);
 			}
@@ -548,19 +556,29 @@ export default defineComponent({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
+			if (!id) {
+				return;
+			}
 			this.uiStore.openExistingCredential(id);
 		},
 		createNewCredential(): void {
-			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
+			if (!this.node) return;
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
 			if (!nodeType) {
 				return;
 			}
+
+			const defaultCredentialType = nodeType.credentials?.[0].name ?? '';
 			const mainAuthType = getMainAuthField(nodeType);
-			const showAuthSelector =
+			const showAuthOptions =
 				mainAuthType !== null &&
 				Array.isArray(mainAuthType.options) &&
 				mainAuthType.options?.length > 0;
-			this.uiStore.openNewCredential('', showAuthSelector);
+
+			ndvEventBus.emit('credential.createNew', {
+				type: defaultCredentialType,
+				showAuthOptions,
+			});
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -637,7 +655,15 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			if (this.currentResponse?.error) {
+				// Clear error response immediately when retrying to show loading state
+				delete this.cachedResponses[this.currentRequestKey];
+			}
+
+			void this.callDebounced(this.loadResources, {
+				debounceTime: 1000,
+				trailing: true,
+			});
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -650,15 +676,24 @@ export default defineComponent({
 			const paramsKey = this.currentRequestKey;
 			const cachedResponse = this.cachedResponses[paramsKey];
 
+			if (this.credentialsNotSet) {
+				this.setResponse(paramsKey, { error: true });
+				return;
+			}
+
 			if (this.requiresSearchFilter && !params.filter) {
 				return;
 			}
 
-			let paginationToken: unknown = null;
+			if (!this.node) {
+				return;
+			}
+
+			let paginationToken: string | undefined;
 
 			try {
 				if (cachedResponse) {
-					const nextPageToken = cachedResponse.nextPageToken;
+					const nextPageToken = cachedResponse.nextPageToken as string;
 					if (nextPageToken) {
 						paginationToken = nextPageToken;
 						this.setResponse(paramsKey, { loading: true });
@@ -676,15 +711,16 @@ export default defineComponent({
 					});
 				}
 
-				const resolvedNodeParameters = this.resolveRequiredParameters(
+				const resolvedNodeParameters = this.workflowHelpers.resolveRequiredParameters(
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;
-				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
-					| string
-					| undefined;
+				const loadOptionsMethod = this.getPropertyArgument(
+					this.currentMode,
+					'searchListMethod',
+				) as string;
 
-				const requestParams: IResourceLocatorReqParams = {
+				const requestParams: DynamicNodeParameters.ResourceLocatorResultsRequest = {
 					nodeTypeAndVersion: {
 						name: this.node.type,
 						version: this.node.typeVersion,
@@ -693,9 +729,15 @@ export default defineComponent({
 					methodName: loadOptionsMethod,
 					currentNodeParameters: resolvedNodeParameters,
 					credentials: this.node.credentials,
-					...(params.filter ? { filter: params.filter } : {}),
-					...(paginationToken ? { paginationToken } : {}),
 				};
+
+				if (params.filter) {
+					requestParams.filter = params.filter;
+				}
+
+				if (paginationToken) {
+					requestParams.paginationToken = paginationToken;
+				}
 
 				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 
@@ -809,15 +851,32 @@ $--mode-selector-width: 92px;
 .resourceLocator {
 	display: flex;
 	flex-wrap: wrap;
+	position: relative;
+
+	--input-issues-width: 28px;
 
 	.inputContainer {
 		display: flex;
 		align-items: center;
 		width: 100%;
 
+		--input-border-top-left-radius: 0;
+		--input-border-bottom-left-radius: 0;
+
 		> div {
 			width: 100%;
 		}
+	}
+
+	.background {
+		position: absolute;
+		background-color: var(--color-background-input-triple);
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: var(--input-issues-width);
+		border: 1px solid var(--border-color-base);
+		border-radius: var(--border-radius-base);
 	}
 
 	&.multipleModes {
@@ -879,7 +938,9 @@ $--mode-selector-width: 92px;
 
 .openResourceLink {
 	width: 25px !important;
-	margin-left: var(--spacing-2xs);
+	padding-left: var(--spacing-2xs);
+	padding-top: var(--spacing-4xs);
+	align-self: flex-start;
 }
 
 .parameter-issues {

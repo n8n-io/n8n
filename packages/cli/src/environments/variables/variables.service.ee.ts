@@ -1,31 +1,28 @@
 import { Container, Service } from 'typedi';
 import type { Variables } from '@db/entities/Variables';
-import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
-import { canCreateNewVariable } from './enviromentHelpers';
-import { CacheService } from '@/services/cache.service';
+import { canCreateNewVariable } from './environmentHelpers';
+import { CacheService } from '@/services/cache/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
-import type { DeepPartial } from 'typeorm';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class VariablesService {
 	constructor(
 		protected cacheService: CacheService,
 		protected variablesRepository: VariablesRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
-			async refreshFunction() {
-				// TODO: log refresh cache metric
-				return Container.get(VariablesService).findAll();
+			async refreshFn() {
+				return await Container.get(VariablesService).findAll();
 			},
 		});
-		return (variables as Array<DeepPartial<Variables>>).map((v) =>
-			this.variablesRepository.create(v),
-		);
+		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
 	}
 
 	async getCount(): Promise<number> {
@@ -38,7 +35,7 @@ export class VariablesService {
 		if (!foundVariable) {
 			return null;
 		}
-		return this.variablesRepository.create(foundVariable as DeepPartial<Variables>);
+		return this.variablesRepository.create(foundVariable as Partial<Variables>);
 	}
 
 	async delete(id: string): Promise<void> {
@@ -53,7 +50,7 @@ export class VariablesService {
 	}
 
 	async findAll(): Promise<Variables[]> {
-		return this.variablesRepository.find();
+		return await this.variablesRepository.find();
 	}
 
 	validateVariable(variable: Omit<Variables, 'id'>): void {
@@ -74,11 +71,14 @@ export class VariablesService {
 		}
 		this.validateVariable(variable);
 
-		void Container.get(InternalHooks).onVariableCreated({ variable_type: variable.type });
-		const saveResult = await this.variablesRepository.save({
-			...variable,
-			id: generateNanoId(),
-		});
+		this.eventService.emit('variable-created');
+		const saveResult = await this.variablesRepository.save(
+			{
+				...variable,
+				id: generateNanoId(),
+			},
+			{ transaction: false },
+		);
 		await this.updateCache();
 		return saveResult;
 	}

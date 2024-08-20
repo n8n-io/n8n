@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function serviceNowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -30,14 +30,14 @@ export async function serviceNowApiRequest(
 		credentials = await this.getCredentials('serviceNowOAuth2Api');
 	}
 
-	const options: OptionsWithUri = {
+	const options = {
 		headers,
 		method,
 		qs,
 		body,
 		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
 		json: true,
-	};
+	} satisfies IRequestOptions;
 	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
@@ -61,7 +61,7 @@ export async function serviceNowApiRequest(
 
 export async function serviceNowRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

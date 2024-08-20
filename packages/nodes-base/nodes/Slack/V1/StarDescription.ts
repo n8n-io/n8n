@@ -51,7 +51,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Channel Name or ID',
@@ -103,7 +103,7 @@ export const starFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Channel Name or ID',

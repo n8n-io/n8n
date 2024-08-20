@@ -31,6 +31,7 @@ export class DateTimeV2 implements INodeType {
 			},
 			inputs: ['main'],
 			outputs: ['main'],
+			description: 'Manipulate date and time values',
 			properties: [
 				{
 					displayName: 'Operation',
@@ -217,7 +218,7 @@ export class DateTimeV2 implements INodeType {
 					returnData.push(item);
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

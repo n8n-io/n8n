@@ -3,7 +3,7 @@ import { Container, Service } from 'typedi';
 import path from 'path';
 import fsPromises from 'fs/promises';
 
-import type { DirectoryLoader, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	InstanceSettings,
@@ -19,7 +19,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import config from '@/config';
 import {
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
@@ -28,6 +27,7 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { Logger } from '@/Logger';
+import { GlobalConfig } from '@n8n/config';
 
 interface LoadedNodesAndCredentials {
 	nodes: INodeTypeData;
@@ -44,15 +44,16 @@ export class LoadNodesAndCredentials {
 
 	loaders: Record<string, DirectoryLoader> = {};
 
-	excludeNodes = config.getEnv('nodes.exclude');
+	excludeNodes = this.globalConfig.nodes.exclude;
 
-	includeNodes = config.getEnv('nodes.include');
+	includeNodes = this.globalConfig.nodes.include;
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async init() {
@@ -133,7 +134,7 @@ export class LoadNodesAndCredentials {
 			: [
 					...(await glob('n8n-nodes-*', globOptions)),
 					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-			  ];
+				];
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -182,7 +183,7 @@ export class LoadNodesAndCredentials {
 			'node_modules',
 			packageName,
 		);
-		return this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
+		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 
 	async unloadPackage(packageName: string) {
@@ -250,7 +251,7 @@ export class LoadNodesAndCredentials {
 	 * Run a loader of source files of nodes and credentials in a directory.
 	 */
 	private async runDirectoryLoader<T extends DirectoryLoader>(
-		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);

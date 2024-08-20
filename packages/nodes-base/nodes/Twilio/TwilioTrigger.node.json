@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.twilioTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication", "Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.twiliotrigger/"
+			}
+		]
+	},
+	"alias": ["SMS", "Phone", "Voice"]
+}

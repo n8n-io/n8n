@@ -24,7 +24,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{
@@ -104,7 +104,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	guildId: string,
+	_guildId: string,
 	userGuilds: IDataObject[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
@@ -140,7 +140,7 @@ export async function execute(
 		} catch (error) {
 			const err = parseDiscordError.call(this, error, i);
 
-			if (this.continueOnFail()) {
+			if (this.continueOnFail(error)) {
 				returnData.push(...prepareErrorData.call(this, err, i));
 				continue;
 			}

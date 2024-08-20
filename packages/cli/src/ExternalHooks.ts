@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from 'typedi';
-import type {
-	IExternalHooksClass,
-	IExternalHooksFileData,
-	IExternalHooksFunctions,
-} from '@/Interfaces';
+import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 import config from '@/config';
 import { UserRepository } from '@db/repositories/user.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -13,7 +9,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { ApplicationError } from 'n8n-workflow';
 
 @Service()
-export class ExternalHooks implements IExternalHooksClass {
+export class ExternalHooks {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
@@ -28,14 +24,12 @@ export class ExternalHooks implements IExternalHooksClass {
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
-		/* eslint-disable @typescript-eslint/naming-convention */
 		this.dbCollections = {
 			User: userRepository,
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,
 		};
-		/* eslint-enable @typescript-eslint/naming-convention */
 	}
 
 	async init(): Promise<void> {
@@ -48,17 +42,7 @@ export class ExternalHooks implements IExternalHooksClass {
 		this.initDidRun = true;
 	}
 
-	async reload(externalHooks?: IExternalHooksFileData) {
-		this.externalHooks = {};
-
-		if (externalHooks === undefined) {
-			await this.loadHooksFiles(true);
-		} else {
-			this.loadHooks(externalHooks);
-		}
-	}
-
-	async loadHooksFiles(reload = false) {
+	private async loadHooksFiles() {
 		const externalHookFiles = config.getEnv('externalHookFiles').split(':');
 
 		// Load all the provided hook-files
@@ -66,10 +50,6 @@ export class ExternalHooks implements IExternalHooksClass {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
-					if (reload) {
-						delete require.cache[require.resolve(hookFilePath)];
-					}
-
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (e) {
@@ -84,7 +64,7 @@ export class ExternalHooks implements IExternalHooksClass {
 		}
 	}
 
-	loadHooks(hookFileData: IExternalHooksFileData) {
+	private loadHooks(hookFileData: IExternalHooksFileData) {
 		for (const resource of Object.keys(hookFileData)) {
 			for (const operation of Object.keys(hookFileData[resource])) {
 				// Save all the hook functions directly under their string

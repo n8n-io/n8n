@@ -11,15 +11,12 @@ import Container, { Service } from 'typedi';
 import { Logger } from '@/Logger';
 
 import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
-import {
-	EXTERNAL_SECRETS_INITIAL_BACKOFF,
-	EXTERNAL_SECRETS_MAX_BACKOFF,
-	EXTERNAL_SECRETS_UPDATE_INTERVAL,
-} from './constants';
+import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { License } from '@/License';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
+import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class ExternalSecretsManager {
@@ -41,6 +38,7 @@ export class ExternalSecretsManager {
 		private readonly license: License,
 		private readonly secretsProviders: ExternalSecretsProviders,
 		private readonly cipher: Cipher,
+		private readonly eventService: EventService,
 	) {}
 
 	async init(): Promise<void> {
@@ -52,12 +50,12 @@ export class ExternalSecretsManager {
 					resolve();
 					this.initializingPromise = undefined;
 					this.updateInterval = setInterval(
-						async () => this.updateSecrets(),
-						EXTERNAL_SECRETS_UPDATE_INTERVAL,
+						async () => await this.updateSecrets(),
+						updateIntervalTime(),
 					);
 				});
 			}
-			return this.initializingPromise;
+			return await this.initializingPromise;
 		}
 	}
 
@@ -82,7 +80,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(SingleMainSetup).broadcastReloadExternalSecretsProviders();
+		await Container.get(OrchestrationService).publish('reloadExternalSecretsProviders');
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
@@ -113,13 +111,13 @@ export class ExternalSecretsManager {
 		}
 		const providers: Array<SecretsProvider | null> = (
 			await Promise.allSettled(
-				Object.entries(settings).map(async ([name, providerSettings]) =>
-					this.initProvider(name, providerSettings),
+				Object.entries(settings).map(
+					async ([name, providerSettings]) => await this.initProvider(name, providerSettings),
 				),
 			)
 		).map((i) => (i.status === 'rejected' ? null : i.value));
 		this.providers = Object.fromEntries(
-			(providers.filter((p) => p !== null) as SecretsProvider[]).map((s) => [s.name, s]),
+			providers.filter((p): p is SecretsProvider => p !== null).map((s) => [s.name, s]),
 		);
 		this.cachedSettings = settings;
 		await this.updateSecrets();
@@ -207,7 +205,7 @@ export class ExternalSecretsManager {
 		return Object.keys(this.providers);
 	}
 
-	getSecret(provider: string, name: string): IDataObject | undefined {
+	getSecret(provider: string, name: string) {
 		return this.getProvider(provider)?.getSecret(name);
 	}
 
@@ -311,12 +309,12 @@ export class ExternalSecretsManager {
 		try {
 			testResult = await this.getProvider(vaultType)?.test();
 		} catch {}
-		void Container.get(InternalHooks).onExternalSecretsProviderSettingsSaved({
-			user_id: userId,
-			vault_type: vaultType,
-			is_new: isNew,
-			is_valid: testResult?.[0] ?? false,
-			error_message: testResult?.[1],
+		this.eventService.emit('external-secrets-provider-settings-saved', {
+			userId,
+			vaultType,
+			isNew,
+			isValid: testResult?.[0] ?? false,
+			errorMessage: testResult?.[1],
 		});
 	}
 

@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
@@ -15,7 +13,6 @@ import type {
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { Agent as HTTPSAgent } from 'https';
-import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
@@ -107,6 +104,7 @@ export class MessageEventBusDestinationWebhook
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;
@@ -132,7 +130,6 @@ export class MessageEventBusDestinationWebhook
 
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
-		const sendPayload = this.sendPayload;
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
 
@@ -181,7 +178,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonQuery);
 				} catch {
-					console.log('JSON parameter need to be an valid JSON');
+					this.logger.error('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
 			}
@@ -199,7 +196,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonHeaders);
 				} catch {
-					console.log('JSON parameter need to be an valid JSON');
+					this.logger.error('JSON parameter need to be an valid JSON');
 				}
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
 			}
@@ -251,11 +248,12 @@ export class MessageEventBusDestinationWebhook
 		return null;
 	}
 
+	// eslint-disable-next-line complexity
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.license.isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		// at first run, build this.requestOptions with the destination settings
@@ -286,8 +284,6 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let oAuth1Api;
-		let oAuth2Api;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
@@ -306,14 +302,6 @@ export class MessageEventBusDestinationWebhook
 				try {
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
 				} catch {}
-			} else if (this.genericAuthType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch {}
-			} else if (this.genericAuthType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
-				} catch {}
 			}
 		}
 
@@ -324,9 +312,15 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			this.axiosRequestOptions.headers = {
+				...this.axiosRequestOptions.headers,
+				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
+			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+			this.axiosRequestOptions.params = {
+				...this.axiosRequestOptions.params,
+				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
+			};
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
 				username: httpDigestAuth.user as string,

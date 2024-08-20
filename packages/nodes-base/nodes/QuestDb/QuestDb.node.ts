@@ -24,6 +24,7 @@ export class QuestDb implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'questDb',
@@ -63,7 +64,6 @@ export class QuestDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {

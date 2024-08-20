@@ -15,18 +15,18 @@ export default defineComponent({
 	computed: {
 		...mapStores(useUsersStore),
 	},
+	mounted() {
+		void this.logout();
+	},
 	methods: {
 		async logout() {
 			try {
 				await this.usersStore.logout();
-				void this.$router.replace({ name: VIEWS.SIGNIN });
+				window.location.href = this.$router.resolve({ name: VIEWS.SIGNIN }).href;
 			} catch (e) {
 				this.showError(e, this.$locale.baseText('auth.signout.error'));
 			}
 		},
-	},
-	mounted() {
-		void this.logout();
 	},
 });
 </script>

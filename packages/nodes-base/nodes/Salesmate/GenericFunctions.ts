@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,12 +5,14 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function salesmateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -22,7 +22,7 @@ export async function salesmateApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('salesmateApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			sessionToken: credentials.sessionToken,
 			'x-linkname': credentials.url,
@@ -47,7 +47,7 @@ export async function salesmateApiRequest(
 export async function salesmateApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

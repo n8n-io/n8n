@@ -4,15 +4,15 @@ import { sign } from 'aws4';
 
 import get from 'lodash/get';
 
-import type { OptionsWithUri } from 'request';
-
 import { parseString } from 'xml2js';
 
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -27,7 +27,7 @@ function queryToString(params: IDataObject) {
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer,
 	query: IDataObject = {},
@@ -77,12 +77,13 @@ export async function s3ApiRequest(
 
 	sign(signOpts, securityHeaders);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: signOpts.headers,
 		method,
 		qs: query,
 		uri: endpoint.toString(),
 		body: signOpts.body,
+		rejectUnauthorized: !credentials.ignoreSSLIssues as boolean,
 	};
 
 	if (Object.keys(option).length !== 0) {
@@ -98,7 +99,7 @@ export async function s3ApiRequest(
 export async function s3ApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	bucket: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
@@ -127,7 +128,7 @@ export async function s3ApiRequestREST(
 export async function s3ApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer,
 	query: IDataObject = {},
@@ -164,7 +165,7 @@ export async function s3ApiRequestSOAPAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	propertyName: string,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
@@ -190,11 +191,11 @@ export async function s3ApiRequestSOAPAllItems(
 		);
 
 		//https://forums.aws.amazon.com/thread.jspa?threadID=55746
-		if (get(responseData, `${propertyName.split('.')[0]}.NextContinuationToken`)) {
-			query['continuation-token'] = get(
-				responseData,
-				`${propertyName.split('.')[0]}.NextContinuationToken`,
-			);
+		if (get(responseData, [propertyName.split('.')[0], 'NextContinuationToken'])) {
+			query['continuation-token'] = get(responseData, [
+				propertyName.split('.')[0],
+				'NextContinuationToken',
+			]);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
@@ -208,8 +209,8 @@ export async function s3ApiRequestSOAPAllItems(
 			return returnData;
 		}
 	} while (
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== undefined &&
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== 'false'
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== undefined &&
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== 'false'
 	);
 
 	return returnData;

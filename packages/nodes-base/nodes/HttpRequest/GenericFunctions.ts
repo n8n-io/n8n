@@ -1,9 +1,26 @@
-import type { IDataObject, INodeExecutionData, IOAuth2Options } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request-promise-native';
+import type { SecureContextOptions } from 'tls';
+import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+	IOAuth2Options,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 import set from 'lodash/set';
+import isPlainObject from 'lodash/isPlainObject';
 
-export type BodyParameter = { name: string; value: string };
+import FormData from 'form-data';
+import get from 'lodash/get';
+import { formatPrivateKey } from '../../utils/utilities';
+import type { HttpSslAuthCredentials } from './interfaces';
+
+export type BodyParameter = {
+	name: string;
+	value: string;
+	parameterType?: 'formBinaryData' | 'formData';
+};
 
 export type IAuthDataSanitizeKeys = {
 	[key: string]: string[];
@@ -16,14 +33,42 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
-export function sanitizeUiMessage(request: OptionsWithUri, authDataKeys: IAuthDataSanitizeKeys) {
+export const REDACTED = '**hidden**';
+
+function isObject(obj: unknown): obj is IDataObject {
+	return isPlainObject(obj);
+}
+
+function redact<T = unknown>(obj: T, secrets: string[]): T {
+	if (typeof obj === 'string') {
+		return secrets.reduce((safe, secret) => safe.replace(secret, REDACTED), obj) as T;
+	}
+
+	if (Array.isArray(obj)) {
+		return obj.map((item) => redact(item, secrets)) as T;
+	} else if (isObject(obj)) {
+		for (const [key, value] of Object.entries(obj)) {
+			(obj as IDataObject)[key] = redact(value, secrets);
+		}
+	}
+
+	return obj;
+}
+
+export function sanitizeUiMessage(
+	request: IRequestOptions,
+	authDataKeys: IAuthDataSanitizeKeys,
+	secrets?: string[],
+) {
 	let sendRequest = request as unknown as IDataObject;
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 		sendRequest = {
 			...request,
-			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${request.body.length} byte.`,
+			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
+				(request.body as string).length
+			} bytes.`,
 		};
 	}
 
@@ -35,7 +80,7 @@ export function sanitizeUiMessage(request: OptionsWithUri, authDataKeys: IAuthDa
 				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				(acc: IDataObject, curr) => {
 					acc[curr] = authDataKeys[requestProperty].includes(curr)
-						? '** hidden **'
+						? REDACTED
 						: (sendRequest[requestProperty] as IDataObject)[curr];
 					return acc;
 				},
@@ -44,7 +89,31 @@ export function sanitizeUiMessage(request: OptionsWithUri, authDataKeys: IAuthDa
 		};
 	}
 
+	if (secrets && secrets.length > 0) {
+		return redact(sendRequest, secrets);
+	}
+
 	return sendRequest;
+}
+
+export function getSecrets(
+	properties: INodeProperties[],
+	credentials: ICredentialDataDecryptedObject,
+): string[] {
+	const sensitivePropNames = new Set(
+		properties.filter((prop) => prop.typeOptions?.password).map((prop) => prop.name),
+	);
+
+	const secrets = Object.entries(credentials)
+		.filter(([propName]) => sensitivePropNames.has(propName))
+		.map(([_, value]) => value)
+		.filter((value): value is string => typeof value === 'string');
+	const oauthAccessToken = get(credentials, 'oauthTokenData.access_token');
+	if (typeof oauthAccessToken === 'string') {
+		secrets.push(oauthAccessToken);
+	}
+
+	return secrets;
 }
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
@@ -145,8 +214,8 @@ export async function reduceAsync<T, R>(
 	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
 	init: Promise<R> = Promise.resolve({} as R),
 ): Promise<R> {
-	return arr.reduce(async (promiseAcc, item) => {
-		return reducer(await promiseAcc, item);
+	return await arr.reduce(async (promiseAcc, item) => {
+		return await reducer(await promiseAcc, item);
 	}, init);
 }
 
@@ -157,12 +226,43 @@ export const prepareRequestBody = async (
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce(async (acc, entry) => {
+		return await parameters.reduce(async (acc, entry) => {
 			const result = await acc;
 			set(result, entry.name, entry.value);
 			return result;
 		}, Promise.resolve({}));
+	} else if (bodyType === 'multipart-form-data' && version >= 4.2) {
+		const formData = new FormData();
+
+		for (const parameter of parameters) {
+			if (parameter.parameterType === 'formBinaryData') {
+				const entry = await defaultReducer({}, parameter);
+				const key = Object.keys(entry)[0];
+				const data = entry[key] as { value: Buffer; options: FormData.AppendOptions };
+				formData.append(key, data.value, data.options);
+				continue;
+			}
+
+			formData.append(parameter.name, parameter.value);
+		}
+
+		return formData;
 	} else {
-		return reduceAsync(parameters, defaultReducer);
+		return await reduceAsync(parameters, defaultReducer);
+	}
+};
+
+export const setAgentOptions = (
+	requestOptions: IRequestOptions,
+	sslCertificates: HttpSslAuthCredentials | undefined,
+) => {
+	if (sslCertificates) {
+		const agentOptions: SecureContextOptions = {};
+		if (sslCertificates.ca) agentOptions.ca = formatPrivateKey(sslCertificates.ca);
+		if (sslCertificates.cert) agentOptions.cert = formatPrivateKey(sslCertificates.cert);
+		if (sslCertificates.key) agentOptions.key = formatPrivateKey(sslCertificates.key);
+		if (sslCertificates.passphrase)
+			agentOptions.passphrase = formatPrivateKey(sslCertificates.passphrase);
+		requestOptions.agentOptions = agentOptions;
 	}
 };

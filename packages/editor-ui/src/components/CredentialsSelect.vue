@@ -2,25 +2,23 @@
 	<div>
 		<div :class="$style['parameter-value-container']">
 			<n8n-select
+				ref="innerSelect"
 				:size="inputSize"
 				filterable
-				:modelValue="displayValue"
-				:placeholder="
-					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
-				"
+				:model-value="displayValue"
+				:placeholder="$locale.baseText('parameterInput.select')"
 				:title="displayTitle"
 				:disabled="isReadOnly"
-				ref="innerSelect"
-				@update:modelValue="(value) => $emit('update:modelValue', value)"
+				data-test-id="credential-select"
+				@update:model-value="(value: string) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
-				data-test-id="credential-select"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
-					:value="credType.name"
 					:key="credType.name"
+					:value="credType.name"
 					:label="credType.displayName"
 					data-test-id="credential-select-option"
 				>
@@ -28,27 +26,23 @@
 						<div class="option-headline">
 							{{ credType.displayName }}
 						</div>
-						<div
-							v-if="credType.description"
-							class="option-description"
-							v-html="credType.description"
-						/>
 					</div>
 				</n8n-option>
 			</n8n-select>
 			<slot name="issues-and-options" />
 		</div>
 
-		<scopes-notice
+		<ScopesNotice
 			v-if="scopes.length > 0"
-			:activeCredentialType="activeCredentialType"
+			:active-credential-type="activeCredentialType"
 			:scopes="scopes"
 		/>
 		<div>
-			<node-credentials
+			<NodeCredentials
 				:node="node"
-				:overrideCredType="node.parameters[parameter.name]"
-				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
+				:readonly="isReadOnly"
+				:override-cred-type="node.parameters[parameter.name]"
+				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
 	</div>
@@ -61,9 +55,6 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { N8nSelect } from 'n8n-design-system';
-
-type N8nSelectRef = InstanceType<typeof N8nSelect>;
 
 export default defineComponent({
 	name: 'CredentialsSelect',
@@ -80,6 +71,7 @@ export default defineComponent({
 		'isReadOnly',
 		'displayTitle',
 	],
+	emits: ['update:modelValue', 'setFocus', 'onBlur', 'credentialSelected'],
 	computed: {
 		...mapStores(useCredentialsStore),
 		allCredentialTypes(): ICredentialType[] {
@@ -96,7 +88,7 @@ export default defineComponent({
 	},
 	methods: {
 		focus() {
-			const selectRef = this.$refs.innerSelect as N8nSelectRef | undefined;
+			const selectRef = this.$refs.innerSelect as HTMLElement | undefined;
 			if (selectRef) {
 				selectRef.focus();
 			}

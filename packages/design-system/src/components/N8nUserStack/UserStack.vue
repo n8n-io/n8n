@@ -1,31 +1,22 @@
 <script lang="ts" setup>
-import type { IUser, UserStackGroups } from '@/types';
+import { computed } from 'vue';
+import type { IUser, UserStackGroups } from 'n8n-design-system/types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
-import type { PropType } from 'vue';
-import { computed } from 'vue';
 
-const props = defineProps({
-	users: {
-		type: Object as PropType<UserStackGroups>,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		users: UserStackGroups;
+		currentUserEmail?: string;
+		maxAvatars?: number;
+		dropdownTrigger?: 'hover' | 'click';
+	}>(),
+	{
+		currentUserEmail: '',
+		maxAvatars: 2,
+		dropdownTrigger: 'hover',
 	},
-	currentUserEmail: {
-		type: String,
-		required: false,
-		default: '',
-	},
-	maxAvatars: {
-		type: Number,
-		default: 2,
-		validator: (value: number) => value > 0,
-	},
-	dropdownTrigger: {
-		type: String,
-		default: 'hover',
-		validator: (value: string) => ['hover', 'click'].includes(value),
-	},
-});
+);
 
 const nonEmptyGroups = computed(() => {
 	const users: UserStackGroups = {};
@@ -76,11 +67,11 @@ const menuHeight = computed(() => {
 			popper-class="user-stack-popper"
 		>
 			<div :class="$style.avatars" data-test-id="user-stack-avatars">
-				<n8n-avatar
+				<N8nAvatar
 					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
 					:key="user.id"
-					:firstName="user.firstName"
-					:lastName="user.lastName"
+					:first-name="user.firstName"
+					:last-name="user.lastName"
 					:class="$style.avatar"
 					:data-test-id="`user-stack-avatar-${user.id}`"
 					size="small"
@@ -101,9 +92,9 @@ const menuHeight = computed(() => {
 									:data-test-id="`user-stack-info-${user.id}`"
 									:class="$style.userInfoContainer"
 								>
-									<n8n-user-info
+									<N8nUserInfo
 										v-bind="user"
-										:isCurrentUser="user.email === props.currentUserEmail"
+										:is-current-user="user.email === props.currentUserEmail"
 									/>
 								</el-dropdown-item>
 							</div>

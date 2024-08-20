@@ -7,13 +7,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 export class RssFeedReadTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Feed Trigger',
 		name: 'rssFeedReadTrigger',
 		icon: 'fa:rss',
+		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts a workflow when an RSS feed is updated',
@@ -42,9 +43,8 @@ export class RssFeedReadTrigger implements INodeType {
 		const feedUrl = this.getNodeParameter('feedUrl') as string;
 
 		const now = moment().utc().format();
-		const startDate = (pollData.lastTimeChecked as string) || now;
-
-		const endDate = now;
+		const dateToCheck =
+			(pollData.lastItemDate as string) || (pollData.lastTimeChecked as string) || now;
 
 		if (!feedUrl) {
 			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -73,12 +73,15 @@ export class RssFeedReadTrigger implements INodeType {
 				return [this.helpers.returnJsonArray(feed.items[0])];
 			}
 			feed.items.forEach((item) => {
-				if (Date.parse(item.isoDate as string) >= Date.parse(startDate)) {
+				if (Date.parse(item.isoDate as string) > Date.parse(dateToCheck)) {
 					returnData.push(item);
 				}
 			});
+			const maxIsoDate = feed.items.reduce((a, b) =>
+				new Date(a.isoDate as string) > new Date(b.isoDate as string) ? a : b,
+			).isoDate;
+			pollData.lastItemDate = maxIsoDate;
 		}
-		pollData.lastTimeChecked = endDate;
 
 		if (Array.isArray(returnData) && returnData.length !== 0) {
 			return [this.helpers.returnJsonArray(returnData)];

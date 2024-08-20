@@ -10,6 +10,7 @@ import type {
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Write Binary File',
 		name: 'writeBinaryFile',
 		icon: 'fa:file-export',
@@ -45,7 +46,7 @@ export class WriteBinaryFile implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -114,7 +115,7 @@ export class WriteBinaryFile implements INodeType {
 
 				returnData.push(newItem);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({
 						json: {
 							error: (error as Error).message,

@@ -6,31 +6,34 @@ import {
 	Entity,
 	Index,
 	OneToMany,
-	ManyToOne,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import { Role } from './Role';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { SharedCredentials } from './SharedCredentials';
-import { NoXss } from '../utils/customValidators';
+import { NoXss } from '@/validators/no-xss.validator';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
-import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
+import {
+	GLOBAL_OWNER_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	GLOBAL_ADMIN_SCOPES,
+} from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+import type { ProjectRelation } from './ProjectRelation';
+import { NoUrl } from '@/validators/no-url.validator';
 
-export const MIN_PASSWORD_LENGTH = 8;
+export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
+export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
 
-export const MAX_PASSWORD_LENGTH = 64;
-
-const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
-	owner: ownerPermissions,
-	member: memberPermissions,
-	admin: adminPermissions,
+const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
+	'global:owner': GLOBAL_OWNER_SCOPES,
+	'global:member': GLOBAL_MEMBER_SCOPES,
+	'global:admin': GLOBAL_ADMIN_SCOPES,
 };
 
 @Entity()
@@ -49,12 +52,14 @@ export class User extends WithTimestamps implements IUser {
 
 	@Column({ length: 32, nullable: true })
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
@@ -76,11 +81,8 @@ export class User extends WithTimestamps implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne('Role', 'globalForUsers', { nullable: false })
-	globalRole: Role;
-
 	@Column()
-	globalRoleId: string;
+	role: GlobalRole;
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
@@ -90,6 +92,9 @@ export class User extends WithTimestamps implements IUser {
 
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
+
+	@OneToMany('ProjectRelation', 'user')
+	projectRelations: ProjectRelation[];
 
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
@@ -102,16 +107,10 @@ export class User extends WithTimestamps implements IUser {
 
 	@Column({ type: String, nullable: true })
 	@Index({ unique: true })
-	apiKey?: string | null;
+	apiKey: string | null;
 
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
-
-	@Column({ type: String, nullable: true, select: false })
-	mfaSecret?: string | null;
-
-	@Column({ type: 'simple-array', default: '', select: false })
-	mfaRecoveryCodes: string[];
 
 	/**
 	 * Whether the user is pending setup completion.
@@ -121,7 +120,7 @@ export class User extends WithTimestamps implements IUser {
 	@AfterLoad()
 	@AfterUpdate()
 	computeIsPending(): void {
-		this.isPending = this.password === null;
+		this.isPending = this.password === null && this.role !== 'global:owner';
 	}
 
 	/**
@@ -131,20 +130,36 @@ export class User extends WithTimestamps implements IUser {
 
 	@AfterLoad()
 	computeIsOwner(): void {
-		this.isOwner = this.globalRole?.name === 'owner';
+		this.isOwner = this.role === 'global:owner';
 	}
 
 	get globalScopes() {
-		return STATIC_SCOPE_MAP[this.globalRole?.name] ?? [];
+		return STATIC_SCOPE_MAP[this.role] ?? [];
 	}
 
-	async hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): Promise<boolean> {
+	hasGlobalScope(scope: Scope | Scope[], scopeOptions?: ScopeOptions): boolean {
 		return hasScope(
 			scope,
 			{
 				global: this.globalScopes,
 			},
+			undefined,
 			scopeOptions,
 		);
+	}
+
+	toJSON() {
+		const { password, apiKey, ...rest } = this;
+		return rest;
+	}
+
+	createPersonalProjectName() {
+		if (this.firstName && this.lastName && this.email) {
+			return `${this.firstName} ${this.lastName} <${this.email}>`;
+		} else if (this.email) {
+			return `<${this.email}>`;
+		} else {
+			return 'Unnamed Project';
+		}
 	}
 }

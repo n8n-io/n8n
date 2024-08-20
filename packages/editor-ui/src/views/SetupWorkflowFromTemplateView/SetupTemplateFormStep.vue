@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { PropType } from 'vue';
 import { computed } from 'vue';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -8,27 +7,35 @@ import IconSuccess from './IconSuccess.vue';
 import { getAppNameFromNodeName } from '@/utils/nodeTypesUtils';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { CredentialUsages } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import type { IWorkflowTemplateNode } from '@/Interface';
+import type {
+	BaseNode,
+	CredentialUsages,
+} from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms';
 
 // Props
-const props = defineProps({
-	order: {
-		type: Number,
-		required: true,
+const props = withDefaults(
+	defineProps<{
+		order: number;
+		credentials: CredentialUsages;
+		selectedCredentialId: string | null;
+	}>(),
+	{
+		selectedCredentialId: null,
 	},
-	credentials: {
-		type: Object as PropType<CredentialUsages>,
-		required: true,
-	},
-});
+);
+
+const emit = defineEmits<{
+	credentialSelected: [event: { credentialUsageKey: TemplateCredentialKey; credentialId: string }];
+	credentialDeselected: [event: { credentialUsageKey: TemplateCredentialKey }];
+}>();
 
 // Stores
-const setupTemplateStore = useSetupTemplateStore();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 //#region Computed
 
@@ -43,27 +50,29 @@ const appName = computed(() =>
 );
 
 const nodeNames = computed(() => {
-	const formatNodeName = (nodeToFormat: IWorkflowTemplateNode) => `<b>${nodeToFormat.name}</b>`;
+	const formatNodeName = (nodeToFormat: BaseNode) => `<b>${nodeToFormat.name}</b>`;
 	return formatList(props.credentials.usedBy, {
 		formatFn: formatNodeName,
 		i18n,
 	});
 });
 
-const selectedCredentialId = computed(
-	() => setupTemplateStore.selectedCredentialIdByKey[props.credentials.key],
-);
-
 //#endregion Computed
 
 //#region Methods
 
-const onCredentialSelected = (credentialId: string) => {
-	setupTemplateStore.setSelectedCredentialId(props.credentials.key, credentialId);
-};
-
-const onCredentialDeselected = () => {
-	setupTemplateStore.unsetSelectedCredential(props.credentials.key);
+const onCredentialModalOpened = () => {
+	telemetry.track(
+		'User opened Credential modal',
+		{
+			source: 'cred_setup',
+			credentialType: props.credentials.credentialType,
+			new_credential: !props.selectedCredentialId,
+		},
+		{
+			withPostHog: true,
+		},
+	);
 };
 
 //#endregion Methods
@@ -71,13 +80,13 @@ const onCredentialDeselected = () => {
 
 <template>
 	<li :class="$style.container" data-test-id="setup-credentials-form-step">
-		<n8n-heading tag="h2" size="large">
+		<N8nHeading tag="h2" size="large">
 			<div v-if="nodeType" :class="$style.heading" data-test-id="credential-step-heading">
 				<span :class="$style.headingOrder">{{ order }}.</span>
 				<span :class="$style.headingIcon"><NodeIcon :node-type="nodeType" /></span>
 				{{ appName }}
 			</div>
-		</n8n-heading>
+		</N8nHeading>
 
 		<p :class="$style.description" data-test-id="credential-step-description">
 			<i18n-t
@@ -94,10 +103,18 @@ const onCredentialDeselected = () => {
 			<CredentialPicker
 				:class="$style.credentialPicker"
 				:app-name="appName"
-				:credentialType="props.credentials.credentialType"
-				:selectedCredentialId="selectedCredentialId"
-				@credential-selected="onCredentialSelected"
-				@credential-deselected="onCredentialDeselected"
+				:credential-type="props.credentials.credentialType"
+				:selected-credential-id="selectedCredentialId"
+				@credential-selected="
+					emit('credentialSelected', {
+						credentialUsageKey: $props.credentials.key,
+						credentialId: $event,
+					})
+				"
+				@credential-deselected="
+					emit('credentialDeselected', { credentialUsageKey: $props.credentials.key })
+				"
+				@credential-modal-opened="onCredentialModalOpened"
 			/>
 
 			<IconSuccess

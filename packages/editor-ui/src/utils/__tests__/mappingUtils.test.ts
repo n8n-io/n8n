@@ -1,5 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getMappedResult, getMappedExpression } from '../mappingUtils';
+import {
+	getMappedResult,
+	getMappedExpression,
+	escapeMappingString,
+	propertyNameFromExpression,
+} from '../mappingUtils';
 
 const RLC_PARAM: INodeProperties = {
 	displayName: 'Base',
@@ -68,10 +73,6 @@ const JSON_PARAM: INodeProperties = {
 	displayName: 'JSON Payload',
 	name: 'payloadJson',
 	type: 'json',
-	typeOptions: {
-		alwaysOpenEditWindow: true,
-		editor: 'code',
-	},
 	default: '',
 };
 
@@ -150,7 +151,7 @@ describe('Mapping Utils', () => {
 		it('sets data path, replacing if expecting single path', () => {
 			expect(
 				getMappedResult(SINGLE_DATA_PATH_PARAM, '{{ $json["Readable date"] }}', '={{$json.test}}'),
-			).toEqual('["Readable date"]');
+			).toEqual('Readable date');
 
 			expect(
 				getMappedResult(SINGLE_DATA_PATH_PARAM, '{{ $json.path }}', '={{$json.test}}'),
@@ -163,18 +164,26 @@ describe('Mapping Utils', () => {
 			).toEqual('path, ["Readable date"]');
 		});
 
-		it('replaces existing dadata path if multiple and is empty expression', () => {
+		it('replaces existing data path if multiple and is empty expression', () => {
 			expect(getMappedResult(MULTIPLE_DATA_PATH_PARAM, '{{ $json.test }}', '=')).toEqual('test');
 		});
 
-		it('handles data when dragging from grand-parent nodes', () => {
+		it('handles data when dragging from grand-parent nodes, replacing if expecting single path', () => {
 			expect(
 				getMappedResult(
 					MULTIPLE_DATA_PATH_PARAM,
 					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
 					'',
 				),
-			).toEqual('={{ $node["Schedule Trigger"].json["Day of week"] }}');
+			).toEqual('["Day of week"]');
+
+			expect(
+				getMappedResult(
+					MULTIPLE_DATA_PATH_PARAM,
+					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
+					'=data',
+				),
+			).toEqual('=data, ["Day of week"]');
 
 			expect(
 				getMappedResult(
@@ -182,7 +191,7 @@ describe('Mapping Utils', () => {
 					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
 					'=data',
 				),
-			).toEqual('=data {{ $node["Schedule Trigger"].json["Day of week"] }}');
+			).toEqual('Day of week');
 
 			expect(
 				getMappedResult(
@@ -190,7 +199,7 @@ describe('Mapping Utils', () => {
 					'{{ $node["Schedule Trigger"].json["Day of week"] }}',
 					'=   ',
 				),
-			).toEqual('=    {{ $node["Schedule Trigger"].json["Day of week"] }}');
+			).toEqual('Day of week');
 		});
 
 		it('handles RLC values', () => {
@@ -199,6 +208,7 @@ describe('Mapping Utils', () => {
 			expect(getMappedResult(RLC_PARAM, '{{ test }}', '=test')).toEqual('=test {{ test }}');
 		});
 	});
+
 	describe('getMappedExpression', () => {
 		it('should generate a mapped expression with simple array path', () => {
 			const input = {
@@ -220,19 +230,19 @@ describe('Mapping Utils', () => {
 			expect(result).toBe("{{ $('nodeName').item.json.sample[0].path }}");
 		});
 
-		it('should generate a mapped expression with special characters in array path', () => {
+		it('should generate a mapped expression with invalid identifier names in array path', () => {
 			const input = {
 				nodeName: 'nodeName',
 				distanceFromActive: 2,
-				path: ['sample', 'path with-space', 'path-with-hyphen'],
+				path: ['sample', 'path with-space', 'path-with-hyphen', '2iStartWithANumber'],
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				"{{ $('nodeName').item.json.sample['path with-space']['path-with-hyphen'] }}",
+				"{{ $('nodeName').item.json.sample['path with-space']['path-with-hyphen']['2iStartWithANumber'] }}",
 			);
 		});
 
-		it('should handle paths with special characters', () => {
+		it('should handle paths with invalid identifier names', () => {
 			const input = {
 				nodeName: 'nodeName',
 				distanceFromActive: 2,
@@ -247,11 +257,12 @@ describe('Mapping Utils', () => {
 					'test,',
 					'test:',
 					'path.',
+					'2iStartWithANumber',
 				],
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				"{{ $('nodeName').item.json.sample['\"Execute\"']['`Execute`']['\\'Execute\\'']['[Execute]']['{Execute}']['execute?']['test,']['test:']['path.'] }}",
+				"{{ $('nodeName').item.json.sample['\"Execute\"']['`Execute`']['\\'Execute\\'']['[Execute]']['{Execute}']['execute?']['test,']['test:']['path.']['2iStartWithANumber'] }}",
 			);
 		});
 
@@ -275,6 +286,76 @@ describe('Mapping Utils', () => {
 			expect(result).toBe(
 				"{{ $json.propertyName.capitalizedName.stringVal['some-value'].capitalizedProp }}",
 			);
+		});
+	});
+
+	describe('propertyNameFromExpression', () => {
+		describe('dot access', () => {
+			test('should extract property name from previous node', () => {
+				expect(propertyNameFromExpression('{{ $json.foo.bar }}')).toBe('foo.bar');
+			});
+
+			test('should extract property name from another node', () => {
+				expect(
+					propertyNameFromExpression("{{ $('Node's \"Name\" (copy)').item.json.foo.bar }}"),
+				).toBe('foo.bar');
+			});
+		});
+
+		describe('bracket access', () => {
+			test('should extract property name from previous node (root)', () => {
+				expect(propertyNameFromExpression("{{ $json['with spaces\\' here'] }}")).toBe(
+					"with spaces' here",
+				);
+			});
+
+			test('should extract property name from previous node (nested)', () => {
+				expect(propertyNameFromExpression("{{ $json.foo['with spaces\\' here'] }}")).toBe(
+					"foo['with spaces\\' here']",
+				);
+			});
+
+			test('should extract property name from another node (root)', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json['with spaces\\' here'] }}",
+					),
+				).toBe("with spaces' here");
+			});
+
+			test('should extract property name from another node (nested)', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json.foo['with spaces\\' here'] }}",
+					),
+				).toBe("foo['with spaces\\' here']");
+			});
+
+			test('should handle nested bracket access', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json['First with spaces']['Second with spaces'] }}",
+					),
+				).toBe("['First with spaces']['Second with spaces']");
+			});
+
+			test('should handle forceBracketAccess=true', () => {
+				expect(
+					propertyNameFromExpression(
+						"{{ $('Node's \"Name\" (copy)').item.json['First with spaces'] }}",
+						true,
+					),
+				).toBe("['First with spaces']");
+			});
+		});
+	});
+
+	describe('escapeMappingString', () => {
+		test.each([
+			{ input: 'Normal node name (here)', output: 'Normal node name (here)' },
+			{ input: "'Should es'ape quotes here'", output: "\\'Should es\\'ape quotes here\\'" },
+		])('should escape "$input" to "$output"', ({ input, output }) => {
+			expect(escapeMappingString(input)).toEqual(output);
 		});
 	});
 });

@@ -11,12 +11,13 @@ import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { AUTH_COOKIE_NAME } from '@/constants';
-
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { mockNodeTypesData } from '../../../unit/Helpers';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import { ExecutionService } from '@/executions/execution.service';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { Push } from '@/push';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import { mockInstance } from '../../../shared/mocking';
 
 export { setupTestServer } from './testServer';
@@ -28,13 +29,18 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner() {
-	mockInstance(MultiMainSetup);
+export async function initActiveWorkflowManager() {
+	mockInstance(OrchestrationService, {
+		isMultiMainSetupEnabled: false,
+		shouldAddWebhooks: jest.fn().mockReturnValue(true),
+	});
 
-	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-	const workflowRunner = Container.get(ActiveWorkflowRunner);
-	await workflowRunner.init();
-	return workflowRunner;
+	mockInstance(Push);
+	mockInstance(ExecutionService);
+	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	await activeWorkflowManager.init();
+	return activeWorkflowManager;
 }
 
 /**
@@ -90,9 +96,10 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
  * Extract the value (token) of the auth cookie in a response.
  */
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
-	const cookies: string[] = response.headers['set-cookie'];
+	const cookiesHeader = response.headers['set-cookie'];
+	if (!cookiesHeader) return undefined;
 
-	if (!cookies) return undefined;
+	const cookies = Array.isArray(cookiesHeader) ? cookiesHeader : [cookiesHeader];
 
 	const authCookie = cookies.find((c) => c.startsWith(`${authCookieName}=`));
 
@@ -170,15 +177,3 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
-
-export function setSchedulerAsLoadedNode() {
-	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-
-	Object.assign(nodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
-			addTrigger: true,
-		}),
-		known: { nodes: {}, credentials: {} },
-		types: { nodes: [], credentials: [] },
-	});
-}

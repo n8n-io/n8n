@@ -1,12 +1,21 @@
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import type { IDataObject } from 'n8n-workflow';
+import { ApplicationError, jsonParse, type GenericValue, type IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
+import { assert } from '@/utils/assert';
+
+const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+if (!browserId && 'randomUUID' in crypto) {
+	browserId = crypto.randomUUID();
+	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+}
 
 export const NO_NETWORK_ERROR_CODE = 999;
+export const STREAM_SEPERATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
-class ResponseError extends Error {
+export class ResponseError extends ApplicationError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -43,31 +52,51 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const legacyParamSerializer = (params: Record<string, any>) =>
+	Object.keys(params)
+		.filter((key) => params[key] !== undefined)
+		.map((key) => {
+			if (Array.isArray(params[key])) {
+				return params[key].map((v: string) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+			}
+			if (typeof params[key] === 'object') {
+				params[key] = JSON.stringify(params[key]);
+			}
+			return `${key}=${encodeURIComponent(params[key])}`;
+		})
+		.join('&');
+
+export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
-	headers?: IDataObject;
-	data?: IDataObject;
+	headers?: RawAxiosRequestHeaders;
+	data?: GenericValue | GenericValue[];
+	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
 		method,
 		url: endpoint,
 		baseURL,
-		headers,
+		headers: headers ?? {},
 	};
+	if (baseURL.startsWith('/') && browserId) {
+		options.headers!['browser-id'] = browserId;
+	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {
-		options.withCredentials = true;
+		options.withCredentials = options.withCredentials ?? true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
-	} else {
+	} else if (data) {
 		options.params = data;
+		options.paramsSerializer = legacyParamSerializer;
 	}
 
 	try {
@@ -102,13 +131,13 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: GenericValue | GenericValue[],
 ) {
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers: { sessionid: context.sessionId },
+		headers: { 'push-ref': context.pushRef },
 		data,
 	});
 
@@ -120,18 +149,27 @@ export async function get(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
-	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
-	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
+}
+
+export async function patch(
+	baseURL: string,
+	endpoint: string,
+	params?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
+) {
+	return await request({ method: 'PATCH', baseURL, endpoint, headers, data: params });
 }
 
 /**
@@ -139,9 +177,7 @@ export async function post(
  *
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
  */
-export function unflattenExecutionData(
-	fullExecutionData: IExecutionFlattedResponse,
-): IExecutionResponse {
+export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
 	// Unflatten the data
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
@@ -156,4 +192,82 @@ export function unflattenExecutionData(
 	}
 
 	return returnData;
+}
+
+export async function streamRequest<T>(
+	context: IRestApiContext,
+	apiEndpoint: string,
+	payload: object,
+	onChunk?: (chunk: T) => void,
+	onDone?: () => void,
+	onError?: (e: Error) => void,
+	separator = STREAM_SEPERATOR,
+): Promise<void> {
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	};
+	if (browserId) {
+		headers['browser-id'] = browserId;
+	}
+	const assistantRequest: RequestInit = {
+		headers,
+		method: 'POST',
+		credentials: 'include',
+		body: JSON.stringify(payload),
+	};
+	try {
+		const response = await fetch(`${context.baseUrl}${apiEndpoint}`, assistantRequest);
+
+		if (response.ok && response.body) {
+			// Handle the streaming response
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder('utf-8');
+
+			let buffer = '';
+
+			async function readStream() {
+				const { done, value } = await reader.read();
+				if (done) {
+					onDone?.();
+					return;
+				}
+				const chunk = decoder.decode(value);
+				buffer += chunk;
+
+				const splitChunks = buffer.split(separator);
+
+				buffer = '';
+				for (const splitChunk of splitChunks) {
+					if (splitChunk) {
+						let data: T;
+						try {
+							data = jsonParse<T>(splitChunk, { errorMessage: 'Invalid json' });
+						} catch (e) {
+							// incomplete json. append to buffer to complete
+							buffer += splitChunk;
+
+							continue;
+						}
+
+						try {
+							onChunk?.(data);
+						} catch (e: unknown) {
+							if (e instanceof Error) {
+								onError?.(e);
+							}
+						}
+					}
+				}
+				await readStream();
+			}
+
+			// Start reading the stream
+			await readStream();
+		} else if (onError) {
+			onError(new Error(response.statusText));
+		}
+	} catch (e: unknown) {
+		assert(e instanceof Error);
+		onError?.(e);
+	}
 }

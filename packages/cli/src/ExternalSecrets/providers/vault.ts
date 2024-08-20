@@ -4,7 +4,8 @@ import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import { Logger } from '@/Logger';
-import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { preferGet } from '../externalSecretsHelper.ee';
 import { Container } from 'typedi';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
@@ -84,13 +85,7 @@ interface VaultSecretList {
 
 export class VaultProvider extends SecretsProvider {
 	properties: INodeProperties[] = [
-		{
-			displayName:
-				'Need help filling out these fields? <a href="https://docs.n8n.io/external-secrets/#connect-n8n-to-your-secrets-store" target="_blank">Open docs</a>',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
+		DOCS_HELP_NOTICE,
 		{
 			displayName: 'Vault URL',
 			name: 'url',
@@ -250,19 +245,15 @@ export class VaultProvider extends SecretsProvider {
 		this.#http = axios.create({ baseURL: baseURL.toString() });
 		if (this.settings.namespace) {
 			this.#http.interceptors.request.use((config) => {
-				return {
-					...config,
-					// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
-					headers: { ...config.headers, 'X-Vault-Namespace': this.settings.namespace },
-				};
+				config.headers['X-Vault-Namespace'] = this.settings.namespace;
+				return config;
 			});
 		}
 		this.#http.interceptors.request.use((config) => {
-			if (!this.#currentToken) {
-				return config;
+			if (this.#currentToken) {
+				config.headers['X-Vault-Token'] = this.#currentToken;
 			}
-			// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
-			return { ...config, headers: { ...config.headers, 'X-Vault-Token': this.#currentToken } };
+			return config;
 		});
 	}
 
@@ -422,10 +413,14 @@ export class VaultProvider extends SecretsProvider {
 		listPath += path;
 		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
 		try {
+			const shouldPreferGet = preferGet();
+			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
 			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
-				url: listPath,
+				url,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				method: 'LIST' as any,
+				method,
 			});
 		} catch {
 			return null;
@@ -435,7 +430,7 @@ export class VaultProvider extends SecretsProvider {
 				await Promise.allSettled(
 					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
-							return this.getKVSecrets(mountPath, kvVersion, path + key);
+							return await this.getKVSecrets(mountPath, kvVersion, path + key);
 						}
 						let secretPath = mountPath;
 						if (kvVersion === '2') {
@@ -457,7 +452,7 @@ export class VaultProvider extends SecretsProvider {
 				)
 			)
 				.map((i) => (i.status === 'rejected' ? null : i.value))
-				.filter((v) => v !== null) as Array<[string, IDataObject]>,
+				.filter((v): v is [string, IDataObject] => v !== null),
 		);
 		const name = path.substring(0, path.length - 1);
 		return [name, data];
@@ -479,7 +474,7 @@ export class VaultProvider extends SecretsProvider {
 						return [basePath.substring(0, basePath.length - 1), value[1]];
 					}),
 				)
-			).filter((v) => v !== null) as Array<[string, IDataObject]>,
+			).filter((v): v is [string, IDataObject] => v !== null),
 		);
 		this.cachedSecrets = secrets;
 	}

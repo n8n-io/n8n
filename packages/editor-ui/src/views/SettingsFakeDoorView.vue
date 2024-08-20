@@ -1,5 +1,5 @@
 <template>
-	<feature-coming-soon :featureId="featureId" showTitle />
+	<FeatureComingSoon :feature-id="featureId" show-title />
 </template>
 
 <script lang="ts">
@@ -23,7 +23,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useUIStore),
 		featureInfo(): IFakeDoor | undefined {
-			return this.uiStore.getFakeDoorById(this.featureId);
+			return this.uiStore.fakeDoorsById[this.featureId];
 		},
 	},
 	methods: {

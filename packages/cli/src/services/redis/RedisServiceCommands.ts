@@ -1,4 +1,4 @@
-import type { IPushDataWorkerStatusPayload } from '@/Interfaces';
+import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/Interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -7,8 +7,16 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowActiveStateChanged' // multi-main only
-	| 'workflowFailedToActivate'; // multi-main only
+	| 'community-package-install'
+	| 'community-package-update'
+	| 'community-package-uninstall'
+	| 'display-workflow-activation' // multi-main only
+	| 'display-workflow-deactivation' // multi-main only
+	| 'add-webhooks-triggers-and-pollers' // multi-main only
+	| 'remove-triggers-and-pollers' // multi-main only
+	| 'workflow-failed-to-activate' // multi-main only
+	| 'relay-execution-lifecycle-event' // multi-main only
+	| 'clear-test-webhooks'; // multi-main only
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -16,13 +24,39 @@ export type RedisServiceCommand =
  * @field targets: The targets to execute the command on. Leave empty to execute on all workers or specify worker ids.
  * @field payload: Optional arguments to be sent with the command.
  */
-type RedisServiceBaseCommand = {
-	senderId: string;
-	command: RedisServiceCommand;
-	payload?: {
-		[key: string]: string | number | boolean | string[] | number[] | boolean[];
-	};
-};
+export type RedisServiceBaseCommand =
+	| {
+			senderId: string;
+			command: Exclude<
+				RedisServiceCommand,
+				| 'relay-execution-lifecycle-event'
+				| 'clear-test-webhooks'
+				| 'community-package-install'
+				| 'community-package-update'
+				| 'community-package-uninstall'
+			>;
+			payload?: {
+				[key: string]: string | number | boolean | string[] | number[] | boolean[];
+			};
+	  }
+	| {
+			senderId: string;
+			command: 'relay-execution-lifecycle-event';
+			payload: { type: IPushDataType; args: Record<string, unknown>; pushRef: string };
+	  }
+	| {
+			senderId: string;
+			command: 'clear-test-webhooks';
+			payload: { webhookKey: string; workflowEntity: IWorkflowDb; pushRef: string };
+	  }
+	| {
+			senderId: string;
+			command:
+				| 'community-package-install'
+				| 'community-package-update'
+				| 'community-package-uninstall';
+			payload: { packageName: string; packageVersion: string };
+	  };
 
 export type RedisServiceWorkerResponseObject = {
 	workerId: string;
@@ -60,7 +94,7 @@ export type RedisServiceWorkerResponseObject = {
 				workflowId: string;
 			};
 	  }
-);
+) & { targets?: string[] };
 
 export type RedisServiceCommandObject = {
 	targets?: string[];

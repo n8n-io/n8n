@@ -1,11 +1,12 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -14,22 +15,22 @@ import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
 
 function getOptions(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any,
 	qs: IDataObject,
 	instanceUrl: string,
-): OptionsWithUri {
-	const options: OptionsWithUri = {
+): IRequestOptions {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
+		uri: `${instanceUrl}/services/data/v59.0${endpoint}`,
 		json: true,
 	};
 
@@ -41,7 +42,7 @@ function getOptions(
 }
 
 async function getAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
@@ -66,7 +67,7 @@ async function getAccessToken(
 		},
 	);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -79,12 +80,12 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }
 
 export async function salesforceApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -142,9 +143,9 @@ export async function salesforceApiRequest(
 }
 
 export async function salesforceApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

@@ -10,7 +10,7 @@
 			}"
 		>
 			<div id="banners" :class="$style.banners">
-				<banner-stack v-if="!isDemoMode" />
+				<BannerStack v-if="!isDemoMode" />
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
@@ -20,14 +20,16 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
 						<component :is="Component" />
 					</keep-alive>
-					<component v-else :is="Component" />
+					<component :is="Component" v-else />
 				</router-view>
 			</div>
+			<AskAssistantChat />
 			<Modals />
 			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
 	</div>
 </template>
@@ -35,22 +37,22 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { newVersions } from '@/mixins/newVersions';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
-import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -59,8 +61,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { runExternalHook } from '@/utils/externalHooks';
-import { initializeAuthenticatedFeatures } from '@/init';
+import { useAssistantStore } from './stores/assistant.store';
 
 export default defineComponent({
 	name: 'App',
@@ -69,20 +70,20 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
+		AskAssistantChat,
+		AskAssistantFloatingButton,
 	},
-	mixins: [newVersions, userHelpers],
-	setup(props) {
+	setup() {
 		return {
 			...useGlobalLinkActions(),
 			...useHistoryHelper(useRoute()),
 			...useToast(),
 			externalHooks: useExternalHooks(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...newVersions.setup?.(props),
 		};
 	},
 	computed: {
 		...mapStores(
+			useAssistantStore,
 			useNodeTypesStore,
 			useRootStore,
 			useSettingsStore,
@@ -99,38 +100,30 @@ export default defineComponent({
 		isDemoMode(): boolean {
 			return this.$route.name === VIEWS.DEMO;
 		},
+		showAssistantButton(): boolean {
+			return this.assistantStore.canShowAssistantButtons;
+		},
 	},
 	data() {
 		return {
-			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
+	},
+	watch: {
+		defaultLocale(newLocale) {
+			void loadLanguage(newLocale);
+		},
+	},
+	async mounted() {
+		this.logHiringBanner();
+		void useExternalHooks().run('app.mount');
+		this.loading = false;
 	},
 	methods: {
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
 				console.log(HIRING_BANNER);
 			}
-		},
-	},
-	async mounted() {
-		this.logHiringBanner();
-
-		void this.checkForNewVersions();
-		void initializeAuthenticatedFeatures();
-
-		void runExternalHook('app.mount');
-		this.loading = false;
-	},
-	watch: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
-			}
-		},
-		defaultLocale(newLocale) {
-			void loadLanguage(newLocale);
 		},
 	},
 });
@@ -145,10 +138,10 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners'
-		'sidebar header'
-		'sidebar content';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+		'banners banners rightsidebar'
+		'sidebar header rightsidebar'
+		'sidebar content rightsidebar';
+	grid-auto-columns: minmax(0, max-content) minmax(100px, auto) minmax(0, max-content);
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
@@ -161,6 +154,7 @@ export default defineComponent({
 .content {
 	display: flex;
 	grid-area: content;
+	position: relative;
 	overflow: auto;
 	height: 100%;
 	width: 100%;

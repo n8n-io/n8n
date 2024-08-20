@@ -20,7 +20,12 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	tags?: string[];
 
+	@IsString()
+	@IsOptional()
+	@Expose()
+	projectId?: string;
+
 	static async fromString(rawFilter: string) {
-		return this.toFilter(rawFilter, WorkflowFilter);
+		return await this.toFilter(rawFilter, WorkflowFilter);
 	}
 }

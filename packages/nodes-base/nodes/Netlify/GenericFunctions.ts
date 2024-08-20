@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function netlifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -19,7 +19,7 @@ export async function netlifyApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ export async function netlifyApiRequest(
 
 export async function netlifyRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

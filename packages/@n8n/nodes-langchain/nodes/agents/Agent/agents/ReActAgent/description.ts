@@ -29,6 +29,19 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 		default: '={{ $json.chat_input }}',
 	},
 	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				agent: ['reActAgent'],
+				'@version': [1.2],
+			},
+		},
+		default: '={{ $json.chatInput }}',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -81,6 +94,13 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				typeOptions: {
 					rows: 6,
 				},
+			},
+			{
+				displayName: 'Return Intermediate Steps',
+				name: 'returnIntermediateSteps',
+				type: 'boolean',
+				default: false,
+				description: 'Whether or not the output should include intermediate steps the agent took',
 			},
 		],
 	},

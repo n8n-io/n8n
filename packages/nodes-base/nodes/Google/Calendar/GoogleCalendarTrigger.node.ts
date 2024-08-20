@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import {
 	encodeURIComponentOnce,
@@ -112,7 +112,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

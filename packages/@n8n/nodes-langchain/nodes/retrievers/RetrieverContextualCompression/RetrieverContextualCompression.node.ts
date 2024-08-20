@@ -9,8 +9,8 @@ import {
 
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
-import type { BaseLanguageModel } from 'langchain/base_language';
-import type { BaseRetriever } from 'langchain/schema/retriever';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
 
 import { logWrapper } from '../../../utils/logWrapper';
 

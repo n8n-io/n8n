@@ -3,6 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
+	checkRange,
 	prepareOutput,
 	updateByAutoMaping,
 	updateByDefinedValues,
@@ -491,7 +492,7 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 		expect(updateSummary.updatedData[4][1]).toEqual('Ismael'); // updated value
 	});
 
-	it('should update all occurances', () => {
+	it('should update all occurrences', () => {
 		const items = [
 			{
 				json: {
@@ -554,5 +555,21 @@ describe('Test MicrosoftExcelV2, updateByAutoMaping', () => {
 		expect(updateSummary.updatedRows.length).toEqual(1);
 		expect(updateSummary.appendData[0]).toEqual({ id: 4, name: 'Donald', age: 45, data: 'data 4' });
 		expect(updateSummary.appendData[1]).toEqual({ id: 5, name: 'Victor', age: 67, data: 'data 5' });
+	});
+});
+
+describe('Test MicrosoftExcelV2, checkRange', () => {
+	it('should not throw error', () => {
+		const range = 'A1:D4';
+		expect(() => {
+			checkRange(node, range);
+		}).not.toThrow();
+	});
+
+	it('should throw error', () => {
+		const range = 'A:D';
+		expect(() => {
+			checkRange(node, range);
+		}).toThrow();
 	});
 });

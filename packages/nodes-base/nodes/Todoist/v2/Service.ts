@@ -18,7 +18,7 @@ export class TodoistService implements Service {
 		operation: OperationType,
 		itemIndex: number,
 	): Promise<TodoistResponse> {
-		return this.handlers[operation].handleOperation(ctx, itemIndex);
+		return await this.handlers[operation].handleOperation(ctx, itemIndex);
 	}
 
 	private handlers = {

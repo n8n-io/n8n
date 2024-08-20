@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import set from 'lodash/set';
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
@@ -19,14 +20,13 @@ export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'fa:code',
+		icon: 'file:code.svg',
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
 		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
-			color: '#FF9922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -117,9 +117,9 @@ export class Code implements INodeType {
 				workflowMode === 'manual'
 					? this.sendMessageToUI
 					: CODE_ENABLE_STDOUT === 'true'
-					  ? (...args) =>
+						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
-					  : () => {},
+						: () => {},
 			);
 			return sandbox;
 		};
@@ -134,7 +134,10 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail(error)) {
+					set(error, 'node', node);
+					throw error;
+				}
 				items = [{ json: { error: error.message } }];
 			}
 
@@ -159,7 +162,10 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail(error)) {
+					set(error, 'node', node);
+					throw error;
+				}
 				returnData.push({
 					json: { error: error.message },
 					pairedItem: {

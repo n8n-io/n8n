@@ -5,6 +5,7 @@ export type SetNodeOptions = {
 	ignoreConversionErrors?: boolean;
 	include?: IncludeMods;
 	includeBinary?: boolean;
+	stripBinary?: boolean;
 };
 
 export type SetField = {
@@ -15,6 +16,12 @@ export type SetField = {
 	booleanValue?: boolean;
 	arrayValue?: string[] | string | IDataObject | IDataObject[];
 	objectValue?: string | IDataObject;
+};
+
+export type AssignmentSetField = {
+	name: string;
+	value: unknown;
+	type: string;
 };
 
 export const INCLUDE = {

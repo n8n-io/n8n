@@ -13,7 +13,12 @@ export class CredentialsFilter extends BaseFilter {
 	@Expose()
 	type?: string;
 
+	@IsString()
+	@IsOptional()
+	@Expose()
+	projectId?: string;
+
 	static async fromString(rawFilter: string) {
-		return this.toFilter(rawFilter, CredentialsFilter);
+		return await this.toFilter(rawFilter, CredentialsFilter);
 	}
 }

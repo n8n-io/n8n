@@ -1,65 +1,30 @@
-import { Service } from 'typedi';
-import type { RequestHandler } from 'express';
-import { NextFunction, Response } from 'express';
-import type {
-	INodeListSearchResult,
-	INodePropertyOptions,
-	ResourceMapperFields,
-} from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
-import { Authorized, Get, Middleware, RestController } from '@/decorators';
+import { Post, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-const assertMethodName: RequestHandler = (req, res, next) => {
-	const { methodName } = req.query as DynamicNodeParametersRequest.BaseRequest['query'];
-	if (!methodName) {
-		throw new BadRequestError('Parameter methodName is required.');
-	}
-	next();
-};
-
-@Service()
-@Authorized()
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
 	constructor(private readonly service: DynamicNodeParametersService) {}
 
-	@Middleware()
-	parseQueryParams(
-		req: DynamicNodeParametersRequest.BaseRequest,
-		res: Response,
-		next: NextFunction,
-	) {
-		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.query;
-		if (!nodeTypeAndVersion) {
-			throw new BadRequestError('Parameter nodeTypeAndVersion is required.');
-		}
-		if (!currentNodeParameters) {
-			throw new BadRequestError('Parameter currentNodeParameters is required.');
-		}
-
-		req.params = {
-			nodeTypeAndVersion: jsonParse(nodeTypeAndVersion),
-			currentNodeParameters: jsonParse(currentNodeParameters),
-			credentials: credentials ? jsonParse(credentials) : undefined,
-		};
-
-		next();
-	}
-
-	/** Returns parameter values which normally get loaded from an external API or get generated dynamically */
-	@Get('/options')
+	@Post('/options')
 	async getOptions(req: DynamicNodeParametersRequest.Options): Promise<INodePropertyOptions[]> {
-		const { path, methodName, loadOptions } = req.query;
-		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
+		const {
+			credentials,
+			currentNodeParameters,
+			nodeTypeAndVersion,
+			path,
+			methodName,
+			loadOptions,
+		} = req.body;
+
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
 
 		if (methodName) {
-			return this.service.getOptionsViaMethodName(
+			return await this.service.getOptionsViaMethodName(
 				methodName,
 				path,
 				additionalData,
@@ -70,8 +35,8 @@ export class DynamicNodeParametersController {
 		}
 
 		if (loadOptions) {
-			return this.service.getOptionsViaLoadOptions(
-				jsonParse(loadOptions),
+			return await this.service.getOptionsViaLoadOptions(
+				loadOptions,
 				additionalData,
 				nodeTypeAndVersion,
 				currentNodeParameters,
@@ -82,14 +47,23 @@ export class DynamicNodeParametersController {
 		return [];
 	}
 
-	@Get('/resource-locator-results', { middlewares: [assertMethodName] })
-	async getResourceLocatorResults(
-		req: DynamicNodeParametersRequest.ResourceLocatorResults,
-	): Promise<INodeListSearchResult | undefined> {
-		const { path, methodName, filter, paginationToken } = req.query;
-		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
+	@Post('/resource-locator-results')
+	async getResourceLocatorResults(req: DynamicNodeParametersRequest.ResourceLocatorResults) {
+		const {
+			path,
+			methodName,
+			filter,
+			paginationToken,
+			credentials,
+			currentNodeParameters,
+			nodeTypeAndVersion,
+		} = req.body;
+
+		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceLocatorResults(
+
+		return await this.service.getResourceLocatorResults(
 			methodName,
 			path,
 			additionalData,
@@ -101,14 +75,15 @@ export class DynamicNodeParametersController {
 		);
 	}
 
-	@Get('/resource-mapper-fields', { middlewares: [assertMethodName] })
-	async getResourceMappingFields(
-		req: DynamicNodeParametersRequest.ResourceMapperFields,
-	): Promise<ResourceMapperFields | undefined> {
-		const { path, methodName } = req.query;
-		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
+	@Post('/resource-mapper-fields')
+	async getResourceMappingFields(req: DynamicNodeParametersRequest.ResourceMapperFields) {
+		const { path, methodName, credentials, currentNodeParameters, nodeTypeAndVersion } = req.body;
+
+		if (!methodName) throw new BadRequestError('Missing `methodName` in request body');
+
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceMappingFields(
+
+		return await this.service.getResourceMappingFields(
 			methodName,
 			path,
 			additionalData,
@@ -116,5 +91,29 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 			credentials,
 		);
+	}
+
+	@Post('/action-result')
+	async getActionResult(
+		req: DynamicNodeParametersRequest.ActionResult,
+	): Promise<NodeParameterValueType> {
+		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, handler, payload } =
+			req.body;
+
+		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		if (handler) {
+			return await this.service.getActionResult(
+				handler,
+				path,
+				additionalData,
+				nodeTypeAndVersion,
+				currentNodeParameters,
+				payload,
+				credentials,
+			);
+		}
+
+		return;
 	}
 }

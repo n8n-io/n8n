@@ -1,15 +1,11 @@
 import { Service } from 'typedi';
-import {
-	COMMAND_REDIS_CHANNEL,
-	EVENT_BUS_REDIS_CHANNEL,
-	WORKER_RESPONSE_REDIS_CHANNEL,
-} from './RedisServiceHelper';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './RedisConstants';
 import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 
 @Service()
 export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 	async init(): Promise<void> {
-		await super.init('subscriber');
+		await super.init('subscriber(n8n)');
 
 		this.redisClient?.on('message', (channel: string, message: string) => {
 			this.messageHandlers.forEach((handler: (channel: string, message: string) => void) =>
@@ -44,20 +40,12 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 		});
 	}
 
-	async subscribeToEventLog(): Promise<void> {
-		await this.subscribe(EVENT_BUS_REDIS_CHANNEL);
-	}
-
 	async subscribeToCommandChannel(): Promise<void> {
 		await this.subscribe(COMMAND_REDIS_CHANNEL);
 	}
 
 	async subscribeToWorkerResponseChannel(): Promise<void> {
 		await this.subscribe(WORKER_RESPONSE_REDIS_CHANNEL);
-	}
-
-	async unSubscribeFromEventLog(): Promise<void> {
-		await this.unsubscribe(EVENT_BUS_REDIS_CHANNEL);
 	}
 
 	async unSubscribeFromCommandChannel(): Promise<void> {

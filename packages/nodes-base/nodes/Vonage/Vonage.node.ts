@@ -12,8 +12,8 @@ export class Vonage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vonage',
 		name: 'vonage',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:vonage.png',
+
+		icon: { light: 'file:vonage.svg', dark: 'file:vonage.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -133,7 +133,7 @@ export class Vonage implements INodeType {
 			// 	description: 'The format of the message body',
 			// },
 			// {
-			// 	displayName: 'Binary Property',
+			// 	displayName: 'Input Binary Field',
 			// 	name: 'binaryPropertyName',
 			// 	displayOptions: {
 			// 		show: {
@@ -478,7 +478,7 @@ export class Vonage implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					returnData.push({ error: error.message });
 					continue;
 				}

@@ -1,11 +1,11 @@
 <template>
-	<el-drawer
+	<ElDrawer
 		:direction="direction"
-		:modelValue="uiStore.isModalOpen(this.name)"
+		:model-value="uiStore.modalsById[name].open"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
-		:wrapperClosable="wrapperClosable"
+		:wrapper-closable="wrapperClosable"
 	>
 		<template #header>
 			<slot name="header" />
@@ -13,7 +13,7 @@
 		<span @keydown.stop>
 			<slot name="content" />
 		</span>
-	</el-drawer>
+	</ElDrawer>
 </template>
 
 <script lang="ts">
@@ -32,6 +32,7 @@ export default defineComponent({
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		beforeClose: {
 			type: Function,
@@ -73,7 +74,7 @@ export default defineComponent({
 	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.uiStore.isModalActive(this.name)) {
+			if (!this.uiStore.isModalActiveById[this.name]) {
 				return;
 			}
 
@@ -82,7 +83,7 @@ export default defineComponent({
 			}
 		},
 		handleEnter() {
-			if (this.uiStore.isModalActive(this.name)) {
+			if (this.uiStore.isModalActiveById[this.name]) {
 				this.$emit('enter');
 			}
 		},

@@ -1,7 +1,6 @@
 import { AgentExecutor } from 'langchain/agents';
 import { OpenAI as OpenAIClient } from 'openai';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import { type Tool } from 'langchain/tools';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -10,15 +9,18 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
+import { getConnectedTools } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 import { formatToOpenAIAssistantTool } from './utils';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Assistant',
 		name: 'openAiAssistant',
+		hidden: true,
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Utilizes Assistant API from Open AI.',
 		subtitle: 'Open AI Assistant',
 		defaults: {
@@ -29,7 +31,7 @@ export class OpenAiAssistant implements INodeType {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Agents'],
+				AI: ['Agents', 'Root Nodes'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -64,7 +66,7 @@ export class OpenAiAssistant implements INodeType {
 				default: 'existing',
 				options: [
 					{
-						name: 'Create New Assistant',
+						name: 'Use New Assistant',
 						value: 'new',
 					},
 					{
@@ -94,7 +96,6 @@ export class OpenAiAssistant implements INodeType {
 				typeOptions: {
 					rows: 5,
 				},
-				required: true,
 				displayOptions: {
 					show: {
 						'/mode': ['new'],
@@ -225,6 +226,23 @@ export class OpenAiAssistant implements INodeType {
 				type: 'string',
 				required: true,
 				default: '={{ $json.chat_input }}',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'OpenAI Tools',
@@ -237,10 +255,27 @@ export class OpenAiAssistant implements INodeType {
 						value: 'code_interpreter',
 					},
 					{
-						name: 'Retrieval',
+						name: 'Knowledge Retrieval',
 						value: 'retrieval',
 					},
 				],
+			},
+			{
+				displayName: 'Connect your own custom tools to this node on the canvas',
+				name: 'noticeTools',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName:
+					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+				name: 'noticeTools',
+				type: 'notice',
+				typeOptions: {
+					noticeTheme: 'info',
+				},
+				displayOptions: { show: { '/nativeTools': ['retrieval'] } },
+				default: '',
 			},
 			{
 				displayName: 'Options',
@@ -277,76 +312,86 @@ export class OpenAiAssistant implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		const nodeVersion = this.getNode().typeVersion;
+		const tools = await getConnectedTools(this, nodeVersion > 1, false);
 		const credentials = await this.getCredentials('openAiApi');
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
-			const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
-			const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
-				'code_interpreter' | 'retrieval'
-			>;
+			try {
+				const input = this.getNodeParameter('text', itemIndex) as string;
+				const assistantId = this.getNodeParameter('assistantId', itemIndex, '') as string;
+				const nativeTools = this.getNodeParameter('nativeTools', itemIndex, []) as Array<
+					'code_interpreter' | 'retrieval'
+				>;
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as {
-				baseURL?: string;
-				maxRetries: number;
-				timeout: number;
-			};
+				const options = this.getNodeParameter('options', itemIndex, {}) as {
+					baseURL?: string;
+					maxRetries: number;
+					timeout: number;
+				};
 
-			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
-			}
+				if (input === undefined) {
+					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+				}
 
-			const client = new OpenAIClient({
-				apiKey: credentials.apiKey as string,
-				maxRetries: options.maxRetries ?? 2,
-				timeout: options.timeout ?? 10000,
-				baseURL: options.baseURL,
-			});
-			let agent;
-			const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));
-			const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
-			const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
-
-			// Existing agent, update tools with currently assigned
-			if (assistantId) {
-				agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
-
-				await client.beta.assistants.update(assistantId, {
-					tools: newTools,
+				const client = new OpenAIClient({
+					apiKey: credentials.apiKey as string,
+					maxRetries: options.maxRetries ?? 2,
+					timeout: options.timeout ?? 10000,
+					baseURL: options.baseURL,
 				});
-			} else {
-				const name = this.getNodeParameter('name', itemIndex, '') as string;
-				const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
-				const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+				let agent;
+				const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));
+				const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
+				const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
 
-				agent = await OpenAIAssistantRunnable.createAssistant({
-					model,
-					client,
-					instructions,
-					name,
-					tools: newTools,
-					asAgent: true,
+				// Existing agent, update tools with currently assigned
+				if (assistantId) {
+					agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+
+					await client.beta.assistants.update(assistantId, {
+						tools: newTools,
+					});
+				} else {
+					const name = this.getNodeParameter('name', itemIndex, '') as string;
+					const instructions = this.getNodeParameter('instructions', itemIndex, '') as string;
+					const model = this.getNodeParameter('model', itemIndex, 'gpt-3.5-turbo-1106') as string;
+
+					agent = await OpenAIAssistantRunnable.createAssistant({
+						model,
+						client,
+						instructions,
+						name,
+						tools: newTools,
+						asAgent: true,
+					});
+				}
+
+				const agentExecutor = AgentExecutor.fromAgentAndTools({
+					agent,
+					tools,
 				});
+
+				const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
+					content: input,
+					signal: this.getExecutionCancelSignal(),
+					timeout: options.timeout ?? 10000,
+				});
+
+				returnData.push({ json: response });
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
+				throw error;
 			}
-
-			const agentExecutor = AgentExecutor.fromAgentAndTools({
-				agent,
-				tools,
-			});
-
-			const response = await agentExecutor.call({
-				content: input,
-				signal: this.getExecutionCancelSignal(),
-				timeout: options.timeout ?? 10000,
-			});
-
-			returnData.push({ json: response });
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

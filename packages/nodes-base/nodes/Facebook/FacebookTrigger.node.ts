@@ -64,6 +64,17 @@ export class FacebookTrigger implements INodeType {
 				description: 'Facebook APP ID',
 			},
 			{
+				displayName: 'To watch Whatsapp business account events use the Whatsapp trigger node',
+				name: 'whatsappBusinessAccountNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						object: ['whatsappBusinessAccount'],
+					},
+				},
+			},
+			{
 				displayName: 'Object',
 				name: 'object',
 				type: 'options',
@@ -195,7 +206,7 @@ export class FacebookTrigger implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
-						{ severity: 'warning' },
+						{ level: 'warning' },
 					);
 				}
 

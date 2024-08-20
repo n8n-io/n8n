@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import map from 'lodash/map';
 import isEmpty from 'lodash/isEmpty';
@@ -216,7 +216,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -891,7 +891,7 @@ export class Mandrill implements INodeType {
 
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

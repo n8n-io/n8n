@@ -1,90 +1,94 @@
 <template>
-	<n8n-checkbox
+	<N8nCheckbox
 		v-if="type === 'checkbox'"
-		v-bind="$props"
-		@update:modelValue="onUpdateModelValue"
-		@focus="onFocus"
 		ref="inputRef"
-	/>
-	<n8n-input-label
-		v-else-if="type === 'toggle'"
-		:inputName="name"
 		:label="label"
-		:tooltipText="tooltipText"
+		:disabled="disabled"
+		:label-size="labelSize as CheckboxLabelSizePropType"
+		:model-value="modelValue as CheckboxModelValuePropType"
+		@update:model-value="onUpdateModelValue"
+		@focus="onFocus"
+	/>
+	<N8nInputLabel
+		v-else-if="type === 'toggle'"
+		:input-name="name"
+		:label="label"
+		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
 	>
 		<template #content>
 			{{ tooltipText }}
 		</template>
-		<el-switch
-			:modelValue="modelValue"
+		<ElSwitch
+			:model-value="modelValue as SwitchModelValuePropType"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
-			@update:modelValue="onUpdateModelValue"
-		></el-switch>
-	</n8n-input-label>
-	<n8n-input-label
+			@update:model-value="onUpdateModelValue"
+		></ElSwitch>
+	</N8nInputLabel>
+	<N8nInputLabel
 		v-else
-		:inputName="name"
+		:input-name="name"
 		:label="label"
-		:tooltipText="tooltipText"
+		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
 	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
-			<n8n-select
-				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
+			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
-				:modelValue="modelValue"
+				ref="inputRef"
+				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
+				:model-value="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
-				@focus="onFocus"
-				@blur="onBlur"
 				:name="name"
 				:teleported="teleported"
-				ref="inputRef"
+				@update:model-value="onUpdateModelValue"
+				@focus="onFocus"
+				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in options || []"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
+					:disabled="!!option.disabled"
 					size="small"
 				/>
-			</n8n-select>
-			<n8n-input
+			</N8nSelect>
+			<N8nInput
 				v-else
+				ref="inputRef"
 				:name="name"
-				:type="type"
+				:type="type as InputTypePropType"
 				:placeholder="placeholder"
-				:modelValue="modelValue"
+				:model-value="modelValue as InputModelValuePropType"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
-				ref="inputRef"
 			/>
 		</div>
-		<div :class="$style.errors" v-if="showErrors">
+		<div v-if="showErrors" :class="$style.errors">
 			<span v-text="validationError" />
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
-				:newWindow="true"
+				:new-window="true"
 				size="small"
 				theme="danger"
 			>
 				{{ documentationText }}
 			</n8n-link>
 		</div>
-		<div :class="$style.infoText" v-else-if="infoText">
+		<div v-else-if="infoText" :class="$style.infoText">
 			<span size="small" v-text="infoText" />
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <script lang="ts" setup>
@@ -98,7 +102,18 @@ import N8nCheckbox from '../N8nCheckbox';
 import { ElSwitch } from 'element-plus';
 
 import { getValidationError, VALIDATORS } from './validators';
-import type { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
+import type {
+	Rule,
+	RuleGroup,
+	IValidator,
+	Validatable,
+	InputModelValuePropType,
+	InputTypePropType,
+	SwitchModelValuePropType,
+	CheckboxModelValuePropType,
+	CheckboxLabelSizePropType,
+	InputAutocompletePropType,
+} from '../../types';
 
 import { t } from '../../locale';
 
@@ -118,11 +133,11 @@ export interface Props {
 	validationRules?: Array<Rule | RuleGroup>;
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
-	options?: Array<{ value: string | number; label: string }>;
-	autocomplete?: string;
+	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
+	autocomplete?: InputAutocompletePropType;
 	name?: string;
 	focusInitially?: boolean;
-	labelSize?: 'small' | 'medium';
+	labelSize?: 'small' | 'medium' | 'large';
 	disabled?: boolean;
 	activeLabel?: string;
 	activeColor?: string;
@@ -143,11 +158,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'update:modelValue', value: unknown): void;
-	(event: 'focus'): void;
-	(event: 'blur'): void;
-	(event: 'enter'): void;
+	validate: [shouldValidate: boolean];
+	'update:modelValue': [value: Validatable];
+	focus: [];
+	blur: [];
+	enter: [];
 }>();
 
 const state = reactive({
@@ -205,7 +220,7 @@ function onBlur() {
 	emit('blur');
 }
 
-function onUpdateModelValue(value: FormState) {
+function onUpdateModelValue(value: Validatable) {
 	state.isTyping = true;
 	emit('update:modelValue', value);
 }
@@ -224,9 +239,9 @@ const validationError = computed<string | null>(() => {
 	const error = getInputValidationError();
 
 	if (error) {
-		if (error.messageKey) {
+		if ('messageKey' in error) {
 			return t(error.messageKey, error.options);
-		} else {
+		} else if ('message' in error) {
 			return error.message;
 		}
 	}

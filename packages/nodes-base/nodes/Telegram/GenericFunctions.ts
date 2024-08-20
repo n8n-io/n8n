@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -105,6 +105,14 @@ export function addAdditionalFields(
 			}
 		}
 
+		if (
+			nodeVersion &&
+			nodeVersion >= 1.2 &&
+			additionalFields.disable_web_page_preview === undefined
+		) {
+			body.disable_web_page_preview = true;
+		}
+
 		delete additionalFields.appendAttribution;
 	}
 
@@ -181,7 +189,7 @@ export function addAdditionalFields(
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -191,10 +199,10 @@ export async function apiRequest(
 
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
-		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
+		uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
 		json: true,
@@ -234,4 +242,10 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 
 export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
+}
+
+export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
+	// Only characters A-Z, a-z, 0-9, _ and - are allowed.
+	const secret_token = `${this.getWorkflow().id}_${this.getNode().id}`;
+	return secret_token.replace(/[^a-zA-Z0-9\_\-]+/g, '');
 }

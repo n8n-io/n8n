@@ -6,8 +6,9 @@ import { parse as parseQueryString } from 'querystring';
 import { Parser as XmlParser } from 'xml2js';
 import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import config from '@/config';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { GlobalConfig } from '@n8n/config';
+import Container from 'typedi';
 
 const xmlParser = new XmlParser({
 	async: true,
@@ -16,8 +17,8 @@ const xmlParser = new XmlParser({
 	explicitArray: false, // Only put properties in array if length > 1
 });
 
-const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
-export const rawBodyReader: RequestHandler = async (req, res, next) => {
+const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
+export const rawBodyReader: RequestHandler = async (req, _res, next) => {
 	parseIncomingMessage(req);
 
 	req.readRawBody = async () => {
@@ -70,7 +71,7 @@ export const parseBody = async (req: Request) => {
 	}
 };
 
-export const bodyParser: RequestHandler = async (req, res, next) => {
+export const bodyParser: RequestHandler = async (req, _res, next) => {
 	await parseBody(req);
 	if (!req.body) req.body = {};
 	next();

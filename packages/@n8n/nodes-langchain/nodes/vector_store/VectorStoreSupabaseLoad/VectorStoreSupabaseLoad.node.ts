@@ -5,10 +5,10 @@ import {
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Embeddings } from 'langchain/embeddings/base';
+import type { Embeddings } from '@langchain/core/embeddings';
 import { createClient } from '@supabase/supabase-js';
-import type { SupabaseLibArgs } from 'langchain/vectorstores/supabase';
-import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
+import type { SupabaseLibArgs } from '@langchain/community/vectorstores/supabase';
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
@@ -37,7 +37,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoresupabaseload/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
 					},
 				],
 			},

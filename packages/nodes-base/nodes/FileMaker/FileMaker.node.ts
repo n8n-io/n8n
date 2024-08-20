@@ -7,10 +7,10 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import {
 	getFields,
 	getPortals,
@@ -600,7 +600,7 @@ export class FileMaker implements INodeType {
 			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return layoutsApiRequest.call(this);
+				return await layoutsApiRequest.call(this);
 			},
 			async getResponseLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -624,6 +624,8 @@ export class FileMaker implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				const fields = await getFields.call(this);
+
+				if (!Array.isArray(fields)) return [];
 
 				for (const field of fields) {
 					returnData.push({
@@ -681,7 +683,7 @@ export class FileMaker implements INodeType {
 			throw new NodeOperationError(this.getNode(), error as string);
 		}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: IRequestOptions;
 
 		const host = credentials.host as string;
 		const database = credentials.db as string;
@@ -690,8 +692,8 @@ export class FileMaker implements INodeType {
 
 		const action = this.getNodeParameter('action', 0) as string;
 
-		try {
-			for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
+			try {
 				// Reset all values
 				requestOptions = {
 					uri: '',
@@ -805,17 +807,24 @@ export class FileMaker implements INodeType {
 						{ itemIndex: i },
 					);
 				}
-				returnData.push({ json: response });
-			}
-		} catch (error) {
-			if (error.node) {
-				throw error;
-			}
+				returnData.push({ json: response, pairedItem: { item: i } });
+			} catch (error) {
+				if (this.continueOnFail(error)) {
+					returnData.push({
+						json: { error: error.message },
+						pairedItem: { item: i },
+					});
+				} else {
+					if (error.node) {
+						throw error;
+					}
 
-			throw new NodeOperationError(
-				this.getNode(),
-				`The action "${error.message}" is not implemented yet!`,
-			);
+					throw new NodeOperationError(
+						this.getNode(),
+						`The action "${error.message}" is not implemented yet!`,
+					);
+				}
+			}
 		}
 
 		await logout.call(this, token as string);

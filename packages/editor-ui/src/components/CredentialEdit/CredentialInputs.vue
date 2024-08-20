@@ -1,5 +1,5 @@
 <template>
-	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
+	<div v-if="credentialProperties.length" :class="$style.container" @keydown.stop>
 		<form
 			v-for="parameter in credentialProperties"
 			:key="parameter.name"
@@ -9,55 +9,55 @@
 		>
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
 			<n8n-notice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
-			<parameter-input-expanded
+			<ParameterInputExpanded
 				v-else
 				:parameter="parameter"
-				:value="credentialData[parameter.name]"
-				:documentationUrl="documentationUrl"
-				:showValidationWarnings="showValidationWarnings"
-				:label="label"
-				eventSource="credentials"
+				:value="credentialDataValues[parameter.name]"
+				:documentation-url="documentationUrl"
+				:show-validation-warnings="showValidationWarnings"
+				:label="{ size: 'medium' }"
+				event-source="credentials"
 				@update="valueChanged"
 			/>
 		</form>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { IParameterLabel } from 'n8n-workflow';
+<script setup lang="ts">
+import type {
+	ICredentialDataDecryptedObject,
+	INodeProperties,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import ParameterInputExpanded from '../ParameterInputExpanded.vue';
+import { computed } from 'vue';
 
-export default defineComponent({
-	name: 'CredentialsInput',
-	props: [
-		'credentialProperties',
-		'credentialData', // ICredentialsDecryptedResponse
-		'documentationUrl',
-		'showValidationWarnings',
-	],
-	components: {
-		ParameterInputExpanded,
-	},
-	data(): { label: IParameterLabel } {
-		return {
-			label: {
-				size: 'medium',
-			},
-		};
-	},
-	methods: {
-		valueChanged(parameterData: IUpdateInformation) {
-			const name = parameterData.name.split('.').pop();
+type Props = {
+	credentialProperties: INodeProperties[];
+	credentialData: ICredentialDataDecryptedObject;
+	documentationUrl: string;
+	showValidationWarnings?: boolean;
+};
 
-			this.$emit('update', {
-				name,
-				value: parameterData.value,
-			});
-		},
-	},
-});
+const props = defineProps<Props>();
+
+const credentialDataValues = computed(
+	() => props.credentialData as Record<string, NodeParameterValueType>,
+);
+
+const emit = defineEmits<{
+	update: [value: IUpdateInformation];
+}>();
+
+function valueChanged(parameterData: IUpdateInformation) {
+	const name = parameterData.name.split('.').pop() ?? parameterData.name;
+
+	emit('update', {
+		name,
+		value: parameterData.value,
+	});
+}
 </script>
 
 <style lang="scss" module>

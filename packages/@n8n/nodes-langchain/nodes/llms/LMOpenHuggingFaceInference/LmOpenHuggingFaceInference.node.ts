@@ -7,9 +7,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { HuggingFaceInference } from 'langchain/llms/hf';
-import { logWrapper } from '../../../utils/logWrapper';
+import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +26,8 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -141,10 +142,11 @@ export class LmOpenHuggingFaceInference implements INodeType {
 			model: modelName,
 			apiKey: credentials.apiKey as string,
 			...options,
+			callbacks: [new N8nLlmTracing(this)],
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

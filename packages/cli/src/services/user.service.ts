@@ -1,63 +1,36 @@
-import Container, { Service } from 'typedi';
-import type { EntityManager, FindManyOptions, FindOneOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
-import { User } from '@db/entities/User';
+import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+
+import type { User, AssignableRole } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
-import { generateUserInviteUrl, getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import type { PublicUser } from '@/Interfaces';
+import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
-import { type JwtPayload, JwtService } from './jwt.service';
-import { TokenExpiredError } from 'jsonwebtoken';
 import { Logger } from '@/Logger';
-import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
-		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
-		private readonly roleService: RoleService,
+		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {}
 
-	async findOne(options: FindOneOptions<User>) {
-		return this.userRepository.findOne({ relations: ['globalRole'], ...options });
-	}
-
-	async findOneOrFail(options: FindOneOptions<User>) {
-		return this.userRepository.findOneOrFail({ relations: ['globalRole'], ...options });
-	}
-
-	async findMany(options: FindManyOptions<User>) {
-		return this.userRepository.find(options);
-	}
-
-	async findOneBy(options: FindOptionsWhere<User>) {
-		return this.userRepository.findOneBy(options);
-	}
-
-	create(data: Partial<User>) {
-		return this.userRepository.create(data);
-	}
-
-	async save(user: Partial<User>) {
-		return this.userRepository.save(user);
-	}
-
 	async update(userId: string, data: Partial<User>) {
-		return this.userRepository.update(userId, data);
-	}
+		const user = await this.userRepository.findOneBy({ id: userId });
 
-	async getByIds(transaction: EntityManager, ids: string[]) {
-		return transaction.find(User, { where: { id: In(ids) } });
+		if (user) {
+			await this.userRepository.save({ ...user, ...data }, { transaction: true });
+		}
+
+		return;
 	}
 
 	getManager() {
@@ -65,65 +38,25 @@ export class UserService {
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const { settings } = await this.userRepository.findOneOrFail({ where: { id: userId } });
+		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
-		return this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
-	}
-
-	generatePasswordResetToken(user: User, expiresIn = '20m') {
-		return this.jwtService.sign(
-			{ sub: user.id, passwordSha: createPasswordSha(user) },
-			{ expiresIn },
-		);
-	}
-
-	generatePasswordResetUrl(user: User) {
-		const instanceBaseUrl = getInstanceBaseUrl();
-		const url = new URL(`${instanceBaseUrl}/change-password`);
-
-		url.searchParams.append('token', this.generatePasswordResetToken(user));
-		url.searchParams.append('mfaEnabled', user.mfaEnabled.toString());
-
-		return url.toString();
-	}
-
-	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
-		let decodedToken: JwtPayload & { passwordSha: string };
-		try {
-			decodedToken = this.jwtService.verify(token);
-		} catch (e) {
-			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
-			} else {
-				this.logger.debug('Error verifying token', { token });
-			}
-			return;
+		if (user.settings) {
+			Object.assign(user.settings, newSettings);
+		} else {
+			user.settings = newSettings;
 		}
 
-		const user = await this.userRepository.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities', 'globalRole'],
-		});
-
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
-			);
-			return;
-		}
-
-		if (createPasswordSha(user) !== decodedToken.passwordSha) {
-			this.logger.debug('Password updated since this token was generated');
-			return;
-		}
-
-		return user;
+		await this.userRepository.save(user);
 	}
 
 	async toPublic(
 		user: User,
-		options?: { withInviteUrl?: boolean; posthog?: PostHogClient; withScopes?: boolean },
+		options?: {
+			withInviteUrl?: boolean;
+			inviterId?: string;
+			posthog?: PostHogClient;
+			withScopes?: boolean;
+		},
 	) {
 		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
@@ -132,33 +65,36 @@ export class UserService {
 		let publicUser: PublicUser = {
 			...rest,
 			signInType: ldapIdentity ? 'ldap' : 'email',
-			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
-		if (options?.withScopes) {
-			publicUser.globalScopes = user.globalScopes;
+		if (options?.withInviteUrl && !options?.inviterId) {
+			throw new ApplicationError('Inviter ID is required to generate invite URL');
 		}
 
-		if (options?.withInviteUrl && publicUser.isPending) {
-			publicUser = this.addInviteUrl(publicUser, user.id);
+		if (options?.withInviteUrl && options?.inviterId && publicUser.isPending) {
+			publicUser = this.addInviteUrl(options.inviterId, publicUser);
 		}
 
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
+		if (options?.withScopes) {
+			publicUser.globalScopes = user.globalScopes;
+		}
+
 		return publicUser;
 	}
 
-	private addInviteUrl(user: PublicUser, inviterId: string) {
-		const url = new URL(getInstanceBaseUrl());
+	private addInviteUrl(inviterId: string, invitee: PublicUser) {
+		const url = new URL(this.urlService.getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', user.id);
+		url.searchParams.set('inviteeId', invitee.id);
 
-		user.inviteAcceptUrl = url.toString();
+		invitee.inviteAcceptUrl = url.toString();
 
-		return user;
+		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -175,15 +111,19 @@ export class UserService {
 			resolve(publicUser);
 		});
 
-		return Promise.race([fetchPromise, timeoutPromise]);
+		return await Promise.race([fetchPromise, timeoutPromise]);
 	}
 
-	private async sendEmails(owner: User, toInviteUsers: { [key: string]: string }) {
-		const domain = getInstanceBaseUrl();
+	private async sendEmails(
+		owner: User,
+		toInviteUsers: { [key: string]: string },
+		role: AssignableRole,
+	) {
+		const domain = this.urlService.getInstanceBaseUrl();
 
-		return Promise.all(
+		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = generateUserInviteUrl(owner.id, id);
+				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -203,25 +143,27 @@ export class UserService {
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						void Container.get(InternalHooks).onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
+
+						this.eventService.emit('user-transactional-email-sent', {
+							userId: id,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 					}
 
-					void Container.get(InternalHooks).onUserInvite({
+					this.eventService.emit('user-invited', {
 						user: owner,
-						target_user_id: Object.values(toInviteUsers),
-						public_api: false,
-						email_sent: result.emailSent,
+						targetUserId: Object.values(toInviteUsers),
+						publicApi: false,
+						emailSent: result.emailSent,
+						inviteeRole: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						void Container.get(InternalHooks).onEmailFailed({
+						this.eventService.emit('email-failed', {
 							user: owner,
-							message_type: 'New user invite',
-							public_api: false,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
@@ -238,19 +180,14 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
-		const memberRole = await this.roleService.findGlobalMemberRole();
-		const adminRole = await this.roleService.findGlobalAdminRole();
+	async inviteUsers(owner: User, invitations: Invitation[]) {
+		const emails = invitations.map(({ email }) => email);
 
-		const existingUsers = await this.findMany({
-			where: { email: In(attributes.map(({ email }) => email)) },
-			relations: ['globalRole'],
-			select: ['email', 'password', 'id'],
-		});
+		const existingUsers = await this.userRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
-		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
+		const toCreateUsers = invitations.filter(({ email }) => !existUsersEmails.includes(email));
 
 		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
 
@@ -263,18 +200,18 @@ export class UserService {
 		);
 
 		try {
-			await this.getManager().transaction(async (transactionManager) =>
-				Promise.all(
-					toCreateUsers.map(async ({ email, role }) => {
-						const newUser = Object.assign(new User(), {
-							email,
-							globalRole: role === 'member' ? memberRole : adminRole,
-						});
-						const savedUser = await transactionManager.save<User>(newUser);
-						createdUsers.set(email, savedUser.id);
-						return savedUser;
-					}),
-				),
+			await this.getManager().transaction(
+				async (transactionManager) =>
+					await Promise.all(
+						toCreateUsers.map(async ({ email, role }) => {
+							const { user: savedUser } = await this.userRepository.createUserWithProject(
+								{ email, role },
+								transactionManager,
+							);
+							createdUsers.set(email, savedUser.id);
+							return savedUser;
+						}),
+					),
 			);
 		} catch (error) {
 			ErrorReporter.error(error);
@@ -284,7 +221,11 @@ export class UserService {
 
 		pendingUsersToInvite.forEach(({ email, id }) => createdUsers.set(email, id));
 
-		const usersInvited = await this.sendEmails(owner, Object.fromEntries(createdUsers));
+		const usersInvited = await this.sendEmails(
+			owner,
+			Object.fromEntries(createdUsers),
+			invitations[0].role, // same role for all invited users
+		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}

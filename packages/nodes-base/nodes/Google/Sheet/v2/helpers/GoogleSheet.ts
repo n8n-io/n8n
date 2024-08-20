@@ -1,24 +1,26 @@
+import get from 'lodash/get';
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	IDataObject,
-	IPollFunctions,
 	INode,
+	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
-import get from 'lodash/get';
 import { apiRequest } from '../transport';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
+	ResourceLocator,
 	SheetCellDecoded,
 	SheetRangeData,
 	SheetRangeDecoded,
+	SpreadSheetResponse,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheets.types';
-import { removeEmptyColumns } from './GoogleSheets.utils';
+import { getSheetId, removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
@@ -116,32 +118,32 @@ export class GoogleSheet {
 	}
 
 	/**
-	 *  Returns the name of a sheet from a sheet id
+	 *  Returns the sheet within a spreadsheet based on name or ID
 	 */
-	async spreadsheetGetSheetNameById(node: INode, sheetId: string) {
+	async spreadsheetGetSheet(node: INode, mode: ResourceLocator, value: string) {
 		const query = {
 			fields: 'sheets.properties',
 		};
 
-		const response = await apiRequest.call(
+		const response = (await apiRequest.call(
 			this.executeFunctions,
 			'GET',
 			`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
-		);
+		)) as SpreadSheetResponse;
 
-		const foundItem = response.sheets.find(
-			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
-		);
+		const foundItem = response.sheets.find((item) => {
+			if (mode === 'name') return item.properties.title === value;
+			return item.properties.sheetId === getSheetId(value);
+		});
 
 		if (!foundItem?.properties?.title) {
-			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
-				severity: 'warning',
-			});
+			const error = new Error(`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`);
+			throw new NodeOperationError(node, error, { level: 'warning' });
 		}
 
-		return foundItem.properties.title;
+		return foundItem.properties;
 	}
 
 	/**
@@ -226,7 +228,9 @@ export class GoogleSheet {
 		}
 
 		if (requests.length === 0) {
-			throw new Error('Must specify at least one column or row to add');
+			throw new ApplicationError('Must specify at least one column or row to add', {
+				level: 'warning',
+			});
 		}
 
 		const response = await apiRequest.call(
@@ -376,16 +380,25 @@ export class GoogleSheet {
 		return keys;
 	}
 
-	async appendSheetData(
-		inputData: IDataObject[],
-		range: string,
-		keyRowIndex: number,
-		valueInputMode: ValueInputOption,
-		usePathForKeyRow: boolean,
-		columnNamesList?: string[][],
-		lastRow?: number,
-		useAppend?: boolean,
-	): Promise<string[][]> {
+	async appendSheetData({
+		inputData,
+		range,
+		keyRowIndex,
+		valueInputMode,
+		usePathForKeyRow,
+		columnNamesList,
+		lastRow,
+		useAppend,
+	}: {
+		inputData: IDataObject[];
+		range: string;
+		keyRowIndex: number;
+		valueInputMode: ValueInputOption;
+		usePathForKeyRow?: boolean;
+		columnNamesList?: string[][];
+		lastRow?: number;
+		useAppend?: boolean;
+	}): Promise<string[][]> {
 		const data = await this.convertObjectArrayToSheetDataArray(
 			inputData,
 			range,
@@ -394,7 +407,7 @@ export class GoogleSheet {
 			columnNamesList,
 			useAppend ? null : '',
 		);
-		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
+		return await this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -402,13 +415,19 @@ export class GoogleSheet {
 		return xlsxUtils.encode_col(columnIndex);
 	}
 
-	async getColumnValues(
-		range: string,
-		keyIndex: number,
-		dataStartRowIndex: number,
-		valueRenderMode: ValueRenderOption,
-		sheetData?: string[][],
-	): Promise<string[]> {
+	async getColumnValues({
+		range,
+		keyIndex,
+		dataStartRowIndex,
+		valueRenderMode,
+		sheetData,
+	}: {
+		range: string;
+		keyIndex: number;
+		dataStartRowIndex: number;
+		valueRenderMode: ValueRenderOption;
+		sheetData?: string[][];
+	}): Promise<string[]> {
 		let columnValuesList;
 		if (sheetData) {
 			columnValuesList = sheetData.slice(dataStartRowIndex - 1).map((row) => row[keyIndex]);
@@ -444,17 +463,27 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async prepareDataForUpdateOrUpsert(
-		inputData: IDataObject[],
-		indexKey: string,
-		range: string,
-		keyRowIndex: number,
-		dataStartRowIndex: number,
-		valueRenderMode: ValueRenderOption,
+	async prepareDataForUpdateOrUpsert({
+		inputData,
+		indexKey,
+		range,
+		keyRowIndex,
+		dataStartRowIndex,
+		valueRenderMode,
 		upsert = false,
-		columnNamesList?: string[][],
-		columnValuesList?: string[],
-	) {
+		columnNamesList,
+		columnValuesList,
+	}: {
+		inputData: IDataObject[];
+		indexKey: string;
+		range: string;
+		keyRowIndex: number;
+		dataStartRowIndex: number;
+		valueRenderMode: ValueRenderOption;
+		upsert?: boolean;
+		columnNamesList?: string[][];
+		columnValuesList?: string[];
+	}) {
 		const decodedRange = this.getDecodedSheetRange(range);
 		// prettier-ignore
 		const	keyRowRange = `${decodedRange.name}!${decodedRange.start?.column || ''}${keyRowIndex + 1}:${decodedRange.end?.column || ''}${keyRowIndex + 1}`;
@@ -472,7 +501,7 @@ export class GoogleSheet {
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
-		if (keyIndex === -1) {
+		if (keyIndex === -1 && !upsert) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				`Could not find column for key "${indexKey}"`,
@@ -481,7 +510,7 @@ export class GoogleSheet {
 
 		const columnValues: Array<string | number> =
 			columnValuesList ||
-			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
+			(await this.getColumnValues({ range, keyIndex, dataStartRowIndex, valueRenderMode }));
 
 		const updateData: ISheetUpdateData[] = [];
 		const appendData: IDataObject[] = [];
@@ -608,7 +637,7 @@ export class GoogleSheet {
 	/**
 	 * Looks for a specific value in a column and if it gets found it returns the whole row
 	 *
-	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {string[][]} inputData Data to check for lookup value in
 	 * @param {number} keyRowIndex Index of the row which contains the keys
 	 * @param {number} dataStartRowIndex Index of the first row which contains data
 	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
@@ -616,13 +645,21 @@ export class GoogleSheet {
 	 * @returns {Promise<IDataObject[]>}
 	 * @memberof GoogleSheet
 	 */
-	async lookupValues(
-		inputData: string[][],
-		keyRowIndex: number,
-		dataStartRowIndex: number,
-		lookupValues: ILookupValues[],
-		returnAllMatches?: boolean,
-	): Promise<IDataObject[]> {
+	async lookupValues({
+		inputData,
+		keyRowIndex,
+		dataStartRowIndex,
+		lookupValues,
+		returnAllMatches,
+		combineFilters = 'OR',
+	}: {
+		inputData: string[][];
+		keyRowIndex: number;
+		dataStartRowIndex: number;
+		lookupValues: ILookupValues[];
+		returnAllMatches?: boolean;
+		combineFilters?: 'AND' | 'OR';
+	}): Promise<IDataObject[]> {
 		const keys: string[] = [];
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
@@ -658,28 +695,65 @@ export class GoogleSheet {
 		// const returnData = [inputData[keyRowIndex]];
 		const returnData = [keys];
 
-		lookupLoop: for (const lookupValue of lookupValues) {
-			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
+		if (combineFilters === 'OR') {
+			lookupLoop: for (const lookupValue of lookupValues) {
+				returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
 
-			if (returnColumnIndex === -1) {
-				throw new NodeOperationError(
-					this.executeFunctions.getNode(),
-					`The column "${lookupValue.lookupColumn}" could not be found`,
-				);
+				if (returnColumnIndex === -1) {
+					throw new NodeOperationError(
+						this.executeFunctions.getNode(),
+						`The column "${lookupValue.lookupColumn}" could not be found`,
+					);
+				}
+
+				// Loop over all the items and find the one with the matching value
+				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
+					if (
+						inputData[rowIndex][returnColumnIndex]?.toString() ===
+						lookupValue.lookupValue.toString()
+					) {
+						if (addedRows.indexOf(rowIndex) === -1) {
+							returnData.push(inputData[rowIndex]);
+							addedRows.push(rowIndex);
+						}
+
+						if (returnAllMatches !== true) {
+							continue lookupLoop;
+						}
+					}
+				}
 			}
+		} else {
+			lookupLoop: for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
+				let allMatch = true;
 
-			// Loop over all the items and find the one with the matching value
-			for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
-				if (
-					inputData[rowIndex][returnColumnIndex]?.toString() === lookupValue.lookupValue.toString()
-				) {
+				for (const lookupValue of lookupValues) {
+					returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
+
+					if (returnColumnIndex === -1) {
+						throw new NodeOperationError(
+							this.executeFunctions.getNode(),
+							`The column "${lookupValue.lookupColumn}" could not be found`,
+						);
+					}
+
+					if (
+						inputData[rowIndex][returnColumnIndex]?.toString() !==
+						lookupValue.lookupValue.toString()
+					) {
+						allMatch = false;
+						break;
+					}
+				}
+
+				if (allMatch) {
 					if (addedRows.indexOf(rowIndex) === -1) {
 						returnData.push(inputData[rowIndex]);
 						addedRows.push(rowIndex);
 					}
 
 					if (returnAllMatches !== true) {
-						continue lookupLoop;
+						break lookupLoop;
 					}
 				}
 			}
@@ -698,7 +772,7 @@ export class GoogleSheet {
 		inputData: IDataObject[],
 		range: string,
 		keyRowIndex: number,
-		usePathForKeyRow: boolean,
+		usePathForKeyRow?: boolean,
 		columnNamesList?: string[][],
 		emptyValue: string | null = '',
 	): Promise<string[][]> {

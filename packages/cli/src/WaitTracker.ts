@@ -1,26 +1,11 @@
-import {
-	ApplicationError,
-	ErrorReporterProxy as ErrorReporter,
-	WorkflowOperationError,
-} from 'n8n-workflow';
-import { Container, Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
-
-import config from '@/config';
-import * as ResponseHelper from '@/ResponseHelper';
-import type {
-	IExecutionResponse,
-	IExecutionsStopData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -37,7 +22,32 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
-	) {
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly orchestrationService: OrchestrationService,
+	) {}
+
+	has(executionId: string) {
+		return this.waitingExecutions[executionId] !== undefined;
+	}
+
+	/**
+	 * @important Requires `OrchestrationService` to be initialized.
+	 */
+	init() {
+		const { isLeader, isMultiMainSetupEnabled } = this.orchestrationService;
+
+		if (isLeader) this.startTracking();
+
+		if (isMultiMainSetupEnabled) {
+			this.orchestrationService.multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
+	}
+
+	private startTracking() {
+		this.logger.debug('Wait tracker started tracking waiting executions');
+
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -48,28 +58,8 @@ export class WaitTracker {
 
 	async getWaitingExecutions() {
 		this.logger.debug('Wait tracker querying database for waiting executions');
-		// Find all the executions which should be triggered in the next 70 seconds
-		const findQuery: FindManyOptions<ExecutionEntity> = {
-			select: ['id', 'waitTill'],
-			where: {
-				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
-				status: Not('crashed'),
-			},
-			order: {
-				waitTill: 'ASC',
-			},
-		};
 
-		const dbType = config.getEnv('database.type');
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
-			);
-		}
-
-		const executions = await this.executionRepository.findMultipleExecutions(findQuery);
+		const executions = await this.executionRepository.getWaitingExecutions();
 
 		if (executions.length === 0) {
 			return;
@@ -96,76 +86,12 @@ export class WaitTracker {
 		}
 	}
 
-	async stopExecution(executionId: string): Promise<IExecutionsStopData> {
-		if (this.waitingExecutions[executionId] !== undefined) {
-			// The waiting execution was already scheduled to execute.
-			// So stop timer and remove.
-			clearTimeout(this.waitingExecutions[executionId].timer);
-			delete this.waitingExecutions[executionId];
-		}
+	stopExecution(executionId: string) {
+		if (!this.waitingExecutions[executionId]) return;
 
-		// Also check in database
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-		});
+		clearTimeout(this.waitingExecutions[executionId].timer);
 
-		if (!execution) {
-			throw new ApplicationError('Execution not found.', {
-				extra: { executionId },
-			});
-		}
-
-		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
-			);
-		}
-		let fullExecutionData: IExecutionResponse;
-		try {
-			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-		} catch (error) {
-			// if the execution ended in an unforseen, non-cancelable state, try to recover it
-			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
-			// find recovered data
-			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
-			if (!restoredExecution) {
-				throw new ApplicationError('Execution could not be recovered or canceled.', {
-					extra: { executionId },
-				});
-			}
-			fullExecutionData = restoredExecution;
-		}
-		// Set in execution in DB as failed and remove waitTill time
-		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
-
-		fullExecutionData.data.resultData.error = {
-			...error,
-			message: error.message,
-			stack: error.stack,
-		};
-
-		fullExecutionData.stoppedAt = new Date();
-		fullExecutionData.waitTill = null;
-		fullExecutionData.status = 'canceled';
-
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
-
-		return {
-			mode: fullExecutionData.mode,
-			startedAt: new Date(fullExecutionData.startedAt),
-			stoppedAt: fullExecutionData.stoppedAt ? new Date(fullExecutionData.stoppedAt) : undefined,
-			finished: fullExecutionData.finished,
-			status: fullExecutionData.status,
-		};
+		delete this.waitingExecutions[executionId];
 	}
 
 	startExecution(executionId: string) {
@@ -190,24 +116,32 @@ export class WaitTracker {
 				throw new ApplicationError('Only saved workflows can be resumed.');
 			}
 			const workflowId = fullExecutionData.workflowData.id;
-			const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,
 				executionData: fullExecutionData.data,
 				workflowData: fullExecutionData.workflowData,
-				userId: user.id,
+				projectId: project.id,
 			};
 
 			// Start the execution again
-			const workflowRunner = new WorkflowRunner();
-			await workflowRunner.run(data, false, false, executionId);
+			await this.workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);
 			this.logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },
 			);
+		});
+	}
+
+	stopTracking() {
+		this.logger.debug('Wait tracker shutting down');
+
+		clearInterval(this.mainTimer);
+		Object.keys(this.waitingExecutions).forEach((executionId) => {
+			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
 	}
 }

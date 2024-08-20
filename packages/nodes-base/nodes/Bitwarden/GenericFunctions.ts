@@ -1,13 +1,13 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 /**
  * Return the access token URL based on the user's environment.
@@ -34,14 +34,14 @@ async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
  */
 export async function bitwardenApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
 ): Promise<any> {
 	const baseUrl = await getBaseUrl.call(this);
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Authorization: `Bearer ${token}`,
@@ -77,7 +77,7 @@ export async function getAccessToken(
 ): Promise<any> {
 	const credentials = await this.getCredentials('bitwardenApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -109,7 +109,7 @@ export async function getAccessToken(
 export async function handleGetAll(
 	this: IExecuteFunctions,
 	i: number,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,

@@ -5,9 +5,9 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { IZepConfig } from 'langchain/vectorstores/zep';
-import { ZepVectorStore } from 'langchain/vectorstores/zep';
-import type { Embeddings } from 'langchain/embeddings/base';
+import type { IZepConfig } from '@langchain/community/vectorstores/zep';
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
+import type { Embeddings } from '@langchain/core/embeddings';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
@@ -34,7 +34,7 @@ export class VectorStoreZepLoad implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorezepload/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezep/',
 					},
 				],
 			},

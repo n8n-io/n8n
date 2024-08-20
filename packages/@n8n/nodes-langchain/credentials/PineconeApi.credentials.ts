@@ -21,13 +21,6 @@ export class PineconeApi implements ICredentialType {
 			required: true,
 			default: '',
 		},
-		{
-			displayName: 'Environment',
-			name: 'environment',
-			type: 'string',
-			required: true,
-			default: 'us-central1-gcp',
-		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -41,7 +34,7 @@ export class PineconeApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://controller.{{$credentials.environment}}.pinecone.io/databases',
+			baseURL: 'https://api.pinecone.io/indexes',
 			headers: {
 				accept: 'application/json; charset=utf-8',
 			},

@@ -107,10 +107,11 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
+		hint: 'The name of the input binary field containing the file to be uploaded',
 		displayOptions: {
 			show: {
 				operation: ['upload'],
@@ -123,7 +124,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -265,7 +266,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -365,7 +366,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -422,7 +423,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -534,7 +535,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -701,7 +702,7 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

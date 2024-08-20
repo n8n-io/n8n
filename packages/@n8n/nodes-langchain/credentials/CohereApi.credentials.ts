@@ -35,11 +35,7 @@ export class CohereApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.cohere.ai',
-			url: '/v1/detect-language',
-			method: 'POST',
-			body: {
-				texts: ['hello'],
-			},
+			url: '/v1/models?page_size=1',
 		},
 	};
 }

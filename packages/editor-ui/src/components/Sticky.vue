@@ -1,45 +1,47 @@
 <template>
 	<div
-		class="sticky-wrapper"
 		:id="nodeId"
-		:ref="data.name"
+		:ref="data?.name"
+		class="sticky-wrapper"
 		:style="stickyPosition"
-		:data-name="data.name"
+		:data-name="data?.name"
 		data-test-id="sticky"
 	>
 		<div
 			:class="{
 				'sticky-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
+				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
 		>
-			<div class="select-sticky-background" v-show="isSelected" />
+			<div v-show="isSelected" class="select-sticky-background" />
 			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
 				class="sticky-box"
 				@click.left="mouseLeftClick"
 				@contextmenu="onContextMenu"
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
 			>
-				<n8n-sticky
-					:modelValue="node.parameters.content"
+				<N8nResizeableSticky
+					v-if="node"
+					:id="node.id"
+					:model-value="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:backgroundColor="node.parameters.color"
-					:id="node.id"
-					:readOnly="isReadOnly"
-					:defaultText="defaultText"
-					:editMode="isActive && !isReadOnly"
-					:gridSize="gridSize"
+					:background-color="node.parameters.color"
+					:read-only="isReadOnly"
+					:default-text="defaultText"
+					:edit-mode="isActive && !isReadOnly"
+					:grid-size="gridSize"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
-					@update:modelValue="onInputChange"
+					@update:model-value="onInputChange"
 				/>
 			</div>
 
@@ -51,35 +53,36 @@
 					v-touch:tap="deleteNode"
 					class="option"
 					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.deleteNode')"
+					:title="$locale.baseText('node.delete')"
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
 				<n8n-popover
+					v-on-click-outside="() => setColorPopoverVisible(false)"
 					effect="dark"
-					:popper-style="{ width: '208px' }"
 					trigger="click"
 					placement="top"
+					:popper-style="{ width: '208px' }"
+					:visible="isColorPopoverVisible"
 					@show="onShowPopover"
 					@hide="onHidePopover"
 				>
 					<template #reference>
 						<div
-							ref="colorPopoverTrigger"
 							class="option"
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
+							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
 						>
 							<font-awesome-icon icon="palette" />
 						</div>
 					</template>
 					<div class="content">
 						<div
-							class="color"
-							data-test-id="color"
 							v-for="(_, index) in Array.from({ length: 7 })"
 							:key="index"
-							v-on:click="changeColor(index + 1)"
+							class="color"
+							data-test-id="color"
 							:class="`sticky-color-${index + 1}`"
 							:style="{
 								'border-width': '1px',
@@ -92,6 +95,7 @@
 										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
 										: 'none',
 							}"
+							@click="changeColor(index + 1)"
 						></div>
 					</div>
 				</n8n-popover>
@@ -102,12 +106,9 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeBase } from '@/mixins/nodeBase';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -116,41 +117,121 @@ import type {
 	XYPosition,
 } from '@/Interface';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { useDeviceSupport } from 'n8n-design-system';
+import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { useToast } from '@/composables/useToast';
+import { assert } from '@/utils/assert';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useNodeBase } from '@/composables/useNodeBase';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers],
-	setup() {
-		const colorPopoverTrigger = ref<HTMLDivElement>();
-		const forceActions = ref(false);
-		const setForceActions = (value: boolean) => {
-			forceActions.value = value;
-		};
-		const contextMenu = useContextMenu((action) => {
-			if (action === 'change_color') {
-				setForceActions(true);
-				colorPopoverTrigger.value?.click();
-			}
-		});
-		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
-	},
 	props: {
 		nodeViewScale: {
 			type: Number,
+			default: 1,
 		},
 		gridSize: {
 			type: Number,
+			default: GRID_SIZE,
+		},
+		name: {
+			type: String,
+			required: true,
+		},
+		instance: {
+			type: Object as PropType<BrowserJsPlumbInstance>,
+			required: true,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		isActive: {
+			type: Boolean,
+		},
+		hideActions: {
+			type: Boolean,
+		},
+		disableSelecting: {
+			type: Boolean,
+		},
+		showCustomTooltip: {
+			type: Boolean,
+		},
+		workflow: {
+			type: Object as PropType<Workflow>,
+			required: true,
 		},
 	},
+	emits: { removeNode: null, nodeSelected: null },
+	setup(props, { emit }) {
+		const deviceSupport = useDeviceSupport();
+		const toast = useToast();
+		const forceActions = ref(false);
+		const isColorPopoverVisible = ref(false);
+		const setForceActions = (value: boolean) => {
+			forceActions.value = value;
+		};
+		const setColorPopoverVisible = (value: boolean) => {
+			isColorPopoverVisible.value = value;
+		};
+
+		const contextMenu = useContextMenu((action) => {
+			if (action === 'change_color') {
+				setForceActions(true);
+				setColorPopoverVisible(true);
+			}
+		});
+
+		const nodeBase = useNodeBase({
+			name: props.name,
+			instance: props.instance,
+			workflowObject: props.workflow,
+			isReadOnly: props.isReadOnly,
+			emit: emit as (event: string, ...args: unknown[]) => void,
+		});
+
+		return {
+			deviceSupport,
+			toast,
+			contextMenu,
+			forceActions,
+			...nodeBase,
+			setForceActions,
+			isColorPopoverVisible,
+			setColorPopoverVisible,
+		};
+	},
+	data() {
+		return {
+			isResizing: false,
+			isTouchActive: false,
+		};
+	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useNDVStore,
+			useCanvasStore,
+			useWorkflowsStore,
+			useHistoryStore,
+		),
+		data(): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
+		},
+		nodeId(): string {
+			return this.data?.id || '';
+		},
 		defaultText(): string {
 			if (!this.nodeType) {
 				return '';
@@ -162,7 +243,7 @@ export default defineComponent({
 		},
 		isSelected(): boolean {
 			return (
-				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data?.name) !==
 				undefined
 			);
 		},
@@ -186,7 +267,7 @@ export default defineComponent({
 		width(): number {
 			return this.node && isNumber(this.node.parameters.width) ? this.node.parameters.width : 0;
 		},
-		stickySize(): object {
+		stickySize(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -196,7 +277,7 @@ export default defineComponent({
 
 			return returnStyles;
 		},
-		stickyPosition(): object {
+		stickyPosition(): StyleValue {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -214,14 +295,19 @@ export default defineComponent({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 	},
-	data() {
-		return {
-			isResizing: false,
-			isTouchActive: false,
-		};
+	mounted() {
+		// Initialize the node
+		if (this.data !== null) {
+			try {
+				this.addNode(this.data);
+			} catch (error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
+		}
 	},
 	methods: {
 		onShowPopover() {
@@ -231,6 +317,7 @@ export default defineComponent({
 			this.setForceActions(false);
 		},
 		async deleteNode() {
+			assert(this.data);
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
@@ -238,7 +325,13 @@ export default defineComponent({
 		changeColor(index: number) {
 			this.workflowsStore.updateNodeProperties({
 				name: this.name,
-				properties: { parameters: { ...this.node.parameters, color: index } },
+				properties: {
+					parameters: {
+						...this.node?.parameters,
+						color: index,
+					},
+					position: this.node?.position ?? [0, 0],
+				},
 			});
 		},
 		onEdit(edit: boolean) {
@@ -248,21 +341,24 @@ export default defineComponent({
 				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onMarkdownClick(link: HTMLAnchorElement, event: Event) {
+		onMarkdownClick(link: HTMLAnchorElement) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
-				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"]');
 				const type =
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						  ? 'templates'
-						  : 'other';
+							? 'templates'
+							: 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}
 		},
 		onInputChange(content: string) {
+			if (!this.node) {
+				return;
+			}
 			this.node.parameters.content = content;
 			this.setParameters({ content });
 		},
@@ -318,7 +414,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -326,8 +422,10 @@ export default defineComponent({
 			}
 		},
 		onContextMenu(e: MouseEvent): void {
-			if (this.node) {
-				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			if (this.node && !this.isActive) {
+				this.contextMenu.open(e, { source: 'node-right-click', nodeId: this.node.id });
+			} else {
+				e.stopPropagation();
 			}
 		},
 	},
@@ -350,6 +448,10 @@ export default defineComponent({
 				display: flex;
 				cursor: pointer;
 			}
+		}
+
+		&.is-read-only {
+			pointer-events: none;
 		}
 
 		.sticky-options {

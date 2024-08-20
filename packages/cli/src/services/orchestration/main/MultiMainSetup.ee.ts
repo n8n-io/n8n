@@ -1,48 +1,43 @@
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
-import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
+import { InstanceSettings } from 'n8n-core';
+import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { Logger } from '@/Logger';
+import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisClientService } from '@/services/redis/redis-client.service';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type MultiMainEvents = {
+	'leader-stepdown': never;
+	'leader-takeover': never;
+};
 
 @Service()
-export class MultiMainSetup extends SingleMainSetup {
-	private id = this.queueModeId;
-
-	private isLicensed = false;
-
-	get isEnabled() {
-		return (
-			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
-			this.isLicensed
-		);
+export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
+	constructor(
+		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly redisPublisher: RedisServicePubSubPublisher,
+		private readonly redisClientService: RedisClientService,
+	) {
+		super();
 	}
 
-	get isLeader() {
-		return config.getEnv('multiMainSetup.instanceType') === 'leader';
+	get instanceId() {
+		return config.getEnv('redis.queueModeId');
 	}
 
-	get isFollower() {
-		return !this.isLeader;
-	}
-
-	setLicensed(newState: boolean) {
-		this.isLicensed = newState;
-	}
-
-	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
+	private leaderKey: string;
 
 	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
 
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
-		if (!this.isEnabled || this.isInitialized) return;
-
-		await this.initPublisher();
-
-		this.isInitialized = true;
+		const prefix = config.getEnv('redis.prefix');
+		const validPrefix = this.redisClientService.toValidPrefix(prefix);
+		this.leaderKey = validPrefix + ':main_instance_leader';
 
 		await this.tryBecomeLeader(); // prevent initial wait
 
@@ -55,80 +50,78 @@ export class MultiMainSetup extends SingleMainSetup {
 	}
 
 	async shutdown() {
-		if (!this.isInitialized) return;
-
 		clearInterval(this.leaderCheckInterval);
 
-		if (this.isLeader) await this.redisPublisher.clear(this.leaderKey);
+		const { isLeader } = this.instanceSettings;
+
+		if (isLeader) await this.redisPublisher.clear(this.leaderKey);
 	}
 
 	private async checkLeader() {
-		if (!this.redisPublisher.redisClient) return;
-
 		const leaderId = await this.redisPublisher.get(this.leaderKey);
 
-		if (!leaderId) {
-			this.logger.debug('Leadership vacant, attempting to become leader...');
-			await this.tryBecomeLeader();
+		if (leaderId === this.instanceId) {
+			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is this instance`);
+
+			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
 			return;
 		}
 
-		if (this.isLeader) {
-			this.logger.debug(`Leader is this instance "${this.id}"`);
+		if (leaderId && leaderId !== this.instanceId) {
+			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
 
-			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
-		} else {
-			this.logger.debug(`Leader is other instance "${leaderId}"`);
+			if (this.instanceSettings.isLeader) {
+				this.instanceSettings.markAsFollower();
 
-			config.set('multiMainSetup.instanceType', 'follower');
+				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
+
+				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
+			}
+
+			return;
+		}
+
+		if (!leaderId) {
+			this.logger.debug(
+				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
+			);
+
+			this.instanceSettings.markAsFollower();
+
+			/**
+			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
+			 */
+			this.emit('leader-stepdown');
+
+			await this.tryBecomeLeader();
 		}
 	}
 
 	private async tryBecomeLeader() {
-		if (
-			config.getEnv('multiMainSetup.instanceType') === 'leader' ||
-			!this.redisPublisher.redisClient
-		) {
-			return;
-		}
-
 		// this can only succeed if leadership is currently vacant
-		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(this.leaderKey, this.id);
+		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(
+			this.leaderKey,
+			this.instanceId,
+		);
 
 		if (keySetSuccessfully) {
-			this.logger.debug(`Leader is now this instance "${this.id}"`);
+			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
 
-			config.set('multiMainSetup.instanceType', 'leader');
+			this.instanceSettings.markAsLeader();
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
-			this.emit('leadershipChange', this.id);
+			/**
+			 * Gained leadership - start triggers, pollers, pruning, wait-tracking, license renewal, queue recovery
+			 */
+			this.emit('leader-takeover');
 		} else {
-			config.set('multiMainSetup.instanceType', 'follower');
+			this.instanceSettings.markAsFollower();
 		}
 	}
 
-	async broadcastWorkflowActiveStateChanged(payload: {
-		workflowId: string;
-		oldState: boolean;
-		newState: boolean;
-		versionId: string;
-	}) {
-		if (!this.sanityCheck()) return;
-
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowActiveStateChanged',
-			payload,
-		});
-	}
-
-	async broadcastWorkflowFailedToActivate(payload: { workflowId: string; errorMessage: string }) {
-		if (!this.sanityCheck()) return;
-
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowFailedToActivate',
-			payload,
-		});
+	async fetchLeaderKey() {
+		return await this.redisPublisher.get(this.leaderKey);
 	}
 }

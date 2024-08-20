@@ -7,7 +7,7 @@ export async function createWorkflowHistoryItem(
 	workflowId: string,
 	data?: Partial<WorkflowHistory>,
 ) {
-	return Container.get(WorkflowHistoryRepository).save({
+	return await Container.get(WorkflowHistoryRepository).save({
 		authors: 'John Smith',
 		connections: {},
 		nodes: [
@@ -32,12 +32,13 @@ export async function createManyWorkflowHistoryItems(
 	time?: Date,
 ) {
 	const baseTime = (time ?? new Date()).valueOf();
-	return Promise.all(
-		[...Array(count)].map(async (_, i) =>
-			createWorkflowHistoryItem(workflowId, {
-				createdAt: new Date(baseTime + i),
-				updatedAt: new Date(baseTime + i),
-			}),
+	return await Promise.all(
+		[...Array(count)].map(
+			async (_, i) =>
+				await createWorkflowHistoryItem(workflowId, {
+					createdAt: new Date(baseTime + i),
+					updatedAt: new Date(baseTime + i),
+				}),
 		),
 	);
 }

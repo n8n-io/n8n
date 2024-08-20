@@ -4,10 +4,10 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to HackerNews
@@ -15,11 +15,11 @@ import type { OptionsWithUri } from 'request';
  */
 export async function hackerNewsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		qs,
 		uri: `http://hn.algolia.com/api/v1/${endpoint}`,
@@ -41,7 +41,7 @@ export async function hackerNewsApiRequest(
  */
 export async function hackerNewsApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 ): Promise<any> {

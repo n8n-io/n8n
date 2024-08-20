@@ -4,50 +4,41 @@ export class TemplatesPage extends BasePage {
 	url = '/templates';
 
 	getters = {
-		useTemplateButton: () => cy.get('[data-testid="use-template-button"]'),
+		useTemplateButton: () => cy.getByTestId('use-template-button'),
+		description: () => cy.getByTestId('template-description'),
+		templateCards: () => cy.getByTestId('template-card'),
+		firstTemplateCard: () => this.getters.templateCards().first(),
+		allCategoriesFilter: () => cy.getByTestId('template-filter-all-categories'),
+		searchInput: () => cy.getByTestId('template-search-input'),
+		categoryFilters: () => cy.get('[data-test-id^=template-filter]'),
+		categoryFilter: (category: string) => cy.getByTestId(`template-filter-${category}`),
+		collectionCountLabel: () => cy.getByTestId('collection-count-label'),
+		templateCountLabel: () => cy.getByTestId('template-count-label'),
+		templatesLoadingContainer: () => cy.getByTestId('templates-loading-container'),
 	};
 
 	actions = {
-		openSingleTemplateView: (templateId: number) => {
-			cy.visit(`${this.url}/${templateId}`);
-			cy.waitForLoad();
-		},
-
-		openOnboardingFlow: (id: number, name: string, workflow: object) => {
-			const apiResponse = {
-				id,
-				name,
-				workflow,
-			};
+		openOnboardingFlow: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.intercept('GET', `https://api.n8n.io/api/workflows/templates/${id}`, {
-				statusCode: 200,
-				body: apiResponse,
-			}).as('getTemplate');
 			cy.intercept('GET', 'rest/workflows/**').as('getWorkflow');
 
-			cy.visit(`/workflows/onboarding/${id}`);
+			cy.visit('/workflows/onboarding/1');
+			cy.window().then((win) => {
+				win.preventNodeViewBeforeUnload = true;
+			});
 
-			cy.wait('@getTemplate');
-			cy.wait(['@createWorkflow', '@getWorkflow']);
+			cy.wait(['@getTemplate', '@createWorkflow', '@getWorkflow']);
 		},
 
-		importTemplate: (id: number, name: string, workflow: object) => {
-			const apiResponse = {
-				id,
-				name,
-				workflow,
-			};
-			cy.intercept('GET', `https://api.n8n.io/api/workflows/templates/${id}`, {
-				statusCode: 200,
-				body: apiResponse,
-			}).as('getTemplate');
+		importTemplate: () => {
 			cy.intercept('GET', 'rest/workflows/**').as('getWorkflow');
 
-			cy.visit(`/workflows/templates/${id}`);
+			cy.visit('/workflows/templates/1');
+			cy.window().then((win) => {
+				win.preventNodeViewBeforeUnload = true;
+			});
 
-			cy.wait('@getTemplate');
-			cy.wait('@getWorkflow');
+			cy.wait(['@getTemplate', '@getWorkflow']);
 		},
 	};
 }

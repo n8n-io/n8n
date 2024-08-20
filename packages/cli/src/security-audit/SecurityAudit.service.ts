@@ -30,7 +30,7 @@ export class SecurityAuditService {
 			select: ['id', 'name', 'active', 'nodes', 'connections'],
 		});
 
-		const promises = categories.map(async (c) => this.reporters[c].report(workflows));
+		const promises = categories.map(async (c) => await this.reporters[c].report(workflows));
 
 		const reports = (await Promise.all(promises)).filter((r): r is Risk.Report => r !== null);
 
@@ -52,7 +52,7 @@ export class SecurityAuditService {
 			const className = category.charAt(0).toUpperCase() + category.slice(1) + 'RiskReporter';
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const RiskReporterModule = await import(`@/security-audit/risk-reporters/${className}`);
+			const RiskReporterModule = await import(`./risk-reporters/${className}`);
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			const RiskReporterClass = RiskReporterModule[className] as { new (): RiskReporter };

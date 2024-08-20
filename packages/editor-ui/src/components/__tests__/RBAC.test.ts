@@ -9,6 +9,7 @@ vi.mock('vue-router', () => ({
 		path: '/workflows',
 		params: {},
 	})),
+	RouterLink: vi.fn(),
 }));
 
 vi.mock('@/stores/rbac.store', () => ({
@@ -17,9 +18,12 @@ vi.mock('@/stores/rbac.store', () => ({
 
 describe('RBAC', () => {
 	it('renders default slot when hasScope is true', async () => {
-		vi.mocked(useRBACStore).mockImplementation(() => ({
-			hasScope: () => true,
-		}));
+		vi.mocked(useRBACStore).mockImplementation(
+			() =>
+				({
+					hasScope: () => true,
+				}) as unknown as ReturnType<typeof useRBACStore>,
+		);
 
 		const wrapper = renderComponent({
 			props: { scope: 'worfklow:list' },
@@ -33,9 +37,12 @@ describe('RBAC', () => {
 	});
 
 	it('renders fallback slot when hasScope is false', async () => {
-		vi.mocked(useRBACStore).mockImplementation(() => ({
-			hasScope: () => false,
-		}));
+		vi.mocked(useRBACStore).mockImplementation(
+			() =>
+				({
+					hasScope: () => false,
+				}) as unknown as ReturnType<typeof useRBACStore>,
+		);
 
 		const wrapper = renderComponent({
 			props: { scope: 'worfklow:list' },

@@ -1,4 +1,6 @@
-export class ValidationError extends Error {
+import { ApplicationError } from 'n8n-workflow';
+
+export class ValidationError extends ApplicationError {
 	description = '';
 
 	itemIndex: number | undefined = undefined;
@@ -18,7 +20,7 @@ export class ValidationError extends Error {
 		itemIndex?: number;
 		lineNumber?: number;
 	}) {
-		super();
+		super(message);
 
 		this.lineNumber = lineNumber;
 		this.itemIndex = itemIndex;

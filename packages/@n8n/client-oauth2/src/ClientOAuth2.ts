@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as qs from 'querystring';
 import { Agent } from 'https';
@@ -26,6 +25,7 @@ export interface ClientOAuth2Options {
 	clientId: string;
 	clientSecret?: string;
 	accessTokenUri: string;
+	authentication?: 'header' | 'body';
 	authorizationUri?: string;
 	redirectUri?: string;
 	scopes?: string[];

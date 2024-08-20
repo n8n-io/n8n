@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			...updateCommonOptions,
@@ -123,9 +123,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			{ uploadType: 'resumable' },
 			undefined,
 			{
-				resolveWithFullResponse: true,
+				returnFullResponse: true,
 			},
 		);
+
 		const uploadUrl = resumableUpload.headers.location;
 
 		let offset = 0;

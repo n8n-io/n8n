@@ -1,20 +1,20 @@
 import type express from 'express';
+import { Container } from 'typedi';
+import { replaceCircularReferences } from 'n8n-workflow';
 
-import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { Container } from 'typedi';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
 export = {
 	deleteExecution: [
-		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -25,26 +25,40 @@ export = {
 			const { id } = req.params;
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, false);
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (execution.status === 'running') {
+				return res.status(400).json({
+					message: 'Cannot delete a running execution',
+				});
+			}
+
+			if (execution.status === 'new') {
+				Container.get(ConcurrencyControlService).remove({
+					executionId: execution.id,
+					mode: execution.mode,
+				});
+			}
+
 			await Container.get(ExecutionRepository).hardDelete({
-				workflowId: execution.workflowId as string,
+				workflowId: execution.workflowId,
 				executionId: execution.id,
 			});
 
 			execution.id = id;
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecution: [
-		authorize(['owner', 'member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -56,22 +70,23 @@ export = {
 			const { includeData = false } = req.query;
 
 			// look for the execution on the workflow the user owns
-			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, includeData);
+			const execution = await Container.get(
+				ExecutionRepository,
+			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
 
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedExecution({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-execution', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
-			return res.json(execution);
+			return res.json(replaceCircularReferences(execution));
 		},
 	],
 	getExecutions: [
-		authorize(['owner', 'member']),
 		validCursor,
 		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const {
@@ -80,9 +95,10 @@ export = {
 				status = undefined,
 				includeData = false,
 				workflowId = undefined,
+				projectId,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read'], projectId);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -104,21 +120,23 @@ export = {
 				excludedExecutionsIds: runningExecutionsIds,
 			};
 
-			const executions = await getExecutions(filters);
+			const executions =
+				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 
-			const count = await getExecutionsCount(filters);
+			const count =
+				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-executions', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({
-				data: executions,
+				data: replaceCircularReferences(executions),
 				nextCursor: encodeNextCursor({
 					lastId: newLastId,
 					limit,

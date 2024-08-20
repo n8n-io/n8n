@@ -2,7 +2,7 @@ import type express from 'express';
 import { Container } from 'typedi';
 import type { StatusResult } from 'simple-git';
 import type { PublicSourceControlRequest } from '../../../types';
-import { authorize } from '../../shared/middlewares/global.middleware';
+import { globalScope } from '../../shared/middlewares/global.middleware';
 import type { ImportResult } from '@/environments/sourceControl/types/importResult';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
@@ -10,11 +10,11 @@ import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 
 export = {
 	pull: [
-		authorize(['owner', 'member']),
+		globalScope('sourceControl:pull'),
 		async (
 			req: PublicSourceControlRequest.Pull,
 			res: express.Response,
@@ -39,7 +39,7 @@ export = {
 				});
 
 				if (result.statusCode === 200) {
-					void Container.get(InternalHooks).onSourceControlUserPulledAPI({
+					Container.get(EventService).emit('source-control-user-pulled-api', {
 						...getTrackingInformationFromPullResult(result.statusResult),
 						forced: req.body.force ?? false,
 					});

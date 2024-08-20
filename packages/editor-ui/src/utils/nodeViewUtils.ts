@@ -1,20 +1,22 @@
-import { isNumber } from '@/utils/typeGuards';
+import { isNumber, isValidNodeConnectionType } from '@/utils/typeGuards';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import type { Endpoint, Connection } from '@jsplumb/core';
+import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
 	ConnectionTypes,
 	IConnection,
-	ITaskData,
 	INodeExecutionData,
-	NodeInputConnections,
 	INodeTypeDescription,
+	ITaskData,
+	NodeInputConnections,
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores/ui.store';
+import type { StyleValue } from 'vue';
 
 /*
 	Canvas constants and functions.
@@ -77,7 +79,9 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 			const totalEndpoints = endpoint?.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 			const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
-			const labelOffset = outputOverlay?.label && outputOverlay.label.length > 1 ? 10 : 0;
+			const outputOverlayLabel =
+				outputOverlay && 'label' in outputOverlay ? `${outputOverlay?.label}` : '';
+			const labelOffset = outputOverlayLabel.length > 1 ? 10 : 0;
 			const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
 			return index * indexOffset + labelOffset + outputsOffset;
@@ -110,9 +114,13 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	stroke: 'var(--color-foreground-dark)',
 };
 
+export function isCanvasAugmentedType<T>(overlay: T): overlay is T & { canvas: HTMLElement } {
+	return typeof overlay === 'object' && overlay !== null && 'canvas' in overlay && !!overlay.canvas;
+}
+
 export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
 	if (category === 'error') {
-		return '--node-error-output-color';
+		return '--color-node-error-output-text-color';
 	}
 
 	if (type === NodeConnectionType.Main) {
@@ -227,15 +235,18 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getScope = (type?: string) => {
+export const getScope = (type?: NodeConnectionType): NodeConnectionType | undefined => {
 	if (!type || type === NodeConnectionType.Main) {
 		return undefined;
 	}
+
 	return type;
 };
 
-export const getEndpointScope = (endpointType: ConnectionTypes): string | undefined => {
-	if (Object.values(NodeConnectionType).includes(endpointType)) {
+export const getEndpointScope = (
+	endpointType: NodeConnectionType | string,
+): NodeConnectionType | undefined => {
+	if (isValidNodeConnectionType(endpointType)) {
 		return getScope(endpointType);
 	}
 
@@ -275,16 +286,16 @@ export const getInputNameOverlay = (
 		id: OVERLAY_INPUT_NAME_LABEL,
 		visible: true,
 		location: [-1, -1],
-		create: (component: Endpoint) => {
+		create: (_: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			if (required) {
 				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
+			label.classList.add(`node-connection-type-${inputName ?? 'main'}`);
 			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
-				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -302,7 +313,7 @@ export const getOutputEndpointStyle = (
 
 export const getOutputNameOverlay = (
 	labelText: string,
-	outputName: ConnectionTypes,
+	outputName: NodeConnectionType,
 	category?: string,
 ): OverlaySpec => ({
 	type: 'Custom',
@@ -315,11 +326,11 @@ export const getOutputNameOverlay = (
 			label.classList.add('node-output-endpoint-label');
 
 			if (ep?.__meta?.endpointLabelLength) {
-				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
+				label.setAttribute('data-endpoint-label-length', `${ep?.__meta?.endpointLabelLength}`);
 			}
+			label.classList.add(`node-connection-type-${getScope(outputName) ?? 'main'}`);
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
-				label.classList.add(`node-connection-type-${getScope(outputName)}`);
 			}
 			if (category) {
 				label.classList.add(`node-connection-category-${category}`);
@@ -437,7 +448,10 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	if (arrow) {
 		arrow.setVisible(isArrowVisible);
 		arrow.setLocation(hasItemsLabel ? 0.6 : 0.5);
-		connection.instance.repaint(arrow.canvas);
+
+		if (isCanvasAugmentedType(arrow)) {
+			connection.instance.repaint(arrow.canvas);
+		}
 	}
 };
 
@@ -480,7 +494,9 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	const isHidden = diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL;
 
 	overlay.setVisible(!isHidden);
-	const innerElement = overlay.canvas?.querySelector('span');
+	const innerElement = isCanvasAugmentedType(overlay)
+		? overlay.canvas.querySelector('span')
+		: undefined;
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
 			innerElement.classList.add('floating');
@@ -594,7 +610,7 @@ export const getBackgroundStyles = (
 	scale: number,
 	offsetPosition: XYPosition,
 	executionPreview: boolean,
-) => {
+): StyleValue => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
 	const dotPosition = (GRID_SIZE / 2) * scale;
@@ -608,7 +624,7 @@ export const getBackgroundStyles = (
 		};
 	}
 
-	const styles: object = {
+	const styles: StyleValue = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
@@ -755,9 +771,15 @@ export const getRunItemsLabel = (output: { total: number; iterations: number }):
 
 export const addConnectionOutputSuccess = (
 	connection: Connection,
-	output: { total: number; iterations: number },
+	output: { total: number; iterations: number; classNames?: string[] },
 ) => {
-	connection.addClass('success');
+	const classNames: string[] = ['success'];
+
+	if (output.classNames) {
+		classNames.push(...output.classNames);
+	}
+
+	connection.addClass(classNames.join(' '));
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
@@ -771,7 +793,7 @@ export const addConnectionOutputSuccess = (
 					const container = document.createElement('div');
 					const span = document.createElement('span');
 
-					container.classList.add('connection-run-items-label');
+					container.classList.add(...['connection-run-items-label', ...classNames]);
 					span.classList.add('floating');
 					span.innerHTML = getRunItemsLabel(output);
 					container.appendChild(span);
@@ -788,6 +810,30 @@ export const addConnectionOutputSuccess = (
 
 	(connection.endpoints || []).forEach((endpoint) => {
 		connection.instance.repaint(endpoint.element);
+	});
+};
+
+export const addClassesToOverlays = ({
+	connection,
+	overlayIds,
+	classNames,
+	includeConnector,
+}: {
+	connection: Connection;
+	overlayIds: string[];
+	classNames: string[];
+	includeConnector?: boolean;
+}) => {
+	overlayIds.forEach((overlayId) => {
+		const overlay = getOverlay(connection, overlayId);
+
+		if (overlay && isCanvasAugmentedType(overlay)) {
+			overlay.canvas?.classList.add(...classNames);
+		}
+
+		if (includeConnector && isCanvasAugmentedType(connection.connector)) {
+			connection.connector.canvas?.classList.add(...classNames);
+		}
 	});
 };
 
@@ -967,18 +1013,18 @@ export const addConnectionActionsOverlay = (
 
 export const getOutputEndpointUUID = (
 	nodeId: string,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	outputIndex: number,
 ) => {
-	return `${nodeId}${OUTPUT_UUID_KEY}${getScope(connectionType) || ''}${outputIndex}`;
+	return `${nodeId}${OUTPUT_UUID_KEY}${getScope(connectionType) ?? ''}${outputIndex}`;
 };
 
 export const getInputEndpointUUID = (
 	nodeId: string,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	inputIndex: number,
 ) => {
-	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
+	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) ?? ''}${inputIndex}`;
 };
 
 export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNodes: T[]): T[] => {
@@ -997,4 +1043,128 @@ export const getFixedNodesList = <T extends { position: XYPosition }>(workflowNo
 	}
 
 	return nodes;
+};
+
+/**
+ * Calculates the intersecting distances of the mouse event coordinates with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns { {x: number | null, y: number | null} | null } Object containing intersecting distances along x and y axes or null if no intersection.
+ */
+export function calculateElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): { x: number | null; y: number | null } | null {
+	const { top, left, right, bottom } = element.getBoundingClientRect();
+	const [x, y] = getMousePosition(mouseEvent);
+
+	let intersectX: number | null = null;
+	let intersectY: number | null = null;
+
+	if (x >= left - offset && x <= right + offset) {
+		intersectX = Math.min(x - (left - offset), right + offset - x);
+	}
+	if (y >= top - offset && y <= bottom + offset) {
+		intersectY = Math.min(y - (top - offset), bottom + offset - y);
+	}
+
+	if (intersectX === null && intersectY === null) return null;
+
+	return { x: intersectX, y: intersectY };
+}
+
+/**
+ * Checks if the mouse event coordinates intersect with the given element's boundaries,
+ * adjusted by the specified offset.
+ *
+ * @param {Element} element - The DOM element to check against.
+ * @param {MouseEvent | TouchEvent} mouseEvent - The mouse or touch event with the coordinates.
+ * @param {number} offset - Offset to adjust the element's boundaries.
+ * @returns {boolean} True if the mouse coordinates intersect with the element.
+ */
+export function isElementIntersection(
+	element: Element,
+	mouseEvent: MouseEvent | TouchEvent,
+	offset: number,
+): boolean {
+	const intersection = calculateElementIntersection(element, mouseEvent, offset);
+
+	if (intersection === null) {
+		return false;
+	}
+
+	const isWithinVerticalBounds = intersection.y !== null;
+	const isWithinHorizontalBounds = intersection.x !== null;
+
+	return isWithinVerticalBounds && isWithinHorizontalBounds;
+}
+
+export const getJSPlumbEndpoints = (
+	node: INodeUi | null,
+	instance: BrowserJsPlumbInstance,
+): Endpoint[] => {
+	if (!node) return [];
+
+	const nodeEl = instance.getManagedElement(node?.id);
+	return instance?.getEndpoints(nodeEl);
+};
+
+export const getPlusEndpoint = (
+	node: INodeUi | null,
+	outputIndex: number,
+	instance: BrowserJsPlumbInstance,
+): Endpoint | undefined => {
+	const endpoints = getJSPlumbEndpoints(node, instance);
+	return endpoints.find(
+		(endpoint: Endpoint) =>
+			endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
+	);
+};
+
+export const getJSPlumbConnection = (
+	sourceNode: INodeUi | null,
+	sourceOutputIndex: number,
+	targetNode: INodeUi | null,
+	targetInputIndex: number,
+	connectionType: NodeConnectionType,
+	sourceNodeType: INodeTypeDescription | null,
+	instance: BrowserJsPlumbInstance,
+): Connection | undefined => {
+	if (!sourceNode || !targetNode) {
+		return;
+	}
+
+	const sourceId = sourceNode.id;
+	const targetId = targetNode.id;
+
+	const sourceEndpoint = getOutputEndpointUUID(sourceId, connectionType, sourceOutputIndex);
+	const targetEndpoint = getInputEndpointUUID(targetId, connectionType, targetInputIndex);
+
+	const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] ?? NodeConnectionType.Main;
+	const sourceNodeOutputName =
+		typeof sourceNodeOutput === 'string'
+			? sourceNodeOutput
+			: 'name' in sourceNodeOutput
+				? `${sourceNodeOutput.name}`
+				: '';
+	const scope = getEndpointScope(sourceNodeOutputName);
+
+	const connections = instance?.getConnections({
+		scope,
+		source: sourceId,
+		target: targetId,
+	} as SelectOptions<Element>);
+
+	if (!Array.isArray(connections)) {
+		return;
+	}
+
+	return connections.find((connection: Connection) => {
+		const uuids = connection.getUuids();
+		return uuids[0] === sourceEndpoint && uuids[1] === targetEndpoint;
+	});
 };

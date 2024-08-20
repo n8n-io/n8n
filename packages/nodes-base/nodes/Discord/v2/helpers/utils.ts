@@ -71,6 +71,11 @@ export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex
 
 			return new NodeOperationError(this.getNode(), errorData.errors, errorOptions);
 		}
+
+		if (errorOptions.message === 'Cannot send an empty message') {
+			errorOptions.description =
+				'Something has to be send to the channel whether it is a message, an embed or a file';
+		}
 	}
 	return new NodeOperationError(this.getNode(), errorData || error, errorOptions);
 }
@@ -109,9 +114,9 @@ export function prepareOptions(options: IDataObject, guildId?: string) {
 	return options;
 }
 
-export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[], i = 0) {
+export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 	return embeds
-		.map((embed, index) => {
+		.map((embed) => {
 			let embedReturnData: IDataObject = {};
 
 			if (embed.inputMethod === 'json') {
@@ -131,13 +136,6 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[], i 
 						embedReturnData[key] = embed[key];
 					}
 				}
-			}
-
-			if (!embedReturnData.description) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Description is required, embed ${index} in item ${i} is missing it`,
-				);
 			}
 
 			if (embedReturnData.author) {
@@ -241,6 +239,7 @@ export function checkAccessToGuild(
 			`You do not have access to the guild with the id ${guildId}`,
 			{
 				itemIndex,
+				level: 'warning',
 			},
 		);
 	}
@@ -262,7 +261,7 @@ export async function checkAccessToChannel(
 	if (!guildId) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Could not fing server for channel with the id ${channelId}`,
+			`Could not find server for channel with the id ${channelId}`,
 			{
 				itemIndex,
 			},

@@ -11,6 +11,7 @@ import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
 import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
+import { workflow } from './ExpressionExtensions/Helpers';
 
 setDifferEnabled(true);
 
@@ -73,7 +74,9 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				expect(evaluate('={{Reflect}}')).toEqual({});
 				expect(evaluate('={{Proxy}}')).toEqual({});
 
-				expect(evaluate('={{constructor}}')).toEqual({});
+				expect(() => evaluate('={{constructor}}')).toThrowError(
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
+				);
 
 				expect(evaluate('={{escape}}')).toEqual({});
 				expect(evaluate('={{unescape}}')).toEqual({});
@@ -165,31 +168,13 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				const testFn = jest.fn();
 				Object.assign(global, { testFn });
 				expect(() => evaluate("={{ Date['constructor']('testFn()')()}}")).toThrowError(
-					new ExpressionError('Arbitrary code execution detected'),
+					new ExpressionError('Cannot access "constructor" due to security concerns'),
 				);
 				expect(testFn).not.toHaveBeenCalled();
 			});
 		});
 
 		describe('Test all expression value fixtures', () => {
-			const nodeTypes = Helpers.NodeTypes();
-			const workflow = new Workflow({
-				id: '1',
-				nodes: [
-					{
-						name: 'node',
-						typeVersion: 1,
-						type: 'test.set',
-						id: 'uuid-1234',
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-				active: false,
-				nodeTypes,
-			});
-
 			const expression = workflow.expression;
 
 			const evaluate = (value: string, data: INodeExecutionData[]) => {
@@ -202,12 +187,18 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 					continue;
 				}
 				test(t.expression, () => {
-					for (const test of t.tests.filter(
-						(test) => test.type === 'evaluation',
-					) as ExpressionTestEvaluation[]) {
-						expect(
-							evaluate(t.expression, test.input.map((d) => ({ json: d })) as any),
-						).toStrictEqual(test.output);
+					const evaluationTests = t.tests.filter(
+						(test): test is ExpressionTestEvaluation => test.type === 'evaluation',
+					);
+
+					for (const test of evaluationTests) {
+						const input = test.input.map((d) => ({ json: d })) as any;
+
+						if ('error' in test) {
+							expect(() => evaluate(t.expression, input)).toThrowError(test.error);
+						} else {
+							expect(evaluate(t.expression, input)).toStrictEqual(test.output);
+						}
 					}
 				});
 			}
@@ -220,8 +211,8 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				}
 				test(t.expression, () => {
 					for (const test of t.tests.filter(
-						(test) => test.type === 'transform',
-					) as ExpressionTestTransform[]) {
+						(test): test is ExpressionTestTransform => test.type === 'transform',
+					)) {
 						const expr = t.expression;
 						expect(extendSyntax(expr, test.forceTransform)).toEqual(test.result ?? expr);
 					}

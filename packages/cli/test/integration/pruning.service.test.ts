@@ -1,5 +1,5 @@
 import config from '@/config';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -14,9 +14,12 @@ import { Logger } from '@/Logger';
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
+import { mock } from 'jest-mock-extended';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
+	const instanceSettings = new InstanceSettings();
+	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
@@ -27,8 +30,10 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
+			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
+			mock(),
 		);
 
 		workflow = await createWorkflow();
@@ -47,7 +52,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	async function findAllExecutions() {
-		return Container.get(ExecutionRepository).find({
+		return await Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
 			withDeleted: true,
 		});
@@ -95,11 +100,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: now, stoppedAt: now }],
 			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
-			['failed', { startedAt: now, stoppedAt: now }],
+			['error', { startedAt: now, stoppedAt: now }],
 			['success', { finished: true, startedAt: now, stoppedAt: now }],
 		])('should prune %s executions', async (status, attributes) => {
 			const executions = [
@@ -188,11 +192,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: yesterday, stoppedAt: yesterday }],
 			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],
-			['failed', { startedAt: yesterday, stoppedAt: yesterday }],
+			['error', { startedAt: yesterday, stoppedAt: yesterday }],
 			['success', { finished: true, startedAt: yesterday, stoppedAt: yesterday }],
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await createExecution({ status, ...attributes }, workflow);

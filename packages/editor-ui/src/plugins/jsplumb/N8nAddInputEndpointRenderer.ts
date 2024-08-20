@@ -70,11 +70,10 @@ export const register = () => {
 			container.appendChild(unconnectedGroup);
 			container.appendChild(defaultGroup);
 
-			endpointInstance.setupOverlays();
 			endpointInstance.setVisible(false);
 
 			return container;
 		},
-		updateNode: (endpointInstance: N8nAddInputEndpoint) => {},
+		updateNode: () => {},
 	});
 };

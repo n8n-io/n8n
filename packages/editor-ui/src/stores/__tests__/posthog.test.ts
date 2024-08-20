@@ -2,11 +2,12 @@ import { createPinia, setActivePinia } from 'pinia';
 import { usePostHog } from '@/stores/posthog.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { useRootStore } from '@/stores/root.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import type { IN8nUISettings } from 'n8n-workflow';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
+import { defaultSettings } from '../../__tests__/defaults';
 
 const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
@@ -21,6 +22,7 @@ const CURRENT_INSTANCE_ID = '456';
 
 function setSettings(overrides?: Partial<IN8nUISettings>) {
 	useSettingsStore().setSettings({
+		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
@@ -42,8 +44,8 @@ function setCurrentUser() {
 }
 
 function resetStores() {
-	useSettingsStore().$reset();
-	useUsersStore().$reset();
+	useSettingsStore().reset();
+	useUsersStore().reset();
 }
 
 function setup() {

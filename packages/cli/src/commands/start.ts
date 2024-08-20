@@ -1,41 +1,39 @@
-/* eslint-disable @typescript-eslint/await-thenable */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Container } from 'typedi';
+import { Flags, type Config } from '@oclif/core';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import localtunnel from 'localtunnel';
-import { flags } from '@oclif/command';
-import stream from 'stream';
+import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
-import { promisify } from 'util';
 import glob from 'fast-glob';
+import { jsonParse, randomString } from 'n8n-workflow';
 
-import { sleep, jsonParse } from 'n8n-workflow';
 import config from '@/config';
-
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import * as GenericHelpers from '@/GenericHelpers';
+import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { eventBus } from '@/eventbus';
-import { BaseCommand } from './BaseCommand';
-import { InternalHooks } from '@/InternalHooks';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
-import type { IConfig } from '@oclif/config';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { UrlService } from '@/services/url.service';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { WaitTracker } from '@/WaitTracker';
+import { BaseCommand } from './BaseCommand';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { ExecutionService } from '@/executions/execution.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
-const pipeline = promisify(stream.pipeline);
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -48,28 +46,28 @@ export class Start extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		open: flags.boolean({
+		help: Flags.help({ char: 'h' }),
+		open: Flags.boolean({
 			char: 'o',
 			description: 'opens the UI automatically in browser',
 		}),
-		tunnel: flags.boolean({
+		tunnel: Flags.boolean({
 			description:
 				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
 		}),
-		reinstallMissingPackages: flags.boolean({
+		reinstallMissingPackages: Flags.boolean({
 			description:
 				'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		}),
 	};
 
-	protected activeWorkflowRunner: ActiveWorkflowRunner;
+	protected activeWorkflowManager: ActiveWorkflowManager;
 
-	protected server = new Server();
+	protected server = Container.get(Server);
 
-	private pruningService: PruningService;
+	override needsCommunityPackages = true;
 
-	constructor(argv: string[], cmdConfig: IConfig) {
+	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
 		this.setInstanceQueueModeId();
@@ -79,11 +77,10 @@ export class Start extends BaseCommand {
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		open(editorUrl, { wait: true }).catch((error: Error) => {
-			console.log(
+		open(editorUrl, { wait: true }).catch(() => {
+			this.logger.info(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
 		});
@@ -99,53 +96,24 @@ export class Start extends BaseCommand {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
+			this.activeWorkflowManager.removeAllQueuedWorkflowActivations();
 
-			await this.externalHooks.run('n8n.stop', []);
+			Container.get(WaitTracker).stopTracking();
 
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				console.log('process exited after 30s');
-				await this.exitSuccessFully();
-			}, 30000);
+			await this.externalHooks?.run('n8n.stop', []);
 
-			// Shut down License manager to unclaim any floating entitlements
-			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
-			await Container.get(License).shutdown();
+			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
 
-			if (this.pruningService.isPruningEnabled()) {
-				this.pruningService.stopPruning();
+			if (Container.get(OrchestrationService).isMultiMainSetupEnabled) {
+				await Container.get(OrchestrationService).shutdown();
 			}
 
-			if (Container.get(MultiMainSetup).isEnabled) {
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			Container.get(EventService).emit('instance-stopped');
 
-				await Container.get(MultiMainSetup).shutdown();
-			}
-
-			await Container.get(InternalHooks).onN8nStop();
-
-			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = Container.get(ActiveExecutions);
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-			let count = 0;
-			while (executingWorkflows.length !== 0) {
-				if (count++ % 4 === 0) {
-					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-
-					executingWorkflows.map((execution) => {
-						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-					});
-				}
-
-				await sleep(500);
-				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-			}
+			await Container.get(ActiveExecutions).shutdown();
 
 			// Finally shut down Event Bus
-			await eventBus.close();
+			await Container.get(MessageEventBus).close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
@@ -155,8 +123,7 @@ export class Start extends BaseCommand {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = config.getEnv('path');
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const n8nPath = this.globalConfig.path;
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -177,18 +144,21 @@ export class Start extends BaseCommand {
 					createReadStream(filePath, 'utf-8'),
 					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
 					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
+					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
 					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
-						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
+						replaceStream('{{REST_ENDPOINT}}', this.globalConfig.endpoints.rest, {
+							ignoreCase: false,
+						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
 					);
 				}
 				streams.push(createWriteStream(destFile, 'utf-8'));
-				return pipeline(streams);
+				return await pipeline(streams);
 			}
 		};
 
@@ -206,13 +176,38 @@ export class Start extends BaseCommand {
 			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 		}
 
+		const { flags } = await this.parse(Start);
+		const { communityPackages } = this.globalConfig.nodes;
+		// cli flag overrides the config env variable
+		if (flags.reinstallMissingPackages) {
+			if (communityPackages.enabled) {
+				this.logger.warn(
+					'`--reinstallMissingPackages` is deprecated: Please use the env variable `N8N_REINSTALL_MISSING_PACKAGES` instead',
+				);
+				communityPackages.reinstallMissing = true;
+			} else {
+				this.logger.warn(
+					'`--reinstallMissingPackages` was passed, but community packages are disabled',
+				);
+			}
+		}
+
 		await super.init();
-		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		await this.initLicense();
 
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
+
+		if (!config.getEnv('license.autoRenewEnabled') && this.instanceSettings.isLeader) {
+			this.logger.warn(
+				'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!',
+			);
+		}
+
+		Container.get(WaitTracker).init();
+		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -222,56 +217,48 @@ export class Start extends BaseCommand {
 		this.initWorkflowHistory();
 		this.logger.debug('Workflow history init complete');
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
 		}
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
-
-		// queue mode in single-main scenario
-
-		if (!config.getEnv('multiMainSetup.enabled')) {
-			await Container.get(SingleMainSetup).init();
-			await Container.get(OrchestrationHandlerMainService).init();
+		if (config.getEnv('executions.mode') === 'regular') {
+			this.instanceSettings.markAsLeader();
 			return;
 		}
 
-		// queue mode in multi-main scenario
-
-		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
-		await Container.get(OrchestrationHandlerMainService).init();
+		const orchestrationService = Container.get(OrchestrationService);
 
-		const multiMainSetup = Container.get(MultiMainSetup);
+		await orchestrationService.init();
 
-		await multiMainSetup.init();
-
-		multiMainSetup.on('leadershipChange', async () => {
-			if (multiMainSetup.isLeader) {
-				this.logger.debug('[Leadership change] Clearing all activation errors...');
-
-				await this.activeWorkflowRunner.clearAllActivationErrors();
-
-				this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
-
-				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
-			} else {
-				this.logger.debug(
-					'[Leadership change] Removing all trigger- and poller-based workflows...',
-				);
-
-				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
-			}
+		await Container.get(OrchestrationHandlerMainService).initWithOptions({
+			queueModeId: this.queueModeId,
+			redisPublisher: Container.get(OrchestrationService).redisPublisher,
 		});
+
+		if (!orchestrationService.isMultiMainSetupEnabled) return;
+
+		orchestrationService.multiMainSetup
+			.on('leader-stepdown', async () => {
+				await this.license.reinit(); // to disable renewal
+				await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			})
+			.on('leader-takeover', async () => {
+				await this.license.reinit(); // to enable renewal
+				await this.activeWorkflowManager.addAllTriggerAndPollerBasedWorkflows();
+			});
 	}
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Start);
+		const { flags } = await this.parse(Start);
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Container.get(SettingsRepository).findBy({
@@ -281,18 +268,9 @@ export class Start extends BaseCommand {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
-
-		if (areCommunityPackagesEnabled) {
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
-			await Container.get(CommunityPackagesService).setMissingPackages({
-				reinstallMissingPackages: flags.reinstallMissingPackages,
-			});
-		}
-
-		const dbType = config.getEnv('database.type');
+		const { type: dbType } = this.globalConfig.database;
 		if (dbType === 'sqlite') {
-			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
+			const shouldRunVacuum = this.globalConfig.database.sqlite.executeVacuumOnStartup;
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
@@ -306,25 +284,18 @@ export class Start extends BaseCommand {
 
 			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
-				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-				tunnelSubdomain = Array.from({ length: 24 })
-					.map(() =>
-						availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length)),
-					)
-					.join('');
+				tunnelSubdomain = randomString(24).toLowerCase();
 
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const tunnelSettings: localtunnel.TunnelConfig = {
+			const { default: localtunnel } = await import('@n8n/localtunnel');
+			const { port } = this.globalConfig;
+
+			const webhookTunnel = await localtunnel(port, {
 				host: 'https://hooks.n8n.cloud',
 				subdomain: tunnelSubdomain,
-			};
-
-			const port = config.getEnv('port');
-
-			// @ts-ignore
-			const webhookTunnel = await localtunnel(port, tunnelSettings);
+			});
 
 			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
 			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
@@ -335,12 +306,16 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
-		await this.initPruning();
+		Container.get(PruningService).init();
+
+		if (config.getEnv('executions.mode') === 'regular') {
+			await this.runEnqueuedExecutions();
+		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowRunner.init();
+		await this.activeWorkflowManager.init();
 
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"
@@ -358,7 +333,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 
@@ -374,34 +349,46 @@ export class Start extends BaseCommand {
 		}
 	}
 
-	async initPruning() {
-		this.pruningService = Container.get(PruningService);
-
-		if (this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
-		}
-
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
-			const multiMainSetup = Container.get(MultiMainSetup);
-
-			await multiMainSetup.init();
-
-			multiMainSetup.on('leadershipChange', async () => {
-				if (multiMainSetup.isLeader) {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.startPruning();
-					}
-				} else {
-					if (this.pruningService.isPruningEnabled()) {
-						this.pruningService.stopPruning();
-					}
-				}
-			});
-		}
+	async catch(error: Error) {
+		if (error.stack) this.logger.error(error.stack);
+		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 
-	async catch(error: Error) {
-		console.log(error.stack);
-		await this.exitWithCrash('Exiting due to an error.', error);
+	/**
+	 * During startup, we may find executions that had been enqueued at the time of shutdown.
+	 *
+	 * If so, start running any such executions concurrently up to the concurrency limit, and
+	 * enqueue any remaining ones until we have spare concurrency capacity again.
+	 */
+	private async runEnqueuedExecutions() {
+		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
+
+		if (executions.length === 0) return;
+
+		this.logger.debug(
+			'[Startup] Found enqueued executions to run',
+			executions.map((e) => e.id),
+		);
+
+		const ownershipService = Container.get(OwnershipService);
+		const workflowRunner = Container.get(WorkflowRunner);
+
+		for (const execution of executions) {
+			const project = await ownershipService.getWorkflowProjectCached(execution.workflowId);
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: execution.mode,
+				executionData: execution.data,
+				workflowData: execution.workflowData,
+				projectId: project.id,
+			};
+
+			Container.get(EventService).emit('execution-started-during-bootup', {
+				executionId: execution.id,
+			});
+
+			// do not block - each execution either runs concurrently or is queued
+			void workflowRunner.run(data, undefined, false, execution.id);
+		}
 	}
 }

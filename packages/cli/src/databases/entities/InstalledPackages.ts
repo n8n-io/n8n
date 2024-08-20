@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 import type { InstalledNodes } from './InstalledNodes';
 import { WithTimestamps } from './AbstractEntity';
 

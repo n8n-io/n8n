@@ -1,79 +1,167 @@
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
-import { createAdmin, createMember, createOwner } from './shared/db/users';
+import { Container } from 'typedi';
+import type { Scope } from '@n8n/permissions';
 
-import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
+import type { GlobalRole } from '@db/entities/User';
+import type { ProjectRole } from '@db/entities/ProjectRelation';
+import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
+import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import { RoleService } from '@/services/role.service';
+
+import * as utils from './shared/utils/';
+import { createMember } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
-	enabledFeatures: ['feat:advancedPermissions'],
 });
 
-const license = testServer.license;
+let memberAgent: SuperAgentTest;
 
-describe('GET /roles', () => {
-	let owner: User;
-	let admin: User;
-	let member: User;
+const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
+let expectedGlobalRoles: Array<{
+	name: string;
+	role: GlobalRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
+let expectedProjectRoles: Array<{
+	name: string;
+	role: ProjectRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
+let expectedCredentialRoles: Array<{
+	name: string;
+	role: CredentialSharingRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
+let expectedWorkflowRoles: Array<{
+	name: string;
+	role: WorkflowSharingRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
 
-	let ownerAgent: SuperAgentTest;
-	let adminAgent: SuperAgentTest;
-	let memberAgent: SuperAgentTest;
+beforeAll(async () => {
+	memberAgent = testServer.authAgentFor(await createMember());
 
-	let toAgent: Record<string, SuperAgentTest> = {};
+	expectedGlobalRoles = [
+		{
+			name: 'Owner',
+			role: 'global:owner',
+			scopes: Container.get(RoleService).getRoleScopes('global:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Admin',
+			role: 'global:admin',
+			scopes: Container.get(RoleService).getRoleScopes('global:admin'),
+			licensed: false,
+		},
+		{
+			name: 'Member',
+			role: 'global:member',
+			scopes: Container.get(RoleService).getRoleScopes('global:member'),
+			licensed: true,
+		},
+	];
+	expectedProjectRoles = [
+		{
+			name: 'Project Owner',
+			role: 'project:personalOwner',
+			scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
+			licensed: true,
+		},
+		{
+			name: 'Project Admin',
+			role: 'project:admin',
+			scopes: Container.get(RoleService).getRoleScopes('project:admin'),
+			licensed: false,
+		},
+		{
+			name: 'Project Editor',
+			role: 'project:editor',
+			scopes: Container.get(RoleService).getRoleScopes('project:editor'),
+			licensed: false,
+		},
+	];
+	expectedCredentialRoles = [
+		{
+			name: 'Credential Owner',
+			role: 'credential:owner',
+			scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Credential User',
+			role: 'credential:user',
+			scopes: Container.get(RoleService).getRoleScopes('credential:user'),
+			licensed: true,
+		},
+	];
+	expectedWorkflowRoles = [
+		{
+			name: 'Workflow Owner',
+			role: 'workflow:owner',
+			scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Workflow Editor',
+			role: 'workflow:editor',
+			scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
+			licensed: true,
+		},
+	];
+});
 
-	beforeAll(async () => {
-		await testDb.truncate(['User']);
+describe('GET /roles/', () => {
+	test('should return all role categories', async () => {
+		const resp = await memberAgent.get('/roles/');
 
-		owner = await createOwner();
-		admin = await createAdmin();
-		member = await createMember();
+		expect(resp.status).toBe(200);
 
-		ownerAgent = testServer.authAgentFor(owner);
-		adminAgent = testServer.authAgentFor(admin);
-		memberAgent = testServer.authAgentFor(member);
+		const data: Record<string, string[]> = resp.body.data;
 
-		toAgent = {
-			owner: ownerAgent,
-			admin: adminAgent,
-			member: memberAgent,
-		};
+		const categories = [...Object.keys(data)];
+		expect(categories.length).toBe(expectedCategories.length);
+		expect(expectedCategories.every((c) => categories.includes(c))).toBe(true);
 	});
 
-	describe('with advanced permissions licensed', () => {
-		test.each(['owner', 'admin', 'member'])('should return all roles to %s', async (user) => {
-			license.enable('feat:advancedPermissions');
+	test('should return fixed global roles', async () => {
+		const resp = await memberAgent.get('/roles/');
 
-			const response = await toAgent[user].get('/roles').expect(200);
-
-			expect(response.body.data).toEqual([
-				{ scope: 'global', name: 'owner', isAvailable: true },
-				{ scope: 'global', name: 'member', isAvailable: true },
-				{ scope: 'global', name: 'admin', isAvailable: true },
-				{ scope: 'workflow', name: 'owner', isAvailable: true },
-				{ scope: 'credential', name: 'owner', isAvailable: true },
-				{ scope: 'credential', name: 'user', isAvailable: true },
-				{ scope: 'workflow', name: 'editor', isAvailable: true },
-			]);
-		});
+		expect(resp.status).toBe(200);
+		for (const role of expectedGlobalRoles) {
+			expect(resp.body.data.global).toContainEqual(role);
+		}
 	});
 
-	describe('with advanced permissions not licensed', () => {
-		test.each(['owner', 'admin', 'member'])('should return all roles to %s', async (user) => {
-			license.disable('feat:advancedPermissions');
+	test('should return fixed project roles', async () => {
+		const resp = await memberAgent.get('/roles/');
 
-			const response = await toAgent[user].get('/roles').expect(200);
+		expect(resp.status).toBe(200);
+		for (const role of expectedProjectRoles) {
+			expect(resp.body.data.project).toContainEqual(role);
+		}
+	});
 
-			expect(response.body.data).toEqual([
-				{ scope: 'global', name: 'owner', isAvailable: true },
-				{ scope: 'global', name: 'member', isAvailable: true },
-				{ scope: 'global', name: 'admin', isAvailable: false },
-				{ scope: 'workflow', name: 'owner', isAvailable: true },
-				{ scope: 'credential', name: 'owner', isAvailable: true },
-				{ scope: 'credential', name: 'user', isAvailable: true },
-				{ scope: 'workflow', name: 'editor', isAvailable: true },
-			]);
-		});
+	test('should return fixed credential sharing roles', async () => {
+		const resp = await memberAgent.get('/roles/');
+
+		expect(resp.status).toBe(200);
+		for (const role of expectedCredentialRoles) {
+			expect(resp.body.data.credential).toContainEqual(role);
+		}
+	});
+
+	test('should return fixed workflow sharing roles', async () => {
+		const resp = await memberAgent.get('/roles/');
+
+		expect(resp.status).toBe(200);
+		for (const role of expectedWorkflowRoles) {
+			expect(resp.body.data.workflow).toContainEqual(role);
+		}
 	});
 });

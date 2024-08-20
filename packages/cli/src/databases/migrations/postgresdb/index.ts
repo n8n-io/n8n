@@ -50,6 +50,15 @@ import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWor
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { CreateProject1714133768519 } from '../common/1714133768519-CreateProject';
+import { DropRoleMapping1705429061930 } from '../common/1705429061930-DropRoleMapping';
+import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
+import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
+import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
+import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
+import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
+import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -103,4 +112,13 @@ export const postgresMigrations: Migration[] = [
 	MigrateToTimestampTz1694091729095,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
+	DropRoleMapping1705429061930,
+	RemoveFailedExecutionStatus1711018413374,
+	MoveSshKeysToDatabase1711390882123,
+	RemoveNodesAccess1712044305787,
+	CreateProject1714133768519,
+	MakeExecutionStatusNonNullable1714133768521,
+	AddActivatedAtUserSetting1717498465931,
+	AddConstraintToExecutionMetadata1720101653148,
+	FixExecutionMetadataSequence1721377157740,
 ];

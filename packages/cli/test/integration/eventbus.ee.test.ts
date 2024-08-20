@@ -1,10 +1,7 @@
-import config from '@/config';
+import { Container } from 'typedi';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
-import type { User } from '@db/entities/User';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -15,19 +12,21 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { eventBus } from '@/eventbus';
+
+import type { User } from '@db/entities/User';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
-import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
-import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
+import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
 import * as utils from './shared/utils';
-import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { mockInstance } from '../shared/mocking';
+import type { SuperAgentTest } from './shared/types';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -35,7 +34,6 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
-let globalOwnerRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
@@ -67,6 +65,8 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
 
+let eventBus: MessageEventBus;
+
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
 	expect(sent.length).toBeGreaterThan(0);
@@ -79,27 +79,25 @@ async function confirmIdSent(id: string) {
 	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
+mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
 });
 
 beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ role: 'global:owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
-	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
-	config.set('eventBus.logWriter.keepLogCount', 1);
-
-	await eventBus.initialize({});
+	eventBus = Container.get(MessageEventBus);
+	await eventBus.initialize();
 });
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	await eventBus.close();
+	await eventBus?.close();
 });
 
 test('should have a running logwriter process', () => {
@@ -166,80 +164,6 @@ describe('POST /eventbus/destination', () => {
 	});
 });
 
-// this test (presumably the mocking) is causing the test suite to randomly fail
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('should send message to syslog', async () => {
-	const testMessage = new EventMessageGeneric({
-		eventName: 'n8n.test.message' as EventNamesTypes,
-		id: uuid(),
-	});
-
-	const syslogDestination = eventBus.destinations[
-		testSyslogDestination.id!
-	] as MessageEventBusDestinationSyslog;
-
-	syslogDestination.enable();
-
-	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((_m, _options, _cb) => {
-		eventBus.confirmSent(testMessage, {
-			id: syslogDestination.id,
-			name: syslogDestination.label,
-		});
-		return syslogDestination.client;
-	});
-
-	await eventBus.send(testMessage);
-	await new Promise((resolve) => {
-		eventBus.logWriter.worker?.on(
-			'message',
-			async function handler001(msg: { command: string; data: any }) {
-				if (msg.command === 'appendMessageToLog') {
-					await confirmIdInAll(testMessage.id);
-				} else if (msg.command === 'confirmMessageSent') {
-					await confirmIdSent(testMessage.id);
-					expect(mockedSyslogClientLog).toHaveBeenCalled();
-					syslogDestination.disable();
-					eventBus.logWriter.worker?.removeListener('message', handler001);
-					resolve(true);
-				}
-			},
-		);
-	});
-});
-
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('should confirm send message if there are no subscribers', async () => {
-	const testMessageUnsubscribed = new EventMessageGeneric({
-		eventName: 'n8n.test.unsub' as EventNamesTypes,
-		id: uuid(),
-	});
-
-	const syslogDestination = eventBus.destinations[
-		testSyslogDestination.id!
-	] as MessageEventBusDestinationSyslog;
-
-	syslogDestination.enable();
-
-	await eventBus.send(testMessageUnsubscribed);
-
-	await new Promise((resolve) => {
-		eventBus.logWriter.worker?.on(
-			'message',
-			async function handler002(msg: { command: string; data: any }) {
-				if (msg.command === 'appendMessageToLog') {
-					await confirmIdInAll(testMessageUnsubscribed.id);
-				} else if (msg.command === 'confirmMessageSent') {
-					await confirmIdSent(testMessageUnsubscribed.id);
-					syslogDestination.disable();
-					eventBus.logWriter.worker?.removeListener('message', handler002);
-					resolve(true);
-				}
-			},
-		);
-	});
-});
-
 test('should anonymize audit message to syslog ', async () => {
 	const testAuditMessage = new EventMessageAudit({
 		eventName: 'n8n.audit.user.updated',
@@ -276,7 +200,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler005(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					eventBus.logWriter.worker?.removeListener('message', handler005);
@@ -293,7 +217,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler006(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();
@@ -390,58 +314,4 @@ test('DELETE /eventbus/destination delete all destinations by id', async () => {
 	);
 
 	expect(Object.keys(eventBus.destinations).length).toBe(0);
-});
-
-// These two tests are running very flaky on CI due to the logwriter working in a worker
-// Mocking everything on the other would defeat the purpose of even testing them... so, skipping in CI for now.
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('should not find unfinished executions in recovery process', async () => {
-	eventBus.logWriter?.putMessage(
-		new EventMessageWorkflow({
-			eventName: 'n8n.workflow.started',
-			payload: { executionId: '509', isManual: false },
-		}),
-	);
-	eventBus.logWriter?.putMessage(
-		new EventMessageNode({
-			eventName: 'n8n.node.started',
-			payload: { executionId: '509', nodeName: 'Set', workflowName: 'test' },
-		}),
-	);
-	eventBus.logWriter?.putMessage(
-		new EventMessageNode({
-			eventName: 'n8n.node.finished',
-			payload: { executionId: '509', nodeName: 'Set', workflowName: 'test' },
-		}),
-	);
-	eventBus.logWriter?.putMessage(
-		new EventMessageWorkflow({
-			eventName: 'n8n.workflow.success',
-			payload: { executionId: '509', success: true },
-		}),
-	);
-	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
-
-	expect(Object.keys(unfinishedExecutions)).toHaveLength(0);
-});
-
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('should not find unfinished executions in recovery process', async () => {
-	eventBus.logWriter?.putMessage(
-		new EventMessageWorkflow({
-			eventName: 'n8n.workflow.started',
-			payload: { executionId: '510', isManual: false },
-		}),
-	);
-	eventBus.logWriter?.putMessage(
-		new EventMessageNode({
-			eventName: 'n8n.node.started',
-			payload: { executionId: '510', nodeName: 'Set', workflowName: 'test' },
-		}),
-	);
-
-	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
-
-	expect(Object.keys(unfinishedExecutions)).toHaveLength(1);
-	expect(Object.keys(unfinishedExecutions)).toContain('510');
 });

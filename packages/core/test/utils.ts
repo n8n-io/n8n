@@ -3,9 +3,10 @@ import { mock } from 'jest-mock-extended';
 import { Duplex } from 'stream';
 
 import type { DeepPartial } from 'ts-essentials';
+import type { Class } from '@/Interfaces';
 
 export const mockInstance = <T>(
-	constructor: new (...args: unknown[]) => T,
+	constructor: Class<T>,
 	data: DeepPartial<T> | undefined = undefined,
 ) => {
 	const instance = mock<T>(data);

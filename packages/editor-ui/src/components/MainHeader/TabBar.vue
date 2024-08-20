@@ -4,50 +4,37 @@
 		:class="{
 			[$style.container]: true,
 			['tab-bar-container']: true,
-			[$style.menuCollapsed]: mainSidebarCollapsed,
 		}"
 	>
-		<n8n-radio-buttons :modelValue="activeTab" :options="items" @update:modelValue="onSelect" />
+		<N8nRadioButtons
+			:model-value="modelValue"
+			:options="items"
+			@update:model-value="onUpdateModelValue"
+		/>
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { ITabBarItem } from '@/Interface';
+<script lang="ts" setup>
 import { MAIN_HEADER_TABS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
+import type { ITabBarItem } from '@/Interface';
 
-export default defineComponent({
-	name: 'tab-bar',
-	data() {
-		return {
-			MAIN_HEADER_TABS,
-		};
+withDefaults(
+	defineProps<{
+		items: ITabBarItem[];
+		modelValue?: string;
+	}>(),
+	{
+		modelValue: MAIN_HEADER_TABS.WORKFLOW,
 	},
-	props: {
-		items: {
-			type: Array as PropType<ITabBarItem[]>,
-			required: true,
-		},
-		activeTab: {
-			type: String,
-			default: MAIN_HEADER_TABS.WORKFLOW,
-		},
-	},
-	computed: {
-		...mapStores(useUIStore),
-		mainSidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
-		},
-	},
-	methods: {
-		onSelect(tab: string, event: MouseEvent): void {
-			this.$emit('select', tab, event);
-		},
-	},
-});
+);
+
+const emit = defineEmits<{
+	'update:modelValue': [tab: MAIN_HEADER_TABS, event: MouseEvent];
+}>();
+
+function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
+	emit('update:modelValue', tab, event);
+}
 </script>
 
 <style module lang="scss">

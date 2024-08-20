@@ -1,22 +1,20 @@
 import path from 'path';
-import type { SuperAgentTest } from 'supertest';
 
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 import { mockInstance } from '../shared/mocking';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import { setupTestServer, mockPackage, mockNode, mockPackageName } from './shared/utils';
 import { createOwner } from './shared/db/users';
+import type { SuperAgentTest } from './shared/types';
 
 const communityPackagesService = mockInstance(CommunityPackagesService, {
 	hasMissingPackages: false,
 });
 mockInstance(LoadNodesAndCredentials);
-mockInstance(Push);
 
 const testServer = setupTestServer({ endpointGroups: ['community-packages'] });
 
@@ -181,7 +179,7 @@ describe('POST /community-packages', () => {
 		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
 		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
 		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-		communityPackagesService.installNpmModule.mockResolvedValue(mockPackage());
+		communityPackagesService.installPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
@@ -221,7 +219,7 @@ describe('DELETE /community-packages', () => {
 
 		await authAgent.delete('/community-packages').query({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackagesService.removeNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.removePackage).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -244,6 +242,6 @@ describe('PATCH /community-packages', () => {
 
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
-		expect(communityPackagesService.updateNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.updatePackage).toHaveBeenCalledTimes(1);
 	});
 });

@@ -12,6 +12,7 @@ export class ItemLists extends VersionedNodeType {
 			name: 'itemLists',
 			icon: 'file:itemLists.svg',
 			group: ['input'],
+			hidden: true,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Helper for working with lists of items and transforming arrays',
 			defaultVersion: 3.1,

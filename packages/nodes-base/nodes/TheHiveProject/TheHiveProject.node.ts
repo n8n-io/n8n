@@ -10,6 +10,6 @@ export class TheHiveProject implements INodeType {
 	methods = { loadOptions, listSearch, resourceMapping };
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

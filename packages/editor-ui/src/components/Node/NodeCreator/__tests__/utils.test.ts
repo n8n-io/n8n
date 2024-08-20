@@ -1,6 +1,6 @@
 import type { SectionCreateElement } from '@/Interface';
-import { groupItemsInSections } from '../utils';
-import { mockNodeCreateElement } from './utils';
+import { groupItemsInSections, sortNodeCreateElements } from '../utils';
+import { mockActionCreateElement, mockNodeCreateElement, mockSectionCreateElement } from './utils';
 
 describe('NodeCreator - utils', () => {
 	describe('groupItemsInSections', () => {
@@ -44,6 +44,22 @@ describe('NodeCreator - utils', () => {
 				],
 			);
 			expect(result).toEqual([node1, node2, node3]);
+		});
+	});
+
+	describe('sortNodeCreateElements', () => {
+		it('should sort nodes alphabetically by displayName', () => {
+			const node1 = mockNodeCreateElement({ key: 'newNode' }, { displayName: 'xyz' });
+			const node2 = mockNodeCreateElement({ key: 'popularNode' }, { displayName: 'abc' });
+			const node3 = mockNodeCreateElement({ key: 'otherNode' }, { displayName: 'ABC' });
+			expect(sortNodeCreateElements([node1, node2, node3])).toEqual([node2, node3, node1]);
+		});
+
+		it('should not change order for other types (sections, actions)', () => {
+			const node1 = mockSectionCreateElement();
+			const node2 = mockActionCreateElement();
+			const node3 = mockSectionCreateElement();
+			expect(sortNodeCreateElements([node1, node2, node3])).toEqual([node1, node2, node3]);
 		});
 	});
 });
