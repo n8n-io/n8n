@@ -123,6 +123,7 @@ function openContextMenu(event: MouseEvent) {
 	--configurable-node--icon-offset: 40px;
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
+	--canvas-node--status-icons-offset: var(--spacing-2xs);
 
 	height: var(--canvas-node--height);
 	width: var(--canvas-node--width);
@@ -248,8 +249,8 @@ function openContextMenu(event: MouseEvent) {
 
 .statusIcons {
 	position: absolute;
-	bottom: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+	bottom: var(--canvas-node--status-icons-offset);
+	right: var(--canvas-node--status-icons-offset);
 }
 
 .triggerIcon {
