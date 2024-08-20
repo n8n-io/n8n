@@ -61,14 +61,44 @@
 							: $locale.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</n8n-heading>
-				<n8n-text size="large" color="text-base">{{ emptyListDescription }}</n8n-text>
+				<n8n-text v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+					{{ emptyListDescription }}
+				</n8n-text>
 			</div>
 			<div
 				v-if="!readOnlyEnv && projectPermissions.workflow.create"
 				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 			>
+				<n8n-card
+					:class="$style.emptyStateCard"
+					hoverable
+					data-test-id="new-workflow-card"
+					@click="addWorkflow"
+				>
+					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
+					<n8n-text size="large" class="mt-xs" color="text-dark">
+						{{ $locale.baseText('workflows.empty.startFromScratch') }}
+					</n8n-text>
+				</n8n-card>
 				<a
-					v-if="isSalesUser"
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
+					href="https://docs.n8n.io/courses/level-one/"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
+					<n8n-card
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="trackCategoryLinkClick('Sales')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
+						<n8n-text size="large" class="mt-xs" color="text-dark">
+							{{ $locale.baseText('workflows.empty.learnN8n') }}
+						</n8n-text>
+					</n8n-card>
+				</a>
+				<a
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
 					:href="getTemplateRepositoryURL()"
 					:class="$style.emptyStateCard"
 					target="_blank"
@@ -79,22 +109,11 @@
 						@click="trackCategoryLinkClick('Sales')"
 					>
 						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<n8n-text size="large" class="mt-xs" color="text-base">
+						<n8n-text size="large" class="mt-xs" color="text-dark">
 							{{ $locale.baseText('workflows.empty.browseTemplates') }}
 						</n8n-text>
 					</n8n-card>
 				</a>
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					data-test-id="new-workflow-card"
-					@click="addWorkflow"
-				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -244,6 +263,9 @@ const WorkflowsView = defineComponent({
 			}
 
 			return undefined;
+		},
+		isOnboardingExperimentEnabled() {
+			return true;
 		},
 		isSalesUser() {
 			if (!this.userRole) {
