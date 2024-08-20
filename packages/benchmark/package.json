@@ -1,7 +1,7 @@
 {
   "name": "n8n-benchmark",
   "version": "1.0.0",
-  "description": "",
+  "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
@@ -13,9 +13,16 @@
   "engines": {
     "node": ">=20.10"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "automate",
+    "automation",
+    "IaaS",
+    "iPaaS",
+    "n8n",
+    "workflow",
+    "benchmark",
+    "performance"
+  ],
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
