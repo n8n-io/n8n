@@ -1,4 +1,12 @@
+import { overrideFeatureFlag } from '../../composables/featureFlags';
 import { BasePage } from '../base';
+
+const AI_ASSISTANT_FEATURE = {
+	name: 'aiAssistant',
+	experimentName: '021_ai_debug_helper',
+	enabledFor: 'variant',
+	disabledFor: 'control',
+};
 
 export class AIAssistant extends BasePage {
 	url = '/workflows/new';
@@ -26,5 +34,16 @@ export class AIAssistant extends BasePage {
 		codeReplacedMessage: () => cy.getByTestId('code-replaced-message'),
 		nodeErrorViewAssistantButton: () =>
 			cy.getByTestId('node-error-view-ask-assistant-button').find('button').first(),
+	};
+
+	actions = {
+		enableAssistant(): void {
+			overrideFeatureFlag(AI_ASSISTANT_FEATURE.experimentName, AI_ASSISTANT_FEATURE.enabledFor);
+			cy.enableFeature(AI_ASSISTANT_FEATURE.name);
+		},
+		disableAssistant(): void {
+			overrideFeatureFlag(AI_ASSISTANT_FEATURE.experimentName, AI_ASSISTANT_FEATURE.disabledFor);
+			cy.disableFeature(AI_ASSISTANT_FEATURE.name);
+		},
 	};
 }

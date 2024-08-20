@@ -1,12 +1,5 @@
-import { overrideFeatureFlag } from '../composables/featureFlags';
 import { NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
-
-const AI_ASSISTANT_FEATURE = {
-	flagName: '021_ai_debug_helper',
-	enabledFor: 'variant',
-	disabledFor: 'control',
-};
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
@@ -14,7 +7,7 @@ const aiAssistant = new AIAssistant();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
-		overrideFeatureFlag(AI_ASSISTANT_FEATURE.flagName, AI_ASSISTANT_FEATURE.disabledFor);
+		aiAssistant.actions.disableAssistant();
 		wf.actions.visit();
 	});
 
@@ -25,12 +18,12 @@ describe('AI Assistant::disabled', () => {
 
 describe('AI Assistant::enabled', () => {
 	beforeEach(() => {
-		overrideFeatureFlag(AI_ASSISTANT_FEATURE.flagName, AI_ASSISTANT_FEATURE.enabledFor);
+		aiAssistant.actions.enableAssistant();
 		wf.actions.visit();
 	});
 
 	after(() => {
-		overrideFeatureFlag(AI_ASSISTANT_FEATURE.flagName, AI_ASSISTANT_FEATURE.disabledFor);
+		aiAssistant.actions.disableAssistant();
 	});
 
 	it('renders placeholder UI', () => {
