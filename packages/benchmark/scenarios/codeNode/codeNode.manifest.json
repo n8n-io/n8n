@@ -1,9 +1,0 @@
-{
-	"$schema": "../testScenario.schema.json",
-	"name": "CodeNode",
-	"description": "Workflow with a single code node that is triggered using a webhook",
-	"testData": {
-		"workflowFiles": ["codeNode.json"]
-	},
-	"testScriptPath": "codeNode.script.ts"
-}
