@@ -2,12 +2,33 @@
 
 Tool for executing benchmarks against an n8n instance.
 
-## Requirements
+## Running locally with Docker
 
-- [k6](https://grafana.com/docs/k6/latest/)
+Build the Docker image:
+
+```sh
+# Must be run in the repository root
+# k6 doesn't have an arm64 build available for linux, we need to build against amd64
+docker build --platform linux/amd64 -t n8n-benchmark -f packages/benchmark/Dockerfile .
+```
+
+Run the image
+
+```sh
+docker run \
+  -e N8N_USER_EMAIL=user@n8n.io \
+  -e N8N_USER_PASSWORD=password \
+  # For macos, n8n running outside docker
+  -e N8N_BASE_URL=http://host.docker.internal:5678 \
+  n8n-benchmark
+```
+
+## Running locally without Docker
+
+Requirements:
+
+- [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/)
 - Node.js v20 or higher
-
-## Running locally
 
 ```sh
 pnpm build
@@ -22,15 +43,6 @@ K6_PATH=/opt/homebrew/bin/k6 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=passwo
 ## Configuration
 
 The configuration options the cli accepts can be seen from [config.ts](./src/config/config.ts)
-
-## Docker build
-
-Because k6 doesn't have an arm64 build available for linux, we need to build against amd64
-
-```sh
-# In the repository root
-docker build --platform linux/amd64 -f packages/benchmark/Dockerfile -t n8n-benchmark:latest .
-```
 
 ## Test scenarios
 

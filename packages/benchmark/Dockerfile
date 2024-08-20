@@ -1,7 +1,4 @@
 # syntax=docker/dockerfile:1
-# NOTE:
-# 	This Dockerfile needs to be built in the root of the repository
-# 	`docker build -t n8n-benchmark -f packages/benchmark/Dockerfile .`
 FROM node:20.16.0 AS base
 
 # Install required dependencies
