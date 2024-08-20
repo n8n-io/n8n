@@ -29,7 +29,7 @@ WORKDIR /app
 COPY --chown=node:node ./pnpm-lock.yaml /app/pnpm-lock.yaml
 COPY --chown=node:node ./pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY --chown=node:node ./package.json /app/package.json
-COPY --chown=node:node ./packages/benchmark/package.json /app/packages/benchmark/package.json
+COPY --chown=node:node ./packages/@n8n/benchmark/package.json /app/packages/@n8n/benchmark/package.json
 COPY --chown=node:node ./patches /app/patches
 COPY --chown=node:node ./scripts /app/scripts
 
@@ -39,15 +39,15 @@ RUN pnpm install --frozen-lockfile
 COPY --chown=node:node ./tsconfig.json /app/tsconfig.json
 COPY --chown=node:node ./tsconfig.build.json /app/tsconfig.build.json
 COPY --chown=node:node ./tsconfig.backend.json /app/tsconfig.backend.json
-COPY --chown=node:node ./packages/benchmark/tsconfig.json /app/packages/benchmark/tsconfig.json
-COPY --chown=node:node ./packages/benchmark/tsconfig.build.json /app/packages/benchmark/tsconfig.build.json
+COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.json /app/packages/@n8n/benchmark/tsconfig.json
+COPY --chown=node:node ./packages/@n8n/benchmark/tsconfig.build.json /app/packages/@n8n/benchmark/tsconfig.build.json
 
 # Source files
-COPY --chown=node:node ./packages/benchmark/src /app/packages/benchmark/src
-COPY --chown=node:node ./packages/benchmark/bin /app/packages/benchmark/bin
-COPY --chown=node:node ./packages/benchmark/scenarios /app/packages/benchmark/scenarios
+COPY --chown=node:node ./packages/@n8n/benchmark/src /app/packages/@n8n/benchmark/src
+COPY --chown=node:node ./packages/@n8n/benchmark/bin /app/packages/@n8n/benchmark/bin
+COPY --chown=node:node ./packages/@n8n/benchmark/scenarios /app/packages/@n8n/benchmark/scenarios
 
-WORKDIR /app/packages/benchmark
+WORKDIR /app/packages/@n8n/benchmark
 RUN pnpm build
 
 #
@@ -56,7 +56,7 @@ FROM base AS runner
 
 COPY --from=builder /app /app
 
-WORKDIR /app/packages/benchmark
+WORKDIR /app/packages/@n8n/benchmark
 USER node
 
-ENTRYPOINT [ "/app/packages/benchmark/bin/n8n-benchmark" ]
+ENTRYPOINT [ "/app/packages/@n8n/benchmark/bin/n8n-benchmark" ]

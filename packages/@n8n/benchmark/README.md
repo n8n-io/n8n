@@ -9,7 +9,7 @@ Build the Docker image:
 ```sh
 # Must be run in the repository root
 # k6 doesn't have an arm64 build available for linux, we need to build against amd64
-docker build --platform linux/amd64 -t n8n-benchmark -f packages/benchmark/Dockerfile .
+docker build --platform linux/amd64 -t n8n-benchmark -f packages/@n8n/benchmark/Dockerfile .
 ```
 
 Run the image

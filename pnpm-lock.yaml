@@ -207,6 +207,43 @@ importers:
         specifier: workspace:*
         version: link:../packages/workflow
 
+  packages/@n8n/benchmark:
+    dependencies:
+      '@oclif/core':
+        specifier: 4.0.7
+        version: 4.0.7
+      axios:
+        specifier: 1.7.3
+        version: 1.7.3(debug@3.2.7)
+      convict:
+        specifier: 6.2.4
+        version: 6.2.4
+      dotenv:
+        specifier: 8.6.0
+        version: 8.6.0
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      zx:
+        specifier: ^8.1.4
+        version: 8.1.4
+    devDependencies:
+      '@types/convict':
+        specifier: ^6.1.1
+        version: 6.1.1
+      '@types/k6':
+        specifier: ^0.52.0
+        version: 0.52.0
+      '@types/node':
+        specifier: ^18.16.16
+        version: 18.16.16
+      tsc-alias:
+        specifier: ^1.8.7
+        version: 1.8.7
+      typescript:
+        specifier: ^5.5.2
+        version: 5.5.2
+
   packages/@n8n/chat:
     dependencies:
       '@vueuse/core':
@@ -599,43 +636,6 @@ importers:
       vue-eslint-parser:
         specifier: ^9.4.2
         version: 9.4.2(eslint@8.57.0)
-
-  packages/benchmark:
-    dependencies:
-      '@oclif/core':
-        specifier: 4.0.7
-        version: 4.0.7
-      axios:
-        specifier: 1.7.3
-        version: 1.7.3(debug@3.2.7)
-      convict:
-        specifier: 6.2.4
-        version: 6.2.4
-      dotenv:
-        specifier: 8.6.0
-        version: 8.6.0
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../workflow
-      zx:
-        specifier: ^8.1.4
-        version: 8.1.4
-    devDependencies:
-      '@types/convict':
-        specifier: ^6.1.1
-        version: 6.1.1
-      '@types/k6':
-        specifier: ^0.52.0
-        version: 0.52.0
-      '@types/node':
-        specifier: ^18.16.16
-        version: 18.16.16
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.7
-      typescript:
-        specifier: ^5.5.2
-        version: 5.5.2
 
   packages/cli:
     dependencies:
