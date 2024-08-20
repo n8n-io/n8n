@@ -269,7 +269,8 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
  * View
  */
 
-const zoom = ref(1);
+const defaultZoom = 1;
+const zoom = ref(defaultZoom);
 
 function onClickPane(event: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -282,7 +283,7 @@ function onClickPane(event: MouseEvent) {
 }
 
 async function onFitView() {
-	await fitView({ maxZoom: 1.2, padding: 0.2 });
+	await fitView({ maxZoom: defaultZoom, padding: 0.2 });
 }
 
 async function onZoomTo(zoomLevel: number) {
@@ -298,7 +299,7 @@ async function onZoomOut() {
 }
 
 async function onResetZoom() {
-	await onZoomTo(1);
+	await onZoomTo(defaultZoom);
 }
 
 function onViewportChange(viewport: ViewportTransform) {
@@ -469,7 +470,7 @@ watch(() => props.readOnly, setReadonly, {
 			:position="controlsPosition"
 			:show-interactive="false"
 			:zoom="zoom"
-			@fit-view="onFitView"
+			@zoom-to-fit="onFitView"
 			@zoom-in="onZoomIn"
 			@zoom-out="onZoomOut"
 			@reset-zoom="onResetZoom"

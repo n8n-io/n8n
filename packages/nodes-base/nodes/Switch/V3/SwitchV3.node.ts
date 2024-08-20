@@ -13,6 +13,8 @@ import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-wo
 import set from 'lodash/set';
 import { capitalize } from '@utils/utilities';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
+import { looseTypeValidationProperty } from '../../../utils/descriptions';
+import { getTypeValidationParameter, getTypeValidationStrictness } from '../../If/V2/utils';
 
 const configuredOutputs = (parameters: INodeParameters) => {
 	const mode = parameters.mode as string;
@@ -48,7 +50,7 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3],
+			version: [3, 3.1],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
@@ -157,8 +159,7 @@ export class SwitchV3 implements INodeType {
 										multipleValues: false,
 										filter: {
 											caseSensitive: '={{!$parameter.options.ignoreCase}}',
-											typeValidation:
-												'={{$parameter.options.looseTypeValidation ? "loose" : "strict"}}',
+											typeValidation: getTypeValidationStrictness(3.1),
 										},
 									},
 								},
@@ -183,6 +184,15 @@ export class SwitchV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					...looseTypeValidationProperty,
+					default: false,
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.1 } }],
+						},
+					},
 				},
 				{
 					displayName: 'Options',
@@ -218,11 +228,12 @@ export class SwitchV3 implements INodeType {
 							default: true,
 						},
 						{
-							displayName: 'Less Strict Type Validation',
-							description: 'Whether to try casting value types based on the selected operator',
-							name: 'looseTypeValidation',
-							type: 'boolean',
-							default: true,
+							...looseTypeValidationProperty,
+							displayOptions: {
+								show: {
+									'@version': [{ _cnd: { lt: 3.1 } }],
+								},
+							},
 						},
 						{
 							displayName: 'Rename Fallback Output',
@@ -349,7 +360,14 @@ export class SwitchV3 implements INodeType {
 								},
 							) as boolean;
 						} catch (error) {
-							if (!options.looseTypeValidation && !error.description) {
+							if (
+								!getTypeValidationParameter(3.1)(
+									this,
+									itemIndex,
+									options.looseTypeValidation as boolean,
+								) &&
+								!error.description
+							) {
 								error.description = ENABLE_LESS_STRICT_TYPE_VALIDATION;
 							}
 							set(error, 'context.itemIndex', itemIndex);
