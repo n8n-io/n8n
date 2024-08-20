@@ -1,18 +1,18 @@
 import fs from 'fs';
 import path from 'path';
-import { TestScenario } from '@/types/testScenario';
+import { Scenario } from '@/types/scenario';
 import { Workflow } from '@/n8nApiClient/n8nApiClient.types';
 
 /**
- * Loads test data files from FS
+ * Loads scenario data files from FS
  */
-export class TestDataFileLoader {
-	async loadTestDataForScenario(testScenario: TestScenario): Promise<{
+export class ScenarioDataFileLoader {
+	async loadDataForScenario(scenario: Scenario): Promise<{
 		workflows: Workflow[];
 	}> {
 		const workflows = await Promise.all(
-			testScenario.testData.workflowFiles?.map((workflowFilePath) =>
-				this.loadSingleWorkflowFromFile(path.join(testScenario.testScenarioPath, workflowFilePath)),
+			scenario.scenarioData.workflowFiles?.map((workflowFilePath) =>
+				this.loadSingleWorkflowFromFile(path.join(scenario.scenarioDirPath, workflowFilePath)),
 			) ?? [],
 		);
 

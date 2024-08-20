@@ -44,12 +44,12 @@ K6_PATH=/opt/homebrew/bin/k6 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=passwo
 
 The configuration options the cli accepts can be seen from [config.ts](./src/config/config.ts)
 
-## Test scenarios
+## Benchmark scenarios
 
-A test scenario defines a single performance test. It consists of:
+A benchmark scenario defines one or multiple steps to execute and measure. It consists of:
 
 - Manifest file which describes and configures the scenario
-- Any test data that is imported before the scenario is ran
-- A [`k6`](https://grafana.com/docs/k6/latest/using-k6/http-requests/) test script, which receives `API_BASE_URL` environment variable in runtime.
+- Any test data that is imported before the scenario is run
+- A [`k6`](https://grafana.com/docs/k6/latest/using-k6/http-requests/) script which executes the steps and receives `API_BASE_URL` environment variable in runtime.
 
 Available test scenarios are located in [`./testScenarios`](./testScenarios/).

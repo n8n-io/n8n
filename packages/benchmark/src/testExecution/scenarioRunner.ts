@@ -1,17 +1,17 @@
-import { TestScenario } from '@/types/testScenario';
+import { Scenario } from '@/types/scenario';
 import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import { TestDataFileLoader } from '@/testScenario/testDataLoader';
+import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
 import { K6Executor } from './k6Executor';
-import { TestDataImporter } from '@/testExecution/testDataImporter';
+import { ScenarioDataImporter } from '@/testExecution/scenarioDataImporter';
 import { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
 
 /**
- * Runs test scenarios
+ * Runs scenarios
  */
-export class TestScenarioRunner {
+export class ScenarioRunner {
 	constructor(
 		private readonly n8nClient: N8nApiClient,
-		private readonly testDataLoader: TestDataFileLoader,
+		private readonly dataLoader: ScenarioDataFileLoader,
 		private readonly k6Executor: K6Executor,
 		private readonly ownerConfig: {
 			email: string;
@@ -19,7 +19,7 @@ export class TestScenarioRunner {
 		},
 	) {}
 
-	async runManyTestScenarios(testCases: TestScenario[]) {
+	async runManyScenarios(scenarios: Scenario[]) {
 		console.log(`Waiting for n8n ${this.n8nClient.apiBaseUrl} to become online`);
 		await this.n8nClient.waitForInstanceToBecomeOnline();
 
@@ -30,21 +30,21 @@ export class TestScenarioRunner {
 			this.n8nClient,
 			this.ownerConfig,
 		);
-		const testDataImporter = new TestDataImporter(authenticatedN8nClient);
+		const testDataImporter = new ScenarioDataImporter(authenticatedN8nClient);
 
-		for (const testCase of testCases) {
-			await this.runSingleTestScenario(testDataImporter, testCase);
+		for (const scenario of scenarios) {
+			await this.runSingleTestScenario(testDataImporter, scenario);
 		}
 	}
 
-	private async runSingleTestScenario(testDataImporter: TestDataImporter, scenario: TestScenario) {
+	private async runSingleTestScenario(testDataImporter: ScenarioDataImporter, scenario: Scenario) {
 		console.log('Running scenario:', scenario.name);
 
-		console.log('Loading and importing test data');
-		const testData = await this.testDataLoader.loadTestDataForScenario(scenario);
+		console.log('Loading and importing data');
+		const testData = await this.dataLoader.loadDataForScenario(scenario);
 		await testDataImporter.importTestScenarioData(testData.workflows);
 
-		console.log('Executing test script');
+		console.log('Executing scenario script');
 		await this.k6Executor.executeTestScenario(scenario);
 	}
 }

@@ -5,9 +5,9 @@ dotenv.config();
 
 const configSchema = {
 	testScenariosPath: {
-		doc: 'The path to the test scenarios',
+		doc: 'The path to the scenarios',
 		format: String,
-		default: 'testScenarios',
+		default: 'scenarios',
 	},
 	n8n: {
 		baseUrl: {

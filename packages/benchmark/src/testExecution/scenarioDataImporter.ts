@@ -3,9 +3,9 @@ import { Workflow } from '@/n8nApiClient/n8nApiClient.types';
 import { WorkflowApiClient } from '@/n8nApiClient/workflowsApiClient';
 
 /**
- * Imports test data into an n8n instance
+ * Imports scenario data into an n8n instance
  */
-export class TestDataImporter {
+export class ScenarioDataImporter {
 	private readonly workflowApiClient: WorkflowApiClient;
 
 	constructor(n8nApiClient: AuthenticatedN8nApiClient) {
@@ -21,7 +21,7 @@ export class TestDataImporter {
 	}
 
 	/**
-	 * Imports a single workflow into n8n and tags it with the given testCaseId
+	 * Imports a single workflow into n8n removing any existing workflows with the same name
 	 */
 	private async importWorkflow(opts: { existingWorkflows: Workflow[]; workflow: Workflow }) {
 		const existingWorkflows = this.tryFindExistingWorkflows(opts.existingWorkflows, opts.workflow);

@@ -1,9 +1,9 @@
 import { Command, Flags } from '@oclif/core';
 import { loadConfig } from '@/config/config';
-import { TestScenarioLoader } from '@/testScenario/testScenarioLoader';
-import { TestScenarioRunner } from '@/testExecution/testScenarioRunner';
+import { ScenarioLoader } from '@/scenario/scenarioLoader';
+import { ScenarioRunner } from '@/testExecution/scenarioRunner';
 import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import { TestDataFileLoader } from '@/testScenario/testDataLoader';
+import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
 import { K6Executor } from '@/testExecution/k6Executor';
 
 export default class RunCommand extends Command {
@@ -20,11 +20,11 @@ export default class RunCommand extends Command {
 
 	async run() {
 		const config = loadConfig();
-		const testScenarioLoader = new TestScenarioLoader();
+		const scenarioLoader = new ScenarioLoader();
 
-		const testScenarioRunner = new TestScenarioRunner(
+		const scenarioRunner = new ScenarioRunner(
 			new N8nApiClient(config.get('n8n.baseUrl')),
-			new TestDataFileLoader(),
+			new ScenarioDataFileLoader(),
 			new K6Executor(config.get('k6ExecutablePath'), config.get('n8n.baseUrl')),
 			{
 				email: config.get('n8n.user.email'),
@@ -32,8 +32,8 @@ export default class RunCommand extends Command {
 			},
 		);
 
-		const allScenarios = testScenarioLoader.loadAllTestScenarios(config.get('testScenariosPath'));
+		const allScenarios = scenarioLoader.loadAllScenarios(config.get('testScenariosPath'));
 
-		await testScenarioRunner.runManyTestScenarios(allScenarios);
+		await scenarioRunner.runManyScenarios(allScenarios);
 	}
 }

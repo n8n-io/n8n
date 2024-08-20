@@ -1,5 +1,5 @@
 import { $ } from 'zx';
-import { TestScenario } from '@/types/testScenario';
+import { Scenario } from '@/types/scenario';
 
 /**
  * Executes test scenarios using k6
@@ -10,16 +10,16 @@ export class K6Executor {
 		private readonly n8nApiBaseUrl: string,
 	) {}
 
-	async executeTestScenario(testCase: TestScenario) {
+	async executeTestScenario(scenario: Scenario) {
 		// For 1 min with 5 virtual users
 		const stage = '1m:5';
 
 		const processPromise = $({
-			cwd: testCase.testScenarioPath,
+			cwd: scenario.scenarioDirPath,
 			env: {
 				API_BASE_URL: this.n8nApiBaseUrl,
 			},
-		})`${this.k6ExecutablePath} run --quiet --stage ${stage} ${testCase.testScriptPath}`;
+		})`${this.k6ExecutablePath} run --quiet --stage ${stage} ${scenario.scriptPath}`;
 
 		for await (const chunk of processPromise.stdout) {
 			console.log(chunk.toString());
