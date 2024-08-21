@@ -63,7 +63,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { getEndpointScope } from '@/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getConnectionInfo } from '@/utils/canvasUtils';
-import { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
+import type { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
