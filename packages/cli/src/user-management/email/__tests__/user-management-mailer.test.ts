@@ -2,8 +2,8 @@ import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/Interfaces';
-import { NodeMailer } from '@/user-management/email/NodeMailer';
-import { UserManagementMailer } from '@/user-management/email/UserManagementMailer';
+import { NodeMailer } from '@/user-management/email/node-mailer';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 import { mockInstance } from '@test/mocking';
 
 describe('UserManagementMailer', () => {
