@@ -13,7 +13,7 @@ const getBrowserId = () => {
 		browserId = crypto.randomUUID();
 		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
 	}
-	return browserId;
+	return browserId!;
 };
 
 export const NO_NETWORK_ERROR_CODE = 999;
@@ -86,9 +86,8 @@ export async function request(config: {
 		baseURL,
 		headers: headers ?? {},
 	};
-	const browserId = getBrowserId();
-	if (baseURL.startsWith('/') && browserId) {
-		options.headers!['browser-id'] = browserId;
+	if (baseURL.startsWith('/')) {
+		options.headers!['browser-id'] = getBrowserId();
 	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
@@ -209,11 +208,9 @@ export async function streamRequest<T>(
 	separator = STREAM_SEPERATOR,
 ): Promise<void> {
 	const headers: Record<string, string> = {
+		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
 	};
-	if (browserId) {
-		headers['browser-id'] = browserId;
-	}
 	const assistantRequest: RequestInit = {
 		headers,
 		method: 'POST',
