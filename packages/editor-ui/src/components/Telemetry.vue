@@ -74,6 +74,6 @@ function init() {
 </script>
 
 <template>
-	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="true" :src="selfInstallSrc" />
+	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
 	<span v-else v-show="false" />
 </template>
