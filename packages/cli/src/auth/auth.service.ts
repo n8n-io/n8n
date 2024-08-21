@@ -86,16 +86,17 @@ export class AuthService {
 
 	async invalidateToken(req: AuthenticatedRequest) {
 		const token = req.cookies[AUTH_COOKIE_NAME];
-		if (token) {
-			try {
-				const { exp } = this.jwtService.decode(token);
-				if (exp) {
-					await this.invalidAuthTokenRepository.insert({
-						token,
-						expiresAt: new Date(exp * 1000),
-					});
-				}
-			} catch {}
+		if (!token) return;
+		try {
+			const { exp } = this.jwtService.decode(token);
+			if (exp) {
+				await this.invalidAuthTokenRepository.insert({
+					token,
+					expiresAt: new Date(exp * 1000),
+				});
+			}
+		} catch (e) {
+			this.logger.warn('failed to invalidate auth token', { error: (e as Error).message });
 		}
 	}
 
