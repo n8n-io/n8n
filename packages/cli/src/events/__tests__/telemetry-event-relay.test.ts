@@ -863,10 +863,8 @@ describe('TelemetryEventRelay', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
 				answers: {
+					version: 'v4',
 					companySize: '1-10',
-					workArea: 'IT',
-					automationGoal: 'Improve efficiency',
-					valueExpectation: 'Time savings',
 				},
 			};
 
@@ -874,10 +872,8 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User responded to personalization questions', {
 				user_id: 'user123',
+				version: 'v4',
 				company_size: '1-10',
-				work_area: 'IT',
-				automation_goal: 'Improve efficiency',
-				value_expectation: 'Time savings',
 			});
 		});
 
