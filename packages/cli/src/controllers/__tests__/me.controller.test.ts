@@ -381,7 +381,7 @@ describe('MeController', () => {
 				version: 'v4',
 				personalization_survey_n8n_version: '1.0.0',
 				personalization_survey_submitted_at: new Date().toISOString(),
-				[fieldName]: ['<script>alert("XSS")</script>'],
+				[fieldName]: '<script>alert("XSS")</script>',
 			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
