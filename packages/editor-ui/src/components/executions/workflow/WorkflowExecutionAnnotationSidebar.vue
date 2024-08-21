@@ -85,6 +85,7 @@ import AnnotationTagsContainer from '@/components/AnnotationTagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
+import { useToast } from '@/composables/useToast';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -125,6 +126,11 @@ export default defineComponent({
 			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			tagsEventBus: createEventBus(),
@@ -143,7 +149,11 @@ export default defineComponent({
 			// so that vote buttons act as toggle buttons
 			const voteToSet = vote === this.vote ? null : vote;
 
-			await this.executionsStore.annotateExecution(this.activeExecution.id, { vote: voteToSet });
+			try {
+				await this.executionsStore.annotateExecution(this.activeExecution.id, { vote: voteToSet });
+			} catch (e) {
+				this.showError(e, this.$locale.baseText('executionAnnotationView.vote.error'));
+			}
 		},
 		onTagsEditEnable() {
 			this.appliedTagIds = this.tagIds;
@@ -172,7 +182,11 @@ export default defineComponent({
 
 			this.tagsSaving = true;
 
-			await this.executionsStore.annotateExecution(this.activeExecution.id, { tags });
+			try {
+				await this.executionsStore.annotateExecution(this.activeExecution.id, { tags });
+			} catch (e) {
+				this.showError(e, this.$locale.baseText('executionAnnotationView.tag.error'));
+			}
 
 			this.tagsSaving = false;
 			this.isTagsEditEnabled = false;
