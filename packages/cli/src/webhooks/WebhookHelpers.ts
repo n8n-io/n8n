@@ -153,8 +153,9 @@ export async function executeWebhook(
 
 	//if formTrigger node, check if there is a next page, if so set responseMode to formPage to redirect to next page later
 	if (nodeType.description.name === 'formTrigger') {
+		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 		let hasNextPage = false;
-		for (const node of Object.keys(workflow.nodes)) {
+		for (const node of connectedNodes) {
 			if (workflow.nodes[node].type === 'n8n-nodes-base.form') {
 				hasNextPage = true;
 				break;
