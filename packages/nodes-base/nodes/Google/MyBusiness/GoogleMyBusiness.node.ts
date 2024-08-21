@@ -29,6 +29,15 @@ export class GoogleMyBusiness implements INodeType {
 				required: true,
 			},
 		],
+		// ToDo: Test the requests
+		requestDefaults: {
+			baseURL: 'https://mybusiness.googleapis.com/v4',
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+				Authorization: '={{"Bearer " + $credentials.accessToken}}',
+			},
+		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -55,6 +64,7 @@ export class GoogleMyBusiness implements INodeType {
 	};
 
 	methods = {
+		// ToDo: Test the loadOptions functions
 		loadOptions: {
 			async getPosts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
