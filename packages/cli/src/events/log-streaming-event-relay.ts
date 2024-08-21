@@ -112,7 +112,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 		const payload = {
 			...rest,
-			success: runData?.status === 'success',
+			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			workflowId: workflow.id,
 			workflowName: workflow.name,

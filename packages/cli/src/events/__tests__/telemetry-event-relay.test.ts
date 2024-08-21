@@ -13,13 +13,29 @@ import type { SharedWorkflowRepository } from '@/databases/repositories/sharedWo
 import type { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { RelayEventMap } from '@/events/relay-event-map';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { N8N_VERSION } from '@/constants';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
-	const globalConfig = mock<GlobalConfig>({ userManagement: { emails: { mode: 'smtp' } } });
+	const globalConfig = mock<GlobalConfig>({
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+			},
+		},
+		endpoints: {
+			metrics: {
+				enable: true,
+				includeDefaultMetrics: true,
+				includeApiEndpoints: false,
+				includeCacheMetrics: false,
+				includeMessageEventBusMetrics: false,
+			},
+		},
+	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -694,7 +710,7 @@ describe('TelemetryEventRelay', () => {
 				is_manual: false,
 				success: false,
 				user_id: 'user123',
-				version_cli: '1.54.0',
+				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
 			});
 		});
@@ -926,6 +942,13 @@ describe('TelemetryEventRelay', () => {
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
+					metrics: {
+						metrics_enabled: true,
+						metrics_category_default: true,
+						metrics_category_routes: false,
+						metrics_category_cache: false,
+						metrics_category_logs: false,
+					},
 				}),
 			);
 		});
