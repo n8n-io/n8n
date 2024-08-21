@@ -4199,7 +4199,7 @@ export class Pipedrive implements INodeType {
 		let customProperties: ICustomProperties | undefined;
 		if (
 			['get', 'getAll', 'update'].includes(operation) &&
-			['activity', 'deal', 'organization', 'person', 'product'].includes(resource)
+			['activity', 'deal', 'organization', 'person', 'product', 'lead'].includes(resource)
 		) {
 			// Request the custom properties once in the beginning to not query it multiple
 			// times if multiple items get updated
