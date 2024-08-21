@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { getAllReviewsPostReceive, replyToReviewPreSend } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
 	{
@@ -20,7 +21,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{account}}/{{location}}/{{review}}',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["review"]}}',
 					},
 				},
 			},
@@ -30,9 +31,10 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Get many reviews',
 				description: 'Retrieve multiple reviews',
 				routing: {
+					output: { postReceive: [getAllReviewsPostReceive] },
 					request: {
 						method: 'GET',
-						url: '=/{{account}}/{{location}}/reviews',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',
 					},
 				},
 			},
@@ -42,9 +44,10 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Reply to review',
 				description: 'Reply to a review',
 				routing: {
+					send: { preSend: [replyToReviewPreSend] },
 					request: {
 						method: 'PUT',
-						url: '=/{{account}}/{{location}}/{{review}}/reply',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["review"]}}/reply',
 					},
 				},
 			},
@@ -61,9 +64,10 @@ export const reviewFields: INodeProperties[] = [
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'string',
 		default: '',
 		description: 'The Google My Business account name',
+		placeholder: 'accounts/012345678901234567890',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -78,6 +82,7 @@ export const reviewFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The specific location or business associated with the account',
+		placeholder: 'locations/012345678901234567',
 		displayOptions: {
 			show: {
 				operation: ['get'],
@@ -109,9 +114,10 @@ export const reviewFields: INodeProperties[] = [
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'string',
 		default: '',
 		description: 'The Google My Business account name',
+		placeholder: 'accounts/012345678901234567890',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -126,6 +132,7 @@ export const reviewFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The specific location or business associated with the account',
+		placeholder: 'locations/012345678901234567',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -151,8 +158,20 @@ export const reviewFields: INodeProperties[] = [
 			},
 		},
 	},
-
-	// ToDo: Simplify (if it makes sense)
+	{
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether the response to include only the name, URL, and call-to-action button fields',
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['review'],
+			},
+		},
+	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 review:reply                               */
@@ -161,9 +180,10 @@ export const reviewFields: INodeProperties[] = [
 		displayName: 'Account',
 		name: 'account',
 		required: true,
-		type: 'options',
+		type: 'string',
 		default: '',
 		description: 'The Google My Business account name',
+		placeholder: 'accounts/012345678901234567890',
 		displayOptions: {
 			show: {
 				operation: ['reply'],
@@ -178,6 +198,7 @@ export const reviewFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The specific location or business associated with the account',
+		placeholder: 'locations/012345678901234567',
 		displayOptions: {
 			show: {
 				operation: ['reply'],
@@ -217,4 +238,4 @@ export const reviewFields: INodeProperties[] = [
 			alwaysOpenEditWindow: true,
 		},
 	},
-]
+];
