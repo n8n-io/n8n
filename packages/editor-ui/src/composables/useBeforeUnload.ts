@@ -5,6 +5,13 @@ import { computed } from 'vue';
 import { VIEWS } from '@/constants';
 import type { useRoute } from 'vue-router';
 
+/**
+ * Composable to handle the beforeunload event in canvas views.
+ *
+ * This hook will prevent closing the tab and prompt the user if the ui state is dirty
+ * (workflow has changes) and the user tries to leave the page.
+ */
+
 export function useBeforeUnload({ route }: { route: ReturnType<typeof useRoute> }) {
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
