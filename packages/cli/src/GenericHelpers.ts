@@ -9,6 +9,7 @@ import type {
 	UserUpdatePayload,
 } from '@/requests';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
+import type { PersonalizationSurveyAnswersV4 } from './controllers/survey-answers.dto';
 
 export async function validateEntity(
 	entity:
@@ -18,7 +19,8 @@ export async function validateEntity(
 		| User
 		| UserUpdatePayload
 		| UserRoleChangePayload
-		| UserSettingsUpdatePayload,
+		| UserSettingsUpdatePayload
+		| PersonalizationSurveyAnswersV4,
 ): Promise<void> {
 	const errors = await validate(entity);
 

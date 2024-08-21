@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
-import { randomString } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -15,6 +14,7 @@ import { addApiKey, createOwner, createUser, createUserShell } from './shared/db
 import type { SuperAgentTest } from './shared/types';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
@@ -392,16 +392,23 @@ describe('Owner', () => {
 	});
 });
 
-const SURVEY = [
-	'codingSkill',
-	'companyIndustry',
-	'companySize',
-	'otherCompanyIndustry',
-	'otherWorkArea',
-	'workArea',
-].reduce<Record<string, string>>((acc, cur) => {
-	return (acc[cur] = randomString(2, 10)), acc;
-}, {});
+const SURVEY: IPersonalizationSurveyAnswersV4 = {
+	version: 'v4',
+	automationGoalDevops: ['test'],
+	automationGoalDevopsOther: 'test',
+	companyIndustryExtended: ['test'],
+	otherCompanyIndustryExtended: ['test'],
+	companySize: 'test',
+	companyType: 'test',
+	automationGoalSm: ['test'],
+	automationGoalSmOther: 'test',
+	usageModes: ['test'],
+	email: 'test',
+	role: 'test',
+	roleOther: 'test',
+	reportedSource: 'test',
+	reportedSourceOther: 'test',
+};
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{

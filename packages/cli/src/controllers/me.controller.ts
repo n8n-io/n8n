@@ -194,7 +194,7 @@ export class MeController {
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
 		const { body: personalizationAnswers } = req;
 
-		if (!personalizationAnswers || Object.keys(personalizationAnswers).length === 0) {
+		if (!personalizationAnswers) {
 			this.logger.debug(
 				'Request to store user personalization survey failed because of empty payload',
 				{
@@ -210,10 +210,12 @@ export class MeController {
 			{ excludeExtraneousValues: true },
 		);
 
+		await validateEntity(validatedAnswers);
+
 		await this.userRepository.save(
 			{
 				id: req.user.id,
-				validatedAnswers,
+				personalizationAnswers,
 			},
 			{ transaction: false },
 		);
