@@ -128,7 +128,7 @@ export default defineComponent({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		isTriggerNode(): boolean {
 			if (!this.node) {

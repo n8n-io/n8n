@@ -13,7 +13,7 @@
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
 						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
 					</template>
@@ -31,14 +31,14 @@
 							</span>
 						</div>
 					</a>
-					<RouterLink
+					<router-link
 						v-else-if="option.to"
 						:to="option.to"
 						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-					</RouterLink>
+					</router-link>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
@@ -48,7 +48,7 @@
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
@@ -110,13 +110,13 @@ onUnmounted(() => {
 	resizeObserver?.disconnect();
 });
 
-const $emit = defineEmits<{
-	(event: 'tooltipClick', tab: string, e: MouseEvent): void;
-	(event: 'update:modelValue', tab: string): void;
+const emit = defineEmits<{
+	tooltipClick: [tab: string, e: MouseEvent];
+	'update:modelValue': [tab: string];
 }>();
 
-const handleTooltipClick = (tab: string, event: MouseEvent) => $emit('tooltipClick', tab, event);
-const handleTabClick = (tab: string) => $emit('update:modelValue', tab);
+const handleTooltipClick = (tab: string, event: MouseEvent) => emit('tooltipClick', tab, event);
+const handleTabClick = (tab: string) => emit('update:modelValue', tab);
 
 const scroll = (left: number) => {
 	const container = tabs.value;

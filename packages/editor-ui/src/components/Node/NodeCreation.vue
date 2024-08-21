@@ -18,7 +18,7 @@ type Props = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const NodeCreator = defineAsyncComponent(
+const LazyNodeCreator = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
 
@@ -27,8 +27,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'addNodes', value: AddedNodesAndConnections): void;
-	(event: 'toggleNodeCreator', value: ToggleNodeCreatorOptions): void;
+	addNodes: [value: AddedNodesAndConnections];
+	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 }>();
 
 const state = reactive({
@@ -112,7 +112,7 @@ function nodeTypeSelected(nodeTypes: string[]) {
 					placement="left"
 				>
 					<n8n-icon-button
-						size="xlarge"
+						size="large"
 						icon="plus"
 						type="tertiary"
 						:class="$style.nodeCreatorPlus"
@@ -135,7 +135,7 @@ function nodeTypeSelected(nodeTypes: string[]) {
 			</div>
 		</div>
 		<Suspense>
-			<NodeCreator
+			<LazyNodeCreator
 				:active="createNodeActive"
 				@node-type-selected="nodeTypeSelected"
 				@close-node-creator="closeNodeCreator"
@@ -173,24 +173,11 @@ function nodeTypeSelected(nodeTypes: string[]) {
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
-	top: var(--spacing-l);
-	right: var(--spacing-l);
+	top: var(--spacing-s);
+	right: var(--spacing-s);
 	pointer-events: all !important;
-
-	button {
-		border-color: var(--color-button-node-creator-border-font);
-		color: var(--color-button-node-creator-border-font);
-
-		&:hover {
-			color: var(--color-button-node-creator-hover-font);
-			border-color: var(--color-button-node-creator-hover-border);
-			background: var(--color-button-node-creator-background);
-		}
-	}
 }
 .nodeCreatorPlus {
-	border-width: 2px;
-	border-radius: var(--border-radius-base);
 	width: 36px;
 	height: 36px;
 }

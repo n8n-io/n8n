@@ -12,8 +12,13 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
+	const maxPinnedDataSize = 16384;
+
 	beforeEach(() => {
 		workflowPage.actions.visit();
+		cy.window().then((win) => {
+			win.maxPinnedDataSize = maxPinnedDataSize;
+		});
 	});
 
 	it('Should be able to pin node output', () => {
@@ -139,7 +144,7 @@ describe('Data pinning', () => {
 
 		ndv.actions.pastePinnedData([
 			{
-				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE') as number),
+				test: '1'.repeat(maxPinnedDataSize),
 			},
 		]);
 		errorToast().should('contain', 'Workflow has reached the maximum allowed pinned data size');

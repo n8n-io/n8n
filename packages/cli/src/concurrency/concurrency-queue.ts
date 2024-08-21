@@ -1,8 +1,14 @@
 import { Service } from 'typedi';
-import { EventEmitter } from 'node:events';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type ConcurrencyEvents = {
+	'execution-throttled': { executionId: string };
+	'execution-released': string;
+	'concurrency-check': { capacity: number };
+};
 
 @Service()
-export class ConcurrencyQueue extends EventEmitter {
+export class ConcurrencyQueue extends TypedEmitter<ConcurrencyEvents> {
 	private readonly queue: Array<{
 		executionId: string;
 		resolve: () => void;
@@ -15,12 +21,18 @@ export class ConcurrencyQueue extends EventEmitter {
 	async enqueue(executionId: string) {
 		this.capacity--;
 
+		this.debouncedEmit('concurrency-check', { capacity: this.capacity });
+
 		if (this.capacity < 0) {
-			this.emit('execution-throttled', { executionId, capacity: this.capacity });
+			this.emit('execution-throttled', { executionId });
 
 			// eslint-disable-next-line @typescript-eslint/return-await
 			return new Promise<void>((resolve) => this.queue.push({ executionId, resolve }));
 		}
+	}
+
+	get currentCapacity() {
+		return this.capacity;
 	}
 
 	dequeue() {
@@ -42,7 +54,7 @@ export class ConcurrencyQueue extends EventEmitter {
 	}
 
 	getAll() {
-		return new Set(...this.queue.map((item) => item.executionId));
+		return new Set(this.queue.map((item) => item.executionId));
 	}
 
 	private resolveNext() {

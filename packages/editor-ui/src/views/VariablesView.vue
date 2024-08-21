@@ -17,7 +17,7 @@ import VariablesRow from '@/components/VariablesRow.vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import type { DatatableColumn, EnvironmentVariable } from '@/Interface';
 import { uid } from 'n8n-design-system/utils';
-import { getVariablesPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import type { BaseTextKey } from '@/plugins/i18n';
 
 const settingsStore = useSettingsStore();
@@ -38,18 +38,21 @@ const TEMPORARY_VARIABLE_UID_BASE = '@tmpvar';
 
 const allVariables = ref<EnvironmentVariable[]>([]);
 const editMode = ref<Record<string, boolean>>({});
+const loading = ref(false);
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
+const permissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 
-const isFeatureEnabled = computed(() =>
-	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables],
 );
 
 const variablesToResources = computed((): IResource[] =>
 	allVariables.value.map((v) => ({ id: v.id, name: v.key, value: v.value })),
 );
 
-const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.create);
+const canCreateVariables = computed(() => isFeatureEnabled.value && permissions.value.create);
 
 const datatableColumns = computed<DatatableColumn[]>(() => [
 	{
@@ -118,19 +121,25 @@ function resetNewVariablesList() {
 	newlyAddedVariableIds.value = [];
 }
 
-const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => {
-	return {
-		id: data.id,
-		key: data.name,
-		value: 'value' in data ? data.value : '',
-	};
-};
+const resourceToEnvironmentVariable = (data: IResource): EnvironmentVariable => ({
+	id: data.id,
+	key: data.name,
+	value: 'value' in data ? data.value ?? '' : '',
+});
+
+const environmentVariableToResource = (data: EnvironmentVariable): IResource => ({
+	id: data.id,
+	name: data.key,
+	value: 'value' in data ? data.value : '',
+});
 
 async function initialize() {
 	if (!isFeatureEnabled.value) return;
+	loading.value = true;
 	await environmentsStore.fetchAllVariables();
 
 	allVariables.value = [...environmentsStore.variables];
+	loading.value = false;
 }
 
 function addTemporaryVariable() {
@@ -159,35 +168,33 @@ function addTemporaryVariable() {
 }
 
 async function saveVariable(data: IResource) {
-	let updatedVariable: EnvironmentVariable;
 	const variable = resourceToEnvironmentVariable(data);
-
 	try {
-		if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
+		if (typeof variable.id === 'string' && variable.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 			const { id, ...rest } = variable;
-			updatedVariable = await environmentsStore.createVariable(rest);
+			const updatedVariable = await environmentsStore.createVariable(rest);
 			allVariables.value.unshift(updatedVariable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			newlyAddedVariableIds.value.unshift(updatedVariable.id);
 		} else {
-			updatedVariable = await environmentsStore.updateVariable(variable);
+			const updatedVariable = await environmentsStore.updateVariable(variable);
 			allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 			allVariables.value.push(updatedVariable);
-			toggleEditing(updatedVariable);
+			toggleEditing(environmentVariableToResource(updatedVariable));
 		}
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.save'));
 	}
 }
 
-function toggleEditing(data: EnvironmentVariable) {
+function toggleEditing(data: IResource) {
 	editMode.value = {
 		...editMode.value,
 		[data.id]: !editMode.value[data.id],
 	};
 }
 
-function cancelEditing(data: EnvironmentVariable) {
+function cancelEditing(data: IResource) {
 	if (typeof data.id === 'string' && data.id.startsWith(TEMPORARY_VARIABLE_UID_BASE)) {
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} else {
@@ -195,10 +202,13 @@ function cancelEditing(data: EnvironmentVariable) {
 	}
 }
 
-async function deleteVariable(data: EnvironmentVariable) {
+async function deleteVariable(data: IResource) {
+	const variable = resourceToEnvironmentVariable(data);
 	try {
 		const confirmed = await message.confirm(
-			i18n.baseText('variables.modals.deleteConfirm.message', { interpolate: { name: data.key } }),
+			i18n.baseText('variables.modals.deleteConfirm.message', {
+				interpolate: { name: variable.key },
+			}),
 			i18n.baseText('variables.modals.deleteConfirm.title'),
 			{
 				confirmButtonText: i18n.baseText('variables.modals.deleteConfirm.confirmButton'),
@@ -210,7 +220,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 			return;
 		}
 
-		await environmentsStore.deleteVariable(data);
+		await environmentsStore.deleteVariable(variable);
 		allVariables.value = allVariables.value.filter((variable) => variable.id !== data.id);
 	} catch (error) {
 		showError(error, i18n.baseText('variables.errors.delete'));
@@ -255,6 +265,7 @@ onBeforeUnmount(() => {
 		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
+		:loading="loading"
 		@sort="resetNewVariablesList"
 		@click:add="addTemporaryVariable"
 	>

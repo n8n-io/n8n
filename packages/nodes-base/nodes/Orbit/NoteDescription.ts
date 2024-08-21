@@ -48,7 +48,7 @@ export const noteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -96,7 +96,7 @@ export const noteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {
@@ -174,7 +174,7 @@ export const noteFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
-		default: '',
+		default: 'Deprecated',
 		required: true,
 		displayOptions: {
 			show: {

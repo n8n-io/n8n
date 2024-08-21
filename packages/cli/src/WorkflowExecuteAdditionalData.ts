@@ -52,9 +52,8 @@ import { Push } from '@/push';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { EventsService } from '@/services/events.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';
 import {
@@ -71,9 +70,9 @@ import { WorkflowRepository } from './databases/repositories/workflow.repository
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { EventRelay } from './eventbus/event-relay.service';
-
-const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+import { EventService } from './events/event.service';
+import { GlobalConfig } from '@n8n/config';
+import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -176,6 +175,7 @@ export function executeErrorWorkflow(
 			};
 		}
 
+		const { errorTriggerType } = Container.get(GlobalConfig).nodes;
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		const { errorWorkflow } = workflowData.settings ?? {};
@@ -220,7 +220,7 @@ export function executeErrorWorkflow(
 		} else if (
 			mode !== 'error' &&
 			workflowId !== undefined &&
-			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
+			workflowData.nodes.some((node) => node.type === errorTriggerType)
 		) {
 			logger.verbose('Start internal error workflow', { executionId, workflowId });
 			void Container.get(OwnershipService)
@@ -393,21 +393,21 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const eventsService = Container.get(EventsService);
-	const eventRelay = Container.get(EventRelay);
+	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
+	const eventService = Container.get(EventService);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-pre-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-post-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [],
@@ -524,13 +524,16 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
+						fullRunData,
+					});
 				}
 			},
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
@@ -544,29 +547,28 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
-	const internalHooks = Container.get(InternalHooks);
-	const eventsService = Container.get(EventsService);
-	const eventRelay = Container.get(EventRelay);
+	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
+	const eventService = Container.get(EventService);
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-pre-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-pre-execute', { executionId, workflow, nodeName });
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				eventRelay.emit('node-post-execute', { executionId, workflow, nodeName });
+				eventService.emit('node-post-execute', { executionId, workflow, nodeName });
 			},
 		],
 		workflowExecuteBefore: [
 			async function (): Promise<void> {
 				const { executionId, workflowData } = this;
 
-				eventRelay.emit('workflow-pre-execute', { executionId, data: workflowData });
+				eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
 			},
 		],
 		workflowExecuteAfter: [
@@ -631,19 +633,19 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
+					workflowStatisticsService.emit('workflowExecutionCompleted', {
+						workflowData: this.workflowData,
+						fullRunData,
+					});
 				}
 			},
 			async function (this: WorkflowHooks, runData: IRun): Promise<void> {
 				const { executionId, workflowData: workflow } = this;
 
-				void internalHooks.onWorkflowPostExecute(executionId, workflow, runData);
-				eventRelay.emit('workflow-post-execute', {
-					workflowId: workflow.id,
-					workflowName: workflow.name,
+				eventService.emit('workflow-post-execute', {
+					workflow,
 					executionId,
-					success: runData.status === 'success',
-					isManual: runData.mode === 'manual',
+					runData,
 				});
 			},
 			async function (this: WorkflowHooks, fullRunData: IRun) {
@@ -667,7 +669,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 		],
 		nodeFetchedData: [
 			async (workflowId: string, node: INode) => {
-				eventsService.emit('nodeFetchedData', workflowId, node);
+				workflowStatisticsService.emit('nodeFetchedData', { workflowId, node });
 			},
 		],
 	};
@@ -715,7 +717,6 @@ export async function getRunData(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: mode,
 		executionData: runExecutionData,
-		// @ts-ignore
 		workflowData,
 	};
 
@@ -779,13 +780,12 @@ async function executeWorkflow(
 		parentCallbackManager?: CallbackManager;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
-	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
 
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
-	const eventRelay = Container.get(EventRelay);
+	const eventService = Container.get(EventService);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -813,12 +813,12 @@ async function executeWorkflow(
 		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
 	}
 
-	Container.get(EventRelay).emit('workflow-pre-execute', { executionId, data: runData });
+	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
 	let data;
 	try {
 		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
-		await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
+		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
@@ -925,14 +925,11 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
-	eventRelay.emit('workflow-post-execute', {
-		workflowId: workflowData.id,
-		workflowName: workflowData.name,
+	eventService.emit('workflow-post-execute', {
+		workflow: workflowData,
 		executionId,
-		success: data.status === 'success',
-		isManual: data.mode === 'manual',
 		userId: additionalData.userId,
+		runData: data,
 	});
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
@@ -993,23 +990,19 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
-	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
-
-	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
-	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
+	const globalConfig = Container.get(GlobalConfig);
 
 	const variables = await WorkflowHelpers.getVariables();
 
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
-		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
+		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
 		instanceBaseUrl: urlBaseWebhook,
-		formWaitingBaseUrl,
-		webhookBaseUrl,
-		webhookWaitingBaseUrl,
-		webhookTestBaseUrl,
+		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
+		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
+		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
+		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

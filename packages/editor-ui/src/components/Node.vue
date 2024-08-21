@@ -217,7 +217,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { type ContextMenuTarget, useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/composables/useContextMenu';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
@@ -494,6 +494,9 @@ export default defineComponent({
 					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
+				const mainInputs = inputTypes.filter((output) => output === NodeConnectionType.Main);
+				styles['--node-main-input-count'] = mainInputs.length;
+
 				let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
 				if (this.workflow.nodes[this.node.name]) {
 					outputs = NodeHelpers.getNodeOutputs(this.workflow, this.node, this.nodeType);
@@ -589,7 +592,7 @@ export default defineComponent({
 			return undefined;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		nodeStyle() {
 			const returnStyles: {
@@ -657,8 +660,8 @@ export default defineComponent({
 		isContextMenuOpen(): boolean {
 			return (
 				this.contextMenu.isOpen.value &&
-				this.contextMenu.target.value.source === 'node-button' &&
-				this.contextMenu.target.value.node.name === this.data?.name
+				this.contextMenu.target.value?.source === 'node-button' &&
+				this.contextMenu.target.value.nodeId === this.data?.id
 			);
 		},
 		iconNodeType() {
@@ -858,9 +861,9 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
-		openContextMenu(event: MouseEvent, source: ContextMenuTarget['source']) {
+		openContextMenu(event: MouseEvent, source: 'node-button' | 'node-right-click') {
 			if (this.data) {
-				this.contextMenu.open(event, { source, node: this.data });
+				this.contextMenu.open(event, { source, nodeId: this.data.id });
 			}
 		},
 	},
@@ -879,7 +882,10 @@ export default defineComponent({
 		Increase height by 20px for each output beyond the 4th one.
 		max(0, var(--node-main-output-count, 1) - 4) ensures that we only start counting after the 4th output.
 	*/
-	--node-height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px);
+	--node-height: max(
+		calc(100px + max(0, var(--node-main-input-count, 1) - 3) * 30px),
+		calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px)
+	);
 
 	--configurable-node-min-input-count: 4;
 	--configurable-node-input-width: 65px;

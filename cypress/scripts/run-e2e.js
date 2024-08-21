@@ -13,7 +13,6 @@ function runTests(options) {
 	process.env.N8N_USER_FOLDER = userFolder;
 	process.env.E2E_TESTS = 'true';
 	process.env.NODE_OPTIONS = '--dns-result-order=ipv4first';
-	process.env.VUE_APP_MAX_PINNED_DATA_SIZE = `${16 * 1024}`;
 
 	if (options.customEnv) {
 		Object.keys(options.customEnv).forEach((key) => {

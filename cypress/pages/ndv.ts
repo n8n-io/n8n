@@ -24,9 +24,11 @@ export class NDV extends BasePage {
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		aiOutputModeToggle: () => cy.getByTestId('ai-output-mode-select'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
+		inputLabel: () => cy.getByTestId('input-label'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableHeaderByText: (text: string) => this.getters.outputTableHeaders().contains(text),
@@ -76,6 +78,7 @@ export class NDV extends BasePage {
 		resourceLocatorDropdown: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="resource-locator-dropdown"]'),
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
+		resourceLocatorAddCredentials: () => this.getters.resourceLocatorErrorMessage().find('a'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceLocatorSearch: (paramName: string) =>
@@ -131,6 +134,8 @@ export class NDV extends BasePage {
 		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 		nodeRunErrorMessage: () => cy.getByTestId('node-error-message'),
 		nodeRunErrorDescription: () => cy.getByTestId('node-error-description'),
+		fixedCollectionParameter: (paramName: string) =>
+			cy.getByTestId(`fixed-collection-${paramName}`),
 		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
 		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
 	};
@@ -170,7 +175,7 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().invoke('text', '').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},
@@ -200,9 +205,9 @@ export class NDV extends BasePage {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
 			cy.draganddrop(draggable, droppable);
 		},
-		mapToParameter: (parameterName: string) => {
+		mapToParameter: (parameterName: string, position?: 'top' | 'center' | 'bottom') => {
 			const droppable = `[data-test-id="parameter-input-${parameterName}"]`;
-			cy.draganddrop('', droppable);
+			cy.draganddrop('', droppable, { position });
 		},
 		switchInputMode: (type: 'Schema' | 'Table' | 'JSON' | 'Binary') => {
 			this.getters.inputDisplayMode().find('label').contains(type).click({ force: true });
@@ -306,6 +311,9 @@ export class NDV extends BasePage {
 		},
 		expressionSelectPrevItem: () => {
 			this.getters.inlineExpressionEditorItemPrevButton().click();
+		},
+		addItemToFixedCollection: (paramName: string) => {
+			this.getters.fixedCollectionParameter(paramName).getByTestId('fixed-collection-add').click();
 		},
 	};
 }

@@ -12,6 +12,10 @@ interface SigninPayload {
 	password: string;
 }
 
+interface DragAndDropOptions {
+	position: 'top' | 'center' | 'bottom';
+}
+
 declare global {
 	namespace Cypress {
 		interface SuiteConfigOverrides {
@@ -56,7 +60,11 @@ declare global {
 				target: [number, number],
 				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
 			): void;
-			draganddrop(draggableSelector: string, droppableSelector: string): void;
+			draganddrop(
+				draggableSelector: string,
+				droppableSelector: string,
+				options?: Partial<DragAndDropOptions>,
+			): void;
 			push(type: string, data: unknown): void;
 			shouldNotHaveConsoleErrors(): void;
 			window(): Chainable<
@@ -64,6 +72,7 @@ declare global {
 					innerWidth: number;
 					innerHeight: number;
 					preventNodeViewBeforeUnload?: boolean;
+					maxPinnedDataSize?: number;
 					featureFlags: {
 						override: (feature: string, value: unknown) => void;
 					};

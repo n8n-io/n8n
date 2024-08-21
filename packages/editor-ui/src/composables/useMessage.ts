@@ -41,12 +41,12 @@ export function useMessage() {
 		config?: ElMessageBoxOptions,
 	) {
 		const resolvedConfig = {
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
 			cancelButtonClass: 'btn--cancel',
 			confirmButtonClass: 'btn--confirm',
 			distinguishCancelAndClose: true,
 			showClose: config?.showClose ?? false,
 			closeOnClickModal: false,
+			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
 		};
 
 		if (typeof configOrTitle === 'string') {

@@ -87,6 +87,8 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_ADMIN]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_EDITOR]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT]: false,
+		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {
@@ -114,6 +116,8 @@ export class E2EController {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		license.getFeatureValue<NumericLicenseFeature> = (feature: NumericLicenseFeature) =>
 			this.numericFeatures[feature] ?? UNLIMITED_LICENSE_QUOTA;
+
+		license.getPlanName = () => 'Enterprise';
 	}
 
 	@Post('/reset', { skipAuth: true })

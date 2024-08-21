@@ -1,10 +1,11 @@
 import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
-import config from '@/config';
+
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { createSchemaBuilder } from '@db/dsl';
@@ -89,10 +90,11 @@ function parseJson<T>(data: string | T): T {
 	return typeof data === 'string' ? jsonParse<T>(data) : data;
 }
 
-const dbType = config.getEnv('database.type');
+const globalConfig = Container.get(GlobalConfig);
+const dbType = globalConfig.database.type;
 const isMysql = ['mariadb', 'mysqldb'].includes(dbType);
-const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
-const tablePrefix = config.getEnv('database.tablePrefix');
+const dbName = globalConfig.database[dbType === 'mariadb' ? 'mysqldb' : dbType].database;
+const tablePrefix = globalConfig.database.tablePrefix;
 
 const createContext = (queryRunner: QueryRunner, migration: Migration): MigrationContext => ({
 	logger: Container.get(Logger),

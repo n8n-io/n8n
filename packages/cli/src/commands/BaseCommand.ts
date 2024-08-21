@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Container } from 'typedi';
-import { Command } from '@oclif/core';
-import { ExitError } from '@oclif/core/lib/errors';
+import { Command, Errors } from '@oclif/core';
+import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
@@ -15,14 +15,15 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { N8nInstanceType } from '@/Interfaces';
-import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 import { ShutdownService } from '@/shutdown/Shutdown.service';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -43,10 +44,15 @@ export abstract class BaseCommand extends Command {
 
 	protected license: License;
 
+	protected readonly globalConfig = Container.get(GlobalConfig);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
 	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
+
+	/** Whether to init community packages (if enabled) */
+	protected needsCommunityPackages = false;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -78,7 +84,7 @@ export abstract class BaseCommand extends Command {
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		const dbType = config.getEnv('database.type');
+		const { type: dbType } = this.globalConfig.database;
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
@@ -108,8 +114,15 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		const { communityPackages } = this.globalConfig.nodes;
+		if (communityPackages.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).checkForMissingPackages();
+		}
+
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();
+		await Container.get(TelemetryEventRelay).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
@@ -196,18 +209,13 @@ export abstract class BaseCommand extends Command {
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
-		const host = config.getEnv('externalStorage.s3.host');
+		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
 
 		if (host === '') {
 			throw new ApplicationError(
 				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
 			);
 		}
-
-		const bucket = {
-			name: config.getEnv('externalStorage.s3.bucket.name'),
-			region: config.getEnv('externalStorage.s3.bucket.region'),
-		};
 
 		if (bucket.name === '') {
 			throw new ApplicationError(
@@ -220,11 +228,6 @@ export abstract class BaseCommand extends Command {
 				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
 			);
 		}
-
-		const credentials = {
-			accessKey: config.getEnv('externalStorage.s3.credentials.accessKey'),
-			accessSecret: config.getEnv('externalStorage.s3.credentials.accessSecret'),
-		};
 
 		if (credentials.accessKey === '') {
 			throw new ApplicationError(
@@ -308,11 +311,11 @@ export abstract class BaseCommand extends Command {
 			await sleep(100); // give any in-flight query some time to finish
 			await Db.close();
 		}
-		const exitCode = error instanceof ExitError ? error.oclif.exit : error ? 1 : 0;
+		const exitCode = error instanceof Errors.ExitError ? error.oclif.exit : error ? 1 : 0;
 		this.exit(exitCode);
 	}
 
-	private onTerminationSignal(signal: string) {
+	protected onTerminationSignal(signal: string) {
 		return async () => {
 			if (this.shutdownService.isShuttingDown()) {
 				this.logger.info(`Received ${signal}. Already shutting down...`);
@@ -330,7 +333,9 @@ export abstract class BaseCommand extends Command {
 			this.logger.info(`Received ${signal}. Shutting down...`);
 			this.shutdownService.shutdown();
 
-			await Promise.all([this.stopProcess(), this.shutdownService.waitForShutdown()]);
+			await this.shutdownService.waitForShutdown();
+
+			await this.stopProcess();
 
 			clearTimeout(forceShutdownTimer);
 		};

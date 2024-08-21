@@ -6,7 +6,13 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, sleep } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createDeferredPromise,
+	ExecutionCancelledError,
+	sleep,
+} from 'n8n-workflow';
+import { strict as assert } from 'node:assert';
 
 import type {
 	ExecutionPayload,
@@ -35,6 +41,10 @@ export class ActiveExecutions {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
+
+	has(executionId: string) {
+		return this.activeExecutions[executionId] !== undefined;
+	}
 
 	/**
 	 * Add a new active execution
@@ -65,9 +75,7 @@ export class ActiveExecutions {
 			}
 
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
-			if (executionId === undefined) {
-				throw new ApplicationError('There was an issue assigning an execution id to the execution');
-			}
+			assert(executionId);
 
 			await this.concurrencyControl.throttle({ mode, executionId });
 			executionStatus = 'running';
@@ -134,16 +142,13 @@ export class ActiveExecutions {
 			promise.resolve(fullRunData);
 		}
 
-		// Remove from the list of active executions
-		delete this.activeExecutions[executionId];
-
-		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
+		this.postExecuteCleanup(executionId);
 	}
 
 	/**
 	 * Forces an execution to stop
 	 */
-	async stopExecution(executionId: string): Promise<IRun | undefined> {
+	stopExecution(executionId: string): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
@@ -152,7 +157,25 @@ export class ActiveExecutions {
 
 		execution.workflowExecution!.cancel();
 
-		return await this.getPostExecutePromise(executionId);
+		// Reject all the waiting promises
+		const reason = new ExecutionCancelledError(executionId);
+		for (const promise of execution.postExecutePromises) {
+			promise.reject(reason);
+		}
+
+		this.postExecuteCleanup(executionId);
+	}
+
+	private postExecuteCleanup(executionId: string) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
+			return;
+		}
+
+		// Remove from the list of active executions
+		delete this.activeExecutions[executionId];
+
+		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
 	}
 
 	/**
@@ -200,16 +223,18 @@ export class ActiveExecutions {
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
 
+		if (config.getEnv('executions.mode') === 'regular') {
+			// removal of active executions will no longer release capacity back,
+			// so that throttled executions cannot resume during shutdown
+			this.concurrencyControl.disable();
+		}
+
 		if (cancelAll) {
 			if (config.getEnv('executions.mode') === 'regular') {
 				await this.concurrencyControl.removeAll(this.activeExecutions);
 			}
 
-			const stopPromises = executionIds.map(
-				async (executionId) => await this.stopExecution(executionId),
-			);
-
-			await Promise.allSettled(stopPromises);
+			executionIds.forEach((executionId) => this.stopExecution(executionId));
 		}
 
 		let count = 0;

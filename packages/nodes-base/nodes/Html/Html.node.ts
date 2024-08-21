@@ -274,7 +274,7 @@ export class Html implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -296,7 +296,7 @@ export class Html implements INodeType {
 						type: 'boolean',
 						default: true,
 						description:
-							'Whether to remove remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space',
+							'Whether to remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space',
 					},
 				],
 			},
@@ -307,7 +307,7 @@ export class Html implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

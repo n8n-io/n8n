@@ -16,6 +16,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from './useTelemetry';
 import { useRootStore } from '@/stores/root.store';
 import { isFullExecutionResponse } from '@/utils/typeGuards';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
@@ -28,8 +29,8 @@ export const useExecutionDebugging = () => {
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
-	const isDebugEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+	const isDebugEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor],
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
@@ -61,7 +62,7 @@ export const useExecutionDebugging = () => {
 				h(
 					'ul',
 					{ class: 'mt-l ml-l' },
-					matchingPinnedNodeNames.map((name) => h('li', name)),
+					matchingPinnedNodeNames.map((name) => h('li', sanitizeHtml(name))),
 				),
 			]);
 

@@ -35,6 +35,9 @@ import {
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
 import { License } from '@/License';
+import type { EventMessageExecutionOptions } from '../EventMessageClasses/EventMessageExecution';
+import { EventMessageExecution } from '../EventMessageClasses/EventMessageExecution';
+import { GlobalConfig } from '@n8n/config';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -49,6 +52,8 @@ export interface MessageEventBusInitializeOptions {
 }
 
 @Service()
+// TODO: Convert to TypedEventEmitter
+// eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
@@ -68,6 +73,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly recoveryService: ExecutionRecoveryService,
 		private readonly license: License,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		super();
 	}
@@ -107,7 +113,7 @@ export class MessageEventBus extends EventEmitter {
 		if (options?.workerId) {
 			// only add 'worker' to log file name since the ID changes on every start and we
 			// would not be able to recover the log files from the previous run not knowing it
-			const logBaseName = config.getEnv('eventBus.logWriter.logBaseName') + '-worker';
+			const logBaseName = this.globalConfig.eventBus.logWriter.logBaseName + '-worker';
 			this.logWriter = await MessageEventBusLogWriter.getInstance({
 				logBaseName,
 			});
@@ -166,7 +172,7 @@ export class MessageEventBus extends EventEmitter {
 					}
 				}
 				const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
-				if (recoveryAlreadyAttempted || config.getEnv('eventBus.crashRecoveryMode') === 'simple') {
+				if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
 					await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
 					// if we end up here, it means that the previous recovery process did not finish
 					// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
@@ -186,13 +192,13 @@ export class MessageEventBus extends EventEmitter {
 			}
 		}
 		// if configured, run this test every n ms
-		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
+		if (this.globalConfig.eventBus.checkUnsentInterval > 0) {
 			if (this.pushIntervalTimer) {
 				clearInterval(this.pushIntervalTimer);
 			}
 			this.pushIntervalTimer = setInterval(async () => {
 				await this.trySendingUnsent();
-			}, config.getEnv('eventBus.checkUnsentInterval'));
+			}, this.globalConfig.eventBus.checkUnsentInterval);
 		}
 
 		this.logger.debug('MessageEventBus initialized');
@@ -307,7 +313,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		this.emit('metrics.messageEventBus.Event', msg);
+		this.emit('metrics.eventBus.event', msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
@@ -396,5 +402,9 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendAiNodeEvent(options: EventMessageAiNodeOptions) {
 		await this.send(new EventMessageAiNode(options));
+	}
+
+	async sendExecutionEvent(options: EventMessageExecutionOptions) {
+		await this.send(new EventMessageExecution(options));
 	}
 }

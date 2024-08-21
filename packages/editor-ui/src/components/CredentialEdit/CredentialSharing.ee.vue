@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<n8n-action-box
+			<N8nActionBox
 				:heading="
 					$locale.baseText(
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
@@ -21,52 +21,28 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip
-				v-if="!credentialPermissions.share && !isHomeTeamProject"
-				:bold="false"
-				class="mb-s"
-			>
+			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
+			</N8nInfoTip>
+			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
+			</N8nInfoTip>
+			<N8nInfoTip v-else :bold="false" class="mb-s">
 				{{
-					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
+					$locale.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
-			</n8n-info-tip>
-			<n8n-info-tip
-				v-if="credentialPermissions.share && !isHomeTeamProject"
-				:bold="false"
-				class="mb-s"
-			>
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-			</n8n-info-tip>
+			</N8nInfoTip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projects"
 				:roles="credentialRoles"
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
-				:static="isHomeTeamProject || !credentialPermissions.share"
-				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+				:static="!credentialPermissions.share"
+				:placeholder="sharingSelectPlaceholder"
 			/>
-			<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-				<i18n-t keypath="credentials.shareModal.info.members" tag="span">
-					<template #projectName>
-						{{ homeProject?.name }}
-					</template>
-					<template #members>
-						<strong>
-							{{
-								$locale.baseText('credentials.shareModal.info.members.number', {
-									interpolate: {
-										number: String(numberOfMembersInHomeTeamProject),
-									},
-									adjustToNumber: numberOfMembersInHomeTeamProject,
-								})
-							}}
-						</strong>
-					</template>
-				</i18n-t>
-			</n8n-info-tip>
 		</div>
 	</div>
 </template>
@@ -89,14 +65,14 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature } from '@/constants';
 import ProjectSharing from '@/components/Projects/ProjectSharing.vue';
 import { useProjectsStore } from '@/stores/projects.store';
-import type { ProjectListItem, ProjectSharingData, Project } from '@/types/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/types/projects.types';
 import { ProjectTypes } from '@/types/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { PermissionsMap } from '@/permissions';
-import type { CredentialScope } from '@n8n/permissions';
+import type { PermissionsRecord } from '@/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 import { useRolesStore } from '@/stores/roles.store';
 import type { RoleMap } from '@/types/roles.types';
+import { splitName } from '@/utils/projects.utils';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -117,7 +93,7 @@ export default defineComponent({
 			required: true,
 		},
 		credentialPermissions: {
-			type: Object as PropType<PermissionsMap<CredentialScope>>,
+			type: Object as PropType<PermissionsRecord['credential']>,
 			required: true,
 		},
 		modalBus: {
@@ -134,7 +110,6 @@ export default defineComponent({
 	data() {
 		return {
 			sharedWithProjects: [...(this.credential?.sharedWithProjects ?? [])] as ProjectSharingData[],
-			teamProject: null as Project | null,
 		};
 	},
 	computed: {
@@ -156,10 +131,11 @@ export default defineComponent({
 			];
 		},
 		isSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
+			const { firstName, lastName, email } = splitName(this.credential?.homeProject?.name ?? '');
+			return firstName || lastName ? `${firstName}${lastName ? ' ' + lastName : ''}` : email ?? '';
 		},
 		credentialDataHomeProject(): ProjectSharingData | undefined {
 			const credentialContainsProjectSharingData = (
@@ -182,7 +158,7 @@ export default defineComponent({
 			});
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects.filter(
+			return this.projectsStore.projects.filter(
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
 					project.id !== this.credentialDataHomeProject?.id,
@@ -193,9 +169,6 @@ export default defineComponent({
 		},
 		isHomeTeamProject(): boolean {
 			return this.homeProject?.type === ProjectTypes.Team;
-		},
-		numberOfMembersInHomeTeamProject(): number {
-			return this.teamProject?.relations.length ?? 0;
 		},
 		credentialRoleTranslations(): Record<string, string> {
 			return {
@@ -210,6 +183,11 @@ export default defineComponent({
 				licensed,
 			}));
 		},
+		sharingSelectPlaceholder() {
+			return this.projectsStore.teamProjects.length
+				? this.$locale.baseText('projects.sharing.select.placeholder.project')
+				: this.$locale.baseText('projects.sharing.select.placeholder.user');
+		},
 	},
 	watch: {
 		sharedWithProjects: {
@@ -221,10 +199,6 @@ export default defineComponent({
 	},
 	async mounted() {
 		await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
-
-		if (this.homeProject && this.isHomeTeamProject) {
-			this.teamProject = await this.projectsStore.fetchProject(this.homeProject.id);
-		}
 	},
 	methods: {
 		goToUpgrade() {

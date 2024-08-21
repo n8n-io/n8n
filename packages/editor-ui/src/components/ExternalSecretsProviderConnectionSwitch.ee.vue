@@ -3,12 +3,11 @@ import type { ExternalSecretsProvider } from '@/Interface';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
-import { useLoadingService } from '@/composables/useLoadingService';
 import { computed, onMounted, ref } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 
 const emit = defineEmits<{
-	(e: 'change', value: boolean): void;
+	change: [value: boolean];
 }>();
 
 const props = withDefaults(
@@ -25,7 +24,6 @@ const props = withDefaults(
 	},
 );
 
-const loadingService = useLoadingService();
 const externalSecretsStore = useExternalSecretsStore();
 const i18n = useI18n();
 const toast = useToast();

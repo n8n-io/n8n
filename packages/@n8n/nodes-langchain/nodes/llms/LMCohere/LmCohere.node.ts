@@ -16,7 +16,7 @@ export class LmCohere implements INodeType {
 		displayName: 'Cohere Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmCohere',
-		icon: 'file:cohere.svg',
+		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Language Model Cohere',
@@ -26,7 +26,8 @@ export class LmCohere implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Text Completion Models'],
 			},
 			resources: {
 				primaryDocumentation: [

@@ -44,6 +44,13 @@ export class S3 implements INodeType {
 		],
 		properties: [
 			{
+				displayName:
+					"This node is for services that use the S3 standard, e.g. Minio or Digital Ocean Spaces. For AWS S3 use the 'AWS S3' node.",
+				name: 's3StandardNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',

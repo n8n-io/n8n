@@ -50,15 +50,17 @@
 				data-test-id="run-data-pane-header"
 				@click.stop
 			>
-				<RunDataSearch
-					v-if="showIOSearch"
-					v-model="search"
-					:class="$style.search"
-					:pane-type="paneType"
-					:display-mode="displayMode"
-					:is-area-active="isPaneActive"
-					@focus="activatePane"
-				/>
+				<Suspense>
+					<LazyRunDataSearch
+						v-if="showIOSearch"
+						v-model="search"
+						:class="$style.search"
+						:pane-type="paneType"
+						:display-mode="displayMode"
+						:is-area-active="isPaneActive"
+						@focus="activatePane"
+					/>
+				</Suspense>
 
 				<n8n-radio-buttons
 					v-show="
@@ -196,7 +198,7 @@
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem &&
-				!isSchemaView
+				!isInputSchemaView
 			"
 			v-show="!editMode.enabled && !hasRunError"
 			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
@@ -253,11 +255,14 @@
 				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
-			<div v-else-if="!hasNodeRun" :class="$style.center">
+			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
 
-			<div v-else-if="paneType === 'input' && node?.disabled" :class="$style.center">
+			<div
+				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				:class="$style.center"
+			>
 				<n8n-text>
 					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
 					<n8n-link @click="enableNode">
@@ -278,7 +283,15 @@
 						})
 					}}
 				</n8n-text>
-				<slot v-else-if="$slots['content']" name="content"></slot>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						compact
+					/>
+					<slot name="content"></slot>
+				</div>
 				<NodeErrorView
 					v-else-if="workflowRunErrorAsNodeError"
 					:error="workflowRunErrorAsNodeError"
@@ -377,7 +390,7 @@
 			</div>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
-				<RunDataTable
+				<LazyRunDataTable
 					:node="node"
 					:input-data="inputDataPage"
 					:mapping-enabled="mappingEnabled"
@@ -394,7 +407,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
-				<RunDataJson
+				<LazyRunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
 					:push-ref="pushRef"
@@ -409,11 +422,11 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<RunDataHtml :input-html="inputHtml" />
+				<LazyRunDataHtml :input-html="inputHtml" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
-				<RunDataSchema
+				<LazyRunDataSchema
 					:nodes="nodes"
 					:mapping-enabled="mappingEnabled"
 					:node="node"
@@ -424,6 +437,7 @@
 					:output-index="currentOutputIndex"
 					:total-runs="maxRunIndex"
 					:search="search"
+					:class="$style.schema"
 					@clear:search="onSearchClear"
 				/>
 			</Suspense>
@@ -625,15 +639,19 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
-const RunDataTable = defineAsyncComponent(
+const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
 );
-const RunDataJson = defineAsyncComponent(async () => await import('@/components/RunDataJson.vue'));
-const RunDataSchema = defineAsyncComponent(
+const LazyRunDataJson = defineAsyncComponent(
+	async () => await import('@/components/RunDataJson.vue'),
+);
+const LazyRunDataSchema = defineAsyncComponent(
 	async () => await import('@/components/RunDataSchema.vue'),
 );
-const RunDataHtml = defineAsyncComponent(async () => await import('@/components/RunDataHtml.vue'));
-const RunDataSearch = defineAsyncComponent(
+const LazyRunDataHtml = defineAsyncComponent(
+	async () => await import('@/components/RunDataHtml.vue'),
+);
+const LazyRunDataSearch = defineAsyncComponent(
 	async () => await import('@/components/RunDataSearch.vue'),
 );
 
@@ -647,11 +665,11 @@ export default defineComponent({
 		BinaryDataDisplay,
 		NodeErrorView,
 		JsonEditor,
-		RunDataTable,
-		RunDataJson,
-		RunDataSchema,
-		RunDataHtml,
-		RunDataSearch,
+		LazyRunDataTable,
+		LazyRunDataJson,
+		LazyRunDataSchema,
+		LazyRunDataHtml,
+		LazyRunDataSearch,
 		RunDataPinButton,
 	},
 	props: {
@@ -1077,7 +1095,7 @@ export default defineComponent({
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode.id === prevNode.id) return;
+			if (newNode?.id === prevNode?.id) return;
 			this.init();
 		},
 		hasNodeRun() {
@@ -1140,7 +1158,7 @@ export default defineComponent({
 			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
 			const errorsToTrack = ['unknown error'];
 
-			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
+			if (error && errorsToTrack.some((e) => error.message?.toLowerCase().includes(e))) {
 				this.$telemetry.track(
 					`User encountered an error: "${error.message}"`,
 					{
@@ -1769,6 +1787,13 @@ export default defineComponent({
 	height: 100%;
 }
 
+.inlineError {
+	line-height: var(--font-line-height-xloose);
+	padding-left: var(--spacing-s);
+	padding-right: var(--spacing-s);
+	padding-bottom: var(--spacing-s);
+}
+
 .outputs {
 	display: flex;
 	flex-direction: column;
@@ -1985,6 +2010,10 @@ export default defineComponent({
 	margin-bottom: var(--spacing-xs);
 	margin-left: var(--spacing-s);
 	margin-right: var(--spacing-s);
+}
+
+.schema {
+	padding: 0 var(--spacing-s);
 }
 </style>
 

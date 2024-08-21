@@ -75,8 +75,6 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 type ExceptionPaths = {
 	'queue.bull.redis': RedisOptions;
 	binaryDataManager: BinaryData.Config;
-	'nodes.exclude': string[] | undefined;
-	'nodes.include': string[] | undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;
 	'ui.banners.dismissed': string[] | undefined;
 };

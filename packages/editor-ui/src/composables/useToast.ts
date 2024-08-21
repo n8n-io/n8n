@@ -8,8 +8,9 @@ import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
+import type { ApplicationError } from 'n8n-workflow';
 
-export interface NotificationErrorWithNodeAndDescription extends Error {
+export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
 	node: {
 		name: string;
 	};
@@ -17,8 +18,12 @@ export interface NotificationErrorWithNodeAndDescription extends Error {
 }
 
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
-	dangerouslyUseHTMLString: true,
+	dangerouslyUseHTMLString: false,
 	position: 'bottom-right',
+	zIndex: 3000, // above NDV and chat window
+	offset: 64,
+	appendTo: '#node-view-root',
+	customClass: 'content-toast',
 };
 
 const stickyNotificationQueue: NotificationHandle[] = [];
@@ -31,28 +36,28 @@ export function useToast() {
 	const i18n = useI18n();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
-		messageData = { ...messageDefaults, ...messageData };
+		const { message, title } = messageData;
+		const params = { ...messageDefaults, ...messageData };
 
-		Object.defineProperty(messageData, 'message', {
-			value:
-				typeof messageData.message === 'string'
-					? sanitizeHtml(messageData.message)
-					: messageData.message,
-			writable: true,
-			enumerable: true,
-		});
+		if (typeof message === 'string') {
+			params.message = sanitizeHtml(message);
+		}
 
-		const notification = Notification(messageData);
+		if (typeof title === 'string') {
+			params.title = sanitizeHtml(title);
+		}
 
-		if (messageData.duration === 0) {
+		const notification = Notification(params);
+
+		if (params.duration === 0) {
 			stickyNotificationQueue.push(notification);
 		}
 
-		if (messageData.type === 'error' && track) {
+		if (params.type === 'error' && track) {
 			telemetry.track('Instance FE emitted error', {
-				error_title: messageData.title,
-				error_message: messageData.message,
-				caused_by_credential: causedByCredential(messageData.message as string),
+				error_title: params.title,
+				error_message: params.message,
+				caused_by_credential: causedByCredential(params.message as string),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -132,6 +137,7 @@ export function useToast() {
 					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			},
 			false,
 		);
@@ -152,7 +158,9 @@ export function useToast() {
 	}
 
 	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification(config);
+		return Notification({
+			...config,
+		});
 	}
 
 	function causedByCredential(message: string | undefined) {
@@ -175,7 +183,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...uiStore.getNotificationsForView(view));
+			notifications.push(...(uiStore.pendingNotificationsForViews[view] ?? []));
 		});
 		if (notifications.length) {
 			notifications.forEach(async (notification) => {

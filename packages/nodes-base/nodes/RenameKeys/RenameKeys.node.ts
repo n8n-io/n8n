@@ -76,7 +76,7 @@ export class RenameKeys implements INodeType {
 				name: 'additionalOptions',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Regex',

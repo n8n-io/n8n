@@ -53,8 +53,8 @@ watch(
 );
 
 const emit = defineEmits<{
-	(event: 'matchingColumnsChanged', value: string[]): void;
-	(event: 'refreshFieldList'): void;
+	matchingColumnsChanged: [value: string[]];
+	refreshFieldList: [];
 }>();
 
 const availableMatchingFields = computed<ResourceMapperField[]>(() => {
@@ -93,6 +93,7 @@ const fieldDescription = computed<string>(() => {
 				resourceMapperTypeOptions.value?.multiKeyMatch === true
 					? `${pluralFieldWord.value}`
 					: `${singularFieldWord.value}`,
+			nodeDisplayName: props.serviceName,
 		},
 	});
 });

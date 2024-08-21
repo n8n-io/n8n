@@ -4,13 +4,12 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { Reset } from '@/commands/ldap/reset';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers';
-import { LdapService } from '@/Ldap/ldap.service';
+import { getLdapSynchronizations, saveLdapSynchronization } from '@/Ldap/helpers.ee';
+import { LdapService } from '@/Ldap/ldap.service.ee';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
@@ -26,7 +25,6 @@ import { createTeamProject, findProject, getPersonalProject } from '../../shared
 mockInstance(Telemetry);
 
 mockInstance(Push);
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(Reset);
 

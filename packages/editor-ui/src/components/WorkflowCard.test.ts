@@ -5,12 +5,9 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/constants';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDb } from '@/Interface';
 import { useRouter } from 'vue-router';
+import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -42,21 +39,15 @@ const createWorkflow = (overrides = {}): IWorkflowDb => ({
 describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
 	let windowOpenSpy: MockInstance;
-	let uiStore: ReturnType<typeof useUIStore>;
-	let settingsStore: ReturnType<typeof useSettingsStore>;
-	let usersStore: ReturnType<typeof useUsersStore>;
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
+	let projectsStore: ReturnType<typeof useProjectsStore>;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		uiStore = useUIStore();
-		settingsStore = useSettingsStore();
-		usersStore = useUsersStore();
-		workflowsStore = useWorkflowsStore();
 		router = useRouter();
-		windowOpenSpy = vi.spyOn(window, 'open');
+		projectsStore = useProjectsStore();
+		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 
 	afterEach(() => {
@@ -107,10 +98,11 @@ describe('WorkflowCard', () => {
 		});
 
 		const actions = document.querySelector(`#${controllingId}`);
-		await waitFor(() => {
-			expect(actions).toBeInTheDocument();
-		});
-		await userEvent.click(actions!.querySelectorAll('li')[0]);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		await userEvent.click(actions.querySelectorAll('li')[0]);
+		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
@@ -149,5 +141,29 @@ describe('WorkflowCard', () => {
 
 		expect(heading).toHaveTextContent(data.name);
 		expect(badge).toHaveTextContent('John Doe');
+	});
+
+	it('should show Move action only if there is resource permission and team projects available', async () => {
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
+
+		const data = createWorkflow({
+			scopes: ['workflow:move'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('workflow-card-actions');
+
+		expect(cardActions).toBeInTheDocument();
+
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		expect(cardActionsOpener).toBeInTheDocument();
+
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActions);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Move');
 	});
 });

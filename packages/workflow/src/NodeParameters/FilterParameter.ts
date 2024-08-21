@@ -10,6 +10,7 @@ import type {
 } from '../Interfaces';
 import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
+import { ApplicationError } from '../errors/application.error';
 
 type FilterConditionMetadata = {
 	index: number;
@@ -18,7 +19,7 @@ type FilterConditionMetadata = {
 	errorFormat: 'full' | 'inline';
 };
 
-export class FilterError extends Error {
+export class FilterError extends ApplicationError {
 	constructor(
 		message: string,
 		readonly description: string,
@@ -93,14 +94,61 @@ function parseFilterConditionValues(
 		)} ${suffix}`;
 	};
 
-	const invalidTypeDescription = 'Try changing the type of comparison.';
+	const getTypeDescription = (isStrict: boolean) => {
+		if (isStrict)
+			return 'Try changing the type of the comparison, or enabling less strict type validation.';
+		return 'Try changing the type of the comparison.';
+	};
+
+	const composeInvalidTypeDescription = (
+		type: string,
+		fromType: string,
+		valuePosition: 'first' | 'second',
+	) => {
+		fromType = fromType.toLocaleLowerCase();
+		const expectedType = withIndefiniteArticle(type);
+
+		let convertionFunction = '';
+		if (type === 'string') {
+			convertionFunction = '.toString()';
+		} else if (type === 'number') {
+			convertionFunction = '.toNumber()';
+		} else if (type === 'boolean') {
+			convertionFunction = '.toBoolean()';
+		}
+
+		if (strict && convertionFunction) {
+			const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
+			return `
+<p>Try either:</p>
+<ol>
+  <li>Enabling less strict type validation</li>
+  <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
+</ol>
+			`;
+		}
+
+		return getTypeDescription(strict);
+	};
+
+	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {
+		return {
+			ok: false,
+			error: new FilterError(
+				`Comparison type expects ${withIndefiniteArticle(operator.type)} but both fields are ${withIndefiniteArticle(
+					typeof condition.leftValue,
+				)}`,
+				getTypeDescription(strict),
+			),
+		};
+	}
 
 	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(operator.type, typeof condition.leftValue, leftValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(operator.type, typeof condition.leftValue, 'first'),
 			),
 		};
 	}
@@ -110,7 +158,7 @@ function parseFilterConditionValues(
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(rightType, typeof condition.rightValue, rightValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(rightType, typeof condition.rightValue, 'second'),
 			),
 		};
 	}
@@ -135,6 +183,18 @@ function parseRegexPattern(pattern: string): RegExp {
 	}
 
 	return regex;
+}
+
+export function arrayContainsValue(array: unknown[], value: unknown, ignoreCase: boolean): boolean {
+	if (ignoreCase && typeof value === 'string') {
+		return array.some((item) => {
+			if (typeof item !== 'string') {
+				return false;
+			}
+			return item.toString().toLocaleLowerCase() === value.toLocaleLowerCase();
+		});
+	}
+	return array.includes(value);
 }
 
 // eslint-disable-next-line complexity
@@ -284,15 +344,9 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'contains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return left.includes(rightValue);
+					return arrayContainsValue(left, rightValue, ignoreCase);
 				case 'notContains':
-					if (ignoreCase && typeof rightValue === 'string') {
-						rightValue = rightValue.toLocaleLowerCase();
-					}
-					return !left.includes(rightValue);
+					return !arrayContainsValue(left, rightValue, ignoreCase);
 				case 'lengthEquals':
 					return left.length === rightNumber;
 				case 'lengthNotEquals':

@@ -76,8 +76,9 @@ export interface Props {
 	isReadOnly?: boolean;
 }
 const emit = defineEmits<{
-	(event: 'valueChanged', value: IUpdateInformation): void;
+	valueChanged: [value: IUpdateInformation];
 }>();
+
 const props = defineProps<Props>();
 const ndvStore = useNDVStore();
 const i18n = useI18n();
@@ -134,7 +135,7 @@ const getProperties = computed(() => {
 	const returnProperties = [];
 	let tempProperties;
 	for (const name of propertyNames.value) {
-		tempProperties = getOptionProperties(name);
+		tempProperties = getOptionProperties(name) as INodeProperties[];
 		if (tempProperties !== undefined) {
 			returnProperties.push(...tempProperties);
 		}

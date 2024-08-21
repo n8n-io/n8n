@@ -4,6 +4,11 @@ import { mock } from 'jest-mock-extended';
 
 import type { BaseCommand } from '@/commands/BaseCommand';
 import * as testDb from '../testDb';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import { mockInstance } from '@test/mocking';
+import { InternalHooks } from '@/InternalHooks';
+
+mockInstance(InternalHooks);
 
 export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	const config = mock<Config>();
@@ -11,6 +16,7 @@ export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 
 	// mock SIGINT/SIGTERM registration
 	process.once = jest.fn();
+	process.exit = jest.fn() as never;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -18,6 +24,7 @@ export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockInstance(TelemetryEventRelay);
 	});
 
 	afterAll(async () => {

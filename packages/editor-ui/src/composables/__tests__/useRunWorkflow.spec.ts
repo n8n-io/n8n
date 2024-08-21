@@ -25,14 +25,6 @@ vi.mock('@/stores/workflows.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/ui.store', () => ({
-	useUIStore: vi.fn().mockReturnValue({
-		isActionActive: vi.fn().mockReturnValue(false),
-		addActiveAction: vi.fn(),
-		removeActiveAction: vi.fn(),
-	}),
-}));
-
 vi.mock('@/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
@@ -58,7 +50,6 @@ vi.mock('@/composables/useToast', () => ({
 vi.mock('@/composables/useWorkflowHelpers', () => ({
 	useWorkflowHelpers: vi.fn().mockReturnValue({
 		getCurrentWorkflow: vi.fn(),
-		checkReadyForExecution: vi.fn(),
 		saveCurrentWorkflow: vi.fn(),
 		getWorkflowDataToSave: vi.fn(),
 	}),
@@ -102,6 +93,10 @@ describe('useRunWorkflow({ router })', () => {
 
 		router = useRouter();
 		workflowHelpers = useWorkflowHelpers({ router });
+	});
+
+	beforeEach(() => {
+		uiStore.activeActions = [];
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -158,7 +153,7 @@ describe('useRunWorkflow({ router })', () => {
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
-			vi.mocked(uiStore).isActionActive.mockReturnValue(true);
+			uiStore.addActiveAction('workflowRunning');
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
@@ -167,7 +162,7 @@ describe('useRunWorkflow({ router })', () => {
 			const mockExecutionResponse = { executionId: '123' };
 			const { runWorkflow } = useRunWorkflow({ router });
 
-			vi.mocked(uiStore).isActionActive.mockReturnValue(false);
+			vi.mocked(uiStore).activeActions = [''];
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
 				name: 'Test Workflow',
 			} as unknown as Workflow);

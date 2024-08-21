@@ -264,7 +264,7 @@ export default defineComponent({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive['workflowRunning'];
 		},
 		isActivelyPolling(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;

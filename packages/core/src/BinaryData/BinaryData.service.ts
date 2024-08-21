@@ -3,7 +3,7 @@ import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import { InvalidModeError } from '../errors/invalid-mode.error';
-import { areConfigModes, toBuffer } from './utils';
+import { areConfigModes, binaryToBuffer } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -84,7 +84,7 @@ export class BinaryDataService {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const buffer = await this.toBuffer(bufferOrStream);
+			const buffer = await binaryToBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
 
@@ -108,10 +108,6 @@ export class BinaryDataService {
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
-	}
-
-	async toBuffer(bufferOrStream: Buffer | Readable) {
-		return await toBuffer(bufferOrStream);
 	}
 
 	async getAsStream(binaryDataId: string, chunkSize?: number) {

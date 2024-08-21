@@ -1,7 +1,8 @@
+import { createPinia, setActivePinia } from 'pinia';
+import { useRoute } from 'vue-router';
 import { createComponentRenderer } from '@/__tests__/render';
-import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
-import { useRoute, useRouter } from 'vue-router';
 import { createTestProject } from '@/__tests__/data/projects';
+import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useProjectsStore } from '@/stores/projects.store';
 
 vi.mock('vue-router', () => {
@@ -17,31 +18,24 @@ vi.mock('vue-router', () => {
 		RouterLink: vi.fn(),
 	};
 });
+const renderComponent = createComponentRenderer(ProjectTabs, {
+	global: {
+		stubs: {
+			'router-link': {
+				template: '<div><slot /></div>',
+			},
+		},
+	},
+});
 
-vi.mock('@/stores/users.store', () => ({
-	useUsersStore: vi.fn().mockImplementation(() => ({
-		currentUser: {},
-	})),
-}));
-
-vi.mock('@/stores/projects.store', () => ({
-	useProjectsStore: vi.fn().mockReturnValue({}),
-}));
-
-vi.mock('@/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn().mockReturnValue(false),
-}));
-
-const renderComponent = createComponentRenderer(ProjectTabs);
-
-let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
 
 describe('ProjectTabs', () => {
 	beforeEach(() => {
+		const pinia = createPinia();
+		setActivePinia(pinia);
 		route = useRoute();
-		router = useRouter();
 		projectsStore = useProjectsStore();
 	});
 
@@ -53,16 +47,9 @@ describe('ProjectTabs', () => {
 		expect(queryByText('Project settings')).not.toBeInTheDocument();
 	});
 
-	it('should render project tabs if use has permissions', () => {
+	it('should render project tab Settings if user has permissions', () => {
 		route.params.projectId = '123';
-		vi.mocked(useProjectsStore).mockImplementationOnce(
-			() =>
-				({
-					currentProject: createTestProject({
-						scopes: ['project:update'],
-					}),
-				}) as ReturnType<typeof useProjectsStore>,
-		);
+		projectsStore.setCurrentProject(createTestProject({ scopes: ['project:update'] }));
 		const { getByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();
@@ -70,16 +57,9 @@ describe('ProjectTabs', () => {
 		expect(getByText('Project settings')).toBeInTheDocument();
 	});
 
-	it('should render project tabs', () => {
+	it('should render project tabs without Settings if no permission', () => {
 		route.params.projectId = '123';
-		vi.mocked(useProjectsStore).mockImplementationOnce(
-			() =>
-				({
-					currentProject: createTestProject({
-						scopes: ['project:read'],
-					}),
-				}) as ReturnType<typeof useProjectsStore>,
-		);
+		projectsStore.setCurrentProject(createTestProject({ scopes: ['project:read'] }));
 		const { queryByText, getByText } = renderComponent();
 
 		expect(getByText('Workflows')).toBeInTheDocument();

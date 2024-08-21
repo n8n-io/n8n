@@ -719,7 +719,7 @@ export class HttpRequestV3 implements INodeType {
 					displayName: 'Options',
 					name: 'options',
 					type: 'collection',
-					placeholder: 'Add Option',
+					placeholder: 'Add option',
 					default: {},
 					options: [
 						{
@@ -805,6 +805,13 @@ export class HttpRequestV3 implements INodeType {
 								},
 							],
 							default: 'brackets',
+						},
+						{
+							displayName: 'Lowercase Headers',
+							name: 'lowercaseHeaders',
+							type: 'boolean',
+							default: true,
+							description: 'Whether to lowercase header names',
 						},
 						{
 							displayName: 'Redirects',
@@ -1388,6 +1395,7 @@ export class HttpRequestV3 implements INodeType {
 				allowUnauthorizedCerts,
 				queryParameterArrays,
 				response,
+				lowercaseHeaders,
 			} = this.getNodeParameter('options', itemIndex, {}) as {
 				batching: { batch: { batchSize: number; batchInterval: number } };
 				proxy: string;
@@ -1398,6 +1406,7 @@ export class HttpRequestV3 implements INodeType {
 					response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
 				};
 				redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
+				lowercaseHeaders: boolean;
 			};
 
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -1611,7 +1620,9 @@ export class HttpRequestV3 implements INodeType {
 				}
 				requestOptions.headers = {
 					...requestOptions.headers,
-					...keysToLowercase(additionalHeaders),
+					...(lowercaseHeaders === undefined || lowercaseHeaders
+						? keysToLowercase(additionalHeaders)
+						: additionalHeaders),
 				};
 			}
 
@@ -1869,8 +1880,20 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
-					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+
+					let error;
+					if (responseData?.reason instanceof NodeApiError) {
+						error = responseData.reason;
+						set(error, 'context.itemIndex', itemIndex);
+					} else {
+						const errorData = (
+							responseData.reason ? responseData.reason : responseData
+						) as JsonObject;
+						error = new NodeApiError(this.getNode(), errorData, { itemIndex });
+					}
+
 					set(error, 'context.request', sanitizedRequests[itemIndex]);
+
 					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);
@@ -1933,9 +1956,7 @@ export class HttpRequestV3 implements INodeType {
 								false,
 							) as boolean;
 
-							const data = await this.helpers
-								.binaryToBuffer(response.body as Buffer | Readable)
-								.then((body) => body.toString());
+							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
 							response.body = jsonParse(data, {
 								...(neverError
 									? { fallbackValue: {} }
@@ -1947,9 +1968,7 @@ export class HttpRequestV3 implements INodeType {
 					} else {
 						responseFormat = 'text';
 						if (!response.__bodyResolved) {
-							const data = await this.helpers
-								.binaryToBuffer(response.body as Buffer | Readable)
-								.then((body) => body.toString());
+							const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
 							response.body = !data ? undefined : data;
 						}
 					}

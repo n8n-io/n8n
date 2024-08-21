@@ -67,6 +67,7 @@ const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
+	iconColor: 'green',
 	group: ['trigger'],
 	version: 2,
 	description: 'Triggers the workflow when a new email is received',
@@ -192,7 +193,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -633,8 +634,6 @@ export class EmailReadImapV2 implements INodeType {
 					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					await closeFunction();
 					this.emitError(error as Error);
 				});
 				return conn;

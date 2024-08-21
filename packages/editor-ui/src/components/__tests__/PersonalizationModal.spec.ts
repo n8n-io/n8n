@@ -11,7 +11,7 @@ import { useUsageStore } from '@/stores/usage.store';
 const pinia = createTestingPinia({
 	initialState: {
 		[STORES.UI]: {
-			modals: {
+			modalsById: {
 				[PERSONALIZATION_MODAL_KEY]: { open: true },
 			},
 		},
@@ -23,7 +23,7 @@ const pinia = createTestingPinia({
 			},
 		},
 		[STORES.USERS]: {
-			users: {
+			usersById: {
 				123: {
 					email: 'john@doe.com',
 					firstName: 'John',
@@ -48,7 +48,7 @@ const renderComponent = createComponentRenderer(PersonalizationModal, {
 	global: {
 		mocks: {
 			$route: {
-				name: VIEWS.NEW_WORKFLOW,
+				name: VIEWS.HOMEPAGE,
 			},
 		},
 	},
