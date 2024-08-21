@@ -4645,9 +4645,7 @@ export class Pipedrive implements INodeType {
 							organization_id: number;
 						};
 
-						if (Object.keys(rest).length) {
-							Object.assign(body, rest);
-						}
+						addAdditionalFields(body, rest);
 
 						if (value) {
 							Object.assign(body, { value: value.valueProperties });
