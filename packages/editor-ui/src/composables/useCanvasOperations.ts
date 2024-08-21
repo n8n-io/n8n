@@ -105,6 +105,7 @@ type AddNodeOptions = {
 	openNDV?: boolean;
 	trackHistory?: boolean;
 	isAutoAdd?: boolean;
+	telemetry?: boolean;
 };
 
 export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
@@ -434,6 +435,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			trackHistory?: boolean;
 			trackBulk?: boolean;
 			keepPristine?: boolean;
+			telemetry?: boolean;
 		} = {},
 	) {
 		let insertPosition = options.position;
@@ -474,7 +476,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						...options,
 						openNDV,
 						isAutoAdd,
-						trackHistory: options.trackHistory,
 					},
 				);
 			} catch (error) {
@@ -555,7 +556,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				createConnectionToLastInteractedWithNode(nodeData, options);
 			}
 
-			runAddNodeHooks(nodeData, options);
+			if (options.telemetry) {
+				trackAddNode(nodeData, options);
+			}
+
+			if (nodeData.type !== STICKY_NODE_TYPE) {
+				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
+			}
 
 			if (options.openNDV && !preventOpeningNDV) {
 				ndvStore.setActiveNodeName(nodeData.name);
@@ -652,13 +659,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function runAddNodeHooks(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions) {
 		switch (nodeData.type) {
 			case STICKY_NODE_TYPE:
 				trackAddStickyNoteNode();
 				break;
 			default:
-				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 				trackAddDefaultNode(nodeData, options);
 		}
 	}
