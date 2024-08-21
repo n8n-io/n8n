@@ -6,6 +6,7 @@ import {
 	onActivated,
 	onBeforeMount,
 	onBeforeUnmount,
+	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -93,6 +94,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -137,6 +139,9 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
+const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+	route,
+});
 const { registerCustomAction } = useGlobalLinkActions();
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
@@ -1387,22 +1392,6 @@ function registerCustomActions() {
 }
 
 /**
- * Unload
- */
-
-function onBeforeUnload(e: BeforeUnloadEvent) {
-	if (isDemoRoute.value || window.preventNodeViewBeforeUnload) {
-		return;
-	} else if (uiStore.stateIsDirty) {
-		e.returnValue = true; //Gecko + IE
-		return true; //Gecko + Webkit, Safari, Chrome etc.
-	} else {
-		canvasStore.startLoading(i18n.baseText('nodeView.redirecting'));
-		return;
-	}
-}
-
-/**
  * Routing
  */
 
@@ -1425,10 +1414,6 @@ onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
 	}
-});
-
-onActivated(() => {
-	window.addEventListener('beforeunload', onBeforeUnload);
 });
 
 onMounted(async () => {
@@ -1466,6 +1451,10 @@ onMounted(async () => {
 	void externalHooks.run('nodeView.mount').catch(() => {});
 });
 
+onActivated(() => {
+	addBeforeUnloadEventBindings();
+});
+
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
@@ -1473,6 +1462,10 @@ onBeforeUnmount(() => {
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
 	removeWorkflowSavedEventBindings();
+});
+
+onDeactivated(() => {
+	removeBeforeUnloadEventBindings();
 });
 </script>
 
