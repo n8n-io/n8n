@@ -2792,6 +2792,8 @@ export type CallbackManager = CallbackManagerLC;
 
 export type IPersonalizationSurveyAnswersV4 = {
 	version: 'v4';
+	personalization_survey_submitted_at: string;
+	personalization_survey_n8n_version: string;
 	automationGoalDevops?: string[] | null;
 	automationGoalDevopsOther?: string | null;
 	companyIndustryExtended?: string[] | null;

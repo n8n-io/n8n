@@ -215,7 +215,7 @@ export class MeController {
 		await this.userRepository.save(
 			{
 				id: req.user.id,
-				personalizationAnswers,
+				personalizationAnswers: validatedAnswers,
 			},
 			{ transaction: false },
 		);

@@ -236,7 +236,7 @@ export declare namespace MeRequest {
 		{},
 		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4 | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 export interface UserSetupPayload {

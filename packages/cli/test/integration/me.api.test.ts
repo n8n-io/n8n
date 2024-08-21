@@ -145,16 +145,23 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const validPayloads = [SURVEY, {}];
+		const validPayloads = [
+			SURVEY,
+			{
+				version: 'v4',
+				personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
+				personalization_survey_n8n_version: '1.0.0',
+			},
+		];
 
 		for (const validPayload of validPayloads) {
 			const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
 
-			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+			expect(response.statusCode).toBe(200);
 
 			const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-				where: { email: IsNull() },
+				where: { id: ownerShell.id },
 			});
 
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
@@ -394,6 +401,8 @@ describe('Owner', () => {
 
 const SURVEY: IPersonalizationSurveyAnswersV4 = {
 	version: 'v4',
+	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
+	personalization_survey_n8n_version: '1.0.0',
 	automationGoalDevops: ['test'],
 	automationGoalDevopsOther: 'test',
 	companyIndustryExtended: ['test'],
@@ -403,7 +412,7 @@ const SURVEY: IPersonalizationSurveyAnswersV4 = {
 	automationGoalSm: ['test'],
 	automationGoalSmOther: 'test',
 	usageModes: ['test'],
-	email: 'test',
+	email: 'test@email.com',
 	role: 'test',
 	roleOther: 'test',
 	reportedSource: 'test',
