@@ -34,7 +34,7 @@ const pageProperties = updateDisplayOptions(
 			description: 'Whether to use JSON as input to specify the form fields',
 		},
 		{
-			displayName: 'JSON',
+			displayName: 'Form Fields',
 			name: 'jsonOutput',
 			type: 'json',
 			typeOptions: {
