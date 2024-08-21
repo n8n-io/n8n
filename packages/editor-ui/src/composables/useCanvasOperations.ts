@@ -556,7 +556,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				createConnectionToLastInteractedWithNode(nodeData, options);
 			}
 
-			if (options.telemetry !== false) {
+			if (options.telemetry) {
 				trackAddNode(nodeData, options);
 			}
 
