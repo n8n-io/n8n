@@ -864,6 +864,8 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				answers: {
 					version: 'v4',
+					personalization_survey_n8n_version: '1.0.0',
+					personalization_survey_submitted_at: '2021-10-01T00:00:00.000Z',
 					companySize: '1-10',
 				},
 			};
