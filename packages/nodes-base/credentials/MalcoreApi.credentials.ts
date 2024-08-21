@@ -12,7 +12,7 @@ export class MalcoreApi implements ICredentialType {
 
 	documentationUrl = 'malcore';
 
-	icon = { light: 'file:icons/Malcore.svg', dark: 'file:icons/Malcore.svg' } as const;
+	icon = { light: 'file:icons/Malcore.png', dark: 'file:icons/Malcore.png' } as const;
 
 	httpRequestNode = {
 		name: 'Malcore',
