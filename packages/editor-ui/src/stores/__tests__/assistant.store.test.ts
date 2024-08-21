@@ -7,23 +7,26 @@ import {
 	useAssistantStore,
 } from '@/stores/assistant.store';
 import type { ChatRequest } from '@/types/assistant.types';
-// import { useSettingsStore } from '@/stores/settings.store';
+import { usePostHog } from '../posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 // import { useUsersStore } from '@/stores/users.store';
 // import { useWorkflowsStore } from '@/stores/workflows.store';
 // import { useNDVStore } from '@/stores/ndv.store';
 
-// let settingsStore: ReturnType<typeof useSettingsStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 // let usersStore: ReturnType<typeof useUsersStore>;
 // let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 // let ndvStore: ReturnType<typeof useNDVStore>;
+let posthogStore: ReturnType<typeof usePostHog>;
 
 describe('AI Assistant store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		// settingsStore = useSettingsStore();
+		settingsStore = useSettingsStore();
 		// usersStore = useUsersStore();
 		// workflowsStore = useWorkflowsStore();
 		// ndvStore = useNDVStore();
+		posthogStore = usePostHog();
 	});
 
 	it('initializes with default values', () => {
@@ -225,6 +228,14 @@ describe('AI Assistant store', () => {
 		assistantStore.resetAssistantChat();
 		expect(assistantStore.chatMessages).toEqual([]);
 		expect(assistantStore.currentSessionId).toBeUndefined();
+	});
+
+	it('should disable assistant for control experiment group', () => {
+		const assistantStore = useAssistantStore();
+
+		posthogStore.getVariant = vi.fn().mockReturnValue('control');
+		// TODO: Mock isAssistantEnabled and route
+		expect(assistantStore.canShowAssistant).toBe(false);
 	});
 
 	// TODO: To test:
