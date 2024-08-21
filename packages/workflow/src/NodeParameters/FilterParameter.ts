@@ -94,14 +94,61 @@ function parseFilterConditionValues(
 		)} ${suffix}`;
 	};
 
-	const invalidTypeDescription = 'Try changing the type of comparison.';
+	const getTypeDescription = (isStrict: boolean) => {
+		if (isStrict)
+			return 'Try changing the type of the comparison, or enabling less strict type validation.';
+		return 'Try changing the type of the comparison.';
+	};
+
+	const composeInvalidTypeDescription = (
+		type: string,
+		fromType: string,
+		valuePosition: 'first' | 'second',
+	) => {
+		fromType = fromType.toLocaleLowerCase();
+		const expectedType = withIndefiniteArticle(type);
+
+		let convertionFunction = '';
+		if (type === 'string') {
+			convertionFunction = '.toString()';
+		} else if (type === 'number') {
+			convertionFunction = '.toNumber()';
+		} else if (type === 'boolean') {
+			convertionFunction = '.toBoolean()';
+		}
+
+		if (strict && convertionFunction) {
+			const suggestFunction = ` by adding <code>${convertionFunction}</code>`;
+			return `
+<p>Try either:</p>
+<ol>
+  <li>Enabling less strict type validation</li>
+  <li>Converting the ${valuePosition} field to ${expectedType}${suggestFunction}</li>
+</ol>
+			`;
+		}
+
+		return getTypeDescription(strict);
+	};
+
+	if (!leftValid && !rightValid && typeof condition.leftValue === typeof condition.rightValue) {
+		return {
+			ok: false,
+			error: new FilterError(
+				`Comparison type expects ${withIndefiniteArticle(operator.type)} but both fields are ${withIndefiniteArticle(
+					typeof condition.leftValue,
+				)}`,
+				getTypeDescription(strict),
+			),
+		};
+	}
 
 	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(operator.type, typeof condition.leftValue, leftValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(operator.type, typeof condition.leftValue, 'first'),
 			),
 		};
 	}
@@ -111,7 +158,7 @@ function parseFilterConditionValues(
 			ok: false,
 			error: new FilterError(
 				composeInvalidTypeMessage(rightType, typeof condition.rightValue, rightValueString),
-				invalidTypeDescription,
+				composeInvalidTypeDescription(rightType, typeof condition.rightValue, 'second'),
 			),
 		};
 	}

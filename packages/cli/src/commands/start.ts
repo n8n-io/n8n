@@ -30,7 +30,6 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -240,7 +239,10 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
-		await Container.get(OrchestrationHandlerMainService).init();
+		await Container.get(OrchestrationHandlerMainService).initWithOptions({
+			queueModeId: this.queueModeId,
+			redisPublisher: Container.get(OrchestrationService).redisPublisher,
+		});
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
@@ -305,7 +307,6 @@ export class Start extends BaseCommand {
 		await this.server.start();
 
 		Container.get(PruningService).init();
-		Container.get(ExecutionRecoveryService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -332,7 +333,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 

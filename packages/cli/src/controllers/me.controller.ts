@@ -6,7 +6,7 @@ import { randomBytes } from 'crypto';
 import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity } from '@/GenericHelpers';
+import { validateEntity, validateRecordNoXss } from '@/GenericHelpers';
 import type { User } from '@db/entities/User';
 import {
 	AuthenticatedRequest,
@@ -23,6 +23,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { isApiEnabled } from '@/PublicApi';
 import { EventService } from '@/events/event.service';
+import { MfaService } from '@/Mfa/mfa.service';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -44,6 +46,7 @@ export class MeController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly mfaService: MfaService,
 	) {}
 
 	/**
@@ -51,7 +54,8 @@ export class MeController {
 	 */
 	@Patch('/')
 	async updateCurrentUser(req: MeRequest.UserUpdate, res: Response): Promise<PublicUser> {
-		const { id: userId, email: currentEmail } = req.user;
+		const { id: userId, email: currentEmail, mfaEnabled } = req.user;
+
 		const payload = plainToInstance(UserUpdatePayload, req.body, { excludeExtraneousValues: true });
 
 		const { email } = payload;
@@ -73,17 +77,28 @@ export class MeController {
 
 		await validateEntity(payload);
 
+		const isEmailBeingChanged = email !== currentEmail;
+
 		// If SAML is enabled, we don't allow the user to change their email address
-		if (isSamlLicensedAndEnabled()) {
-			if (email !== currentEmail) {
-				this.logger.debug(
-					'Request to update user failed because SAML user may not change their email',
-					{
-						userId,
-						payload,
-					},
-				);
-				throw new BadRequestError('SAML user may not change their email');
+		if (isSamlLicensedAndEnabled() && isEmailBeingChanged) {
+			this.logger.debug(
+				'Request to update user failed because SAML user may not change their email',
+				{
+					userId,
+					payload,
+				},
+			);
+			throw new BadRequestError('SAML user may not change their email');
+		}
+
+		if (mfaEnabled && isEmailBeingChanged) {
+			if (!payload.mfaCode) {
+				throw new BadRequestError('Two-factor code is required to change email');
+			}
+
+			const isMfaTokenValid = await this.mfaService.validateMfa(userId, payload.mfaCode, undefined);
+			if (!isMfaTokenValid) {
+				throw new InvalidMfaCodeError();
 			}
 		}
 
@@ -99,8 +114,9 @@ export class MeController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		const fieldsChanged = (Object.keys(payload) as Array<keyof UserUpdatePayload>).filter(
-			(key) => payload[key] !== preUpdateUser[key],
+		const changeableFields = ['email', 'firstName', 'lastName'] as const;
+		const fieldsChanged = changeableFields.filter(
+			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged });
@@ -115,12 +131,12 @@ export class MeController {
 	/**
 	 * Update the logged-in user's password.
 	 */
-	@Patch('/password')
+	@Patch('/password', { rateLimit: true })
 	async updatePassword(req: MeRequest.Password, res: Response) {
 		const { user } = req;
-		const { currentPassword, newPassword } = req.body;
+		const { currentPassword, newPassword, mfaCode } = req.body;
 
-		// If SAML is enabled, we don't allow the user to change their email address
+		// If SAML is enabled, we don't allow the user to change their password
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
 				userId: user.id,
@@ -144,6 +160,17 @@ export class MeController {
 		}
 
 		const validPassword = this.passwordUtility.validate(newPassword);
+
+		if (user.mfaEnabled) {
+			if (typeof mfaCode !== 'string') {
+				throw new BadRequestError('Two-factor code is required to change password.');
+			}
+
+			const isMfaTokenValid = await this.mfaService.validateMfa(user.id, mfaCode, undefined);
+			if (!isMfaTokenValid) {
+				throw new InvalidMfaCodeError();
+			}
+		}
 
 		user.password = await this.passwordUtility.hash(validPassword);
 
@@ -175,6 +202,8 @@ export class MeController {
 			);
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
+
+		await validateRecordNoXss(personalizationAnswers);
 
 		await this.userRepository.save(
 			{
@@ -237,6 +266,9 @@ export class MeController {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body, {
 			excludeExtraneousValues: true,
 		});
+
+		await validateEntity(payload);
+
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);

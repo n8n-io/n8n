@@ -9,7 +9,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: [3, 4, 4.1, 4.2, 4.3, 4.4],
+	version: [3, 4, 4.1, 4.2, 4.3, 4.4, 4.5],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
@@ -20,7 +20,7 @@ export const versionDescription: INodeTypeDescription = {
 	hints: [
 		{
 			message:
-				"Use the 'Use Append' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
+				"Use the 'Minimise API Calls' option for greater efficiency if your sheet is uniformly formatted without gaps between columns or rows",
 			displayCondition:
 				'={{$parameter["operation"] === "append" && !$parameter["options"]["useAppend"]}}',
 			whenToDisplay: 'beforeExecution',

@@ -56,12 +56,7 @@
 				<div :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown
-							:disabled="!isCollapsed"
-							placement="right-end"
-							trigger="click"
-							@command="onUserActionToggle"
-						>
+						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
 									:first-name="usersStore.currentUser?.firstName"
@@ -69,7 +64,7 @@
 									size="small"
 								/>
 							</div>
-							<template #dropdown>
+							<template v-if="isCollapsed" #dropdown>
 								<el-dropdown-menu>
 									<el-dropdown-item command="settings">
 										{{ $locale.baseText('settings') }}
@@ -287,7 +282,7 @@ export default defineComponent({
 							icon: 'graduation-cap',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
 							link: {
-								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+								href: 'https://docs.n8n.io/courses/',
 								target: '_blank',
 							},
 						},

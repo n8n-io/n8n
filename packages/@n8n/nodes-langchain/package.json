@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.54.0",
+  "version": "1.55.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -157,7 +157,7 @@
     "@pinecone-database/pinecone": "3.0.0",
     "@qdrant/js-client-rest": "1.9.0",
     "@supabase/supabase-js": "2.43.4",
-    "@types/pg": "^8.11.3",
+    "@types/pg": "^8.11.6",
     "@xata.io/client": "0.28.4",
     "basic-auth": "catalog:",
     "cheerio": "1.0.0-rc.12",
@@ -176,7 +176,7 @@
     "n8n-workflow": "workspace:*",
     "openai": "4.53.0",
     "pdf-parse": "1.1.1",
-    "pg": "8.11.3",
+    "pg": "8.12.0",
     "redis": "4.6.12",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",

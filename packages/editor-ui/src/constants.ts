@@ -60,11 +60,12 @@ export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const PROJECT_MOVE_RESOURCE_MODAL = 'projectMoveResourceModal';
 export const PROJECT_MOVE_RESOURCE_CONFIRM_MODAL = 'projectMoveResourceConfirmModal';
-
+export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
@@ -632,6 +633,7 @@ export const enum STORES {
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
 	PUSH = 'push',
+	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 }
 
@@ -672,10 +674,24 @@ export const CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const AI_ASSISTANT_EXPERIMENT = {
+	name: '021_ai_debug_helper',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
+	name: '022_more_onboarding_options',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
+	AI_ASSISTANT_EXPERIMENT.name,
+	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

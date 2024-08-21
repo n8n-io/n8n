@@ -26,8 +26,10 @@
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
+			<AskAssistantChat />
 			<Modals />
 			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
 	</div>
 </template>
@@ -40,10 +42,12 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { loadLanguage } from '@/plugins/i18n';
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useToast } from '@/composables/useToast';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
@@ -57,6 +61,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
+import { useAssistantStore } from './stores/assistant.store';
 
 export default defineComponent({
 	name: 'App',
@@ -65,6 +70,8 @@ export default defineComponent({
 		LoadingView,
 		Telemetry,
 		Modals,
+		AskAssistantChat,
+		AskAssistantFloatingButton,
 	},
 	setup() {
 		return {
@@ -76,6 +83,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(
+			useAssistantStore,
 			useNodeTypesStore,
 			useRootStore,
 			useSettingsStore,
@@ -91,6 +99,9 @@ export default defineComponent({
 		},
 		isDemoMode(): boolean {
 			return this.$route.name === VIEWS.DEMO;
+		},
+		showAssistantButton(): boolean {
+			return this.assistantStore.canShowAssistantButtons;
 		},
 	},
 	data() {
@@ -127,10 +138,10 @@ export default defineComponent({
 .container {
 	display: grid;
 	grid-template-areas:
-		'banners banners'
-		'sidebar header'
-		'sidebar content';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+		'banners banners rightsidebar'
+		'sidebar header rightsidebar'
+		'sidebar content rightsidebar';
+	grid-auto-columns: minmax(0, max-content) minmax(100px, auto) minmax(0, max-content);
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
@@ -143,6 +154,7 @@ export default defineComponent({
 .content {
 	display: flex;
 	grid-area: content;
+	position: relative;
 	overflow: auto;
 	height: 100%;
 	width: 100%;

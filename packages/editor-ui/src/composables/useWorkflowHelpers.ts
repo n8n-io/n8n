@@ -1116,6 +1116,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
+		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
 		if (workflowData.usedCredentials) {
 			workflowsStore.setUsedCredentials(workflowData.usedCredentials);

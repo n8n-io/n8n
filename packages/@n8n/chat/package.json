@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",
@@ -40,12 +40,11 @@
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "catalog:",
     "vue": "catalog:frontend",
-    "vue-markdown-render": "^2.1.1"
+    "vue-markdown-render": "catalog:frontend"
   },
   "devDependencies": {
     "@iconify-json/mdi": "^1.1.54",
     "@n8n/storybook": "workspace:*",
-    "@types/markdown-it": "^12.2.3",
     "@vitest/coverage-v8": "catalog:frontend",
     "unplugin-icons": "^0.19.0",
     "vite": "catalog:frontend",
