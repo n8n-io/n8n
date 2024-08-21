@@ -116,7 +116,7 @@ export class CalendlyTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 
 				const authenticationType = await getAuthenticationType.call(this);
 
@@ -160,16 +160,14 @@ export class CalendlyTrigger implements INodeType {
 					const { collection } = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 					for (const webhook of collection) {
-						if (webhook.callback_url === webhookUrl) {
-							for (const event of events) {
-								if (!webhook.events.includes(event)) {
-									return false;
-								}
-							}
+						if (
+							webhook.callback_url === webhookUrl &&
+							events.length === webhook.events.length &&
+							events.every((event: string) => webhook.events.includes(event))
+						) {
+							webhookData.webhookURI = webhook.uri;
+							return true;
 						}
-
-						webhookData.webhookURI = webhook.uri;
-						return true;
 					}
 				}
 
@@ -178,7 +176,7 @@ export class CalendlyTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 
 				const authenticationType = await getAuthenticationType.call(this);
 
