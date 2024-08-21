@@ -1418,9 +1418,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		// Add the nodes with the changed node names, expressions and connections
 		historyStore.startRecordingUndo();
 
-		await addNodes(Object.values(tempWorkflow.nodes), {
-			telemetry: false,
-		});
+		await addNodes(Object.values(tempWorkflow.nodes));
 		addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
