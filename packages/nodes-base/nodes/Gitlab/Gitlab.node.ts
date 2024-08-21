@@ -510,7 +510,8 @@ export class Gitlab implements INodeType {
 					},
 					{
 						displayName: 'Set Labels',
-						description: 'Replaces all labels with the provided ones. If a label does not already exist, this creates a new project label and assigns it to the issue.',
+						description:
+							'Replaces all labels with the provided ones. If a label does not already exist, this creates a new project label and assigns it to the issue.',
 						name: 'labels',
 						type: 'collection',
 						typeOptions: {
@@ -530,7 +531,8 @@ export class Gitlab implements INodeType {
 					},
 					{
 						displayName: 'Add Labels',
-						description: 'Adds a label to the issue, without removing existing ones. If a label does not already exist, this creates a new project label and assigns it to the issue.',
+						description:
+							'Adds a label to the issue, without removing existing ones. If a label does not already exist, this creates a new project label and assigns it to the issue.',
 						name: 'addLabels',
 						type: 'collection',
 						typeOptions: {
@@ -1469,7 +1471,9 @@ export class Gitlab implements INodeType {
 							body.labels = (body.labels as IDataObject[]).map((data) => data.label).join(',');
 						}
 						if (body.addLabels !== undefined) {
-							body.add_labels = (body.addLabels as IDataObject[]).map((data) => data.label).join(',');
+							body.add_labels = (body.addLabels as IDataObject[])
+								.map((data) => data.label)
+								.join(',');
 						}
 						if (body.assignee_ids !== undefined) {
 							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
