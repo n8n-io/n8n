@@ -8,7 +8,6 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserRepository } from '@db/repositories/user.repository';
-import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -16,7 +15,7 @@ import { toError } from '@/utils';
 
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -112,22 +111,18 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
-				user_id: sharer.id,
-				message_type: 'Workflow shared',
-				public_api: false,
+			Container.get(EventService).emit('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Workflow shared',
+				publicApi: false,
 			});
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
-				user: sharer,
-				message_type: 'Workflow shared',
-				public_api: false,
-			});
 			Container.get(EventService).emit('email-failed', {
 				user: sharer,
 				messageType: 'Workflow shared',
+				publicApi: false,
 			});
 
 			const error = toError(e);
@@ -171,22 +166,18 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			void Container.get(InternalHooks).onUserTransactionalEmail({
-				user_id: sharer.id,
-				message_type: 'Credentials shared',
-				public_api: false,
+			Container.get(EventService).emit('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Credentials shared',
+				publicApi: false,
 			});
 
 			return result;
 		} catch (e) {
-			void Container.get(InternalHooks).onEmailFailed({
-				user: sharer,
-				message_type: 'Credentials shared',
-				public_api: false,
-			});
 			Container.get(EventService).emit('email-failed', {
 				user: sharer,
 				messageType: 'Credentials shared',
+				publicApi: false,
 			});
 
 			const error = toError(e);

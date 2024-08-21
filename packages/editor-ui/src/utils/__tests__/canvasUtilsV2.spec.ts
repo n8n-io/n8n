@@ -776,6 +776,19 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 		]);
 	});
 
+	it('should handle endpoints with separate names', () => {
+		const endpoints: INodeTypeDescription['inputs'] = [
+			NodeConnectionType.Main,
+			NodeConnectionType.Main,
+		];
+		const result = mapLegacyEndpointsToCanvasConnectionPort(endpoints, ['First', 'Second']);
+
+		expect(result).toEqual([
+			{ type: NodeConnectionType.Main, index: 0, label: 'First' },
+			{ type: NodeConnectionType.Main, index: 1, label: 'Second' },
+		]);
+	});
+
 	it('should map required and non-required endpoints correctly', () => {
 		const endpoints: INodeTypeDescription['inputs'] = [
 			{ type: NodeConnectionType.Main, displayName: 'Main Input', required: true },

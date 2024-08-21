@@ -175,7 +175,7 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 	});
 });
 
-Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
+Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector, options) => {
 	if (draggableSelector) {
 		cy.get(draggableSelector).should('exist');
 	}
@@ -197,7 +197,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
-			cy.get(droppableSelector).realMouseUp();
+			cy.get(droppableSelector).realMouseUp({ position: options?.position ?? 'top' });
 			if (draggableSelector) {
 				cy.get(draggableSelector).realMouseUp();
 			}

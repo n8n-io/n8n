@@ -200,7 +200,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler005(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					eventBus.logWriter.worker?.removeListener('message', handler005);
@@ -217,7 +217,7 @@ test('should anonymize audit message to syslog ', async () => {
 			'message',
 			async function handler006(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
-					const sent = await eventBus.getEventsAll();
+					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();

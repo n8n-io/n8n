@@ -1,9 +1,5 @@
 <template>
-	<div
-		v-on-click-outside="onClickOutside"
-		:class="{ 'tags-container': true, focused }"
-		@keydown.stop
-	>
+	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
 		<n8n-select
 			ref="selectRef"
 			:teleported="true"
@@ -13,7 +9,6 @@
 			:filter-method="filterOptions"
 			filterable
 			multiple
-			:allow-create="createEnabled"
 			:reserve-keyword="false"
 			loading-text="..."
 			popper-class="tags-dropdown"
@@ -23,7 +18,7 @@
 			@remove-tag="onRemoveTag"
 		>
 			<n8n-option
-				v-if="options.length === 0 && filter && createEnabled"
+				v-if="options.length === 0 && filter"
 				:key="CREATE_KEY"
 				ref="createRef"
 				:value="CREATE_KEY"
@@ -35,11 +30,11 @@
 				</span>
 			</n8n-option>
 			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span v-if="createEnabled">{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-else-if="allTags.length > 0">{{
+				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="allTags.length > 0">{{
 					i18n.baseText('tagsDropdown.noMatchingTagsExist')
 				}}</span>
-				<span v-else>{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
 			</n8n-option>
 
 			<!-- key is id+index for keyboard navigation to work well with filter -->
@@ -74,6 +69,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { PropType } from 'vue';
 import { storeToRefs } from 'pinia';
+import { onClickOutside } from '@vueuse/core';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
 type TagRef = InstanceType<typeof N8nOption>;
@@ -89,10 +85,6 @@ export default defineComponent({
 		modelValue: {
 			type: Array as PropType<string[]>,
 			default: () => [],
-		},
-		createEnabled: {
-			type: Boolean,
-			default: false,
 		},
 		eventBus: {
 			type: Object as PropType<EventBus>,
@@ -120,6 +112,8 @@ export default defineComponent({
 		const filter = ref('');
 		const focused = ref(false);
 		const preventUpdate = ref(false);
+
+		const container = ref<HTMLDivElement | undefined>();
 
 		const allTags = computed<ITag[]>(() => {
 			return tagsStore.allTags;
@@ -257,18 +251,13 @@ export default defineComponent({
 			});
 		}
 
-		function onClickOutside(e: Event) {
-			const tagsDropdown = document.querySelector('.tags-dropdown');
-			const tagsModal = document.querySelector('#tags-manager-modal');
-
-			const clickInsideTagsDropdowns =
-				tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) ?? tagsModal === e.target;
-
-			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
+		onClickOutside(
+			container,
+			() => {
 				emit('blur');
-			}
-		}
+			},
+			{ ignore: ['.tags-dropdown', '#tags-manager-modal'] },
+		);
 
 		return {
 			i18n,
@@ -290,7 +279,7 @@ export default defineComponent({
 			filterOptions,
 			onVisibleChange,
 			onRemoveTag,
-			onClickOutside,
+			container,
 			...useToast(),
 		};
 	},

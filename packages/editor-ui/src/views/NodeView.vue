@@ -47,7 +47,11 @@
 						v-for="nodeData in nodesToRender"
 						:key="`${nodeData.id}_node`"
 						:name="nodeData.name"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
+						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === nodeData.name"
 						:hide-actions="pullConnActive"
@@ -75,7 +79,11 @@
 						:key="`${stickyData.id}_sticky`"
 						:name="stickyData.name"
 						:workflow="currentWorkflowObject"
-						:is-read-only="isReadOnlyRoute || readOnlyEnv"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
+						"
 						:instance="instance"
 						:is-active="!!activeNode && activeNode.name === stickyData.name"
 						:node-view-scale="nodeViewScale"
@@ -90,7 +98,11 @@
 			</div>
 			<NodeDetailsView
 				:workflow-object="currentWorkflowObject"
-				:read-only="isReadOnlyRoute || readOnlyEnv"
+				:read-only="
+					isReadOnlyRoute ||
+					readOnlyEnv ||
+					!(workflowPermissions.update ?? projectPermissions.workflow.update)
+				"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@redraw-node="redrawNode"
@@ -107,7 +119,11 @@
 			</Suspense>
 			<Suspense>
 				<LazyNodeCreation
-					v-if="!isReadOnlyRoute && !readOnlyEnv"
+					v-if="
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						(workflowPermissions.update ?? projectPermissions.workflow.update)
+					"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
 					@toggle-node-creator="onToggleNodeCreator"
@@ -120,7 +136,14 @@
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
 			</Suspense>
-			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
+			<div
+				v-if="
+					!isReadOnlyRoute &&
+					!readOnlyEnv &&
+					(workflowPermissions.update ?? projectPermissions.workflow.update)
+				"
+				class="workflow-execute-wrapper"
+			>
 				<span
 					v-if="!isManualChatOnly"
 					@mouseenter="showTriggerMissingToltip(true)"
@@ -182,13 +205,7 @@
 				/>
 
 				<n8n-icon-button
-					v-if="
-						!isReadOnlyRoute &&
-						!readOnlyEnv &&
-						workflowExecution &&
-						!workflowRunning &&
-						!allTriggersDisabled
-					"
+					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
 					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
 					icon="trash"
 					size="large"
@@ -244,7 +261,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 } from '@/constants';
 
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -310,7 +327,7 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 
-import { type RouteLocation, useRouter } from 'vue-router';
+import { type RouteLocation, useRoute, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -383,6 +400,8 @@ import type { ProjectSharingData } from '@/types/projects.types';
 import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuards';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
+import { getResourcePermissions } from '@/permissions';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -414,66 +433,12 @@ export default defineComponent({
 		ContextMenu,
 		LazySetupWorkflowCredentialsButton,
 	},
-	async beforeRouteLeave(to, from, next) {
-		if (
-			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
-			from.name === VIEWS.TEMPLATE_IMPORT ||
-			(getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
-		) {
-			next();
-			return;
-		}
-		if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
-			const confirmModal = await this.confirm(
-				this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-				{
-					title: this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: this.$locale.baseText(
-						'generic.unsavedWork.confirmMessage.cancelButtonText',
-					),
-					showClose: true,
-				},
-			);
-			if (confirmModal === MODAL_CONFIRM) {
-				// Make sure workflow id is empty when leaving the editor
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
-				if (saved) {
-					await this.npsSurveyStore.fetchPromptsData();
-				}
-				this.uiStore.stateIsDirty = false;
-
-				if (from.name === VIEWS.NEW_WORKFLOW) {
-					// Replace the current route with the new workflow route
-					// before navigating to the new route when saving new workflow.
-					await this.$router.replace({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.currentWorkflow },
-					});
-
-					await this.$router.push(to);
-				} else {
-					next();
-				}
-			} else if (confirmModal === MODAL_CANCEL) {
-				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.resetWorkspace();
-				this.uiStore.stateIsDirty = false;
-				next();
-			}
-		} else {
-			next();
-		}
-	},
 	setup() {
 		const nodeViewRootRef = ref<HTMLElement | null>(null);
 		const nodeViewRef = ref<HTMLElement | null>(null);
 		const onMouseMoveEnd = ref<((e: MouseEvent | TouchEvent) => void) | null>(null);
 		const router = useRouter();
+		const route = useRoute();
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
@@ -489,6 +454,9 @@ export default defineComponent({
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+			route,
+		});
 
 		return {
 			locale,
@@ -514,6 +482,8 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
+			addBeforeUnloadEventBindings,
+			removeBeforeUnloadEventBindings,
 		};
 	},
 	data() {
@@ -547,7 +517,6 @@ export default defineComponent({
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
-			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 			canOpenNDV: true,
 			hideNodeIssues: false,
 		};
@@ -593,7 +562,13 @@ export default defineComponent({
 			return this.$route.name === VIEWS.DEMO;
 		},
 		showCanvasAddButton(): boolean {
-			return !this.isLoading && !this.containsTrigger && !this.isDemo && !this.readOnlyEnv;
+			return (
+				!this.isLoading &&
+				!this.containsTrigger &&
+				!this.isDemo &&
+				!this.readOnlyEnv &&
+				!!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+			);
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -634,7 +609,8 @@ export default defineComponent({
 			return NodeViewUtils.getBackgroundStyles(
 				this.nodeViewScale,
 				this.uiStore.nodeViewOffsetPosition,
-				this.isExecutionPreview,
+				this.isExecutionPreview ||
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 			);
 		},
 		workflowClasses() {
@@ -665,7 +641,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunning(): boolean {
-			return this.uiStore.isActionActive['workflowRunning'];
+			return this.uiStore.isActionActive.workflowRunning;
 		},
 		currentWorkflow(): string {
 			return this.$route.params.name?.toString() || this.workflowsStore.workflowId;
@@ -742,11 +718,22 @@ export default defineComponent({
 		isProductionExecutionPreview(): boolean {
 			return this.nodeHelpers.isProductionExecutionPreview.value;
 		},
+		workflowPermissions() {
+			return getResourcePermissions(
+				this.workflowsStore.getWorkflowById(this.currentWorkflow)?.scopes,
+			).workflow;
+		},
+		projectPermissions() {
+			const project = this.$route.query?.projectId
+				? this.projectsStore.myProjects.find((p) => p.id === this.$route.query.projectId)
+				: this.projectsStore.currentProject ?? this.projectsStore.personalProject;
+			return getResourcePermissions(project?.scopes);
+		},
 	},
 	watch: {
 		// Listen to route changes and load the workflow accordingly
 		async $route(to: RouteLocation, from: RouteLocation) {
-			this.readOnlyEnvRouteCheck();
+			await this.readOnlyEnvRouteCheck();
 
 			const currentTab = getNodeViewTab(to);
 			const nodeViewNotInitialized = !this.uiStore.nodeViewInitialized;
@@ -913,7 +900,7 @@ export default defineComponent({
 			},
 		});
 
-		this.readOnlyEnvRouteCheck();
+		await this.readOnlyEnvRouteCheck();
 		this.canvasStore.isDemo = this.isDemo;
 	},
 	activated() {
@@ -945,13 +932,14 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
+
+		this.addBeforeUnloadEventBindings();
 	},
 	deactivated() {
 		this.unbindCanvasEvents();
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
-		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		window.removeEventListener('pageshow', this.onPageShow);
 
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
@@ -969,6 +957,8 @@ export default defineComponent({
 		dataPinningEventBus.off('pin-data', this.nodeHelpers.addPinDataConnections);
 		dataPinningEventBus.off('unpin-data', this.nodeHelpers.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
+
+		this.removeBeforeUnloadEventBindings();
 	},
 	beforeMount() {
 		if (!this.isDemo) {
@@ -1060,7 +1050,8 @@ export default defineComponent({
 
 				return false;
 			}
-			return true;
+
+			return !!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 		},
 		showTriggerMissingToltip(isVisible: boolean) {
 			this.showTriggerMissingTooltip = isVisible;
@@ -1389,7 +1380,7 @@ export default defineComponent({
 
 			this.resetWorkspace();
 
-			await this.workflowHelpers.initState(workflow);
+			this.workflowHelpers.initState(workflow);
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
@@ -1460,14 +1451,17 @@ export default defineComponent({
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
 			const ctrlAltModifier = this.deviceSupport.isCtrlKeyPressed(e) && e.altKey && !e.shiftKey;
 			const noModifierKeys = !this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
-			const readOnly = this.isReadOnlyRoute || this.readOnlyEnv;
+			const readOnly =
+				this.isReadOnlyRoute ||
+				this.readOnlyEnv ||
+				!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 
 			if (e.key === 's' && ctrlModifier && !readOnly) {
 				e.stopPropagation();
 				e.preventDefault();
 				const workflowIsSaved = !this.uiStore.stateIsDirty;
 
-				if (this.isReadOnlyRoute || this.readOnlyEnv || workflowIsSaved) {
+				if (workflowIsSaved) {
 					return;
 				}
 
@@ -1593,7 +1587,9 @@ export default defineComponent({
 				if (lastSelectedNode !== null) {
 					if (
 						lastSelectedNode.type === STICKY_NODE_TYPE &&
-						(this.isReadOnlyRoute || this.readOnlyEnv)
+						(this.isReadOnlyRoute ||
+							this.readOnlyEnv ||
+							!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update))
 					) {
 						return;
 					}
@@ -1880,7 +1876,10 @@ export default defineComponent({
 		},
 
 		cutNodes(nodes: INode[]) {
-			const deleteCopiedNodes = !this.isReadOnlyRoute && !this.readOnlyEnv;
+			const deleteCopiedNodes =
+				!this.isReadOnlyRoute &&
+				!this.readOnlyEnv &&
+				(this.workflowPermissions.update ?? this.projectPermissions.workflow.update);
 			this.copyNodes(nodes, deleteCopiedNodes);
 			if (deleteCopiedNodes) {
 				this.deleteNodes(nodes);
@@ -2014,7 +2013,11 @@ export default defineComponent({
 		 * This method gets called when data got pasted into the window
 		 */
 		async onClipboardPasteEvent(plainTextData: string): Promise<void> {
-			if (this.readOnlyEnv) {
+			if (
+				this.readOnlyEnv ||
+				this.isReadOnlyRoute ||
+				!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+			) {
 				return;
 			}
 
@@ -2759,7 +2762,10 @@ export default defineComponent({
 
 					this.instance?.connect({
 						uuids: [targetEndpoint, viableConnection?.uuid || ''],
-						detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
+						detachable:
+							!this.isReadOnlyRoute &&
+							!this.readOnlyEnv &&
+							(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 					});
 					this.historyStore.stopRecordingUndo();
 					return;
@@ -3055,7 +3061,11 @@ export default defineComponent({
 				this.dropPrevented = true;
 				this.workflowsStore.addConnection({ connection: connectionData });
 
-				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
+				if (
+					!this.isReadOnlyRoute &&
+					!this.readOnlyEnv &&
+					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+				) {
 					NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
@@ -3142,6 +3152,7 @@ export default defineComponent({
 
 				if (
 					// eslint-disable-next-line no-constant-binary-expression
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					this.enterTimer ??
@@ -3180,6 +3191,7 @@ export default defineComponent({
 
 				if (
 					// eslint-disable-next-line no-constant-binary-expression
+					!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update) ??
 					this.isReadOnlyRoute ??
 					this.readOnlyEnv ??
 					!connection ??
@@ -3521,22 +3533,6 @@ export default defineComponent({
 
 			this.eventsAttached = false;
 		},
-		onBeforeUnload(e: BeforeUnloadEvent) {
-			if (this.isDemo || window.preventNodeViewBeforeUnload) {
-				return;
-			} else if (this.uiStore.stateIsDirty) {
-				e.returnValue = true; //Gecko + IE
-				return true; //Gecko + Webkit, Safari, Chrome etc.
-			} else {
-				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
-				return;
-			}
-		},
-		onUnload() {
-			// This will fire if users decides to leave the page after prompted
-			// Clear the interval to prevent the notification from being sent
-			clearTimeout(this.unloadTimeout);
-		},
 		makeNewWorkflowShareable() {
 			const { currentProject, personalProject } = this.projectsStore;
 			const homeProject = currentProject ?? personalProject ?? {};
@@ -3592,7 +3588,12 @@ export default defineComponent({
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId.toString());
 			} else {
-				if (this.uiStore.stateIsDirty && !this.readOnlyEnv) {
+				if (
+					this.uiStore.stateIsDirty &&
+					!this.readOnlyEnv &&
+					!this.isReadOnlyRoute &&
+					(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)
+				) {
 					const confirmModal = await this.confirm(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
 						{
@@ -3659,12 +3660,13 @@ export default defineComponent({
 			}
 
 			this.historyStore.reset();
+			if (!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update)) {
+				this.canvasStore.setReadOnly(true);
+			}
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			window.addEventListener('beforeunload', this.onBeforeUnload);
-			window.addEventListener('unload', this.onUnload);
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
 			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
@@ -4483,7 +4485,7 @@ export default defineComponent({
 					from.outputIndex ?? 0,
 					toNode.name,
 					to.inputIndex ?? 0,
-					NodeConnectionType.Main,
+					from.type ?? NodeConnectionType.Main,
 				);
 			}
 
@@ -4501,6 +4503,22 @@ export default defineComponent({
 						nodeName: nodeUi.name,
 						position: [nodeUi.position[0], nodeUi.position[1] + 100 * (index + 1)],
 					});
+				});
+			}
+
+			const lastNodeType = this.nodeTypesStore.getNodeType(lastAddedNode.type);
+			const isSubNode = NodeHelpers.isSubNodeType(lastNodeType);
+
+			// When adding a sub-node and there's more than one node added at the time, it must mean that it's
+			// connected to a root node, so we adjust the position of the sub-node to make it appear in the correct
+			// in relation to the root node
+			if (isSubNode && nodes.length > 1) {
+				this.onMoveNode({
+					nodeName: lastAddedNode.name,
+					position: [
+						lastAddedNode.position[0] - NodeViewUtils.NODE_SIZE * 2.5,
+						lastAddedNode.position[1] + NodeViewUtils.NODE_SIZE * 1.5,
+					],
 				});
 			}
 
@@ -4562,17 +4580,16 @@ export default defineComponent({
 				this.canvasStore.stopLoading();
 			}
 		},
-		readOnlyEnvRouteCheck() {
+		async readOnlyEnvRouteCheck() {
 			if (
-				this.readOnlyEnv &&
+				(this.readOnlyEnv || !this.projectPermissions.workflow.create) &&
 				(this.$route.name === VIEWS.NEW_WORKFLOW || this.$route.name === VIEWS.TEMPLATE_IMPORT)
 			) {
-				void this.$nextTick(async () => {
-					this.resetWorkspace();
-					this.uiStore.stateIsDirty = false;
+				await this.$nextTick();
+				this.resetWorkspace();
+				this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.HOMEPAGE });
-				});
+				await this.$router.replace({ name: VIEWS.HOMEPAGE });
 			}
 		},
 		async checkAndInitDebugMode() {
@@ -4622,7 +4639,10 @@ export default defineComponent({
 				case 'add_node':
 					this.onToggleNodeCreator({
 						source: NODE_CREATOR_OPEN_SOURCES.CONTEXT_MENU,
-						createNodeActive: !this.isReadOnlyRoute && !this.readOnlyEnv,
+						createNodeActive:
+							!this.isReadOnlyRoute &&
+							!this.readOnlyEnv &&
+							!!(this.workflowPermissions.update ?? this.projectPermissions.workflow.update),
 					});
 					break;
 				case 'add_sticky':
@@ -4717,7 +4737,7 @@ export default defineComponent({
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: var(--spacing-l);
+	bottom: var(--spacing-s);
 	width: auto;
 
 	@media (max-width: $breakpoint-2xs) {

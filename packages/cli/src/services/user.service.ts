@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
@@ -8,11 +8,10 @@ import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { Logger } from '@/Logger';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class UserService {
@@ -144,32 +143,28 @@ export class UserService {
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						void Container.get(InternalHooks).onUserTransactionalEmail({
-							user_id: id,
-							message_type: 'New user invite',
-							public_api: false,
+
+						this.eventService.emit('user-transactional-email-sent', {
+							userId: id,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
 					}
 
-					void Container.get(InternalHooks).onUserInvite({
-						user: owner,
-						target_user_id: Object.values(toInviteUsers),
-						public_api: false,
-						email_sent: result.emailSent,
-						invitee_role: role, // same role for all invited users
-					});
 					this.eventService.emit('user-invited', {
 						user: owner,
 						targetUserId: Object.values(toInviteUsers),
+						publicApi: false,
+						emailSent: result.emailSent,
+						inviteeRole: role, // same role for all invited users
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						void Container.get(InternalHooks).onEmailFailed({
+						this.eventService.emit('email-failed', {
 							user: owner,
-							message_type: 'New user invite',
-							public_api: false,
+							messageType: 'New user invite',
+							publicApi: false,
 						});
-						this.eventService.emit('email-failed', { user: owner, messageType: 'New user invite' });
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,

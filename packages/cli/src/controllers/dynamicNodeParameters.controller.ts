@@ -1,4 +1,4 @@
-import type { INodePropertyOptions } from 'n8n-workflow';
+import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
 import { Post, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
@@ -91,5 +91,29 @@ export class DynamicNodeParametersController {
 			currentNodeParameters,
 			credentials,
 		);
+	}
+
+	@Post('/action-result')
+	async getActionResult(
+		req: DynamicNodeParametersRequest.ActionResult,
+	): Promise<NodeParameterValueType> {
+		const { currentNodeParameters, nodeTypeAndVersion, path, credentials, handler, payload } =
+			req.body;
+
+		const additionalData = await getBase(req.user.id, currentNodeParameters);
+
+		if (handler) {
+			return await this.service.getActionResult(
+				handler,
+				path,
+				additionalData,
+				nodeTypeAndVersion,
+				currentNodeParameters,
+				payload,
+				credentials,
+			);
+		}
+
+		return;
 	}
 }

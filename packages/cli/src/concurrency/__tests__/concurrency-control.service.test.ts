@@ -12,7 +12,7 @@ import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import type { Telemetry } from '@/telemetry';
-import type { EventService } from '@/eventbus/event.service';
+import type { EventService } from '@/events/event.service';
 
 describe('ConcurrencyControlService', () => {
 	const logger = mock<Logger>();

@@ -17,101 +17,105 @@
 						}"
 						v-text="`${connection.displayName}${connection.required ? ' *' : ''}`"
 					/>
-					<div
-						v-on-click-outside="() => expandConnectionGroup(connection.type, false)"
-						:class="{
-							[$style.connectedNodesWrapper]: true,
-							[$style.connectedNodesWrapperExpanded]: expandedGroups.includes(connection.type),
-						}"
-						:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
-						@click="expandConnectionGroup(connection.type, true)"
-					>
+					<OnClickOutside @trigger="expandConnectionGroup(connection.type, false)">
 						<div
-							v-if="
-								connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
-							"
+							ref="connectedNodesWrapper"
 							:class="{
-								[$style.plusButton]: true,
-								[$style.hasIssues]: hasInputIssues(connection.type),
+								[$style.connectedNodesWrapper]: true,
+								[$style.connectedNodesWrapperExpanded]: expandedGroups.includes(connection.type),
 							}"
-							@click="onPlusClick(connection.type)"
-						>
-							<n8n-tooltip
-								placement="top"
-								:teleported="true"
-								:offset="10"
-								:show-after="300"
-								:disabled="
-									shouldShowConnectionTooltip(connection.type) &&
-									connectedNodes[connection.type].length >= 1
-								"
-							>
-								<template #content>
-									Add {{ connection.displayName }}
-									<template v-if="hasInputIssues(connection.type)">
-										<TitledList
-											:title="`${$locale.baseText('node.issues')}:`"
-											:items="nodeInputIssues[connection.type]"
-										/>
-									</template>
-								</template>
-								<n8n-icon-button
-									size="medium"
-									icon="plus"
-									type="tertiary"
-									:data-test-id="`add-subnode-${connection.type}`"
-								/>
-							</n8n-tooltip>
-						</div>
-						<div
-							v-if="connectedNodes[connection.type].length > 0"
-							:class="{
-								[$style.connectedNodes]: true,
-								[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
-							}"
+							:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
+							@click="expandConnectionGroup(connection.type, true)"
 						>
 							<div
-								v-for="(node, index) in connectedNodes[connection.type]"
-								:key="node.node.name"
-								:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
-								data-test-id="floating-subnode"
-								:data-node-name="node.node.name"
-								:style="`--node-index: ${index}`"
+								v-if="
+									connectedNodes[connection.type].length >= 1
+										? connection.maxConnections !== 1
+										: true
+								"
+								:class="{
+									[$style.plusButton]: true,
+									[$style.hasIssues]: hasInputIssues(connection.type),
+								}"
+								@click="onPlusClick(connection.type)"
 							>
 								<n8n-tooltip
-									:key="node.node.name"
 									placement="top"
 									:teleported="true"
 									:offset="10"
 									:show-after="300"
-									:disabled="shouldShowConnectionTooltip(connection.type)"
+									:disabled="
+										shouldShowConnectionTooltip(connection.type) &&
+										connectedNodes[connection.type].length >= 1
+									"
 								>
 									<template #content>
-										{{ node.node.name }}
-										<template v-if="node.issues">
+										Add {{ connection.displayName }}
+										<template v-if="hasInputIssues(connection.type)">
 											<TitledList
 												:title="`${$locale.baseText('node.issues')}:`"
-												:items="node.issues"
+												:items="nodeInputIssues[connection.type]"
 											/>
 										</template>
 									</template>
-
-									<div
-										:class="$style.connectedNode"
-										@click="onNodeClick(node.node.name, connection.type)"
-									>
-										<NodeIcon
-											:node-type="node.nodeType"
-											:node-name="node.node.name"
-											tooltip-position="top"
-											:size="20"
-											circle
-										/>
-									</div>
+									<n8n-icon-button
+										size="medium"
+										icon="plus"
+										type="tertiary"
+										:data-test-id="`add-subnode-${connection.type}`"
+									/>
 								</n8n-tooltip>
 							</div>
+							<div
+								v-if="connectedNodes[connection.type].length > 0"
+								:class="{
+									[$style.connectedNodes]: true,
+									[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
+								}"
+							>
+								<div
+									v-for="(node, index) in connectedNodes[connection.type]"
+									:key="node.node.name"
+									:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
+									data-test-id="floating-subnode"
+									:data-node-name="node.node.name"
+									:style="`--node-index: ${index}`"
+								>
+									<n8n-tooltip
+										:key="node.node.name"
+										placement="top"
+										:teleported="true"
+										:offset="10"
+										:show-after="300"
+										:disabled="shouldShowConnectionTooltip(connection.type)"
+									>
+										<template #content>
+											{{ node.node.name }}
+											<template v-if="node.issues">
+												<TitledList
+													:title="`${$locale.baseText('node.issues')}:`"
+													:items="node.issues"
+												/>
+											</template>
+										</template>
+
+										<div
+											:class="$style.connectedNode"
+											@click="onNodeClick(node.node.name, connection.type)"
+										>
+											<NodeIcon
+												:node-type="node.nodeType"
+												:node-name="node.node.name"
+												tooltip-position="top"
+												:size="20"
+												circle
+											/>
+										</div>
+									</n8n-tooltip>
+								</div>
+							</div>
 						</div>
-					</div>
+					</OnClickOutside>
 				</div>
 			</div>
 		</div>
@@ -129,6 +133,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
+import { OnClickOutside } from '@vueuse/components';
 
 interface Props {
 	rootNode: INodeUi;

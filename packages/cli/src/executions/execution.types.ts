@@ -1,6 +1,12 @@
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 import type { AuthenticatedRequest } from '@/requests';
-import type { ExecutionStatus, IDataObject, WorkflowExecuteMode } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
+import type {
+	ExecutionStatus,
+	ExecutionSummary,
+	IDataObject,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 export declare namespace ExecutionRequest {
 	namespace QueryParams {
@@ -83,24 +89,9 @@ export namespace ExecutionSummaries {
 			stoppedAt?: 'DESC';
 		};
 	};
+
+	export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 }
-
-export type QueueRecoverySettings = {
-	/**
-	 * ID of timeout for next scheduled recovery cycle.
-	 */
-	timeout?: NodeJS.Timeout;
-
-	/**
-	 * Number of in-progress executions to check per cycle.
-	 */
-	batchSize: number;
-
-	/**
-	 * Time (in milliseconds) to wait before the next cycle.
-	 */
-	waitMs: number;
-};
 
 export type StopResult = {
 	mode: WorkflowExecuteMode;

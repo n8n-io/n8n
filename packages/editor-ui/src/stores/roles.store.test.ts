@@ -101,6 +101,7 @@ describe('roles store', () => {
 		});
 		await rolesStore.fetchRoles();
 		expect(rolesStore.processedProjectRoles.map(({ role }) => role)).toEqual([
+			'project:viewer',
 			'project:editor',
 			'project:admin',
 		]);

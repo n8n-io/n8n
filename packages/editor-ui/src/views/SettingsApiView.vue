@@ -43,6 +43,8 @@
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
 						:redact-value="true"
+						:disable-copy="isRedactedApiKey"
+						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
 						@copy="onCopy"
 					/>
 				</div>
@@ -145,6 +147,9 @@ export default defineComponent({
 		},
 		isPublicApiEnabled(): boolean {
 			return this.settingsStore.isPublicApiEnabled;
+		},
+		isRedactedApiKey(): boolean {
+			return this.apiKey.includes('*');
 		},
 	},
 	methods: {

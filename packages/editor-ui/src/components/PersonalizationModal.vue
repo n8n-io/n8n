@@ -135,6 +135,7 @@ import {
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
+	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
@@ -144,7 +145,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createEventBus, createFormEventBus } from 'n8n-design-system/utils';
 import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useUsageStore } from '@/stores/usage.store';
@@ -180,7 +181,7 @@ export default defineComponent({
 			showAllIndustryQuestions: true,
 			registerForEnterpriseTrial: false,
 			modalBus: createEventBus(),
-			formBus: createEventBus(),
+			formBus: createFormEventBus(),
 			domainBlocklist: [] as string[],
 		};
 	},
@@ -674,9 +675,12 @@ export default defineComponent({
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
+			const isPartOfOnboardingExperiment =
+				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+				MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
 			// In case the redirect to homepage for new users didn't happen
 			// we try again after closing the modal
-			if (this.$route.name !== VIEWS.HOMEPAGE) {
+			if (this.$route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
 				void this.$router.replace({ name: VIEWS.HOMEPAGE });
 			}
 		},

@@ -13,7 +13,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -21,14 +20,13 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController()
 export class PasswordResetController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
-		private readonly internalHooks: InternalHooks,
 		private readonly mailer: UserManagementMailer,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -120,25 +118,23 @@ export class PasswordResetController {
 				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
-			void this.internalHooks.onEmailFailed({
+			this.eventService.emit('email-failed', {
 				user,
-				message_type: 'Reset password',
-				public_api: false,
+				messageType: 'Reset password',
+				publicApi: false,
 			});
-			this.eventService.emit('email-failed', { user, messageType: 'Reset password' });
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}
 		}
 
 		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
-		void this.internalHooks.onUserTransactionalEmail({
-			user_id: id,
-			message_type: 'Reset password',
-			public_api: false,
+		this.eventService.emit('user-transactional-email-sent', {
+			userId: id,
+			messageType: 'Reset password',
+			publicApi: false,
 		});
 
-		void this.internalHooks.onUserPasswordResetRequestClick({ user });
 		this.eventService.emit('user-password-reset-request-click', { user });
 	}
 
@@ -171,7 +167,6 @@ export class PasswordResetController {
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
-		void this.internalHooks.onUserPasswordResetEmailClick({ user });
 		this.eventService.emit('user-password-reset-email-click', { user });
 	}
 
@@ -215,17 +210,16 @@ export class PasswordResetController {
 
 		this.authService.issueCookie(res, user, req.browserId);
 
-		void this.internalHooks.onUserUpdate({ user, fields_changed: ['password'] });
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 
-		// if this user used to be an LDAP users
+		// if this user used to be an LDAP user
 		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 		if (ldapIdentity) {
-			void this.internalHooks.onUserSignup(user, {
-				user_type: 'email',
-				was_disabled_ldap_user: true,
+			this.eventService.emit('user-signed-up', {
+				user,
+				userType: 'email',
+				wasDisabledLdapUser: true,
 			});
-			this.eventService.emit('user-signed-up', { user });
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);

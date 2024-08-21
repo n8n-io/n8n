@@ -18,6 +18,11 @@ describe('GlobalConfig', () => {
 	});
 
 	const defaultConfig: GlobalConfig = {
+		path: '/',
+		host: 'localhost',
+		port: 5678,
+		listen_address: '0.0.0.0',
+		protocol: 'http',
 		database: {
 			logging: {
 				enabled: false,
@@ -103,6 +108,8 @@ describe('GlobalConfig', () => {
 		nodes: {
 			communityPackages: {
 				enabled: true,
+				registry: 'https://registry.npmjs.org',
+				reinstallMissing: false,
 			},
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
@@ -122,12 +129,100 @@ describe('GlobalConfig', () => {
 			endpoint: 'https://api.n8n.io/api/versions/',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
+		externalStorage: {
+			s3: {
+				host: '',
+				bucket: {
+					name: '',
+					region: '',
+				},
+				credentials: {
+					accessKey: '',
+					accessSecret: '',
+				},
+			},
+		},
+		workflows: {
+			defaultName: 'My workflow',
+			onboardingFlowDisabled: false,
+			callerPolicyDefaultOption: 'workflowsFromSameOwner',
+		},
+		endpoints: {
+			metrics: {
+				enable: false,
+				prefix: 'n8n_',
+				includeWorkflowIdLabel: false,
+				includeDefaultMetrics: true,
+				includeMessageEventBusMetrics: false,
+				includeNodeTypeLabel: false,
+				includeCacheMetrics: false,
+				includeApiEndpoints: false,
+				includeApiPathLabel: false,
+				includeApiMethodLabel: false,
+				includeCredentialTypeLabel: false,
+				includeApiStatusCodeLabel: false,
+			},
+			additionalNonUIRoutes: '',
+			disableProductionWebhooksOnMainProcess: false,
+			disableUi: false,
+			form: 'form',
+			formTest: 'form-test',
+			formWaiting: 'form-waiting',
+			payloadSizeMax: 16,
+			rest: 'rest',
+			webhook: 'webhook',
+			webhookTest: 'webhook-test',
+			webhookWaiting: 'webhook-waiting',
+		},
+		cache: {
+			backend: 'auto',
+			memory: {
+				maxSize: 3145728,
+				ttl: 3600000,
+			},
+			redis: {
+				prefix: 'redis',
+				ttl: 3600000,
+			},
+		},
+		queue: {
+			health: {
+				active: false,
+				port: 5678,
+			},
+			bull: {
+				redis: {
+					db: 0,
+					host: 'localhost',
+					password: '',
+					port: 6379,
+					timeoutThreshold: 10_000,
+					username: '',
+					clusterNodes: '',
+					tls: false,
+				},
+				queueRecoveryInterval: 60,
+				gracefulShutdownTimeout: 30,
+				prefix: 'bull',
+				settings: {
+					lockDuration: 30_000,
+					lockRenewTime: 15_000,
+					stalledInterval: 30_000,
+					maxStalledCount: 1,
+				},
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual(defaultConfig);
+
+		// deepCopy for diff to show plain objects
+		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+		const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
 
@@ -137,6 +232,7 @@ describe('GlobalConfig', () => {
 			DB_POSTGRESDB_USER: 'n8n',
 			DB_TABLE_PREFIX: 'test_',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
+			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(config).toEqual({

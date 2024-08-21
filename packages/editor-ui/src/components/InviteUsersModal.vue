@@ -75,7 +75,7 @@ import {
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
-import { createEventBus } from 'n8n-design-system/utils';
+import { createFormEventBus, createEventBus } from 'n8n-design-system/utils';
 import { useClipboard } from '@/composables/useClipboard';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
@@ -110,7 +110,7 @@ export default defineComponent({
 	data() {
 		return {
 			config: null as IFormInputs | null,
-			formBus: createEventBus(),
+			formBus: createFormEventBus(),
 			modalBus: createEventBus(),
 			emails: '',
 			role: ROLE.Member as InvitableRoleName,

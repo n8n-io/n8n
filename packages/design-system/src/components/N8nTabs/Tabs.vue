@@ -13,7 +13,7 @@
 				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
-				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
+				<N8nTooltip :disabled="!option.tooltip" placement="bottom">
 					<template #content>
 						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
 					</template>
@@ -31,14 +31,14 @@
 							</span>
 						</div>
 					</a>
-					<RouterLink
+					<router-link
 						v-else-if="option.to"
 						:to="option.to"
 						:class="[$style.tab, { [$style.activeTab]: modelValue === option.value }]"
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-					</RouterLink>
+					</router-link>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
@@ -48,7 +48,7 @@
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="small" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>

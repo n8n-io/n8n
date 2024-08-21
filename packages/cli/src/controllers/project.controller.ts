@@ -23,7 +23,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, Not } from '@n8n/typeorm';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController('/projects')
 export class ProjectController {

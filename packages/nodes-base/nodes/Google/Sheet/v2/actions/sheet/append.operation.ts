@@ -14,7 +14,7 @@ import {
 	mapFields,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData } from './commonDescription';
+import { cellFormat, handlingExtraData, useAppendOption } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -154,7 +154,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -198,14 +198,7 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			{
-				displayName: 'Use Append',
-				name: 'useAppend',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
-			},
+			useAppendOption,
 		],
 	},
 ];
@@ -275,7 +268,10 @@ export async function execute(
 		//if no trailing empty row exists in the sheet update operation will fail
 		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 
-		const lastRow = (sheetData ?? []).length + 1;
+		// if sheetData is undefined it means that the sheet was empty
+		// we did add row with column names in the first row (autoMapInputData)
+		// to account for that length has to be 1 and we append data in the next row
+		const lastRow = (sheetData ?? [{}]).length + 1;
 
 		await sheet.appendSheetData({
 			inputData,

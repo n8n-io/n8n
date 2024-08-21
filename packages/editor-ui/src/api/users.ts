@@ -89,14 +89,16 @@ export async function changePassword(
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }
 
+export type UpdateCurrentUserParams = {
+	firstName?: string;
+	lastName?: string;
+	email: string;
+	mfaCode?: string;
+};
+
 export async function updateCurrentUser(
 	context: IRestApiContext,
-	params: {
-		id?: string;
-		firstName?: string;
-		lastName?: string;
-		email: string;
-	},
+	params: UpdateCurrentUserParams,
 ): Promise<IUserResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/me', params);
 }
@@ -116,9 +118,15 @@ export async function updateOtherUserSettings(
 	return await makeRestApiRequest(context, 'PATCH', `/users/${userId}/settings`, settings);
 }
 
+export type UpdateUserPasswordParams = {
+	newPassword: string;
+	currentPassword: string;
+	mfaCode?: string;
+};
+
 export async function updateCurrentUserPassword(
 	context: IRestApiContext,
-	params: { newPassword: string; currentPassword: string },
+	params: UpdateUserPasswordParams,
 ): Promise<void> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }
