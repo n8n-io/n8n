@@ -154,7 +154,7 @@ watch(segments, () => {
 });
 
 onMounted(() => {
-	codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	codeNodeEditorEventBus.on('highlightLine', highlightLine);
 
 	if (props.fullscreen) {
 		focus();
@@ -162,7 +162,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
 function line(lineNumber: number): Line | null {
