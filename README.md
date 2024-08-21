@@ -7,7 +7,7 @@ will always have visible source code, be available to self-host, and allow you t
 functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect
 anything to everything.
 
-![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-hero.png)
+![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-demo.gif)
 
 ## Demo
 
