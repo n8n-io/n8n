@@ -8,9 +8,10 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
@@ -26,6 +27,7 @@ const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const posthogStore = usePostHog();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
@@ -45,6 +47,9 @@ const debouncedEmit = debounce(emit, {
 const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+const isAnnotationFiltersEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 const showTags = computed(() => false);
 
@@ -252,7 +257,7 @@ onBeforeMount(() => {
 					/>
 				</div>
 			</div>
-			<div :class="$style.group">
+			<div v-if="isAnnotationFiltersEnabled" :class="$style.group">
 				<label for="execution-filter-annotation-tags">{{
 					locale.baseText('executionsFilter.annotation.tags')
 				}}</label>
@@ -265,7 +270,7 @@ onBeforeMount(() => {
 					@update:model-value="onAnnotationTagsChange"
 				/>
 			</div>
-			<div :class="$style.group">
+			<div v-if="isAnnotationFiltersEnabled" :class="$style.group">
 				<label for="execution-filter-annotation-vote">{{
 					locale.baseText('executionsFilter.annotation.rating')
 				}}</label>

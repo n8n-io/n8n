@@ -18,6 +18,7 @@ const defaultFilterState: ExecutionFilterType = {
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
+	vote: 'all',
 };
 
 const workflowDataFactory = (): IWorkflowShortResponse => ({

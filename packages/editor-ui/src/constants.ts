@@ -682,6 +682,8 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
