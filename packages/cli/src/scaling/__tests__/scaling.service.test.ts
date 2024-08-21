@@ -45,6 +45,7 @@ describe('ScalingService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		config.set('generic.instanceType', 'main');
+		instanceSettings.markAsLeader();
 		scalingService = new ScalingService(
 			mock(),
 			mock(),
@@ -57,32 +58,116 @@ describe('ScalingService', () => {
 	});
 
 	afterEach(() => {
+		// @ts-expect-error Private method
 		scalingService.stopQueueRecovery();
 	});
 
 	describe('setupQueue', () => {
-		it('should set up the queue', async () => {
-			/**
-			 * Arrange
-			 */
-			const { prefix, settings } = globalConfig.queue.bull;
-			const Bull = jest.mocked(BullModule.default);
+		describe('if leader main', () => {
+			it('should set up queue, register main listeners, schedule queue recovery', async () => {
+				/**
+				 * Arrange
+				 */
+				const { prefix, settings } = globalConfig.queue.bull;
+				const Bull = jest.mocked(BullModule.default);
+				// @ts-expect-error - Private method
+				const registerMainListenersSpy = jest.spyOn(scalingService, 'registerMainListeners');
+				// @ts-expect-error - Private method
+				const registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
+				// @ts-expect-error - Private method
+				const scheduleSpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
 
-			/**
-			 * Act
-			 */
-			await scalingService.setupQueue();
+				/**
+				 * Act
+				 */
+				await scalingService.setupQueue();
 
-			/**
-			 * Assert
-			 */
-			expect(Bull).toHaveBeenCalledWith(QUEUE_NAME, {
-				prefix,
-				settings,
-				createClient: expect.any(Function),
+				/**
+				 * Assert
+				 */
+				expect(Bull).toHaveBeenCalledWith(QUEUE_NAME, {
+					prefix,
+					settings,
+					createClient: expect.any(Function),
+				});
+				expect(registerMainListenersSpy).toHaveBeenCalled();
+				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
+				expect(scheduleSpy).toHaveBeenCalled();
 			});
-			expect(queue.on).toHaveBeenCalledWith('global:progress', expect.any(Function));
-			expect(queue.on).toHaveBeenCalledWith('error', expect.any(Function));
+		});
+
+		describe('if follower main', () => {
+			it('should set up queue, register main listeners', async () => {
+				/**
+				 * Arrange
+				 */
+				const { prefix, settings } = globalConfig.queue.bull;
+				const Bull = jest.mocked(BullModule.default);
+				instanceSettings.markAsFollower();
+				// @ts-expect-error - Private method
+				const registerMainListenersSpy = jest.spyOn(scalingService, 'registerMainListeners');
+				// @ts-expect-error - Private method
+				const registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
+				// @ts-expect-error - Private method
+				const scheduleSpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
+
+				/**
+				 * Act
+				 */
+				await scalingService.setupQueue();
+
+				/**
+				 * Assert
+				 */
+				expect(Bull).toHaveBeenCalledWith(QUEUE_NAME, {
+					prefix,
+					settings,
+					createClient: expect.any(Function),
+				});
+				expect(registerMainListenersSpy).toHaveBeenCalled();
+				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
+				expect(scheduleSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('if worker', () => {
+			it('should set up queue, register worker listeners', async () => {
+				/**
+				 * Arrange
+				 */
+				config.set('generic.instanceType', 'worker');
+				const scalingService = new ScalingService(
+					mock(),
+					mock(),
+					mock(),
+					globalConfig,
+					mock(),
+					instanceSettings,
+					orchestrationService,
+				);
+				const { prefix, settings } = globalConfig.queue.bull;
+				const Bull = jest.mocked(BullModule.default);
+				// @ts-expect-error - Private method
+				const registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
+				// @ts-expect-error - Private method
+				const registerMainListenersSpy = jest.spyOn(scalingService, 'registerMainListeners');
+
+				/**
+				 * Act
+				 */
+				await scalingService.setupQueue();
+
+				/**
+				 * Assert
+				 */
+				expect(Bull).toHaveBeenCalledWith(QUEUE_NAME, {
+					prefix,
+					settings,
+					createClient: expect.any(Function),
+				});
+				expect(registerWorkerListenersSpy).toHaveBeenCalled();
+				expect(registerMainListenersSpy).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -135,6 +220,7 @@ describe('ScalingService', () => {
 			 */
 			await scalingService.setupQueue();
 			jobProcessor.getRunningJobIds.mockReturnValue([]);
+			// @ts-expect-error Private method
 			const stopQueueRecoverySpy = jest.spyOn(scalingService, 'stopQueueRecovery');
 			const getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
 
@@ -315,44 +401,6 @@ describe('ScalingService', () => {
 			 * Assert
 			 */
 			expect(result).toBe(false);
-		});
-	});
-
-	describe('scheduleQueueRecovery', () => {
-		it('if leader, should schedule queue recovery', async () => {
-			/**
-			 * Arrange
-			 */
-			const scheduleSpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
-			instanceSettings.markAsLeader();
-
-			/**
-			 * Act
-			 */
-			await scalingService.setupQueue();
-
-			/**
-			 * Assert
-			 */
-			expect(scheduleSpy).toHaveBeenCalled();
-		});
-
-		it('if follower, should not schedule queue recovery', async () => {
-			/**
-			 * Arrange
-			 */
-			const scheduleSpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
-			instanceSettings.markAsFollower();
-
-			/**
-			 * Act
-			 */
-			await scalingService.setupQueue();
-
-			/**
-			 * Assert
-			 */
-			expect(scheduleSpy).not.toHaveBeenCalled();
 		});
 	});
 });

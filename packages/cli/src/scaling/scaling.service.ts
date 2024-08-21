@@ -56,7 +56,13 @@ export class ScalingService {
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
-		this.registerListeners();
+		if (this.instanceType === 'worker') {
+			this.registerWorkerListeners();
+			this.logger.debug('[ScalingService] Queue setup for worker completed');
+			return;
+		}
+
+		this.registerMainListeners();
 
 		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
 
@@ -66,7 +72,7 @@ export class ScalingService {
 				.on('leader-stepdown', () => this.stopQueueRecovery());
 		}
 
-		this.logger.debug('[ScalingService] Queue setup completed');
+		this.logger.debug('[ScalingService] Queue setup for main completed');
 	}
 
 	setupWorker(concurrency: number) {
@@ -160,60 +166,20 @@ export class ScalingService {
 
 	// #region Listeners
 
-	private registerListeners() {
-		this.queue.on('global:progress', (_jobId: JobId, msg: JobMessage) => {
-			if (msg.kind === 'respond-to-webhook') {
-				const { executionId, response } = msg;
-				this.activeExecutions.resolveResponsePromise(
-					executionId,
-					this.decodeWebhookResponse(response),
-				);
-			}
-		});
+	/**
+	 * Register listeners on a `worker` process for Bull queue events.
+	 */
+	private registerWorkerListeners() {
+		this.assertWorker();
 
 		this.queue.on('global:progress', (jobId: JobId, msg: JobMessage) => {
-			if (msg.kind === 'abort-job') {
-				this.jobProcessor.stopJob(jobId);
-			}
+			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
-		let latestAttemptTs = 0;
-		let cumulativeTimeoutMs = 0;
-
-		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
-		const RESET_LENGTH_MS = 30_000;
-
 		this.queue.on('error', (error: Error) => {
-			this.logger.error('[ScalingService] Queue errored', { error });
+			if (error.message.includes('ECONNREFUSED')) return; // handled at RedisClientService.retryStrategy
 
-			/**
-			 * On Redis connection failure, try to reconnect. On every failed attempt,
-			 * increment a cumulative timeout - if this exceeds a limit, exit the
-			 * process. Reset the cumulative timeout if >30s between retries.
-			 */
-			if (error.message.includes('ECONNREFUSED')) {
-				const nowTs = Date.now();
-				if (nowTs - latestAttemptTs > RESET_LENGTH_MS) {
-					latestAttemptTs = nowTs;
-					cumulativeTimeoutMs = 0;
-				} else {
-					cumulativeTimeoutMs += nowTs - latestAttemptTs;
-					latestAttemptTs = nowTs;
-					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
-						this.logger.error('[ScalingService] Redis unavailable after max timeout');
-						this.logger.error('[ScalingService] Exiting process...');
-						process.exit(1);
-					}
-				}
-
-				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
-				return;
-			}
-
-			if (
-				this.instanceType === 'worker' &&
-				error.message.includes('job stalled more than maxStalledCount')
-			) {
+			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
 
@@ -221,16 +187,29 @@ export class ScalingService {
 			 * Non-recoverable error on worker start with Redis unavailable.
 			 * Even if Redis recovers, worker will remain unable to process jobs.
 			 */
-			if (
-				this.instanceType === 'worker' &&
-				error.message.includes('Error initializing Lua scripts')
-			) {
+			if (error.message.includes('Error initializing Lua scripts')) {
 				this.logger.error('[ScalingService] Fatal error initializing worker', { error });
 				this.logger.error('[ScalingService] Exiting process...');
 				process.exit(1);
 			}
 
 			throw error;
+		});
+	}
+
+	/**
+	 * Register listeners on a `main` process for Bull queue events.
+	 */
+	private registerMainListeners() {
+		this.queue.on('global:progress', (_jobId: JobId, msg: JobMessage) => {
+			if (msg.kind === 'respond-to-webhook') {
+				const decodedResponse = this.decodeWebhookResponse(msg.response);
+				this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
+			}
+		});
+
+		this.queue.on('error', (error: Error) => {
+			if (error.message.includes('ECONNREFUSED')) return; // handled at RedisClientService.retryStrategy
 		});
 	}
 
@@ -265,7 +244,7 @@ export class ScalingService {
 		waitMs: config.getEnv('executions.queueRecovery.interval') * 60 * 1000,
 	};
 
-	scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
+	private scheduleQueueRecovery(waitMs = this.queueRecoveryContext.waitMs) {
 		this.queueRecoveryContext.timeout = setTimeout(async () => {
 			try {
 				const nextWaitMs = await this.recoverFromQueue();
@@ -285,7 +264,7 @@ export class ScalingService {
 		this.logger.debug(`[ScalingService] Scheduled queue recovery check for next ${wait}`);
 	}
 
-	stopQueueRecovery() {
+	private stopQueueRecovery() {
 		clearTimeout(this.queueRecoveryContext.timeout);
 	}
 
