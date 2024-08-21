@@ -3,8 +3,10 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
+	onActivated,
 	onBeforeMount,
 	onBeforeUnmount,
+	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -92,6 +94,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -136,6 +139,9 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
+const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+	route,
+});
 const { registerCustomAction } = useGlobalLinkActions();
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
@@ -1445,6 +1451,10 @@ onMounted(async () => {
 	void externalHooks.run('nodeView.mount').catch(() => {});
 });
 
+onActivated(() => {
+	addBeforeUnloadEventBindings();
+});
+
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
@@ -1452,6 +1462,10 @@ onBeforeUnmount(() => {
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
 	removeWorkflowSavedEventBindings();
+});
+
+onDeactivated(() => {
+	removeBeforeUnloadEventBindings();
 });
 </script>
 
