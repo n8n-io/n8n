@@ -22,6 +22,8 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
+			mock(),
 			executionRepository,
 			Container.get(WorkflowRepository),
 			mock(),

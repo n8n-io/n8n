@@ -120,7 +120,10 @@ export default defineComponent({
 			return this.activeExecution?.annotation?.vote || null;
 		},
 		activeExecution() {
-			return this.executionsStore.activeExecution;
+			// FIXME: this is a temporary workaround to make TS happy. activeExecution may contain customData, but it is type-casted to ExecutionSummary after fetching from the backend
+			return this.executionsStore.activeExecution as ExecutionSummary & {
+				customData?: Record<string, string>;
+			};
 		},
 		tagIds() {
 			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];

@@ -25,6 +25,8 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		activeExecutions,
+		mock(),
+		mock(),
 		executionRepository,
 		mock(),
 		mock(),
