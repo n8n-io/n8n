@@ -5,11 +5,6 @@ export type ElasticSecurityApiCredentials = {
 	baseUrl: string;
 };
 
-/*export type ElasticSecurityApiKey = {
-	apiKey: string;
-	baseUrl: string;
-};*/
-
 export type ConnectorType = '.jira' | '.servicenow' | '.resilient';
 
 export type Connector = {
