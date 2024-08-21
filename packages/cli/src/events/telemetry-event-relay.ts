@@ -948,6 +948,8 @@ export class TelemetryEventRelay extends EventRelay {
 		const camelCaseKeys = Object.keys(answers);
 		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
 		camelCaseKeys.forEach((camelCaseKey) => {
+			// @ts-expect-error Changing case
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
 		});
 
