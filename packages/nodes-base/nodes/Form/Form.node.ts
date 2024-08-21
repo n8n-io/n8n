@@ -157,14 +157,14 @@ export class Form extends Node {
 	nodeInputData: INodeExecutionData[] = [];
 
 	description: INodeTypeDescription = {
-		displayName: 'n8n Form Page',
+		displayName: 'n8n Form',
 		name: 'form',
 		icon: 'file:form.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Create a multi-step webform by adding pages to a n8n form',
 		defaults: {
-			name: 'Form Page',
+			name: 'Form',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
