@@ -194,7 +194,7 @@ export class MeController {
 	async storeSurveyAnswers(req: MeRequest.SurveyAnswers) {
 		const { body: personalizationAnswers } = req;
 
-		if (!personalizationAnswers) {
+		if (!personalizationAnswers || Object.keys(personalizationAnswers).length === 0) {
 			this.logger.debug(
 				'Request to store user personalization survey failed because of empty payload',
 				{
