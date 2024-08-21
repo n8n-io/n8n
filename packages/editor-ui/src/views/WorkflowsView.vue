@@ -61,29 +61,14 @@
 							: $locale.baseText('workflows.empty.heading.userNotSetup')
 					}}
 				</n8n-heading>
-				<n8n-text size="large" color="text-base">{{ emptyListDescription }}</n8n-text>
+				<n8n-text v-if="!isOnboardingExperimentEnabled" size="large" color="text-base">
+					{{ emptyListDescription }}
+				</n8n-text>
 			</div>
 			<div
 				v-if="!readOnlyEnv && projectPermissions.workflow.create"
 				:class="['text-center', 'mt-2xl', $style.actionsContainer]"
 			>
-				<a
-					v-if="isSalesUser"
-					:href="getTemplateRepositoryURL()"
-					:class="$style.emptyStateCard"
-					target="_blank"
-				>
-					<n8n-card
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="trackCategoryLinkClick('Sales')"
-					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-						<n8n-text size="large" class="mt-xs" color="text-base">
-							{{ $locale.baseText('workflows.empty.browseTemplates') }}
-						</n8n-text>
-					</n8n-card>
-				</a>
 				<n8n-card
 					:class="$style.emptyStateCard"
 					hoverable
@@ -91,10 +76,44 @@
 					@click="addWorkflow"
 				>
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs" color="text-base">
+					<n8n-text size="large" class="mt-xs" color="text-dark">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
 					</n8n-text>
 				</n8n-card>
+				<a
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
+					href="https://docs.n8n.io/courses/#available-courses"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
+					<n8n-card
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="trackEmptyCardClick('courses')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="graduation-cap" />
+						<n8n-text size="large" class="mt-xs" color="text-dark">
+							{{ $locale.baseText('workflows.empty.learnN8n') }}
+						</n8n-text>
+					</n8n-card>
+				</a>
+				<a
+					v-if="isSalesUser || isOnboardingExperimentEnabled"
+					:href="getTemplateRepositoryURL()"
+					:class="$style.emptyStateCard"
+					target="_blank"
+				>
+					<n8n-card
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="trackEmptyCardClick('templates')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
+						<n8n-text size="large" class="mt-xs" color="text-dark">
+							{{ $locale.baseText('workflows.empty.browseTemplates') }}
+						</n8n-text>
+					</n8n-card>
+				</a>
 			</div>
 		</template>
 		<template #filters="{ setKeyValue }">
@@ -144,7 +163,7 @@
 import { defineComponent } from 'vue';
 import ResourcesListLayout, { type IResource } from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
@@ -158,6 +177,7 @@ import { useProjectsStore } from '@/stores/projects.store';
 import ProjectTabs from '@/components/Projects/ProjectTabs.vue';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { getResourcePermissions } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface Filters {
 	search: string;
@@ -202,6 +222,7 @@ const WorkflowsView = defineComponent({
 			useTagsStore,
 			useProjectsStore,
 			useTemplatesStore,
+			usePostHog,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -244,6 +265,12 @@ const WorkflowsView = defineComponent({
 			}
 
 			return undefined;
+		},
+		isOnboardingExperimentEnabled() {
+			return (
+				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+				MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant
+			);
 		},
 		isSalesUser() {
 			if (!this.userRole) {
@@ -312,9 +339,18 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+			this.trackEmptyCardClick('blank');
 		},
 		getTemplateRepositoryURL() {
 			return this.templatesStore.websiteTemplateRepositoryURL;
+		},
+		trackEmptyCardClick(option: 'blank' | 'templates' | 'courses') {
+			this.$telemetry.track('User clicked empty page option', {
+				option,
+			});
+			if (option === 'templates' && this.isSalesUser) {
+				this.trackCategoryLinkClick('Sales');
+			}
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
