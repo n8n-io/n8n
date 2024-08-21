@@ -21,6 +21,9 @@ catalogs:
     '@types/xml2js':
       specifier: ^0.4.14
       version: 0.4.14
+    axios:
+      specifier: 1.7.3
+      version: 1.7.3
     basic-auth:
       specifier: 2.0.1
       version: 2.0.1
@@ -73,7 +76,6 @@ catalogs:
 
 overrides:
   '@types/node': ^18.16.16
-  axios: 1.7.3
   chokidar: 3.5.2
   esbuild: ^0.20.2
   formidable: 3.5.1
@@ -256,7 +258,7 @@ importers:
   packages/@n8n/client-oauth2:
     dependencies:
       axios:
-        specifier: 1.7.3
+        specifier: 'catalog:'
         version: 1.7.3(debug@3.2.7)
 
   packages/@n8n/codemirror-lang:
@@ -651,7 +653,7 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       axios:
-        specifier: 1.7.3
+        specifier: 'catalog:'
         version: 1.7.3(debug@3.2.7)
       bcryptjs:
         specifier: 2.4.3
@@ -979,7 +981,7 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       axios:
-        specifier: 1.7.3
+        specifier: 'catalog:'
         version: 1.7.3(debug@3.2.7)
       concat-stream:
         specifier: 2.0.0
@@ -1260,7 +1262,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.21(typescript@5.5.2))
       axios:
-        specifier: 1.7.3
+        specifier: 'catalog:'
         version: 1.7.3(debug@3.2.7)
       chart.js:
         specifier: ^4.4.0
@@ -1728,7 +1730,7 @@ importers:
         specifier: 0.15.2
         version: 0.15.2
       axios:
-        specifier: 1.7.3
+        specifier: 'catalog:'
         version: 1.7.3(debug@3.2.7)
       callsites:
         specifier: 3.1.0
@@ -9358,7 +9360,7 @@ packages:
       '@xata.io/client': ^0.28.0
       apify-client: ^2.7.1
       assemblyai: ^4.6.0
-      axios: 1.7.3
+      axios: '*'
       cheerio: ^1.0.0-rc.12
       chromadb: '*'
       convex: ^1.3.1
