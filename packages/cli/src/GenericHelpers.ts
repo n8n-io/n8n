@@ -39,7 +39,7 @@ export async function validateEntity(
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;
 
 class StringWithNoXss {
-	@NoXss()
+	@NoXss({ each: true })
 	value: string;
 
 	constructor(value: string) {

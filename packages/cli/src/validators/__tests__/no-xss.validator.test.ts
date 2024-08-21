@@ -12,7 +12,7 @@ describe('NoXss', () => {
 		@NoXss()
 		version = '';
 
-		@NoXss()
+		@NoXss({ each: true })
 		categories: string[] = [];
 	}
 
