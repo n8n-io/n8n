@@ -29,19 +29,15 @@ const close = () => {
 
 const startNewSession = async () => {
 	await assistantStore.initErrorHelper(props.data.context);
-	telemetry.track(
-		'User opened assistant',
-		{
-			source: 'error',
-			task: 'error',
-			has_existing_session: true,
-			workflow_id: workflowsStore.workflowId,
-			node_type: props.data.context.node.type,
-			error: props.data.context.error,
-			chat_session_id: assistantStore.currentSessionId,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User opened assistant', {
+		source: 'error',
+		task: 'error',
+		has_existing_session: true,
+		workflow_id: workflowsStore.workflowId,
+		node_type: props.data.context.node.type,
+		error: props.data.context.error,
+		chat_session_id: assistantStore.currentSessionId,
+	});
 	close();
 };
 </script>
