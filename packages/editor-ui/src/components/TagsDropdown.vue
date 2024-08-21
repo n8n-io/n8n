@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onClickOutside } from '@vueuse/core';
 import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import { N8nOption, N8nSelect } from 'n8n-design-system';
@@ -45,6 +46,8 @@ const createRef = ref<InstanceType<typeof N8nOption>>();
 const filter = ref('');
 const focused = ref(false);
 const preventUpdate = ref(false);
+
+const container = ref<HTMLDivElement | undefined>();
 
 const dropdownId = uuid();
 
@@ -171,24 +174,17 @@ function onRemoveTag() {
 	});
 }
 
-function onClickOutside(e: Event) {
-	const tagsDropdown = document.querySelector(`.tags-dropdown-${dropdownId}`);
-
-	const clickInsideTagsDropdowns =
-		tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
-
-	if (!clickInsideTagsDropdowns && e.type === 'click') {
+onClickOutside(
+	container,
+	() => {
 		emit('blur');
-	}
-}
+	},
+	{ ignore: [`.tags-dropdown-${dropdownId}`, '#tags-manager-modal'] },
+);
 </script>
 
 <template>
-	<div
-		v-on-click-outside="onClickOutside"
-		:class="{ 'tags-container': true, focused }"
-		@keydown.stop
-	>
+	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
 		<N8nSelect
 			ref="selectRef"
 			:teleported="true"

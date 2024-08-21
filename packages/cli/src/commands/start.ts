@@ -239,7 +239,10 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
-		await Container.get(OrchestrationHandlerMainService).init();
+		await Container.get(OrchestrationHandlerMainService).initWithOptions({
+			queueModeId: this.queueModeId,
+			redisPublisher: Container.get(OrchestrationService).redisPublisher,
+		});
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 

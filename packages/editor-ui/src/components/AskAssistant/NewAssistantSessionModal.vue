@@ -47,7 +47,13 @@ const startNewSession = async () => {
 </script>
 
 <template>
-	<Modal width="460px" height="250px" :name="NEW_ASSISTANT_SESSION_MODAL" :center="true">
+	<Modal
+		width="460px"
+		height="250px"
+		:name="NEW_ASSISTANT_SESSION_MODAL"
+		:center="true"
+		data-test-id="new-assistant-session-modal"
+	>
 		<template #header>
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
 			<span :class="$style.assistantIcon"><AssistantIcon size="medium" /></span>
