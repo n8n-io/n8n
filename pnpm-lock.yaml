@@ -639,8 +639,8 @@ importers:
         specifier: 4.0.7
         version: 4.0.7
       '@rudderstack/rudder-sdk-node':
-        specifier: 2.0.7
-        version: 2.0.7(tslib@2.6.2)
+        specifier: 2.0.9
+        version: 2.0.9(tslib@2.6.2)
       '@sentry/integrations':
         specifier: 7.87.0
         version: 7.87.0
@@ -4638,8 +4638,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rudderstack/rudder-sdk-node@2.0.7':
-    resolution: {integrity: sha512-V8SWlryHDHSleM51udW3DbmCyADa7Naa9OTtG/YjgTStxFsyLnGRYd9Mr616qR94Gi1h/zYhE/tvWio+0fiSzA==}
+  '@rudderstack/rudder-sdk-node@2.0.9':
+    resolution: {integrity: sha512-Icm7a2x+CrVM9cHsXDRaFqGyvlaRDdALsrhzLHyRE+gIXubzJT730+fHS8KNdv9/r4Et/Cy1epjbkT3Qagd1VQ==}
     engines: {node: '>=12'}
     peerDependencies:
       tslib: ^2.6.2
@@ -17164,7 +17164,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.18.0':
     optional: true
 
-  '@rudderstack/rudder-sdk-node@2.0.7(tslib@2.6.2)':
+  '@rudderstack/rudder-sdk-node@2.0.9(tslib@2.6.2)':
     dependencies:
       axios: 1.7.3(debug@3.2.7)
       axios-retry: 3.7.0
