@@ -82,7 +82,7 @@
 				</n8n-card>
 				<a
 					v-if="isSalesUser || isOnboardingExperimentEnabled"
-					href="https://docs.n8n.io/courses/level-one/"
+					href="https://docs.n8n.io/courses/#available-courses"
 					:class="$style.emptyStateCard"
 					target="_blank"
 				>
