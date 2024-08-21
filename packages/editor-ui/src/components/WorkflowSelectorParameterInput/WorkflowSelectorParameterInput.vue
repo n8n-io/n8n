@@ -212,7 +212,7 @@ onClickOutside(dropdown, () => {
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
 					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
+						{{ i18n.baseText('resourceLocator.mode.list.error.title') }}
 					</n8n-text>
 				</div>
 			</template>
@@ -228,7 +228,7 @@ onClickOutside(dropdown, () => {
 						:model-value="selectedMode"
 						:size="inputSize"
 						:disabled="isReadOnly"
-						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSwitched"
 					>
@@ -240,7 +240,7 @@ onClickOutside(dropdown, () => {
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.mode.list.disabled.title')
+									? i18n.baseText('resourceLocator.mode.list.disabled.title')
 									: ''
 							"
 						>
@@ -282,7 +282,6 @@ onClickOutside(dropdown, () => {
 									:model-value="valueToDisplay"
 									:disabled="isReadOnly"
 									:readonly="isListMode"
-									:title="'Change me'"
 									:placeholder="placeholder"
 									type="text"
 									data-test-id="rlc-input"
