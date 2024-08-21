@@ -8,6 +8,7 @@ import type {
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
+	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
@@ -235,7 +236,7 @@ export declare namespace MeRequest {
 		{},
 		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 export interface UserSetupPayload {
