@@ -841,6 +841,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			startedAfter,
 			metadata,
 			annotationTags,
+			vote,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -889,19 +890,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			qb.setParameter('value', value);
 		}
 
-		if (annotationTags?.length) {
-			// If there is a filter by one or multiple tags, we need to join the annotations table
+		if (annotationTags?.length || vote) {
+			// If there is a filter by one or multiple tags or by vote - we need to join the annotations table
 			qb.innerJoin('execution.annotation', 'annotation');
 
 			// Add an inner join for each tag
-			for (const tag of annotationTags) {
-				qb.innerJoin(
-					AnnotationTagMapping,
-					`atm_${tag}`,
-					`atm_${tag}.annotationId = annotation.id AND atm_${tag}.tagId = :tagId_${tag}`,
-				);
+			if (annotationTags?.length) {
+				for (const tag of annotationTags) {
+					qb.innerJoin(
+						AnnotationTagMapping,
+						`atm_${tag}`,
+						`atm_${tag}.annotationId = annotation.id AND atm_${tag}.tagId = :tagId_${tag}`,
+					);
 
-				qb.setParameter(`tagId_${tag}`, tag);
+					qb.setParameter(`tagId_${tag}`, tag);
+				}
+			}
+
+			// Add filter by vote
+			if (vote) {
+				qb.andWhere('annotation.vote = :vote', { vote });
 			}
 		}
 
@@ -910,9 +918,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	// This method is used to add the annotation fields to the executions query
 	// It uses original query builder as a subquery and adds the annotation fields to it
-	// FIXME: Query made with this query builder fetches duplicate executions for each tag,
-	//  this is intended, as we are working with raw query.
-	//
+	// FIXME: Query made with this query builder fetches duplicate execution rows for each tag,
+	//  this is intended, as we are working with raw query
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation.${key}"`,

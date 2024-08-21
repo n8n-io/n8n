@@ -79,6 +79,7 @@ export namespace ExecutionSummaries {
 		startedAfter: string;
 		startedBefore: string;
 		annotationTags: string[]; // tag IDs
+		vote: string;
 	}>;
 
 	type AccessFields = {

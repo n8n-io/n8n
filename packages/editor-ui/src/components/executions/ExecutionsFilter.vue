@@ -56,6 +56,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
+	vote: 'all',
 });
 const filter = reactive(getDefaultFilter());
 
@@ -91,12 +92,19 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
+const voteFilterOptions = computed(() => [
+	{ id: 'all', name: locale.baseText('executionsFilter.annotation.rating.all') },
+	{ id: 'up', name: locale.baseText('executionsFilter.annotation.rating.good') },
+	{ id: 'down', name: locale.baseText('executionsFilter.annotation.rating.bad') },
+]);
+
 const countSelectedFilterProps = computed(() => {
 	const nonDefaultFilters = [
 		filter.status !== 'all',
 		filter.workflowId !== 'all' && props.workflows.length,
 		!isEmpty(filter.tags),
 		!isEmpty(filter.annotationTags),
+		filter.vote !== 'all',
 		!isEmpty(filter.metadata),
 		!!filter.startDate,
 		!!filter.endDate,
@@ -256,6 +264,26 @@ onBeforeMount(() => {
 					data-test-id="executions-filter-annotation-tags-select"
 					@update:model-value="onAnnotationTagsChange"
 				/>
+			</div>
+			<div :class="$style.group">
+				<label for="execution-filter-annotation-vote">{{
+					locale.baseText('executionsFilter.annotation.rating')
+				}}</label>
+				<n8n-select
+					id="execution-filter-annotation-vote"
+					v-model="vModel.vote"
+					:placeholder="locale.baseText('executionsFilter.annotation.selectVoteFilter')"
+					filterable
+					data-test-id="executions-filter-annotation-vote-select"
+					:teleported="teleported"
+				>
+					<n8n-option
+						v-for="(item, idx) in voteFilterOptions"
+						:key="idx"
+						:label="item.name"
+						:value="item.id"
+					/>
+				</n8n-select>
 			</div>
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">
