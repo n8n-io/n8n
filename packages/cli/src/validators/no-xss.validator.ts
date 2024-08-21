@@ -4,7 +4,9 @@ import { registerDecorator, ValidatorConstraint } from 'class-validator';
 
 @ValidatorConstraint({ name: 'NoXss', async: false })
 class NoXssConstraint implements ValidatorConstraintInterface {
-	validate(value: string) {
+	validate(value: unknown) {
+		if (typeof value !== 'string') return false;
+
 		return (
 			value ===
 			xss(value, {
