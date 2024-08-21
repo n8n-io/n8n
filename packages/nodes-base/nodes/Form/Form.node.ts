@@ -81,11 +81,47 @@ const completionProperties = updateDisplayOptions(
 	},
 	[
 		{
+			displayName: 'Respond With',
+			name: 'respondWith',
+			type: 'options',
+			default: 'text',
+			options: [
+				{
+					name: 'Show Completion Screen',
+					value: 'text',
+					description: 'Show a response text to the user',
+				},
+				{
+					name: 'Redirect to URL',
+					value: 'redirect',
+					description: 'Redirect the user to a URL',
+				},
+			],
+		},
+		{
+			displayName: 'URL',
+			name: 'redirectUrl',
+			validateType: 'url',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					respondWith: ['redirect'],
+				},
+			},
+		},
+		{
 			displayName: 'Completion Title',
 			name: 'completionTitle',
 			type: 'string',
 			default: '',
 			required: true,
+			displayOptions: {
+				show: {
+					respondWith: ['text'],
+				},
+			},
 		},
 		{
 			displayName: 'Completion Message',
@@ -95,6 +131,11 @@ const completionProperties = updateDisplayOptions(
 			typeOptions: {
 				rows: 2,
 			},
+			displayOptions: {
+				show: {
+					respondWith: ['text'],
+				},
+			},
 		},
 		{
 			displayName: 'Options',
@@ -102,7 +143,12 @@ const completionProperties = updateDisplayOptions(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [{ ...formTitle, required: false }],
+			options: [{ ...formTitle, required: false, displayName: 'Completion Page Title' }],
+			displayOptions: {
+				show: {
+					respondWith: ['text'],
+				},
+			},
 		},
 	],
 );
@@ -162,7 +208,7 @@ export class Form extends Node {
 						value: 'page',
 					},
 					{
-						name: 'Form Completion Screen',
+						name: 'Form Completion',
 						value: 'completion',
 					},
 				],
@@ -216,6 +262,16 @@ export class Form extends Node {
 		const method = context.getRequestObject().method;
 
 		if (operation === 'completion') {
+			const respondWith = context.getNodeParameter('respondWith', '') as string;
+
+			if (respondWith === 'redirect') {
+				const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
+				res.redirect(redirectUrl);
+				return {
+					noWebhookResponse: true,
+				};
+			}
+
 			const completionTitle = context.getNodeParameter('completionTitle', '') as string;
 			const completionMessage = context.getNodeParameter('completionMessage', '') as string;
 			const options = context.getNodeParameter('options', {}) as {
