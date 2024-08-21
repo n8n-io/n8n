@@ -145,14 +145,7 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const validPayloads = [
-			SURVEY,
-			{
-				version: 'v4',
-				personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
-				personalization_survey_n8n_version: '1.0.0',
-			},
-		];
+		const validPayloads = [SURVEY, EMPTY_SURVEY];
 
 		for (const validPayload of validPayloads) {
 			const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
@@ -307,7 +300,7 @@ describe('Member', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const validPayloads = [SURVEY, {}];
+		const validPayloads = [SURVEY, EMPTY_SURVEY];
 
 		for (const validPayload of validPayloads) {
 			const response = await authMemberAgent.post('/me/survey').send(validPayload);
@@ -417,6 +410,12 @@ const SURVEY: IPersonalizationSurveyAnswersV4 = {
 	roleOther: 'test',
 	reportedSource: 'test',
 	reportedSourceOther: 'test',
+};
+
+const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
+	version: 'v4',
+	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
+	personalization_survey_n8n_version: '1.0.0',
 };
 
 const VALID_PATCH_ME_PAYLOADS = [
