@@ -44,6 +44,8 @@ const pageProperties = updateDisplayOptions(
 				'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
 			validateType: 'array',
 			ignoreValidationDuringExecution: true,
+			//TODO: replace with link https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/
+			hint: 'Syntax for fields described in the <a href="https://linear.app/n8n/issue/NODE-1472/add-form-node-p0#comment-23d1bd2d" target="_blank">docs</a>',
 			displayOptions: {
 				show: {
 					useJson: [true],

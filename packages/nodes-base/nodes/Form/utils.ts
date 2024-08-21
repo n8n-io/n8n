@@ -453,7 +453,33 @@ export function checkFieldsSyntax(
 			}
 
 			if (key === 'fieldOptions') {
-				field[key] = { values: field[key] };
+				if (Array.isArray(field[key])) {
+					field[key] = { values: field[key] };
+				}
+
+				if (typeof field[key] !== 'object' || !(field[key] as IDataObject).values) {
+					throw new NodeOperationError(
+						node,
+						`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
+						{
+							type: mode === 'test' ? 'manual-form-test' : undefined,
+						},
+					);
+				}
+
+				for (const [optionIndex, option] of (
+					(field[key] as IDataObject).values as IDataObject[]
+				).entries()) {
+					if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
+						throw new NodeOperationError(
+							node,
+							`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
+							{
+								type: mode === 'test' ? 'manual-form-test' : undefined,
+							},
+						);
+					}
+				}
 			}
 		}
 
