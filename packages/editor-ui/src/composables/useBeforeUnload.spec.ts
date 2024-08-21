@@ -49,7 +49,7 @@ describe('useBeforeUnload', () => {
 			expect(result).toBe(true);
 		});
 
-		it('starts loading if state is not dirty', () => {
+		it('should start loading if state is not dirty', () => {
 			uiStore.stateIsDirty = false;
 			const startLoadingSpy = vi.spyOn(canvasStore, 'startLoading');
 			const { onBeforeUnload } = useBeforeUnload({ route: defaultRoute });
