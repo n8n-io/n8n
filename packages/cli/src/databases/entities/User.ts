@@ -51,14 +51,14 @@ export class User extends WithTimestamps implements IUser {
 	email: string;
 
 	@Column({ length: 32, nullable: true })
-	@NoXss({ each: true })
+	@NoXss()
 	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Column({ length: 32, nullable: true })
-	@NoXss({ each: true })
+	@NoXss()
 	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })

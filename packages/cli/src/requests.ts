@@ -34,14 +34,14 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	email: string;
 
 	@Expose()
-	@NoXss({ each: true })
+	@NoXss()
 	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Expose()
-	@NoXss({ each: true })
+	@NoXss()
 	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
