@@ -35,7 +35,7 @@ const isTelemetryEnabled = computed((): boolean => {
 });
 
 const selfInstallSrc = computed((): string => {
-	return `https://n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
+	return `https://www-staging.n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
 });
 
 watch(telemetry, () => {
@@ -74,6 +74,6 @@ function init() {
 </script>
 
 <template>
-	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
+	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="true" :src="selfInstallSrc" />
 	<span v-else v-show="false" />
 </template>
