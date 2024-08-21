@@ -1,14 +1,74 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	JsonObject,
-	NodeApiError,
+	IExecuteSingleFunctions,
 } from 'n8n-workflow';
 
-// The following functions are used for the loadOptions as there is no support for pagination for loadOptions in declarative style
+import { NodeApiError } from 'n8n-workflow';
+
+import type { LocalPost, CallToAction } from './Interfaces';
+
+const addOptName = 'additionalOptions';
+
+const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown> => {
+	const params = execFns.getNode().parameters;
+	const additionalOptions = execFns.getNodeParameter(addOptName, {}) as Record<string, unknown>;
+
+	return { ...params, ...additionalOptions };
+};
+
+type ParamMappers<T> = {
+	[K in keyof T]?: (value: T[K] | undefined, obj: T) => void;
+};
+
+function formatParams<T extends Record<string, any>>(obj: T, mappers?: ParamMappers<T>): T {
+	if (mappers) {
+		Object.entries(mappers).forEach(([key, mapFunc]) => {
+			if (mapFunc && obj[key as keyof T] !== undefined) {
+				mapFunc(obj[key as keyof T], obj);
+				delete obj[key as keyof T]; // Remove the original key if needed
+			}
+		});
+	}
+	return obj;
+}
+
+export async function createPostPresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const params = getAllParams(this) as LocalPost;
+
+	// Define the mappers for actionType and url to populate callToAction
+	const mappers: ParamMappers<LocalPost> = {
+		callToAction: (value: CallToAction | undefined, obj: LocalPost) => {
+			if (value && (!obj.callToAction || !obj.callToAction.actionType || !obj.callToAction.url)) {
+				obj.callToAction = {
+					actionType: value.actionType,
+					url: value.url,
+				};
+			}
+		},
+		// ToDo: Map the rest of the fields
+	};
+
+	const body: LocalPost = formatParams(params, mappers);
+
+	// Ensure that callToAction is only added if both actionType and url are present
+	if (body.callToAction && (!body.callToAction.actionType || !body.callToAction.url)) {
+		delete body.callToAction;
+	}
+
+	opts.body = body; // Assign the typed body to opts.body
+
+	return opts;
+}
+
+/* The following functions are used for the loadOptions as there is no support for pagination for loadOptions in declarative style */
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,

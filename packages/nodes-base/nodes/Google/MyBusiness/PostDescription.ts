@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { createPostPresend } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -18,9 +19,10 @@ export const postOperations: INodeProperties[] = [
 				action: 'Create post',
 				description: 'Create a new post on Google My Business',
 				routing: {
+					send: { preSend: [createPostPresend] },
 					request: {
 						method: 'POST',
-						url: '=/v4/{{account}}/{{location}}/localPosts',
+						url: '=/{{account}}/{{location}}/localPosts',
 					},
 				},
 			},
@@ -32,7 +34,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/v4/{{account}}/{{location}}/{{post}}}',
+						url: '=/{{account}}/{{location}}/{{post}}}',
 					},
 				},
 			},
@@ -44,7 +46,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/v4/{{account}}/{{location}}/{{post}}',
+						url: '=/{{account}}/{{location}}/{{post}}',
 					},
 				},
 			},
@@ -56,7 +58,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/v4/{{account}}/{{location}}/localPosts',
+						url: '=/{{account}}/{{location}}/localPosts',
 					},
 				},
 			},
@@ -68,8 +70,7 @@ export const postOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						// " + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "// ToDo
-						url: '=/v4/accounts/{{account}}/locations/{{location}}/{{post}}',
+						url: '=/{{account}}/{{location}}/{{post}}',
 					},
 				},
 			},
@@ -143,38 +144,6 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Post Type',
-		name: 'postType',
-		required: true,
-		type: 'options',
-		default: 'standard',
-		description: 'The main text of the post',
-		options: [
-			{
-				name: 'Standard',
-				value: 'standard',
-			},
-			{
-				name: 'Event',
-				value: 'event',
-			},
-			{
-				name: 'Offer',
-				value: 'offer',
-			},
-			{
-				name: 'Alert',
-				value: 'alert',
-			},
-		],
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
-	},
-	{
 		displayName: 'Summary',
 		name: 'summary',
 		required: true,
@@ -190,7 +159,7 @@ export const postFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'options',
+		name: 'additionalOptions',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -203,76 +172,70 @@ export const postFields: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Language',
-				name: 'language',
+				name: 'languageCode',
 				type: 'string',
 				default: '',
 				description: 'The language of the post content',
 			},
 			{
 				displayName: 'Call to Action Type',
-				name: 'callToActionType',
+				name: 'actionType',
 				type: 'options',
-				default: 'make',
+				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
 				displayOptions: {
 					show: {
-						postType: ['/standard'],
+						'/postType': ['standard', 'event', 'offer', 'alert'],
 					},
 				},
 				options: [
 					{
-						name: 'Make',
-						value: 'make',
+						name: 'Action Type Unspecified',
+						value: 'ACTION_TYPE_UNSPECIFIED',
+						description: 'Type unspecified',
 					},
 					{
-						name: 'Untitled',
-						value: 'untitled',
+						name: 'Book',
+						value: 'BOOK',
+						description: 'This post wants a user to book an appointment/table/etc',
+					},
+					{
+						name: 'Get Offer',
+						value: 'GET_OFFER',
+						description:
+							'Deprecated. Use OFFER in LocalPostTopicType to create a post with offer content.',
+					},
+					{
+						name: 'Learn More',
+						value: 'LEARN_MORE',
+						description: 'This post wants a user to learn more (at their website)',
+					},
+					{
+						name: 'Order',
+						value: 'ORDER',
+						description: 'This post wants a user to order something',
+					},
+					{
+						name: 'Shop',
+						value: 'SHOP',
+						description: 'This post wants a user to browse a product catalog',
+					},
+					{
+						name: 'Sign Up',
+						value: 'SIGN_UP',
+						description: 'This post wants a user to register/sign up/join something',
 					},
 				],
 			},
 			{
 				displayName: 'Call to Action Url',
-				name: 'callToActionUrl',
+				name: 'url',
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
 				displayOptions: {
 					show: {
-						postType: ['/standard'],
-					},
-				},
-			},
-			{
-				displayName: 'Call to Action Type',
-				name: 'callToActionType',
-				type: 'options',
-				default: 'make',
-				description: 'The type of call to action',
-				displayOptions: {
-					show: {
-						postType: ['/event'],
-					},
-				},
-				options: [
-					{
-						name: 'Make',
-						value: 'make',
-					},
-					{
-						name: 'Untitled',
-						value: 'untitled',
-					},
-				],
-			},
-			{
-				displayName: 'Call to Action Url',
-				name: 'callToActionUrl',
-				type: 'string',
-				default: '',
-				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: {
-					show: {
-						postType: ['/event'],
+						'/postType': ['standard', 'event', 'offer', 'alert'],
 					},
 				},
 			},
@@ -284,7 +247,7 @@ export const postFields: INodeProperties[] = [
 				description: 'E.g. Sales this week.',
 				displayOptions: {
 					show: {
-						postType: ['/event'],
+						'/postType': ['event'],
 					},
 				},
 			},
@@ -296,7 +259,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The start date and time of the event',
 				displayOptions: {
 					show: {
-						postType: ['/event'],
+						'/postType': ['event'],
 					},
 				},
 			},
@@ -308,7 +271,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The end date and time of the event',
 				displayOptions: {
 					show: {
-						postType: ['/event'],
+						'/postType': ['event'],
 					},
 				},
 			},
@@ -320,7 +283,7 @@ export const postFields: INodeProperties[] = [
 				description: 'E.g. 20% off in store or online.',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
+						'/postType': ['offer'],
 					},
 				},
 			},
@@ -332,7 +295,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The start date of the offer',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
+						'/postType': ['offer'],
 					},
 				},
 			},
@@ -344,7 +307,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The end date of the offer',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
+						'/postType': ['offer'],
 					},
 				},
 			},
@@ -356,7 +319,7 @@ export const postFields: INodeProperties[] = [
 				description: 'The coupon code for the offer',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
+						'/postType': ['offer'],
 					},
 				},
 			},
@@ -368,7 +331,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Link to redeem the offer',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
+						'/postType': ['offer'],
 					},
 				},
 			},
@@ -380,47 +343,12 @@ export const postFields: INodeProperties[] = [
 				description: 'The terms and conditions of the offer',
 				displayOptions: {
 					show: {
-						postType: ['/offer'],
-					},
-				},
-			},
-			{
-				displayName: 'Call to Action Type',
-				name: 'callToActionType',
-				type: 'options',
-				default: 'make',
-				description: 'The type of call to action',
-				displayOptions: {
-					show: {
-						postType: ['/alert'],
-					},
-				},
-				options: [
-					{
-						name: 'Make',
-						value: 'make',
-					},
-					{
-						name: 'Untitled',
-						value: 'untitled',
-					},
-				],
-			},
-			{
-				displayName: 'Call to Action Url',
-				name: 'callToActionUrl',
-				type: 'string',
-				default: '',
-				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: {
-					show: {
-						postType: ['/alert'],
+						'/postType': ['offer'],
 					},
 				},
 			},
 		],
 	},
-
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 post:delete                                */
@@ -499,8 +427,9 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 100,
 		},
-		default: 10,
+		default: 20,
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
@@ -509,7 +438,7 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 	},
-	// ToDo
+	// ToDo: Simplify (if it makes sense)
 	// {
 	// 	displayName: 'Simplify',
 	// 	name: 'simplify',

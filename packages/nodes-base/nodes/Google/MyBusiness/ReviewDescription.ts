@@ -20,7 +20,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/v4/{{account}}/{{location}}/{{review}}',
+						url: '=/{{account}}/{{location}}/{{review}}',
 					},
 				},
 			},
@@ -32,7 +32,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/v4/{{account}}/{{location}}/reviews',
+						url: '=/{{account}}/{{location}}/reviews',
 					},
 				},
 			},
@@ -44,7 +44,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/v4/{{account}}/{{location}}/{{review}}/reply',
+						url: '=/{{account}}/{{location}}/{{review}}/reply',
 					},
 				},
 			},
@@ -140,8 +140,9 @@ export const reviewFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
+			maxValue: 50,
 		},
-		default: 50,
+		default: 20,
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
