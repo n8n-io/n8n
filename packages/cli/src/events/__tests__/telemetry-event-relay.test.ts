@@ -20,7 +20,22 @@ const flushPromises = async () => await new Promise((resolve) => setImmediate(re
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
-	const globalConfig = mock<GlobalConfig>({ userManagement: { emails: { mode: 'smtp' } } });
+	const globalConfig = mock<GlobalConfig>({
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+			},
+		},
+		endpoints: {
+			metrics: {
+				enable: true,
+				includeDefaultMetrics: true,
+				includeApiEndpoints: false,
+				includeCacheMetrics: false,
+				includeMessageEventBusMetrics: false,
+			},
+		},
+	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -927,6 +942,13 @@ describe('TelemetryEventRelay', () => {
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
+					metrics: {
+						metrics_enabled: true,
+						metrics_category_default: true,
+						metrics_category_routes: false,
+						metrics_category_cache: false,
+						metrics_category_logs: false,
+					},
 				}),
 			);
 		});

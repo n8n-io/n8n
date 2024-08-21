@@ -16,7 +16,8 @@ describe('NoXss', () => {
 	const entity = new Entity();
 
 	describe('Scripts', () => {
-		const XSS_STRINGS = ['<script src/>', "<script>alert('xss')</script>"];
+		// eslint-disable-next-line n8n-local-rules/no-unneeded-backticks
+		const XSS_STRINGS = ['<script src/>', "<script>alert('xss')</script>", `<a href="#">Jack</a>`];
 
 		for (const str of XSS_STRINGS) {
 			test(`should block ${str}`, async () => {
@@ -65,6 +66,17 @@ describe('NoXss', () => {
 		for (const version of VALID_VERSIONS) {
 			test(`should allow ${version}`, async () => {
 				entity.version = version;
+				await expect(validate(entity)).resolves.toBeEmptyArray();
+			});
+		}
+	});
+
+	describe('Miscellanous strings', () => {
+		const VALID_MISCELLANEOUS_STRINGS = ['CI/CD'];
+
+		for (const str of VALID_MISCELLANEOUS_STRINGS) {
+			test(`should allow ${str}`, async () => {
+				entity.name = str;
 				await expect(validate(entity)).resolves.toBeEmptyArray();
 			});
 		}
