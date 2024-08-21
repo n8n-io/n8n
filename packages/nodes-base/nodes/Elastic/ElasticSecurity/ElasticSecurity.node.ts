@@ -48,40 +48,9 @@ export class ElasticSecurity implements INodeType {
 			{
 				name: 'elasticSecurityApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['basicAuth'],
-					},
-				},
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
-				name: 'elasticSecurityApiKey',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['apiKey'],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'API Key',
-						value: 'apiKey',
-					},
-					{
-						name: 'Basic Auth',
-						value: 'basicAuth',
-					},
-				],
-				default: 'basicAuth',
-			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
