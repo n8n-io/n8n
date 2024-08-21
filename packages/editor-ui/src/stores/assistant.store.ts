@@ -245,10 +245,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
-			telemetry.track('Assistant session started', {
-				chat_session_id: currentSessionId.value,
-				task: 'error',
-			});
+			telemetry.track(
+				'Assistant session started',
+				{
+					chat_session_id: currentSessionId.value,
+					task: 'error',
+				},
+				{ withPostHog: true },
+			);
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
 		}
