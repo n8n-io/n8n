@@ -56,14 +56,6 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.chatWidth).toBe(MAX_CHAT_WIDTH);
 	});
 
-	it('should reset assistant chat session', () => {
-		const assistantStore = useAssistantStore();
-
-		assistantStore.resetAssistantChat();
-		expect(assistantStore.chatMessages).toEqual([]);
-		expect(assistantStore.currentSessionId).toBeUndefined();
-	});
-
 	it('should open chat window', () => {
 		const assistantStore = useAssistantStore();
 
@@ -214,4 +206,32 @@ describe('AI Assistant store', () => {
 			],
 		});
 	});
+
+	it('should reset assistant chat session', () => {
+		const assistantStore = useAssistantStore();
+
+		const message: ChatRequest.MessageResponse = {
+			type: 'message',
+			role: 'assistant',
+			text: 'Hello!',
+			quickReplies: [
+				{ text: 'Yes', type: 'text' },
+				{ text: 'No', type: 'text' },
+			],
+		};
+		assistantStore.addAssistantMessages([message], '1');
+		expect(assistantStore.chatMessages.length).toBe(1);
+
+		assistantStore.resetAssistantChat();
+		expect(assistantStore.chatMessages).toEqual([]);
+		expect(assistantStore.currentSessionId).toBeUndefined();
+	});
+
+	// TODO: To test:
+	// - canShowAssistant
+	// - canShowAssistantButtons
+	// - initErrorHelper
+	// - sendMessage
+	// - applyCodeDiff
+	// - undoCodeDiff
 });
