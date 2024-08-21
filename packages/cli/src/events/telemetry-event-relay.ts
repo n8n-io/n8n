@@ -762,6 +762,13 @@ export class TelemetryEventRelay extends EventRelay {
 			license_tenant_id: config.getEnv('license.tenantId'),
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
+			metrics: {
+				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
+				metrics_category_default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,
+				metrics_category_routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
+				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
+				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+			},
 		};
 
 		const firstWorkflow = await this.workflowRepository.findOne({
