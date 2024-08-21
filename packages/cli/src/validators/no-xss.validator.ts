@@ -4,7 +4,13 @@ import { registerDecorator, ValidatorConstraint } from 'class-validator';
 
 @ValidatorConstraint({ name: 'NoXss', async: false })
 class NoXssConstraint implements ValidatorConstraintInterface {
-	validate(value: string) {
+	validate(value: string | string[]) {
+		if (Array.isArray(value)) return value.every((item) => this.validateItem(item));
+
+		return this.validateItem(value);
+	}
+
+	private validateItem(value: string) {
 		return (
 			value ===
 			xss(value, {
