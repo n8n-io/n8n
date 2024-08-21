@@ -1250,7 +1250,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		workflowHelpers.initState(data);
 
 		// Add nodes and connections
-		await addNodes(data.nodes, { keepPristine: true, telemetry: false });
+		await addNodes(data.nodes, { keepPristine: true });
 		workflowsStore.setConnections(data.connections);
 	}
 
