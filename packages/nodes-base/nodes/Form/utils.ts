@@ -3,6 +3,7 @@ import type {
 	MultiPartFormData,
 	IDataObject,
 	IWebhookFunctions,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -393,4 +394,71 @@ export async function formWebhook(
 		webhookResponse: { status: 200 },
 		workflowData: [[returnItem]],
 	};
+}
+
+const ALLOWED_FORM_FIELD_KEYS = [
+	'fieldLabel',
+	'fieldType',
+	'placeholder',
+	'fieldOptions',
+	'multiselect',
+	'multipleFiles',
+	'acceptFileTypes',
+	'formatDate',
+	'requiredField',
+];
+
+const ALLOWED_FIELD_TYPES = [
+	'date',
+	'dropdown',
+	'email',
+	'file',
+	'number',
+	'password',
+	'text',
+	'textarea',
+];
+export function checkFieldsSyntax(
+	node: INode,
+	rawFields: IDataObject[],
+	mode: 'test' | 'production',
+) {
+	const fields: FormField[] = [];
+
+	for (const [index, field] of rawFields.entries()) {
+		for (const key of Object.keys(field)) {
+			if (!ALLOWED_FORM_FIELD_KEYS.includes(key)) {
+				throw new NodeOperationError(
+					node,
+					`Key '${key}' in field ${index} is not valid for form fields`,
+					{
+						type: mode === 'test' ? 'manual-form-test' : undefined,
+					},
+				);
+			}
+			if (key !== 'fieldOptions' && !['string', 'number', 'boolean'].includes(typeof field[key])) {
+				field[key] = String(field[key]);
+			} else if (typeof field[key] === 'string') {
+				field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
+			}
+
+			if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
+				throw new NodeOperationError(
+					node,
+					`Field type '${field[key]}' in field ${index} is not valid for form fields`,
+					{
+						type: mode === 'test' ? 'manual-form-test' : undefined,
+					},
+				);
+			}
+
+			if (key === 'fieldOptions') {
+				field[key] = { values: field[key] };
+			}
+		}
+
+		fields.push(field as FormField);
+	}
+
+	return fields;
 }

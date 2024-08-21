@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
@@ -14,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, renderForm } from '../Form/utils';
+import { checkFieldsSyntax, prepareFormReturnItem, renderForm } from '../Form/utils';
 
 import type { FormField } from './interfaces';
 
@@ -173,22 +174,42 @@ export class Form extends Node {
 		const res = context.getResponseObject();
 
 		const operation = context.getNodeParameter('operation', '') as string;
-		const mode = context.getMode() === 'manual' ? 'test' : 'production';
-		const useJson = context.getNodeParameter('useJson', false) as boolean;
-
-		let fields: FormField[];
-		if (useJson) {
-			fields = jsonParse<FormField[]>(context.getNodeParameter('jsonOutput', '') as string, {
-				acceptJSObject: true,
-			});
-		} else {
-			fields = context.getNodeParameter('formFields.values', []) as FormField[];
-		}
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
 		const trigger = parentNodes.find(
 			(node) => node.type === 'n8n-nodes-base.formTrigger',
 		) as NodeTypeAndVersion;
+
+		const mode = context.evaluateExpression(`{{ $('${trigger?.name}').first().json.formMode }}`) as
+			| 'test'
+			| 'production';
+
+		const useJson = context.getNodeParameter('useJson', false) as boolean;
+
+		let fields: FormField[] = [];
+		if (useJson) {
+			try {
+				const jsonOutput = context.getNodeParameter('jsonOutput', '') as string;
+				const rawFields = jsonParse<IDataObject[]>(jsonOutput, {
+					acceptJSObject: true,
+				});
+				fields = checkFieldsSyntax(context.getNode(), rawFields, mode);
+			} catch (error) {
+				if (error instanceof NodeOperationError) {
+					throw error;
+				}
+				throw new NodeOperationError(
+					context.getNode(),
+					`Fields in '${context.getNode().name}' node are not valid JSON`,
+					{
+						description: error.message,
+						type: mode === 'test' ? 'manual-form-test' : undefined,
+					},
+				);
+			}
+		} else {
+			fields = context.getNodeParameter('formFields.values', []) as FormField[];
+		}
 
 		const method = context.getRequestObject().method;
 

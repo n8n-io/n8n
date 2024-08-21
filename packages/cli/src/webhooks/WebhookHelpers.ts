@@ -38,6 +38,7 @@ import {
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
 	NodeHelpers,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
@@ -278,7 +279,15 @@ export async function executeWebhook(
 			});
 		} catch (err) {
 			// Send error response to webhook caller
-			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
+			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
+				? 'Form'
+				: 'Webhook';
+			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
+
+			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
+				errorMessage = err.message;
+			}
+
 			responseCallback(new Error(errorMessage), {});
 			didSendResponse = true;
 
