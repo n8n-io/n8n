@@ -386,13 +386,19 @@ describe('GET /resolve-signup-token', () => {
 describe('POST /logout', () => {
 	test('should log user out', async () => {
 		const owner = await createUser({ role: 'global:owner' });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
 
-		const response = await testServer.authAgentFor(owner).post('/logout');
+		const response = await ownerAgent.post('/logout');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeUndefined();
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.get('/login').expect(401);
 	});
 });

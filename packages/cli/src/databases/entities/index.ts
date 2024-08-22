@@ -21,6 +21,7 @@ import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
 import { Project } from './Project';
 import { ProjectRelation } from './ProjectRelation';
+import { InvalidAuthToken } from './InvalidAuthToken';
 
 export const entities = {
 	AuthIdentity,
@@ -31,6 +32,7 @@ export const entities = {
 	ExecutionEntity,
 	InstalledNodes,
 	InstalledPackages,
+	InvalidAuthToken,
 	Settings,
 	SharedCredentials,
 	SharedWorkflow,
