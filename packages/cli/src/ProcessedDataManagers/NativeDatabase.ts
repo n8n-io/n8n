@@ -18,7 +18,7 @@ import type {
 	IProcessedDataLatest,
 } from '@/Interfaces';
 import type { DatabaseType } from '@db/types';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ExternalHooks } from '@/external-hooks';
 import { Container } from 'typedi';
 import { ProcessedDataRepository } from '@/databases/repositories/processedData.repository';
 import { GlobalConfig } from '@n8n/config';
