@@ -148,7 +148,19 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				};
 			}
 		}
+		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will parse the output manually
+		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
+			const finalResponse = (steps as AgentFinish).returnValues;
+			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
+				string,
+				unknown
+			>;
 
+			return {
+				returnValues,
+				log: 'Final response formatted',
+			};
+		}
 		return handleAgentFinishOutput(steps);
 	}
 
