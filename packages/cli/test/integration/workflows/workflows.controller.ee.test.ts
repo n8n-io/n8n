@@ -7,9 +7,9 @@ import type { Project } from '@db/entities/Project';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { License } from '@/License';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { License } from '@/license';
+import { UserManagementMailer } from '@/user-management/email';
 import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
 
 import { mockInstance } from '../../shared/mocking';
