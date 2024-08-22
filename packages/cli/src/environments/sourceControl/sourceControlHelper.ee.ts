@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { License } from '@/License';
+import { License } from '@/license';
 import { generateKeyPairSync } from 'crypto';
 import type { KeyPair } from './types/keyPair';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
@@ -11,7 +11,7 @@ import {
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import path from 'path';
 import type { KeyPairType } from './types/keyPairType';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);

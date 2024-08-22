@@ -2,13 +2,13 @@
 import type express from 'express';
 import { Container } from 'typedi';
 
-import { License } from '@/License';
+import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 import type { Scope } from '@n8n/permissions';
-import { userHasScope } from '@/permissions/checkAccess';
+import { userHasScope } from '@/permissions/check-access';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
