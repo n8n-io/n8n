@@ -67,7 +67,7 @@ function onClose() {
 <template>
 	<SlideTransition>
 		<n8n-resize-wrapper
-			v-if="assistantStore.isAssistantOpen"
+			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
 			:class="$style.container"
@@ -95,9 +95,9 @@ function onClose() {
 
 <style module>
 .container {
-	grid-area: rightsidebar;
 	height: 100%;
 	z-index: 3000; /* Above NDV, below notifications */
+	flex-basis: content;
 }
 
 .wrapper {

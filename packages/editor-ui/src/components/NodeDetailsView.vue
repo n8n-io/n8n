@@ -6,7 +6,7 @@
 		class="data-display-wrapper ndv-wrapper"
 		overlay-class="data-display-overlay"
 		width="auto"
-		append-to-body
+		append-to="#app-modals"
 		data-test-id="ndv"
 		:data-has-output-connection="hasOutputConnection"
 	>

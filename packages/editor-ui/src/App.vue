@@ -1,14 +1,14 @@
 <template>
-	<div :class="[$style.app, 'root-container']">
-		<LoadingView v-if="loading" />
-		<div
-			v-else
-			id="app"
-			:class="{
-				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-			}"
-		>
+	<LoadingView v-if="loading" />
+	<div
+		v-else
+		id="n8n-app"
+		:class="{
+			[$style.container]: true,
+			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+		}"
+	>
+		<div id="app-grid" :class="$style['app-grid']">
 			<div id="banners" :class="$style.banners">
 				<BannerStack v-if="!isDemoMode" />
 			</div>
@@ -26,11 +26,13 @@
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
-			<AskAssistantChat />
-			<Modals />
+			<div id="app-modals" :class="$style.modals">
+				<Modals />
+			</div>
 			<Telemetry />
 			<AskAssistantFloatingButton v-if="showAssistantButton" />
 		</div>
+		<AskAssistantChat />
 	</div>
 </template>
 
@@ -81,6 +83,11 @@ export default defineComponent({
 			externalHooks: useExternalHooks(),
 		};
 	},
+	data() {
+		return {
+			loading: true,
+		};
+	},
 	computed: {
 		...mapStores(
 			useAssistantStore,
@@ -104,11 +111,6 @@ export default defineComponent({
 			return this.assistantStore.canShowAssistantButtons;
 		},
 	},
-	data() {
-		return {
-			loading: true,
-		};
-	},
 	watch: {
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);
@@ -130,20 +132,26 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.app {
+// On the root level, whole app is a flex container
+// with app grid and assistant sidebar as children
+.container {
 	height: 100vh;
 	overflow: hidden;
+	display: flex;
 }
 
-.container {
+// App grid is the main app layout including modals and other absolute positioned elements
+.app-grid {
+	position: relative;
 	display: grid;
-	grid-template-areas:
-		'banners banners rightsidebar'
-		'sidebar header rightsidebar'
-		'sidebar content rightsidebar';
-	grid-auto-columns: minmax(0, max-content) minmax(100px, auto) minmax(0, max-content);
-	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
+	flex-basis: 100%;
+	grid-template-areas:
+		'banners banners'
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: minmax(0, max-content) minmax(100px, auto);
+	grid-template-rows: auto fit-content($header-height) 1fr;
 }
 
 .banners {
@@ -175,5 +183,9 @@ export default defineComponent({
 	grid-area: sidebar;
 	height: 100%;
 	z-index: 999;
+}
+
+.modals {
+	width: 100%;
 }
 </style>

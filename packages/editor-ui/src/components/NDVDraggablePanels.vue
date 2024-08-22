@@ -11,6 +11,7 @@ import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import type { XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -35,6 +36,7 @@ interface Props {
 
 const { callDebounced } = useDebounce();
 const ndvStore = useNDVStore();
+const assistantStore = useAssistantStore();
 
 const props = defineProps<Props>();
 
@@ -105,6 +107,14 @@ watch(windowWidth, (width) => {
 	}
 
 	setPositions(mainPanelDimensions.value.relativeLeft);
+});
+
+const assistantSidebarWidth = computed(() =>
+	assistantStore.isAssistantOpen ? assistantStore.chatWidth : 0,
+);
+
+watch(assistantSidebarWidth, () => {
+	setTotalWidth();
 });
 
 const currentNodePaneType = computed((): string => {
@@ -365,7 +375,10 @@ function onDragEnd() {
 }
 
 function setTotalWidth() {
-	windowWidth.value = window.innerWidth;
+	const appModals = document.getElementById('app-grid');
+	if (appModals) {
+		windowWidth.value = appModals.clientWidth - assistantSidebarWidth.value;
+	}
 }
 </script>
 
