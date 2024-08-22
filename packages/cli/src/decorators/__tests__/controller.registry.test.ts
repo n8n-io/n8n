@@ -8,7 +8,7 @@ import { mock } from 'jest-mock-extended';
 
 import { ControllerRegistry, Get, Licensed, RestController } from '@/decorators';
 import type { AuthService } from '@/auth/auth.service';
-import type { License } from '@/License';
+import type { License } from '@/license';
 import type { SuperAgentTest } from '@test-integration/types';
 import type { GlobalConfig } from '@n8n/config';
 

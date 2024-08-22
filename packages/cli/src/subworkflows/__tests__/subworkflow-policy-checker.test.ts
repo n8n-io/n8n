@@ -9,7 +9,7 @@ import { mock } from 'jest-mock-extended';
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
 
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { License } from '@/License';
+import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
 
 const toTargetCallErrorMsg = (subworkflowId: string) =>

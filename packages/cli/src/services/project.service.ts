@@ -17,7 +17,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from './cache/cache.service';
-import { License } from '@/License';
+import { License } from '@/license';
 import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import { ApplicationError } from 'n8n-workflow';
 
