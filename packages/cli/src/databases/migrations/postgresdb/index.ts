@@ -123,6 +123,6 @@ export const postgresMigrations: Migration[] = [
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
 	FixExecutionMetadataSequence1721377157740,
-	RefactorExecutionIndices1723796243146,
 	CreateInvalidAuthTokenTable1723627610222,
+	RefactorExecutionIndices1723796243146,
 ];

@@ -117,8 +117,8 @@ const sqliteMigrations: Migration[] = [
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
-	RefactorExecutionIndices1723796243146,
 	CreateInvalidAuthTokenTable1723627610222,
+	RefactorExecutionIndices1723796243146,
 ];
 
 export { sqliteMigrations };
