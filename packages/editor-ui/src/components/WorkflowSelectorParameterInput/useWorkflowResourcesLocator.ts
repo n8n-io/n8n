@@ -28,7 +28,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 		return workflowsStore.allWorkflows
 			.filter((resource) => resource.name.toLowerCase().includes(searchFilter.value.toLowerCase()))
-			.map(workflowsMapper);
+			.map(workflowDbToResourceMapper);
 	});
 
 	async function populateNextWorkflowsPage() {
@@ -40,7 +40,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 			workflowsResources.value.length + PAGE_SIZE,
 		);
 
-		workflowsResources.value.push(...nextPage.map(workflowsMapper));
+		workflowsResources.value.push(...nextPage.map(workflowDbToResourceMapper));
 	}
 
 	async function setWorkflowsResources() {
@@ -49,7 +49,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		isLoadingResources.value = false;
 	}
 
-	function workflowsMapper(workflow: IWorkflowDb) {
+	function workflowDbToResourceMapper(workflow: IWorkflowDb) {
 		return {
 			name: getWorkflowName(workflow.id),
 			value: workflow.id,
@@ -84,6 +84,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 		hasMoreWorkflowsToLoad,
 		filteredResources,
 		searchFilter,
+		getWorkflowUrl,
 		onSearchFilter,
 		getWorkflowName,
 		populateNextWorkflowsPage,

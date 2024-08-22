@@ -35,16 +35,18 @@ export function useWorkflowResourceLocatorModes(
 	function getUpdatedModePayload(value: ResourceLocatorModes): INodeParameterResourceLocator {
 		if (typeof modelValue !== 'object') {
 			return { __rl: true, value: modelValue, mode: value };
-		} else if (value === 'id' && selectedMode.value === 'list' && modelValue.value.value) {
-			return { __rl: true, mode: value, value: modelValue.value.value };
-		} else {
-			return {
-				__rl: true,
-				mode: value,
-				value: modelValue.value.value,
-				cachedResultName: getWorkflowName(modelValue.value.value?.toString() ?? ''),
-			};
 		}
+
+		if (value === 'id' && selectedMode.value === 'list' && modelValue.value.value) {
+			return { __rl: true, mode: value, value: modelValue.value.value };
+		}
+
+		return {
+			__rl: true,
+			mode: value,
+			value: modelValue.value.value,
+			cachedResultName: getWorkflowName(modelValue.value.value?.toString() ?? ''),
+		};
 	}
 
 	function getModeLabel(mode: INodePropertyMode): string | null {

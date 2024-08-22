@@ -15,7 +15,6 @@ import ResourceLocatorDropdown from '@/components/ResourceLocator/ResourceLocato
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
 import { useWorkflowResourceLocatorDropdown } from './useWorkflowResourceLocatorDropdown';
 import { useWorkflowResourceLocatorModes } from './useWorkflowResourceLocatorModes';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
@@ -79,6 +78,7 @@ const {
 	getWorkflowName,
 	populateNextWorkflowsPage,
 	setWorkflowsResources,
+	getWorkflowUrl,
 } = useWorkflowResourcesLocator(router);
 
 const valueToDisplay = computed<NodeParameterValue>(() => {
@@ -106,11 +106,6 @@ function setWidth() {
 	if (containerRef) {
 		width.value = containerRef?.offsetWidth;
 	}
-}
-
-function getWorkflowUrl(workflowId: string) {
-	const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
-	return href;
 }
 
 function onInputChange(value: string): void {
@@ -157,18 +152,12 @@ function openWorkflow() {
 }
 
 onMounted(() => {
-	props.eventBus.on('searchFilter', onSearchFilter);
-	props.eventBus.on('dropdownHide', hideDropdown);
-
 	window.addEventListener('resize', setWidth);
 	setWidth();
 	void setWorkflowsResources();
 });
 
 onUnmounted(() => {
-	props.eventBus.off('searchFilter', onSearchFilter);
-	props.eventBus.off('dropdownHide', hideDropdown);
-
 	window.removeEventListener('resize', setWidth);
 });
 
