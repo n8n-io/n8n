@@ -1,4 +1,4 @@
-import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 import { FORM_NODE_TYPE, sleep, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';

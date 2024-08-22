@@ -13,7 +13,7 @@ import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/external-hooks';
 import { send, sendErrorResponse } from '@/response-helper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
-import { WaitingForms } from '@/webhooks/WaitingForms';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
