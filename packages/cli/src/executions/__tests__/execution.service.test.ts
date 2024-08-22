@@ -4,16 +4,18 @@ import config from '@/config';
 import { ExecutionService } from '@/executions/execution.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import type { ActiveExecutions } from '@/ActiveExecutions';
+import type { ActiveExecutions } from '@/active-executions';
 import type { IExecutionResponse } from '@/Interfaces';
-import type { Job, Queue } from '@/Queue';
-import type { WaitTracker } from '@/WaitTracker';
+import { ScalingService } from '@/scaling/scaling.service';
+import type { WaitTracker } from '@/wait-tracker';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { Job } from '@/scaling/types';
+import { mockInstance } from '@test/mocking';
 
 describe('ExecutionService', () => {
-	const queue = mock<Queue>();
+	const scalingService = mockInstance(ScalingService);
 	const activeExecutions = mock<ActiveExecutions>();
 	const executionRepository = mock<ExecutionRepository>();
 	const waitTracker = mock<WaitTracker>();
@@ -22,7 +24,6 @@ describe('ExecutionService', () => {
 	const executionService = new ExecutionService(
 		mock(),
 		mock(),
-		queue,
 		activeExecutions,
 		executionRepository,
 		mock(),
@@ -30,6 +31,7 @@ describe('ExecutionService', () => {
 		waitTracker,
 		mock(),
 		concurrencyControl,
+		mock(),
 		mock(),
 	);
 
@@ -210,7 +212,7 @@ describe('ExecutionService', () => {
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
-					expect(queue.stopJob).not.toHaveBeenCalled();
+					expect(scalingService.stopJob).not.toHaveBeenCalled();
 				});
 			});
 
@@ -223,7 +225,8 @@ describe('ExecutionService', () => {
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'running' });
 					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
-					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
+					const job = mock<Job>({ data: { executionId: '123' } });
+					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
 					/**
@@ -236,8 +239,8 @@ describe('ExecutionService', () => {
 					 */
 					expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 					expect(activeExecutions.stopExecution).toHaveBeenCalled();
-					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
-					expect(queue.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
+					expect(scalingService.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 
@@ -249,7 +252,8 @@ describe('ExecutionService', () => {
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'waiting' });
 					executionRepository.findSingleExecution.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
-					queue.findRunningJobBy.mockResolvedValue(mock<Job>());
+					const job = mock<Job>({ data: { executionId: '123' } });
+					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionRepository.stopDuringRun.mockResolvedValue(mock<IExecutionResponse>());
 
 					/**
@@ -261,9 +265,8 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
-					expect(activeExecutions.stopExecution).toHaveBeenCalled();
-					expect(queue.findRunningJobBy).toBeCalledWith({ executionId: execution.id });
-					expect(queue.stopJob).toHaveBeenCalled();
+					expect(scalingService.findJobsByStatus).toHaveBeenCalled();
+					expect(scalingService.stopJob).toHaveBeenCalled();
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});

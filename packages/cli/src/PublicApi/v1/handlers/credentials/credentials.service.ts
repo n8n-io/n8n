@@ -10,15 +10,14 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ExternalHooks } from '@/external-hooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { InternalHooks } from '@/InternalHooks';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
@@ -52,22 +51,7 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
-	void Container.get(InternalHooks).onUserCreatedCredentials({
-		user,
-		credential_name: credential.name,
-		credential_type: credential.type,
-		credential_id: credential.id,
-		public_api: true,
-	});
-	Container.get(EventService).emit('credentials-created', {
-		user,
-		credentialName: credential.name,
-		credentialType: credential.type,
-		credentialId: credential.id,
-	});
-
-	return await Db.transaction(async (transactionManager) => {
+	const result = await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
@@ -89,6 +73,23 @@ export async function saveCredential(
 
 		return savedCredential;
 	});
+
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+
+	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+		credential.id,
+	);
+
+	Container.get(EventService).emit('credentials-created', {
+		user,
+		credentialType: credential.type,
+		credentialId: credential.id,
+		projectId: project?.id,
+		projectType: project?.type,
+		publicApi: true,
+	});
+
+	return result;
 }
 
 export async function removeCredential(
@@ -96,15 +97,8 @@ export async function removeCredential(
 	credentials: CredentialsEntity,
 ): Promise<ICredentialsDb> {
 	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
-	void Container.get(InternalHooks).onUserDeletedCredentials({
-		user,
-		credential_name: credentials.name,
-		credential_type: credentials.type,
-		credential_id: credentials.id,
-	});
 	Container.get(EventService).emit('credentials-deleted', {
 		user,
-		credentialName: credentials.name,
 		credentialType: credentials.type,
 		credentialId: credentials.id,
 	});

@@ -5,13 +5,17 @@ interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
+const { NODE_ENV } = process.env;
+const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
+
 const instance: ErrorReporter = {
 	report: (error) => {
 		if (error instanceof Error) {
 			let e = error;
 			do {
 				const meta = e instanceof ApplicationError ? e.extra : undefined;
-				Logger.error(`${e.constructor.name}: ${e.message}`, meta);
+				if (inDevelopment) console.log(e, meta);
+				else Logger.error(`${e.constructor.name}: ${e.message}`, meta);
 				e = e.cause as Error;
 			} while (e);
 		}

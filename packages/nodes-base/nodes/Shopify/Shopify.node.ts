@@ -64,6 +64,13 @@ export class Shopify implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Shopify API Version: 2024-07',
+				type: 'notice',
+				name: 'apiVersion',
+				default: '',
+				isNodeSetting: true,
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',

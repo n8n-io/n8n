@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import config from '@/config';
 import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
 import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/RedisServiceCommands';
@@ -7,11 +7,13 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/Redis
 import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
 import type { WorkflowActivateMode } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class OrchestrationService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly redisService: RedisService,
 		readonly multiMainSetup: MultiMainSetup,
 	) {}
@@ -43,15 +45,14 @@ export class OrchestrationService {
 		return config.getEnv('redis.queueModeId');
 	}
 
-	/**
-	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
-	 */
+	/** @deprecated use InstanceSettings.isLeader */
 	get isLeader() {
-		return config.getEnv('multiMainSetup.instanceType') === 'leader';
+		return this.instanceSettings.isLeader;
 	}
 
+	/** @deprecated use InstanceSettings.isFollower */
 	get isFollower() {
-		return config.getEnv('multiMainSetup.instanceType') !== 'leader';
+		return this.instanceSettings.isFollower;
 	}
 
 	sanityCheck() {
@@ -66,7 +67,7 @@ export class OrchestrationService {
 		if (this.isMultiMainSetupEnabled) {
 			await this.multiMainSetup.init();
 		} else {
-			config.set('multiMainSetup.instanceType', 'leader');
+			this.instanceSettings.markAsLeader();
 		}
 
 		this.isInitialized = true;

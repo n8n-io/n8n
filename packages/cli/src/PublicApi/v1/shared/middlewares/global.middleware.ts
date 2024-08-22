@@ -2,13 +2,15 @@
 import type express from 'express';
 import { Container } from 'typedi';
 
-import { License } from '@/License';
+import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 import type { Scope } from '@n8n/permissions';
-import { userHasScope } from '@/permissions/checkAccess';
+import { userHasScope } from '@/permissions/check-access';
+import type { BooleanLicenseFeature } from '@/Interfaces';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
@@ -85,4 +87,12 @@ export const validLicenseWithUserQuota = (
 	}
 
 	return next();
+};
+
+export const isLicensed = (feature: BooleanLicenseFeature) => {
+	return async (_: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
+		if (Container.get(License).isFeatureEnabled(feature)) return next();
+
+		return res.status(403).json({ message: new FeatureNotLicensedError(feature).message });
+	};
 };

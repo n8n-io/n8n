@@ -8,15 +8,15 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionType } from 'n8n-workflow';
 import type { useDeviceSupport } from 'n8n-design-system';
 
+const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
 global.window = jsdom.window as unknown as Window & typeof globalThis;
+global.window.matchMedia = matchMedia;
 
 vi.mock('n8n-design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof useDeviceSupport>();
 	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
 });
-
-vi.mock('@/composables/useDeviceSupport');
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {

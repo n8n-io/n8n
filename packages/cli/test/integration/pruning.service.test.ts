@@ -1,5 +1,5 @@
 import config from '@/config';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
@@ -9,16 +9,17 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
 import { mock } from 'jest-mock-extended';
-import type { OrchestrationService } from '@/services/orchestration.service';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
+	const instanceSettings = new InstanceSettings();
+	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
@@ -29,9 +30,10 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
+			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
-			mock<OrchestrationService>(),
+			mock(),
 		);
 
 		workflow = await createWorkflow();
@@ -98,7 +100,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: now, stoppedAt: now }],
 			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
@@ -191,7 +192,6 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: yesterday, stoppedAt: yesterday }],
 			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],

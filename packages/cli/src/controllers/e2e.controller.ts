@@ -3,19 +3,19 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { License } from '@/License';
+import { License } from '@/license';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
-import { MfaService } from '@/Mfa/mfa.service';
+import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
 
 if (!inE2ETests) {
@@ -87,6 +87,8 @@ export class E2EController {
 		[LICENSE_FEATURES.PROJECT_ROLE_ADMIN]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_EDITOR]: false,
 		[LICENSE_FEATURES.PROJECT_ROLE_VIEWER]: false,
+		[LICENSE_FEATURES.AI_ASSISTANT]: false,
+		[LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY]: false,
 	};
 
 	private numericFeatures: Record<NumericLicenseFeature, number> = {

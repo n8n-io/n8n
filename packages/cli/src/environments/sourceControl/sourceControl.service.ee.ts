@@ -30,9 +30,9 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { Variables } from '@db/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import type { ExportableCredential } from './types/exportableCredential';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 import { TagRepository } from '@db/repositories/tag.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ApplicationError } from 'n8n-workflow';
 

@@ -1,5 +1,5 @@
 import type { User } from '@db/entities/User';
-import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -20,6 +20,8 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '@test/mocking';
 import { Telemetry } from '@/telemetry';
+import { createTeamProject } from '@test-integration/db/projects';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 let owner: User;
 let user1: User;
@@ -445,6 +447,42 @@ describe('GET /executions', () => {
 			expect(workflowId).toBe(workflow.id);
 			expect(waitTill).toBeNull();
 		}
+	});
+
+	test('should return executions filtered by project ID', async () => {
+		/**
+		 * Arrange
+		 */
+		const [firstProject, secondProject] = await Promise.all([
+			createTeamProject(),
+			createTeamProject(),
+		]);
+		const [firstWorkflow, secondWorkflow] = await Promise.all([
+			createWorkflow({}, firstProject),
+			createWorkflow({}, secondProject),
+		]);
+		const [firstExecution, secondExecution, _] = await Promise.all([
+			createExecution({}, firstWorkflow),
+			createExecution({}, firstWorkflow),
+			createExecution({}, secondWorkflow),
+		]);
+
+		/**
+		 * Act
+		 */
+		const response = await authOwnerAgent.get('/executions').query({
+			projectId: firstProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual(
+			expect.arrayContaining([firstExecution.id, secondExecution.id]),
+		);
 	});
 
 	test('owner should retrieve all executions regardless of ownership', async () => {

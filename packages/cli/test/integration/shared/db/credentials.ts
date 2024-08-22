@@ -12,7 +12,7 @@ import type { Project } from '@/databases/entities/Project';
 export async function encryptCredentialData(
 	credential: CredentialsEntity,
 ): Promise<ICredentialsDb> {
-	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
+	const { createCredentialsFromCredentialsEntity } = await import('@/credentials-helper');
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
@@ -38,11 +38,24 @@ export async function createManyCredentials(
 	);
 }
 
-export async function createCredentials(attributes: Partial<CredentialsEntity> = emptyAttributes) {
+export async function createCredentials(
+	attributes: Partial<CredentialsEntity> = emptyAttributes,
+	project?: Project,
+) {
 	const credentialsRepository = Container.get(CredentialsRepository);
-	const entity = credentialsRepository.create(attributes);
+	const credentials = await credentialsRepository.save(credentialsRepository.create(attributes));
 
-	return await credentialsRepository.save(entity);
+	if (project) {
+		await Container.get(SharedCredentialsRepository).save(
+			Container.get(SharedCredentialsRepository).create({
+				project,
+				credentials,
+				role: 'credential:owner',
+			}),
+		);
+	}
+
+	return credentials;
 }
 
 /**

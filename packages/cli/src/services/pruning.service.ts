@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { jsonStringify } from 'n8n-workflow';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { OrchestrationService } from './orchestration.service';
 
 @Service()
@@ -25,6 +25,7 @@ export class PruningService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly orchestrationService: OrchestrationService,
@@ -56,7 +57,7 @@ export class PruningService {
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
 			config.getEnv('generic.instanceType') === 'main' &&
-			config.getEnv('multiMainSetup.instanceType') === 'follower'
+			this.instanceSettings.isFollower
 		) {
 			return false;
 		}

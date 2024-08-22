@@ -1,54 +1,80 @@
-import { Config, Nested } from './decorators';
-import { CredentialsConfig } from './configs/credentials';
-import { DatabaseConfig } from './configs/database';
-import { EmailConfig } from './configs/email';
-import { VersionNotificationsConfig } from './configs/version-notifications';
-import { PublicApiConfig } from './configs/public-api';
-import { ExternalSecretsConfig } from './configs/external-secrets';
-import { TemplatesConfig } from './configs/templates';
-import { EventBusConfig } from './configs/event-bus';
-import { NodesConfig } from './configs/nodes';
-import { ExternalStorageConfig } from './configs/external-storage';
-import { WorkflowsConfig } from './configs/workflows';
-
-@Config
-class UserManagementConfig {
-	@Nested
-	emails: EmailConfig;
-}
+import { Config, Env, Nested } from './decorators';
+import { CredentialsConfig } from './configs/credentials.config';
+import { DatabaseConfig } from './configs/database.config';
+import { VersionNotificationsConfig } from './configs/version-notifications.config';
+import { PublicApiConfig } from './configs/public-api.config';
+import { ExternalSecretsConfig } from './configs/external-secrets.config';
+import { TemplatesConfig } from './configs/templates.config';
+import { EventBusConfig } from './configs/event-bus.config';
+import { NodesConfig } from './configs/nodes.config';
+import { ExternalStorageConfig } from './configs/external-storage.config';
+import { WorkflowsConfig } from './configs/workflows.config';
+import { EndpointsConfig } from './configs/endpoints.config';
+import { CacheConfig } from './configs/cache.config';
+import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { UserManagementConfig } from './configs/user-management.config';
 
 @Config
 export class GlobalConfig {
 	@Nested
-	readonly database: DatabaseConfig;
+	database: DatabaseConfig;
 
 	@Nested
-	readonly credentials: CredentialsConfig;
+	credentials: CredentialsConfig;
 
 	@Nested
-	readonly userManagement: UserManagementConfig;
+	userManagement: UserManagementConfig;
 
 	@Nested
-	readonly versionNotifications: VersionNotificationsConfig;
+	versionNotifications: VersionNotificationsConfig;
 
 	@Nested
-	readonly publicApi: PublicApiConfig;
+	publicApi: PublicApiConfig;
 
 	@Nested
-	readonly externalSecrets: ExternalSecretsConfig;
+	externalSecrets: ExternalSecretsConfig;
 
 	@Nested
-	readonly templates: TemplatesConfig;
+	templates: TemplatesConfig;
 
 	@Nested
-	readonly eventBus: EventBusConfig;
+	eventBus: EventBusConfig;
 
 	@Nested
-	readonly nodes: NodesConfig;
+	nodes: NodesConfig;
 
 	@Nested
-	readonly externalStorage: ExternalStorageConfig;
+	externalStorage: ExternalStorageConfig;
 
 	@Nested
-	readonly workflows: WorkflowsConfig;
+	workflows: WorkflowsConfig;
+
+	/** Path n8n is deployed to */
+	@Env('N8N_PATH')
+	path: string = '/';
+
+	/** Host name n8n can be reached */
+	@Env('N8N_HOST')
+	host: string = 'localhost';
+
+	/** HTTP port n8n can be reached */
+	@Env('N8N_PORT')
+	port: number = 5678;
+
+	/** IP address n8n should listen on */
+	@Env('N8N_LISTEN_ADDRESS')
+	listen_address: string = '0.0.0.0';
+
+	/** HTTP Protocol via which n8n can be reached */
+	@Env('N8N_PROTOCOL')
+	protocol: 'http' | 'https' = 'http';
+
+	@Nested
+	endpoints: EndpointsConfig;
+
+	@Nested
+	cache: CacheConfig;
+
+	@Nested
+	queue: ScalingModeConfig;
 }

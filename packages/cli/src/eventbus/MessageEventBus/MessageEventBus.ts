@@ -12,7 +12,7 @@ import { EventDestinationsRepository } from '@db/repositories/eventDestinations.
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import type { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
@@ -34,7 +34,7 @@ import {
 	EventMessageAiNode,
 	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
-import { License } from '@/License';
+import { License } from '@/license';
 import type { EventMessageExecutionOptions } from '../EventMessageClasses/EventMessageExecution';
 import { EventMessageExecution } from '../EventMessageClasses/EventMessageExecution';
 import { GlobalConfig } from '@n8n/config';
@@ -52,6 +52,8 @@ export interface MessageEventBusInitializeOptions {
 }
 
 @Service()
+// TODO: Convert to TypedEventEmitter
+// eslint-disable-next-line n8n-local-rules/no-type-unsafe-event-emitter
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 

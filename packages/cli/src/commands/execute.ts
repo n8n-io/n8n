@@ -3,11 +3,11 @@ import { Flags } from '@oclif/core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WorkflowRunner } from '@/WorkflowRunner';
+import { ActiveExecutions } from '@/active-executions';
+import { WorkflowRunner } from '@/workflow-runner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { BaseCommand } from './BaseCommand';
+import { BaseCommand } from './base-command';
 
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -26,6 +26,8 @@ export class Execute extends BaseCommand {
 			description: 'Outputs only JSON data, with no other text',
 		}),
 	};
+
+	override needsCommunityPackages = true;
 
 	async init() {
 		await super.init();

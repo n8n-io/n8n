@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';

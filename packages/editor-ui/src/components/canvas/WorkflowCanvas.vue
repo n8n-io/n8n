@@ -5,6 +5,7 @@ import type { Workflow } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 defineOptions({
 	inheritAttrs: false,
@@ -21,6 +22,7 @@ const props = withDefaults(
 	}>(),
 	{
 		id: 'canvas',
+		eventBus: () => createEventBus(),
 		fallbackNodes: () => [],
 	},
 );

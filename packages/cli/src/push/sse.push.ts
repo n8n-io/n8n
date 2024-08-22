@@ -1,7 +1,7 @@
 import SSEChannel from 'sse-channel';
 import { Service } from 'typedi';
 
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';

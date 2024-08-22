@@ -26,7 +26,7 @@ import {
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
 import { inTest } from '@/constants';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import Container from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 
@@ -225,7 +225,6 @@ export class MessageEventBusLogWriter {
 										break;
 									case 'n8n.workflow.success':
 									case 'n8n.workflow.failed':
-									case 'n8n.workflow.crashed':
 									case 'n8n.execution.throttled':
 									case 'n8n.execution.started-during-bootup':
 										delete results.unfinishedExecutions[executionId];

@@ -145,8 +145,7 @@ import { useMessage } from '@/composables/useMessage';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import { getCredentialPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -169,7 +168,6 @@ import {
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/utils/typeGuards';
-import type { CredentialScope } from '@n8n/permissions';
 
 type Props = {
 	modalName: string;
@@ -395,14 +393,11 @@ const requiredPropertiesFilled = computed(() => {
 	return true;
 });
 
-const credentialPermissions = computed<PermissionsMap<CredentialScope>>(() => {
-	if (loading.value) {
-		return {} as PermissionsMap<CredentialScope>;
-	}
-
-	return getCredentialPermissions(
-		(credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse,
-	);
+const credentialPermissions = computed(() => {
+	return getResourcePermissions(
+		((credentialId.value ? currentCredential.value : credentialData.value) as ICredentialsResponse)
+			?.scopes,
+	).credential;
 });
 
 const sidebarItems = computed(() => {
@@ -446,6 +441,11 @@ const showSaveButton = computed(() => {
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+const homeProject = computed(() => {
+	const { currentProject, personalProject } = projectsStore;
+	return currentProject ?? personalProject;
+});
+
 onMounted(async () => {
 	requiredCredentials.value =
 		isCredentialModalState(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
@@ -456,14 +456,12 @@ onMounted(async () => {
 			credentialTypeName: defaultCredentialTypeName.value,
 		});
 
-		const { currentProject, personalProject } = projectsStore;
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-		const homeProject = currentProject ?? personalProject ?? {};
+		const scopes = homeProject.value?.scopes ?? [];
 
 		credentialData.value = {
 			...credentialData.value,
 			scopes,
-			homeProject,
+			...(homeProject.value ? { homeProject: homeProject.value } : {}),
 		};
 	} else {
 		await loadCurrentCredential();
@@ -751,6 +749,12 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	scrollToTop();
 }
 
+function usesExternalSecrets(data: Record<string, unknown>): boolean {
+	return Object.entries(data).some(
+		([, value]) => typeof value !== 'object' && /=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+	);
+}
+
 async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
@@ -785,6 +789,10 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	) {
 		credentialDetails.sharedWithProjects = credentialData.value
 			.sharedWithProjects as ProjectSharingData[];
+	}
+
+	if (credentialData.value.homeProject) {
+		credentialDetails.homeProject = credentialData.value.homeProject as ProjectSharingData;
 	}
 
 	let credential: ICredentialsResponse | null = null;
@@ -844,18 +852,13 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			testedSuccessfully.value = false;
 		}
 
-		const usesExternalSecrets = Object.entries(credentialDetails.data ?? {}).some(
-			([, value]) =>
-				typeof value !== 'object' && /=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
-		);
-
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
 			workflow_id: workflowsStore.workflowId,
 			credential_id: credential.id,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
-			uses_external_secrets: usesExternalSecrets,
+			uses_external_secrets: usesExternalSecrets(credentialDetails.data ?? {}),
 		};
 
 		if (isOAuthType.value) {
@@ -872,7 +875,15 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			trackProperties.authError = authError.value;
 		}
 
-		telemetry.track('User saved credentials', trackProperties);
+		/**
+		 * For non-OAuth credentials we track saving on clicking the `Save` button, but for
+		 * OAuth credentials we track saving at the end of the flow (BroastcastChannel event)
+		 * so that the `is_valid` property is correct.
+		 */
+		if (!isOAuthType.value) {
+			telemetry.track('User saved credentials', trackProperties);
+		}
+
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
 	}
 
@@ -1050,7 +1061,25 @@ async function oAuthCredentialAuthorize() {
 
 	const oauthChannel = new BroadcastChannel('oauth-callback');
 	const receiveMessage = (event: MessageEvent) => {
-		if (event.data === 'success') {
+		const successfullyConnected = event.data === 'success';
+
+		const trackProperties: ITelemetryTrackProperties = {
+			credential_type: credentialTypeName.value,
+			workflow_id: workflowsStore.workflowId,
+			credential_id: credentialId.value,
+			is_complete: !!requiredPropertiesFilled.value,
+			is_new: props.mode === 'new' && !credentialId.value,
+			is_valid: successfullyConnected,
+			uses_external_secrets: usesExternalSecrets(credentialData.value),
+		};
+
+		if (ndvStore.activeNode) {
+			trackProperties.node_type = ndvStore.activeNode.type;
+		}
+
+		telemetry.track('User saved credentials', trackProperties);
+
+		if (successfullyConnected) {
 			oauthChannel.removeEventListener('message', receiveMessage);
 
 			// Set some kind of data that status changes.

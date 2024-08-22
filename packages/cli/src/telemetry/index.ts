@@ -7,14 +7,15 @@ import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
-import { Logger } from '@/Logger';
-import { License } from '@/License';
-import { N8N_VERSION } from '@/constants';
+import { Logger } from '@/logger';
+import { License } from '@/license';
+import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -88,30 +89,28 @@ export class Telemetry {
 		); // every 6 hours
 	}
 
-	private async pulse(): Promise<unknown> {
+	private async pulse() {
 		if (!this.rudderStack) {
 			return;
 		}
 
-		const allPromises = Object.keys(this.executionCountsBuffer)
-			.filter((workflowId) => {
-				const data = this.executionCountsBuffer[workflowId];
-				const sum =
-					(data.manual_error?.count ?? 0) +
-					(data.manual_success?.count ?? 0) +
-					(data.prod_error?.count ?? 0) +
-					(data.prod_success?.count ?? 0);
-				return sum > 0;
-			})
-			.map(async (workflowId) => {
-				const promise = this.track('Workflow execution count', {
-					event_version: '2',
-					workflow_id: workflowId,
-					...this.executionCountsBuffer[workflowId],
-				});
+		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
+			const data = this.executionCountsBuffer[workflowId];
+			const sum =
+				(data.manual_error?.count ?? 0) +
+				(data.manual_success?.count ?? 0) +
+				(data.prod_error?.count ?? 0) +
+				(data.prod_success?.count ?? 0);
+			return sum > 0;
+		});
 
-				return await promise;
+		for (const workflowId of workflowIdsToReport) {
+			this.track('Workflow execution count', {
+				event_version: '2',
+				workflow_id: workflowId,
+				...this.executionCountsBuffer[workflowId],
 			});
+		}
 
 		this.executionCountsBuffer = {};
 
@@ -131,11 +130,11 @@ export class Telemetry {
 			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
 			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
 		};
-		allPromises.push(this.track('pulse', pulsePacket));
-		return await Promise.all(allPromises);
+
+		this.track('pulse', pulsePacket);
 	}
 
-	async trackWorkflowExecution(properties: IExecutionTrackProperties): Promise<void> {
+	trackWorkflowExecution(properties: IExecutionTrackProperties) {
 		if (this.rudderStack) {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
@@ -164,66 +163,59 @@ export class Telemetry {
 				properties.is_manual &&
 				properties.error_node_type?.startsWith('n8n-nodes-base')
 			) {
-				void this.track('Workflow execution errored', properties);
+				this.track('Workflow execution errored', properties);
 			}
 		}
 	}
 
-	async trackN8nStop(): Promise<void> {
+	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
+	async stopTracking(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		await this.track('User instance stopped');
-		void Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+
+		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
-	async identify(traits?: {
-		[key: string]: string | number | boolean | object | undefined | null;
-	}): Promise<void> {
+	identify(traits?: { [key: string]: string | number | boolean | object | undefined | null }) {
+		if (!this.rudderStack) {
+			return;
+		}
+
 		const { instanceId } = this.instanceSettings;
-		return await new Promise<void>((resolve) => {
-			if (this.rudderStack) {
-				this.rudderStack.identify(
-					{
-						userId: instanceId,
-						traits: { ...traits, instanceId },
-					},
-					resolve,
-				);
-			} else {
-				resolve();
-			}
+
+		this.rudderStack.identify({
+			userId: instanceId,
+			traits: { ...traits, instanceId },
 		});
 	}
 
-	async track(
+	track(
 		eventName: string,
 		properties: ITelemetryTrackProperties = {},
 		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
-	): Promise<void> {
+	) {
+		if (!this.rudderStack) {
+			return;
+		}
+
 		const { instanceId } = this.instanceSettings;
-		return await new Promise<void>((resolve) => {
-			if (this.rudderStack) {
-				const { user_id } = properties;
-				const updatedProperties = {
-					...properties,
-					instance_id: instanceId,
-					version_cli: N8N_VERSION,
-				};
+		const { user_id } = properties;
+		const updatedProperties = {
+			...properties,
+			instance_id: instanceId,
+			version_cli: N8N_VERSION,
+		};
 
-				const payload = {
-					userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
-					event: eventName,
-					properties: updatedProperties,
-				};
+		const payload = {
+			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
+			event: eventName,
+			properties: updatedProperties,
+		};
 
-				if (withPostHog) {
-					this.postHog?.track(payload);
-				}
+		if (withPostHog) {
+			this.postHog?.track(payload);
+		}
 
-				return this.rudderStack.track(payload, resolve);
-			}
-
-			return resolve();
-		});
+		return this.rudderStack.track(payload);
 	}
 
 	// test helpers

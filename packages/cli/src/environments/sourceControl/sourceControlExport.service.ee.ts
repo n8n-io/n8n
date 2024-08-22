@@ -25,7 +25,7 @@ import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
@@ -293,11 +293,18 @@ export class SourceControlExportService {
 						};
 					}
 
+					/**
+					 * Edge case: Do not export `oauthTokenData`, so that that the
+					 * pulling instance reconnects instead of trying to use stubbed values.
+					 */
+					const credentialData = credentials.getData();
+					const { oauthTokenData, ...rest } = credentialData;
+
 					const stub: ExportableCredential = {
 						id,
 						name,
 						type,
-						data: this.replaceCredentialData(credentials.getData()),
+						data: this.replaceCredentialData(rest),
 						ownedBy: owner,
 					};
 

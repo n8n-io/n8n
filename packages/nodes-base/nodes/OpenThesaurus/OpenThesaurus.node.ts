@@ -56,7 +56,7 @@ export class OpenThesaurus implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Options',
+				placeholder: 'Add option',
 				displayOptions: {
 					show: {
 						operation: ['getSynonyms'],

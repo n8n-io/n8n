@@ -8,6 +8,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NODE_OUTPUT_DEFAULT_KEY,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
@@ -62,6 +63,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { getEndpointScope } from '@/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getConnectionInfo } from '@/utils/canvasUtils';
+import type { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -97,11 +99,13 @@ export function useNodeHelpers() {
 
 		if (!isObject(parameters)) return false;
 
-		if ('resource' in parameters && 'operation' in parameters) {
+		if ('resource' in parameters || 'operation' in parameters) {
 			const { resource, operation } = parameters;
-			if (!isString(resource) || !isString(operation)) return false;
 
-			return resource.includes(CUSTOM_API_CALL_KEY) || operation.includes(CUSTOM_API_CALL_KEY);
+			return (
+				(isString(resource) && resource.includes(CUSTOM_API_CALL_KEY)) ||
+				(isString(operation) && operation.includes(CUSTOM_API_CALL_KEY))
+			);
 		}
 
 		return false;
@@ -569,6 +573,16 @@ export function useNodeHelpers() {
 		paneType: NodePanelType = 'output',
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
+		//TODO: check if this needs to be fixed in different place
+		if (
+			node?.type === SPLIT_IN_BATCHES_NODE_TYPE &&
+			paneType === 'input' &&
+			runIndex !== 0 &&
+			outputIndex !== 0
+		) {
+			runIndex = runIndex - 1;
+		}
+
 		if (node === null) {
 			return [];
 		}
@@ -979,8 +993,8 @@ export function useNodeHelpers() {
 		});
 	}
 
-	function removePinDataConnections(pinData: IPinData) {
-		Object.keys(pinData).forEach((nodeName) => {
+	function removePinDataConnections(event: UnpinNodeDataEvent) {
+		for (const nodeName of event.nodeNames) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return;
@@ -1002,7 +1016,7 @@ export function useNodeHelpers() {
 			canvasStore.jsPlumbInstance.setSuspendDrawing(true);
 			connectionsArray.forEach(NodeViewUtils.resetConnection);
 			canvasStore.jsPlumbInstance.setSuspendDrawing(false, true);
-		});
+		}
 	}
 
 	function getOutputEndpointUUID(

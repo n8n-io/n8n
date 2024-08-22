@@ -48,6 +48,7 @@ import type {
 	NodeConnectionType,
 	INodeCredentialsDetails,
 	StartNodeData,
+	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -205,19 +206,6 @@ export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
-}
-
-export interface IVariableItemSelected {
-	variable: string;
-}
-
-export interface IVariableSelectorOption {
-	name: string;
-	key?: string;
-	value?: string;
-	options?: IVariableSelectorOption[] | null;
-	allowParentSelect?: boolean;
-	dataType?: string;
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -398,9 +386,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummary[];
+	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
 }
 
@@ -657,24 +647,6 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
 	email?: string | null;
-};
-
-export type IPersonalizationSurveyAnswersV4 = {
-	version: 'v4';
-	automationGoalDevops?: string[] | null;
-	automationGoalDevopsOther?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-	role?: string | null;
-	roleOther?: string | null;
-	reportedSource?: string | null;
-	reportedSourceOther?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
@@ -1564,6 +1536,11 @@ export declare namespace DynamicNodeParameters {
 	interface ResourceMapperFieldsRequest extends BaseRequest {
 		methodName: string;
 	}
+
+	interface ActionResultRequest extends BaseRequest {
+		handler: string;
+		payload: IDataObject | string | undefined;
+	}
 }
 
 export interface EnvironmentVariable {
@@ -1808,8 +1785,8 @@ export type AddedNode = {
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
-	from: { nodeIndex: number; outputIndex?: number };
-	to: { nodeIndex: number; inputIndex?: number };
+	from: { nodeIndex: number; outputIndex?: number; type?: NodeConnectionType };
+	to: { nodeIndex: number; inputIndex?: number; type?: NodeConnectionType };
 };
 
 export type AddedNodesAndConnections = {

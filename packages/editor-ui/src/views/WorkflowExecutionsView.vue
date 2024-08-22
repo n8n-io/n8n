@@ -12,7 +12,6 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
-import { storeToRefs } from 'pinia';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -28,8 +27,6 @@ const toast = useToast();
 const { callDebounced } = useDebounce();
 const workflowHelpers = useWorkflowHelpers({ router });
 const nodeHelpers = useNodeHelpers();
-
-const { filters } = storeToRefs(executionsStore);
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -125,13 +122,13 @@ async function fetchWorkflow() {
 		try {
 			await workflowsStore.fetchActiveWorkflows();
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
-			await workflowHelpers.initState(data);
+			workflowHelpers.initState(data);
 			await nodeHelpers.addNodes(data.nodes, data.connections);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}
 	}
-	workflow.value = workflowsStore.workflow;
+	workflow.value = workflowsStore.getWorkflowById(workflowId.value);
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -175,7 +172,10 @@ async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	await executionsStore.initialize(workflowId.value);
 }
 
-async function onExecutionStop(id: string) {
+async function onExecutionStop(id?: string) {
+	if (!id) {
+		return;
+	}
 	try {
 		await executionsStore.stopCurrentExecution(id);
 
@@ -193,7 +193,10 @@ async function onExecutionStop(id: string) {
 	}
 }
 
-async function onExecutionDelete(id: string) {
+async function onExecutionDelete(id?: string) {
+	if (!id) {
+		return;
+	}
 	loading.value = true;
 	try {
 		const executionIndex = executions.value.findIndex((e: ExecutionSummary) => e.id === id);
@@ -311,7 +314,6 @@ async function loadMore(): Promise<void> {
 		v-if="workflow"
 		:executions="executions"
 		:execution="execution"
-		:filters="filters"
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"

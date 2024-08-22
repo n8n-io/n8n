@@ -29,7 +29,7 @@
 						<n8n-text>{{ $locale.baseText('about.license') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md">
+						<n8n-link to="https://github.com/n8n-io/n8n/blob/master/LICENSE.md">
 							{{ $locale.baseText('about.n8nLicense') }}
 						</n8n-link>
 					</el-col>

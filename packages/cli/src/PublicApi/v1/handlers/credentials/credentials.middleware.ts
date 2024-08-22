@@ -3,8 +3,8 @@
 import type express from 'express';
 import { validate } from 'jsonschema';
 
-import { CredentialsHelper } from '@/CredentialsHelper';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsHelper } from '@/credentials-helper';
+import { CredentialTypes } from '@/credential-types';
 import type { CredentialRequest } from '../../../types';
 import { toJsonSchema } from './credentials.service';
 import { Container } from 'typedi';

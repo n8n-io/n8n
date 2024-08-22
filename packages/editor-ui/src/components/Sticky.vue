@@ -47,6 +47,7 @@
 
 			<div
 				v-show="showActions"
+				ref="stickOptions"
 				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
 			>
 				<div
@@ -58,7 +59,6 @@
 					<font-awesome-icon icon="trash" />
 				</div>
 				<n8n-popover
-					v-on-click-outside="() => setColorPopoverVisible(false)"
 					effect="dark"
 					trigger="click"
 					placement="top"
@@ -108,6 +108,8 @@
 import { defineComponent, ref } from 'vue';
 import type { PropType, StyleValue } from 'vue';
 import { mapStores } from 'pinia';
+
+import { onClickOutside } from '@vueuse/core';
 
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
@@ -178,6 +180,9 @@ export default defineComponent({
 		const toast = useToast();
 		const forceActions = ref(false);
 		const isColorPopoverVisible = ref(false);
+
+		const stickOptions = ref<HTMLElement>();
+
 		const setForceActions = (value: boolean) => {
 			forceActions.value = value;
 		};
@@ -200,6 +205,8 @@ export default defineComponent({
 			emit: emit as (event: string, ...args: unknown[]) => void,
 		});
 
+		onClickOutside(stickOptions, () => setColorPopoverVisible(false));
+
 		return {
 			deviceSupport,
 			toast,
@@ -209,6 +216,7 @@ export default defineComponent({
 			setForceActions,
 			isColorPopoverVisible,
 			setColorPopoverVisible,
+			stickOptions,
 		};
 	},
 	data() {

@@ -1,18 +1,25 @@
-import { getBezierPath, getSmoothStepPath, Position, type EdgeProps } from '@vue-flow/core';
+import type { EdgeProps } from '@vue-flow/core';
+import { getBezierPath, getSmoothStepPath, Position } from '@vue-flow/core';
 
 const EDGE_PADDING_Y = 140;
 const EDGE_PADDING_Y_TOP = 80;
 const EDGE_BORDER_RADIUS = 8;
 const EDGE_OFFSET = 40;
+const HANDLE_SIZE = 16;
 
-export function getCustomPath(props: EdgeProps) {
+export function getCustomPath(
+	props: Pick<
+		EdgeProps,
+		'sourceX' | 'sourceY' | 'sourcePosition' | 'targetX' | 'targetY' | 'targetPosition'
+	>,
+) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const xDiff = targetX - sourceX;
 	const yDiff = targetY - sourceY;
 
 	// Connection is backwards and the source is on the right side
 	// -> We need to avoid overlapping the source node
-	if (xDiff < 0 && sourcePosition === Position.Right) {
+	if (xDiff < -HANDLE_SIZE && sourcePosition === Position.Right) {
 		const direction = yDiff < -EDGE_PADDING_Y || yDiff > 0 ? 'up' : 'down';
 		const firstSegmentTargetX = sourceX;
 		const firstSegmentTargetY =
@@ -41,5 +48,6 @@ export function getCustomPath(props: EdgeProps) {
 		path[0] = firstSegmentPath + path[0];
 		return path;
 	}
+
 	return getBezierPath(props);
 }

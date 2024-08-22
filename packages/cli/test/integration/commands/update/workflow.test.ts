@@ -1,5 +1,4 @@
-import { InternalHooks } from '@/InternalHooks';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
@@ -7,7 +6,6 @@ import * as testDb from '../../shared/testDb';
 import { createWorkflowWithTrigger, getAllWorkflows } from '../../shared/db/workflows';
 import { mockInstance } from '../../../shared/mocking';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(UpdateWorkflowCommand);
 

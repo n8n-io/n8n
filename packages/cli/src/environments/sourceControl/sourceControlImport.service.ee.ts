@@ -17,17 +17,17 @@ import type { Variables } from '@db/entities/Variables';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { isUniqueConstraintError } from '@/ResponseHelper';
+import { isUniqueConstraintError } from '@/response-helper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -326,7 +326,12 @@ export class SourceControlImportService {
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
 				} else {
-					newCredentialObject.setData(data);
+					/**
+					 * Edge case: Do not import `oauthTokenData`, so that that the
+					 * pulling instance reconnects instead of trying to use stubbed values.
+					 */
+					const { oauthTokenData, ...rest } = data;
+					newCredentialObject.setData(rest);
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);

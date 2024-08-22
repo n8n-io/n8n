@@ -42,7 +42,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
@@ -270,6 +270,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
+	/**
+	 * Insert a new execution and its execution data using a transaction.
+	 */
 	async createNewExecution(execution: ExecutionPayload): Promise<string> {
 		const { data, workflowData, ...rest } = execution;
 		const { identifiers: inserted } = await this.insert(rest);

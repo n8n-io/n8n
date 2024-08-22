@@ -1,4 +1,4 @@
-import type { Application, Request, Response } from 'express';
+import type { Application } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -22,11 +22,10 @@ import type {
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
-	IHttpRequestMethods,
 	StartNodeData,
 } from 'n8n-workflow';
 
-import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import type { WorkflowExecute } from 'n8n-core';
 
@@ -40,10 +39,10 @@ import type { CredentialsRepository } from '@db/repositories/credentials.reposit
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { ExternalHooks } from './ExternalHooks';
+import type { ExternalHooks } from './external-hooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
+import type { RunningJobSummary } from './scaling/types';
 import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
@@ -239,42 +238,6 @@ export interface IExternalHooksFunctions {
 	};
 }
 
-export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
-
-export type WebhookRequest = Request<{ path: string }> & {
-	method: IHttpRequestMethods;
-	params: Record<string, string>;
-};
-
-export type WaitingWebhookRequest = WebhookRequest & {
-	params: WebhookRequest['path'] & { suffix?: string };
-};
-
-export interface WebhookAccessControlOptions {
-	allowedOrigins?: string;
-}
-
-export interface IWebhookManager {
-	/** Gets all request methods associated with a webhook path*/
-	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
-
-	/** Find the CORS options matching a path and method */
-	findAccessControlOptions?: (
-		path: string,
-		httpMethod: IHttpRequestMethods,
-	) => Promise<WebhookAccessControlOptions | undefined>;
-
-	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
-}
-
-export interface ITelemetryUserDeletionData {
-	user_id: string;
-	target_user_old_status: 'active' | 'invited';
-	migration_strategy?: 'transfer_data' | 'delete_data';
-	target_user_id?: string;
-	migration_user_id?: string;
-}
-
 export interface IVersionNotificationSettings {
 	enabled: boolean;
 	endpoint: string;
@@ -457,7 +420,7 @@ export interface IPushDataWorkerStatusMessage {
 
 export interface IPushDataWorkerStatusPayload {
 	workerId: string;
-	runningJobsSummary: WorkerJobStatusSummary[];
+	runningJobsSummary: RunningJobSummary[];
 	freeMem: number;
 	totalMem: number;
 	uptime: number;
@@ -472,13 +435,6 @@ export interface IPushDataWorkerStatusPayload {
 		internal: boolean;
 	}>;
 	version: string;
-}
-
-export interface IResponseCallbackData {
-	data?: IDataObject | IDataObject[];
-	headers?: object;
-	noWebhookResponse?: boolean;
-	responseCode?: number;
 }
 
 export interface INodesTypeData {

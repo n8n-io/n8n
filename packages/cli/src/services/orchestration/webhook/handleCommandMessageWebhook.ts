@@ -1,10 +1,11 @@
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { License } from '@/License';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { License } from '@/license';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
 import { Logger } from 'winston';
 import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
 import config from '@/config';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 export async function handleCommandMessageWebhook(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -62,6 +63,20 @@ export async function handleCommandMessageWebhook(messageString: string) {
 					return message;
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
+				break;
+			case 'community-package-install':
+			case 'community-package-update':
+			case 'community-package-uninstall':
+				if (!debounceMessageReceiver(message, 200)) {
+					return message;
+				}
+				const { packageName, packageVersion } = message.payload;
+				const communityPackagesService = Container.get(CommunityPackagesService);
+				if (message.command === 'community-package-uninstall') {
+					await communityPackagesService.removeNpmPackage(packageName);
+				} else {
+					await communityPackagesService.installOrUpdateNpmPackage(packageName, packageVersion);
+				}
 				break;
 
 			default:

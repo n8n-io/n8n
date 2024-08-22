@@ -198,6 +198,8 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: baseline;
+	flex-grow: 1;
+	min-width: 0;
 }
 
 .sub {
@@ -212,6 +214,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: inline-flex;
 	flex-direction: column;
 	order: -1;
+	min-width: 0;
 
 	.innerSub > div:first-child {
 		margin-top: var(--spacing-2xs);
@@ -242,21 +245,14 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
+	max-width: 50%;
 
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-
-		svg {
-			path {
-				fill: var(--color-text-light);
-			}
-		}
+	path {
+		fill: var(--color-text-light);
 	}
 
 	&.mappable {
@@ -273,10 +269,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .label {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+
 	> span {
+		display: flex;
+		align-items: center;
+
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
+
+		overflow: hidden;
+
+		span {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 
 		&.arrayIndex {
 			border: 0;

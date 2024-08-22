@@ -109,7 +109,7 @@ export class ZendeskTrigger implements INodeType {
 						},
 					},
 				],
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 			},
 			{
 				displayName: 'Conditions',
