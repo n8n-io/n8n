@@ -349,10 +349,40 @@ describe('MeController', () => {
 			);
 		});
 
-		it('should throw BadRequestError on XSS attempt', async () => {
-			const req = mock<MeRequest.SurveyAnswers>({
-				body: { 'test-answer': '<script>alert("XSS")</script>' },
-			});
+		test.each([
+			'automationGoalDevops',
+			'companyIndustryExtended',
+			'otherCompanyIndustryExtended',
+			'automationGoalSm',
+			'usageModes',
+		])('should throw BadRequestError on XSS attempt for an array field %s', async (fieldName) => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: new Date().toISOString(),
+				[fieldName]: ['<script>alert("XSS")</script>'],
+			};
+
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
+		});
+
+		test.each([
+			'automationGoalDevopsOther',
+			'companySize',
+			'companyType',
+			'automationGoalSmOther',
+			'roleOther',
+			'reportedSource',
+			'reportedSourceOther',
+		])('should throw BadRequestError on XSS attempt for a string field %s', async (fieldName) => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: new Date().toISOString(),
+				[fieldName]: '<script>alert("XSS")</script>',
+			};
 
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(BadRequestError);
 		});
