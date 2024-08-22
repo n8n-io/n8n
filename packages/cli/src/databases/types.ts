@@ -11,6 +11,8 @@ export interface MigrationContext {
 	tablePrefix: string;
 	dbType: DatabaseType;
 	isMysql: boolean;
+	isSqlite: boolean;
+	isPostgres: boolean;
 	dbName: string;
 	migrationName: string;
 	nodeTypes: INodeTypes;
