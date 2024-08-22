@@ -3,11 +3,11 @@ import type {
 	MultiPartFormData,
 	IDataObject,
 	IWebhookFunctions,
-	INode,
+	FormFieldsParameter,
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
 
 import { WebhookAuthorizationError } from '../Webhook/error';
@@ -34,7 +34,7 @@ export function prepareFormData({
 	formDescription: string;
 	formSubmittedText: string | undefined;
 	redirectUrl: string | undefined;
-	formFields: FormField[];
+	formFields: FormFieldsParameter;
 	testRun: boolean;
 	query: IDataObject;
 	instanceId?: string;
@@ -147,7 +147,7 @@ const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 
 export async function prepareFormReturnItem(
 	context: IWebhookFunctions,
-	formFields: FormField[],
+	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
@@ -255,7 +255,7 @@ export function renderForm({
 	res: Response;
 	formTitle: string;
 	formDescription: string;
-	formFields: FormField[];
+	formFields: FormFieldsParameter;
 	responseMode: string;
 	mode: 'test' | 'production';
 	formSubmittedText?: string;
@@ -326,7 +326,7 @@ export async function formWebhook(
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
-	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
+	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 	const method = context.getRequestObject().method;
 
 	checkResponseModeConfiguration(context);
@@ -394,97 +394,4 @@ export async function formWebhook(
 		webhookResponse: { status: 200 },
 		workflowData: [[returnItem]],
 	};
-}
-
-const ALLOWED_FORM_FIELD_KEYS = [
-	'fieldLabel',
-	'fieldType',
-	'placeholder',
-	'fieldOptions',
-	'multiselect',
-	'multipleFiles',
-	'acceptFileTypes',
-	'formatDate',
-	'requiredField',
-];
-
-const ALLOWED_FIELD_TYPES = [
-	'date',
-	'dropdown',
-	'email',
-	'file',
-	'number',
-	'password',
-	'text',
-	'textarea',
-];
-export function checkFieldsSyntax(
-	node: INode,
-	rawFields: IDataObject[],
-	mode: 'test' | 'production',
-) {
-	const fields: FormField[] = [];
-
-	for (const [index, field] of rawFields.entries()) {
-		for (const key of Object.keys(field)) {
-			if (!ALLOWED_FORM_FIELD_KEYS.includes(key)) {
-				throw new NodeOperationError(
-					node,
-					`Key '${key}' in field ${index} is not valid for form fields`,
-					{
-						type: mode === 'test' ? 'manual-form-test' : undefined,
-					},
-				);
-			}
-			if (key !== 'fieldOptions' && !['string', 'number', 'boolean'].includes(typeof field[key])) {
-				field[key] = String(field[key]);
-			} else if (typeof field[key] === 'string') {
-				field[key] = field[key].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-			}
-
-			if (key === 'fieldType' && !ALLOWED_FIELD_TYPES.includes(field[key] as string)) {
-				throw new NodeOperationError(
-					node,
-					`Field type '${field[key]}' in field ${index} is not valid for form fields`,
-					{
-						type: mode === 'test' ? 'manual-form-test' : undefined,
-					},
-				);
-			}
-
-			if (key === 'fieldOptions') {
-				if (Array.isArray(field[key])) {
-					field[key] = { values: field[key] };
-				}
-
-				if (typeof field[key] !== 'object' || !(field[key] as IDataObject).values) {
-					throw new NodeOperationError(
-						node,
-						`Field dropdown in field ${index} does has no 'values' property that contain an array of options`,
-						{
-							type: mode === 'test' ? 'manual-form-test' : undefined,
-						},
-					);
-				}
-
-				for (const [optionIndex, option] of (
-					(field[key] as IDataObject).values as IDataObject[]
-				).entries()) {
-					if (Object.keys(option).length !== 1 || typeof option.option !== 'string') {
-						throw new NodeOperationError(
-							node,
-							`Field dropdown in field ${index} has an invalid option ${optionIndex}`,
-							{
-								type: mode === 'test' ? 'manual-form-test' : undefined,
-							},
-						);
-					}
-				}
-			}
-		}
-
-		fields.push(field as FormField);
-	}
-
-	return fields;
 }

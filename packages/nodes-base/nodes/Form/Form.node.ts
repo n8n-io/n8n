@@ -1,5 +1,5 @@
 import type {
-	IDataObject,
+	FormFieldsParameter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
@@ -11,13 +11,13 @@ import {
 	Node,
 	updateDisplayOptions,
 	NodeOperationError,
-	jsonParse,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	tryToParseFormFields,
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { checkFieldsSyntax, prepareFormReturnItem, renderForm } from '../Form/utils';
-
-import type { FormField } from './interfaces';
+import { prepareFormReturnItem, renderForm } from '../Form/utils';
 
 const pageProperties = updateDisplayOptions(
 	{
@@ -42,10 +42,10 @@ const pageProperties = updateDisplayOptions(
 			},
 			default:
 				'[\n   {\n      "fieldLabel":"Name",\n      "placeholder":"enter you name",\n      "requiredField":true\n   },\n   {\n      "fieldLabel":"Age",\n      "fieldType":"number",\n      "placeholder":"enter your age"\n   },\n   {\n      "fieldLabel":"Email",\n      "fieldType":"email",\n      "requiredField":true\n   }\n]',
-			validateType: 'array',
+			validateType: 'form-fields',
 			ignoreValidationDuringExecution: true,
 			//TODO: replace with link https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/
-			hint: 'Syntax for fields described in the <a href="https://linear.app/n8n/issue/NODE-1472/add-form-node-p0#comment-23d1bd2d" target="_blank">docs</a>',
+			hint: 'Syntax for fields described in the <a href="https://linear.app/n8n/issue/NODE-1472/add-form-node-p0#comment-23d1bd2d" target="_blank">docs</a>(hint: define fields in fixed mode to saw validation errors)',
 			displayOptions: {
 				show: {
 					useJson: [true],
@@ -234,29 +234,20 @@ export class Form extends Node {
 
 		const useJson = context.getNodeParameter('useJson', false) as boolean;
 
-		let fields: FormField[] = [];
+		let fields: FormFieldsParameter = [];
 		if (useJson) {
 			try {
 				const jsonOutput = context.getNodeParameter('jsonOutput', '') as string;
-				const rawFields = jsonParse<IDataObject[]>(jsonOutput, {
-					acceptJSObject: true,
-				});
-				fields = checkFieldsSyntax(context.getNode(), rawFields, mode);
+
+				fields = tryToParseFormFields(jsonOutput);
 			} catch (error) {
-				if (error instanceof NodeOperationError) {
-					throw error;
-				}
-				throw new NodeOperationError(
-					context.getNode(),
-					`Fields in '${context.getNode().name}' node are not valid JSON`,
-					{
-						description: error.message,
-						type: mode === 'test' ? 'manual-form-test' : undefined,
-					},
-				);
+				throw new NodeOperationError(context.getNode(), error.message, {
+					description: error.message,
+					type: mode === 'test' ? 'manual-form-test' : undefined,
+				});
 			}
 		} else {
-			fields = context.getNodeParameter('formFields.values', []) as FormField[];
+			fields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
 		}
 
 		const method = context.getRequestObject().method;
@@ -386,7 +377,7 @@ export class Form extends Node {
 		}
 
 		const parentNodes = context.getParentNodes(context.getNode().name);
-		const hasFormTrigger = parentNodes.some((node) => node.type === 'n8n-nodes-base.formTrigger');
+		const hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
 
 		if (!hasFormTrigger) {
 			throw new NodeOperationError(
@@ -396,7 +387,7 @@ export class Form extends Node {
 		}
 
 		const childNodes = context.getChildNodes(context.getNode().name);
-		const hasNextPage = childNodes.some((node) => node.type === 'n8n-nodes-base.form');
+		const hasNextPage = childNodes.some((node) => node.type === FORM_NODE_TYPE);
 
 		if (operation === 'completion' && hasNextPage) {
 			throw new NodeOperationError(

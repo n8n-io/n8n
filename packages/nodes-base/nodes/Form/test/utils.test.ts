@@ -1,6 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { IWebhookFunctions } from 'n8n-workflow';
-import type { FormField } from '../interfaces';
+import type { FormFieldsParameter, IWebhookFunctions } from 'n8n-workflow';
 import { formWebhook, prepareFormData } from '../utils';
 
 describe('FormTrigger, formWebhook', () => {
@@ -12,7 +11,7 @@ describe('FormTrigger, formWebhook', () => {
 		const executeFunctions = mock<IWebhookFunctions>();
 		const mockRender = jest.fn();
 
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 			{
@@ -109,7 +108,7 @@ describe('FormTrigger, formWebhook', () => {
 		const mockStatus = jest.fn();
 		const mockEnd = jest.fn();
 
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{ fieldLabel: 'Name', fieldType: 'text', requiredField: true },
 			{ fieldLabel: 'Age', fieldType: 'number', requiredField: false },
 		];
@@ -152,7 +151,7 @@ describe('FormTrigger, formWebhook', () => {
 
 describe('FormTrigger, prepareFormData', () => {
 	it('should return valid form data with given parameters', () => {
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
 				fieldType: 'text',
@@ -254,7 +253,7 @@ describe('FormTrigger, prepareFormData', () => {
 	});
 
 	it('should handle missing optional fields gracefully', () => {
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
 				fieldType: 'text',
@@ -300,7 +299,7 @@ describe('FormTrigger, prepareFormData', () => {
 	});
 
 	it('should set redirectUrl with http if protocol is missing', () => {
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Name',
 				fieldType: 'text',
@@ -340,7 +339,7 @@ describe('FormTrigger, prepareFormData', () => {
 	});
 
 	it('should correctly handle multiselect fields', () => {
-		const formFields: FormField[] = [
+		const formFields: FormFieldsParameter = [
 			{
 				fieldLabel: 'Favorite Colors',
 				fieldType: 'text',

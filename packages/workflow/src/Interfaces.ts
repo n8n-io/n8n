@@ -2492,6 +2492,18 @@ export interface ResourceMapperField {
 	readOnly?: boolean;
 }
 
+export type FormFieldsParameter = Array<{
+	fieldLabel: string;
+	fieldType: string;
+	requiredField: boolean;
+	fieldOptions?: { values: Array<{ option: string }> };
+	multiselect?: boolean;
+	multipleFiles?: boolean;
+	acceptFileTypes?: string;
+	formatDate?: string;
+	placeholder?: string;
+}>;
+
 export type FieldTypeMap = {
 	// eslint-disable-next-line id-denylist
 	boolean: boolean;
@@ -2507,6 +2519,7 @@ export type FieldTypeMap = {
 	options: any;
 	url: string;
 	jwt: string;
+	'form-fields': FormFieldsParameter;
 };
 
 export type FieldType = keyof FieldTypeMap;
