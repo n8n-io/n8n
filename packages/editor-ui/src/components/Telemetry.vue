@@ -35,7 +35,7 @@ const isTelemetryEnabled = computed((): boolean => {
 });
 
 const selfInstallSrc = computed((): string => {
-	return `https://www-staging.n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
+	return `https://n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
 });
 
 watch(telemetry, () => {
