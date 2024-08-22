@@ -9,7 +9,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { BaseCommand } from '../BaseCommand';
+import { BaseCommand } from '../base-command';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';

@@ -1,5 +1,5 @@
 import { LicenseErrors, LicenseService } from '@/license/license.service';
-import type { License } from '@/License';
+import type { License } from '@/license';
 import type { EventService } from '@/events/event.service';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { TEntitlement } from '@n8n_io/license-sdk';

@@ -19,8 +19,8 @@ import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
-import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { License } from '@/License';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { License } from '@/license';
 
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
