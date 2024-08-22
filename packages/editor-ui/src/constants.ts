@@ -859,3 +859,6 @@ export const INSECURE_CONNECTION_WARNING = `
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
+
+/** Auth */
+export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
