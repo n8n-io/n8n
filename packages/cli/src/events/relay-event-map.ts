@@ -1,4 +1,9 @@
-import type { AuthenticationMethod, IRun, IWorkflowBase } from 'n8n-workflow';
+import type {
+	AuthenticationMethod,
+	IPersonalizationSurveyAnswersV4,
+	IRun,
+	IWorkflowBase,
+} from 'n8n-workflow';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { GlobalRole } from '@/databases/entities/User';
@@ -106,7 +111,7 @@ export type RelayEventMap = {
 
 	'user-submitted-personalization-survey': {
 		userId: string;
-		answers: Record<string, string>;
+		answers: IPersonalizationSurveyAnswersV4;
 	};
 
 	'user-deleted': {
