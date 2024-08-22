@@ -2,13 +2,13 @@ import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import type { EventMessageTypes } from '../EventMessageClasses';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
-import { License } from '@/License';
+import { License } from '@/license';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.

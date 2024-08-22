@@ -16,12 +16,12 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ExternalHooks } from '@/ExternalHooks';
-import { validateEntity } from '@/GenericHelpers';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
 import { WorkflowService } from '@/workflows/workflow.service';

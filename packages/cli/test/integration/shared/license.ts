@@ -1,5 +1,5 @@
 import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/Interfaces';
-import type { License } from '@/License';
+import type { License } from '@/license';
 
 export interface LicenseMockDefaults {
 	features?: BooleanLicenseFeature[];

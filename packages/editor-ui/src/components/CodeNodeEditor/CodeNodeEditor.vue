@@ -118,7 +118,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 onMounted(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
 
 	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
 
@@ -188,7 +188,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	codeNodeEditorEventBus.off('codeDiffApplied', diffApplied);
-	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
 const aiEnabled = computed(() => {
