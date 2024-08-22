@@ -64,7 +64,6 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { camelCase } from 'lodash-es';
-import { usePostHog } from '@/stores/posthog.store';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -431,12 +430,12 @@ export function TriggerView() {
 export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	const popularItemsSubcategory = [SET_NODE_TYPE, CODE_NODE_TYPE, DATETIME_NODE_TYPE];
-	const aiEnabled = usePostHog().isAiEnabled();
-
-	if (aiEnabled) {
-		popularItemsSubcategory.push(AI_TRANSFORM_NODE_TYPE);
-	}
+	const popularItemsSubcategory = [
+		SET_NODE_TYPE,
+		CODE_NODE_TYPE,
+		DATETIME_NODE_TYPE,
+		AI_TRANSFORM_NODE_TYPE,
+	];
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
