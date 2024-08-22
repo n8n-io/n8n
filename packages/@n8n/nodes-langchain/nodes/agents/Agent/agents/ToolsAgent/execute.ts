@@ -1,7 +1,7 @@
 import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
+import type { AgentAction, AgentFinish } from 'langchain/agents';
 import { AgentExecutor, createToolCallingAgent } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
@@ -9,12 +9,12 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { omit } from 'lodash';
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { RunnableSequence } from '@langchain/core/runnables';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 import type { BaseOutputParser, StructuredOutputParser } from '@langchain/core/output_parsers';
 import { OutputFixingParser } from 'langchain/output_parsers';
 import { HumanMessage } from '@langchain/core/messages';
+import { RunnableSequence } from '@langchain/core/runnables';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -93,7 +93,43 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	const tools = (await getConnectedTools(this, true, false)) as Array<DynamicStructuredTool | Tool>;
 	const outputParser = (await getOptionalOutputParsers(this))?.[0];
 	let structuredOutputParserTool: DynamicStructuredTool | undefined;
+	/**
+	 * Handles the agent text output and transforms it in case of multi-output.
+	 *
+	 * @param steps - The agent finish or agent action steps.
+	 * @returns The modified agent finish steps or the original steps.
+	 */
+	function handleAgentFinishOutput(steps: AgentFinish | AgentAction[]) {
+		// Check if the steps contain multiple outputs
+		type AgentMultiOutputFinish = AgentFinish & {
+			returnValues: { output: Array<{ text: string; type: string; index: number }> };
+		};
+		const agentFinishSteps = steps as AgentMultiOutputFinish | AgentFinish;
 
+		if (agentFinishSteps.returnValues) {
+			const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
+			if (isMultiOutput) {
+				// Define the type for each item in the multi-output array
+				type MultiOutputItem = { index: number; type: string; text: string };
+				const multiOutputSteps = agentFinishSteps.returnValues.output as MultiOutputItem[];
+
+				// Check if all items in the multi-output array are of type 'text'
+				const isTextOnly = (multiOutputSteps ?? []).every((output) => output.type === 'text');
+
+				if (isTextOnly) {
+					// If all items are of type 'text', merge them into a single string
+					agentFinishSteps.returnValues.output = multiOutputSteps
+						.map((output) => output.text)
+						.join('\n')
+						.trim();
+				}
+				return agentFinishSteps;
+			}
+		}
+
+		// If the steps do not contain multiple outputs, return them as is
+		return steps;
+	}
 	async function agentStepsParser(
 		steps: AgentFinish | AgentAction[],
 	): Promise<AgentFinish | AgentAction[]> {
@@ -113,20 +149,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			}
 		}
 
-		// If the steps are an AgentFinish and the outputParser is defined it must mean that the LLM didn't use `format_final_response` tool so we will parse the output manually
-		if (outputParser && typeof steps === 'object' && (steps as AgentFinish).returnValues) {
-			const finalResponse = (steps as AgentFinish).returnValues;
-			const returnValues = (await outputParser.parse(finalResponse as unknown as string)) as Record<
-				string,
-				unknown
-			>;
-
-			return {
-				returnValues,
-				log: 'Final response formatted',
-			};
-		}
-		return steps;
+		return handleAgentFinishOutput(steps);
 	}
 
 	if (outputParser) {
@@ -172,9 +195,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	});
 	agent.streamRunnable = false;
 
-	const runnableAgent = RunnableSequence.from<{
-		steps: AgentStep[];
-	}>([agent, agentStepsParser]);
+	const runnableAgent = RunnableSequence.from([agent, agentStepsParser]);
 
 	const executor = AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
@@ -196,7 +217,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			});
 
 			if (input === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
+				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 			}
 
 			// OpenAI doesn't allow empty tools array so we will provide a more user-friendly error message
