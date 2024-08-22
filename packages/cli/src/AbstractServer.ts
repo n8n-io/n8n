@@ -118,6 +118,8 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
+	protected setupAgentServer() {}
+
 	private async setupHealthCheck() {
 		// health check should not care about DB connections
 		this.app.get('/healthz', async (_req, res) => {
@@ -175,6 +177,10 @@ export abstract class AbstractServer {
 		if (!inTest) {
 			await this.setupErrorHandlers();
 			this.setupPushServer();
+
+			if (!this.globalConfig.agents.disabled) {
+				this.setupAgentServer();
+			}
 		}
 
 		this.setupCommonMiddlewares();

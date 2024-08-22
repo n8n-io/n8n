@@ -66,6 +66,7 @@ import '@/license/license.controller';
 import '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import '@/workflows/workflows.controller';
 import { EventService } from './events/event.service';
+import { setupAgentServer, setupAgentHandler } from './agents/agent-ws-server';
 
 const exec = promisify(callbackExec);
 
@@ -210,6 +211,10 @@ export class Server extends AbstractServer {
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
+
+		if (!this.globalConfig.agents.disabled) {
+			setupAgentHandler(restEndpoint, app);
+		}
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');
@@ -386,5 +391,10 @@ export class Server extends AbstractServer {
 	protected setupPushServer(): void {
 		const { restEndpoint, server, app } = this;
 		setupPushServer(restEndpoint, server, app);
+	}
+
+	protected setupAgentServer(): void {
+		const { restEndpoint, server, app } = this;
+		setupAgentServer(restEndpoint, server, app);
 	}
 }
