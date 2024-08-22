@@ -1,7 +1,7 @@
 import { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
-import * as helpers from '@/sso/saml/samlHelpers';
-import type { SamlUserAttributes } from '@/sso/saml/types/samlUserAttributes';
+import * as helpers from '@/sso/saml/saml-helpers';
+import type { SamlUserAttributes } from '@/sso/saml/types/saml-user-attributes';
 import { mockInstance } from '@test/mocking';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { AuthIdentity } from '@/databases/entities/AuthIdentity';

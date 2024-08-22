@@ -3,7 +3,7 @@ import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { License } from '@/License';
+import { License } from '@/license';
 
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';

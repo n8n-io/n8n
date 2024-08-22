@@ -1,10 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
 import { toReportTitle } from '@/security-audit/utils';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 

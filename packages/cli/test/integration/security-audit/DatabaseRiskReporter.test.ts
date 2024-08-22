@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import {
 	DATABASE_REPORT,
 	SQL_NODE_TYPES,

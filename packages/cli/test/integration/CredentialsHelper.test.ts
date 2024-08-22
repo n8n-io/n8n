@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import * as testDb from '../integration/shared/testDb';
 
-import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialsHelper } from '@/credentials-helper';
 import { createOwner, createAdmin, createMember } from './shared/db/users';
 import type { User } from '@/databases/entities/User';
 import { saveCredential } from './shared/db/credentials';
