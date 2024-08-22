@@ -71,6 +71,7 @@ function onClose() {
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
 			:class="$style.container"
+			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
 			<div

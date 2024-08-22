@@ -9,8 +9,8 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { createSchemaBuilder } from '@db/dsl';
-import { NodeTypes } from '@/NodeTypes';
-import { Logger } from '@/Logger';
+import { NodeTypes } from '@/node-types';
+import { Logger } from '@/logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 

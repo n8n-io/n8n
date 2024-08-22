@@ -57,6 +57,7 @@ import { MakeExecutionStatusNonNullable1714133768521 } from '../common/171413376
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
+import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -117,6 +118,7 @@ const sqliteMigrations: Migration[] = [
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
 	RefactorExecutionIndices1723796243146,
+	CreateInvalidAuthTokenTable1723627610222,
 ];
 
 export { sqliteMigrations };

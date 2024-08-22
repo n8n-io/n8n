@@ -138,6 +138,8 @@ export class NDV extends BasePage {
 			cy.getByTestId(`fixed-collection-${paramName}`),
 		schemaViewNode: () => cy.getByTestId('run-data-schema-node'),
 		schemaViewNodeName: () => cy.getByTestId('run-data-schema-node-name'),
+		expressionExpanders: () => cy.getByTestId('expander'),
+		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 	};
 
 	actions = {
@@ -175,7 +177,7 @@ export class NDV extends BasePage {
 			this.getters.editPinnedDataButton().click();
 
 			this.getters.pinnedDataEditor().click();
-			this.getters.pinnedDataEditor().type('{selectall}{backspace}').paste(JSON.stringify(data));
+			this.getters.pinnedDataEditor().invoke('text', '').paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},

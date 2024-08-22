@@ -2,6 +2,7 @@ import Container from 'typedi';
 import { RedisService } from './redis.service';
 import type { RedisServicePubSubSubscriber } from './redis/RedisServicePubSubSubscriber';
 import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
+import type { MainResponseReceivedHandlerOptions } from './orchestration/main/types';
 
 export abstract class OrchestrationHandlerService {
 	protected initialized = false;
@@ -19,7 +20,9 @@ export abstract class OrchestrationHandlerService {
 		this.initialized = true;
 	}
 
-	async initWithOptions(options: WorkerCommandReceivedHandlerOptions) {
+	async initWithOptions(
+		options: WorkerCommandReceivedHandlerOptions | MainResponseReceivedHandlerOptions,
+	) {
 		await this.initSubscriber(options);
 		this.initialized = true;
 	}
@@ -29,5 +32,7 @@ export abstract class OrchestrationHandlerService {
 		this.initialized = false;
 	}
 
-	protected abstract initSubscriber(options?: WorkerCommandReceivedHandlerOptions): Promise<void>;
+	protected abstract initSubscriber(
+		options?: WorkerCommandReceivedHandlerOptions | MainResponseReceivedHandlerOptions,
+	): Promise<void>;
 }

@@ -2,7 +2,7 @@ import type Redis from 'ioredis';
 import type { Cluster } from 'ioredis';
 import { Service } from 'typedi';
 import config from '@/config';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { RedisClientService } from './redis-client.service';
 import type { RedisClientType } from './redis.types';
 

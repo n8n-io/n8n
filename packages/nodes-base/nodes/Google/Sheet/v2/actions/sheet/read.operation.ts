@@ -136,6 +136,19 @@ export const description: SheetProperties = [
 			dataLocationOnSheet,
 			outputFormatting,
 			{
+				displayName: 'Return only First Matching Row',
+				name: 'returnFirstMatch',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to select the first row of the sheet or the first matching row (if filters are set)',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 4.5 } }],
+					},
+				},
+			},
+			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',
 				type: 'options',
@@ -154,6 +167,11 @@ export const description: SheetProperties = [
 				],
 				description:
 					'By default only the first result gets returned, Set to "Return All Matches" to get multiple matches',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 4.5 } }],
+					},
+				},
 			},
 		],
 	},
@@ -219,7 +237,12 @@ export async function execute(
 		const inputData = data as string[][];
 
 		if (lookupValues.length) {
-			const returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+			let returnAllMatches;
+			if (nodeVersion < 4.5) {
+				returnAllMatches = options.returnAllMatches === 'returnAllMatches' ? true : false;
+			} else {
+				returnAllMatches = options.returnFirstMatch ? false : true;
+			}
 
 			if (nodeVersion <= 4.1) {
 				for (let i = 1; i < items.length; i++) {

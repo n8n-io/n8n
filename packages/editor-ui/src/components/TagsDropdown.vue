@@ -1,9 +1,5 @@
 <template>
-	<div
-		v-on-click-outside="onClickOutside"
-		:class="{ 'tags-container': true, focused }"
-		@keydown.stop
-	>
+	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
 		<n8n-select
 			ref="selectRef"
 			:teleported="true"
@@ -73,6 +69,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import type { EventBus, N8nOption, N8nSelect } from 'n8n-design-system';
 import type { PropType } from 'vue';
 import { storeToRefs } from 'pinia';
+import { onClickOutside } from '@vueuse/core';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
 type TagRef = InstanceType<typeof N8nOption>;
@@ -115,6 +112,8 @@ export default defineComponent({
 		const filter = ref('');
 		const focused = ref(false);
 		const preventUpdate = ref(false);
+
+		const container = ref<HTMLDivElement | undefined>();
 
 		const allTags = computed<ITag[]>(() => {
 			return tagsStore.allTags;
@@ -252,18 +251,13 @@ export default defineComponent({
 			});
 		}
 
-		function onClickOutside(e: Event) {
-			const tagsDropdown = document.querySelector('.tags-dropdown');
-			const tagsModal = document.querySelector('#tags-manager-modal');
-
-			const clickInsideTagsDropdowns =
-				tagsDropdown?.contains(e.target as Node) ?? tagsDropdown === e.target;
-			const clickInsideTagsModal = tagsModal?.contains(e.target as Node) ?? tagsModal === e.target;
-
-			if (!clickInsideTagsDropdowns && !clickInsideTagsModal && e.type === 'click') {
+		onClickOutside(
+			container,
+			() => {
 				emit('blur');
-			}
-		}
+			},
+			{ ignore: ['.tags-dropdown', '#tags-manager-modal'] },
+		);
 
 		return {
 			i18n,
@@ -285,7 +279,7 @@ export default defineComponent({
 			filterOptions,
 			onVisibleChange,
 			onRemoveTag,
-			onClickOutside,
+			container,
 			...useToast(),
 		};
 	},

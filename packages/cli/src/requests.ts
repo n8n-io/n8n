@@ -8,12 +8,13 @@ import type {
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
+	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@db/utils/customValidators';
+import { NoXss } from '@/validators/no-xss.validator';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole } from '@db/entities/User';
 import type { GlobalRole, User } from '@db/entities/User';
@@ -26,6 +27,7 @@ import type { ProjectRole } from './databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 import type { ScopesField } from './services/role.service';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { NoUrl } from '@/validators/no-url.validator';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -34,12 +36,14 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 
 	@Expose()
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Expose()
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
@@ -232,7 +236,7 @@ export declare namespace MeRequest {
 		{},
 		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 export interface UserSetupPayload {
