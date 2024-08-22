@@ -8,7 +8,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { ProjectRepository } from '@db/repositories/project.repository';
 import type { Project } from '@db/entities/Project';
 import { ProjectService } from '@/services/project.service';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/user-management/email';
 
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/testDb';

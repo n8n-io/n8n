@@ -15,7 +15,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/active-executions';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
@@ -23,24 +23,24 @@ import type {
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes } from '@/node-types';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
-import { WorkflowRunner } from '@/WorkflowRunner';
+import { WorkflowRunner } from '@/workflow-runner';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
-import { WaitTracker } from '@/WaitTracker';
+import { WaitTracker } from '@/wait-tracker';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { License } from '@/License';
+import { License } from '@/license';
 import type { User } from '@/databases/entities/User';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',

@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
 import {
 	getRiskSection,

@@ -13,10 +13,10 @@ import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/h
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { Logger } from '@/Logger';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { Logger } from '@/logger';
 import { Push } from '@/push';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { mockInstance } from '@test/mocking';
 import { RedisClientService } from '@/services/redis/redis-client.service';
 import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';

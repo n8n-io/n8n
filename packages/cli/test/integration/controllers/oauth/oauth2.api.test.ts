@@ -5,7 +5,7 @@ import { parse as parseQs } from 'querystring';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialsHelper } from '@/credentials-helper';
 import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
 
 import { createOwner } from '@test-integration/db/users';

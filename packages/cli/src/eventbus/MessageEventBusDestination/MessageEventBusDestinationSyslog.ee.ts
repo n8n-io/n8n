@@ -10,7 +10,7 @@ import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import Container from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationSyslogOptions => {

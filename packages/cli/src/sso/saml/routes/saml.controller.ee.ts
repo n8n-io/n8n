@@ -15,18 +15,18 @@ import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
-} from '../serviceProvider.ee';
-import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
-import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
+} from '../service-provider.ee';
+import { getSamlConnectionTestSuccessView } from '../views/saml-connection-test-success';
+import { getSamlConnectionTestFailedView } from '../views/saml-connection-test-failed';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../saml-helpers';
 import type { SamlLoginBinding } from '../types';
 import {
 	samlLicensedAndEnabledMiddleware,
 	samlLicensedMiddleware,
-} from '../middleware/samlEnabledMiddleware';
+} from '../middleware/saml-enabled-middleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
-import { getInitSSOFormView } from '../views/initSsoPost';
+import { getInitSSOFormView } from '../views/init-sso-post';
 import { EventService } from '@/events/event.service';
 
 @RestController('/sso/saml')
