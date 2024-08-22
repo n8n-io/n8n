@@ -9,6 +9,7 @@ import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webh
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/Interfaces';
+import axios from 'axios';
 
 @Service()
 export class WaitingForms extends WaitingWebhooks {
@@ -60,21 +61,14 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			const workflow = this.getWorkflow(execution);
-
-			const childNodes = workflow.getChildNodes(
-				execution.data.resultData.lastNodeExecuted as string,
-			);
-
-			const hasNextPage = childNodes.some((nodeName) => {
-				const node = workflow.nodes[nodeName];
-				return !node.disabled && node.type === FORM_NODE_TYPE;
-			});
-
-			if (hasNextPage && this.includeForms) {
+			if (this.includeForms && req.method === 'GET') {
 				await sleep(1000);
 
-				res.send(`
+				const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+				const page = await axios({ url });
+
+				if (page) {
+					res.send(`
 					<script>
 						setTimeout(function() {
 							window.location.reload();
@@ -82,9 +76,14 @@ export class WaitingForms extends WaitingWebhooks {
 					</script>
 				`);
 
-				return {
-					noWebhookResponse: true,
-				};
+					return {
+						noWebhookResponse: true,
+					};
+				} else {
+					return {
+						noWebhookResponse: true,
+					};
+				}
 			}
 			throw new ConflictError(`The execution "${executionId} is running already.`);
 		}
