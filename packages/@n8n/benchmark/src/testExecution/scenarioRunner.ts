@@ -1,7 +1,7 @@
+import type { K6Executor } from './k6Executor';
 import type { Scenario } from '@/types/scenario';
 import type { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
 import type { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
-import type { K6Executor } from './k6Executor';
 import { ScenarioDataImporter } from '@/testExecution/scenarioDataImporter';
 import { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
 
