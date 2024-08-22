@@ -1,6 +1,6 @@
 import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
 
-import { sleep, Workflow } from 'n8n-workflow';
+import { FORM_NODE_TYPE, sleep, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
 
@@ -22,6 +22,20 @@ export class WaitingForms extends WaitingWebhooks {
 		if (method === 'POST') {
 			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 		}
+	}
+
+	private getWorkflow(execution: IExecutionResponse) {
+		const { workflowData } = execution;
+		return new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: workflowData.active,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
 	}
 
 	async executeWebhook(
@@ -46,7 +60,18 @@ export class WaitingForms extends WaitingWebhooks {
 		}
 
 		if (execution.status === 'running') {
-			if (this.includeForms) {
+			const workflow = this.getWorkflow(execution);
+
+			const childNodes = workflow.getChildNodes(
+				execution.data.resultData.lastNodeExecuted as string,
+			);
+
+			const hasNextPage = childNodes.some((nodeName) => {
+				const node = workflow.nodes[nodeName];
+				return !node.disabled && node.type === FORM_NODE_TYPE;
+			});
+
+			if (hasNextPage && this.includeForms) {
 				await sleep(1000);
 
 				res.send(`
@@ -66,27 +91,18 @@ export class WaitingForms extends WaitingWebhooks {
 
 		let completionPage;
 		if (execution.finished) {
-			const { workflowData } = execution;
-			const workflow = new Workflow({
-				id: workflowData.id,
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: workflowData.active,
-				nodeTypes: this.nodeTypes,
-				staticData: workflowData.staticData,
-				settings: workflowData.settings,
-			});
+			const workflow = this.getWorkflow(execution);
 
-			const connectedNodes = workflow.getParentNodes(
+			const parentNodes = workflow.getParentNodes(
 				execution.data.resultData.lastNodeExecuted as string,
 			);
 
 			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-			const lastNode = workflow.nodes[execution.data.resultData.lastNodeExecuted as string];
+			const lastNode = workflow.nodes[lastNodeExecuted];
 
 			if (
-				lastNode.type === 'n8n-nodes-base.form' &&
+				!lastNode.disabled &&
+				lastNode.type === FORM_NODE_TYPE &&
 				lastNode.parameters.operation === 'completion'
 			) {
 				completionPage = lastNodeExecuted;
@@ -94,8 +110,9 @@ export class WaitingForms extends WaitingWebhooks {
 				completionPage = Object.keys(workflow.nodes).find((nodeName) => {
 					const node = workflow.nodes[nodeName];
 					return (
-						connectedNodes.includes(nodeName) &&
-						node.type === 'n8n-nodes-base.form' &&
+						parentNodes.includes(nodeName) &&
+						!node.disabled &&
+						node.type === FORM_NODE_TYPE &&
 						node.parameters.operation === 'completion'
 					);
 				});
@@ -106,14 +123,13 @@ export class WaitingForms extends WaitingWebhooks {
 			}
 		}
 
-		const lastNodeExecuted =
-			completionPage || (execution.data.resultData.lastNodeExecuted as string);
+		const targetNode = completionPage || (execution.data.resultData.lastNodeExecuted as string);
 
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
 			res,
-			lastNodeExecuted,
+			lastNodeExecuted: targetNode,
 			executionId,
 			suffix,
 		});

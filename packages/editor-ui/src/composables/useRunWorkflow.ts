@@ -24,6 +24,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WAIT_NODE_TYPE,
+	FORM_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -284,14 +285,18 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 						if (nodeType?.webhooks?.length) {
 							try {
 								testUrl = workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
-							} catch (error) {}
+							} catch (error) {
+								// do not throw error if 'testUrl' could not fetched,
+								// as in case when execution started from NDV of node connected to 'formTrigger'
+							}
 						}
 					}
 
 					//TODO clean up this check
 					if (
-						(node.type === WAIT_NODE_TYPE || node.type === 'n8n-nodes-base.form') &&
-						(node.parameters.resume === 'form' || node.type === 'n8n-nodes-base.form') &&
+						[WAIT_NODE_TYPE, FORM_NODE_TYPE].includes(node.type) &&
+						// for Wait node we need to check if 'resume' is set to form
+						(node.parameters.resume === 'form' || node.type === FORM_NODE_TYPE) &&
 						runWorkflowApiResponse.executionId
 					) {
 						const workflowTriggerNodes = workflow

@@ -212,7 +212,7 @@ export const formFields: INodeProperties = {
 };
 
 export const formRespondMode: INodeProperties = {
-	displayName: 'Respond',
+	displayName: 'Respond When',
 	name: 'responseMode',
 	type: 'options',
 	options: [

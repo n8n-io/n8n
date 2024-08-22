@@ -38,6 +38,7 @@ export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
+export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,

@@ -126,6 +126,7 @@ const descriptionV2: INodeTypeDescription = {
 				},
 				{
 					displayName: 'Button Label',
+					description: 'The label of the submit button in the form',
 					name: 'buttonLabel',
 					type: 'string',
 					default: 'Submit form',

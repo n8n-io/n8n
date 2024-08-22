@@ -37,6 +37,8 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
+	ErrorReporterProxy,
+	FORM_NODE_TYPE,
 	NodeHelpers,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -126,7 +128,7 @@ export async function executeWebhook(
 	);
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
-		responseCallback(new Error(errorMessage), {});
+		responseCallback(new ApplicationError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -151,12 +153,14 @@ export async function executeWebhook(
 	// Get the responseMode
 	let responseMode;
 
-	//if formTrigger node, check if there is a next page, if so set responseMode to formPage to redirect to next page later
+	// if this is n8n FormTrigger node, check if there is a Form node in child nodes,
+	// if so, set 'responseMode' to 'formPage' to redirect to URL of that Form later
 	if (nodeType.description.name === 'formTrigger') {
 		const connectedNodes = workflow.getChildNodes(workflowStartNode.name);
 		let hasNextPage = false;
-		for (const node of connectedNodes) {
-			if (workflow.nodes[node].type === 'n8n-nodes-base.form') {
+		for (const nodeName of connectedNodes) {
+			const node = workflow.nodes[nodeName];
+			if (node.type === FORM_NODE_TYPE && !node.disabled) {
 				hasNextPage = true;
 				break;
 			}
@@ -201,7 +205,7 @@ export async function executeWebhook(
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new Error(errorMessage), {});
+		responseCallback(new ApplicationError(errorMessage), {});
 		throw new InternalServerError(errorMessage);
 	}
 
@@ -285,11 +289,21 @@ export async function executeWebhook(
 				: 'Webhook';
 			let errorMessage = `Workflow ${webhookType} Error: Workflow could not be started!`;
 
+			// if workflow started manually, show and actual error message
 			if (err instanceof NodeOperationError && err.type === 'manual-form-test') {
 				errorMessage = err.message;
 			}
 
-			responseCallback(new Error(errorMessage), {});
+			ErrorReporterProxy.error(err, {
+				extra: {
+					nodeName: workflowStartNode.name,
+					nodeType: workflowStartNode.type,
+					nodeVersion: workflowStartNode.typeVersion,
+					workflowId: workflow.id,
+				},
+			});
+
+			responseCallback(new ApplicationError(errorMessage), {});
 			didSendResponse = true;
 
 			// Add error to execution data that it can be logged and send to Editor-UI
@@ -615,7 +629,7 @@ export async function executeWebhook(
 							// Return the JSON data of the first entry
 
 							if (returnData.data!.main[0]![0] === undefined) {
-								responseCallback(new Error('No item to return got found'), {});
+								responseCallback(new ApplicationError('No item to return got found'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -669,13 +683,13 @@ export async function executeWebhook(
 							data = returnData.data!.main[0]![0];
 
 							if (data === undefined) {
-								responseCallback(new Error('No item was found to return'), {});
+								responseCallback(new ApplicationError('No item was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
 
 							if (data.binary === undefined) {
-								responseCallback(new Error('No binary data was found to return'), {});
+								responseCallback(new ApplicationError('No binary data was found to return'), {});
 								didSendResponse = true;
 								return undefined;
 							}
@@ -690,7 +704,10 @@ export async function executeWebhook(
 							);
 
 							if (responseBinaryPropertyName === undefined && !didSendResponse) {
-								responseCallback(new Error("No 'responseBinaryPropertyName' is set"), {});
+								responseCallback(
+									new ApplicationError("No 'responseBinaryPropertyName' is set"),
+									{},
+								);
 								didSendResponse = true;
 							}
 
@@ -699,7 +716,7 @@ export async function executeWebhook(
 							];
 							if (binaryData === undefined && !didSendResponse) {
 								responseCallback(
-									new Error(
+									new ApplicationError(
 										`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
 									),
 									{},
