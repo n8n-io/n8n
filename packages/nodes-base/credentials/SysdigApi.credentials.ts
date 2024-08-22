@@ -7,12 +7,12 @@ export class SysdigApi implements ICredentialType {
 
 	documentationUrl = 'sysdig';
 
-	icon = { light: 'file:icons/Sysdig.png', dark: 'file:icons/Sysdig.png' } as const;
+	icon = { light: 'file:icons/Sysdig.Black.svg', dark: 'file:icons/Sysdig.White.svg' } as const;
 
 	httpRequestNode = {
 		name: 'Sysdig',
 		docsUrl: 'https://docs.sysdig.com/en/docs/developer-tools/sysdig-api/',
-		apiBaseUrl: 'https://api.us2.sysdig.com/',
+		apiBaseUrl: 'https://app.us1.sysdig.com',
 	};
 
 	properties: INodeProperties[] = [
