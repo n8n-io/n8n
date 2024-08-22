@@ -29,25 +29,27 @@ const close = () => {
 
 const startNewSession = async () => {
 	await assistantStore.initErrorHelper(props.data.context);
-	telemetry.track(
-		'User opened assistant',
-		{
-			source: 'error',
-			task: 'error',
-			has_existing_session: true,
-			workflow_id: workflowsStore.workflowId,
-			node_type: props.data.context.node.type,
-			error: props.data.context.error,
-			chat_session_id: assistantStore.currentSessionId,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User opened assistant', {
+		source: 'error',
+		task: 'error',
+		has_existing_session: true,
+		workflow_id: workflowsStore.workflowId,
+		node_type: props.data.context.node.type,
+		error: props.data.context.error,
+		chat_session_id: assistantStore.currentSessionId,
+	});
 	close();
 };
 </script>
 
 <template>
-	<Modal width="460px" height="250px" :name="NEW_ASSISTANT_SESSION_MODAL" :center="true">
+	<Modal
+		width="460px"
+		height="250px"
+		:name="NEW_ASSISTANT_SESSION_MODAL"
+		:center="true"
+		data-test-id="new-assistant-session-modal"
+	>
 		<template #header>
 			{{ i18n.baseText('aiAssistant.newSessionModal.title.part1') }}
 			<span :class="$style.assistantIcon"><AssistantIcon size="medium" /></span>

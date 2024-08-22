@@ -53,6 +53,7 @@ export const expenseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
+				apiVersion: ['v4'],
 				operation: ['create'],
 				resource: ['expense'],
 			},
@@ -120,11 +121,6 @@ export const expenseFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v4'],
-					},
-				},
 				options: [
 					{
 						name: 'ACH',
@@ -258,14 +254,136 @@ export const expenseFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Name 1',
+				name: 'taxName1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Name 2',
+				name: 'taxName2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Rate 1',
+				name: 'taxRate1',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Rate 2',
+				name: 'taxRate2',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Transaction Reference',
+				name: 'transactionReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Vendor Name or ID',
+				name: 'vendor',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getVendors',
+				},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['create'],
+				resource: ['expense'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Billable',
+				name: 'billable',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Client Name or ID',
+				name: 'client',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClients',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Category Name or ID',
+				name: 'category',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getExpenseCategories',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Expense Date',
+				name: 'expenseDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Payment Date',
+				name: 'paymentDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v5'],
-					},
-				},
 				options: [
 					{
 						name: 'Bank Transfer',

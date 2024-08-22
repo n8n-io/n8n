@@ -10,7 +10,7 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ExternalHooks } from '@/external-hooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';

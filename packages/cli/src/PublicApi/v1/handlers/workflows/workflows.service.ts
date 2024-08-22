@@ -8,8 +8,8 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { Project } from '@/databases/entities/Project';
 import { TagRepository } from '@db/repositories/tag.repository';
-import { License } from '@/License';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { License } from '@/license';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import type { Scope } from '@n8n/permissions';
 import config from '@/config';
 

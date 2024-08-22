@@ -282,7 +282,7 @@ export default defineComponent({
 							icon: 'graduation-cap',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
 							link: {
-								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+								href: 'https://docs.n8n.io/courses/',
 								target: '_blank',
 							},
 						},

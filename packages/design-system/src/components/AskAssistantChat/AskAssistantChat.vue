@@ -102,13 +102,20 @@ function growInput() {
 				</div>
 				<BetaTag />
 			</div>
-			<div :class="$style.back" @click="onClose">
+			<div :class="$style.back" data-test-id="close-chat-button" @click="onClose">
 				<n8n-icon icon="arrow-right" color="text-base" />
 			</div>
 		</div>
 		<div :class="$style.body">
 			<div v-if="messages?.length" :class="$style.messages">
-				<div v-for="(message, i) in messages" :key="i" :class="$style.message">
+				<div
+					v-for="(message, i) in messages"
+					:key="i"
+					:class="$style.message"
+					:data-test-id="
+						message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
+					"
+				>
 					<div
 						v-if="
 							!isEndOfSessionEvent(message) && (i === 0 || message.role !== messages[i - 1].role)
@@ -158,7 +165,11 @@ function growInput() {
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
 					</div>
-					<div v-else-if="message.type === 'error'" :class="$style.error">
+					<div
+						v-else-if="message.type === 'error'"
+						:class="$style.error"
+						data-test-id="chat-message-system"
+					>
 						<span>⚠️ {{ message.content }}</span>
 					</div>
 					<div v-else-if="message.type === 'code-diff'">
@@ -173,7 +184,11 @@ function growInput() {
 							@undo="() => emit('codeUndo', i)"
 						/>
 					</div>
-					<div v-else-if="isEndOfSessionEvent(message)" :class="$style.endOfSessionText">
+					<div
+						v-else-if="isEndOfSessionEvent(message)"
+						:class="$style.endOfSessionText"
+						data-test-id="chat-message-system"
+					>
 						<span>
 							{{ t('assistantChat.sessionEndMessage.1') }}
 						</span>
@@ -193,7 +208,7 @@ function growInput() {
 						:class="$style.quickReplies"
 					>
 						<div :class="$style.quickRepliesTitle">{{ t('assistantChat.quickRepliesTitle') }}</div>
-						<div v-for="opt in message.quickReplies" :key="opt.type">
+						<div v-for="opt in message.quickReplies" :key="opt.type" data-test-id="quick-replies">
 							<n8n-button
 								v-if="opt.text"
 								type="secondary"
@@ -207,7 +222,7 @@ function growInput() {
 				</div>
 			</div>
 
-			<div v-else :class="$style.placeholder">
+			<div v-else :class="$style.placeholder" data-test-id="placeholder-message">
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
 					<p>
@@ -232,6 +247,7 @@ function growInput() {
 		<div
 			v-if="messages?.length"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+			data-test-id="chat-input-wrapper"
 		>
 			<textarea
 				ref="chatInput"
@@ -240,6 +256,7 @@ function growInput() {
 				:placeholder="t('assistantChat.inputPlaceholder')"
 				rows="1"
 				wrap="hard"
+				data-test-id="chat-input"
 				@keydown.enter.exact.prevent="onSendMessage"
 				@input.prevent="growInput"
 				@keydown.stop
@@ -249,6 +266,7 @@ function growInput() {
 				icon="paper-plane"
 				type="text"
 				size="large"
+				data-test-id="send-message-button"
 				:disabled="sendDisabled"
 				@click="onSendMessage"
 			/>
@@ -290,12 +308,14 @@ p {
 	border: var(--border-base);
 	border-top: 0;
 	height: 100%;
-	overflow: scroll;
+	overflow-x: hidden;
+	overflow-y: auto;
 	padding-bottom: 250px; // make scrollable at the end
 	position: relative;
 
-	pre {
-		text-wrap: stable;
+	pre,
+	code {
+		text-wrap: wrap;
 	}
 }
 

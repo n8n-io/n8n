@@ -23,8 +23,8 @@ if (publicApiEnabled) {
 
 function copyUserManagementEmailTemplates() {
 	const templates = {
-		source: path.resolve(ROOT_DIR, 'src', 'UserManagement', 'email', 'templates'),
-		destination: path.resolve(ROOT_DIR, 'dist', 'UserManagement', 'email'),
+		source: path.resolve(ROOT_DIR, 'src', 'user-management', 'email', 'templates'),
+		destination: path.resolve(ROOT_DIR, 'dist', 'user-management', 'email'),
 	};
 
 	shell.cp('-r', templates.source, templates.destination);

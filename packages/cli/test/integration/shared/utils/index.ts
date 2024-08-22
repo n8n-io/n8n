@@ -14,7 +14,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -37,7 +37,7 @@ export async function initActiveWorkflowManager() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/ActiveWorkflowManager');
+	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
 	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 	await activeWorkflowManager.init();
 	return activeWorkflowManager;

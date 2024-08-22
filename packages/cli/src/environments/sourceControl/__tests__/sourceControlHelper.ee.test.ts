@@ -7,7 +7,7 @@ import {
 	getTrackingInformationFromPullResult,
 	sourceControlFoldersExistCheck,
 } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { License } from '@/License';
+import { License } from '@/license';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { InstanceSettings } from 'n8n-core';
 import path from 'path';

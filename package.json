@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.55.0",
+  "version": "1.56.0",
   "private": true,
   "engines": {
     "node": ">=20.15",
@@ -63,7 +63,6 @@
     ],
     "overrides": {
       "@types/node": "^18.16.16",
-      "axios": "1.7.3",
       "chokidar": "3.5.2",
       "esbuild": "^0.20.2",
       "formidable": "3.5.1",

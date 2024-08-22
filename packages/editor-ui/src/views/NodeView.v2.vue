@@ -3,8 +3,10 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
+	onActivated,
 	onBeforeMount,
 	onBeforeUnmount,
+	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -18,6 +20,7 @@ import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/Canvas
 import { useI18n } from '@/composables/useI18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
@@ -91,6 +94,7 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -135,6 +139,10 @@ const templatesStore = useTemplatesStore();
 
 const canvasEventBus = createEventBus();
 
+const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+	route,
+});
+const { registerCustomAction } = useGlobalLinkActions();
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
@@ -801,7 +809,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
+	await addNodes(nodes, { dragAndDrop, position, trackHistory: true, telemetry: true });
 	await nextTick();
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
@@ -842,6 +850,10 @@ async function onSwitchActiveNode(nodeName: string) {
 
 async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
+}
+
+async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
 }
 
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
@@ -1347,29 +1359,36 @@ function onClickPane(position: CanvasNode['position']) {
  */
 
 function registerCustomActions() {
-	// @TODO Implement these
-	// this.registerCustomAction({
-	// 	key: 'openNodeDetail',
-	// 	action: ({ node }: { node: string }) => {
-	// 		this.nodeSelectedByName(node, true);
-	// 	},
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'openSelectiveNodeCreator',
-	// 	action: this.openSelectiveNodeCreator,
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'showNodeCreator',
-	// 	action: () => {
-	// 		this.ndvStore.activeNodeName = null;
-	//
-	// 		void this.$nextTick(() => {
-	// 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TAB);
-	// 		});
-	// 	},
-	// });
+	registerCustomAction({
+		key: 'openNodeDetail',
+		action: ({ node }: { node: string }) => {
+			setNodeActiveByName(node);
+		},
+	});
+
+	registerCustomAction({
+		key: 'openSelectiveNodeCreator',
+		action: ({
+			connectiontype: connectionType,
+			node,
+		}: {
+			connectiontype: NodeConnectionType;
+			node: string;
+		}) => {
+			void onOpenSelectiveNodeCreator(node, connectionType);
+		},
+	});
+
+	registerCustomAction({
+		key: 'showNodeCreator',
+		action: () => {
+			ndvStore.activeNodeName = null;
+
+			void nextTick(() => {
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+			});
+		},
+	});
 }
 
 /**
@@ -1432,6 +1451,10 @@ onMounted(async () => {
 	void externalHooks.run('nodeView.mount').catch(() => {});
 });
 
+onActivated(() => {
+	addBeforeUnloadEventBindings();
+});
+
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
@@ -1439,6 +1462,10 @@ onBeforeUnmount(() => {
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
 	removeWorkflowSavedEventBindings();
+});
+
+onDeactivated(() => {
+	removeBeforeUnloadEventBindings();
 });
 </script>
 
