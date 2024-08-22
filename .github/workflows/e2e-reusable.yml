@@ -22,11 +22,6 @@ on:
         required: false
         default: 'browsers:node18.12.0-chrome107'
         type: string
-      cache-key:
-        description: 'Cache key for modules and build artifacts.'
-        required: false
-        default: ${{ github.sha }}-${{ inputs.run-env }}-e2e-modules
-        type: string
       record:
         description: 'Record test run.'
         required: false
@@ -78,7 +73,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Checkout PR
@@ -111,7 +105,7 @@ jobs:
             /github/home/.cache
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ inputs.cache-key }}
+          key: ${{ github.sha }}-e2e
 
   testing:
     runs-on: ubuntu-latest
@@ -128,7 +122,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
         with:
-          repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
       - name: Checkout PR
@@ -146,7 +139,7 @@ jobs:
             /github/home/.cache
             /github/home/.pnpm-store
             ./packages/**/dist
-          key: ${{ inputs.cache-key }}
+          key: ${{ github.sha }}-e2e
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
