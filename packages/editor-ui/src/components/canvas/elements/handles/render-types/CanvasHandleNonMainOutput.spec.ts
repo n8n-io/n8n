@@ -1,10 +1,10 @@
-import CanvasHandleNonMainInput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainInput.vue';
+import CanvasHandleNonMainOutput from '@/components/canvas/elements/handles/render-types/CanvasHandleNonMainOutput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createCanvasHandleProvide } from '@/__tests__/data';
 
-const renderComponent = createComponentRenderer(CanvasHandleNonMainInput);
+const renderComponent = createComponentRenderer(CanvasHandleNonMainOutput);
 
-describe('CanvasHandleNonMainInput', () => {
+describe('CanvasHandleNonMainOutput', () => {
 	it('should render correctly', async () => {
 		const label = 'Test Label';
 		const { container, getByText } = renderComponent({
@@ -15,7 +15,7 @@ describe('CanvasHandleNonMainInput', () => {
 			},
 		});
 
-		expect(container.querySelector('.canvas-node-handle-non-main-input')).toBeInTheDocument();
+		expect(container.querySelector('.canvas-node-handle-non-main-output')).toBeInTheDocument();
 		expect(getByText(label)).toBeInTheDocument();
 	});
 });
