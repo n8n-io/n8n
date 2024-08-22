@@ -16,17 +16,17 @@ import {
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
-import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { validateEntity } from '@/GenericHelpers';
-import { ExternalHooks } from '@/ExternalHooks';
+import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks';
 import type { User } from '@db/entities/User';
 import type { CredentialRequest, ListQuery } from '@/requests';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialTypes } from '@/credential-types';
 import { OwnershipService } from '@/services/ownership.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { Service } from 'typedi';
@@ -38,7 +38,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { userHasScope } from '@/permissions/checkAccess';
+import { userHasScope } from '@/permissions/check-access';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }

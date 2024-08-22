@@ -1,4 +1,4 @@
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import * as utils from './shared/utils/';
 import { createUser } from './shared/db/users';

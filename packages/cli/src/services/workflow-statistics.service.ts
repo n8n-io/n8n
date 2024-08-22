@@ -3,7 +3,7 @@ import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { OwnershipService } from './ownership.service';
 import { TypedEmitter } from '@/TypedEmitter';
 import { EventService } from '@/events/event.service';

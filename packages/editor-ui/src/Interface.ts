@@ -48,6 +48,7 @@ import type {
 	NodeConnectionType,
 	INodeCredentialsDetails,
 	StartNodeData,
+	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -646,24 +647,6 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
 	email?: string | null;
-};
-
-export type IPersonalizationSurveyAnswersV4 = {
-	version: 'v4';
-	automationGoalDevops?: string[] | null;
-	automationGoalDevopsOther?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-	role?: string | null;
-	roleOther?: string | null;
-	reportedSource?: string | null;
-	reportedSourceOther?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;

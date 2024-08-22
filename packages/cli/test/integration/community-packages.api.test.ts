@@ -2,7 +2,7 @@ import path from 'path';
 
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 import { mockInstance } from '../shared/mocking';
