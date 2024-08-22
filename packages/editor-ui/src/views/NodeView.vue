@@ -327,7 +327,7 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 
-import { type RouteLocation, useRouter } from 'vue-router';
+import { type RouteLocation, useRoute, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -401,6 +401,7 @@ import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuard
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -437,6 +438,7 @@ export default defineComponent({
 		const nodeViewRef = ref<HTMLElement | null>(null);
 		const onMouseMoveEnd = ref<((e: MouseEvent | TouchEvent) => void) | null>(null);
 		const router = useRouter();
+		const route = useRoute();
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
@@ -452,6 +454,9 @@ export default defineComponent({
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+			route,
+		});
 
 		return {
 			locale,
@@ -477,6 +482,8 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
+			addBeforeUnloadEventBindings,
+			removeBeforeUnloadEventBindings,
 		};
 	},
 	data() {
@@ -510,7 +517,6 @@ export default defineComponent({
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
-			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 			canOpenNDV: true,
 			hideNodeIssues: false,
 		};
@@ -926,13 +932,14 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
+
+		this.addBeforeUnloadEventBindings();
 	},
 	deactivated() {
 		this.unbindCanvasEvents();
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
-		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		window.removeEventListener('pageshow', this.onPageShow);
 
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
@@ -950,6 +957,8 @@ export default defineComponent({
 		dataPinningEventBus.off('pin-data', this.nodeHelpers.addPinDataConnections);
 		dataPinningEventBus.off('unpin-data', this.nodeHelpers.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
+
+		this.removeBeforeUnloadEventBindings();
 	},
 	beforeMount() {
 		if (!this.isDemo) {
@@ -3524,22 +3533,6 @@ export default defineComponent({
 
 			this.eventsAttached = false;
 		},
-		onBeforeUnload(e: BeforeUnloadEvent) {
-			if (this.isDemo || window.preventNodeViewBeforeUnload) {
-				return;
-			} else if (this.uiStore.stateIsDirty) {
-				e.returnValue = true; //Gecko + IE
-				return true; //Gecko + Webkit, Safari, Chrome etc.
-			} else {
-				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
-				return;
-			}
-		},
-		onUnload() {
-			// This will fire if users decides to leave the page after prompted
-			// Clear the interval to prevent the notification from being sent
-			clearTimeout(this.unloadTimeout);
-		},
 		makeNewWorkflowShareable() {
 			const { currentProject, personalProject } = this.projectsStore;
 			const homeProject = currentProject ?? personalProject ?? {};
@@ -3674,8 +3667,6 @@ export default defineComponent({
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			window.addEventListener('beforeunload', this.onBeforeUnload);
-			window.addEventListener('unload', this.onUnload);
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
 			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);

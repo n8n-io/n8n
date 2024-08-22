@@ -945,11 +945,15 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 		answers,
 	}: RelayEventMap['user-submitted-personalization-survey']) {
-		const camelCaseKeys = Object.keys(answers);
 		const personalizationSurveyData = { user_id: userId } as Record<string, string | string[]>;
-		camelCaseKeys.forEach((camelCaseKey) => {
-			personalizationSurveyData[snakeCase(camelCaseKey)] = answers[camelCaseKey];
-		});
+
+		// ESlint is wrong here
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		for (const [camelCaseKey, value] of Object.entries(answers)) {
+			if (value) {
+				personalizationSurveyData[snakeCase(camelCaseKey)] = value;
+			}
+		}
 
 		this.telemetry.track('User responded to personalization questions', personalizationSurveyData);
 	}

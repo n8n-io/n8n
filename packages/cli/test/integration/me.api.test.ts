@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
-import { randomString } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -15,6 +14,7 @@ import { addApiKey, createOwner, createUser, createUserShell } from './shared/db
 import type { SuperAgentTest } from './shared/types';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
@@ -145,16 +145,16 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const validPayloads = [SURVEY, {}];
+		const validPayloads = [SURVEY, EMPTY_SURVEY];
 
 		for (const validPayload of validPayloads) {
 			const response = await authOwnerShellAgent.post('/me/survey').send(validPayload);
 
-			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+			expect(response.statusCode).toBe(200);
 
 			const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-				where: { email: IsNull() },
+				where: { id: ownerShell.id },
 			});
 
 			expect(storedShellOwner.personalizationAnswers).toEqual(validPayload);
@@ -300,7 +300,7 @@ describe('Member', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const validPayloads = [SURVEY, {}];
+		const validPayloads = [SURVEY, EMPTY_SURVEY];
 
 		for (const validPayload of validPayloads) {
 			const response = await authMemberAgent.post('/me/survey').send(validPayload);
@@ -392,16 +392,31 @@ describe('Owner', () => {
 	});
 });
 
-const SURVEY = [
-	'codingSkill',
-	'companyIndustry',
-	'companySize',
-	'otherCompanyIndustry',
-	'otherWorkArea',
-	'workArea',
-].reduce<Record<string, string>>((acc, cur) => {
-	return (acc[cur] = randomString(2, 10)), acc;
-}, {});
+const SURVEY: IPersonalizationSurveyAnswersV4 = {
+	version: 'v4',
+	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
+	personalization_survey_n8n_version: '1.0.0',
+	automationGoalDevops: ['test'],
+	automationGoalDevopsOther: 'test',
+	companyIndustryExtended: ['test'],
+	otherCompanyIndustryExtended: ['test'],
+	companySize: 'test',
+	companyType: 'test',
+	automationGoalSm: ['test'],
+	automationGoalSmOther: 'test',
+	usageModes: ['test'],
+	email: 'test@email.com',
+	role: 'test',
+	roleOther: 'test',
+	reportedSource: 'test',
+	reportedSourceOther: 'test',
+};
+
+const EMPTY_SURVEY: IPersonalizationSurveyAnswersV4 = {
+	version: 'v4',
+	personalization_survey_submitted_at: '2024-08-21T13:05:51.709Z',
+	personalization_survey_n8n_version: '1.0.0',
+};
 
 const VALID_PATCH_ME_PAYLOADS = [
 	{

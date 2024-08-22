@@ -308,12 +308,14 @@ p {
 	border: var(--border-base);
 	border-top: 0;
 	height: 100%;
-	overflow: scroll;
+	overflow-x: hidden;
+	overflow-y: auto;
 	padding-bottom: 250px; // make scrollable at the end
 	position: relative;
 
-	pre {
-		text-wrap: stable;
+	pre,
+	code {
+		text-wrap: wrap;
 	}
 }
 

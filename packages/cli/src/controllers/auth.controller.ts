@@ -1,9 +1,9 @@
 import validator from 'validator';
+import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Request, Response } from 'express';
 import type { User } from '@db/entities/User';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
@@ -185,7 +185,8 @@ export class AuthController {
 
 	/** Log out a user */
 	@Post('/logout')
-	logout(_: Request, res: Response) {
+	async logout(req: AuthenticatedRequest, res: Response) {
+		await this.authService.invalidateToken(req);
 		this.authService.clearCookie(res);
 		return { loggedOut: true };
 	}

@@ -680,11 +680,18 @@ export const AI_ASSISTANT_EXPERIMENT = {
 	variant: 'variant',
 };
 
+export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
+	name: '022_more_onboarding_options',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
+	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {
@@ -852,3 +859,6 @@ export const INSECURE_CONNECTION_WARNING = `
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
+
+/** Auth */
+export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
