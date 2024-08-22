@@ -137,7 +137,9 @@ const node = computed(() => ndvStore.activeNode);
 const hint = computed(() => i18n.nodeText().hint(props.parameter, props.path));
 const isInputTypeString = computed(() => props.parameter.type === 'string');
 const isInputTypeNumber = computed(() => props.parameter.type === 'number');
-const isResourceLocator = computed(() => props.parameter.type === 'resourceLocator');
+const isResourceLocator = computed(
+	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
+);
 const isDropDisabled = computed(
 	() =>
 		props.parameter.noDataExpression ||
