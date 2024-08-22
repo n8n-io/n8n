@@ -31,7 +31,7 @@ import { useToast } from '@/composables/useToast';
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
 export const DEFAULT_CHAT_WIDTH = 325;
-const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {

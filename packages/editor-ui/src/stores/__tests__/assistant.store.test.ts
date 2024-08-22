@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import {
 	DEFAULT_CHAT_WIDTH,
+	ENABLED_VIEWS,
 	MAX_CHAT_WIDTH,
 	MIN_CHAT_WIDTH,
 	useAssistantStore,
@@ -9,24 +10,62 @@ import {
 import type { ChatRequest } from '@/types/assistant.types';
 import { usePostHog } from '../posthog.store';
 import { useSettingsStore } from '@/stores/settings.store';
-// import { useUsersStore } from '@/stores/users.store';
-// import { useWorkflowsStore } from '@/stores/workflows.store';
-// import { useNDVStore } from '@/stores/ndv.store';
+import { defaultSettings } from '../../__tests__/defaults';
+import { merge } from 'lodash-es';
+import { DEFAULT_POSTHOG_SETTINGS } from './posthog.test';
+import { AI_ASSISTANT_EXPERIMENT } from '@/constants';
+import { reactive } from 'vue';
+import * as chatAPI from '@/api/assistant';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
-// let usersStore: ReturnType<typeof useUsersStore>;
-// let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-// let ndvStore: ReturnType<typeof useNDVStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
+
+const apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
+
+const setAssistantEnabled = (enabled: boolean) => {
+	settingsStore.setSettings(
+		merge({}, defaultSettings, {
+			aiAssistant: { enabled },
+		}),
+	);
+};
+
+vi.mock('vue-router', () => ({
+	useRoute: vi.fn(() =>
+		reactive({
+			path: '/',
+			params: {},
+			name: ENABLED_VIEWS[0],
+		}),
+	),
+	RouterLink: vi.fn(),
+}));
+
+const mockPostHogVariant = (variant: 'variant' | 'control') => {
+	posthogStore.overrides = {
+		[AI_ASSISTANT_EXPERIMENT.name]: variant,
+	};
+};
 
 describe('AI Assistant store', () => {
 	beforeEach(() => {
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				posthog: DEFAULT_POSTHOG_SETTINGS,
+			}),
+		);
+		window.posthog = {
+			init: () => {},
+			identify: () => {},
+		};
 		// usersStore = useUsersStore();
 		// workflowsStore = useWorkflowsStore();
 		// ndvStore = useNDVStore();
 		posthogStore = usePostHog();
+		posthogStore.init();
 	});
 
 	it('initializes with default values', () => {
@@ -230,19 +269,52 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.currentSessionId).toBeUndefined();
 	});
 
-	it('should disable assistant for control experiment group', () => {
+	it('should not show assistant for control experiment group', () => {
 		const assistantStore = useAssistantStore();
 
-		posthogStore.getVariant = vi.fn().mockReturnValue('control');
-		// TODO: Mock isAssistantEnabled and route
+		mockPostHogVariant('control');
+		setAssistantEnabled(true);
 		expect(assistantStore.canShowAssistant).toBe(false);
+		expect(assistantStore.canShowAssistantButtons).toBe(false);
 	});
 
-	// TODO: To test:
-	// - canShowAssistant
-	// - canShowAssistantButtons
-	// - initErrorHelper
-	// - sendMessage
-	// - applyCodeDiff
-	// - undoCodeDiff
+	it('should not show assistant if disabled in settings', () => {
+		const assistantStore = useAssistantStore();
+
+		mockPostHogVariant('variant');
+		setAssistantEnabled(false);
+		expect(assistantStore.canShowAssistant).toBe(false);
+		expect(assistantStore.canShowAssistantButtons).toBe(false);
+	});
+
+	it('should show assistant if all conditions are met', () => {
+		const assistantStore = useAssistantStore();
+
+		setAssistantEnabled(true);
+		mockPostHogVariant('variant');
+		expect(assistantStore.canShowAssistant).toBe(true);
+		expect(assistantStore.canShowAssistantButtons).toBe(true);
+	});
+
+	it('should initialize assistant chat session on node error', async () => {
+		const context: ChatRequest.ErrorContext = {
+			error: {
+				description: '',
+				message: 'Hey',
+				name: 'NodeOperationError',
+			},
+			node: {
+				id: '1',
+				type: 'n8n-nodes-base.stopAndError',
+				typeVersion: 1,
+				name: 'Stop and Error',
+				position: [250, 250],
+				parameters: {},
+			},
+		};
+		const assistantStore = useAssistantStore();
+		await assistantStore.initErrorHelper(context);
+		expect(assistantStore.chatMessages.length).toBe(2);
+		expect(apiSpy).toHaveBeenCalled();
+	});
 });
