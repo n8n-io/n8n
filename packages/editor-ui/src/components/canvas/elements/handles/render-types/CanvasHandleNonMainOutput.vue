@@ -1,28 +1,14 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 
-const emit = defineEmits<{
-	add: [];
-}>();
-
-const { label, connected } = useCanvasNodeHandle();
+const { label } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
-
-function onClickAdd() {
-	emit('add');
-}
 </script>
 <template>
-	<div :class="['canvas-node-handle-main-output', $style.handle]">
+	<div :class="['canvas-node-handle-non-main-output', $style.handle]">
 		<div :class="[$style.label]">{{ label }}</div>
-		<CanvasHandleDot :handle-classes="handleClasses" />
-		<CanvasHandlePlus
-			v-if="!connected"
-			:handle-classes="handleClasses"
-			:class="$style.plus"
-			@click:plus="onClickAdd"
-		/>
+		<CanvasHandleDiamond :handle-classes="handleClasses" />
 	</div>
 </template>
 
@@ -36,13 +22,13 @@ function onClickAdd() {
 
 .label {
 	position: absolute;
-	top: 50%;
-	left: var(--spacing-s);
-	transform: translate(0, -50%);
+	top: -20px;
+	left: -50%;
+	transform: translate(0%, 0);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
 	background: var(--color-background-light);
-	z-index: 1;
+	z-index: 0;
 }
 
 :global(.vue-flow__handle:not(.connectionindicator)) .plus {

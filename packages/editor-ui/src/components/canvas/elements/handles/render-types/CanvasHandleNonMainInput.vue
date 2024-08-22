@@ -14,36 +14,47 @@ const isAddButtonVisible = computed(
 	() => !connected.value || type.value === NodeConnectionType.AiTool,
 );
 
+const handleClasses = 'target';
+
 function onClickAdd() {
 	emit('add');
 }
 </script>
 <template>
-	<div :class="['canvas-node-handle-non-main', $style.handle]">
-		<div :class="$style.label">{{ label }}</div>
-		<CanvasHandlePlus v-if="isAddButtonVisible" :class="$style.plus" @click="onClickAdd" />
+	<div :class="['canvas-node-handle-non-main-input', $style.handle]">
+		<div :class="[$style.label]">{{ label }}</div>
+		<CanvasHandleDiamond :handle-classes="handleClasses" />
+		<CanvasHandlePlus
+			v-if="isAddButtonVisible"
+			:handle-classes="handleClasses"
+			:class="$style.plus"
+			position="bottom"
+			@click="onClickAdd"
+		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .handle {
-	:global(.vue-flow__handle:not(.connectionindicator)) + & {
-		display: none;
-	}
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .label {
 	position: absolute;
-	top: 18px;
+	top: 20px;
 	left: 50%;
 	transform: translate(-50%, 0);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
 	background: var(--color-background-light);
 	z-index: 1;
+	text-align: center;
 }
 
-.plus {
-	transform: rotate(90deg) translateX(50%);
+:global(.vue-flow__handle:not(.connectionindicator)) .plus {
+	display: none;
 }
 </style>

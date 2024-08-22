@@ -296,5 +296,6 @@ watch(
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
+	z-index: 1;
 }
 </style>
