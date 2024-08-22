@@ -5,7 +5,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import { AuthUserRepository } from '@db/repositories/authUser.repository';
-import { TOTPService } from '@/Mfa/totp.service';
+import { TOTPService } from '@/mfa/totp.service';
 
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';

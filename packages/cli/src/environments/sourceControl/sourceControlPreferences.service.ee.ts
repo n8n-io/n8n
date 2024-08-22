@@ -16,7 +16,7 @@ import {
 import path from 'path';
 import type { KeyPairType } from './types/keyPairType';
 import config from '@/config';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 
 @Service()

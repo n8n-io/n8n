@@ -6,7 +6,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import { createHmac } from 'crypto';
 import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
-import { sendErrorResponse } from '@/ResponseHelper';
+import { sendErrorResponse } from '@/response-helper';
 import { AbstractOAuthController, type CsrfStateParam } from './abstractOAuth.controller';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 

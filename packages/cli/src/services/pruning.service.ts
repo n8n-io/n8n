@@ -3,9 +3,9 @@ import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { inTest, TIME } from '@/constants';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { jsonStringify } from 'n8n-workflow';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { OrchestrationService } from './orchestration.service';
 
 @Service()
