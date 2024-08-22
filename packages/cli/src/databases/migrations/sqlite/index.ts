@@ -56,6 +56,7 @@ import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNo
 import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
+import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -115,6 +116,7 @@ const sqliteMigrations: Migration[] = [
 	MakeExecutionStatusNonNullable1714133768521,
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
+	CreateInvalidAuthTokenTable1723627610222,
 ];
 
 export { sqliteMigrations };
