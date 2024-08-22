@@ -669,14 +669,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowPinData(pinData: IPinData) {
+	function setWorkflowPinData(pinData?: IPinData) {
 		workflow.value = {
 			...workflow.value,
-			pinData: pinData || {},
+			pinData: pinData ?? {},
 		};
 		updateCachedWorkflow();
 
-		dataPinningEventBus.emit('pin-data', pinData || {});
+		dataPinningEventBus.emit('pin-data', pinData ?? {});
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
@@ -768,7 +768,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.stateIsDirty = true;
 		updateCachedWorkflow();
 
-		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
+		dataPinningEventBus.emit('unpin-data', {
+			nodeNames: [payload.node.name],
+		});
 	}
 
 	function addConnection(data: { connection: IConnection[] }): void {
