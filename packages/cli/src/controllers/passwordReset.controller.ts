@@ -13,7 +13,6 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { MfaService } from '@/mfa/mfa.service';
 import { Logger } from '@/logger';
 import { ExternalHooks } from '@/external-hooks';
-import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -31,7 +30,6 @@ export class PasswordResetController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly mfaService: MfaService,
-		private readonly urlService: UrlService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
@@ -108,14 +106,12 @@ export class PasswordResetController {
 
 		const url = this.authService.generatePasswordResetUrl(user);
 
-		const { id, firstName, lastName } = user;
+		const { id, firstName } = user;
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
-				lastName,
 				passwordResetUrl: url,
-				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			this.eventService.emit('email-failed', {

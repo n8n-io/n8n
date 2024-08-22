@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { UserRepository } from '@db/repositories/user.repository';
+import { EventService } from '@/events/event.service';
 import { Logger } from '@/logger';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -15,7 +16,7 @@ import { toError } from '@/utils';
 
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './node-mailer';
-import { EventService } from '@/events/event.service';
+import { inTest } from '@/constants';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -35,6 +36,7 @@ export class UserManagementMailer {
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
 		private readonly urlService: UrlService,
+		private readonly eventService: EventService,
 	) {
 		const emailsConfig = globalConfig.userManagement.emails;
 		this.isEmailSetUp = emailsConfig.mode === 'smtp' && emailsConfig.smtp.host !== '';
@@ -50,30 +52,22 @@ export class UserManagementMailer {
 		if (!this.mailer) return { emailSent: false };
 
 		const template = await this.getTemplate('invite');
-		const result = await this.mailer.sendMail({
+		return await this.mailer.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
-			body: template(inviteEmailData),
+			body: template({ ...inviteEmailData, ...this.getBasePayload() }),
 		});
-
-		// If mailer does not exist it means mail has been disabled.
-		// No error, just say no email was sent.
-		return result ?? { emailSent: false };
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 
-		const template = await this.getTemplate('passwordReset', 'passwordReset.html');
-		const result = await this.mailer.sendMail({
+		const template = await this.getTemplate('passwordReset');
+		return await this.mailer.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
-			body: template(passwordResetData),
+			body: template({ ...passwordResetData, ...this.getBasePayload() }),
 		});
-
-		// If mailer does not exist it means mail has been disabled.
-		// No error, just say no email was sent.
-		return result ?? { emailSent: false };
 	}
 
 	async notifyWorkflowShared({
@@ -93,7 +87,7 @@ export class UserManagementMailer {
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await this.getTemplate('workflowShared', 'workflowShared.html');
+		const populateTemplate = await this.getTemplate('workflowShared');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
@@ -111,7 +105,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			Container.get(EventService).emit('user-transactional-email-sent', {
+			this.eventService.emit('user-transactional-email-sent', {
 				userId: sharer.id,
 				messageType: 'Workflow shared',
 				publicApi: false,
@@ -119,7 +113,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			Container.get(EventService).emit('email-failed', {
+			this.eventService.emit('email-failed', {
 				user: sharer,
 				messageType: 'Workflow shared',
 				publicApi: false,
@@ -148,7 +142,7 @@ export class UserManagementMailer {
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await this.getTemplate('credentialsShared', 'credentialsShared.html');
+		const populateTemplate = await this.getTemplate('credentialsShared');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
@@ -166,7 +160,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			Container.get(EventService).emit('user-transactional-email-sent', {
+			this.eventService.emit('user-transactional-email-sent', {
 				userId: sharer.id,
 				messageType: 'Credentials shared',
 				publicApi: false,
@@ -174,7 +168,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			Container.get(EventService).emit('email-failed', {
+			this.eventService.emit('email-failed', {
 				user: sharer,
 				messageType: 'Credentials shared',
 				publicApi: false,
@@ -186,21 +180,25 @@ export class UserManagementMailer {
 		}
 	}
 
-	async getTemplate(
-		templateName: TemplateName,
-		defaultFilename = `${templateName}.html`,
-	): Promise<Template> {
+	async getTemplate(templateName: TemplateName): Promise<Template> {
 		let template = this.templatesCache[templateName];
 		if (!template) {
+			const fileExtension = inTest ? 'mjml' : 'handlebars';
 			const templateOverride = this.templateOverrides[templateName];
 			const templatePath =
 				templateOverride && existsSync(templateOverride)
 					? templateOverride
-					: pathJoin(__dirname, `templates/${defaultFilename}`);
+					: pathJoin(__dirname, `templates/${templateName}.${fileExtension}`);
 			const markup = await readFile(templatePath, 'utf-8');
 			template = Handlebars.compile(markup);
 			this.templatesCache[templateName] = template;
 		}
 		return template;
+	}
+
+	private getBasePayload() {
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const domain = new URL(baseUrl).hostname;
+		return { baseUrl, domain };
 	}
 }
