@@ -15,7 +15,7 @@ class MemoryConfig {
 class RedisConfig {
 	/** Prefix for cache keys in Redis. */
 	@Env('N8N_CACHE_REDIS_KEY_PREFIX')
-	prefix: string = 'redis';
+	prefix: string = 'cache';
 
 	/** Time to live (in milliseconds) for data cached in Redis. 0 for no TTL. */
 	@Env('N8N_CACHE_REDIS_TTL')
