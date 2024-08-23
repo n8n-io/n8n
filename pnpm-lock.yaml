@@ -51,6 +51,9 @@ catalogs:
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
+    zod:
+      specifier: 3.23.8
+      version: 3.23.8
   frontend:
     '@vitest/coverage-v8':
       specifier: ^1.6.0
@@ -510,7 +513,7 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       zod:
-        specifier: 3.23.8
+        specifier: 'catalog:'
         version: 3.23.8
       zod-to-json-schema:
         specifier: 3.23.0
@@ -915,7 +918,7 @@ importers:
         specifier: 0.3.0
         version: 0.3.0
       zod:
-        specifier: 3.23.8
+        specifier: 'catalog:'
         version: 3.23.8
     devDependencies:
       '@redocly/cli':
