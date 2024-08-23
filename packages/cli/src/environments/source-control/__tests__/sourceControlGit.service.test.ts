@@ -1,6 +1,6 @@
-import { SourceControlGitService } from '@/environments/sourceControl/sourceControlGit.service.ee';
+import { SourceControlGitService } from '@/environments/source-control/source-control-git.service.ee';
 import { mock } from 'jest-mock-extended';
-import type { SourceControlPreferences } from '@/environments/sourceControl/types/source-control-preferences';
+import type { SourceControlPreferences } from '@/environments/source-control/types/source-control-preferences';
 import type { User } from '@/databases/entities/User';
 import type { SimpleGit } from 'simple-git';
 

@@ -15,11 +15,11 @@ import {
 
 import type { User } from '@db/entities/User';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-geneirc';
-import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
-import { EventMessageAudit } from '@/eventbus/event-message-classes/EventMessageAudit';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
+import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
+import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
