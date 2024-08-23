@@ -35,7 +35,7 @@ export class K6Executor {
 		const k6ExecutablePath = await which(this.k6ExecutablePath, { nothrow: true });
 		if (!k6ExecutablePath) {
 			throw new Error(
-				`Could not find k6 executable from the configured path '${this.k6ExecutablePath}'. Use K6_PATH environment variable to specify the path to the k6 executable.`,
+				`Could not find k6 executable based on your `PATH`. Please ensure k6 is available in your system and add it to your `PATH` or specify the path to the k6 executable using the `K6_PATH` environment variable.`,
 			);
 		}
 
