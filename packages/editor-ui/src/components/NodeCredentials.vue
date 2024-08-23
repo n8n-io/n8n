@@ -7,7 +7,7 @@
 			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
 			:key="credentialTypeDescription.name"
 		>
-			<n8n-input-label
+			<N8nInputLabel
 				:label="getCredentialsFieldLabel(credentialTypeDescription)"
 				:bold="false"
 				size="small"
@@ -15,7 +15,7 @@
 				data-test-id="credentials-label"
 			>
 				<div v-if="readonly">
-					<n8n-input
+					<N8nInput
 						:model-value="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
@@ -31,7 +31,7 @@
 					"
 					data-test-id="node-credentials-select"
 				>
-					<n8n-select
+					<N8nSelect
 						:model-value="getSelectedId(credentialTypeDescription.name)"
 						:placeholder="
 							getSelectPlaceholder(
@@ -50,7 +50,7 @@
 						"
 						@blur="emit('blur', 'credentials')"
 					>
-						<n8n-option
+						<N8nOption
 							v-for="item in getCredentialOptions(
 								getAllRelatedCredentialTypes(credentialTypeDescription),
 							)"
@@ -60,24 +60,24 @@
 							:value="item.id"
 						>
 							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<n8n-text bold>{{ item.name }}</n8n-text>
-								<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
+								<N8nText bold>{{ item.name }}</N8nText>
+								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
 							</div>
-						</n8n-option>
-						<n8n-option
+						</N8nOption>
+						<N8nOption
 							:key="NEW_CREDENTIALS_TEXT"
 							data-test-id="node-credentials-select-item-new"
 							:value="NEW_CREDENTIALS_TEXT"
 							:label="NEW_CREDENTIALS_TEXT"
 						>
-						</n8n-option>
-					</n8n-select>
+						</N8nOption>
+					</N8nSelect>
 
 					<div
 						v-if="getIssues(credentialTypeDescription.name).length && !hideIssues"
 						:class="$style.warning"
 					>
-						<n8n-tooltip placement="top">
+						<N8nTooltip placement="top">
 							<template #content>
 								<TitledList
 									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
@@ -85,7 +85,7 @@
 								/>
 							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
-						</n8n-tooltip>
+						</N8nTooltip>
 					</div>
 
 					<div
@@ -104,7 +104,7 @@
 						/>
 					</div>
 				</div>
-			</n8n-input-label>
+			</N8nInputLabel>
 		</div>
 	</div>
 </template>
@@ -140,6 +140,14 @@ import {
 	isRequiredCredential,
 	updateNodeAuthType,
 } from '@/utils/nodeTypesUtils';
+import {
+	N8nInput,
+	N8nInputLabel,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from 'n8n-design-system';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -488,7 +496,7 @@ function onCredentialSelected(
 
 	const credentials = {
 		...(node.credentials ?? {}),
-		[selectedCredentialsType]: selected,
+		[selectedCredentialsType]: newSelectedCredentials,
 	};
 
 	const updateInformation: INodeUpdatePropertiesInformation = {
