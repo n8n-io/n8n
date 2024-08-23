@@ -1,10 +1,11 @@
 import {
 	Column,
 	Entity,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
-	ManyToOne,
 	OneToMany,
+	OneToOne,
 	PrimaryGeneratedColumn,
 	RelationId,
 } from '@n8n/typeorm';
@@ -33,9 +34,10 @@ export class ExecutionAnnotation {
 	@RelationId((annotation: ExecutionAnnotation) => annotation.execution)
 	executionId: string;
 
-	@ManyToOne('ExecutionEntity', 'annotation', {
+	@OneToOne('ExecutionEntity', 'annotation', {
 		onDelete: 'CASCADE',
 	})
+	@JoinColumn({ name: 'executionId' })
 	execution: ExecutionEntity;
 
 	@ManyToMany('AnnotationTagEntity', 'annotations')
