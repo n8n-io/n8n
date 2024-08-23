@@ -717,24 +717,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		vote: true,
 	};
 
-	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		if (query?.accessibleWorkflowIds?.length === 0) {
-			throw new ApplicationError('Expected accessible workflow IDs');
-		}
-
-		const qb = this.toQueryBuilderWithAnnotations(query);
-
-		// FIXME: This needs refactoring
-		const rawExecutionsWithTags: Array<
+	/**
+	 * This function reduces duplicate rows in the raw result set of the query builder from *toQueryBuilderWithAnnotations*
+	 * by merging the tags of the same execution annotation.
+	 * @param rawExecutionsWithTags
+	 * @private
+	 */
+	private reduceExecutionsWithAnnotations(
+		rawExecutionsWithTags: Array<
 			ExecutionSummary & {
 				'annotation.id': number;
 				'annotation.vote': AnnotationVote;
 				'annotation.tags.id': string;
 				'annotation.tags.name': string;
 			}
-		> = await qb.getRawMany();
-
-		const executions = rawExecutionsWithTags.reduce(
+		>,
+	) {
+		return rawExecutionsWithTags.reduce(
 			(
 				acc,
 				{
@@ -768,6 +767,27 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 			[] as ExecutionSummary[],
 		);
+	}
+
+	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
+		if (query?.accessibleWorkflowIds?.length === 0) {
+			throw new ApplicationError('Expected accessible workflow IDs');
+		}
+
+		// Due to performance reasons, we use custom query builder with raw SQL.
+		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
+		const qb = this.toQueryBuilderWithAnnotations(query);
+
+		const rawExecutionsWithTags: Array<
+			ExecutionSummary & {
+				'annotation.id': number;
+				'annotation.vote': AnnotationVote;
+				'annotation.tags.id': string;
+				'annotation.tags.name': string;
+			}
+		> = await qb.getRawMany();
+
+		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
 
 		return executions.map((execution) => this.toSummary(execution));
 	}
@@ -921,7 +941,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	// This method is used to add the annotation fields to the executions query
 	// It uses original query builder as a subquery and adds the annotation fields to it
-	// FIXME: Query made with this query builder fetches duplicate execution rows for each tag,
+	// IMPORTANT: Query made with this query builder fetches duplicate execution rows for each tag,
 	//  this is intended, as we are working with raw query
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
@@ -931,7 +951,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
 
 		// Ensure the join with annotations is made only once
-		// It might be already present as an inner join if the query includes tags filter
+		// It might be already present as an inner join if the query includes filter by annotation tags
 		// If not, it must be added as a left join
 		if (!subQuery.expressionMap.joinAttributes.some((join) => join.alias.name === 'annotation')) {
 			subQuery.leftJoin('execution.annotation', 'annotation');
