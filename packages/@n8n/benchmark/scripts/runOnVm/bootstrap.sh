@@ -5,6 +5,8 @@
 
 set -euo pipefail;
 
+CURRENT_USER=$(whoami)
+
 # Mount the data disk
 if [ -d "/n8n" ]; then
 	echo "Data disk already mounted. Clearing it..."
@@ -17,8 +19,8 @@ else
 	sudo partprobe /dev/sdc1
 	sudo mount /dev/sdc1 /n8n
 fi
-# Allow the benchmark user to write to the data disk
-sudo chown -R benchmark:benchmark /n8n
+# Allow the current user to write to the data disk
+sudo chown -R "$CURRENT_USER":"$CURRENT_USER" /n8n
 
 # Include nodejs v20 repository
 curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
@@ -28,8 +30,8 @@ sudo -E bash nodesource_setup.sh
 sudo DEBIAN_FRONTEND=noninteractive apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose nodejs
 
-# Add the benchmark user to the docker group
-sudo usermod -aG docker benchmark
+# Add the current user to the docker group
+sudo usermod -aG docker "$CURRENT_USER"
 
 # Install zx
 npm install zx
