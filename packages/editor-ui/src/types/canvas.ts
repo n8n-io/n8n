@@ -5,7 +5,7 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Connection, DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
+import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
