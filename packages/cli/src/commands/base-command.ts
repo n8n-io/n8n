@@ -84,7 +84,10 @@ export abstract class BaseCommand extends Command {
 				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
-		const { type: dbType } = this.globalConfig.database;
+		const {
+			database: { type: dbType },
+			executions: { mode: executionMode },
+		} = this.globalConfig;
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
@@ -98,7 +101,7 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && dbType === 'sqlite') {
+		if (executionMode === 'queue' && dbType === 'sqlite') {
 			this.logger.warn(
 				'Queue mode is not officially supported with sqlite. Please switch to PostgreSQL.',
 			);

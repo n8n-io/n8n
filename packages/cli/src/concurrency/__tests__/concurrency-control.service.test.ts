@@ -1,4 +1,7 @@
 import { mock } from 'jest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
+import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
+
 import config from '@/config';
 import {
 	CLOUD_TEMP_PRODUCTION_LIMIT,
@@ -8,7 +11,6 @@ import {
 import type { Logger } from '@/logger';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ConcurrencyQueue } from '../concurrency-queue';
-import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutingWorkflowData } from '@/Interfaces';
 import type { Telemetry } from '@/telemetry';
@@ -19,6 +21,7 @@ describe('ConcurrencyControlService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventService = mock<EventService>();
+	const globalConfig = mock<GlobalConfig>();
 
 	afterEach(() => {
 		config.set('executions.concurrency.productionLimit', -1);
@@ -39,6 +42,7 @@ describe('ConcurrencyControlService', () => {
 			 */
 			const service = new ConcurrencyControlService(
 				logger,
+				globalConfig,
 				executionRepository,
 				telemetry,
 				eventService,
@@ -63,7 +67,13 @@ describe('ConcurrencyControlService', () => {
 				/**
 				 * Act
 				 */
-				new ConcurrencyControlService(logger, executionRepository, telemetry, eventService);
+				new ConcurrencyControlService(
+					logger,
+					globalConfig,
+					executionRepository,
+					telemetry,
+					eventService,
+				);
 			} catch (error) {
 				/**
 				 * Assert
@@ -83,6 +93,7 @@ describe('ConcurrencyControlService', () => {
 			 */
 			const service = new ConcurrencyControlService(
 				logger,
+				globalConfig,
 				executionRepository,
 				telemetry,
 				eventService,
@@ -106,6 +117,7 @@ describe('ConcurrencyControlService', () => {
 			 */
 			const service = new ConcurrencyControlService(
 				logger,
+				globalConfig,
 				executionRepository,
 				telemetry,
 				eventService,
@@ -130,6 +142,7 @@ describe('ConcurrencyControlService', () => {
 			 */
 			const service = new ConcurrencyControlService(
 				logger,
+				globalConfig,
 				executionRepository,
 				telemetry,
 				eventService,
@@ -159,6 +172,7 @@ describe('ConcurrencyControlService', () => {
 
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -185,6 +199,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -214,6 +229,7 @@ describe('ConcurrencyControlService', () => {
 
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -240,6 +256,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -269,6 +286,7 @@ describe('ConcurrencyControlService', () => {
 
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -297,6 +315,7 @@ describe('ConcurrencyControlService', () => {
 
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -325,6 +344,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -369,6 +389,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -397,6 +418,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -424,6 +446,7 @@ describe('ConcurrencyControlService', () => {
 
 				const service = new ConcurrencyControlService(
 					logger,
+					globalConfig,
 					executionRepository,
 					telemetry,
 					eventService,
@@ -459,6 +482,7 @@ describe('ConcurrencyControlService', () => {
 					config.set('deployment.type', 'cloud');
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -489,6 +513,7 @@ describe('ConcurrencyControlService', () => {
 					config.set('deployment.type', 'cloud');
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,
@@ -521,6 +546,7 @@ describe('ConcurrencyControlService', () => {
 					config.set('deployment.type', 'cloud');
 					const service = new ConcurrencyControlService(
 						logger,
+						globalConfig,
 						executionRepository,
 						telemetry,
 						eventService,

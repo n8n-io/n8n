@@ -52,7 +52,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async init() {
-		if (config.getEnv('executions.mode') !== 'queue') {
+		if (this.globalConfig.executions.mode !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
 			 * there are 2 known bugs when running in this mode:

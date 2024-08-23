@@ -29,7 +29,12 @@ describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock(), executionRepository, concurrencyControl);
+		activeExecutions = new ActiveExecutions(
+			mock(),
+			mock(),
+			executionRepository,
+			concurrencyControl,
+		);
 	});
 
 	afterEach(() => {

@@ -14,20 +14,6 @@ convict.addFormat({
 
 export const schema = {
 	executions: {
-		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
-		process: {
-			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
-			format: String,
-			default: '',
-			env: 'EXECUTIONS_PROCESS',
-		},
-		mode: {
-			doc: 'If it should run executions directly or via queue',
-			format: ['regular', 'queue'] as const,
-			default: 'regular',
-			env: 'EXECUTIONS_MODE',
-		},
-
 		concurrency: {
 			productionLimit: {
 				doc: "Max production executions allowed to run concurrently, in main process for regular mode and in worker for queue mode. Default for main mode is `-1` (disabled). Default for queue mode is taken from the worker's `--concurrency` flag.",

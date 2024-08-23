@@ -13,6 +13,7 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { CacheConfig } from './configs/cache.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { UserManagementConfig } from './configs/user-management.config';
+import { ExecutionsConfig } from './configs/executions.config';
 
 @Config
 export class GlobalConfig {
@@ -48,6 +49,9 @@ export class GlobalConfig {
 
 	@Nested
 	workflows: WorkflowsConfig;
+
+	@Nested
+	executions: ExecutionsConfig;
 
 	/** Path n8n is deployed to */
 	@Env('N8N_PATH')

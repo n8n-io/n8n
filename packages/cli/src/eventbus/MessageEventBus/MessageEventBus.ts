@@ -144,7 +144,7 @@ export class MessageEventBus extends EventEmitter {
 
 			// if we are in queue mode, running jobs may still be running on a worker despite the main process
 			// crashing, so we can't just mark them as crashed
-			if (config.get('executions.mode') !== 'queue') {
+			if (this.globalConfig.executions.mode !== 'queue') {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {

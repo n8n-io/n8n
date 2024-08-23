@@ -171,7 +171,7 @@ export class Start extends BaseCommand {
 		await this.initCrashJournal();
 
 		this.logger.info('Initializing n8n process');
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			this.logger.debug('Main Instance running in queue mode');
 			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 		}
@@ -223,7 +223,7 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (this.globalConfig.executions.mode === 'regular') {
 			this.instanceSettings.markAsLeader();
 			return;
 		}
@@ -308,7 +308,7 @@ export class Start extends BaseCommand {
 
 		Container.get(PruningService).init();
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 

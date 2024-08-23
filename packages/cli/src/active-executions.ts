@@ -13,6 +13,7 @@ import {
 	sleep,
 } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
+import { GlobalConfig } from '@n8n/config';
 
 import type {
 	ExecutionPayload,
@@ -25,7 +26,6 @@ import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import config from './config';
 
 @Service()
 export class ActiveExecutions {
@@ -38,6 +38,7 @@ export class ActiveExecutions {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly concurrencyControl: ConcurrencyControlService,
 	) {}
@@ -222,15 +223,16 @@ export class ActiveExecutions {
 	/** Wait for all active executions to finish */
 	async shutdown(cancelAll = false) {
 		let executionIds = Object.keys(this.activeExecutions);
+		const executionMode = this.globalConfig.executions.mode;
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (executionMode === 'regular') {
 			// removal of active executions will no longer release capacity back,
 			// so that throttled executions cannot resume during shutdown
 			this.concurrencyControl.disable();
 		}
 
 		if (cancelAll) {
-			if (config.getEnv('executions.mode') === 'regular') {
+			if (executionMode === 'regular') {
 				await this.concurrencyControl.removeAll(this.activeExecutions);
 			}
 

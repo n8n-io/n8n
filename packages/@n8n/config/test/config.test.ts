@@ -212,6 +212,10 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		executions: {
+			process: '',
+			mode: 'regular',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

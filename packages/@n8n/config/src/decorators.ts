@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { readFileSync } from 'fs';
 import { Container, Service } from 'typedi';
+import colors from 'picocolors';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Class = Function;
@@ -9,6 +10,7 @@ type PropertyKey = string | symbol;
 interface PropertyMetadata {
 	type: unknown;
 	envName?: string;
+	deprecated?: boolean;
 }
 
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
@@ -22,7 +24,7 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 			throw new Error('Invalid config class: ' + ConfigClass.name);
 		}
 
-		for (const [key, { type, envName }] of classMetadata) {
+		for (const [key, { type, envName, deprecated }] of classMetadata) {
 			if (typeof type === 'function' && globalMetadata.has(type)) {
 				config[key] = Container.get(type);
 			} else if (envName) {
@@ -58,6 +60,13 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 
 				if (value !== undefined) {
 					config[key] = value;
+
+					if (deprecated) {
+						console.error(
+							colors.yellow('Please unset the deprecated env variable'),
+							colors.bold(colors.yellow(envName)),
+						);
+					}
 				}
 			}
 		}
@@ -75,13 +84,16 @@ export const Nested: PropertyDecorator = (target: object, key: PropertyKey) => {
 	globalMetadata.set(ConfigClass, classMetadata);
 };
 
+interface EnvOptions {
+	deprecated?: boolean;
+}
 export const Env =
-	(envName: string): PropertyDecorator =>
+	(envName: string, { deprecated }: EnvOptions = {}): PropertyDecorator =>
 	(target: object, key: PropertyKey) => {
 		const ConfigClass = target.constructor;
 		const classMetadata =
 			globalMetadata.get(ConfigClass) ?? new Map<PropertyKey, PropertyMetadata>();
 		const type = Reflect.getMetadata('design:type', target, key) as unknown;
-		classMetadata.set(key, { type, envName });
+		classMetadata.set(key, { type, envName, deprecated });
 		globalMetadata.set(ConfigClass, classMetadata);
 	};

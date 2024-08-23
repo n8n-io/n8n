@@ -32,13 +32,14 @@ const config = convict(schema, { args: [] });
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
 
+const globalConfig = Container.get(GlobalConfig);
+
 // Load overwrites when not in tests
 if (!inE2ETests && !inTest) {
 	// Overwrite default configuration with settings which got defined in
 	// optional configuration files
 	const { N8N_CONFIG_FILES } = process.env;
 	if (N8N_CONFIG_FILES !== undefined) {
-		const globalConfig = Container.get(GlobalConfig);
 		const configFiles = N8N_CONFIG_FILES.split(',');
 		for (const configFile of configFiles) {
 			if (!configFile) continue;
@@ -105,13 +106,7 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 }
 
 import colors from 'picocolors';
-const executionProcess = config.getEnv('executions.process');
-if (executionProcess) {
-	console.error(
-		colors.yellow('Please unset the deprecated env variable'),
-		colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
-	);
-}
+const executionProcess = globalConfig.executions.process;
 if (executionProcess === 'own') {
 	console.error(
 		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),

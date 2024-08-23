@@ -316,6 +316,9 @@ importers:
 
   packages/@n8n/config:
     dependencies:
+      picocolors:
+        specifier: 1.0.1
+        version: 1.0.1
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2

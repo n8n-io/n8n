@@ -1,6 +1,8 @@
+import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+
 import { Logger } from '@/logger';
 import config from '@/config';
-import { Service } from 'typedi';
 import { ConcurrencyQueue } from './concurrency-queue';
 import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
@@ -27,6 +29,7 @@ export class ConcurrencyControlService {
 
 	constructor(
 		private readonly logger: Logger,
+		globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly telemetry: Telemetry,
 		private readonly eventService: EventService,
@@ -41,7 +44,7 @@ export class ConcurrencyControlService {
 			this.productionLimit = -1;
 		}
 
-		if (this.productionLimit === -1 || config.getEnv('executions.mode') === 'queue') {
+		if (this.productionLimit === -1 || globalConfig.executions.mode === 'queue') {
 			this.isEnabled = false;
 			this.log('Service disabled');
 			return;

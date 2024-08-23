@@ -20,6 +20,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "picocolors": "1.0.1",
     "reflect-metadata": "0.2.2",
     "typedi": "catalog:"
   }

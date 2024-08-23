@@ -43,10 +43,11 @@ import { GlobalConfig } from '@n8n/config';
 export class WorkflowRunner {
 	private scalingService: ScalingService;
 
-	private executionsMode = config.getEnv('executions.mode');
+	private executionsMode = this.globalConfig.executions.mode;
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly externalHooks: ExternalHooks,
@@ -66,7 +67,7 @@ export class WorkflowRunner {
 	) {
 		ErrorReporter.error(error);
 
-		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+		const isQueueMode = this.executionsMode === 'queue';
 
 		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
 		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
@@ -425,7 +426,7 @@ export class WorkflowRunner {
 
 				const jobData: Promise<JobResult> = job.finished();
 
-				const { queueRecoveryInterval } = Container.get(GlobalConfig).queue.bull;
+				const { queueRecoveryInterval } = this.globalConfig.queue.bull;
 
 				const racingPromises: Array<Promise<JobResult>> = [jobData];
 
