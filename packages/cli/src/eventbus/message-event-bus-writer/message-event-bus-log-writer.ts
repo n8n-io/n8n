@@ -139,9 +139,10 @@ export class MessageEventBusLogWriter {
 		const parsedName = parse(__filename);
 		let workerFileName;
 		if (inTest) {
-			workerFileName = './dist/eventbus/MessageEventBusWriter/MessageEventBusLogWriterWorker.js';
+			workerFileName =
+				'./dist/eventbus/message-event-bus-writer/message-event-bus-log-writer-worker.js';
 		} else {
-			workerFileName = path.join(parsedName.dir, `${parsedName.name}Worker${parsedName.ext}`);
+			workerFileName = path.join(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
