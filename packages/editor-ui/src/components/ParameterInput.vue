@@ -15,7 +15,7 @@
 
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 			<ResourceLocator
-				v-if="isResourceLocatorParameter"
+				v-if="parameter.type === 'resourceLocator'"
 				ref="resourceLocator"
 				:parameter="parameter"
 				:model-value="modelValueResourceLocator"
@@ -30,6 +30,25 @@
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
+				@update:model-value="valueChanged"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
+			<WorkflowSelectorParameterInput
+				v-else-if="parameter.type === 'workflowSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:dependent-parameters-values="dependentParametersValues"
+				:display-title="displayTitle"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:is-value-expression="isModelValueExpression"
+				:expression-edit-dialog-visible="expressionEditDialogVisible"
+				:path="path"
+				:parameter-issues="getIssues"
 				@update:model-value="valueChanged"
 				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
@@ -939,7 +958,7 @@ const shortPath = computed<string>(() => {
 });
 
 const isResourceLocatorParameter = computed<boolean>(() => {
-	return props.parameter.type === 'resourceLocator';
+	return props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector';
 });
 
 const isSecretParameter = computed<boolean>(() => {
