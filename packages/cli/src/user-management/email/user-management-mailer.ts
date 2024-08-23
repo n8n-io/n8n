@@ -59,7 +59,7 @@ export class UserManagementMailer {
 		return await this.mailer.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
-			body: template({ ...inviteEmailData, ...this.getBasePayload() }),
+			body: template({ ...this.basePayload, ...inviteEmailData }),
 		});
 	}
 
@@ -70,7 +70,7 @@ export class UserManagementMailer {
 		return await this.mailer.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
-			body: template({ ...passwordResetData, ...this.getBasePayload() }),
+			body: template({ ...this.basePayload, ...passwordResetData }),
 		});
 	}
 
@@ -200,7 +200,7 @@ export class UserManagementMailer {
 		return template;
 	}
 
-	private getBasePayload() {
+	private get basePayload() {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const domain = new URL(baseUrl).hostname;
 		return { baseUrl, domain };
