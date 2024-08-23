@@ -2,10 +2,13 @@
 import { $ } from 'zx';
 
 export class SshClient {
-	constructor({ hostname, username, privateKeyPath, verbose = false }) {
-		this.hostname = hostname;
-		this.username = username;
-		this.privateKeyPath = privateKeyPath;
+	/**
+	 *
+	 * @param {{ vmName: string; resourceGroupName: string; verbose?: boolean }} param0
+	 */
+	constructor({ vmName, resourceGroupName, verbose = false }) {
+		this.vmName = vmName;
+		this.resourceGroupName = resourceGroupName;
 		this.verbose = verbose;
 
 		this.$$ = $({
@@ -20,17 +23,6 @@ export class SshClient {
 	async ssh(command, options = {}) {
 		const $$ = options?.verbose ? $({ verbose: true }) : this.$$;
 
-		await $$`ssh -o StrictHostKeyChecking=accept-new -i ${this.privateKeyPath} ${this.username}@${this.hostname} ${command}`;
-	}
-
-	/**
-	 * @param {string} localPath
-	 * @param {string} remotePath
-	 */
-	async scp(localPath, remotePath) {
-		const source = localPath;
-		const target = `${this.username}@${this.hostname}:${remotePath}`;
-
-		await this.$$`scp -i ${this.privateKeyPath} ${source} ${target}`;
+		await $$`az ssh vm -n ${this.vmName} -g ${this.resourceGroupName} --yes -- -o StrictHostKeyChecking=accept-new ${command}`;
 	}
 }

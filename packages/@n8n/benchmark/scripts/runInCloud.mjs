@@ -20,11 +20,14 @@ import path from 'path';
 import { SshClient } from './sshClient.mjs';
 import { TerraformClient } from './terraformClient.mjs';
 
-const SSH_USER = 'benchmark';
+/**
+ * @typedef {Object} BenchmarkEnv
+ * @property {string} vmName
+ */
+
+const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
 
 const paths = {
-	privateKeyPath: path.join(path.resolve('infra'), 'privatekey.pem'),
-	runOnVmScriptDir: path.join(path.resolve('scripts'), 'runOnVm'),
 	n8nSetupsDir: path.join(path.resolve('scripts'), 'runOnVm', 'n8nSetups'),
 };
 
@@ -43,7 +46,7 @@ async function main() {
 	try {
 		const benchmarkEnv = await terraformClient.provisionEnvironment();
 
-		await runBenchmarksOnVm(config, benchmarkEnv.ip);
+		await runBenchmarksOnVm(config, benchmarkEnv);
 	} catch (error) {
 		console.error('An error occurred while running the benchmarks:');
 		console.error(error);
@@ -54,40 +57,39 @@ async function main() {
 
 async function ensureDependencies() {
 	await which('terraform');
-	await which('ssh');
-	await which('scp');
-	await which('tar');
+	await which('az');
 }
 
 /**
  *
  * @param {Config} config
- * @param {string} ip
+ * @param {BenchmarkEnv} benchmarkEnv
  */
-async function runBenchmarksOnVm(config, ip) {
+async function runBenchmarksOnVm(config, benchmarkEnv) {
 	console.log(`Setting up the environment for ${config.n8nSetupToUse}...`);
 
 	const sshClient = new SshClient({
-		hostname: ip,
-		username: SSH_USER,
-		privateKeyPath: paths.privateKeyPath,
+		vmName: benchmarkEnv.vmName,
+		resourceGroupName: RESOURCE_GROUP_NAME,
 		verbose: config.isVerbose,
 	});
 
 	await ensureVmIsReachable(sshClient);
 
-	await transferScriptsToVm(sshClient, config.isVerbose);
+	const scriptsDir = await transferScriptsToVm(sshClient);
 
 	// Bootstrap the environment with dependencies
 	console.log('Running bootstrap script...');
-	await sshClient.ssh('chmod a+x ~/bootstrap.sh && ~/bootstrap.sh');
+	const bootstrapScriptPath = path.join(scriptsDir, 'bootstrap.sh');
+	await sshClient.ssh(`chmod a+x ${bootstrapScriptPath} && ${bootstrapScriptPath}`);
 
 	// Give some time for the VM to be ready
 	await sleep(1000);
 
 	console.log('Running benchmarks...');
+	const runScriptPath = path.join(scriptsDir, 'runOnVm.mjs');
 	await sshClient.ssh(
-		`npx zx ~/runOnVm.mjs --n8nDockerTag=${config.n8nTag} --benchmarkDockerTag=${config.benchmarkTag} ${config.n8nSetupToUse}`,
+		`npx zx ${runScriptPath} --n8nDockerTag=${config.n8nTag} --benchmarkDockerTag=${config.benchmarkTag} ${config.n8nSetupToUse}`,
 		{
 			// Test run should always log its output
 			verbose: true,
@@ -99,18 +101,15 @@ async function ensureVmIsReachable(sshClient) {
 	await sshClient.ssh('echo "VM is reachable"');
 }
 
-async function transferScriptsToVm(sshClient, isVerbose) {
-	const $$ = $({ verbose: isVerbose });
+/**
+ * @returns Path where the scripts are located on the VM
+ */
+async function transferScriptsToVm(sshClient) {
+	await sshClient.ssh('rm -rf ~/n8n');
 
-	const tmpDir = tmpdir();
-	const archiveName = 'scriptSetup.tar.gz';
-	const tarballPath = path.join(tmpDir, archiveName);
+	await sshClient.ssh('git clone --depth=0 https://github.com/n8n-io/n8n.git');
 
-	await $$`tar -czf ${tarballPath} -C ${paths.runOnVmScriptDir} .`;
-
-	await sshClient.scp(tarballPath, `~/${archiveName}`);
-
-	await sshClient.ssh(`tar -xzf ~/${archiveName} -C ~/`);
+	return '~/n8n/packages/@n8n/benchmark/scripts/runOnVm';
 }
 
 function readAvailableN8nSetups() {

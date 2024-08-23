@@ -24,6 +24,8 @@ resource "azurerm_dedicated_host_group" "main" {
   platform_fault_domain_count = 1
   automatic_placement_enabled = false
   zone                        = 1
+
+	tags = local.common_tags
 }
 
 resource "azurerm_dedicated_host" "hosts" {
@@ -32,6 +34,8 @@ resource "azurerm_dedicated_host" "hosts" {
   dedicated_host_group_id = azurerm_dedicated_host_group.main.id
   sku_name                = var.host_size_family
   platform_fault_domain   = 0
+
+	tags = local.common_tags
 }
 
 # VM

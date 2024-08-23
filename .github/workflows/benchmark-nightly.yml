@@ -50,12 +50,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Azure login
+        uses: azure/login@v2.1.1
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
       - name: Run the benchmark with debug logging
         if: github.event.inputs.debug == 'true'
         run: pnpm run-in-cloud sqlite --debug
-        working-directory: packages/benchmark
+        working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
         if: github.event.inputs.debug != 'true'
         run: pnpm run-in-cloud sqlite
-        working-directory: packages/benchmark
+        working-directory: packages/@n8n/benchmark

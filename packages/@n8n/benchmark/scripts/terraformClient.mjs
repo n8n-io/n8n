@@ -18,20 +18,20 @@ export class TerraformClient {
 		});
 	}
 
+	/**
+	 * @typedef {Object} BenchmarkEnv
+	 * @property {string} vmName
+	 *
+	 * @returns {Promise<BenchmarkEnv>}
+	 */
 	async provisionEnvironment() {
 		console.log('Provisioning cloud environment...');
 
 		await this.$$`terraform init`;
 		await this.$$`terraform apply -input=false -auto-approve`;
 
-		await this
-			.$$`terraform output -raw ssh_private_key > ${this.privateKeyPath} && chmod 600 ${this.privateKeyPath}`;
-
-		const getIpOutput = await this.$$`terraform output -raw vm_public_ip`;
-		const ip = getIpOutput.stdout.trim();
-
 		return {
-			ip,
+			vmName: await this.getTerraformOutput('vm_name'),
 		};
 	}
 
@@ -44,5 +44,10 @@ export class TerraformClient {
 		console.log('Destroying cloud environment...');
 
 		await this.$$`terraform destroy -input=false -auto-approve`;
+	}
+
+	async getTerraformOutput(key) {
+		const output = await this.$$`terraform output -raw ${key}`;
+		return output.stdout.trim();
 	}
 }
