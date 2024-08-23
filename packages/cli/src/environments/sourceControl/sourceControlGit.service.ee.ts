@@ -20,7 +20,7 @@ import {
 } from './constants';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
 import type { User } from '@db/entities/User';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { ApplicationError } from 'n8n-workflow';
 import { OwnershipService } from '@/services/ownership.service';
 import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';

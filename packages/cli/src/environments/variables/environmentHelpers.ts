@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { License } from '@/License';
+import { License } from '@/license';
 
 export function isVariablesEnabled(): boolean {
 	const license = Container.get(License);

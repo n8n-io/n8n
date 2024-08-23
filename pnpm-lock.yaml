@@ -1298,6 +1298,9 @@ importers:
       axios:
         specifier: 'catalog:'
         version: 1.7.4(debug@4.3.6)
+      bowser:
+        specifier: 2.11.0
+        version: 2.11.0
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0

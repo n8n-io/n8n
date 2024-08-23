@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'packages/benchmark/**'
+      - 'packages/@n8n/benchmark/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/docker-images-benchmark.yml'
@@ -35,7 +35,7 @@ jobs:
         uses: docker/build-push-action@v5.1.0
         with:
           context: .
-          file: ./packages/benchmark/Dockerfile
+          file: ./packages/@n8n/benchmark/Dockerfile
           platforms: linux/amd64
           provenance: false
           push: true

@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { Push } from '@/push';
 import { sleep } from 'n8n-workflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { getWorkflowHooksMain } from '@/WorkflowExecuteAdditionalData'; // @TODO: Dependency cycle
+import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
@@ -11,7 +11,7 @@ import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { EventService } from '@/events/event.service';
 
 /**
