@@ -250,6 +250,17 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
+						displayName: 'Time to Live (Seconds)',
+						name: 'ttl',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+						description:
+							'A number of seconds that the message will live, before being deleted automatically',
+					},
+					{
 						displayName: 'URL',
 						name: 'url',
 						type: 'string',
