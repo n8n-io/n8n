@@ -61,9 +61,6 @@ describe('AI Assistant store', () => {
 			init: () => {},
 			identify: () => {},
 		};
-		// usersStore = useUsersStore();
-		// workflowsStore = useWorkflowsStore();
-		// ndvStore = useNDVStore();
 		posthogStore = usePostHog();
 		posthogStore.init();
 	});
