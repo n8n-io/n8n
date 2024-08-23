@@ -96,7 +96,6 @@ function onClose() {
 <style module>
 .container {
 	height: 100%;
-	z-index: 3000; /* Above NDV, below notifications */
 	flex-basis: content;
 }
 
