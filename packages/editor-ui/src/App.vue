@@ -15,9 +15,7 @@ import { useAssistantStore } from './stores/assistant.store';
 import { useUIStore } from './stores/ui.store';
 import { useUsersStore } from './stores/users.store';
 import { useSettingsStore } from './stores/settings.store';
-import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useToast } from '@/composables/useToast';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -26,10 +24,8 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
-useGlobalLinkActions();
+// Initialize undo/redo
 useHistoryHelper(route);
-useToast();
-useExternalHooks();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
