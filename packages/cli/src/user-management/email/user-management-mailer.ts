@@ -19,7 +19,11 @@ import { NodeMailer } from './node-mailer';
 import { inTest } from '@/constants';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
-type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
+type TemplateName =
+	| 'user-invited'
+	| 'password-reset-requested'
+	| 'workflow-shared'
+	| 'credentials-shared';
 
 @Service()
 export class UserManagementMailer {
@@ -51,7 +55,7 @@ export class UserManagementMailer {
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 
-		const template = await this.getTemplate('invite');
+		const template = await this.getTemplate('user-invited');
 		return await this.mailer.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
@@ -62,7 +66,7 @@ export class UserManagementMailer {
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 
-		const template = await this.getTemplate('passwordReset');
+		const template = await this.getTemplate('password-reset-requested');
 		return await this.mailer.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
@@ -87,7 +91,7 @@ export class UserManagementMailer {
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await this.getTemplate('workflowShared');
+		const populateTemplate = await this.getTemplate('workflow-shared');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
@@ -142,7 +146,7 @@ export class UserManagementMailer {
 
 		const emailRecipients = recipients.map(({ email }) => email);
 
-		const populateTemplate = await this.getTemplate('credentialsShared');
+		const populateTemplate = await this.getTemplate('credentials-shared');
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
