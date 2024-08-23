@@ -40,7 +40,7 @@ const assistantStore = useAssistantStore();
 
 const props = defineProps<Props>();
 
-const windowWidth = ref<number>(1);
+const containerWidth = ref<number>(1);
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
 
@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
 
-watch(windowWidth, (width) => {
+watch(containerWidth, (width) => {
 	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
 	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
 
@@ -114,7 +114,9 @@ const assistantSidebarWidth = computed(() =>
 );
 
 watch(assistantSidebarWidth, () => {
-	setTotalWidth();
+	setTimeout(() => {
+		setTotalWidth();
+	}, 0);
 });
 
 const currentNodePaneType = computed((): string => {
@@ -171,14 +173,14 @@ const hasInputSlot = computed((): boolean => {
 const inputPanelMargin = computed(() => pxToRelativeWidth(SIDE_PANELS_MARGIN));
 
 const minimumLeftPosition = computed((): number => {
-	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+	if (containerWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	if (!hasInputSlot.value) return pxToRelativeWidth(SIDE_MARGIN);
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
 
 const maximumRightPosition = computed((): number => {
-	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+	if (containerWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
@@ -218,7 +220,7 @@ const hasDoubleWidth = computed((): boolean => {
 const fixedPanelWidth = computed((): number => {
 	const multiplier = hasDoubleWidth.value ? 2 : 1;
 
-	if (windowWidth.value > 1700) {
+	if (containerWidth.value > 1700) {
 		return PANEL_WIDTH_LARGE * multiplier;
 	}
 
@@ -298,11 +300,11 @@ function setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
 }
 
 function pxToRelativeWidth(px: number): number {
-	return px / windowWidth.value;
+	return px / containerWidth.value;
 }
 
 function relativeWidthToPx(relativeWidth: number) {
-	return relativeWidth * windowWidth.value;
+	return relativeWidth * containerWidth.value;
 }
 
 function onResizeStart() {
@@ -367,7 +369,7 @@ function onDragEnd() {
 	setTimeout(() => {
 		isDragging.value = false;
 		emit('dragend', {
-			windowWidth: windowWidth.value,
+			windowWidth: containerWidth.value,
 			position: mainPanelDimensions.value.relativeLeft,
 		});
 	}, 0);
@@ -377,7 +379,7 @@ function onDragEnd() {
 function setTotalWidth() {
 	const appModals = document.getElementById('app-grid');
 	if (appModals) {
-		windowWidth.value = appModals.clientWidth - assistantSidebarWidth.value;
+		containerWidth.value = appModals.clientWidth;
 	}
 }
 </script>
