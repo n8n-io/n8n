@@ -180,6 +180,9 @@ function printUsage() {
 	console.log('  --debug              Enable verbose output');
 	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
 	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
+	console.log(
+		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used.',
+	);
 	console.log('');
 	console.log('Available setups:');
 	console.log(`  ${availableSetups.join(', ')}`);
