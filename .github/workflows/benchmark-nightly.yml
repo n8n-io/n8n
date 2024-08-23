@@ -23,6 +23,7 @@ env:
   ARM_CLIENT_ID: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
+  K6_API_TOKEN: ${{ secrets.K6_API_TOKEN }}
 
 permissions:
   id-token: write

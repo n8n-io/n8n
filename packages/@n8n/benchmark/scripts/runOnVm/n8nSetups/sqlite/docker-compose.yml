@@ -14,3 +14,4 @@ services:
       - n8n
     environment:
       - N8N_BASE_URL=http://n8n:5678
+      - K6_API_TOKEN=${K6_API_TOKEN}
