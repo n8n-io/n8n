@@ -10,9 +10,10 @@
 			align="center"
 		></mj-text>
 		<mj-button
-			background-color="#ff6d5a"
+			background-color="#ff6f5c"
 			color="#ffffff"
 			font-size="18px"
+			font-weight="600"
 			align="center"
 			padding-top="20px"
 			line-height="24px"
