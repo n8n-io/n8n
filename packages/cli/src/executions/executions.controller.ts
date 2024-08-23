@@ -1,5 +1,6 @@
 import { ExecutionRequest, type ExecutionSummaries } from './execution.types';
 import { ExecutionService } from './execution.service';
+import { validateExecutionUpdatePayload } from './validation';
 import { Get, Patch, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { License } from '@/License';
@@ -121,12 +122,9 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		const { tags, vote } = req.body;
+		const { body: payload } = req;
+		const validatedPayload = validateExecutionUpdatePayload(payload);
 
-		if (tags || vote !== undefined) {
-			return await this.executionService.annotate(req.params.id, { tags, vote });
-		} else {
-			throw new BadRequestError('No annotation provided');
-		}
+		return await this.executionService.annotate(req.params.id, validatedPayload);
 	}
 }

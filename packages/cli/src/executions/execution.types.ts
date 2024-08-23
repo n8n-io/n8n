@@ -36,9 +36,8 @@ export declare namespace ExecutionRequest {
 	}
 
 	type ExecutionUpdatePayload = {
-		id: number;
-		tags: string[];
-		vote: AnnotationVote | null;
+		tags?: string[];
+		vote?: AnnotationVote | null;
 	};
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
@@ -79,7 +78,7 @@ export namespace ExecutionSummaries {
 		startedAfter: string;
 		startedBefore: string;
 		annotationTags: string[]; // tag IDs
-		vote: string;
+		vote: AnnotationVote;
 	}>;
 
 	type AccessFields = {

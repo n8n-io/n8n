@@ -2,7 +2,6 @@ import { Container, Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
-	AnnotationVote,
 	ExecutionError,
 	ExecutionStatus,
 	INode,
@@ -503,10 +502,7 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(
-		executionId: string,
-		updateData: { tags: string[]; vote: AnnotationVote | null },
-	) {
+	public async annotate(executionId: string, updateData: ExecutionRequest.ExecutionUpdatePayload) {
 		// FIXME: wrap in transaction
 		await this.executionAnnotationRepository.upsert(
 			{ execution: { id: executionId }, vote: updateData.vote },
