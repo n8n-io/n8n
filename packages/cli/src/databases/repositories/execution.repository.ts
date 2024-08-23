@@ -919,14 +919,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			// Add an inner join for each tag
 			if (annotationTags?.length) {
-				for (const tag of annotationTags) {
+				for (let index = 0; index < annotationTags.length; index++) {
 					qb.innerJoin(
 						AnnotationTagMapping,
-						`atm_${tag}`,
-						`atm_${tag}.annotationId = annotation.id AND atm_${tag}.tagId = :tagId_${tag}`,
+						`atm_${index}`,
+						`atm_${index}.annotationId = annotation.id AND atm_${index}.tagId = :tagId_${index}`,
 					);
 
-					qb.setParameter(`tagId_${tag}`, tag);
+					qb.setParameter(`tagId_${index}`, annotationTags[index]);
 				}
 			}
 
