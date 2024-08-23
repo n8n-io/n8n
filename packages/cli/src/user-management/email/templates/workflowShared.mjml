@@ -10,7 +10,7 @@
 			<mj-column>
 				<mj-text><b>"{{ workflowName }}"</b> workflow has been shared with you.</mj-text>
 				<mj-text>To access it, please click the button below. </mj-text>
-				<mj-button href="{{workflowUrl}}"> Open Workflow </mj-button>
+				<mj-button href="{{workflowUrl}}">Open Workflow</mj-button>
 			</mj-column>
 		</mj-section>
 	</mj-body>
