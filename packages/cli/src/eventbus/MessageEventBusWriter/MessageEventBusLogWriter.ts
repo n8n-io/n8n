@@ -26,7 +26,7 @@ import {
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
 import { inTest } from '@/constants';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import Container from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 

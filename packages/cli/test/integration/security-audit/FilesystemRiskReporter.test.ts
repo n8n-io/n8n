@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';

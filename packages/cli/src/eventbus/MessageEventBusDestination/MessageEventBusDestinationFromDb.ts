@@ -6,7 +6,7 @@ import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSe
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook.ee';
 import { Container } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 export function messageEventBusDestinationFromDb(
 	eventBusInstance: MessageEventBus,

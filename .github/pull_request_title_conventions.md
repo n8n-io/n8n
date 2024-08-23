@@ -11,19 +11,19 @@ A PR title consists of these elements:
   |       |                        Capitalized
   |       |                        No period at the end.
   │       │
-  │       └─⫸ Scope: API|core|editor|* Node
+  │       └─⫸ Scope: API|core|editor|* Node|benchmark
   │
   └─⫸ Type: build|ci|docs|feat|fix|perf|refactor|test
 ```
 
 - PR title
-    - type
-    - scope (*optional*)
-    - summary
+  - type
+  - scope (_optional_)
+  - summary
 - PR description
-    - body (optional)
-    - blank line
-    - footer (optional)
+  - body (optional)
+  - blank line
+  - footer (optional)
 
 The structure looks like this:
 
@@ -46,13 +46,14 @@ If the prefix is `feat`, `fix` or `perf`, it will appear in the changelog. H
 
 The scope should specify the place of the commit change as long as the commit clearly addresses one of the following supported scopes. (Otherwise, omit the scope!)
 
-- `API` - changes to the *public* API
+- `API` - changes to the _public_ API
 - `core` - changes to the core / private API / backend of n8n
 - `editor` - changes to the Editor UI
 - `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node name, not its display name), e.g.
-    - mattermost → Mattermost Node
-    - microsoftToDo  → Microsoft To Do Node
-    - n8n → n8n Node
+  - mattermost → Mattermost Node
+  - microsoftToDo → Microsoft To Do Node
+  - n8n → n8n Node
+- `benchmark` - changes to the Benchmark cli
 
 ### **Summary**
 
@@ -60,8 +61,8 @@ The summary contains succinct description of the change:
 
 - use the imperative, present tense: "change" not "changed" nor "changes"
 - capitalize the first letter
-- *no* dot (.) at the end
-- do *not* include Linear ticket IDs etc. (e.g. N8N-1234)
+- _no_ dot (.) at the end
+- do _not_ include Linear ticket IDs etc. (e.g. N8N-1234)
 - suffix with “(no-changelog)” for commits / PRs that should not get mentioned in the changelog.
 
 ### **Body (optional)**
@@ -95,7 +96,7 @@ Closes #<pr number>
 A Breaking Change section should start with the phrase "`BREAKING CHANGE:` " followed by a summary of the breaking change, a blank line, and a detailed description of the breaking change that also includes migration instructions.
 
 > 💡 A breaking change can additionally also be marked by adding a “`!`” to the header, right before the “`:`”, e.g. `feat(editor)!: Remove support for dark mode`
-> 
+>
 > This makes locating breaking changes easier when just skimming through commit messages.
 
 > 💡 The breaking changes must also be added to the [packages/cli/BREAKING-CHANGES.md](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-CHANGES.md) file located in the n8n repository.

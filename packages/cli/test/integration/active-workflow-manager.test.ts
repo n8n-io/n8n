@@ -3,16 +3,16 @@ import { mock } from 'jest-mock-extended';
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
-import { SecretsHelper } from '@/SecretsHelpers';
+import { SecretsHelper } from '@/secrets-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
-import * as WebhookHelpers from '@/webhooks/WebhookHelpers';
-import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes } from '@/node-types';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -20,7 +20,7 @@ import { mockInstance } from '../shared/mocking';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 mockInstance(ActiveExecutions);

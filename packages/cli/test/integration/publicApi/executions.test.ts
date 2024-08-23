@@ -1,5 +1,5 @@
 import type { User } from '@db/entities/User';
-import type { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';

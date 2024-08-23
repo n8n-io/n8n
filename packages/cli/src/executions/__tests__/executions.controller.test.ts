@@ -3,7 +3,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExecutionsController } from '@/executions/executions.controller';
 import type { ExecutionRequest, ExecutionSummaries } from '@/executions/execution.types';
 import type { ExecutionService } from '@/executions/execution.service';
-import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 describe('ExecutionsController', () => {

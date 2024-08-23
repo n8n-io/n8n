@@ -140,7 +140,6 @@ import {
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
-import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
@@ -696,19 +695,16 @@ export default defineComponent({
 			this.isSaving = true;
 
 			try {
-				const survey: Record<string, GenericValue> = {
+				const survey: IPersonalizationLatestVersion = {
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				await this.externalHooks.run(
-					'personalizationModal.onSubmit',
-					survey as IPersonalizationLatestVersion,
-				);
+				await this.externalHooks.run('personalizationModal.onSubmit', survey);
 
-				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
+				await this.usersStore.submitPersonalizationSurvey(survey);
 
 				this.posthogStore.setMetadata(survey, 'user');
 

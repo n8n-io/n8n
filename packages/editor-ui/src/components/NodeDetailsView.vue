@@ -160,6 +160,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
+import type { DataPinningDiscoveryEvent } from '@/event-bus';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -238,7 +239,7 @@ const activeNodeType = computed(() => {
 	return null;
 });
 
-const workflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
+const workflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const showTriggerWaitingWarning = computed(
 	() =>
@@ -428,7 +429,7 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isWorkflowRunning = computed(() => uiStore.isActionActive['workflowRunning']);
+const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
 
@@ -458,7 +459,7 @@ const hasForeignCredential = computed(() => foreignCredentials.value.length > 0)
 
 //methods
 
-const setIsTooltipVisible = ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+const setIsTooltipVisible = ({ isTooltipVisible }: DataPinningDiscoveryEvent) => {
 	pinDataDiscoveryTooltipVisible.value = isTooltipVisible;
 };
 

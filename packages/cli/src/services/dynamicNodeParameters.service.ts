@@ -20,7 +20,7 @@ import type {
 } from 'n8n-workflow';
 import { Workflow, RoutingNode, ApplicationError } from 'n8n-workflow';
 import { NodeExecuteFunctions } from 'n8n-core';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes } from '@/node-types';
 
 @Service()
 export class DynamicNodeParametersService {
