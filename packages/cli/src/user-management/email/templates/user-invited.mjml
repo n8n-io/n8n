@@ -8,7 +8,7 @@
 		</mj-section>
 		<mj-section background-color="#FFFFFF" border="1px solid #ddd">
 			<mj-column>
-				<mj-text>You have been invited to join n8n ({{domain}}).</mj-text>
+				<mj-text>You have been invited to join n8n: {{domain}}.</mj-text>
 				<mj-text>To accept, please click the button below.</mj-text>
 				<mj-button href="{{inviteAcceptUrl}}">Set up your n8n account </mj-button>
 			</mj-column>
