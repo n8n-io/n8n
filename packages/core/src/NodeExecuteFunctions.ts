@@ -160,6 +160,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
+import { assertValidDate } from './assertions';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -3776,7 +3777,9 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			async putExecutionToWait(waitTill: Date): Promise<void> {
+			async putExecutionToWait(waitTill: unknown): Promise<void> {
+				assertValidDate(waitTill);
+
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
 					additionalData.setExecutionStatus('waiting');

@@ -31,6 +31,7 @@ import {
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
+import { NodeOperationError } from 'n8n-workflow';
 
 const toWaitAmount: INodeProperties = {
 	displayName: 'Wait Amount',
@@ -346,6 +347,7 @@ export class Wait extends Webhook {
 				},
 				default: '',
 				description: 'The date and time to wait for before continuing',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -491,6 +493,13 @@ export class Wait extends Webhook {
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+
+			if (dateTimeStr === '') {
+				throw new NodeOperationError(
+					context.getNode(),
+					'[Wait node] Cannot put execution to wait because `dateTime` parameter is empty. Please pick a specific date and time to wait until.',
+				);
+			}
 
 			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
 				zone: context.getTimezone(),
