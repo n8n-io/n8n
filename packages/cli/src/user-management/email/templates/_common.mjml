@@ -1,6 +1,6 @@
 <mj-head>
 	<mj-attributes>
-		<mj-all font-family="Helvetica, Open Sans, system-ui, sans-serif"></mj-all>
+		<mj-all font-family="Open Sans, sans-serif"></mj-all>
 		<mj-text
 			font-weight="400"
 			font-size="16px"
