@@ -15,7 +15,7 @@
 			font-size="18px"
 			align="center"
 			padding-top="20px"
-			line-height="150%"
+			line-height="24px"
 			border-radius="4px"
 		></mj-button>
 		<mj-section padding="20px 0px"></mj-section>
