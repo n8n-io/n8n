@@ -1,25 +1,3 @@
-<template>
-	<ElTooltip v-bind="{ ...$props, ...$attrs }" :popper-class="$props.popperClass ?? 'n8n-tooltip'">
-		<slot />
-		<template #content>
-			<slot name="content">
-				<div v-html="content"></div>
-			</slot>
-			<div
-				v-if="buttons.length"
-				:class="$style.buttons"
-				:style="{ justifyContent: justifyButtons }"
-			>
-				<N8nButton
-					v-for="button in buttons"
-					:key="button.attrs.label"
-					v-bind="{ ...button.attrs, ...button.listeners }"
-				/>
-			</div>
-		</template>
-	</ElTooltip>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -64,6 +42,28 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<ElTooltip v-bind="{ ...$props, ...$attrs }" :popper-class="$props.popperClass ?? 'n8n-tooltip'">
+		<slot />
+		<template #content>
+			<slot name="content">
+				<div v-html="content"></div>
+			</slot>
+			<div
+				v-if="buttons.length"
+				:class="$style.buttons"
+				:style="{ justifyContent: justifyButtons }"
+			>
+				<N8nButton
+					v-for="button in buttons"
+					:key="button.attrs.label"
+					v-bind="{ ...button.attrs, ...button.listeners }"
+				/>
+			</div>
+		</template>
+	</ElTooltip>
+</template>
 
 <style lang="scss" module>
 .buttons {
