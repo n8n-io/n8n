@@ -939,10 +939,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return qb;
 	}
 
-	// This method is used to add the annotation fields to the executions query
-	// It uses original query builder as a subquery and adds the annotation fields to it
-	// IMPORTANT: Query made with this query builder fetches duplicate execution rows for each tag,
-	//  this is intended, as we are working with raw query
+	/**
+	 * This method is used to add the annotation fields to the executions query
+	 * It uses original query builder as a subquery and adds the annotation fields to it
+	 * IMPORTANT: Query made with this query builder fetches duplicate execution rows for each tag,
+	 *  this is intended, as we are working with raw query.
+	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
+	 *
+	 *  @param {ExecutionSummaries.Query} query
+	 *  @private
+	 */
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation.${key}"`,
