@@ -108,7 +108,9 @@ function setWidth() {
 	}
 }
 
-function onInputChange(value: string): void {
+function onInputChange(value: NodeParameterValue): void {
+	if (typeof value !== 'string') return;
+
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
 		const resource = workflowsStore.getWorkflowById(value);
@@ -119,7 +121,7 @@ function onInputChange(value: string): void {
 	emit('update:modelValue', params);
 }
 
-function onListItemSelected(value: string) {
+function onListItemSelected(value: NodeParameterValue) {
 	onInputChange(value);
 	hideDropdown();
 }
