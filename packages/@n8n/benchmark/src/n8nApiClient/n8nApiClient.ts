@@ -49,6 +49,12 @@ export class N8nApiClient {
 		} else if (response.status === 400) {
 			if (responsePayload.message === 'Instance owner already setup')
 				console.log('Owner already set up');
+		} else if (response.status === 404) {
+			// The n8n instance setup owner endpoint not be available yet even tho
+			// the health endpoint returns ok. In this case we simply retry.
+			console.log('Owner setup endpoint not available yet, retrying in 1s...');
+			await this.delay(1000);
+			await this.setupOwnerIfNeeded(loginDetails);
 		} else {
 			throw new Error(
 				`Owner setup failed with status ${response.status}: ${responsePayload.message}`,
