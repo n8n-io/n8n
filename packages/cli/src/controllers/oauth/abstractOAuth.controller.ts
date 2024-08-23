@@ -11,10 +11,10 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import type { ICredentialsDb } from '@/Interfaces';
 import type { OAuthRequest } from '@/requests';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { CredentialsHelper } from '@/CredentialsHelper';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { Logger } from '@/Logger';
-import { ExternalHooks } from '@/ExternalHooks';
+import { CredentialsHelper } from '@/credentials-helper';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { Logger } from '@/logger';
+import { ExternalHooks } from '@/external-hooks';
 import { UrlService } from '@/services/url.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';

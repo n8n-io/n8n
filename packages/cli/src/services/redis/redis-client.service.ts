@@ -1,10 +1,10 @@
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import type { RedisClientType } from './redis.types';
 
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { GlobalConfig } from '@n8n/config';
 

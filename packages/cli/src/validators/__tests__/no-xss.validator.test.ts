@@ -11,6 +11,9 @@ describe('NoXss', () => {
 
 		@NoXss()
 		version = '';
+
+		@NoXss({ each: true })
+		categories: string[] = [];
 	}
 
 	const entity = new Entity();
@@ -71,13 +74,43 @@ describe('NoXss', () => {
 		}
 	});
 
-	describe('Miscellanous strings', () => {
+	describe('Miscellaneous strings', () => {
 		const VALID_MISCELLANEOUS_STRINGS = ['CI/CD'];
 
 		for (const str of VALID_MISCELLANEOUS_STRINGS) {
 			test(`should allow ${str}`, async () => {
 				entity.name = str;
 				await expect(validate(entity)).resolves.toBeEmptyArray();
+			});
+		}
+	});
+
+	describe('Array of strings', () => {
+		const VALID_STRING_ARRAYS = [
+			['cloud-infrastructure-orchestration', 'ci-cd', 'reporting'],
+			['automationGoalDevops', 'cloudComputing', 'containerization'],
+		];
+
+		for (const arr of VALID_STRING_ARRAYS) {
+			test(`should allow array: ${JSON.stringify(arr)}`, async () => {
+				entity.categories = arr;
+				await expect(validate(entity)).resolves.toBeEmptyArray();
+			});
+		}
+
+		const INVALID_STRING_ARRAYS = [
+			['valid-string', '<script>alert("xss")</script>', 'another-valid-string'],
+			['<img src="x" onerror="alert(\'XSS\')">', 'valid-string'],
+		];
+
+		for (const arr of INVALID_STRING_ARRAYS) {
+			test(`should reject array containing invalid string: ${JSON.stringify(arr)}`, async () => {
+				entity.categories = arr;
+				const errors = await validate(entity);
+				expect(errors).toHaveLength(1);
+				const [error] = errors;
+				expect(error.property).toEqual('categories');
+				expect(error.constraints).toEqual({ NoXss: 'Potentially malicious string' });
 			});
 		}
 	});

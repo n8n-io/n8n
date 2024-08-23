@@ -8,7 +8,6 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 	ConnectionTypes,
-	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -20,6 +19,7 @@ import {
 	displayParameter,
 } from 'n8n-workflow';
 import type {
+	CurlToJSONResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
@@ -54,9 +54,8 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { importCurlEventBus } from '@/event-bus';
+import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
-import { ndvEventBus } from '@/event-bus';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -308,12 +307,12 @@ export default defineComponent({
 		ndvEventBus.off('updateParameterValue', this.valueChanged);
 	},
 	methods: {
-		setHttpNodeParameters(parameters: NodeParameterValueType) {
+		setHttpNodeParameters(parameters: CurlToJSONResponse) {
 			try {
 				this.valueChanged({
 					node: this.node?.name,
 					name: 'parameters',
-					value: parameters,
+					value: parameters as unknown as INodeParameters,
 				});
 			} catch {}
 		},

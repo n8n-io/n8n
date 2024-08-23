@@ -32,8 +32,14 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		customIndexName?: string,
 	) => new CreateIndex(tableName, columnNames, isUnique, tablePrefix, queryRunner, customIndexName),
 
-	dropIndex: (tableName: string, columnNames: string[], customIndexName?: string) =>
-		new DropIndex(tableName, columnNames, tablePrefix, queryRunner, customIndexName),
+	dropIndex: (
+		tableName: string,
+		columnNames: string[],
+		{ customIndexName, skipIfMissing }: { customIndexName?: string; skipIfMissing?: boolean } = {
+			skipIfMissing: false,
+		},
+	) =>
+		new DropIndex(tableName, columnNames, tablePrefix, queryRunner, customIndexName, skipIfMissing),
 
 	addForeignKey: (
 		tableName: string,

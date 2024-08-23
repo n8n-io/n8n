@@ -6,11 +6,12 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { User } from '@db/entities/User';
+import { InvalidAuthTokenRepository } from '@db/repositories/invalidAuthToken.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { License } from '@/License';
-import { Logger } from '@/Logger';
+import { License } from '@/license';
+import { Logger } from '@/logger';
 import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
@@ -53,6 +54,7 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
+		private readonly invalidAuthTokenRepository: InvalidAuthTokenRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -62,6 +64,8 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (token) {
 			try {
+				const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+				if (isInvalid) throw new AuthError('Unauthorized');
 				req.user = await this.resolveJwt(token, req, res);
 			} catch (error) {
 				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
@@ -78,6 +82,22 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
+	}
+
+	async invalidateToken(req: AuthenticatedRequest) {
+		const token = req.cookies[AUTH_COOKIE_NAME];
+		if (!token) return;
+		try {
+			const { exp } = this.jwtService.decode(token);
+			if (exp) {
+				await this.invalidAuthTokenRepository.insert({
+					token,
+					expiresAt: new Date(exp * 1000),
+				});
+			}
+		} catch (e) {
+			this.logger.warn('failed to invalidate auth token', { error: (e as Error).message });
+		}
 	}
 
 	issueCookie(res: Response, user: User, browserId?: string) {

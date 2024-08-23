@@ -6,7 +6,7 @@ import type {
 import { mock } from 'jest-mock-extended';
 
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
-import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as AdditionalData from '@/workflow-execute-additional-data';
 
 import { createOwner } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';

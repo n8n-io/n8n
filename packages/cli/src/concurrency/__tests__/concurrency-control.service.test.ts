@@ -5,7 +5,7 @@ import {
 	CLOUD_TEMP_REPORTABLE_THRESHOLDS,
 	ConcurrencyControlService,
 } from '@/concurrency/concurrency-control.service';
-import type { Logger } from '@/Logger';
+import type { Logger } from '@/logger';
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ConcurrencyQueue } from '../concurrency-queue';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';

@@ -42,7 +42,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
@@ -784,8 +784,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 
-			if (query.order?.stoppedAt === 'DESC') {
-				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			if (query.order?.startedAt === 'DESC') {
+				qb.orderBy({ 'execution.startedAt': 'DESC' });
 			} else if (query.order?.top) {
 				qb.orderBy(`(CASE WHEN execution.status = '${query.order.top}' THEN 0 ELSE 1 END)`);
 			} else {
