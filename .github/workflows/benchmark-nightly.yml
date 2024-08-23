@@ -1,5 +1,5 @@
 name: Run Nightly Benchmark
-run-name: Benchmark ${{ inputs.n8n_tag }}
+run-name: juntylpro gaming inc ${{ inputs.n8n_tag }}
 
 on:
   schedule:
