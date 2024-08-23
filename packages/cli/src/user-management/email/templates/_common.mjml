@@ -1,6 +1,7 @@
 <mj-head>
 	<mj-attributes>
 		<mj-all font-family="Open Sans, sans-serif"></mj-all>
+		<mj-body background-color="#fbfcfe"></mj-body>
 		<mj-text
 			font-weight="400"
 			font-size="16px"
