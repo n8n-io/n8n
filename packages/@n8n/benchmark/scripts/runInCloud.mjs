@@ -15,7 +15,7 @@
 // @ts-check
 import fs from 'fs';
 import minimist from 'minimist';
-import { $, sleep, tmpdir, which } from 'zx';
+import { $, sleep, which } from 'zx';
 import path from 'path';
 import { SshClient } from './sshClient.mjs';
 import { TerraformClient } from './terraformClient.mjs';
@@ -124,6 +124,7 @@ function readAvailableN8nSetups() {
  * @property {string} n8nSetupToUse
  * @property {string} n8nTag
  * @property {string} benchmarkTag
+ * @property {string} [k6ApiToken]
  *
  * @returns {Promise<Config>}
  */
@@ -136,12 +137,14 @@ async function parseAndValidateConfig() {
 	const isVerbose = args.debug || false;
 	const n8nTag = args.n8nTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = args.benchmarkTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
+	const k6ApiToken = args.k6ApiToken || process.env.K6_API_TOKEN || undefined;
 
 	return {
 		isVerbose,
 		n8nSetupToUse,
 		n8nTag,
 		benchmarkTag,
+		k6ApiToken,
 	};
 }
 
@@ -177,6 +180,9 @@ function printUsage() {
 	console.log('  --debug              Enable verbose output');
 	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
 	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
+	console.log(
+		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used.',
+	);
 	console.log('');
 	console.log('Available setups:');
 	console.log(`  ${availableSetups.join(', ')}`);
