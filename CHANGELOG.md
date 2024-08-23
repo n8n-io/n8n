@@ -1,3 +1,13 @@
+## [1.56.1](https://github.com/n8n-io/n8n/compare/n8n@1.56.0...n8n@1.56.1) (2024-08-23)
+
+
+### Bug Fixes
+
+* **core:** Restore Redis cache key ([#10520](https://github.com/n8n-io/n8n/issues/10520)) ([4d7d15f](https://github.com/n8n-io/n8n/commit/4d7d15f5351d04fa1841714d7b5ad08e7799948b))
+* **core:** Scheduler tasks should not trigger on follower instances ([#10507](https://github.com/n8n-io/n8n/issues/10507)) ([819499c](https://github.com/n8n-io/n8n/commit/819499c0a37b8434eb136c3259eac27f0362c3e9))
+
+
+
 # [1.56.0](https://github.com/n8n-io/n8n/compare/n8n@1.55.0...n8n@1.56.0) (2024-08-21)
 
 
