@@ -26,10 +26,10 @@ const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
-const globalLinkActions = useGlobalLinkActions();
-const historyHelper = useHistoryHelper(route);
-const toast = useToast();
-const externalHooks = useExternalHooks();
+useGlobalLinkActions();
+useHistoryHelper(route);
+useToast();
+useExternalHooks();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -50,13 +50,6 @@ onMounted(async () => {
 	logHiringBanner();
 	void useExternalHooks().run('app.mount');
 	loading.value = false;
-});
-
-defineExpose({
-	...globalLinkActions,
-	...historyHelper,
-	...toast,
-	...externalHooks,
 });
 </script>
 
