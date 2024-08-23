@@ -45,7 +45,6 @@ export async function elasticSecurityApiRequest(
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'elasticSecurityApi', options);
-		//return await this.helpers.request(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
