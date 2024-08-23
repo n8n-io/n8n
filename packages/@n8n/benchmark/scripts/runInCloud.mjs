@@ -107,7 +107,7 @@ async function ensureVmIsReachable(sshClient) {
 async function transferScriptsToVm(sshClient) {
 	await sshClient.ssh('rm -rf ~/n8n');
 
-	await sshClient.ssh('git clone --depth=0 https://github.com/n8n-io/n8n.git');
+	await sshClient.ssh('git clone --depth=1 https://github.com/n8n-io/n8n.git');
 
 	return '~/n8n/packages/@n8n/benchmark/scripts/runOnVm';
 }
