@@ -4,7 +4,7 @@ import type {
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
-import {
+import type {
 	CanvasInjectionData,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
