@@ -1,5 +1,5 @@
 import { $, which } from 'zx';
-import { Scenario } from '@/types/scenario';
+import type { Scenario } from '@/types/scenario';
 
 /**
  * Executes test scenarios using k6
@@ -24,7 +24,7 @@ export class K6Executor {
 		})`${k6ExecutablePath} run --quiet --stage ${stage} ${scenario.scriptPath}`;
 
 		for await (const chunk of processPromise.stdout) {
-			console.log(chunk.toString());
+			console.log((chunk as Buffer).toString());
 		}
 	}
 
