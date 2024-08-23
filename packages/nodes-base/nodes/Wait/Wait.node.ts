@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -31,7 +31,6 @@ import {
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
-import { NodeOperationError } from 'n8n-workflow';
 
 const toWaitAmount: INodeProperties = {
 	displayName: 'Wait Amount',
