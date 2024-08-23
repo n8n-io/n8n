@@ -21,6 +21,7 @@ async function main() {
 	const composeFilePath = path.join(__dirname, 'n8nSetups', n8nSetupToUse);
 	const n8nTag = argv.n8nDockerTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = argv.benchmarkDockerTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
+	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
 
 	const $$ = $({
 		cwd: composeFilePath,
@@ -28,6 +29,7 @@ async function main() {
 		env: {
 			N8N_VERSION: n8nTag,
 			BENCHMARK_VERSION: benchmarkTag,
+			K6_API_TOKEN: k6ApiToken,
 		},
 	});
 
