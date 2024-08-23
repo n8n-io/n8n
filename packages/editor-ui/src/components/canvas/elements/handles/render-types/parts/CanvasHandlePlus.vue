@@ -94,12 +94,12 @@ function onClick(event: MouseEvent) {
 			stroke-width="2"
 		/>
 		<g
-			:class="[$style.plus, handleClasses]"
+			:class="[$style.plus, handleClasses, 'clickable']"
 			:transform="`translate(${plusPosition[0]}, ${plusPosition[1]})`"
 			@click="onClick"
 		>
 			<rect
-				:class="handleClasses"
+				:class="[handleClasses, 'clickable']"
 				x="2"
 				y="2"
 				width="20"
@@ -110,7 +110,7 @@ function onClick(event: MouseEvent) {
 				fill="#ffffff"
 			/>
 			<path
-				:class="handleClasses"
+				:class="[handleClasses, 'clickable']"
 				fill="var(--color-foreground-xdark)"
 				d="m16.40655,10.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z"
 			></path>

@@ -16,7 +16,8 @@ import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 const props = defineProps<{
 	mode: CanvasConnectionMode;
-	connected?: boolean;
+	isConnected?: boolean;
+	isConnecting?: boolean;
 	label?: string;
 	type: CanvasConnectionPort['type'];
 	index: CanvasConnectionPort['index'];
@@ -96,7 +97,8 @@ function onAdd() {
  */
 
 const label = toRef(props, 'label');
-const connected = toRef(props, 'connected');
+const isConnected = toRef(props, 'isConnected');
+const isConnecting = toRef(props, 'isConnecting');
 const mode = toRef(props, 'mode');
 const type = toRef(props, 'type');
 
@@ -104,7 +106,8 @@ provide(CanvasNodeHandleKey, {
 	label,
 	mode,
 	type,
-	connected,
+	isConnected,
+	isConnecting,
 });
 </script>
 
@@ -122,7 +125,7 @@ provide(CanvasNodeHandleKey, {
 	>
 		<RenderType
 			:class="renderTypeClasses"
-			:connected="connected"
+			:is-connected="isConnected"
 			:style="offset"
 			:label="label"
 			@add="onAdd"

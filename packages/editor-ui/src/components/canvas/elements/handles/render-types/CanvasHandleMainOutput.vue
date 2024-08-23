@@ -1,13 +1,25 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { computed, ref } from 'vue';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
-const { label, connected } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
+
+const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
+const isHovered = ref(false);
+
+function onMouseEnter() {
+	isHovered.value = true;
+}
+
+function onMouseLeave() {
+	isHovered.value = false;
+}
 
 function onClickAdd() {
 	emit('add');
@@ -17,12 +29,16 @@ function onClickAdd() {
 	<div :class="['canvas-node-handle-main-output', $style.handle]">
 		<div :class="[$style.label]">{{ label }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
-		<CanvasHandlePlus
-			v-if="!connected"
-			:handle-classes="handleClasses"
-			:class="$style.plus"
-			@click:plus="onClickAdd"
-		/>
+		<Transition name="canvas-node-handle-main-output">
+			<CanvasHandlePlus
+				v-if="!isConnected"
+				v-show="isHandlePlusVisible"
+				:handle-classes="handleClasses"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+				@click:plus="onClickAdd"
+			/>
+		</Transition>
 	</div>
 </template>
 
@@ -44,9 +60,20 @@ function onClickAdd() {
 	background: var(--color-background-light);
 	z-index: 1;
 }
+</style>
 
-:global(.vue-flow__handle:not(.connectionindicator)) .plus {
-	display: none;
-	position: absolute;
+<style lang="scss">
+.canvas-node-handle-main-output-enter-active,
+.canvas-node-handle-main-output-leave-active {
+	transform-origin: 0 center;
+	transition-property: transform, opacity;
+	transition-duration: 0.2s;
+	transition-timing-function: ease;
+}
+
+.canvas-node-handle-main-output-enter-from,
+.canvas-node-handle-main-output-leave-to {
+	transform: scale(0);
+	opacity: 0;
 }
 </style>
