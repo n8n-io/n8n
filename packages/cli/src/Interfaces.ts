@@ -57,9 +57,12 @@ export interface ICredentialsOverwrite {
 //               tags
 // ----------------------------------
 
-export interface ITagToImport {
+export interface ITagBase {
 	id: string;
 	name: string;
+}
+
+export interface ITagToImport extends ITagBase {
 	createdAt?: string;
 	updatedAt?: string;
 }
@@ -146,10 +149,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 	customData: Record<string, string>;
 	annotation: {
-		tags: Array<{
-			id: string;
-			name: string;
-		}>;
+		tags: ITagBase[];
 	};
 }
 

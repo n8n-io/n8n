@@ -18,11 +18,17 @@ export class ExecutionAnnotation {
 	@PrimaryGeneratedColumn()
 	id: number;
 
+	/**
+	 * This field stores the up- or down-vote of the execution by user.
+	 */
 	@Column({ type: 'varchar', nullable: true })
 	vote: AnnotationVote | null;
 
+	/**
+	 * Custom text note added to the execution by user.
+	 */
 	@Column({ type: 'varchar', nullable: true })
-	note: string;
+	note: string | null;
 
 	@RelationId((annotation: ExecutionAnnotation) => annotation.execution)
 	executionId: string;

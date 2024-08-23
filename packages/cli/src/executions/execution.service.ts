@@ -513,8 +513,16 @@ export class ExecutionService {
 			['execution'],
 		);
 
+		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// so we need to fetch the annotation to get the ID
+		const annotation = await this.executionAnnotationRepository.findOneOrFail({
+			where: {
+				execution: { id: executionId },
+			},
+		});
+
 		if (updateData.tags) {
-			await this.annotationTagMappingRepository.overwriteTags(executionId, updateData.tags);
+			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {

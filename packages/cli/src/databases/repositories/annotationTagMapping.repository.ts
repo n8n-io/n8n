@@ -1,8 +1,6 @@
 import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { AnnotationTagMapping } from '@db/entities/AnnotationTagMapping';
-import { ExecutionAnnotation } from '@db/entities/ExecutionAnnotation';
-import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapping> {
@@ -10,28 +8,19 @@ export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapp
 		super(AnnotationTagMapping, dataSource.manager);
 	}
 
-	async overwriteTags(executionId: string, tagIds: string[]) {
+	/**
+	 * Overwrite annotation tags for the given execution. Annotation should already exist.
+	 * @param annotationId
+	 * @param tagIds
+	 */
+	async overwriteTags(annotationId: number, tagIds: string[]) {
 		return await this.manager.transaction(async (tx) => {
-			const annotation = await tx.findOne(ExecutionAnnotation, {
-				where: { execution: { id: executionId } },
-			});
+			await tx.delete(AnnotationTagMapping, { annotationId });
 
-			if (!annotation) {
-				throw new ApplicationError(`Annotation for execution ${executionId} not found`);
-			}
-
-			await tx.delete(AnnotationTagMapping, { annotationId: annotation.id });
-
-			const tagMappings = tagIds.map((tagId) => {
-				this.create({ annotationId: annotation.id, tagId });
-
-				// FIXME: for some reason tx.insert below throws type error if we use this.create result directly,
-				//  so we have to create plain objects
-				return {
-					annotationId: annotation.id,
-					tagId,
-				};
-			});
+			const tagMappings = tagIds.map((tagId) => ({
+				annotationId,
+				tagId,
+			}));
 
 			return await tx.insert(AnnotationTagMapping, tagMappings);
 		});
