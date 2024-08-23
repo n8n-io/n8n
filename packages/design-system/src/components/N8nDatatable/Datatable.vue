@@ -53,7 +53,7 @@
 						:label="`${size}`"
 						:value="size"
 					/>
-					<N8nOption :label="`All`" value="*"> </N8nOption>
+					<N8nOption :label="`All`" :value="ALL_ROWS"> </N8nOption>
 				</N8nSelect>
 			</div>
 		</div>
@@ -68,6 +68,8 @@ import N8nPagination from '../N8nPagination';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { useI18n } from '../../composables/useI18n';
 import { getValueByPath } from '../../utils';
+
+const ALL_ROWS = -1;
 
 interface DatatableProps {
 	columns: DatatableColumn[];
@@ -103,6 +105,8 @@ const totalRows = computed(() => {
 });
 
 const visibleRows = computed(() => {
+	if (props.rowsPerPage === ALL_ROWS) return props.rows;
+
 	const start = (props.currentPage - 1) * props.rowsPerPage;
 	const end = start + props.rowsPerPage;
 
@@ -120,6 +124,11 @@ function onUpdateCurrentPage(value: number) {
 
 function onRowsPerPageChange(value: number) {
 	emit('update:rowsPerPage', value);
+
+	if (value === ALL_ROWS) {
+		onUpdateCurrentPage(1);
+		return;
+	}
 
 	const maxPage = Math.ceil(totalRows.value / value);
 	if (maxPage < props.currentPage) {
