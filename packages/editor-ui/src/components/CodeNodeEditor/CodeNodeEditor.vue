@@ -1,51 +1,3 @@
-<template>
-	<div
-		ref="codeNodeEditorContainerRef"
-		:class="['code-node-editor', $style['code-node-editor-container'], language]"
-		@mouseover="onMouseOver"
-		@mouseout="onMouseOut"
-	>
-		<el-tabs
-			v-if="aiEnabled"
-			ref="tabs"
-			v-model="activeTab"
-			type="card"
-			:before-leave="onBeforeTabLeave"
-		>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
-				name="code"
-				data-test-id="code-node-tab-code"
-			>
-				<div
-					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
-				/>
-				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
-				name="ask-ai"
-				data-test-id="code-node-tab-ai"
-			>
-				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
-				<AskAI
-					:key="activeTab"
-					:has-changes="hasChanges"
-					@replace-code="onReplaceCode"
-					@started-loading="onAiLoadStart"
-					@finished-loading="onAiLoadEnd"
-				/>
-			</el-tab-pane>
-		</el-tabs>
-		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
-			<slot name="suffix" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -410,6 +362,54 @@ function onAiLoadEnd() {
 	isLoadingAIResponse.value = false;
 }
 </script>
+
+<template>
+	<div
+		ref="codeNodeEditorContainerRef"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
+		@mouseover="onMouseOver"
+		@mouseout="onMouseOut"
+	>
+		<el-tabs
+			v-if="aiEnabled"
+			ref="tabs"
+			v-model="activeTab"
+			type="card"
+			:before-leave="onBeforeTabLeave"
+		>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+			>
+				<div
+					ref="codeNodeEditorRef"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+				/>
+				<slot name="suffix" />
+			</el-tab-pane>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI
+					:key="activeTab"
+					:has-changes="hasChanges"
+					@replace-code="onReplaceCode"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else :class="$style.fillHeight">
+			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
+			<slot name="suffix" />
+		</div>
+	</div>
+</template>
 
 <style scoped lang="scss">
 :deep(.el-tabs) {

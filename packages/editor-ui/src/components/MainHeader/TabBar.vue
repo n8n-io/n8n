@@ -1,19 +1,3 @@
-<template>
-	<div
-		v-if="items"
-		:class="{
-			[$style.container]: true,
-			['tab-bar-container']: true,
-		}"
-	>
-		<N8nRadioButtons
-			:model-value="modelValue"
-			:options="items"
-			@update:model-value="onUpdateModelValue"
-		/>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { MAIN_HEADER_TABS } from '@/constants';
 import type { ITabBarItem } from '@/Interface';
@@ -36,6 +20,22 @@ function onUpdateModelValue(tab: MAIN_HEADER_TABS, event: MouseEvent): void {
 	emit('update:modelValue', tab, event);
 }
 </script>
+
+<template>
+	<div
+		v-if="items"
+		:class="{
+			[$style.container]: true,
+			['tab-bar-container']: true,
+		}"
+	>
+		<N8nRadioButtons
+			:model-value="modelValue"
+			:options="items"
+			@update:model-value="onUpdateModelValue"
+		/>
+	</div>
+</template>
 
 <style module lang="scss">
 .container {

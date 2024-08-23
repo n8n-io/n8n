@@ -1,182 +1,3 @@
-<template>
-	<div
-		v-if="data"
-		:id="nodeId"
-		:ref="data.name"
-		:class="nodeWrapperClass"
-		:style="nodeWrapperStyles"
-		data-test-id="canvas-node"
-		:data-name="data.name"
-		:data-node-type="nodeType?.name"
-		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
-	>
-		<div v-show="isSelected" class="select-background"></div>
-		<div
-			:class="{
-				'node-default': true,
-				'touch-active': isTouchActive,
-				'is-touch-device': deviceSupport.isTouchDevice,
-				'menu-open': isContextMenuOpen,
-				'disable-pointer-events': disablePointerEvents,
-			}"
-		>
-			<div
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
-				:class="nodeClass"
-				:style="nodeStyle"
-				@click.left="onClick"
-			>
-				<i v-if="isTriggerNode" class="trigger-icon">
-					<n8n-tooltip placement="bottom">
-						<template #content>
-							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
-						</template>
-						<FontAwesomeIcon icon="bolt" size="lg" />
-					</n8n-tooltip>
-				</i>
-				<div
-					v-if="!data.disabled"
-					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
-				>
-					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
-						<n8n-tooltip :show-after="500" placement="bottom">
-							<template #content>
-								<TitledList :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
-							</template>
-							<FontAwesomeIcon icon="exclamation-triangle" />
-						</n8n-tooltip>
-					</div>
-					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
-						<n8n-tooltip placement="bottom">
-							<template #content>
-								<div v-text="waiting"></div>
-							</template>
-							<FontAwesomeIcon icon="clock" />
-						</n8n-tooltip>
-					</div>
-					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
-						<FontAwesomeIcon icon="thumbtack" />
-						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
-					</span>
-					<span v-else-if="nodeExecutionStatus === 'unknown'">
-						<!-- Do nothing, unknown means the node never executed -->
-					</span>
-					<span v-else-if="workflowDataItems" class="data-count">
-						<FontAwesomeIcon icon="check" />
-						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
-					</span>
-				</div>
-
-				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
-					<FontAwesomeIcon icon="sync-alt" spin />
-				</div>
-
-				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip
-						placement="top"
-						:show-after="500"
-						:visible="showTriggerNodeTooltip"
-						popper-class="node-trigger-tooltip__wrapper--item"
-					>
-						<template #content>
-							<div v-text="getTriggerNodeTooltip"></div>
-						</template>
-						<span />
-					</n8n-tooltip>
-					<n8n-tooltip
-						v-if="isTriggerNode"
-						placement="top"
-						:visible="pinDataDiscoveryTooltipVisible"
-						popper-class="node-trigger-tooltip__wrapper--item"
-					>
-						<template #content>
-							{{ $locale.baseText('node.discovery.pinData.canvas') }}
-						</template>
-						<span />
-					</n8n-tooltip>
-				</div>
-
-				<NodeIcon
-					class="node-icon"
-					:node-type="iconNodeType"
-					:size="40"
-					:shrink="false"
-					:color-default="iconColorDefault"
-					:disabled="data.disabled"
-				/>
-			</div>
-
-			<div
-				v-if="showDisabledLineThrough"
-				:class="{
-					'disabled-line-through': true,
-					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
-				}"
-			></div>
-		</div>
-		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
-				<p data-test-id="canvas-node-box-title">
-					{{ nodeTitle }}
-				</p>
-				<p v-if="data.disabled">({{ $locale.baseText('node.disabled') }})</p>
-			</div>
-			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-				{{ nodeSubtitle }}
-			</div>
-		</div>
-
-		<div
-			v-if="!isReadOnly"
-			v-show="!hideActions"
-			class="node-options no-select-on-click"
-			@contextmenu.stop
-			@mousedown.stop
-		>
-			<div class="node-options-inner">
-				<n8n-icon-button
-					v-if="!isConfigNode"
-					data-test-id="execute-node-button"
-					type="tertiary"
-					text
-					size="small"
-					icon="play"
-					:disabled="workflowRunning"
-					:title="$locale.baseText('node.testStep')"
-					@click="executeNode"
-				/>
-				<n8n-icon-button
-					data-test-id="disable-node-button"
-					type="tertiary"
-					text
-					size="small"
-					icon="power-off"
-					:title="nodeDisabledTitle"
-					@click="toggleDisableNode"
-				/>
-				<n8n-icon-button
-					data-test-id="delete-node-button"
-					type="tertiary"
-					size="small"
-					text
-					icon="trash"
-					:title="$locale.baseText('node.delete')"
-					@click="deleteNode"
-				/>
-				<n8n-icon-button
-					data-test-id="overflow-node-button"
-					type="tertiary"
-					size="small"
-					text
-					icon="ellipsis-h"
-					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType, CSSProperties } from 'vue';
@@ -869,6 +690,185 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		v-if="data"
+		:id="nodeId"
+		:ref="data.name"
+		:class="nodeWrapperClass"
+		:style="nodeWrapperStyles"
+		data-test-id="canvas-node"
+		:data-name="data.name"
+		:data-node-type="nodeType?.name"
+		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
+	>
+		<div v-show="isSelected" class="select-background"></div>
+		<div
+			:class="{
+				'node-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': deviceSupport.isTouchDevice,
+				'menu-open': isContextMenuOpen,
+				'disable-pointer-events': disablePointerEvents,
+			}"
+		>
+			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
+				:class="nodeClass"
+				:style="nodeStyle"
+				@click.left="onClick"
+			>
+				<i v-if="isTriggerNode" class="trigger-icon">
+					<n8n-tooltip placement="bottom">
+						<template #content>
+							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+						</template>
+						<FontAwesomeIcon icon="bolt" size="lg" />
+					</n8n-tooltip>
+				</i>
+				<div
+					v-if="!data.disabled"
+					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
+				>
+					<div v-if="hasIssues && !hideNodeIssues" class="node-issues" data-test-id="node-issues">
+						<n8n-tooltip :show-after="500" placement="bottom">
+							<template #content>
+								<TitledList :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+							</template>
+							<FontAwesomeIcon icon="exclamation-triangle" />
+						</n8n-tooltip>
+					</div>
+					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
+						<n8n-tooltip placement="bottom">
+							<template #content>
+								<div v-text="waiting"></div>
+							</template>
+							<FontAwesomeIcon icon="clock" />
+						</n8n-tooltip>
+					</div>
+					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
+						<FontAwesomeIcon icon="thumbtack" />
+						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
+					<span v-else-if="nodeExecutionStatus === 'unknown'">
+						<!-- Do nothing, unknown means the node never executed -->
+					</span>
+					<span v-else-if="workflowDataItems" class="data-count">
+						<FontAwesomeIcon icon="check" />
+						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
+				</div>
+
+				<div class="node-executing-info" :title="$locale.baseText('node.nodeIsExecuting')">
+					<FontAwesomeIcon icon="sync-alt" spin />
+				</div>
+
+				<div class="node-trigger-tooltip__wrapper">
+					<n8n-tooltip
+						placement="top"
+						:show-after="500"
+						:visible="showTriggerNodeTooltip"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
+						<template #content>
+							<div v-text="getTriggerNodeTooltip"></div>
+						</template>
+						<span />
+					</n8n-tooltip>
+					<n8n-tooltip
+						v-if="isTriggerNode"
+						placement="top"
+						:visible="pinDataDiscoveryTooltipVisible"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
+						<template #content>
+							{{ $locale.baseText('node.discovery.pinData.canvas') }}
+						</template>
+						<span />
+					</n8n-tooltip>
+				</div>
+
+				<NodeIcon
+					class="node-icon"
+					:node-type="iconNodeType"
+					:size="40"
+					:shrink="false"
+					:color-default="iconColorDefault"
+					:disabled="data.disabled"
+				/>
+			</div>
+
+			<div
+				v-if="showDisabledLineThrough"
+				:class="{
+					'disabled-line-through': true,
+					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
+				}"
+			></div>
+		</div>
+		<div class="node-description">
+			<div class="node-name" :title="nodeTitle">
+				<p data-test-id="canvas-node-box-title">
+					{{ nodeTitle }}
+				</p>
+				<p v-if="data.disabled">({{ $locale.baseText('node.disabled') }})</p>
+			</div>
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+				{{ nodeSubtitle }}
+			</div>
+		</div>
+
+		<div
+			v-if="!isReadOnly"
+			v-show="!hideActions"
+			class="node-options no-select-on-click"
+			@contextmenu.stop
+			@mousedown.stop
+		>
+			<div class="node-options-inner">
+				<n8n-icon-button
+					v-if="!isConfigNode"
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="play"
+					:disabled="workflowRunning"
+					:title="$locale.baseText('node.testStep')"
+					@click="executeNode"
+				/>
+				<n8n-icon-button
+					data-test-id="disable-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="power-off"
+					:title="nodeDisabledTitle"
+					@click="toggleDisableNode"
+				/>
+				<n8n-icon-button
+					data-test-id="delete-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="trash"
+					:title="$locale.baseText('node.delete')"
+					@click="deleteNode"
+				/>
+				<n8n-icon-button
+					data-test-id="overflow-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="ellipsis-h"
+					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .context-menu {

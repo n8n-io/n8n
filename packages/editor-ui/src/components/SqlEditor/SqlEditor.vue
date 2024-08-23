@@ -1,16 +1,3 @@
-<template>
-	<div :class="$style.sqlEditor">
-		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
-		<slot name="suffix" />
-		<InlineExpressionEditorOutput
-			v-if="!fullscreen"
-			:segments="segments"
-			:is-read-only="isReadOnly"
-			:visible="hasFocus"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { codeNodeEditorEventBus } from '@/event-bus';
@@ -192,6 +179,19 @@ function highlightLine(lineNumber: number | 'final') {
 	});
 }
 </script>
+
+<template>
+	<div :class="$style.sqlEditor">
+		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
+		<slot name="suffix" />
+		<InlineExpressionEditorOutput
+			v-if="!fullscreen"
+			:segments="segments"
+			:is-read-only="isReadOnly"
+			:visible="hasFocus"
+		/>
+	</div>
+</template>
 
 <style module lang="scss">
 .sqlEditor {

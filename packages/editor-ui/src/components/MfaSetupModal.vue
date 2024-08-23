@@ -1,135 +1,3 @@
-<template>
-	<Modal
-		width="460px"
-		height="80%"
-		max-height="640px"
-		:title="
-			!showRecoveryCodes
-				? i18.baseText('mfa.setup.step1.title')
-				: i18.baseText('mfa.setup.step2.title')
-		"
-		:event-bus="modalBus"
-		:name="MFA_SETUP_MODAL_KEY_NAME"
-		:center="true"
-		:loading="loadingQrCode"
-	>
-		<template #content>
-			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
-				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true">{{
-						i18.baseText('mfa.setup.step1.instruction1.title')
-					}}</n8n-text>
-				</div>
-				<div>
-					<n8n-text size="medium" :bold="false">
-						<i18n-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
-							<template #part1>
-								{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
-							</template>
-							<template #part2>
-								<a
-									:class="$style.secret"
-									data-test-id="mfa-secret-button"
-									@click="onCopySecretToClipboard"
-									>{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
-								>
-							</template>
-						</i18n-t>
-					</n8n-text>
-				</div>
-				<div :class="$style.qrContainer">
-					<QrcodeVue :value="qrCode" :size="150" level="H" />
-				</div>
-				<div :class="$style.textContainer">
-					<n8n-text size="large" color="text-dark" :bold="true">{{
-						i18.baseText('mfa.setup.step1.instruction2.title')
-					}}</n8n-text>
-				</div>
-				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
-					<n8n-input-label
-						size="medium"
-						:bold="false"
-						:class="$style.labelTooltip"
-						:label="i18.baseText('mfa.setup.step1.input.label')"
-					>
-						<n8n-input
-							v-model="authenticatorCode"
-							type="text"
-							:maxlength="6"
-							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
-							:required="true"
-							data-test-id="mfa-token-input"
-							@input="onInput"
-						/>
-					</n8n-input-label>
-					<div :class="[$style.infoText, 'mt-4xs']">
-						<span size="small" v-text="infoTextErrorMessage"></span>
-					</div>
-				</div>
-			</div>
-			<div v-else :class="$style.container">
-				<div>
-					<n8n-text size="medium" :bold="false">{{
-						i18.baseText('mfa.setup.step2.description')
-					}}</n8n-text>
-				</div>
-				<div :class="$style.recoveryCodesContainer">
-					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<n8n-text size="medium">{{ recoveryCode }}</n8n-text>
-					</div>
-				</div>
-				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
-					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
-						<template #part1>
-							{{ i18.baseText('mfa.setup.step2.infobox.description.part1') }}
-						</template>
-						<template #part2>
-							<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
-								{{ i18.baseText('mfa.setup.step2.infobox.description.part2') }}
-							</n8n-text>
-						</template>
-					</i18n-t>
-				</n8n-info-tip>
-				<div>
-					<n8n-button
-						type="primary"
-						icon="download"
-						float="right"
-						:label="i18.baseText('mfa.setup.step2.button.download')"
-						data-test-id="mfa-recovery-codes-button"
-						@click="onDownloadClick"
-					/>
-				</div>
-			</div>
-		</template>
-		<template #footer>
-			<div v-if="showRecoveryCodes">
-				<div>
-					<n8n-button
-						float="right"
-						:disabled="!recoveryCodesDownloaded"
-						:label="i18.baseText('mfa.setup.step2.button.save')"
-						size="large"
-						data-test-id="mfa-save-button"
-						@click="onSetupClick"
-					/>
-				</div>
-			</div>
-			<div v-else>
-				<div>
-					<n8n-button
-						float="right"
-						:label="i18.baseText('mfa.setup.step1.button.continue')"
-						size="large"
-						:disabled="!readyToSubmit"
-						@click="onSaveClick"
-					/>
-				</div>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import Modal from './Modal.vue';
 import {
@@ -277,6 +145,138 @@ onMounted(async () => {
 
 // #endregion
 </script>
+
+<template>
+	<Modal
+		width="460px"
+		height="80%"
+		max-height="640px"
+		:title="
+			!showRecoveryCodes
+				? i18.baseText('mfa.setup.step1.title')
+				: i18.baseText('mfa.setup.step2.title')
+		"
+		:event-bus="modalBus"
+		:name="MFA_SETUP_MODAL_KEY_NAME"
+		:center="true"
+		:loading="loadingQrCode"
+	>
+		<template #content>
+			<div v-if="!showRecoveryCodes" :class="[$style.container, $style.modalContent]">
+				<div :class="$style.textContainer">
+					<n8n-text size="large" color="text-dark" :bold="true">{{
+						i18.baseText('mfa.setup.step1.instruction1.title')
+					}}</n8n-text>
+				</div>
+				<div>
+					<n8n-text size="medium" :bold="false">
+						<i18n-t keypath="mfa.setup.step1.instruction1.subtitle" tag="span">
+							<template #part1>
+								{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part1') }}
+							</template>
+							<template #part2>
+								<a
+									:class="$style.secret"
+									data-test-id="mfa-secret-button"
+									@click="onCopySecretToClipboard"
+									>{{ i18.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
+								>
+							</template>
+						</i18n-t>
+					</n8n-text>
+				</div>
+				<div :class="$style.qrContainer">
+					<QrcodeVue :value="qrCode" :size="150" level="H" />
+				</div>
+				<div :class="$style.textContainer">
+					<n8n-text size="large" color="text-dark" :bold="true">{{
+						i18.baseText('mfa.setup.step1.instruction2.title')
+					}}</n8n-text>
+				</div>
+				<div :class="[$style.form, infoTextErrorMessage ? $style.error : '']">
+					<n8n-input-label
+						size="medium"
+						:bold="false"
+						:class="$style.labelTooltip"
+						:label="i18.baseText('mfa.setup.step1.input.label')"
+					>
+						<n8n-input
+							v-model="authenticatorCode"
+							type="text"
+							:maxlength="6"
+							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
+							:required="true"
+							data-test-id="mfa-token-input"
+							@input="onInput"
+						/>
+					</n8n-input-label>
+					<div :class="[$style.infoText, 'mt-4xs']">
+						<span size="small" v-text="infoTextErrorMessage"></span>
+					</div>
+				</div>
+			</div>
+			<div v-else :class="$style.container">
+				<div>
+					<n8n-text size="medium" :bold="false">{{
+						i18.baseText('mfa.setup.step2.description')
+					}}</n8n-text>
+				</div>
+				<div :class="$style.recoveryCodesContainer">
+					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
+						<n8n-text size="medium">{{ recoveryCode }}</n8n-text>
+					</div>
+				</div>
+				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
+					<i18n-t keypath="mfa.setup.step2.infobox.description" tag="span">
+						<template #part1>
+							{{ i18.baseText('mfa.setup.step2.infobox.description.part1') }}
+						</template>
+						<template #part2>
+							<n8n-text size="small" :bold="true" :class="$style.loseAccessText">
+								{{ i18.baseText('mfa.setup.step2.infobox.description.part2') }}
+							</n8n-text>
+						</template>
+					</i18n-t>
+				</n8n-info-tip>
+				<div>
+					<n8n-button
+						type="primary"
+						icon="download"
+						float="right"
+						:label="i18.baseText('mfa.setup.step2.button.download')"
+						data-test-id="mfa-recovery-codes-button"
+						@click="onDownloadClick"
+					/>
+				</div>
+			</div>
+		</template>
+		<template #footer>
+			<div v-if="showRecoveryCodes">
+				<div>
+					<n8n-button
+						float="right"
+						:disabled="!recoveryCodesDownloaded"
+						:label="i18.baseText('mfa.setup.step2.button.save')"
+						size="large"
+						data-test-id="mfa-save-button"
+						@click="onSetupClick"
+					/>
+				</div>
+			</div>
+			<div v-else>
+				<div>
+					<n8n-button
+						float="right"
+						:label="i18.baseText('mfa.setup.step1.button.continue')"
+						size="large"
+						:disabled="!readyToSubmit"
+						@click="onSaveClick"
+					/>
+				</div>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style module lang="scss">
 .container {

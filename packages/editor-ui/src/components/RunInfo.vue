@@ -1,3 +1,36 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import type { ITaskData } from 'n8n-workflow';
+import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
+
+export default defineComponent({
+	props: {
+		taskData: {}, // ITaskData
+		hasStaleData: Boolean,
+		hasPinData: Boolean,
+	},
+
+	computed: {
+		theme(): string {
+			return this.runTaskData?.error ? 'danger' : 'success';
+		},
+		runTaskData(): ITaskData {
+			return this.taskData as ITaskData;
+		},
+		runMetadata(): { executionTime: number; startTime: string } | null {
+			if (!this.runTaskData) {
+				return null;
+			}
+			const { date, time } = convertToDisplayDateComponents(this.runTaskData.startTime);
+			return {
+				executionTime: this.runTaskData.executionTime,
+				startTime: `${date} at ${time}`,
+			};
+		},
+	},
+});
+</script>
+
 <template>
 	<n8n-info-tip
 		v-if="hasStaleData"
@@ -42,36 +75,3 @@
 		</div>
 	</n8n-info-tip>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { ITaskData } from 'n8n-workflow';
-import { convertToDisplayDateComponents } from '@/utils/formatters/dateFormatter';
-
-export default defineComponent({
-	props: {
-		taskData: {}, // ITaskData
-		hasStaleData: Boolean,
-		hasPinData: Boolean,
-	},
-
-	computed: {
-		theme(): string {
-			return this.runTaskData?.error ? 'danger' : 'success';
-		},
-		runTaskData(): ITaskData {
-			return this.taskData as ITaskData;
-		},
-		runMetadata(): { executionTime: number; startTime: string } | null {
-			if (!this.runTaskData) {
-				return null;
-			}
-			const { date, time } = convertToDisplayDateComponents(this.runTaskData.startTime);
-			return {
-				executionTime: this.runTaskData.executionTime,
-				startTime: `${date} at ${time}`,
-			};
-		},
-	},
-});
-</script>

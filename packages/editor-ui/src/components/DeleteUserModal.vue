@@ -1,80 +1,3 @@
-<template>
-	<Modal
-		:name="modalName"
-		:title="title"
-		:center="true"
-		width="520"
-		:event-bus="modalBus"
-		@enter="onSubmit"
-	>
-		<template #content>
-			<div>
-				<div v-if="isPending">
-					<n8n-text color="text-base">{{
-						$locale.baseText('settings.users.confirmUserDeletion')
-					}}</n8n-text>
-				</div>
-				<div v-else :class="$style.content">
-					<div>
-						<n8n-text color="text-base">{{
-							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
-						}}</n8n-text>
-					</div>
-					<el-radio
-						v-model="operation"
-						label="transfer"
-						@update:model-value="operation = 'transfer'"
-					>
-						<n8n-text color="text-dark">{{
-							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
-						}}</n8n-text>
-					</el-radio>
-					<div v-if="operation === 'transfer'" :class="$style.optionInput">
-						<n8n-text color="text-dark">{{
-							$locale.baseText('settings.users.transferWorkflowsAndCredentials.user')
-						}}</n8n-text>
-						<ProjectSharing
-							v-model="selectedProject"
-							class="pt-2xs"
-							:projects="projects"
-							:placeholder="
-								$locale.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
-							"
-						/>
-					</div>
-					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
-						<n8n-text color="text-dark">{{
-							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
-						}}</n8n-text>
-					</el-radio>
-					<div
-						v-if="operation === 'delete'"
-						:class="$style.optionInput"
-						data-test-id="delete-data-input"
-					>
-						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
-							<n8n-input
-								v-model="deleteConfirmText"
-								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-							/>
-						</n8n-input-label>
-					</div>
-				</div>
-			</div>
-		</template>
-		<template #footer>
-			<n8n-button
-				:loading="loading"
-				:disabled="!enabled"
-				:label="$locale.baseText('settings.users.delete')"
-				float="right"
-				data-test-id="confirm-delete-user-button"
-				@click="onSubmit"
-			/>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
@@ -198,6 +121,83 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="modalName"
+		:title="title"
+		:center="true"
+		width="520"
+		:event-bus="modalBus"
+		@enter="onSubmit"
+	>
+		<template #content>
+			<div>
+				<div v-if="isPending">
+					<n8n-text color="text-base">{{
+						$locale.baseText('settings.users.confirmUserDeletion')
+					}}</n8n-text>
+				</div>
+				<div v-else :class="$style.content">
+					<div>
+						<n8n-text color="text-base">{{
+							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
+						}}</n8n-text>
+					</div>
+					<el-radio
+						v-model="operation"
+						label="transfer"
+						@update:model-value="operation = 'transfer'"
+					>
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
+						}}</n8n-text>
+					</el-radio>
+					<div v-if="operation === 'transfer'" :class="$style.optionInput">
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.transferWorkflowsAndCredentials.user')
+						}}</n8n-text>
+						<ProjectSharing
+							v-model="selectedProject"
+							class="pt-2xs"
+							:projects="projects"
+							:placeholder="
+								$locale.baseText('settings.users.transferWorkflowsAndCredentials.placeholder')
+							"
+						/>
+					</div>
+					<el-radio v-model="operation" label="delete" @update:model-value="operation = 'delete'">
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
+						}}</n8n-text>
+					</el-radio>
+					<div
+						v-if="operation === 'delete'"
+						:class="$style.optionInput"
+						data-test-id="delete-data-input"
+					>
+						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
+							<n8n-input
+								v-model="deleteConfirmText"
+								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
+							/>
+						</n8n-input-label>
+					</div>
+				</div>
+			</div>
+		</template>
+		<template #footer>
+			<n8n-button
+				:loading="loading"
+				:disabled="!enabled"
+				:label="$locale.baseText('settings.users.delete')"
+				float="right"
+				data-test-id="confirm-delete-user-button"
+				@click="onSubmit"
+			/>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .content {

@@ -1,16 +1,3 @@
-<template>
-	<div v-if="uiStore.modalsById[name].open || keepAlive">
-		<slot
-			:modal-name="name"
-			:active="uiStore.isModalActiveById[name]"
-			:open="uiStore.modalsById[name].open"
-			:active-id="uiStore.modalsById[name].activeId"
-			:mode="uiStore.modalsById[name].mode"
-			:data="uiStore.modalsById[name].data"
-		></slot>
-	</div>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -34,3 +21,16 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-if="uiStore.modalsById[name].open || keepAlive">
+		<slot
+			:modal-name="name"
+			:active="uiStore.isModalActiveById[name]"
+			:open="uiStore.modalsById[name].open"
+			:active-id="uiStore.modalsById[name].activeId"
+			:mode="uiStore.modalsById[name].mode"
+			:data="uiStore.modalsById[name].data"
+		></slot>
+	</div>
+</template>

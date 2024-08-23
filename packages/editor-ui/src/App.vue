@@ -1,39 +1,3 @@
-<template>
-	<div :class="[$style.app, 'root-container']">
-		<LoadingView v-if="loading" />
-		<div
-			v-else
-			id="app"
-			:class="{
-				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
-			}"
-		>
-			<div id="banners" :class="$style.banners">
-				<BannerStack v-if="!isDemoMode" />
-			</div>
-			<div id="header" :class="$style.header">
-				<router-view name="header"></router-view>
-			</div>
-			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
-				<router-view name="sidebar"></router-view>
-			</div>
-			<div id="content" :class="$style.content">
-				<router-view v-slot="{ Component }">
-					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
-						<component :is="Component" />
-					</keep-alive>
-					<component :is="Component" v-else />
-				</router-view>
-			</div>
-			<AskAssistantChat />
-			<Modals />
-			<Telemetry />
-			<AskAssistantFloatingButton v-if="showAssistantButton" />
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -128,6 +92,42 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="[$style.app, 'root-container']">
+		<LoadingView v-if="loading" />
+		<div
+			v-else
+			id="app"
+			:class="{
+				[$style.container]: true,
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
+			}"
+		>
+			<div id="banners" :class="$style.banners">
+				<BannerStack v-if="!isDemoMode" />
+			</div>
+			<div id="header" :class="$style.header">
+				<router-view name="header"></router-view>
+			</div>
+			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
+				<router-view name="sidebar"></router-view>
+			</div>
+			<div id="content" :class="$style.content">
+				<router-view v-slot="{ Component }">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeViewSwitcher" :max="1">
+						<component :is="Component" />
+					</keep-alive>
+					<component :is="Component" v-else />
+				</router-view>
+			</div>
+			<AskAssistantChat />
+			<Modals />
+			<Telemetry />
+			<AskAssistantFloatingButton v-if="showAssistantButton" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .app {
