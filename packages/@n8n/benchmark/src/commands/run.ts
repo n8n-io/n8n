@@ -25,7 +25,11 @@ export default class RunCommand extends Command {
 		const scenarioRunner = new ScenarioRunner(
 			new N8nApiClient(config.get('n8n.baseUrl')),
 			new ScenarioDataFileLoader(),
-			new K6Executor(config.get('k6ExecutablePath'), config.get('n8n.baseUrl')),
+			new K6Executor({
+				k6ExecutablePath: config.get('k6.executablePath'),
+				k6ApiToken: config.get('k6.apiToken'),
+				n8nApiBaseUrl: config.get('n8n.baseUrl'),
+			}),
 			{
 				email: config.get('n8n.user.email'),
 				password: config.get('n8n.user.password'),
