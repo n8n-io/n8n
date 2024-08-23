@@ -13,5 +13,6 @@
 				<mj-button href="{{workflowUrl}}">Open Workflow</mj-button>
 			</mj-column>
 		</mj-section>
+		<mj-include path="./_logo.mjml" />
 	</mj-body>
 </mjml>

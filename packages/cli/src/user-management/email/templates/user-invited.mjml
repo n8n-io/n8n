@@ -13,5 +13,6 @@
 				<mj-button href="{{inviteAcceptUrl}}">Set up your n8n account </mj-button>
 			</mj-column>
 		</mj-section>
+		<mj-include path="./_logo.mjml" />
 	</mj-body>
 </mjml>
