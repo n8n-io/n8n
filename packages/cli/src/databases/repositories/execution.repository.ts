@@ -208,6 +208,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
+	private serializeAnnotation(annotation: ExecutionEntity['annotation']) {
+		if (!annotation) return null;
+
+		const { id, vote, tags } = annotation;
+		return {
+			id,
+			vote,
+			tags: tags?.map((tag) => pick(tag, ['id', 'name'])) ?? [],
+		};
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {
@@ -270,27 +281,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const { executionData, metadata, annotation, ...rest } = execution;
-
-		const sanitizedAnnotation = annotation
-			? {
-					id: annotation.id,
-					vote: annotation.vote,
-					tags: annotation.tags?.map((tag) => pick(tag, ['id', 'name'])) ?? [],
-				}
-			: annotation;
+		const serializedAnnotation = this.serializeAnnotation(annotation);
 
 		return {
 			...rest,
-			...(options?.includeData
-				? {
-						data: options?.unflattenData
-							? (parse(executionData.data) as IRunExecutionData)
-							: executionData.data,
-						workflowData: executionData?.workflowData,
-						customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-					}
-				: null),
-			...(options?.includeAnnotation ? { annotation: sanitizedAnnotation } : null),
+			...(options?.includeData && {
+				data: options?.unflattenData
+					? (parse(executionData.data) as IRunExecutionData)
+					: executionData.data,
+				workflowData: executionData?.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			}),
+			...(options?.includeAnnotation &&
+				serializedAnnotation && { annotation: serializedAnnotation }),
 		};
 	}
 
