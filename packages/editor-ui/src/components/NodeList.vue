@@ -1,17 +1,3 @@
-<template>
-	<div :class="$style.list">
-		<div v-for="node in slicedNodes" :key="node.name" :class="[$style.container, $style[size]]">
-			<NodeIcon :node-type="node" :size="size === 'md' ? 24 : 18" :show-tooltip="true" />
-		</div>
-		<div
-			v-if="filteredCoreNodes.length > limit + 1"
-			:class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]"
-		>
-			+{{ hiddenNodes }}
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -58,6 +44,20 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.list">
+		<div v-for="node in slicedNodes" :key="node.name" :class="[$style.container, $style[size]]">
+			<NodeIcon :node-type="node" :size="size === 'md' ? 24 : 18" :show-tooltip="true" />
+		</div>
+		<div
+			v-if="filteredCoreNodes.length > limit + 1"
+			:class="[$style.button, size === 'md' ? $style.buttonMd : $style.buttonSm]"
+		>
+			+{{ hiddenNodes }}
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .list {

@@ -1,20 +1,3 @@
-<template>
-	<div :class="classes" role="alert">
-		<div :class="$style.messageSection">
-			<div v-if="!iconless" :class="$style.icon">
-				<N8nIcon :icon="getIcon" :size="getIconSize" />
-			</div>
-			<N8nText size="small">
-				<slot />
-			</N8nText>
-			&nbsp;
-			<slot name="actions" />
-		</div>
-
-		<slot name="trailingContent" />
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
@@ -69,6 +52,23 @@ const getIconSize = computed<IconSize>(() => {
 	return 'large';
 });
 </script>
+
+<template>
+	<div :class="classes" role="alert">
+		<div :class="$style.messageSection">
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
+			</div>
+			<N8nText size="small">
+				<slot />
+			</N8nText>
+			&nbsp;
+			<slot name="actions" />
+		</div>
+
+		<slot name="trailingContent" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .callout {
