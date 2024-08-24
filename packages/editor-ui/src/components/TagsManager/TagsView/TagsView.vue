@@ -1,27 +1,3 @@
-<template>
-	<div @keyup.enter="applyOperation" @keyup.esc="cancelOperation">
-		<TagsTableHeader
-			:search="search"
-			:disabled="isHeaderDisabled()"
-			@search-change="onSearchChange"
-			@create-enable="onCreateEnable"
-		/>
-		<TagsTable
-			ref="tagsTable"
-			:rows="rows"
-			:is-loading="isLoading"
-			:is-saving="isSaving"
-			:new-name="newName"
-			data-test-id="tags-table"
-			@new-name-change="onNewNameChange"
-			@update-enable="onUpdateEnable"
-			@delete-enable="onDeleteEnable"
-			@cancel-operation="cancelOperation"
-			@apply-operation="applyOperation"
-		/>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 
@@ -191,3 +167,27 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div @keyup.enter="applyOperation" @keyup.esc="cancelOperation">
+		<TagsTableHeader
+			:search="search"
+			:disabled="isHeaderDisabled()"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
+		/>
+		<TagsTable
+			ref="tagsTable"
+			:rows="rows"
+			:is-loading="isLoading"
+			:is-saving="isSaving"
+			:new-name="newName"
+			data-test-id="tags-table"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
+		/>
+	</div>
+</template>

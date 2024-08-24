@@ -32,7 +32,7 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import type { ExportableCredential } from './types/exportableCredential';
 import { EventService } from '@/events/event.service';
 import { TagRepository } from '@db/repositories/tag.repository';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ApplicationError } from 'n8n-workflow';
 

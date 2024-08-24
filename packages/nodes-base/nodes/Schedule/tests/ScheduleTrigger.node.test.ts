@@ -1,6 +1,6 @@
 import * as n8nWorkflow from 'n8n-workflow';
 import type { INode, ITriggerFunctions, Workflow } from 'n8n-workflow';
-import { returnJsonArray } from 'n8n-core';
+import { type InstanceSettings, returnJsonArray } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
 import { mock } from 'jest-mock-extended';
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
@@ -18,7 +18,8 @@ describe('ScheduleTrigger', () => {
 
 	const node = mock<INode>({ typeVersion: 1 });
 	const workflow = mock<Workflow>({ timezone });
-	const scheduledTaskManager = new ScheduledTaskManager();
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const scheduledTaskManager = new ScheduledTaskManager(instanceSettings);
 	const helpers = mock<ITriggerFunctions['helpers']>({
 		returnJsonArray,
 		registerCron: (cronExpression, onTick) =>

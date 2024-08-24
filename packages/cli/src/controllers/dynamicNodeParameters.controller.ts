@@ -1,7 +1,7 @@
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
 import { Post, RestController } from '@/decorators';
-import { getBase } from '@/WorkflowExecuteAdditionalData';
+import { getBase } from '@/workflow-execute-additional-data';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

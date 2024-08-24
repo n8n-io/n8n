@@ -1,11 +1,11 @@
 import Container, { Service } from 'typedi';
 import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
-import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
 import type {

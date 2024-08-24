@@ -1,148 +1,3 @@
-<template>
-	<div
-		ref="container"
-		class="resource-locator"
-		:data-test-id="`resource-locator-${parameter.name}`"
-	>
-		<ResourceLocatorDropdown
-			ref="dropdown"
-			v-on-click-outside="hideResourceDropdown"
-			:model-value="modelValue ? modelValue.value : ''"
-			:show="resourceDropdownVisible"
-			:filterable="isSearchable"
-			:filter-required="requiresSearchFilter"
-			:resources="currentQueryResults"
-			:loading="currentQueryLoading"
-			:filter="searchFilter"
-			:has-more="currentQueryHasMore"
-			:error-view="currentQueryError"
-			:width="width"
-			:event-bus="eventBus"
-			@update:model-value="onListItemSelected"
-			@filter="onSearchFilter"
-			@load-more="loadResourcesDebounced"
-		>
-			<template #error>
-				<div :class="$style.error" data-test-id="rlc-error-container">
-					<n8n-text color="text-dark" align="center" tag="div">
-						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
-					</n8n-text>
-					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
-						<a v-if="credentialsNotSet" @click="createNewCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
-						}}</a>
-						<a v-else-if="hasCredential" @click="openCredential">{{
-							$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
-						}}</a>
-					</n8n-text>
-				</div>
-			</template>
-			<div
-				:class="{
-					[$style.resourceLocator]: true,
-					[$style.multipleModes]: hasMultipleModes,
-				}"
-			>
-				<div :class="$style.background"></div>
-				<div v-if="hasMultipleModes" :class="$style.modeSelector">
-					<n8n-select
-						:model-value="selectedMode"
-						:size="inputSize"
-						:disabled="isReadOnly"
-						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
-						data-test-id="rlc-mode-selector"
-						@update:model-value="onModeSelected"
-					>
-						<n8n-option
-							v-for="mode in parameter.modes"
-							:key="mode.name"
-							:value="mode.name"
-							:label="getModeLabel(mode)"
-							:disabled="isValueExpression && mode.name === 'list'"
-							:title="
-								isValueExpression && mode.name === 'list'
-									? $locale.baseText('resourceLocator.mode.list.disabled.title')
-									: ''
-							"
-						>
-							{{ getModeLabel(mode) }}
-						</n8n-option>
-					</n8n-select>
-				</div>
-
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-					<DraggableTarget
-						type="mapping"
-						:disabled="hasOnlyListMode"
-						:sticky="true"
-						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
-						@drop="onDrop"
-					>
-						<template #default="{ droppable, activeDrop }">
-							<div
-								:class="{
-									[$style.listModeInputContainer]: isListMode,
-									[$style.droppable]: droppable,
-									[$style.activeDrop]: activeDrop,
-								}"
-								@keydown.stop="onKeyDown"
-							>
-								<ExpressionParameterInput
-									v-if="isValueExpression || forceShowExpression"
-									ref="input"
-									:model-value="expressionDisplayValue"
-									:path="path"
-									:rows="3"
-									@update:model-value="onInputChange"
-									@modal-opener-click="$emit('modalOpenerClick')"
-								/>
-								<n8n-input
-									v-else
-									ref="input"
-									:class="{ [$style.selectInput]: isListMode }"
-									:size="inputSize"
-									:model-value="valueToDisplay"
-									:disabled="isReadOnly"
-									:readonly="isListMode"
-									:title="displayTitle"
-									:placeholder="inputPlaceholder"
-									type="text"
-									data-test-id="rlc-input"
-									@update:model-value="onInputChange"
-									@focus="onInputFocus"
-									@blur="onInputBlur"
-								>
-									<template v-if="isListMode" #suffix>
-										<i
-											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
-												[$style.selectIcon]: true,
-												[$style.isReverse]: resourceDropdownVisible,
-											}"
-										/>
-									</template>
-								</n8n-input>
-							</div>
-						</template>
-					</DraggableTarget>
-					<ParameterIssues
-						v-if="parameterIssues && parameterIssues.length"
-						:issues="parameterIssues"
-						:class="$style['parameter-issues']"
-					/>
-					<div v-else-if="urlValue" :class="$style.openResourceLink">
-						<n8n-link theme="text" @click.stop="openResource(urlValue)">
-							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
-						</n8n-link>
-					</div>
-				</div>
-			</div>
-		</ResourceLocatorDropdown>
-	</div>
-</template>
-
 <script lang="ts">
 import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -176,6 +31,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { ndvEventBus } from '@/event-bus';
+import { OnClickOutside } from '@vueuse/components';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -191,6 +47,7 @@ export default defineComponent({
 		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
+		OnClickOutside,
 	},
 	props: {
 		parameter: {
@@ -824,126 +681,152 @@ export default defineComponent({
 });
 </script>
 
+<template>
+	<div
+		ref="container"
+		class="resource-locator"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
+		<OnClickOutside @trigger="hideResourceDropdown">
+			<ResourceLocatorDropdown
+				ref="dropdown"
+				:model-value="modelValue ? modelValue.value : ''"
+				:show="resourceDropdownVisible"
+				:filterable="isSearchable"
+				:filter-required="requiresSearchFilter"
+				:resources="currentQueryResults"
+				:loading="currentQueryLoading"
+				:filter="searchFilter"
+				:has-more="currentQueryHasMore"
+				:error-view="currentQueryError"
+				:width="width"
+				:event-bus="eventBus"
+				@update:model-value="onListItemSelected"
+				@filter="onSearchFilter"
+				@load-more="loadResourcesDebounced"
+			>
+				<template #error>
+					<div :class="$style.error" data-test-id="rlc-error-container">
+						<n8n-text color="text-dark" align="center" tag="div">
+							{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
+						</n8n-text>
+						<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
+							{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
+							<a v-if="credentialsNotSet" @click="createNewCredential">{{
+								$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
+							}}</a>
+							<a v-else-if="hasCredential" @click="openCredential">{{
+								$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
+							}}</a>
+						</n8n-text>
+					</div>
+				</template>
+				<div
+					:class="{
+						[$style.resourceLocator]: true,
+						[$style.multipleModes]: hasMultipleModes,
+					}"
+				>
+					<div :class="$style.background"></div>
+					<div v-if="hasMultipleModes" :class="$style.modeSelector">
+						<n8n-select
+							:model-value="selectedMode"
+							:size="inputSize"
+							:disabled="isReadOnly"
+							:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+							data-test-id="rlc-mode-selector"
+							@update:model-value="onModeSelected"
+						>
+							<n8n-option
+								v-for="mode in parameter.modes"
+								:key="mode.name"
+								:value="mode.name"
+								:label="getModeLabel(mode)"
+								:disabled="isValueExpression && mode.name === 'list'"
+								:title="
+									isValueExpression && mode.name === 'list'
+										? $locale.baseText('resourceLocator.mode.list.disabled.title')
+										: ''
+								"
+							>
+								{{ getModeLabel(mode) }}
+							</n8n-option>
+						</n8n-select>
+					</div>
+
+					<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+						<DraggableTarget
+							type="mapping"
+							:disabled="hasOnlyListMode"
+							:sticky="true"
+							:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
+							@drop="onDrop"
+						>
+							<template #default="{ droppable, activeDrop }">
+								<div
+									:class="{
+										[$style.listModeInputContainer]: isListMode,
+										[$style.droppable]: droppable,
+										[$style.activeDrop]: activeDrop,
+									}"
+									@keydown.stop="onKeyDown"
+								>
+									<ExpressionParameterInput
+										v-if="isValueExpression || forceShowExpression"
+										ref="input"
+										:model-value="expressionDisplayValue"
+										:path="path"
+										:rows="3"
+										@update:model-value="onInputChange"
+										@modal-opener-click="$emit('modalOpenerClick')"
+									/>
+									<n8n-input
+										v-else
+										ref="input"
+										:class="{ [$style.selectInput]: isListMode }"
+										:size="inputSize"
+										:model-value="valueToDisplay"
+										:disabled="isReadOnly"
+										:readonly="isListMode"
+										:title="displayTitle"
+										:placeholder="inputPlaceholder"
+										type="text"
+										data-test-id="rlc-input"
+										@update:model-value="onInputChange"
+										@focus="onInputFocus"
+										@blur="onInputBlur"
+									>
+										<template v-if="isListMode" #suffix>
+											<i
+												:class="{
+													['el-input__icon']: true,
+													['el-icon-arrow-down']: true,
+													[$style.selectIcon]: true,
+													[$style.isReverse]: resourceDropdownVisible,
+												}"
+											/>
+										</template>
+									</n8n-input>
+								</div>
+							</template>
+						</DraggableTarget>
+						<ParameterIssues
+							v-if="parameterIssues && parameterIssues.length"
+							:issues="parameterIssues"
+							:class="$style['parameter-issues']"
+						/>
+						<div v-else-if="urlValue" :class="$style.openResourceLink">
+							<n8n-link theme="text" @click.stop="openResource(urlValue)">
+								<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
+							</n8n-link>
+						</div>
+					</div>
+				</div>
+			</ResourceLocatorDropdown>
+		</OnClickOutside>
+	</div>
+</template>
+
 <style lang="scss" module>
-$--mode-selector-width: 92px;
-
-.modeSelector {
-	--input-background-color: initial;
-	--input-font-color: initial;
-	--input-border-color: initial;
-	flex-basis: $--mode-selector-width;
-
-	input {
-		border-radius: var(--border-radius-base) 0 0 var(--border-radius-base);
-		border-right: none;
-		overflow: hidden;
-
-		&:focus {
-			border-right: var(--border-base);
-		}
-
-		&:disabled {
-			cursor: not-allowed !important;
-		}
-	}
-}
-
-.resourceLocator {
-	display: flex;
-	flex-wrap: wrap;
-	position: relative;
-
-	--input-issues-width: 28px;
-
-	.inputContainer {
-		display: flex;
-		align-items: center;
-		width: 100%;
-
-		--input-border-top-left-radius: 0;
-		--input-border-bottom-left-radius: 0;
-
-		> div {
-			width: 100%;
-		}
-	}
-
-	.background {
-		position: absolute;
-		background-color: var(--color-background-input-triple);
-		top: 0;
-		bottom: 0;
-		left: 0;
-		right: var(--input-issues-width);
-		border: 1px solid var(--border-color-base);
-		border-radius: var(--border-radius-base);
-	}
-
-	&.multipleModes {
-		.inputContainer {
-			display: flex;
-			align-items: center;
-			flex-basis: calc(100% - $--mode-selector-width);
-			flex-grow: 1;
-
-			input {
-				border-radius: 0 var(--border-radius-base) var(--border-radius-base) 0;
-			}
-		}
-	}
-}
-
-.droppable {
-	--input-border-color: var(--color-secondary-tint-1);
-	--input-border-style: dashed;
-}
-
-.activeDrop {
-	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-2);
-	--input-border-style: solid;
-
-	textarea,
-	input {
-		cursor: grabbing !important;
-	}
-}
-
-.selectInput input {
-	padding-right: 30px !important;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.selectIcon {
-	cursor: pointer;
-	font-size: 14px;
-	transition: transform 0.3s;
-	transform: rotateZ(0);
-
-	&.isReverse {
-		transform: rotateZ(180deg);
-	}
-}
-
-.listModeInputContainer * {
-	cursor: pointer;
-}
-
-.error {
-	max-width: 170px;
-	word-break: normal;
-	text-align: center;
-}
-
-.openResourceLink {
-	width: 25px !important;
-	padding-left: var(--spacing-2xs);
-	padding-top: var(--spacing-4xs);
-	align-self: flex-start;
-}
-
-.parameter-issues {
-	width: 25px !important;
-}
+@import './resourceLocator.scss';
 </style>
