@@ -1,184 +1,3 @@
-<template>
-	<div
-		:class="{
-			'node-settings': true,
-			dragging: dragging,
-		}"
-		@keydown.stop
-	>
-		<div :class="$style.header">
-			<div class="header-side-menu">
-				<NodeTitle
-					v-if="node"
-					class="node-name"
-					:model-value="node.name"
-					:node-type="nodeType"
-					:read-only="isReadOnly"
-					@update:model-value="nameChanged"
-				></NodeTitle>
-				<div v-if="isExecutable">
-					<NodeExecuteButton
-						v-if="!blockUI && node && nodeValid"
-						data-test-id="node-execute-button"
-						:node-name="node.name"
-						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
-						:tooltip="executeButtonTooltip"
-						size="small"
-						telemetry-source="parameters"
-						@execute="onNodeExecute"
-						@stop-execution="onStopExecution"
-					/>
-				</div>
-			</div>
-			<NodeSettingsTabs
-				v-if="node && nodeValid"
-				:model-value="openPanel"
-				:node-type="nodeType"
-				:push-ref="pushRef"
-				@update:model-value="onTabSelect"
-			/>
-		</div>
-		<div v-if="node && !nodeValid" class="node-is-not-valid">
-			<p :class="$style.warningIcon">
-				<font-awesome-icon icon="exclamation-triangle" />
-			</p>
-			<div class="missingNodeTitleContainer mt-s mb-xs">
-				<n8n-text size="large" color="text-dark" bold>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
-				</n8n-text>
-			</div>
-			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
-				<div class="mb-l">
-					<i18n-t
-						keypath="nodeSettings.communityNodeUnknown.description"
-						tag="span"
-						@click="onMissingNodeTextClick"
-					>
-						<template #action>
-							<a
-								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
-								target="_blank"
-								>{{ node.type.split('.')[0] }}</a
-							>
-						</template>
-					</i18n-t>
-				</div>
-				<n8n-link
-					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
-					@click="onMissingNodeLearnMoreLinkClick"
-				>
-					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
-				</n8n-link>
-			</div>
-			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
-				<template #action>
-					<a
-						:href="CUSTOM_NODES_DOCS_URL"
-						target="_blank"
-						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
-					/>
-				</template>
-			</i18n-t>
-		</div>
-		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
-			<n8n-notice
-				v-if="hasForeignCredential"
-				:content="
-					$locale.baseText('nodeSettings.hasForeignCredential', {
-						interpolate: { owner: credentialOwnerName },
-					})
-				"
-			/>
-			<div v-show="openPanel === 'params'">
-				<NodeWebhooks :node="node" :node-type="nodeType" />
-
-				<ParameterInputList
-					v-if="nodeValuesInitialized"
-					:parameters="parametersNoneSetting"
-					:hide-delete="true"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path="parameters"
-					@value-changed="valueChanged"
-					@activate="onWorkflowActivate"
-					@parameter-blur="onParameterBlur"
-				>
-					<NodeCredentials
-						:node="node"
-						:readonly="isReadOnly"
-						:show-all="true"
-						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-						@credential-selected="credentialSelected"
-						@value-changed="valueChanged"
-						@blur="onParameterBlur"
-					/>
-				</ParameterInputList>
-				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
-					<n8n-text>
-						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
-					</n8n-text>
-				</div>
-
-				<div
-					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
-					class="parameter-item parameter-notice"
-					data-test-id="node-parameters-http-notice"
-				>
-					<n8n-notice
-						:content="
-							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
-								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
-							})
-						"
-					/>
-				</div>
-			</div>
-			<div v-show="openPanel === 'settings'">
-				<ParameterInputList
-					:parameters="parametersSetting"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hide-delete="true"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path="parameters"
-					@value-changed="valueChanged"
-					@parameter-blur="onParameterBlur"
-				/>
-				<ParameterInputList
-					:parameters="nodeSettings"
-					:hide-delete="true"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path=""
-					@value-changed="valueChanged"
-					@parameter-blur="onParameterBlur"
-				/>
-				<div class="node-version" data-test-id="node-version">
-					{{
-						$locale.baseText('nodeSettings.nodeVersion', {
-							interpolate: {
-								node: nodeType?.displayName as string,
-								version: (node.typeVersion ?? latestVersion).toString(),
-							},
-						})
-					}}
-					<span>({{ nodeVersionTag }})</span>
-				</div>
-			</div>
-		</div>
-		<NDVSubConnections
-			v-if="node"
-			ref="subConnections"
-			:root-node="node"
-			@switch-selected-node="onSwitchSelectedNode"
-			@open-connection-node-creator="onOpenConnectionNodeCreator"
-		/>
-		<n8n-block-ui :show="blockUI" />
-	</div>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -1184,6 +1003,187 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		:class="{
+			'node-settings': true,
+			dragging: dragging,
+		}"
+		@keydown.stop
+	>
+		<div :class="$style.header">
+			<div class="header-side-menu">
+				<NodeTitle
+					v-if="node"
+					class="node-name"
+					:model-value="node.name"
+					:node-type="nodeType"
+					:read-only="isReadOnly"
+					@update:model-value="nameChanged"
+				></NodeTitle>
+				<div v-if="isExecutable">
+					<NodeExecuteButton
+						v-if="!blockUI && node && nodeValid"
+						data-test-id="node-execute-button"
+						:node-name="node.name"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
+						:tooltip="executeButtonTooltip"
+						size="small"
+						telemetry-source="parameters"
+						@execute="onNodeExecute"
+						@stop-execution="onStopExecution"
+					/>
+				</div>
+			</div>
+			<NodeSettingsTabs
+				v-if="node && nodeValid"
+				:model-value="openPanel"
+				:node-type="nodeType"
+				:push-ref="pushRef"
+				@update:model-value="onTabSelect"
+			/>
+		</div>
+		<div v-if="node && !nodeValid" class="node-is-not-valid">
+			<p :class="$style.warningIcon">
+				<font-awesome-icon icon="exclamation-triangle" />
+			</p>
+			<div class="missingNodeTitleContainer mt-s mb-xs">
+				<n8n-text size="large" color="text-dark" bold>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.title') }}
+				</n8n-text>
+			</div>
+			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
+				<div class="mb-l">
+					<i18n-t
+						keypath="nodeSettings.communityNodeUnknown.description"
+						tag="span"
+						@click="onMissingNodeTextClick"
+					>
+						<template #action>
+							<a
+								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
+								target="_blank"
+								>{{ node.type.split('.')[0] }}</a
+							>
+						</template>
+					</i18n-t>
+				</div>
+				<n8n-link
+					:to="COMMUNITY_NODES_INSTALLATION_DOCS_URL"
+					@click="onMissingNodeLearnMoreLinkClick"
+				>
+					{{ $locale.baseText('nodeSettings.communityNodeUnknown.installLink.text') }}
+				</n8n-link>
+			</div>
+			<i18n-t v-else keypath="nodeSettings.nodeTypeUnknown.description" tag="span">
+				<template #action>
+					<a
+						:href="CUSTOM_NODES_DOCS_URL"
+						target="_blank"
+						v-text="$locale.baseText('nodeSettings.nodeTypeUnknown.description.customNode')"
+					/>
+				</template>
+			</i18n-t>
+		</div>
+		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
+			<n8n-notice
+				v-if="hasForeignCredential"
+				:content="
+					$locale.baseText('nodeSettings.hasForeignCredential', {
+						interpolate: { owner: credentialOwnerName },
+					})
+				"
+			/>
+			<div v-show="openPanel === 'params'">
+				<NodeWebhooks :node="node" :node-type="nodeType" />
+
+				<ParameterInputList
+					v-if="nodeValuesInitialized"
+					:parameters="parametersNoneSetting"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path="parameters"
+					@value-changed="valueChanged"
+					@activate="onWorkflowActivate"
+					@parameter-blur="onParameterBlur"
+				>
+					<NodeCredentials
+						:node="node"
+						:readonly="isReadOnly"
+						:show-all="true"
+						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						@credential-selected="credentialSelected"
+						@value-changed="valueChanged"
+						@blur="onParameterBlur"
+					/>
+				</ParameterInputList>
+				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
+					<n8n-text>
+						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
+					</n8n-text>
+				</div>
+
+				<div
+					v-if="nodeHelpers.isCustomApiCallSelected(nodeValues)"
+					class="parameter-item parameter-notice"
+					data-test-id="node-parameters-http-notice"
+				>
+					<n8n-notice
+						:content="
+							$locale.baseText('nodeSettings.useTheHttpRequestNode', {
+								interpolate: { nodeTypeDisplayName: nodeType?.displayName ?? '' },
+							})
+						"
+					/>
+				</div>
+			</div>
+			<div v-show="openPanel === 'settings'">
+				<ParameterInputList
+					:parameters="parametersSetting"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hide-delete="true"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path="parameters"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
+				<ParameterInputList
+					:parameters="nodeSettings"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path=""
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
+				<div class="node-version" data-test-id="node-version">
+					{{
+						$locale.baseText('nodeSettings.nodeVersion', {
+							interpolate: {
+								node: nodeType?.displayName as string,
+								version: (node.typeVersion ?? latestVersion).toString(),
+							},
+						})
+					}}
+					<span>({{ nodeVersionTag }})</span>
+				</div>
+			</div>
+		</div>
+		<NDVSubConnections
+			v-if="node"
+			ref="subConnections"
+			:root-node="node"
+			@switch-selected-node="onSwitchSelectedNode"
+			@open-connection-node-creator="onOpenConnectionNodeCreator"
+		/>
+		<n8n-block-ui :show="blockUI" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .header {

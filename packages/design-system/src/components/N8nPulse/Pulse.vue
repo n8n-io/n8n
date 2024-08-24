@@ -1,3 +1,7 @@
+<script lang="ts" setup>
+defineOptions({ name: 'N8nPulse' });
+</script>
+
 <template>
 	<div :class="['pulse', $style.pulseContainer]">
 		<div :class="$style.pulse">
@@ -7,10 +11,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts" setup>
-defineOptions({ name: 'N8nPulse' });
-</script>
 
 <style lang="scss" module>
 $--light-pulse-color: hsla(

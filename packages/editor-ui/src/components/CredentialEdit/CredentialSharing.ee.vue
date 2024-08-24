@@ -1,52 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div v-if="!isSharingEnabled">
-			<N8nActionBox
-				:heading="
-					$locale.baseText(
-						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
-					)
-				"
-				:description="
-					$locale.baseText(
-						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
-					)
-				"
-				:button-text="
-					$locale.baseText(
-						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
-					)
-				"
-				@click:button="goToUpgrade"
-			/>
-		</div>
-		<div v-else>
-			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-			</N8nInfoTip>
-			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
-			</N8nInfoTip>
-			<N8nInfoTip v-else :bold="false" class="mb-s">
-				{{
-					$locale.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
-						interpolate: { credentialOwnerName },
-					})
-				}}
-			</N8nInfoTip>
-			<ProjectSharing
-				v-model="sharedWithProjects"
-				:projects="projects"
-				:roles="credentialRoles"
-				:home-project="homeProject"
-				:readonly="!credentialPermissions.share"
-				:static="!credentialPermissions.share"
-				:placeholder="sharingSelectPlaceholder"
-			/>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import type {
 	ICredentialsResponse,
@@ -207,6 +158,55 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div v-if="!isSharingEnabled">
+			<N8nActionBox
+				:heading="
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
+					)
+				"
+				:description="
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
+					)
+				"
+				:button-text="
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
+					)
+				"
+				@click:button="goToUpgrade"
+			/>
+		</div>
+		<div v-else>
+			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
+			</N8nInfoTip>
+			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee.team') }}
+			</N8nInfoTip>
+			<N8nInfoTip v-else :bold="false" class="mb-s">
+				{{
+					$locale.baseText('credentialEdit.credentialSharing.info.sharee.personal', {
+						interpolate: { credentialOwnerName },
+					})
+				}}
+			</N8nInfoTip>
+			<ProjectSharing
+				v-model="sharedWithProjects"
+				:projects="projects"
+				:roles="credentialRoles"
+				:home-project="homeProject"
+				:readonly="!credentialPermissions.share"
+				:static="!credentialPermissions.share"
+				:placeholder="sharingSelectPlaceholder"
+			/>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

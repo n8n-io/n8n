@@ -1,3 +1,13 @@
+<script setup lang="ts">
+import type { ViewItemProps } from '@/Interface';
+
+export interface Props {
+	view: ViewItemProps;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
 	<n8n-node-creator-node
 		:class="$style.view"
@@ -12,16 +22,6 @@
 		</template>
 	</n8n-node-creator-node>
 </template>
-
-<script setup lang="ts">
-import type { ViewItemProps } from '@/Interface';
-
-export interface Props {
-	view: ViewItemProps;
-}
-
-defineProps<Props>();
-</script>
 
 <style lang="scss" module>
 .view {

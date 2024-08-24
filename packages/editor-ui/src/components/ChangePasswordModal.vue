@@ -1,33 +1,3 @@
-<template>
-	<Modal
-		:name="CHANGE_PASSWORD_MODAL_KEY"
-		:title="i18n.baseText('auth.changePassword')"
-		:center="true"
-		width="460px"
-		:event-bus="modalBus"
-		@enter="onSubmit"
-	>
-		<template #content>
-			<n8n-form-inputs
-				:inputs="config"
-				:event-bus="formBus"
-				:column-view="true"
-				@update="onInput"
-				@submit="onSubmit"
-			/>
-		</template>
-		<template #footer>
-			<n8n-button
-				:loading="loading"
-				:label="i18n.baseText('auth.changePassword')"
-				float="right"
-				data-test-id="change-password-button"
-				@click="onSubmitClick"
-			/>
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
@@ -160,3 +130,33 @@ onMounted(() => {
 	config.value = form;
 });
 </script>
+
+<template>
+	<Modal
+		:name="CHANGE_PASSWORD_MODAL_KEY"
+		:title="i18n.baseText('auth.changePassword')"
+		:center="true"
+		width="460px"
+		:event-bus="modalBus"
+		@enter="onSubmit"
+	>
+		<template #content>
+			<n8n-form-inputs
+				:inputs="config"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onInput"
+				@submit="onSubmit"
+			/>
+		</template>
+		<template #footer>
+			<n8n-button
+				:loading="loading"
+				:label="i18n.baseText('auth.changePassword')"
+				float="right"
+				data-test-id="change-password-button"
+				@click="onSubmitClick"
+			/>
+		</template>
+	</Modal>
+</template>
