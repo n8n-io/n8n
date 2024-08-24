@@ -1,60 +1,3 @@
-<template>
-	<TemplatesView :go-back-enabled="true">
-		<template #header>
-			<div v-if="!notFoundError" :class="$style.wrapper">
-				<div :class="$style.title">
-					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
-						template.name
-					}}</n8n-heading>
-					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('generic.workflow') }}
-					</n8n-text>
-					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
-				</div>
-				<div :class="$style.button">
-					<n8n-button
-						v-if="template"
-						data-test-id="use-template-button"
-						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
-						size="large"
-						@click="openTemplateSetup(templateId, $event)"
-					/>
-					<n8n-loading :loading="!template" :rows="1" variant="button" />
-				</div>
-			</div>
-			<div v-else :class="$style.notFound">
-				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
-			</div>
-		</template>
-		<template v-if="!notFoundError" #content>
-			<div :class="$style.image">
-				<WorkflowPreview
-					v-if="showPreview"
-					:loading="loading"
-					:workflow="template?.workflow"
-					@close="onHidePreview"
-				/>
-			</div>
-			<div :class="$style.content">
-				<div :class="$style.markdown" data-test-id="template-description">
-					<n8n-markdown
-						:content="template?.description"
-						:images="template?.image"
-						:loading="loading"
-					/>
-				</div>
-				<div :class="$style.details">
-					<TemplateDetails
-						:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
-						:loading="loading"
-						:template="template"
-					/>
-				</div>
-			</div>
-		</template>
-	</TemplatesView>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -157,6 +100,63 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<TemplatesView :go-back-enabled="true">
+		<template #header>
+			<div v-if="!notFoundError" :class="$style.wrapper">
+				<div :class="$style.title">
+					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
+						template.name
+					}}</n8n-heading>
+					<n8n-text v-if="template && template.name" color="text-base" size="small">
+						{{ $locale.baseText('generic.workflow') }}
+					</n8n-text>
+					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
+				</div>
+				<div :class="$style.button">
+					<n8n-button
+						v-if="template"
+						data-test-id="use-template-button"
+						:label="$locale.baseText('template.buttons.useThisWorkflowButton')"
+						size="large"
+						@click="openTemplateSetup(templateId, $event)"
+					/>
+					<n8n-loading :loading="!template" :rows="1" variant="button" />
+				</div>
+			</div>
+			<div v-else :class="$style.notFound">
+				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
+			</div>
+		</template>
+		<template v-if="!notFoundError" #content>
+			<div :class="$style.image">
+				<WorkflowPreview
+					v-if="showPreview"
+					:loading="loading"
+					:workflow="template?.workflow"
+					@close="onHidePreview"
+				/>
+			</div>
+			<div :class="$style.content">
+				<div :class="$style.markdown" data-test-id="template-description">
+					<n8n-markdown
+						:content="template?.description"
+						:images="template?.image"
+						:loading="loading"
+					/>
+				</div>
+				<div :class="$style.details">
+					<TemplateDetails
+						:block-title="$locale.baseText('template.details.appsInTheWorkflow')"
+						:loading="loading"
+						:template="template"
+					/>
+				</div>
+			</div>
+		</template>
+	</TemplatesView>
+</template>
 
 <style lang="scss" module>
 .wrapper {

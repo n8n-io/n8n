@@ -1,28 +1,3 @@
-<template>
-	<div :class="$style.searchContainer" data-test-id="search-bar">
-		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
-			<font-awesome-icon icon="search" size="sm" />
-		</div>
-		<div :class="$style.text">
-			<input
-				ref="inputRef"
-				:placeholder="placeholder"
-				:value="modelValue"
-				:class="$style.input"
-				autofocus
-				data-test-id="node-creator-search-bar"
-				tabindex="0"
-				@input="onInput"
-			/>
-		</div>
-		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
-			<button :class="[$style.clear, $style.clickable]">
-				<font-awesome-icon icon="times-circle" />
-			</button>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -74,6 +49,31 @@ defineExpose({
 	focus,
 });
 </script>
+
+<template>
+	<div :class="$style.searchContainer" data-test-id="search-bar">
+		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
+			<font-awesome-icon icon="search" size="sm" />
+		</div>
+		<div :class="$style.text">
+			<input
+				ref="inputRef"
+				:placeholder="placeholder"
+				:value="modelValue"
+				:class="$style.input"
+				autofocus
+				data-test-id="node-creator-search-bar"
+				tabindex="0"
+				@input="onInput"
+			/>
+		</div>
+		<div v-if="modelValue.length > 0" :class="$style.suffix" @click="clear">
+			<button :class="[$style.clear, $style.clickable]">
+				<font-awesome-icon icon="times-circle" />
+			</button>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .searchContainer {

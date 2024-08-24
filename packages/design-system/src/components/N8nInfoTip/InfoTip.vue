@@ -1,37 +1,3 @@
-<template>
-	<div
-		:class="{
-			'n8n-info-tip': true,
-			[$style.infoTip]: true,
-			[$style[theme]]: true,
-			[$style[type]]: true,
-			[$style.bold]: bold,
-		}"
-	>
-		<N8nTooltip
-			v-if="type === 'tooltip'"
-			:placement="tooltipPlacement"
-			:popper-class="$style.tooltipPopper"
-			:disabled="type !== 'tooltip'"
-		>
-			<span :class="$style.iconText" :style="{ color: iconData.color }">
-				<N8nIcon :icon="iconData.icon" />
-			</span>
-			<template #content>
-				<span>
-					<slot />
-				</span>
-			</template>
-		</N8nTooltip>
-		<span v-else :class="$style.iconText">
-			<N8nIcon :icon="iconData.icon" />
-			<span>
-				<slot />
-			</span>
-		</span>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { Placement } from 'element-plus';
@@ -91,6 +57,40 @@ const iconData = computed((): { icon: string; color: string } => {
 	}
 });
 </script>
+
+<template>
+	<div
+		:class="{
+			'n8n-info-tip': true,
+			[$style.infoTip]: true,
+			[$style[theme]]: true,
+			[$style[type]]: true,
+			[$style.bold]: bold,
+		}"
+	>
+		<N8nTooltip
+			v-if="type === 'tooltip'"
+			:placement="tooltipPlacement"
+			:popper-class="$style.tooltipPopper"
+			:disabled="type !== 'tooltip'"
+		>
+			<span :class="$style.iconText" :style="{ color: iconData.color }">
+				<N8nIcon :icon="iconData.icon" />
+			</span>
+			<template #content>
+				<span>
+					<slot />
+				</span>
+			</template>
+		</N8nTooltip>
+		<span v-else :class="$style.iconText">
+			<N8nIcon :icon="iconData.icon" />
+			<span>
+				<slot />
+			</span>
+		</span>
+	</div>
+</template>
 
 <style lang="scss" module>
 .infoTip {

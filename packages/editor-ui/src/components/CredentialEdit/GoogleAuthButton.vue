@@ -1,11 +1,3 @@
-<template>
-	<button
-		:class="$style.googleAuthBtn"
-		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
-		:style="googleAuthButtons"
-	/>
-</template>
-
 <script lang="ts" setup>
 import { useUIStore } from '@/stores/ui.store';
 import { useRootStore } from '@/stores/root.store';
@@ -19,6 +11,14 @@ const googleAuthButtons = {
 	'--google-auth-btn-disabled': `url(${baseUrl}static/google-auth/disabled${type}`,
 };
 </script>
+
+<template>
+	<button
+		:class="$style.googleAuthBtn"
+		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
+		:style="googleAuthButtons"
+	/>
+</template>
 
 <style module lang="scss">
 .googleAuthBtn {
