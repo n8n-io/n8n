@@ -1,73 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div :class="$style.logoContainer">
-			<Logo />
-		</div>
-		<n8n-card>
-			<div :class="$style.headerContainer">
-				<n8n-heading size="xlarge" color="text-dark">{{
-					showRecoveryCodeForm
-						? i18.baseText('mfa.recovery.modal.title')
-						: i18.baseText('mfa.code.modal.title')
-				}}</n8n-heading>
-			</div>
-			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
-				<n8n-form-inputs
-					v-if="formInputs"
-					data-test-id="mfa-login-form"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					@input="onInput"
-					@submit="onSubmit"
-				/>
-				<div :class="$style.infoBox">
-					<n8n-text
-						v-if="!showRecoveryCodeForm && !reportError"
-						size="small"
-						color="text-base"
-						:bold="false"
-						>{{ i18.baseText('mfa.code.input.info') }}
-						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
-							i18.baseText('mfa.code.input.info.action')
-						}}</a></n8n-text
-					>
-					<n8n-text v-if="reportError" color="danger" size="small"
-						>{{ formError }}
-						<a
-							v-if="!showRecoveryCodeForm"
-							:class="$style.recoveryCodeLink"
-							@click="onRecoveryCodeClick"
-						>
-							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
-						>
-					</n8n-text>
-				</div>
-			</div>
-			<div>
-				<n8n-button
-					float="right"
-					:loading="verifyingMfaToken"
-					:label="
-						showRecoveryCodeForm
-							? i18.baseText('mfa.recovery.button.verify')
-							: i18.baseText('mfa.code.button.continue')
-					"
-					size="large"
-					:disabled="!hasAnyChanges"
-					@click="onSaveClick"
-				/>
-				<n8n-button
-					float="left"
-					:label="i18.baseText('mfa.button.back')"
-					size="large"
-					type="tertiary"
-					@click="onBackClick"
-				/>
-			</div>
-		</n8n-card>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
@@ -232,6 +162,76 @@ onMounted(() => {
 
 // #endregion
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div :class="$style.logoContainer">
+			<Logo />
+		</div>
+		<n8n-card>
+			<div :class="$style.headerContainer">
+				<n8n-heading size="xlarge" color="text-dark">{{
+					showRecoveryCodeForm
+						? i18.baseText('mfa.recovery.modal.title')
+						: i18.baseText('mfa.code.modal.title')
+				}}</n8n-heading>
+			</div>
+			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
+				<n8n-form-inputs
+					v-if="formInputs"
+					data-test-id="mfa-login-form"
+					:inputs="formInputs"
+					:event-bus="formBus"
+					@input="onInput"
+					@submit="onSubmit"
+				/>
+				<div :class="$style.infoBox">
+					<n8n-text
+						v-if="!showRecoveryCodeForm && !reportError"
+						size="small"
+						color="text-base"
+						:bold="false"
+						>{{ i18.baseText('mfa.code.input.info') }}
+						<a data-test-id="mfa-enter-recovery-code-button" @click="onRecoveryCodeClick">{{
+							i18.baseText('mfa.code.input.info.action')
+						}}</a></n8n-text
+					>
+					<n8n-text v-if="reportError" color="danger" size="small"
+						>{{ formError }}
+						<a
+							v-if="!showRecoveryCodeForm"
+							:class="$style.recoveryCodeLink"
+							@click="onRecoveryCodeClick"
+						>
+							{{ i18.baseText('mfa.recovery.input.info.action') }}</a
+						>
+					</n8n-text>
+				</div>
+			</div>
+			<div>
+				<n8n-button
+					float="right"
+					:loading="verifyingMfaToken"
+					:label="
+						showRecoveryCodeForm
+							? i18.baseText('mfa.recovery.button.verify')
+							: i18.baseText('mfa.code.button.continue')
+					"
+					size="large"
+					:disabled="!hasAnyChanges"
+					@click="onSaveClick"
+				/>
+				<n8n-button
+					float="left"
+					:label="i18.baseText('mfa.button.back')"
+					size="large"
+					type="tertiary"
+					@click="onBackClick"
+				/>
+			</div>
+		</n8n-card>
+	</div>
+</template>
 
 <style lang="scss" module>
 body {

@@ -1,3 +1,10 @@
+<script lang="ts" setup>
+defineProps<{
+	loading: boolean;
+	title?: string;
+}>();
+</script>
+
 <template>
 	<n8n-card :class="$style.card" v-bind="$attrs">
 		<template v-if="!loading && title" #header>
@@ -9,13 +16,6 @@
 		</template>
 	</n8n-card>
 </template>
-
-<script lang="ts" setup>
-defineProps<{
-	loading: boolean;
-	title?: string;
-}>();
-</script>
 
 <style lang="scss" module>
 .card {

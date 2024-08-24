@@ -1,31 +1,3 @@
-<template>
-	<div v-if="isObject(value)" class="n8n-tree">
-		<div v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
-			<div v-if="isSimple(value[label])" :class="$style.simple">
-				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
-				<span v-else>{{ label }}</span>
-				<span>:</span>
-				<slot v-if="$slots.value" name="value" :value="value[label]" />
-				<span v-else>{{ value[label] }}</span>
-			</div>
-			<div v-else>
-				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
-				<span v-else>{{ label }}</span>
-				<n8n-tree
-					:path="getPath(label)"
-					:depth="depth + 1"
-					:value="value[label] as Record<string, unknown>"
-					:node-class="nodeClass"
-				>
-					<template v-for="(_, name) in $slots" #[name]="data">
-						<slot :name="name" v-bind="data"></slot>
-					</template>
-				</n8n-tree>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 
@@ -84,6 +56,34 @@ const getPath = (key: string): Array<string | number> => {
 	return [...props.path, key];
 };
 </script>
+
+<template>
+	<div v-if="isObject(value)" class="n8n-tree">
+		<div v-for="(label, i) in Object.keys(value)" :key="i" :class="classes">
+			<div v-if="isSimple(value[label])" :class="$style.simple">
+				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
+				<span v-else>{{ label }}</span>
+				<span>:</span>
+				<slot v-if="$slots.value" name="value" :value="value[label]" />
+				<span v-else>{{ value[label] }}</span>
+			</div>
+			<div v-else>
+				<slot v-if="$slots.label" name="label" :label="label" :path="getPath(label)" />
+				<span v-else>{{ label }}</span>
+				<n8n-tree
+					:path="getPath(label)"
+					:depth="depth + 1"
+					:value="value[label] as Record<string, unknown>"
+					:node-class="nodeClass"
+				>
+					<template v-for="(_, name) in $slots" #[name]="data">
+						<slot :name="name" v-bind="data"></slot>
+					</template>
+				</n8n-tree>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 $--spacing: var(--spacing-s);

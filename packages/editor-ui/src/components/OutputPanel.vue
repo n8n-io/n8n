@@ -1,107 +1,3 @@
-<template>
-	<RunData
-		ref="runDataRef"
-		:node="node"
-		:workflow="workflow"
-		:run-index="runIndex"
-		:linked-runs="linkedRuns"
-		:can-link-runs="canLinkRuns"
-		:too-much-data-title="$locale.baseText('ndv.output.tooMuchData.title')"
-		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
-		:is-executing="isNodeRunning"
-		:executing-message="$locale.baseText('ndv.output.executing')"
-		:push-ref="pushRef"
-		:block-u-i="blockUI"
-		:is-production-execution-preview="isProductionExecutionPreview"
-		:is-pane-active="isPaneActive"
-		pane-type="output"
-		:data-output-type="outputMode"
-		@activate-pane="activatePane"
-		@run-change="onRunIndexChange"
-		@link-run="onLinkRun"
-		@unlink-run="onUnlinkRun"
-		@table-mounted="emit('tableMounted', $event)"
-		@item-hover="emit('itemHover', $event)"
-		@search="emit('search', $event)"
-	>
-		<template #header>
-			<div :class="$style.titleSection">
-				<template v-if="hasAiMetadata">
-					<n8n-radio-buttons
-						data-test-id="ai-output-mode-select"
-						v-model="outputMode"
-						:options="outputTypes"
-						@update:model-value="onUpdateOutputMode"
-					/>
-				</template>
-				<span v-else :class="$style.title">
-					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
-				</span>
-				<RunInfo
-					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
-					v-show="!outputPanelEditMode.enabled"
-					:task-data="runTaskData"
-					:has-stale-data="staleData"
-					:has-pin-data="pinnedData.hasData.value"
-				/>
-			</div>
-		</template>
-
-		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
-				$locale.baseText('ndv.output.waitingToRun')
-			}}</n8n-text>
-			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
-				<template v-if="isSubNodeType">
-					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
-				</template>
-				<template v-else>
-					{{ $locale.baseText('ndv.output.runNodeHint') }}
-					<span v-if="canPinData" @click="insertTestData">
-						<br />
-						{{ $locale.baseText('generic.or') }}
-						<n8n-text tag="a" size="medium" color="primary">
-							{{ $locale.baseText('ndv.output.insertTestData') }}
-						</n8n-text>
-					</span>
-				</template>
-			</n8n-text>
-		</template>
-
-		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{
-				$locale.baseText('ndv.output.noOutputData.title')
-			}}</n8n-text>
-			<n8n-text>
-				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{
-					$locale.baseText('ndv.output.noOutputData.message.settings')
-				}}</a>
-				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
-			</n8n-text>
-		</template>
-
-		<template v-if="outputMode === 'logs' && node" #content>
-			<RunDataAi :node="node" :run-index="runIndex" />
-		</template>
-
-		<template #recovered-artificial-output-data>
-			<div :class="$style.recoveredOutputData">
-				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
-				}}</n8n-text>
-				<n8n-text>
-					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
-				</n8n-text>
-			</div>
-		</template>
-
-		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
-			<RunInfo :task-data="runTaskData" />
-		</template>
-	</RunData>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import type { IRunData, IRunExecutionData, NodeError, Workflow } from 'n8n-workflow';
@@ -381,6 +277,110 @@ const activatePane = () => {
 	emit('activatePane');
 };
 </script>
+
+<template>
+	<RunData
+		ref="runDataRef"
+		:node="node"
+		:workflow="workflow"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="canLinkRuns"
+		:too-much-data-title="$locale.baseText('ndv.output.tooMuchData.title')"
+		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
+		:is-executing="isNodeRunning"
+		:executing-message="$locale.baseText('ndv.output.executing')"
+		:push-ref="pushRef"
+		:block-u-i="blockUI"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		pane-type="output"
+		:data-output-type="outputMode"
+		@activate-pane="activatePane"
+		@run-change="onRunIndexChange"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@table-mounted="emit('tableMounted', $event)"
+		@item-hover="emit('itemHover', $event)"
+		@search="emit('search', $event)"
+	>
+		<template #header>
+			<div :class="$style.titleSection">
+				<template v-if="hasAiMetadata">
+					<n8n-radio-buttons
+						data-test-id="ai-output-mode-select"
+						v-model="outputMode"
+						:options="outputTypes"
+						@update:model-value="onUpdateOutputMode"
+					/>
+				</template>
+				<span v-else :class="$style.title">
+					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+				</span>
+				<RunInfo
+					v-if="hasNodeRun && !pinnedData.hasData.value && runsCount === 1"
+					v-show="!outputPanelEditMode.enabled"
+					:task-data="runTaskData"
+					:has-stale-data="staleData"
+					:has-pin-data="pinnedData.hasData.value"
+				/>
+			</div>
+		</template>
+
+		<template #node-not-run>
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				$locale.baseText('ndv.output.waitingToRun')
+			}}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
+				<template v-if="isSubNodeType">
+					{{ $locale.baseText('ndv.output.runNodeHintSubNode') }}
+				</template>
+				<template v-else>
+					{{ $locale.baseText('ndv.output.runNodeHint') }}
+					<span v-if="canPinData" @click="insertTestData">
+						<br />
+						{{ $locale.baseText('generic.or') }}
+						<n8n-text tag="a" size="medium" color="primary">
+							{{ $locale.baseText('ndv.output.insertTestData') }}
+						</n8n-text>
+					</span>
+				</template>
+			</n8n-text>
+		</template>
+
+		<template #no-output-data>
+			<n8n-text :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.output.noOutputData.title')
+			}}</n8n-text>
+			<n8n-text>
+				{{ $locale.baseText('ndv.output.noOutputData.message') }}
+				<a @click="openSettings">{{
+					$locale.baseText('ndv.output.noOutputData.message.settings')
+				}}</a>
+				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
+			</n8n-text>
+		</template>
+
+		<template v-if="outputMode === 'logs' && node" #content>
+			<RunDataAi :node="node" :run-index="runIndex" />
+		</template>
+
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
+		</template>
+
+		<template v-if="!pinnedData.hasData.value && runsCount > 1" #run-info>
+			<RunInfo :task-data="runTaskData" />
+		</template>
+	</RunData>
+</template>
 
 <style lang="scss" module>
 // The items count and displayModes are rendered in the RunData component
