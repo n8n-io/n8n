@@ -1,6 +1,5 @@
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import {screen} from '@testing-library/dom'
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { cleanupAppModals, createAppModals, getDropdownItems } from '@/__tests__/utils';
