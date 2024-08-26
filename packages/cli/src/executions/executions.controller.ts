@@ -120,11 +120,14 @@ export class ExecutionsController {
 
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
+		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
 		const { body: payload } = req;
 		const validatedPayload = validateExecutionUpdatePayload(payload);
 
-		return await this.executionService.annotate(req.params.id, validatedPayload);
+		await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
+
+		return await this.executionService.findOne(req, workflowIds);
 	}
 }

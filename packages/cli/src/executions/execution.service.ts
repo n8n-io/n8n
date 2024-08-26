@@ -102,7 +102,7 @@ export class ExecutionService {
 	) {}
 
 	async findOne(
-		req: ExecutionRequest.GetOne,
+		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
@@ -502,8 +502,26 @@ export class ExecutionService {
 		}
 	}
 
-	public async annotate(executionId: string, updateData: ExecutionRequest.ExecutionUpdatePayload) {
-		// FIXME: wrap in transaction
+	public async annotate(
+		executionId: string,
+		updateData: ExecutionRequest.ExecutionUpdatePayload,
+		sharedWorkflowIds: string[],
+	) {
+		// Check if user can access the execution
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
+				executionId,
+			});
+
+			throw new NotFoundError('Execution not found');
+		}
+
+		// Create or update execution annotation
 		await this.executionAnnotationRepository.upsert(
 			{ execution: { id: executionId }, vote: updateData.vote },
 			['execution'],
@@ -520,12 +538,5 @@ export class ExecutionService {
 		if (updateData.tags) {
 			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
-
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
-			includeAnnotation: true,
-			includeData: true,
-		});
-
-		return execution;
 	}
 }
