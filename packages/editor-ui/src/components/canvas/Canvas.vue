@@ -2,10 +2,11 @@
 import type { CanvasConnection, CanvasNode, CanvasNodeMoveEvent, ConnectStartEvent } from '@/types';
 import type {
 	EdgeMouseEvent,
-	NodeDragEvent,
 	Connection,
 	XYPosition,
 	ViewportTransform,
+	NodeChange,
+	NodePositionChange,
 } from '@vue-flow/core';
 import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
@@ -134,11 +135,7 @@ function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
 }
 
-function onNodeDragStop(e: NodeDragEvent) {
-	onUpdateNodesPosition(e.nodes.map((node) => ({ id: node.id, position: node.position })));
-}
-
-function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
+function onUpdateNodesPosition(events: NodePositionChange[]) {
 	emit('update:nodes:position', events);
 }
 
@@ -146,8 +143,14 @@ function onUpdateNodePosition(id: string, position: XYPosition) {
 	emit('update:node:position', id, position);
 }
 
-function onSelectionDragStop(e: NodeDragEvent) {
-	onNodeDragStop(e);
+function onNodesChange(events: NodeChange[]) {
+	const isPositionChangeEvent = (event: NodeChange): event is NodePositionChange =>
+		event.type === 'position' && 'position' in event;
+
+	const positionChangeEndEvents = events.filter(isPositionChangeEvent);
+	if (positionChangeEndEvents.length > 0) {
+		onUpdateNodesPosition(positionChangeEndEvents);
+	}
 }
 
 function onSetNodeActive(id: string) {
@@ -414,8 +417,6 @@ provide(CanvasKey, {
 		:max-zoom="4"
 		:class="[$style.canvas, { [$style.visible]: paneReady }]"
 		data-test-id="canvas"
-		@node-drag-stop="onNodeDragStop"
-		@selection-drag-stop="onSelectionDragStop"
 		@edge-mouse-enter="onMouseEnterEdge"
 		@edge-mouse-leave="onMouseLeaveEdge"
 		@connect-start="onConnectStart"
@@ -424,6 +425,7 @@ provide(CanvasKey, {
 		@pane-click="onClickPane"
 		@contextmenu="onOpenContextMenu"
 		@viewport-change="onViewportChange"
+		@nodes-change="onNodesChange"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
