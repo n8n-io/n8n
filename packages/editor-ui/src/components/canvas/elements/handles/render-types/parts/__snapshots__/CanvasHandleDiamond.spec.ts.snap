@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CanvasHandlePlus > should render with default props 1`] = `
+exports[`CanvasHandleDiamond > should render with default props 1`] = `
 "<svg class="wrapper right" viewBox="0 0 70 24">
   <line class="" x1="0" y1="12" x2="47" y2="12" stroke="var(--color-foreground-xdark)" stroke-width="2"></line>
   <g class="plus clickable" transform="translate(46, 0)">
