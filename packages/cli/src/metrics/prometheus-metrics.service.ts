@@ -252,6 +252,11 @@ export class PrometheusMetricsService {
 			labelNames: ['queue'],
 		});
 
+		this.gauges.waiting.set(0);
+		this.gauges.active.set(0);
+		this.counters.completed.inc(0);
+		this.counters.failed.inc(0);
+
 		this.eventService.on('job-counts-updated', (jobCounts) => {
 			this.gauges.waiting.set(jobCounts.waiting);
 			this.gauges.active.set(jobCounts.active);

@@ -6,6 +6,7 @@ import { N8N_VERSION } from '@/constants';
 import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { setupTestServer } from './shared/utils';
 import { GlobalConfig } from '@n8n/config';
+import config from '@/config';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 
@@ -25,6 +26,8 @@ globalConfig.endpoints.metrics = {
 	includeApiPathLabel: true,
 	includeApiMethodLabel: true,
 	includeApiStatusCodeLabel: true,
+	includeQueueMetrics: true,
+	queueMetricsInterval: 20,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
@@ -221,5 +224,32 @@ describe('Metrics', () => {
 		expect(lines).toContainEqual(expect.stringContaining('method="GET"'));
 		expect(lines).toContainEqual(expect.stringContaining('path="/webhook-test/some-uuid"'));
 		expect(lines).toContainEqual(expect.stringContaining('status_code="404"'));
+	});
+
+	it('should return queue metrics if enabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('queue');
+		config.set('executions.mode', 'queue');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_waiting 0');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_active 0');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_completed 0');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
 	});
 });
