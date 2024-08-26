@@ -17,8 +17,6 @@ const mockMiddleware = (
 jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
-// @TODO: Tests for queue metrics
-
 describe('PrometheusMetricsService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		endpoints: {
@@ -34,14 +32,15 @@ describe('PrometheusMetricsService', () => {
 				includeApiPathLabel: true,
 				includeApiMethodLabel: true,
 				includeApiStatusCodeLabel: true,
+				includeQueueMetrics: true,
 			},
 		},
 	});
 
+	const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
+
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
 			await service.init(mock<express.Application>());
 
 			expect(promClient.Gauge).toHaveBeenCalledWith({
@@ -52,15 +51,12 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up default metrics collection with `prom-client`', async () => {
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
 			await service.init(mock<express.Application>());
 
 			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
 		});
 
 		it('should set up `n8n_cache_hits_total`', async () => {
-			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
@@ -90,9 +86,6 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
-			config.set('endpoints.metrics.includeCacheMetrics', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
 			await service.init(mock<express.Application>());
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
@@ -105,12 +98,6 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up route metrics with `express-prom-bundle`', async () => {
-			config.set('endpoints.metrics.includeApiEndpoints', true);
-			config.set('endpoints.metrics.includeApiPathLabel', true);
-			config.set('endpoints.metrics.includeApiMethodLabel', true);
-			config.set('endpoints.metrics.includeApiStatusCodeLabel', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
 			const app = mock<express.Application>();
 
 			await service.init(app);
@@ -146,5 +133,17 @@ describe('PrometheusMetricsService', () => {
 
 			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
 		});
+
+		// it.skip('should set up queue metrics', async () => {
+		// 	const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
+
+		// 	await service.init(mock<express.Application>());
+
+		// 	expect(promClient.Gauge).toHaveBeenCalledWith({
+		// 		name: 'n8n_scaling_mode_queue_jobs_waiting',
+		// 		help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
+		// 		labelNames: ['queue'],
+		// 	});
+		// });
 	});
 });

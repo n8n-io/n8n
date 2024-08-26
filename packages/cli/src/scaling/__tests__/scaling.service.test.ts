@@ -73,6 +73,7 @@ describe('ScalingService', () => {
 			mock(),
 			instanceSettings,
 			orchestrationService,
+			mock(),
 		);
 
 		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');

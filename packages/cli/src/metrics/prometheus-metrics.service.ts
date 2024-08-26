@@ -49,11 +49,11 @@ export class PrometheusMetricsService {
 
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
-		// this.initDefaultMetrics();
-		// this.initN8nVersionMetric();
-		// this.initCacheMetrics();
-		// this.initEventBusMetrics();
-		// this.initRouteMetrics(app);
+		this.initDefaultMetrics();
+		this.initN8nVersionMetric();
+		this.initCacheMetrics();
+		this.initEventBusMetrics();
+		this.initRouteMetrics(app);
 		this.initQueueMetrics();
 		this.mountMetricsEndpoint(app);
 	}
