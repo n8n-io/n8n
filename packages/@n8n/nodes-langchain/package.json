@@ -181,7 +181,7 @@
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
     "tmp-promise": "3.0.3",
-    "zod": "3.23.8",
+    "zod": "catalog:",
     "zod-to-json-schema": "3.23.0"
   }
 }

@@ -203,5 +203,6 @@ export const usePostHog = defineStore('posthog', () => {
 		identify,
 		capture,
 		setMetadata,
+		overrides,
 	};
 });

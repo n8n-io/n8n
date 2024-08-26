@@ -1,4 +1,5 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import type { AxiosError, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
 export class N8nApiClient {
 	constructor(public readonly apiBaseUrl: string) {}
@@ -11,7 +12,7 @@ export class N8nApiClient {
 
 		while (Date.now() - START_TIME < TIMEOUT_MS) {
 			try {
-				const response = await axios.request({
+				const response = await axios.request<{ status: 'ok' }>({
 					url: `${this.apiBaseUrl}/${HEALTH_ENDPOINT}`,
 					method: 'GET',
 				});
@@ -48,6 +49,12 @@ export class N8nApiClient {
 		} else if (response.status === 400) {
 			if (responsePayload.message === 'Instance owner already setup')
 				console.log('Owner already set up');
+		} else if (response.status === 404) {
+			// The n8n instance setup owner endpoint not be available yet even tho
+			// the health endpoint returns ok. In this case we simply retry.
+			console.log('Owner setup endpoint not available yet, retrying in 1s...');
+			await this.delay(1000);
+			await this.setupOwnerIfNeeded(loginDetails);
 		} else {
 			throw new Error(
 				`Owner setup failed with status ${response.status}: ${responsePayload.message}`,
@@ -72,7 +79,7 @@ export class N8nApiClient {
 		return `${this.apiBaseUrl}/rest${endpoint}`;
 	}
 
-	private delay(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
+	private async delay(ms: number): Promise<void> {
+		return await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }

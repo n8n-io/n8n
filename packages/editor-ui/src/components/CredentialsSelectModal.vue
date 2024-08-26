@@ -1,62 +1,3 @@
-<template>
-	<Modal
-		:name="CREDENTIAL_SELECT_MODAL_KEY"
-		:event-bus="modalBus"
-		width="50%"
-		:center="true"
-		:loading="loading"
-		max-width="460px"
-		min-height="250px"
-	>
-		<template #header>
-			<h2 :class="$style.title">
-				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
-			</h2>
-		</template>
-		<template #content>
-			<div>
-				<div :class="$style.subtitle">
-					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
-				</div>
-				<n8n-select
-					ref="select"
-					filterable
-					default-first-option
-					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
-					size="xlarge"
-					:model-value="selected"
-					data-test-id="new-credential-type-select"
-					@update:model-value="onSelect"
-				>
-					<template #prefix>
-						<font-awesome-icon icon="search" />
-					</template>
-					<n8n-option
-						v-for="credential in credentialsStore.allCredentialTypes"
-						:key="credential.name"
-						:value="credential.name"
-						:label="credential.displayName"
-						filterable
-						data-test-id="new-credential-type-select-option"
-					/>
-				</n8n-select>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<n8n-button
-					:label="$locale.baseText('credentialSelectModal.continue')"
-					float="right"
-					size="large"
-					:disabled="!selected"
-					data-test-id="new-credential-type-button"
-					@click="openCredentialType"
-				/>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
@@ -124,6 +65,65 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="CREDENTIAL_SELECT_MODAL_KEY"
+		:event-bus="modalBus"
+		width="50%"
+		:center="true"
+		:loading="loading"
+		max-width="460px"
+		min-height="250px"
+	>
+		<template #header>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+			</h2>
+		</template>
+		<template #content>
+			<div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+				</div>
+				<n8n-select
+					ref="select"
+					filterable
+					default-first-option
+					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
+					size="xlarge"
+					:model-value="selected"
+					data-test-id="new-credential-type-select"
+					@update:model-value="onSelect"
+				>
+					<template #prefix>
+						<font-awesome-icon icon="search" />
+					</template>
+					<n8n-option
+						v-for="credential in credentialsStore.allCredentialTypes"
+						:key="credential.name"
+						:value="credential.name"
+						:label="credential.displayName"
+						filterable
+						data-test-id="new-credential-type-select-option"
+					/>
+				</n8n-select>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<n8n-button
+					:label="$locale.baseText('credentialSelectModal.continue')"
+					float="right"
+					size="large"
+					:disabled="!selected"
+					data-test-id="new-credential-type-button"
+					@click="openCredentialType"
+				/>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style module lang="scss">
 .title {

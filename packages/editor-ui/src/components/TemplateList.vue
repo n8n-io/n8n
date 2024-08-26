@@ -1,38 +1,3 @@
-<template>
-	<div v-if="loading || workflows.length" :class="$style.list">
-		<div v-if="!simpleView" :class="$style.header">
-			<n8n-heading :bold="true" size="medium" color="text-light">
-				{{ $locale.baseText('templates.workflows') }}
-				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
-				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
-			</n8n-heading>
-		</div>
-		<div :class="$style.container">
-			<TemplateCard
-				v-for="(workflow, index) in workflows"
-				:key="workflow.id"
-				:workflow="workflow"
-				:first-item="index === 0"
-				:simple-view="simpleView"
-				:last-item="index === workflows.length - 1 && !loading"
-				:use-workflow-button="useWorkflowButton"
-				@click="(e) => onCardClick(e, workflow.id)"
-				@use-workflow="(e) => onUseWorkflow(e, workflow.id)"
-			/>
-			<div v-if="infiniteScrollEnabled" ref="loader" />
-			<div v-if="loading" data-test-id="templates-loading-container">
-				<TemplateCard
-					v-for="n in 4"
-					:key="'index-' + n"
-					:loading="true"
-					:first-item="workflows.length === 0 && n === 1"
-					:last-item="n === 4"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
 import TemplateCard from './TemplateCard.vue';
@@ -113,6 +78,41 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-if="loading || workflows.length" :class="$style.list">
+		<div v-if="!simpleView" :class="$style.header">
+			<n8n-heading :bold="true" size="medium" color="text-light">
+				{{ $locale.baseText('templates.workflows') }}
+				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
+				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
+			</n8n-heading>
+		</div>
+		<div :class="$style.container">
+			<TemplateCard
+				v-for="(workflow, index) in workflows"
+				:key="workflow.id"
+				:workflow="workflow"
+				:first-item="index === 0"
+				:simple-view="simpleView"
+				:last-item="index === workflows.length - 1 && !loading"
+				:use-workflow-button="useWorkflowButton"
+				@click="(e) => onCardClick(e, workflow.id)"
+				@use-workflow="(e) => onUseWorkflow(e, workflow.id)"
+			/>
+			<div v-if="infiniteScrollEnabled" ref="loader" />
+			<div v-if="loading" data-test-id="templates-loading-container">
+				<TemplateCard
+					v-for="n in 4"
+					:key="'index-' + n"
+					:loading="true"
+					:first-item="workflows.length === 0 && n === 1"
+					:last-item="n === 4"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .header {

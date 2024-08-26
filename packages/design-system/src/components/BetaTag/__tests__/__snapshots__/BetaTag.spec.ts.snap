@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`BetaTag > renders beta tag correctly 1`] = `
+<div>
+  <div
+    class="beta"
+  >
+    beta
+  </div>
+</div>
+`;

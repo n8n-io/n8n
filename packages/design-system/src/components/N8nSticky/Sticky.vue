@@ -1,51 +1,3 @@
-<template>
-	<div
-		:class="{
-			'n8n-sticky': true,
-			[$style.sticky]: true,
-			[$style.clickable]: !isResizing,
-			[$style[`color-${backgroundColor}`]]: true,
-		}"
-		:style="styles"
-		@keydown.prevent
-	>
-		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
-			<N8nMarkdown
-				theme="sticky"
-				:content="modelValue"
-				:with-multi-breaks="true"
-				@markdown-click="onMarkdownClick"
-				@update-content="onUpdateModelValue"
-			/>
-		</div>
-		<div
-			v-show="editMode"
-			:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
-			@click.stop
-			@mousedown.stop
-			@mouseup.stop
-			@keydown.esc="onInputBlur"
-			@keydown.stop
-		>
-			<N8nInput
-				ref="input"
-				:model-value="modelValue"
-				:name="inputName"
-				type="textarea"
-				:rows="5"
-				@blur="onInputBlur"
-				@update:model-value="onUpdateModelValue"
-				@wheel="onInputScroll"
-			/>
-		</div>
-		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-			<N8nText size="xsmall" align="right">
-				<span v-html="t('sticky.markdownHint')"></span>
-			</N8nText>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
@@ -121,6 +73,54 @@ const onInputScroll = (event: WheelEvent) => {
 	}
 };
 </script>
+
+<template>
+	<div
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
+		:style="styles"
+		@keydown.prevent
+	>
+		<div v-show="!editMode" :class="$style.wrapper" @dblclick.stop="onDoubleClick">
+			<N8nMarkdown
+				theme="sticky"
+				:content="modelValue"
+				:with-multi-breaks="true"
+				@markdown-click="onMarkdownClick"
+				@update-content="onUpdateModelValue"
+			/>
+		</div>
+		<div
+			v-show="editMode"
+			:class="{ 'full-height': !shouldShowFooter, 'sticky-textarea': true }"
+			@click.stop
+			@mousedown.stop
+			@mouseup.stop
+			@keydown.esc="onInputBlur"
+			@keydown.stop
+		>
+			<N8nInput
+				ref="input"
+				:model-value="modelValue"
+				:name="inputName"
+				type="textarea"
+				:rows="5"
+				@blur="onInputBlur"
+				@update:model-value="onUpdateModelValue"
+				@wheel="onInputScroll"
+			/>
+		</div>
+		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
+			<N8nText size="xsmall" align="right">
+				<span v-html="t('sticky.markdownHint')"></span>
+			</N8nText>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .sticky {
