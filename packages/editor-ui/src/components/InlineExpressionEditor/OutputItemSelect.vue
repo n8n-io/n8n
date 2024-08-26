@@ -10,7 +10,9 @@ const hoveringItem = computed(() => ndvStore.getHoveringItem);
 const hoveringItemIndex = computed(() => hoveringItem.value?.itemIndex);
 const isHoveringItem = computed(() => Boolean(hoveringItem.value));
 const itemsLength = computed(() => ndvStore.ndvInputDataWithPinnedData.length);
-const itemIndex = computed(() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex);
+const itemIndex = computed(
+	() => hoveringItemIndex.value ?? ndvStore.expressionOutputItemIndex ?? 0,
+);
 const max = computed(() => Math.max(itemsLength.value - 1, 0));
 const isItemIndexEditable = computed(() => !isHoveringItem.value && itemsLength.value > 0);
 const hideTableHoverHint = computed(() => ndvStore.isTableHoverOnboarded);
@@ -18,6 +20,8 @@ const canSelectPrevItem = computed(() => isItemIndexEditable.value && itemIndex.
 const canSelectNextItem = computed(
 	() => isItemIndexEditable.value && itemIndex.value < itemsLength.value - 1,
 );
+
+const inputCharWidth = computed(() => itemIndex.value.toString().length);
 
 function updateItemIndex(index: number) {
 	ndvStore.expressionOutputItemIndex = index;
@@ -47,6 +51,7 @@ function prevItem() {
 				:min="0"
 				:max="max"
 				:model-value="itemIndex"
+				:style="{ '--input-width': `calc(${inputCharWidth}ch + var(--spacing-s))` }"
 				@update:model-value="updateItemIndex"
 			></N8nInputNumber>
 			<N8nIconButton
@@ -89,14 +94,12 @@ function prevItem() {
 	align-items: center;
 }
 
-.input {
+.controls .input {
 	--input-height: 22px;
-	--input-width: 26px;
 	--input-border-top-left-radius: var(--border-radius-base);
 	--input-border-bottom-left-radius: var(--border-radius-base);
 	--input-border-top-right-radius: var(--border-radius-base);
 	--input-border-bottom-right-radius: var(--border-radius-base);
-	max-width: var(--input-width);
 	line-height: calc(var(--input-height) - var(--spacing-4xs));
 
 	&.hovering {
@@ -109,6 +112,7 @@ function prevItem() {
 		line-height: var(--input-height);
 		text-align: center;
 		padding: 0 var(--spacing-4xs);
+		max-width: var(--input-width);
 	}
 }
 </style>
