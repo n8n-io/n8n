@@ -43,7 +43,7 @@ export class InstanceSettings {
 	/**
 	 * A main is:
 	 * - `unset` during bootup,
-	 * - always `leader` after bootup in single-main setup,
+	 * - `leader` after bootup in single-main setup,
 	 * - `leader` or `follower` after bootup in multi-main setup.
 	 *
 	 * A non-main instance type (e.g. `worker`) is always `unset`.

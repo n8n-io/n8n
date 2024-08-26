@@ -13,11 +13,12 @@ import type {
 	Job,
 	JobData,
 	JobOptions,
-	JobMessage,
 	JobStatus,
 	JobId,
 	QueueRecoveryContext,
-} from './types';
+	MessageToWorker,
+	MessageToMain,
+} from './scaling.types';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -56,13 +57,7 @@ export class ScalingService {
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
-		if (this.instanceType === 'worker') {
-			this.registerWorkerListeners();
-			this.logger.debug('[ScalingService] Queue setup for worker completed');
-			return;
-		}
-
-		this.registerMainListeners();
+		this.registerListeners();
 
 		if (this.instanceSettings.isLeader) this.scheduleQueueRecovery();
 
@@ -72,11 +67,12 @@ export class ScalingService {
 				.on('leader-stepdown', () => this.stopQueueRecovery());
 		}
 
-		this.logger.debug('[ScalingService] Queue setup for main completed');
+		this.logger.debug('[ScalingService] Queue setup completed');
 	}
 
 	setupWorker(concurrency: number) {
 		this.assertWorker();
+		this.assertQueue();
 
 		void this.queue.process(
 			JOB_TYPE_NAME,
@@ -166,19 +162,59 @@ export class ScalingService {
 
 	// #region Listeners
 
+	private registerListeners() {
+		let latestAttemptTs = 0;
+		let cumulativeTimeoutMs = 0;
+
+		const MAX_TIMEOUT_MS = this.globalConfig.queue.bull.redis.timeoutThreshold;
+		const RESET_LENGTH_MS = 30_000;
+
+		this.queue.on('error', (error: Error) => {
+			this.logger.error('[ScalingService] Queue errored', { error });
+
+			/**
+			 * On Redis connection failure, try to reconnect. On every failed attempt,
+			 * increment a cumulative timeout - if this exceeds a limit, exit the
+			 * process. Reset the cumulative timeout if >30s between retries.
+			 */
+			if (error.message.includes('ECONNREFUSED')) {
+				const nowTs = Date.now();
+				if (nowTs - latestAttemptTs > RESET_LENGTH_MS) {
+					latestAttemptTs = nowTs;
+					cumulativeTimeoutMs = 0;
+				} else {
+					cumulativeTimeoutMs += nowTs - latestAttemptTs;
+					latestAttemptTs = nowTs;
+					if (cumulativeTimeoutMs > MAX_TIMEOUT_MS) {
+						this.logger.error('[ScalingService] Redis unavailable after max timeout');
+						this.logger.error('[ScalingService] Exiting process...');
+						process.exit(1);
+					}
+				}
+
+				this.logger.warn('[ScalingService] Redis unavailable - retrying to connect...');
+				return;
+			}
+
+			throw error;
+		});
+
+		if (this.instanceType === 'main') {
+			this.registerMainListeners();
+		} else if (this.instanceType === 'worker') {
+			this.registerWorkerListeners();
+		}
+	}
+
 	/**
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners() {
-		this.assertWorker();
-
-		this.queue.on('global:progress', (jobId: JobId, msg: JobMessage) => {
+		this.queue.on('global:progress', (jobId: JobId, msg: MessageToWorker) => {
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
 		this.queue.on('error', (error: Error) => {
-			if (error.message.includes('ECONNREFUSED')) return; // handled at RedisClientService.retryStrategy
-
 			if (error.message.includes('job stalled more than maxStalledCount')) {
 				throw new MaxStalledCountError(error);
 			}
@@ -201,15 +237,11 @@ export class ScalingService {
 	 * Register listeners on a `main` process for Bull queue events.
 	 */
 	private registerMainListeners() {
-		this.queue.on('global:progress', (_jobId: JobId, msg: JobMessage) => {
+		this.queue.on('global:progress', (_jobId: JobId, msg: MessageToMain) => {
 			if (msg.kind === 'respond-to-webhook') {
 				const decodedResponse = this.decodeWebhookResponse(msg.response);
 				this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 			}
-		});
-
-		this.queue.on('error', (error: Error) => {
-			if (error.message.includes('ECONNREFUSED')) return; // handled at RedisClientService.retryStrategy
 		});
 	}
 
@@ -229,6 +261,12 @@ export class ScalingService {
 		}
 
 		return response;
+	}
+
+	private assertQueue() {
+		if (this.queue) return;
+
+		throw new ApplicationError('This method must be called after `setupQueue`');
 	}
 
 	private assertWorker() {
