@@ -30,7 +30,9 @@ export type CanvasConnectionPort = {
 };
 
 export interface CanvasElementPortWithRenderData extends CanvasConnectionPort {
-	connected: boolean;
+	handleId: string;
+	isConnected: boolean;
+	isConnecting: boolean;
 	position: Position;
 	offset?: { top?: string; left?: string };
 }
@@ -118,6 +120,10 @@ export type CanvasConnectionCreateData = {
 	};
 };
 
+export interface CanvasInjectionData {
+	connectingHandle: Ref<ConnectStartEvent | undefined>;
+}
+
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
 	data: Ref<CanvasNodeData>;
@@ -129,7 +135,8 @@ export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 	mode: Ref<CanvasConnectionMode>;
 	type: Ref<NodeConnectionType>;
-	connected: Ref<boolean | undefined>;
+	isConnected: Ref<boolean | undefined>;
+	isConnecting: Ref<boolean | undefined>;
 }
 
 export type ConnectStartEvent = { handleId: string; handleType: string; nodeId: string };
