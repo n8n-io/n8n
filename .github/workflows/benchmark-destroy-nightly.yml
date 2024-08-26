@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: benchmark
+    environment: benchmarking
 
     steps:
       - name: Checkout
