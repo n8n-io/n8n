@@ -11,7 +11,7 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 import type { Includes, MetricCategory, MetricLabel } from './types';
 import { GlobalConfig } from '@n8n/config';
-import { MetricsEventService } from '@/events/metrics-event.service';
+import { EventService } from '@/events/event.service';
 import config from '@/config';
 
 @Service()
@@ -20,7 +20,7 @@ export class PrometheusMetricsService {
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
-		private readonly metricsEventService: MetricsEventService,
+		private readonly eventService: EventService,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -252,7 +252,7 @@ export class PrometheusMetricsService {
 			labelNames: ['queue'],
 		});
 
-		this.metricsEventService.on('job-counts-updated', (jobCounts) => {
+		this.eventService.on('job-counts-updated', (jobCounts) => {
 			this.gauges.waiting.set(jobCounts.waiting);
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);
