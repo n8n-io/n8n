@@ -79,12 +79,10 @@ describe('NodeDetailsView', () => {
 			},
 		});
 
-		const wrapper = renderComponent({
+		const { getByTestId } = renderComponent({
 			pinia,
 		});
 
-		await waitFor(() =>
-			expect(wrapper.container.querySelector('.ndv-wrapper')).toBeInTheDocument(),
-		);
+		await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
 	});
 });

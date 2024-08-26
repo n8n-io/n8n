@@ -41,21 +41,19 @@ describe('CommunityPackageInstallModal', () => {
 		cleanupAppModals();
 	});
 	it('should disable install button until user agrees', async () => {
-		const wrapper = renderComponent();
+		const { getByTestId } = renderComponent();
 
-		await retry(() =>
-			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
-		);
+		await retry(() => expect(getByTestId('communityPackageInstall-modal')).toBeInTheDocument());
 
-		const installButton = wrapper.getByTestId('install-community-package-button');
+		const installButton = getByTestId('install-community-package-button');
 
 		expect(installButton).toBeDisabled();
 
-		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
+		await userEvent.click(getByTestId('user-agreement-checkbox'));
 
 		expect(installButton).toBeEnabled();
 
-		await userEvent.click(wrapper.getByTestId('user-agreement-checkbox'));
+		await userEvent.click(getByTestId('user-agreement-checkbox'));
 
 		expect(installButton).toBeDisabled();
 	});
