@@ -767,6 +767,8 @@
 	"executionAnnotationView.data.notFound": "Show important data from executions here by adding an <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/\">execution data</a> node to your workflow",
 	"executionAnnotationView.vote.error": "Unable to save annotation vote",
 	"executionAnnotationView.tag.error": "Unable to save annotation tags",
+	"executionAnnotationView.addTag": "Add tag",
+	"executionAnnotationView.chooseOrCreateATag": "Choose or create a tag",
 	"executionsFilter.annotation.tags": "Execution tags",
 	"executionsFilter.annotation.rating": "Rating",
 	"executionsFilter.annotation.rating.all": "Any rating",

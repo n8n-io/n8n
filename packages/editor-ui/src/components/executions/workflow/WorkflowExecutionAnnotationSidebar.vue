@@ -21,27 +21,54 @@
 					ref="dropdown"
 					:create-enabled="true"
 					:event-bus="tagsEventBus"
-					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
+					:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
 					class="tags-edit"
 					data-test-id="workflow-tags-dropdown"
 					@blur="onTagsBlur"
 					@esc="onTagsEditEsc"
 				/>
 				<div v-else-if="tagIds.length === 0">
-					<span class="add-tag clickable" data-test-id="new-tag-link" @click="onTagsEditEnable">
-						+ {{ $locale.baseText('workflowDetails.addTag') }}
+					<span
+						class="add-tag add-tag-standalone clickable"
+						data-test-id="new-tag-link"
+						@click="onTagsEditEnable"
+					>
+						+ {{ $locale.baseText('executionAnnotationView.addTag') }}
 					</span>
 				</div>
 
-				<AnnotationTagsContainer
+				<span
 					v-else
-					:key="activeExecution?.id"
-					:tag-ids="tagIds"
-					:clickable="true"
-					:responsive="true"
+					class="tags-container"
 					data-test-id="execution-annotation-tags"
 					@click="onTagsEditEnable"
-				/>
+				>
+					<span v-for="tag in tags" :key="tag.id" class="clickable">
+						<el-tag :title="tag.name" type="info" size="small" :disable-transitions="true">
+							{{ tag.name }}
+						</el-tag>
+					</span>
+					<span class="add-tag-wrapper">
+						<n8n-button
+							class="add-tag"
+							v-bind="{
+								label: `+ ` + $locale.baseText('executionAnnotationView.addTag'),
+								type: 'secondary',
+								size: 'mini',
+								outline: false,
+								text: true,
+							}"
+							@click="onTagsEditEnable"
+						/>
+					</span>
+					<!--					<span-->
+					<!--						class="el-tag&#45;&#45;small add-tag clickable"-->
+					<!--						data-test-id="new-tag-link"-->
+					<!--						@click="onTagsEditEnable"-->
+					<!--					>-->
+					<!--						+ {{ $locale.baseText('workflowDetails.addTag') }}-->
+					<!--					</span>-->
+				</span>
 			</span>
 		</div>
 		<div :class="$style.section">
@@ -89,6 +116,7 @@ import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
 import N8nNotice from 'n8n-design-system/components/N8nNotice';
+import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -102,9 +130,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
 	components: {
-		N8nNotice,
 		VoteButtons,
-		AnnotationTagsContainer,
 		AnnotationTagsDropdown,
 	},
 	props: {
@@ -131,6 +157,9 @@ export default defineComponent({
 		},
 		tagIds() {
 			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];
+		},
+		tags() {
+			return this.activeExecution?.annotation?.tags;
 		},
 	},
 	setup() {
@@ -334,15 +363,34 @@ export default defineComponent({
 	}
 }
 
+.tags-container {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+
+	margin-top: calc(var(--spacing-4xs) * -1); // Cancel out top margin of first tags row
+
+	* {
+		margin: var(--spacing-4xs) var(--spacing-4xs) 0 0;
+	}
+}
+
 .add-tag {
 	font-size: 12px;
-	padding: 20px 0; // to be more clickable
 	color: $custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
-
 	&:hover {
 		color: $color-primary;
+		text-decoration: none;
 	}
+}
+
+.add-tag-standalone {
+	padding: 20px 0; // to be more clickable
+}
+
+.add-tag-wrapper {
+	margin-left: calc(var(--spacing-2xs) * -1); // Cancel out right margin of last tag
 }
 </style>

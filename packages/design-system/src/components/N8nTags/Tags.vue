@@ -24,7 +24,7 @@ import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import { useI18n } from '../../composables/useI18n';
 
-export interface ITag {
+interface ITag {
 	id: string;
 	name: string;
 }
