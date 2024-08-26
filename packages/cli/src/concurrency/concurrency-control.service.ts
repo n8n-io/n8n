@@ -43,15 +43,21 @@ export class ConcurrencyControlService {
 
 		if (this.productionLimit === -1 || config.getEnv('executions.mode') === 'queue') {
 			this.isEnabled = false;
-			this.log('Service disabled');
+			this.debug('Concurrency control disabled');
 			return;
 		}
 
 		this.productionQueue = new ConcurrencyQueue(this.productionLimit);
 
-		this.logInit();
-
 		this.isEnabled = true;
+
+		this.debug('Concurrency control enabled');
+
+		this.debug(
+			this.productionLimit === -1
+				? 'Production execution concurrency is unlimited'
+				: 'Production execution concurrency is limited to ' + this.productionLimit.toString(),
+		);
 
 		this.productionQueue.on('concurrency-check', ({ capacity }) => {
 			if (this.shouldReport(capacity)) {
@@ -62,12 +68,12 @@ export class ConcurrencyControlService {
 		});
 
 		this.productionQueue.on('execution-throttled', ({ executionId }) => {
-			this.log('Execution throttled', { executionId });
+			this.debug('Execution throttled', { executionId });
 			this.eventService.emit('execution-throttled', { executionId });
 		});
 
 		this.productionQueue.on('execution-released', async (executionId) => {
-			this.log('Execution released', { executionId });
+			this.debug('Execution released', { executionId });
 			await this.executionRepository.resetStartedAt(executionId);
 		});
 	}
@@ -141,17 +147,6 @@ export class ConcurrencyControlService {
 	//             private
 	// ----------------------------------
 
-	private logInit() {
-		this.log('Enabled');
-
-		this.log(
-			[
-				'Production execution concurrency is',
-				this.productionLimit === -1 ? 'unlimited' : 'limited to ' + this.productionLimit.toString(),
-			].join(' '),
-		);
-	}
-
 	private isUnlimited(mode: ExecutionMode) {
 		if (
 			mode === 'error' ||
@@ -169,8 +164,8 @@ export class ConcurrencyControlService {
 		throw new UnknownExecutionModeError(mode);
 	}
 
-	private log(message: string, meta?: object) {
-		this.logger.debug(['[Concurrency Control]', message].join(' '), meta);
+	private debug(message: string, meta?: object) {
+		this.logger.scopedDebugLog('n8n:concurrency', message, meta);
 	}
 
 	private shouldReport(capacity: number) {

@@ -13,6 +13,7 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { CacheConfig } from './configs/cache.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { UserManagementConfig } from './configs/user-management.config';
+import { DebugConfig } from './configs/debug.config';
 
 @Config
 export class GlobalConfig {
@@ -77,4 +78,7 @@ export class GlobalConfig {
 
 	@Nested
 	queue: ScalingModeConfig;
+
+	@Nested
+	debug: DebugConfig;
 }

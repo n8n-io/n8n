@@ -109,6 +109,7 @@ export class License {
 			});
 
 			await this.manager.initialize();
+			this.debug('License manager initialized');
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				this.logger.error('Could not initialize license manager sdk', e);
@@ -143,14 +144,14 @@ export class License {
 				this.orchestrationService.isMultiMainSetupEnabled &&
 				this.orchestrationService.isFollower
 			) {
-				this.logger.debug(
+				this.debug(
 					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
 				return;
 			}
 
 			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
-				this.logger.debug(
+				this.debug(
 					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supports this feature.',
 				);
 			}
@@ -158,7 +159,7 @@ export class License {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
-				this.logger.debug('Initializing Redis publisher for License Service');
+				this.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
 			}
 			await this.redisPublisher.publishToCommandChannel({
@@ -171,7 +172,7 @@ export class License {
 		const isS3Licensed = _features['feat:binaryDataS3'];
 
 		if (isS3Selected && isS3Available && !isS3Licensed) {
-			this.logger.debug(
+			this.debug(
 				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
 			);
 
@@ -204,7 +205,7 @@ export class License {
 		if (!this.manager) {
 			return;
 		}
-		this.logger.debug('Reloading license');
+		this.debug('Reloading license');
 		await this.manager.reload();
 	}
 
@@ -392,5 +393,9 @@ export class License {
 	async reinit() {
 		this.manager?.reset();
 		await this.init('main', true);
+	}
+
+	private debug(message: string, meta?: object) {
+		this.logger.scopedDebugLog('n8n:license', message, meta);
 	}
 }

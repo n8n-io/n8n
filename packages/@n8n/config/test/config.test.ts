@@ -212,6 +212,11 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		debug: {
+			logging: {
+				scopes: '',
+			},
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {
