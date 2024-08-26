@@ -64,25 +64,23 @@ describe('PersonalizationModal.vue', () => {
 	});
 
 	it('should render correctly', async () => {
-		const wrapper = renderComponent();
+		const { getByTestId } = renderComponent();
 
-		await retry(() =>
-			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
-		);
+		await retry(() => expect(getByTestId('personalization-form')).toBeInTheDocument());
 
-		expect(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(5);
+		const modalContent = getByTestId('personalization-form');
+		expect(modalContent.querySelectorAll('.n8n-select').length).toEqual(5);
 	});
 
 	it('should display new option when role is "Devops", "Engineering", "IT", or "Sales and marketing"', async () => {
-		const wrapper = renderComponent();
+		const { getByTestId } = renderComponent();
 
-		await retry(() =>
-			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
-		);
+		await retry(() => expect(getByTestId('personalization-form')).toBeInTheDocument());
 
 		for (const index of [3, 4, 5, 6]) {
+			const modalContent = getByTestId('personalization-form');
 			const expectFn = expect; // So we don't break @typescript-eslint/no-loop-func
-			const select = wrapper.container.querySelectorAll('.n8n-select')[1];
+			const select = modalContent.querySelectorAll('.n8n-select')[1];
 
 			await fireEvent.click(select);
 
@@ -91,27 +89,27 @@ describe('PersonalizationModal.vue', () => {
 			await fireEvent.click(item);
 
 			await retry(() => {
-				expectFn(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(6);
-				expectFn(wrapper.container.querySelector('[name^="automationGoal"]')).toBeInTheDocument();
+				expectFn(modalContent.querySelectorAll('.n8n-select').length).toEqual(6);
+				expectFn(modalContent.querySelector('[name^="automationGoal"]')).toBeInTheDocument();
 			});
 		}
 	});
 
 	it('should display self serve trial option when company size is larger than 500', async () => {
-		const wrapper = renderComponent();
+		const { getByTestId } = renderComponent();
 
-		await retry(() =>
-			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
-		);
+		await retry(() => expect(getByTestId('personalization-form')).toBeInTheDocument());
 
-		const select = wrapper.container.querySelectorAll('.n8n-select')[3];
+		const modalContent = getByTestId('personalization-form');
+
+		const select = modalContent.querySelectorAll('.n8n-select')[3];
 		await fireEvent.click(select);
 
 		const item = select.querySelectorAll('.el-select-dropdown__item')[3];
 		await fireEvent.click(item);
 
 		await retry(() => {
-			expect(wrapper.container.querySelector('.card')).not.toBeNull();
+			expect(modalContent.querySelector('.card')).not.toBeNull();
 		});
 	});
 
@@ -122,23 +120,23 @@ describe('PersonalizationModal.vue', () => {
 		const usageStore = useUsageStore(pinia);
 		const spyLicenseTrial = vi.spyOn(usageStore, 'requestEnterpriseLicenseTrial');
 
-		const wrapper = renderComponent();
+		const { getByTestId, getByRole } = renderComponent();
 
-		await retry(() =>
-			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
-		);
+		await retry(() => expect(getByTestId('personalization-form')).toBeInTheDocument());
 
-		const select = wrapper.container.querySelectorAll('.n8n-select')[3];
+		const modalContent = getByTestId('personalization-form');
+
+		const select = modalContent.querySelectorAll('.n8n-select')[3];
 		await fireEvent.click(select);
 
 		const item = select.querySelectorAll('.el-select-dropdown__item')[3];
 		await fireEvent.click(item);
 
-		const agreeCheckbox = wrapper.container.querySelector('.n8n-checkbox');
+		const agreeCheckbox = modalContent.querySelector('.n8n-checkbox');
 		assert(agreeCheckbox);
 		await fireEvent.click(agreeCheckbox);
 
-		const submitButton = wrapper.getByRole('button');
+		const submitButton = getByRole('button');
 		await userEvent.click(submitButton);
 
 		await retry(() => expect(spyLicenseTrial).toHaveBeenCalled());

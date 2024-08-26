@@ -97,8 +97,6 @@ describe('SettingsUsersView', () => {
 		const actionDelete = within(actionDropdown).getByTestId('action-delete');
 		await userEvent.click(actionDelete);
 
-		console.log(screen.debug())
-
 		const modal = getByTestId('deleteUser-modal');
 		expect(modal).toBeVisible();
 		const confirmButton = within(modal).getByTestId('confirm-delete-user-button');
