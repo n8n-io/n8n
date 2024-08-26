@@ -19,7 +19,7 @@ export class AnnotationTagsController {
 	async createTag(req: AnnotationTagsRequest.Create) {
 		const tag = this.annotationTagService.toEntity({ name: req.body.name });
 
-		return await this.annotationTagService.save(tag, 'create');
+		return await this.annotationTagService.save(tag);
 	}
 
 	@Patch('/:id(\\w+)')
@@ -30,7 +30,7 @@ export class AnnotationTagsController {
 			name: req.body.name.trim(),
 		});
 
-		return await this.annotationTagService.save(newTag, 'update');
+		return await this.annotationTagService.save(newTag);
 	}
 
 	@Delete('/:id(\\w+)')

@@ -10,10 +10,7 @@ type GetAllResult<T> = T extends { withUsageCount: true }
 
 @Service()
 export class AnnotationTagService {
-	constructor(
-		private externalHooks: ExternalHooks,
-		private tagRepository: AnnotationTagRepository,
-	) {}
+	constructor(private tagRepository: AnnotationTagRepository) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
 		attrs.name = attrs.name.trim();
@@ -21,26 +18,16 @@ export class AnnotationTagService {
 		return this.tagRepository.create(attrs);
 	}
 
-	async save(tag: AnnotationTagEntity, actionKind: 'create' | 'update') {
+	async save(tag: AnnotationTagEntity) {
 		await validateEntity(tag);
 
-		const action = actionKind[0].toUpperCase() + actionKind.slice(1);
-
-		await this.externalHooks.run(`annotationTag.before${action}`, [tag]);
-
 		const savedTag = this.tagRepository.save(tag, { transaction: false });
-
-		await this.externalHooks.run(`annotationTag.after${action}`, [tag]);
 
 		return await savedTag;
 	}
 
 	async delete(id: string) {
-		await this.externalHooks.run('annotationTag.beforeDelete', [id]);
-
 		const deleteResult = this.tagRepository.delete(id);
-
-		await this.externalHooks.run('annotationTag.afterDelete', [id]);
 
 		return await deleteResult;
 	}
