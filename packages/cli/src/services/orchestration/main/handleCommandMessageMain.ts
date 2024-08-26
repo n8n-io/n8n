@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Logger } from '@/logger';

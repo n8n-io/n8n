@@ -31,7 +31,7 @@ import { setupPushServer, setupPushHandler } from '@/push';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { AbstractServer } from '@/abstract-server';
 import { PostHogClient } from '@/posthog';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -155,10 +155,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		try {
 			const { SourceControlService } = await import(
-				'@/environments/sourceControl/sourceControl.service.ee'
+				'@/environments/source-control/source-control.service.ee'
 			);
 			await Container.get(SourceControlService).init();
-			await import('@/environments/sourceControl/sourceControl.controller.ee');
+			await import('@/environments/source-control/source-control.controller.ee');
 			await import('@/environments/variables/variables.controller.ee');
 		} catch (error) {
 			this.logger.warn(`Source Control initialization failed: ${(error as Error).message}`);

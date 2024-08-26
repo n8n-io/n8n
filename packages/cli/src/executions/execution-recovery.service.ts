@@ -6,7 +6,7 @@ import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @T
 import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
-import type { EventMessageTypes } from '../eventbus/EventMessageClasses';
+import type { EventMessageTypes } from '../eventbus/event-message-classes';
 import type { IExecutionResponse } from '@/Interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
