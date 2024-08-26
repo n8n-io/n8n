@@ -21,15 +21,11 @@ export class AnnotationTagService {
 	async save(tag: AnnotationTagEntity) {
 		await validateEntity(tag);
 
-		const savedTag = this.tagRepository.save(tag, { transaction: false });
-
-		return await savedTag;
+		return await this.tagRepository.save(tag, { transaction: false });
 	}
 
 	async delete(id: string) {
-		const deleteResult = this.tagRepository.delete(id);
-
-		return await deleteResult;
+		return await this.tagRepository.delete(id);
 	}
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
