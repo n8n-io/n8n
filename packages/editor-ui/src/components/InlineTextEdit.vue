@@ -1,25 +1,3 @@
-<template>
-	<span class="inline-edit" @keydown.stop>
-		<span v-if="isEditEnabled && !isDisabled">
-			<ExpandableInputEdit
-				v-model="newValue"
-				:placeholder="placeholder"
-				:maxlength="maxLength"
-				:autofocus="true"
-				:event-bus="inputBus"
-				@update:model-value="onInput"
-				@esc="onEscape"
-				@blur="onBlur"
-				@enter="submit"
-			/>
-		</span>
-
-		<span v-else class="preview" @click="onClick">
-			<ExpandableInputPreview :model-value="previewValue || modelValue" />
-		</span>
-	</span>
-</template>
-
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
@@ -99,6 +77,28 @@ function onEscape() {
 	emit('toggle');
 }
 </script>
+
+<template>
+	<span class="inline-edit" @keydown.stop>
+		<span v-if="isEditEnabled && !isDisabled">
+			<ExpandableInputEdit
+				v-model="newValue"
+				:placeholder="placeholder"
+				:maxlength="maxLength"
+				:autofocus="true"
+				:event-bus="inputBus"
+				@update:model-value="onInput"
+				@esc="onEscape"
+				@blur="onBlur"
+				@enter="submit"
+			/>
+		</span>
+
+		<span v-else class="preview" @click="onClick">
+			<ExpandableInputPreview :model-value="previewValue || modelValue" />
+		</span>
+	</span>
+</template>
 
 <style lang="scss" scoped>
 .preview {

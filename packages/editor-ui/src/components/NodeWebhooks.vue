@@ -1,54 +1,3 @@
-<template>
-	<div v-if="webhooksNode.length && visibleWebhookUrls.length > 0" class="webhooks">
-		<div
-			class="clickable headline"
-			:class="{ expanded: !isMinimized }"
-			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
-			@click="isMinimized = !isMinimized"
-		>
-			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
-			{{ baseText.toggleTitle }}
-		</div>
-		<el-collapse-transition>
-			<div v-if="!isMinimized" class="node-webhooks">
-				<div v-if="!isProductionOnly" class="url-selection">
-					<el-row>
-						<el-col :span="24">
-							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
-						</el-col>
-					</el-row>
-				</div>
-
-				<n8n-tooltip
-					v-for="(webhook, index) in visibleWebhookUrls"
-					:key="index"
-					class="item"
-					:content="baseText.clickToCopy"
-					placement="left"
-				>
-					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
-						<div class="http-field">
-							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
-						</div>
-						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
-							</div>
-						</div>
-					</div>
-					<div v-else class="webhook-wrapper">
-						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
-							</div>
-						</div>
-					</div>
-				</n8n-tooltip>
-			</div>
-		</el-collapse-transition>
-	</div>
-</template>
-
 <script lang="ts">
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 import { defineComponent } from 'vue';
@@ -217,6 +166,57 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-if="webhooksNode.length && visibleWebhookUrls.length > 0" class="webhooks">
+		<div
+			class="clickable headline"
+			:class="{ expanded: !isMinimized }"
+			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
+			@click="isMinimized = !isMinimized"
+		>
+			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
+			{{ baseText.toggleTitle }}
+		</div>
+		<el-collapse-transition>
+			<div v-if="!isMinimized" class="node-webhooks">
+				<div v-if="!isProductionOnly" class="url-selection">
+					<el-row>
+						<el-col :span="24">
+							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
+						</el-col>
+					</el-row>
+				</div>
+
+				<n8n-tooltip
+					v-for="(webhook, index) in visibleWebhookUrls"
+					:key="index"
+					class="item"
+					:content="baseText.clickToCopy"
+					placement="left"
+				>
+					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
+						<div class="http-field">
+							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
+						</div>
+						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
+							</div>
+						</div>
+					</div>
+					<div v-else class="webhook-wrapper">
+						<div class="url-field-full-width">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
+							</div>
+						</div>
+					</div>
+				</n8n-tooltip>
+			</div>
+		</el-collapse-transition>
+	</div>
+</template>
 
 <style scoped lang="scss">
 .webhooks {

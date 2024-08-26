@@ -1,114 +1,3 @@
-<template>
-	<div
-		v-if="credentialTypesNodeDescriptionDisplayed.length"
-		:class="['node-credentials', $style.container]"
-	>
-		<div
-			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
-			:key="credentialTypeDescription.name"
-		>
-			<N8nInputLabel
-				:label="getCredentialsFieldLabel(credentialTypeDescription)"
-				:bold="false"
-				size="small"
-				color="text-dark"
-				data-test-id="credentials-label"
-			>
-				<div v-if="readonly">
-					<N8nInput
-						:model-value="getSelectedName(credentialTypeDescription.name)"
-						disabled
-						size="small"
-						data-test-id="node-credentials-select"
-					/>
-				</div>
-				<div
-					v-else
-					:class="
-						getIssues(credentialTypeDescription.name).length && !hideIssues
-							? $style.hasIssues
-							: $style.input
-					"
-					data-test-id="node-credentials-select"
-				>
-					<N8nSelect
-						:model-value="getSelectedId(credentialTypeDescription.name)"
-						:placeholder="
-							getSelectPlaceholder(
-								credentialTypeDescription.name,
-								getIssues(credentialTypeDescription.name),
-							)
-						"
-						size="small"
-						@update:model-value="
-							(value: string) =>
-								onCredentialSelected(
-									credentialTypeDescription.name,
-									value,
-									showMixedCredentials(credentialTypeDescription),
-								)
-						"
-						@blur="emit('blur', 'credentials')"
-					>
-						<N8nOption
-							v-for="item in getCredentialOptions(
-								getAllRelatedCredentialTypes(credentialTypeDescription),
-							)"
-							:key="item.id"
-							:data-test-id="`node-credentials-select-item-${item.id}`"
-							:label="item.name"
-							:value="item.id"
-						>
-							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<N8nText bold>{{ item.name }}</N8nText>
-								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
-							</div>
-						</N8nOption>
-						<N8nOption
-							:key="NEW_CREDENTIALS_TEXT"
-							data-test-id="node-credentials-select-item-new"
-							:value="NEW_CREDENTIALS_TEXT"
-							:label="NEW_CREDENTIALS_TEXT"
-						>
-						</N8nOption>
-					</N8nSelect>
-
-					<div
-						v-if="getIssues(credentialTypeDescription.name).length && !hideIssues"
-						:class="$style.warning"
-					>
-						<N8nTooltip placement="top">
-							<template #content>
-								<TitledList
-									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
-									:items="getIssues(credentialTypeDescription.name)"
-								/>
-							</template>
-							<font-awesome-icon icon="exclamation-triangle" />
-						</N8nTooltip>
-					</div>
-
-					<div
-						v-if="
-							selected[credentialTypeDescription.name] &&
-							isCredentialExisting(credentialTypeDescription.name)
-						"
-						:class="$style.edit"
-						data-test-id="credential-edit-button"
-					>
-						<font-awesome-icon
-							icon="pen"
-							class="clickable"
-							:title="$locale.baseText('nodeCredentials.updateCredential')"
-							@click="editCredential(credentialTypeDescription.name)"
-						/>
-					</div>
-				</div>
-			</N8nInputLabel>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { ICredentialsResponse, INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
@@ -586,6 +475,117 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 	return i18n.baseText('nodeCredentials.credentialsLabel');
 }
 </script>
+
+<template>
+	<div
+		v-if="credentialTypesNodeDescriptionDisplayed.length"
+		:class="['node-credentials', $style.container]"
+	>
+		<div
+			v-for="credentialTypeDescription in credentialTypesNodeDescriptionDisplayed"
+			:key="credentialTypeDescription.name"
+		>
+			<N8nInputLabel
+				:label="getCredentialsFieldLabel(credentialTypeDescription)"
+				:bold="false"
+				size="small"
+				color="text-dark"
+				data-test-id="credentials-label"
+			>
+				<div v-if="readonly">
+					<N8nInput
+						:model-value="getSelectedName(credentialTypeDescription.name)"
+						disabled
+						size="small"
+						data-test-id="node-credentials-select"
+					/>
+				</div>
+				<div
+					v-else
+					:class="
+						getIssues(credentialTypeDescription.name).length && !hideIssues
+							? $style.hasIssues
+							: $style.input
+					"
+					data-test-id="node-credentials-select"
+				>
+					<N8nSelect
+						:model-value="getSelectedId(credentialTypeDescription.name)"
+						:placeholder="
+							getSelectPlaceholder(
+								credentialTypeDescription.name,
+								getIssues(credentialTypeDescription.name),
+							)
+						"
+						size="small"
+						@update:model-value="
+							(value: string) =>
+								onCredentialSelected(
+									credentialTypeDescription.name,
+									value,
+									showMixedCredentials(credentialTypeDescription),
+								)
+						"
+						@blur="emit('blur', 'credentials')"
+					>
+						<N8nOption
+							v-for="item in getCredentialOptions(
+								getAllRelatedCredentialTypes(credentialTypeDescription),
+							)"
+							:key="item.id"
+							:data-test-id="`node-credentials-select-item-${item.id}`"
+							:label="item.name"
+							:value="item.id"
+						>
+							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+								<N8nText bold>{{ item.name }}</N8nText>
+								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+							</div>
+						</N8nOption>
+						<N8nOption
+							:key="NEW_CREDENTIALS_TEXT"
+							data-test-id="node-credentials-select-item-new"
+							:value="NEW_CREDENTIALS_TEXT"
+							:label="NEW_CREDENTIALS_TEXT"
+						>
+						</N8nOption>
+					</N8nSelect>
+
+					<div
+						v-if="getIssues(credentialTypeDescription.name).length && !hideIssues"
+						:class="$style.warning"
+					>
+						<N8nTooltip placement="top">
+							<template #content>
+								<TitledList
+									:title="`${$locale.baseText('nodeCredentials.issues')}:`"
+									:items="getIssues(credentialTypeDescription.name)"
+								/>
+							</template>
+							<font-awesome-icon icon="exclamation-triangle" />
+						</N8nTooltip>
+					</div>
+
+					<div
+						v-if="
+							selected[credentialTypeDescription.name] &&
+							isCredentialExisting(credentialTypeDescription.name)
+						"
+						:class="$style.edit"
+						data-test-id="credential-edit-button"
+					>
+						<font-awesome-icon
+							icon="pen"
+							class="clickable"
+							:title="$locale.baseText('nodeCredentials.updateCredential')"
+							@click="editCredential(credentialTypeDescription.name)"
+						/>
+					</div>
+				</div>
+			</N8nInputLabel>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

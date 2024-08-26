@@ -1,3 +1,61 @@
+<script setup lang="ts">
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { N8nButton, N8nSelect } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
+import { onMounted, ref } from 'vue';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
+import Modal from './Modal.vue';
+
+const externalHooks = useExternalHooks();
+const telemetry = useTelemetry();
+
+const modalBus = ref(createEventBus());
+const selected = ref('');
+const loading = ref(true);
+const selectRef = ref<HTMLSelectElement>();
+
+const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
+
+onMounted(async () => {
+	try {
+		await credentialsStore.fetchCredentialTypes(false);
+	} catch (e) {}
+
+	loading.value = false;
+
+	setTimeout(() => {
+		if (selectRef.value) {
+			selectRef.value.focus();
+		}
+	}, 0);
+});
+
+function onSelect(type: string) {
+	selected.value = type;
+}
+
+function openCredentialType() {
+	modalBus.value.emit('close');
+	uiStore.openNewCredential(selected.value);
+
+	const telemetryPayload = {
+		credential_type: selected.value,
+		source: 'primary_menu',
+		new_credential: true,
+		workflow_id: workflowsStore.workflowId,
+	};
+
+	telemetry.track('User opened Credential modal', telemetryPayload);
+	void externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
+}
+</script>
+
 <template>
 	<Modal
 		:name="CREDENTIAL_SELECT_MODAL_KEY"
@@ -56,64 +114,6 @@
 		</template>
 	</Modal>
 </template>
-
-<script setup lang="ts">
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { N8nButton, N8nSelect } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system/utils';
-import { onMounted, ref } from 'vue';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
-import Modal from './Modal.vue';
-
-const externalHooks = useExternalHooks();
-const telemetry = useTelemetry();
-
-const modalBus = ref(createEventBus());
-const selected = ref('');
-const loading = ref(true);
-const selectRef = ref<HTMLSelectElement>();
-
-const credentialsStore = useCredentialsStore();
-const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
-
-onMounted(async () => {
-	try {
-		await credentialsStore.fetchCredentialTypes(false);
-	} catch (e) {}
-
-	loading.value = false;
-
-	setTimeout(() => {
-		if (selectRef.value) {
-			selectRef.value.focus();
-		}
-	}, 0);
-});
-
-function onSelect(type: string) {
-	selected.value = type;
-}
-
-function openCredentialType() {
-	modalBus.value.emit('close');
-	uiStore.openNewCredential(selected.value);
-
-	const telemetryPayload = {
-		credential_type: selected.value,
-		source: 'primary_menu',
-		new_credential: true,
-		workflow_id: workflowsStore.workflowId,
-	};
-
-	telemetry.track('User opened Credential modal', telemetryPayload);
-	void externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
-}
-</script>
 
 <style module lang="scss">
 .title {

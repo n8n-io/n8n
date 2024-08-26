@@ -1,9 +1,3 @@
-<template>
-	<span :title="name" :data-test-id="testId">
-		<slot :shortened-name="shortenedName"></slot>
-	</span>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import { shorten } from '@/utils/typesUtils';
@@ -25,3 +19,9 @@ const shortenedName = computed(() =>
 	shorten(props.name, props.limit, WORKFLOW_NAME_END_COUNT_TO_KEEP),
 );
 </script>
+
+<template>
+	<span :title="name" :data-test-id="testId">
+		<slot :shortened-name="shortenedName"></slot>
+	</span>
+</template>

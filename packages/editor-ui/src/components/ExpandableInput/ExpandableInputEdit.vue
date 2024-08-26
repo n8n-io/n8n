@@ -1,19 +1,3 @@
-<template>
-	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
-		<input
-			ref="inputRef"
-			class="el-input__inner"
-			:value="modelValue"
-			:placeholder="placeholder"
-			:maxlength="maxlength"
-			size="4"
-			@input="onInput"
-			@keydown.enter="onEnter"
-			@keydown.esc="onEscape"
-		/>
-	</ExpandableInputBase>
-</template>
-
 <script setup lang="ts">
 import type { EventBus } from 'n8n-design-system';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
@@ -78,3 +62,19 @@ function onEscape() {
 	emit('esc');
 }
 </script>
+
+<template>
+	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
+		<input
+			ref="inputRef"
+			class="el-input__inner"
+			:value="modelValue"
+			:placeholder="placeholder"
+			:maxlength="maxlength"
+			size="4"
+			@input="onInput"
+			@keydown.enter="onEnter"
+			@keydown.esc="onEscape"
+		/>
+	</ExpandableInputBase>
+</template>

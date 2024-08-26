@@ -1,54 +1,3 @@
-<template>
-	<div>
-		<div :class="$style['parameter-value-container']">
-			<N8nSelect
-				ref="innerSelectRef"
-				:size="inputSize"
-				filterable
-				:model-value="displayValue"
-				:placeholder="$locale.baseText('parameterInput.select')"
-				:title="displayTitle"
-				:disabled="isReadOnly"
-				data-test-id="credential-select"
-				@update:model-value="(value: string) => emit('update:modelValue', value)"
-				@keydown.stop
-				@focus="emit('setFocus')"
-				@blur="emit('onBlur')"
-			>
-				<N8nOption
-					v-for="credType in supportedCredentialTypes"
-					:key="credType.name"
-					:value="credType.name"
-					:label="credType.displayName"
-					data-test-id="credential-select-option"
-				>
-					<div class="list-option">
-						<div class="option-headline">
-							{{ credType.displayName }}
-						</div>
-					</div>
-				</N8nOption>
-			</N8nSelect>
-			<slot name="issues-and-options" />
-		</div>
-
-		<ScopesNotice
-			v-if="scopes.length > 0"
-			:active-credential-type="activeCredentialType"
-			:scopes="scopes"
-		/>
-		<div>
-			<NodeCredentials
-				v-if="node"
-				:node="node"
-				:readonly="isReadOnly"
-				:override-cred-type="node?.parameters[parameter.name]"
-				@credential-selected="(updateInformation) => emit('credentialSelected', updateInformation)"
-			/>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { ICredentialType, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -161,6 +110,57 @@ function getSupportedSets(credentialTypes: string[]) {
 
 defineExpose({ focus });
 </script>
+
+<template>
+	<div>
+		<div :class="$style['parameter-value-container']">
+			<N8nSelect
+				ref="innerSelectRef"
+				:size="inputSize"
+				filterable
+				:model-value="displayValue"
+				:placeholder="$locale.baseText('parameterInput.select')"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				data-test-id="credential-select"
+				@update:model-value="(value: string) => emit('update:modelValue', value)"
+				@keydown.stop
+				@focus="emit('setFocus')"
+				@blur="emit('onBlur')"
+			>
+				<N8nOption
+					v-for="credType in supportedCredentialTypes"
+					:key="credType.name"
+					:value="credType.name"
+					:label="credType.displayName"
+					data-test-id="credential-select-option"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ credType.displayName }}
+						</div>
+					</div>
+				</N8nOption>
+			</N8nSelect>
+			<slot name="issues-and-options" />
+		</div>
+
+		<ScopesNotice
+			v-if="scopes.length > 0"
+			:active-credential-type="activeCredentialType"
+			:scopes="scopes"
+		/>
+		<div>
+			<NodeCredentials
+				v-if="node"
+				:node="node"
+				:readonly="isReadOnly"
+				:override-cred-type="node?.parameters[parameter.name]"
+				@credential-selected="(updateInformation) => emit('credentialSelected', updateInformation)"
+			/>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .parameter-value-container {
