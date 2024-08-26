@@ -17,6 +17,8 @@ const mockMiddleware = (
 jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
 
+// @TODO: Tests for queue metrics
+
 describe('PrometheusMetricsService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		endpoints: {
@@ -38,7 +40,7 @@ describe('PrometheusMetricsService', () => {
 
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
@@ -50,7 +52,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up default metrics collection with `prom-client`', async () => {
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
@@ -59,7 +61,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should set up `n8n_cache_hits_total`', async () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
@@ -74,7 +76,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should set up `n8n_cache_misses_total`', async () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
@@ -89,7 +91,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should set up `n8n_cache_updates_total`', async () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
@@ -107,7 +109,7 @@ describe('PrometheusMetricsService', () => {
 			config.set('endpoints.metrics.includeApiPathLabel', true);
 			config.set('endpoints.metrics.includeApiMethodLabel', true);
 			config.set('endpoints.metrics.includeApiStatusCodeLabel', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig);
+			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
 			const app = mock<express.Application>();
 
@@ -138,7 +140,7 @@ describe('PrometheusMetricsService', () => {
 
 		it('should set up event bus metrics', async () => {
 			const eventBus = mock<MessageEventBus>();
-			const service = new PrometheusMetricsService(mock(), eventBus, globalConfig);
+			const service = new PrometheusMetricsService(mock(), eventBus, globalConfig, mock());
 
 			await service.init(mock<express.Application>());
 
