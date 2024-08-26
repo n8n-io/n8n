@@ -23,17 +23,17 @@ describe('PrometheusMetricsService', () => {
 		endpoints: {
 			metrics: {
 				prefix: 'n8n_',
-				includeDefaultMetrics: true,
-				includeApiEndpoints: true,
-				includeCacheMetrics: true,
-				includeMessageEventBusMetrics: true,
+				includeDefaultMetrics: false,
+				includeApiEndpoints: false,
+				includeCacheMetrics: false,
+				includeMessageEventBusMetrics: false,
 				includeCredentialTypeLabel: false,
 				includeNodeTypeLabel: false,
 				includeWorkflowIdLabel: false,
-				includeApiPathLabel: true,
-				includeApiMethodLabel: true,
-				includeApiStatusCodeLabel: true,
-				includeQueueMetrics: true,
+				includeApiPathLabel: false,
+				includeApiMethodLabel: false,
+				includeApiStatusCodeLabel: false,
+				includeQueueMetrics: false,
 			},
 		},
 	});
@@ -50,6 +50,7 @@ describe('PrometheusMetricsService', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		prometheusMetricsService.disableAllMetrics();
 	});
 
 	describe('init', () => {
@@ -64,12 +65,14 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up default metrics collection with `prom-client`', async () => {
+			prometheusMetricsService.enableMetric('default');
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
 		});
 
 		it('should set up `n8n_cache_hits_total`', async () => {
+			prometheusMetricsService.enableMetric('cache');
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
@@ -80,6 +83,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_misses_total`', async () => {
+			prometheusMetricsService.enableMetric('cache');
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
@@ -90,6 +94,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
+			prometheusMetricsService.enableMetric('cache');
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
@@ -102,14 +107,15 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up route metrics with `express-prom-bundle`', async () => {
+			prometheusMetricsService.enableMetric('routes');
 			await prometheusMetricsService.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
 				autoregister: false,
 				includeUp: false,
-				includePath: true,
-				includeMethod: true,
-				includeStatusCode: true,
+				includePath: false,
+				includeMethod: false,
+				includeStatusCode: false,
 			});
 
 			expect(app.use).toHaveBeenCalledWith(
@@ -128,6 +134,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up event bus metrics', async () => {
+			prometheusMetricsService.enableMetric('logs');
 			await prometheusMetricsService.init(app);
 
 			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
@@ -135,10 +142,11 @@ describe('PrometheusMetricsService', () => {
 
 		it('should set up queue metrics if enabled', async () => {
 			config.set('executions.mode', 'queue');
+			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
 
-			// call 1 is for `n8n_version_info`
+			// call 1 is for `n8n_version_info` (always enabled)
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
@@ -152,15 +160,13 @@ describe('PrometheusMetricsService', () => {
 				labelNames: ['queue'],
 			});
 
-			// calls 1-3 are for `n8n_cache_hits_total`, `n8n_cache_misses_total` and `n8n_cache_updates_total`
-
-			expect(promClient.Counter).toHaveBeenNthCalledWith(4, {
+			expect(promClient.Counter).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_scaling_mode_queue_jobs_completed',
 				help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
 				labelNames: ['queue'],
 			});
 
-			expect(promClient.Counter).toHaveBeenNthCalledWith(5, {
+			expect(promClient.Counter).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_scaling_mode_queue_jobs_failed',
 				help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
 				labelNames: ['queue'],
@@ -169,13 +175,14 @@ describe('PrometheusMetricsService', () => {
 			expect(eventService.on).toHaveBeenCalledWith('job-counts-updated', expect.any(Function));
 		});
 
-		it('should not set up queue metrics if disabled', async () => {
+		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
 			config.set('executions.mode', 'regular');
+			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
-			expect(promClient.Counter).toHaveBeenCalledTimes(3); // cache metrics
+			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
 	});
