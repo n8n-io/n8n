@@ -35,7 +35,6 @@ export class GoogleMyBusiness implements INodeType {
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
-				Authorization: '={{"Bearer " + $credentials.accessToken}}',
 			},
 		},
 		properties: [
