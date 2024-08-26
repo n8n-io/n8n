@@ -1,3 +1,12 @@
+## [1.56.2](https://github.com/n8n-io/n8n/compare/n8n@1.56.1...n8n@1.56.2) (2024-08-26)
+
+
+### Bug Fixes
+
+* **core:** Stop explicit redis client disconnect on shutdown ([#10551](https://github.com/n8n-io/n8n/issues/10551)) ([7b33c94](https://github.com/n8n-io/n8n/commit/7b33c94676dcb5d643a3ae791dc26a73039f604e))
+
+
+
 ## [1.56.1](https://github.com/n8n-io/n8n/compare/n8n@1.56.0...n8n@1.56.1) (2024-08-23)
 
 
