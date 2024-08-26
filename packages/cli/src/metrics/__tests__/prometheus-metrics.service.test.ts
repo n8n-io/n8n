@@ -37,14 +37,15 @@ describe('PrometheusMetricsService', () => {
 		},
 	});
 
+	const app = mock<express.Application>();
 	const eventBus = mock<MessageEventBus>();
 	const service = new PrometheusMetricsService(mock(), eventBus, globalConfig, mock());
 
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledWith({
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_version_info',
 				help: 'n8n version info.',
 				labelNames: ['version', 'major', 'minor', 'patch'],
@@ -52,7 +53,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up default metrics collection with `prom-client`', async () => {
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
 			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
 		});
@@ -60,7 +61,7 @@ describe('PrometheusMetricsService', () => {
 		it('should set up `n8n_cache_hits_total`', async () => {
 			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_hits_total',
@@ -73,7 +74,7 @@ describe('PrometheusMetricsService', () => {
 			config.set('endpoints.metrics.includeCacheMetrics', true);
 			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
 
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_misses_total',
@@ -83,7 +84,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_updates_total',
@@ -95,8 +96,6 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up route metrics with `express-prom-bundle`', async () => {
-			const app = mock<express.Application>();
-
 			await service.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
@@ -123,21 +122,19 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up event bus metrics', async () => {
-			await service.init(mock<express.Application>());
+			await service.init(app);
 
 			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
 		});
 
-		// it.skip('should set up queue metrics', async () => {
-		// 	const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
+		it.skip('should set up queue metrics', async () => {
+			await service.init(app);
 
-		// 	await service.init(mock<express.Application>());
-
-		// 	expect(promClient.Gauge).toHaveBeenCalledWith({
-		// 		name: 'n8n_scaling_mode_queue_jobs_waiting',
-		// 		help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
-		// 		labelNames: ['queue'],
-		// 	});
-		// });
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
+				name: 'n8n_scaling_mode_queue_jobs_waiting',
+				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
+				labelNames: ['queue'],
+			});
+		});
 	});
 });
