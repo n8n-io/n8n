@@ -28,7 +28,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
 import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/node-types';
-import type { Job, JobData, JobResult } from '@/scaling/types';
+import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
 import type { ScalingService } from '@/scaling/scaling.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
