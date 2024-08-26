@@ -1,52 +1,3 @@
-<template>
-	<IntersectionObserver
-		ref="tagsContainer"
-		:threshold="1.0"
-		class="tags-container"
-		:style="style"
-		:enabled="responsive"
-		:event-bus="intersectionEventBus"
-		@observed="onObserved"
-	>
-		<span class="tags">
-			<span
-				v-for="tag in tags"
-				:key="tag.id"
-				:class="{ clickable: !tag.hidden }"
-				@click="(e) => onClick(e, tag)"
-			>
-				<el-tag
-					v-if="tag.isCount"
-					:title="tag.title"
-					type="info"
-					size="small"
-					class="count-container"
-					:disable-transitions="true"
-				>
-					{{ tag.name }}
-				</el-tag>
-				<IntersectionObserved
-					v-else
-					:class="{ hideTag: tag.hidden }"
-					:data-id="tag.id"
-					:enabled="responsive"
-					:event-bus="intersectionEventBus"
-				>
-					<el-tag
-						:title="tag.name"
-						type="info"
-						size="small"
-						:class="{ hoverable }"
-						:disable-transitions="true"
-					>
-						{{ tag.name }}
-					</el-tag>
-				</IntersectionObserved>
-			</span>
-		</span>
-	</IntersectionObserver>
-</template>
-
 <script lang="ts">
 import { defineComponent, type ComponentInstance } from 'vue';
 
@@ -179,6 +130,55 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<IntersectionObserver
+		ref="tagsContainer"
+		:threshold="1.0"
+		class="tags-container"
+		:style="style"
+		:enabled="responsive"
+		:event-bus="intersectionEventBus"
+		@observed="onObserved"
+	>
+		<span class="tags">
+			<span
+				v-for="tag in tags"
+				:key="tag.id"
+				:class="{ clickable: !tag.hidden }"
+				@click="(e) => onClick(e, tag)"
+			>
+				<el-tag
+					v-if="tag.isCount"
+					:title="tag.title"
+					type="info"
+					size="small"
+					class="count-container"
+					:disable-transitions="true"
+				>
+					{{ tag.name }}
+				</el-tag>
+				<IntersectionObserved
+					v-else
+					:class="{ hideTag: tag.hidden }"
+					:data-id="tag.id"
+					:enabled="responsive"
+					:event-bus="intersectionEventBus"
+				>
+					<el-tag
+						:title="tag.name"
+						type="info"
+						size="small"
+						:class="{ hoverable }"
+						:disable-transitions="true"
+					>
+						{{ tag.name }}
+					</el-tag>
+				</IntersectionObserved>
+			</span>
+		</span>
+	</IntersectionObserver>
+</template>
 
 <style lang="scss" scoped>
 .tags-container {

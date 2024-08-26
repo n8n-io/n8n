@@ -1,149 +1,3 @@
-<template>
-	<div
-		ref="containerRef"
-		class="resource-locator"
-		:data-test-id="`resource-locator-${parameter.name}`"
-	>
-		<OnClickOutside @trigger="hideResourceDropdown">
-			<ResourceLocatorDropdown
-				ref="dropdownRef"
-				:model-value="modelValue ? modelValue.value : ''"
-				:show="resourceDropdownVisible"
-				:filterable="isSearchable"
-				:filter-required="requiresSearchFilter"
-				:resources="currentQueryResults"
-				:loading="currentQueryLoading"
-				:filter="searchFilter"
-				:has-more="currentQueryHasMore"
-				:error-view="currentQueryError"
-				:width="width"
-				:event-bus="eventBus"
-				@update:model-value="onListItemSelected"
-				@filter="onSearchFilter"
-				@load-more="loadResourcesDebounced"
-			>
-				<template #error>
-					<div :class="$style.error" data-test-id="rlc-error-container">
-						<n8n-text color="text-dark" align="center" tag="div">
-							{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
-						</n8n-text>
-						<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
-							{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
-							<a v-if="credentialsNotSet" @click="createNewCredential">{{
-								$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
-							}}</a>
-							<a v-else-if="hasCredential" @click="openCredential">{{
-								$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
-							}}</a>
-						</n8n-text>
-					</div>
-				</template>
-				<div
-					:class="{
-						[$style.resourceLocator]: true,
-						[$style.multipleModes]: hasMultipleModes,
-					}"
-				>
-					<div :class="$style.background"></div>
-					<div v-if="hasMultipleModes" :class="$style.modeSelector">
-						<n8n-select
-							:model-value="selectedMode"
-							:size="inputSize"
-							:disabled="isReadOnly"
-							:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
-							data-test-id="rlc-mode-selector"
-							@update:model-value="onModeSelected"
-						>
-							<n8n-option
-								v-for="mode in parameter.modes"
-								:key="mode.name"
-								:value="mode.name"
-								:label="getModeLabel(mode)"
-								:disabled="isValueExpression && mode.name === 'list'"
-								:title="
-									isValueExpression && mode.name === 'list'
-										? $locale.baseText('resourceLocator.mode.list.disabled.title')
-										: ''
-								"
-							>
-								{{ getModeLabel(mode) }}
-							</n8n-option>
-						</n8n-select>
-					</div>
-
-					<div :class="$style.inputContainer" data-test-id="rlc-input-container">
-						<DraggableTarget
-							type="mapping"
-							:disabled="hasOnlyListMode"
-							:sticky="true"
-							:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
-							@drop="onDrop"
-						>
-							<template #default="{ droppable, activeDrop }">
-								<div
-									:class="{
-										[$style.listModeInputContainer]: isListMode,
-										[$style.droppable]: droppable,
-										[$style.activeDrop]: activeDrop,
-									}"
-									@keydown.stop="onKeyDown"
-								>
-									<ExpressionParameterInput
-										v-if="isValueExpression || forceShowExpression"
-										ref="inputRef"
-										:model-value="expressionDisplayValue"
-										:path="path"
-										:rows="3"
-										@update:model-value="onInputChange"
-										@modal-opener-click="emit('modalOpenerClick')"
-									/>
-									<n8n-input
-										v-else
-										ref="inputRef"
-										:class="{ [$style.selectInput]: isListMode }"
-										:size="inputSize"
-										:model-value="valueToDisplay"
-										:disabled="isReadOnly"
-										:readonly="isListMode"
-										:title="displayTitle"
-										:placeholder="inputPlaceholder"
-										type="text"
-										data-test-id="rlc-input"
-										@update:model-value="onInputChange"
-										@focus="onInputFocus"
-										@blur="onInputBlur"
-									>
-										<template v-if="isListMode" #suffix>
-											<i
-												:class="{
-													['el-input__icon']: true,
-													['el-icon-arrow-down']: true,
-													[$style.selectIcon]: true,
-													[$style.isReverse]: resourceDropdownVisible,
-												}"
-											/>
-										</template>
-									</n8n-input>
-								</div>
-							</template>
-						</DraggableTarget>
-						<ParameterIssues
-							v-if="parameterIssues && parameterIssues.length"
-							:issues="parameterIssues"
-							:class="$style['parameter-issues']"
-						/>
-						<div v-else-if="urlValue" :class="$style.openResourceLink">
-							<n8n-link theme="text" @click.stop="openResource(urlValue)">
-								<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
-							</n8n-link>
-						</div>
-					</div>
-				</div>
-			</ResourceLocatorDropdown>
-		</OnClickOutside>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { DynamicNodeParameters, IResourceLocatorResultExpanded } from '@/Interface';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -164,7 +18,6 @@ import {
 	hasOnlyListMode as hasOnlyListModeUtil,
 } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
-import { OnClickOutside } from '@vueuse/components';
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -178,10 +31,11 @@ import type {
 	INodePropertyModeTypeOptions,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -332,7 +186,7 @@ const valueToDisplay = computed<NodeParameterValue>(() => {
 
 const urlValue = computed(() => {
 	if (isListMode.value && typeof props.modelValue === 'object') {
-		return props.modelValue?.cachedResultUrl || null;
+		return props.modelValue?.cachedResultUrl ?? null;
 	}
 
 	if (selectedMode.value === 'url') {
@@ -469,7 +323,7 @@ onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
 
-	useNDVStore().$subscribe((_mutation, _state) => {
+	useNDVStore().$subscribe(() => {
 		// Update the width when main panel dimension change
 		setWidth();
 	});
@@ -483,6 +337,8 @@ onBeforeUnmount(() => {
 	props.eventBus.off('refreshList', refreshList);
 	window.removeEventListener('resize', setWidth);
 });
+
+onClickOutside(dropdownRef as Ref<VueInstance>, hideResourceDropdown);
 
 function setWidth() {
 	if (containerRef.value) {
@@ -562,7 +418,7 @@ function createNewCredential(): void {
 
 function findModeByName(name: string): INodePropertyMode | null {
 	if (props.parameter.modes) {
-		return props.parameter.modes.find((mode: INodePropertyMode) => mode.name === name) || null;
+		return props.parameter.modes.find((mode: INodePropertyMode) => mode.name === name) ?? null;
 	}
 	return null;
 }
@@ -578,7 +434,7 @@ function getModeLabel(mode: INodePropertyMode): string | null {
 function onInputChange(value: NodeParameterValue): void {
 	const params: INodeParameterResourceLocator = { __rl: true, value, mode: selectedMode.value };
 	if (isListMode.value) {
-		const resource = currentQueryResults.value.find((resource) => resource.value === value);
+		const resource = currentQueryResults.value.find((result) => result.value === value);
 		if (resource?.name) {
 			params.cachedResultName = resource.name;
 		}
@@ -654,10 +510,10 @@ function loadResourcesDebounced() {
 	});
 }
 
-function setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
+function setResponse(paramsKey: string, response: Partial<IResourceLocatorQuery>) {
 	cachedResponses.value = {
 		...cachedResponses.value,
-		[paramsKey]: { ...cachedResponses.value[paramsKey], ...props },
+		[paramsKey]: { ...cachedResponses.value[paramsKey], ...response },
 	};
 }
 
@@ -758,10 +614,8 @@ function onInputFocus(): void {
 
 function switchFromListMode(): void {
 	if (isListMode.value && props.parameter.modes && props.parameter.modes.length > 1) {
-		let mode = findModeByName('id');
-		if (!mode) {
-			mode = props.parameter.modes.filter((mode) => mode.name !== 'list')[0];
-		}
+		const mode =
+			findModeByName('id') ?? props.parameter.modes.filter(({ name }) => name !== 'list')[0];
 
 		if (mode) {
 			emit('update:modelValue', {
@@ -808,6 +662,150 @@ function onInputBlur() {
 	emit('blur');
 }
 </script>
+
+<template>
+	<div
+		ref="containerRef"
+		class="resource-locator"
+		:data-test-id="`resource-locator-${parameter.name}`"
+	>
+		<ResourceLocatorDropdown
+			ref="dropdownRef"
+			:model-value="modelValue ? modelValue.value : ''"
+			:show="resourceDropdownVisible"
+			:filterable="isSearchable"
+			:filter-required="requiresSearchFilter"
+			:resources="currentQueryResults"
+			:loading="currentQueryLoading"
+			:filter="searchFilter"
+			:has-more="currentQueryHasMore"
+			:error-view="currentQueryError"
+			:width="width"
+			:event-bus="eventBus"
+			@update:model-value="onListItemSelected"
+			@filter="onSearchFilter"
+			@load-more="loadResourcesDebounced"
+		>
+			<template #error>
+				<div :class="$style.error" data-test-id="rlc-error-container">
+					<n8n-text color="text-dark" align="center" tag="div">
+						{{ $locale.baseText('resourceLocator.mode.list.error.title') }}
+					</n8n-text>
+					<n8n-text v-if="hasCredential || credentialsNotSet" size="small" color="text-base">
+						{{ $locale.baseText('resourceLocator.mode.list.error.description.part1') }}
+						<a v-if="credentialsNotSet" @click="createNewCredential">{{
+							$locale.baseText('resourceLocator.mode.list.error.description.part2.noCredentials')
+						}}</a>
+						<a v-else-if="hasCredential" @click="openCredential">{{
+							$locale.baseText('resourceLocator.mode.list.error.description.part2.hasCredentials')
+						}}</a>
+					</n8n-text>
+				</div>
+			</template>
+			<div
+				:class="{
+					[$style.resourceLocator]: true,
+					[$style.multipleModes]: hasMultipleModes,
+				}"
+			>
+				<div :class="$style.background"></div>
+				<div v-if="hasMultipleModes" :class="$style.modeSelector">
+					<n8n-select
+						:model-value="selectedMode"
+						:size="inputSize"
+						:disabled="isReadOnly"
+						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
+						data-test-id="rlc-mode-selector"
+						@update:model-value="onModeSelected"
+					>
+						<n8n-option
+							v-for="mode in parameter.modes"
+							:key="mode.name"
+							:value="mode.name"
+							:label="getModeLabel(mode)"
+							:disabled="isValueExpression && mode.name === 'list'"
+							:title="
+								isValueExpression && mode.name === 'list'
+									? $locale.baseText('resourceLocator.mode.list.disabled.title')
+									: ''
+							"
+						>
+							{{ getModeLabel(mode) }}
+						</n8n-option>
+					</n8n-select>
+				</div>
+
+				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+					<DraggableTarget
+						type="mapping"
+						:disabled="hasOnlyListMode"
+						:sticky="true"
+						:sticky-offset="isValueExpression ? [26, 3] : [3, 3]"
+						@drop="onDrop"
+					>
+						<template #default="{ droppable, activeDrop }">
+							<div
+								:class="{
+									[$style.listModeInputContainer]: isListMode,
+									[$style.droppable]: droppable,
+									[$style.activeDrop]: activeDrop,
+								}"
+								@keydown.stop="onKeyDown"
+							>
+								<ExpressionParameterInput
+									v-if="isValueExpression || forceShowExpression"
+									ref="inputRef"
+									:model-value="expressionDisplayValue"
+									:path="path"
+									:rows="3"
+									@update:model-value="onInputChange"
+									@modal-opener-click="emit('modalOpenerClick')"
+								/>
+								<n8n-input
+									v-else
+									ref="inputRef"
+									:class="{ [$style.selectInput]: isListMode }"
+									:size="inputSize"
+									:model-value="valueToDisplay"
+									:disabled="isReadOnly"
+									:readonly="isListMode"
+									:title="displayTitle"
+									:placeholder="inputPlaceholder"
+									type="text"
+									data-test-id="rlc-input"
+									@update:model-value="onInputChange"
+									@focus="onInputFocus"
+									@blur="onInputBlur"
+								>
+									<template v-if="isListMode" #suffix>
+										<i
+											:class="{
+												['el-input__icon']: true,
+												['el-icon-arrow-down']: true,
+												[$style.selectIcon]: true,
+												[$style.isReverse]: resourceDropdownVisible,
+											}"
+										/>
+									</template>
+								</n8n-input>
+							</div>
+						</template>
+					</DraggableTarget>
+					<ParameterIssues
+						v-if="parameterIssues && parameterIssues.length"
+						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
+					/>
+					<div v-else-if="urlValue" :class="$style.openResourceLink">
+						<n8n-link theme="text" @click.stop="openResource(urlValue)">
+							<font-awesome-icon icon="external-link-alt" :title="getLinkAlt(valueToDisplay)" />
+						</n8n-link>
+					</div>
+				</div>
+			</div>
+		</ResourceLocatorDropdown>
+	</div>
+</template>
 
 <style lang="scss" module>
 @import './resourceLocator.scss';

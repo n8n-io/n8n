@@ -1,21 +1,3 @@
-<template>
-	<ElDrawer
-		:direction="direction"
-		:model-value="uiStore.modalsById[name].open"
-		:size="width"
-		:before-close="close"
-		:modal="modal"
-		:wrapper-closable="wrapperClosable"
-	>
-		<template #header>
-			<slot name="header" />
-		</template>
-		<span @keydown.stop>
-			<slot name="content" />
-		</span>
-	</ElDrawer>
-</template>
-
 <script lang="ts">
 import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
@@ -100,6 +82,24 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<ElDrawer
+		:direction="direction"
+		:model-value="uiStore.modalsById[name].open"
+		:size="width"
+		:before-close="close"
+		:modal="modal"
+		:wrapper-closable="wrapperClosable"
+	>
+		<template #header>
+			<slot name="header" />
+		</template>
+		<span @keydown.stop>
+			<slot name="content" />
+		</span>
+	</ElDrawer>
+</template>
 
 <style lang="scss">
 .el-drawer__header {

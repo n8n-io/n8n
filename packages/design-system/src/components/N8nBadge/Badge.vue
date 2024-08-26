@@ -1,11 +1,3 @@
-<template>
-	<span :class="['n8n-badge', $style[theme]]">
-		<N8nText :size="size" :bold="bold" :compact="true">
-			<slot></slot>
-		</N8nText>
-	</span>
-</template>
-
 <script lang="ts" setup>
 import type { TextSize } from 'n8n-design-system/types/text';
 import N8nText from '../N8nText';
@@ -33,6 +25,14 @@ withDefaults(defineProps<BadgeProps>(), {
 	bold: false,
 });
 </script>
+
+<template>
+	<span :class="['n8n-badge', $style[theme]]">
+		<N8nText :size="size" :bold="bold" :compact="true">
+			<slot></slot>
+		</N8nText>
+	</span>
+</template>
 
 <style lang="scss" module>
 .badge {

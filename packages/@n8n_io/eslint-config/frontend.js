@@ -66,6 +66,12 @@ module.exports = {
 				useAttrs: 'attrs',
 			},
 		],
+		'vue/block-order': [
+			'error',
+			{
+				order: ['script', 'template', 'style'],
+			},
+		],
 
 		// TODO: fix these
 		'@typescript-eslint/no-unsafe-call': 'off',
