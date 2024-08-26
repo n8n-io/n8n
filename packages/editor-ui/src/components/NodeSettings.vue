@@ -58,7 +58,7 @@ const props = defineProps<{
 	dragging: boolean;
 	pushRef: string;
 	nodeType: INodeTypeDescription | null;
-	readOnly?: boolean;
+	readOnly: boolean;
 	foreignCredentials: string[];
 	blockUI: boolean;
 	executable: boolean;
@@ -69,8 +69,8 @@ const emit = defineEmits<{
 	stopExecution: [];
 	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
-	switchSelectedNode: [nodeTypeName: string];
-	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	switchSelectedNode: [nodeName: string];
+	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
 	activate: [];
 	execute: [];
 }>();
@@ -588,12 +588,12 @@ const setHttpNodeParameters = (parameters: CurlToJSONResponse) => {
 	} catch {}
 };
 
-const onSwitchSelectedNode = (nodeTypeName: string) => {
-	emit('switchSelectedNode', nodeTypeName);
+const onSwitchSelectedNode = (node: string) => {
+	emit('switchSelectedNode', node);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
-	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
+const onOpenConnectionNodeCreator = (nodeName: string, connectionType: ConnectionTypes) => {
+	emit('openConnectionNodeCreator', nodeName, connectionType);
 };
 
 const populateHiddenIssuesSet = () => {
