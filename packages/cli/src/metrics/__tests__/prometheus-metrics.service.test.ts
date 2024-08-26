@@ -4,7 +4,7 @@ import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
 import { PrometheusMetricsService } from '../prometheus-metrics.service';
 import type express from 'express';
-import type { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
 
