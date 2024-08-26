@@ -161,6 +161,8 @@ describe('GlobalConfig', () => {
 				includeApiMethodLabel: false,
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
+				includeQueueMetrics: false,
+				queueMetricsInterval: 20,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
