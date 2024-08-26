@@ -120,10 +120,10 @@ function onRetryMenuItemSelect(action: string): void {
 					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
 						<FontAwesomeIcon
 							v-if="execution.annotation.vote == 'up'"
-							:class="$style.highlight"
+							:class="$style.up"
 							icon="thumbs-up"
 						/>
-						<FontAwesomeIcon v-else :class="$style.highlight" icon="thumbs-down" />
+						<FontAwesomeIcon v-else :class="$style.down" icon="thumbs-down" />
 					</div>
 					<N8nTags
 						v-if="executionUIDetails.tags.length > 0"
@@ -250,8 +250,11 @@ function onRetryMenuItemSelect(action: string): void {
 		margin: var(--spacing-4xs) 0 0;
 
 		.ratingIcon {
-			.highlight {
-				color: var(--color-primary);
+			.up {
+				color: var(--color-success);
+			}
+			.down {
+				color: var(--color-danger);
 			}
 		}
 	}

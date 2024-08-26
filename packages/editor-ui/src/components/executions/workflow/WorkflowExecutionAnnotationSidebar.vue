@@ -5,13 +5,13 @@
 		data-test-id="execution-annotation-sidebar"
 	>
 		<div :class="$style.section">
-			<div :class="$style.heading">
-				<n8n-heading tag="h2" size="medium" color="text-dark">
-					{{ $locale.baseText('generic.annotations') }}
-				</n8n-heading>
-			</div>
+			<!--			<div :class="$style.heading">-->
+			<!--				<n8n-heading tag="h2" size="medium" color="text-dark">-->
+			<!--					{{ $locale.baseText('generic.annotations') }}-->
+			<!--				</n8n-heading>-->
+			<!--			</div>-->
 			<div :class="$style.vote">
-				<div>{{ $locale.baseText('generic.rating') }}:</div>
+				<div>{{ $locale.baseText('generic.rating') }}</div>
 				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
 			</div>
 			<span class="tags" data-test-id="annotation-tags-container">
@@ -46,7 +46,7 @@
 		</div>
 		<div :class="$style.section">
 			<div :class="$style.heading">
-				<n8n-heading tag="h2" size="medium" color="text-dark">
+				<n8n-heading tag="h3" size="small" color="text-dark">
 					{{ $locale.baseText('generic.annotationData') }}
 				</n8n-heading>
 			</div>
@@ -54,20 +54,22 @@
 				v-if="activeExecution?.customData && Object.keys(activeExecution?.customData).length > 0"
 				:class="$style.metadata"
 			>
-				<n8n-input-label
+				<div
 					v-for="attr in Object.keys(activeExecution?.customData)"
 					v-bind:key="attr"
-					v-bind="{ label: attr }"
 					:class="$style.customDataEntry"
 				>
-					<n8n-text size="small" color="text-base">
+					<n8n-text :class="$style.key" size="small" color="text-base">
+						{{ attr }}
+					</n8n-text>
+					<n8n-text :class="$style.value" size="small" color="text-base">
 						{{ activeExecution?.customData[attr] }}
 					</n8n-text>
-				</n8n-input-label>
+				</div>
 			</div>
 			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
-				<n8n-text color="text-base" size="medium" align="center">
-					{{ $locale.baseText('executionAnnotationView.data.notFound') }}
+				<n8n-text color="text-base" size="small" align="center">
+					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
 				</n8n-text>
 			</div>
 		</div>
@@ -86,6 +88,7 @@ import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
+import N8nNotice from 'n8n-design-system/components/N8nNotice';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -99,6 +102,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 export default defineComponent({
 	name: 'WorkflowExecutionAnnotationSidebar',
 	components: {
+		N8nNotice,
 		VoteButtons,
 		AnnotationTagsContainer,
 		AnnotationTagsDropdown,
@@ -203,7 +207,7 @@ export default defineComponent({
 
 <style module lang="scss">
 .container {
-	flex: 310px 0 0;
+	flex: 250px 0 0;
 	background-color: var(--color-background-xlight);
 	border-left: var(--border-base);
 	z-index: 1;
@@ -249,7 +253,7 @@ export default defineComponent({
 }
 
 .vote {
-	padding: var(--spacing-s) 0 var(--spacing-xs);
+	padding: 0 0 var(--spacing-xs);
 	font-size: var(--font-size-s);
 	flex: 1;
 	display: flex;
@@ -267,8 +271,17 @@ export default defineComponent({
 	}
 }
 
-.customDataEntry:not(:first-of-type) {
-	margin-top: var(--spacing-s);
+.customDataEntry {
+	display: flex;
+	flex-direction: column;
+
+	&:not(:first-of-type) {
+		margin-top: var(--spacing-s);
+	}
+
+	.key {
+		font-weight: bold;
+	}
 }
 
 .executionList {
@@ -308,8 +321,8 @@ export default defineComponent({
 
 .noResultsContainer {
 	width: 100%;
-	margin-top: var(--spacing-2xl);
-	text-align: center;
+	margin-top: var(--spacing-s);
+	//text-align: center;
 }
 </style>
 

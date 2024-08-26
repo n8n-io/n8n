@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.ratingIcon">
 		<n8n-icon-button
-			:class="{ [$style.highlight]: vote === 'up' }"
+			:class="{ [$style.up]: vote === 'up' }"
 			type="tertiary"
 			text
 			size="medium"
@@ -9,7 +9,7 @@
 			@click="onVoteClick('up')"
 		/>
 		<n8n-icon-button
-			:class="{ [$style.highlight]: vote === 'down' }"
+			:class="{ [$style.down]: vote === 'down' }"
 			type="tertiary"
 			text
 			size="medium"
@@ -41,8 +41,12 @@ const onVoteClick = (vote: AnnotationVote) => {
 	display: flex;
 	flex-direction: row;
 
-	.highlight {
-		color: var(--color-primary);
+	.up {
+		color: var(--color-success);
+	}
+
+	.down {
+		color: var(--color-danger);
 	}
 }
 </style>
