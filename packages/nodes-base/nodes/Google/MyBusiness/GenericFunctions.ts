@@ -1,18 +1,17 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestOptions,
-	IHttpRequestMethods,
-	ILoadOptionsFunctions,
-	JsonObject,
-	IExecuteSingleFunctions,
-	INodeExecutionData,
-	IN8nHttpFullResponse,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestOptions,
+	type IHttpRequestMethods,
+	type ILoadOptionsFunctions,
+	type JsonObject,
+	type IExecuteSingleFunctions,
+	type INodeExecutionData,
+	type IN8nHttpFullResponse,
+	NodeApiError,
 } from 'n8n-workflow';
 
-import { NodeApiError } from 'n8n-workflow';
-
-import type { ILocalPost, ICallToAction, IReviewReply } from './Interfaces';
+import type { ITimeInterval } from './Interfaces';
 
 const addOptName = 'additionalOptions';
 
@@ -23,72 +22,79 @@ const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown>
 	return { ...params, ...additionalOptions };
 };
 
-const formatParams = (
-	obj: Record<string, unknown>,
-	filters?: { [paramName: string]: (value: any) => boolean },
-	mappers?: { [paramName: string]: (value: any) => any },
-) => {
-	return Object.fromEntries(
-		Object.entries(obj)
-			.filter(([name, value]) => !filters || (name in filters ? filters[name](value) : false))
-			.map(([name, value]) =>
-				!mappers || !(name in mappers) ? [name, value] : [name, mappers[name](value)],
-			),
-	);
-};
-
-/* Functions to map the requests and responses related to posts */
-export async function createPostPresend(
+/* The following functions are used to map the requests and responses */
+// ToDo
+export async function handleDatesPresend(
 	this: IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	// Retrieve all parameters from the node
 	const params = getAllParams(this);
-
-	// Define the mappers for specific parameters
-	const mappers = {
-		// Map callToActionType and URL into the callToAction object
-		actionType: (value: any) => ({
-			actionType: value,
-			url: params.url,
-		}),
-		// Map media items into an array of IMediaItem objects
-		media: (value: any) =>
-			(value || []).map((mediaItem: IDataObject) => ({
-				mediaFormat: mediaItem.mediaFormat,
-				sourceUrl: mediaItem.sourceUrl,
-			})),
+	const body = Object.assign({}, opts.body);
+	const createDateTimeObject = (dateString: string) => {
+		const date = new Date(dateString);
+		return {
+			date: {
+				year: date.getUTCFullYear(),
+				month: date.getUTCMonth() + 1,
+				day: date.getUTCDate(),
+			},
+			time: dateString.includes('T')
+				? {
+						hours: date.getUTCHours(),
+						minutes: date.getUTCMinutes(),
+						seconds: date.getUTCSeconds(),
+						nanos: 0,
+					}
+				: undefined,
+		};
 	};
 
-	// Format the parameters using the formatParams function
-	const body: ILocalPost = formatParams(
-		params,
-		{
-			postType: (value) => ['standard', 'event', 'offer', 'alert'].includes(value as string),
-			summary: (value) => typeof value === 'string' && value.trim().length > 0,
-			languageCode: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventTitle: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventStartTime: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventEndTime: (value) => typeof value === 'string' && value.trim().length > 0,
-			media: (value) => Array.isArray(value) && value.length > 0,
-			actionType: (value) => typeof value === 'string' && value.trim().length > 0,
-		},
-		mappers,
-	);
+	const startDateTime = params.startDateTime
+		? createDateTimeObject(params.startDateTime as string)
+		: null;
+	const endDateTime = params.endDateTime
+		? createDateTimeObject(params.endDateTime as string)
+		: null;
 
-	// Assign the formatted body to the request options
+	const schedule: Partial<ITimeInterval> = {};
+
+	// ToDo: Refactor the following code
+	if (startDateTime?.date) {
+		schedule.startDate = startDateTime.date;
+	}
+	if (startDateTime?.time) {
+		schedule.startTime = startDateTime.time!;
+	}
+	if (endDateTime?.date) {
+		schedule.endDate = endDateTime.date;
+	}
+	if (endDateTime?.time) {
+		schedule.endTime = endDateTime.time!;
+	}
+
+	if (params.startDate && !params.startDateTime) {
+		const startDate = createDateTimeObject(params.startDate as string);
+		schedule.startDate = startDate.date;
+	}
+
+	if (params.endDate && !params.endDateTime) {
+		const endDate = createDateTimeObject(params.endDate as string);
+		schedule.endDate = endDate.date;
+	}
+
+	Object.assign(body, { schedule });
 	opts.body = body;
-
-	// Return the modified request options
 	return opts;
 }
 
+// ToDo: Duplicate code for simplification
 export async function getAllPostsPostReceive(
 	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
+	_: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	// If we shouldn't simplify the response, return the response body as is
+	// If the response shouldn't be simplified, return the response body as is
 	const simplify = this.getNodeParameter('simplify', 0) as boolean;
 	if (!simplify) {
 		return [{ json: response.body }] as INodeExecutionData[];
@@ -111,67 +117,12 @@ export async function getAllPostsPostReceive(
 	return [];
 }
 
-export async function updatePostPresend(
-	this: IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	// Retrieve all parameters from the node
-	const params = getAllParams(this);
-
-	// Define the mappers for specific parameters
-	const mappers = {
-		// Map callToActionType and URL into the callToAction object
-		actionType: (value: any) => ({
-			actionType: value,
-			url: params.url,
-		}),
-		// Map media items into an array of IMediaItem objects
-		media: (value: any) =>
-			(value || []).map((mediaItem: IDataObject) => ({
-				mediaFormat: mediaItem.mediaFormat,
-				sourceUrl: mediaItem.sourceUrl,
-			})),
-	};
-
-	// Format the parameters using the formatParams function
-	const body: ILocalPost = formatParams(
-		params,
-		{
-			postType: (value) => ['standard', 'event', 'offer', 'alert'].includes(value as string),
-			summary: (value) => typeof value === 'string' && value.trim().length > 0,
-			languageCode: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventTitle: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventStartTime: (value) => typeof value === 'string' && value.trim().length > 0,
-			eventEndTime: (value) => typeof value === 'string' && value.trim().length > 0,
-			media: (value) => Array.isArray(value) && value.length > 0,
-			actionType: (value) => typeof value === 'string' && value.trim().length > 0,
-		},
-		mappers,
-	);
-
-	opts.body = body;
-	return opts;
-}
-
-/* Functions to map the requests and responses related to reviews */
-export async function replyToReviewPreSend(
-	this: IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const comment = this.getNodeParameter('comment', 0) as string;
-
-	const body: IReviewReply = { comment };
-
-	opts.body = body;
-	return opts;
-}
-
 export async function getAllReviewsPostReceive(
 	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
+	_: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	// If we shouldn't simplify the response, return the response body as is
+	// If response shouldn't be simplified, return the response body as is
 	const simplify = this.getNodeParameter('simplify', 0) as boolean;
 	if (!simplify) {
 		return [{ json: response.body }] as INodeExecutionData[];

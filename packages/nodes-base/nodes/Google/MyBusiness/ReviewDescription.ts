@@ -1,17 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getAllReviewsPostReceive, replyToReviewPreSend } from './GenericFunctions';
+import { getAllReviewsPostReceive } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		default: 'get',
 		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'] } },
 		options: [
 			{
 				name: 'Get',
@@ -44,7 +41,6 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Reply to review',
 				description: 'Reply to a review',
 				routing: {
-					send: { preSend: [replyToReviewPreSend] },
 					request: {
 						method: 'PUT',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["review"]}}/reply',
@@ -52,7 +48,6 @@ export const reviewOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'get',
 	},
 ];
 
@@ -68,12 +63,7 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 	},
 	{
 		displayName: 'Location',
@@ -83,28 +73,16 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 	},
 	{
 		displayName: 'Review',
-		name: 'location',
+		name: 'review',
 		type: 'string',
 		default: '',
 		description: 'Select the post by name or URL to retrieve its details',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['review'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getReviews',
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
+		typeOptions: { loadOptionsMethod: 'getReviews' },
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -118,12 +96,7 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 	},
 	{
 		displayName: 'Location',
@@ -133,12 +106,7 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 	},
 	{
 		displayName: 'Limit',
@@ -147,16 +115,11 @@ export const reviewFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 50,
+			maxValue: 50, // ToDo: Remove after pagination is implemented
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 	},
 	{
 		displayName: 'Simplify',
@@ -165,12 +128,7 @@ export const reviewFields: INodeProperties[] = [
 		default: false,
 		description:
 			'Whether the response to include only the name, URL, and call-to-action button fields',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -184,12 +142,7 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['reply'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 	},
 	{
 		displayName: 'Location',
@@ -199,12 +152,7 @@ export const reviewFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['reply'],
-				resource: ['review'],
-			},
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 	},
 	{
 		displayName: 'Review Name',
@@ -212,30 +160,17 @@ export const reviewFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Select the post by name or URL to retrieve its details',
-		displayOptions: {
-			show: {
-				operation: ['reply'],
-				resource: ['review'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getReviews',
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
+		typeOptions: { loadOptionsMethod: 'getReviews' },
 	},
 	{
 		displayName: 'Reply',
-		name: 'comment',
+		name: 'reply',
 		type: 'string',
 		default: '',
 		description: 'The body of the reply (up to 4096 characters)',
-		displayOptions: {
-			show: {
-				operation: ['reply'],
-				resource: ['review'],
-			},
-		},
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
+		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
+		typeOptions: { rows: 5 },
+		routing: { send: { type: 'body', property: 'comment' } },
 	},
 ];

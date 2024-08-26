@@ -1,17 +1,14 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { createPostPresend, getAllPostsPostReceive, updatePostPresend } from './GenericFunctions';
+import { getAllPostsPostReceive, handleDatesPresend } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		default: 'create',
 		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'] } },
 		options: [
 			{
 				name: 'Create',
@@ -19,7 +16,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Create post',
 				description: 'Create a new post on Google My Business',
 				routing: {
-					send: { preSend: [createPostPresend] },
+					send: { preSend: [handleDatesPresend] },
 					request: {
 						method: 'POST',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
@@ -60,6 +57,9 @@ export const postOperations: INodeProperties[] = [
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
+						qs: {
+							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}', // ToDo
+						},
 					},
 				},
 			},
@@ -69,7 +69,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Update a post',
 				description: 'Update an existing post',
 				routing: {
-					send: { preSend: [updatePostPresend] },
+					send: { preSend: [handleDatesPresend] },
 					request: {
 						method: 'PATCH',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["post"]}}',
@@ -77,7 +77,6 @@ export const postOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'create',
 	},
 ];
 
@@ -90,15 +89,10 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'string',
+		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
-		default: '',
+		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 	},
 	{
 		displayName: 'Location',
@@ -108,44 +102,35 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 	},
 	{
 		displayName: 'Post Type',
 		name: 'postType',
 		required: true,
 		type: 'options',
-		default: 'standard',
+		default: 'STANDARD',
 		description: 'The type of post to create (standard, event, offer, or alert)',
+		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
+		routing: { send: { type: 'body', property: 'topicType' } },
 		options: [
 			{
 				name: 'Standard',
-				value: 'standard',
+				value: 'STANDARD',
 			},
 			{
 				name: 'Event',
-				value: 'event',
+				value: 'EVENT',
 			},
 			{
 				name: 'Offer',
-				value: 'offer',
+				value: 'OFFER',
 			},
 			{
 				name: 'Alert',
-				value: 'alert',
+				value: 'ALERT',
 			},
 		],
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
 	},
 	{
 		displayName: 'Summary',
@@ -154,25 +139,16 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The main text of the post',
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
+		routing: { send: { type: 'body', property: 'summary' } },
 	},
 	{
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['post'],
-			},
-		},
+		placeholder: 'Add Option',
+		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		options: [
 			{
 				displayName: 'Language',
@@ -180,6 +156,7 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The language of the post content',
+				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
 				displayName: 'Call to Action Type',
@@ -187,11 +164,8 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
-				displayOptions: {
-					show: {
-						'/postType': ['standard', 'event', 'offer', 'alert'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				routing: { send: { type: 'body', property: 'callToAction.actionType' } },
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -237,11 +211,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: {
-					show: {
-						'/postType': ['standard', 'event', 'offer', 'alert'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				routing: { send: { type: 'body', property: 'callToAction.url' } },
 			},
 			{
 				displayName: 'Title',
@@ -249,35 +220,24 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. Sales this week.',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
-				name: 'startDate',
+				name: 'startDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
 			},
 			{
 				displayName: 'End Date and Time',
-				name: 'endDate',
+				name: 'endDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The end date and time of the event',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
 			},
 			{
 				displayName: 'Title',
@@ -285,35 +245,27 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. 20% off in store or online.',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'dateTime',
+				type: 'string', // ToDo: Can dateTime be used?
 				default: '',
+				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'dateTime',
+				type: 'string', // ToDo: Can dateTime be used?
 				default: '',
+				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				typeOptions: { useDateAndTime: false },
 			},
 			{
 				displayName: 'Coupon Code',
@@ -321,11 +273,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The coupon code for the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.couponCode' } },
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -333,11 +282,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Link to redeem the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.redeemOnlineUrl' } },
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -345,11 +291,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.termsAndConditions' } },
 			},
 		],
 	},
@@ -362,15 +305,10 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'string',
+		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['post'],
-			},
-		},
-		default: '',
+		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 	},
 	{
 		displayName: 'Location',
@@ -380,12 +318,7 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 	},
 	{
 		displayName: 'Post',
@@ -393,15 +326,8 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Select the post by name or URL to retrieve its details',
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['post'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
+		typeOptions: { loadOptionsMethod: 'getPosts' },
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -412,15 +338,10 @@ export const postFields: INodeProperties[] = [
 		name: 'account',
 		required: true,
 		type: 'string',
+		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['post'],
-			},
-		},
-		default: '',
+		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 	},
 	{
 		displayName: 'Location',
@@ -430,12 +351,7 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 	},
 	{
 		displayName: 'Post',
@@ -443,15 +359,8 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Select the post by name or URL to retrieve its details',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['post'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
+		typeOptions: { loadOptionsMethod: 'getPosts' },
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -464,12 +373,7 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		default: '',
 	},
 	{
@@ -480,12 +384,7 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 	},
 	{
 		displayName: 'Limit',
@@ -493,16 +392,11 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100,
+			maxValue: 100, // ToDo: Remove after pagination is implemented
 		},
 		default: 20,
 		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 	},
 	{
 		displayName: 'Simplify',
@@ -511,32 +405,21 @@ export const postFields: INodeProperties[] = [
 		default: false,
 		description:
 			'Whether the response to include only the name, URL, and call-to-action button fields',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 post:update                                */
 	/* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'string',
+		default: '',
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
-		default: '',
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 	},
 	{
 		displayName: 'Location',
@@ -546,12 +429,7 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 	},
 	{
 		displayName: 'Post',
@@ -559,48 +437,36 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'Select the post by name or URL to retrieve its details',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getPosts',
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
+		typeOptions: { loadOptionsMethod: 'getPosts' },
 	},
-
 	{
 		displayName: 'Post Type',
 		name: 'postType',
 		required: true,
 		type: 'options',
-		default: 'standard',
+		default: 'STANDARD',
 		description: 'The type of post to create (standard, event, offer, or alert)',
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
+		routing: { send: { type: 'body', property: 'topicType' } },
 		options: [
 			{
 				name: 'Standard',
-				value: 'standard',
+				value: 'STANDARD',
 			},
 			{
 				name: 'Event',
-				value: 'event',
+				value: 'EVENT',
 			},
 			{
 				name: 'Offer',
-				value: 'offer',
+				value: 'OFFER',
 			},
 			{
 				name: 'Alert',
-				value: 'alert',
+				value: 'ALERT',
 			},
 		],
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
 	},
 	{
 		displayName: 'Summary',
@@ -609,25 +475,16 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		description: 'The main text of the post',
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
+		routing: { send: { type: 'body', property: 'summary' } },
 	},
 	{
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['post'],
-			},
-		},
+		placeholder: 'Add Option',
+		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		options: [
 			{
 				displayName: 'Language',
@@ -635,6 +492,7 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The language of the post content',
+				routing: { send: { type: 'body', property: 'languageCode' } },
 			},
 			{
 				displayName: 'Call to Action Type',
@@ -642,11 +500,8 @@ export const postFields: INodeProperties[] = [
 				type: 'options',
 				default: 'ACTION_TYPE_UNSPECIFIED',
 				description: 'The type of call to action',
-				displayOptions: {
-					show: {
-						'/postType': ['standard', 'event', 'offer', 'alert'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				routing: { send: { type: 'body', property: 'callToAction.actionType' } },
 				options: [
 					{
 						name: 'Action Type Unspecified',
@@ -692,11 +547,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The URL that users are sent to when clicking through the promotion',
-				displayOptions: {
-					show: {
-						'/postType': ['standard', 'event', 'offer', 'alert'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['STANDARD', 'EVENT', 'ALERT'] } },
+				routing: { send: { type: 'body', property: 'callToAction.url' } },
 			},
 			{
 				displayName: 'Title',
@@ -704,35 +556,24 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. Sales this week.',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date and Time',
-				name: 'startDate',
+				name: 'startDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The start date and time of the event',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
 			},
 			{
 				displayName: 'End Date and Time',
-				name: 'endDate',
+				name: 'endDateTime',
 				type: 'dateTime',
 				default: '',
 				description: 'The end date and time of the event',
-				displayOptions: {
-					show: {
-						'/postType': ['event'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['EVENT'] } },
 			},
 			{
 				displayName: 'Title',
@@ -740,35 +581,27 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'E.g. 20% off in store or online.',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'event.title' } },
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
-				type: 'dateTime',
+				type: 'string', // ToDo: Can dateTime be used?
 				default: '',
+				placeholder: 'YYYY-MM-DD',
 				description: 'The start date of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				type: 'dateTime',
+				type: 'string', // ToDo: Can dateTime be used?
 				default: '',
+				placeholder: 'YYYY-MM-DD',
 				description: 'The end date of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				typeOptions: { useDateAndTime: false },
 			},
 			{
 				displayName: 'Coupon Code',
@@ -776,11 +609,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The coupon code for the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.couponCode' } },
 			},
 			{
 				displayName: 'Redeem Online Url',
@@ -788,11 +618,8 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Link to redeem the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.redeemOnlineUrl' } },
 			},
 			{
 				displayName: 'Terms and Conditions',
@@ -800,13 +627,9 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'The terms and conditions of the offer',
-				displayOptions: {
-					show: {
-						'/postType': ['offer'],
-					},
-				},
+				displayOptions: { show: { '/postType': ['OFFER'] } },
+				routing: { send: { type: 'body', property: 'offer.termsAndConditions' } },
 			},
 		],
 	},
-
 ];

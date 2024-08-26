@@ -1,23 +1,21 @@
-export interface ICallToAction {
-	actionType: 'BOOK' | 'ORDER' | 'SHOP' | 'LEARN_MORE' | 'SIGN_UP' | 'CALL' | 'NONE';
-	url: string;
+interface IDate {
+	year: number;
+	month: number;
+	day: number;
 }
 
-export interface IMediaItem {
-	mediaFormat: 'PHOTO' | 'VIDEO';
-	sourceUrl: string;
+interface ITimeOfDay {
+	hours: number;
+	minutes: number;
+	seconds: number;
+	nanos: number;
 }
 
-export interface ILocalPost {
-	name?: string;
-	languageCode?: string;
-	summary?: string;
-	eventTitle?: string;
-	eventStartTime?: string; // ISO 8601 format
-	eventEndTime?: string; // ISO 8601 format
-	media?: IMediaItem[];
-	callToAction?: ICallToAction;
-	topicType?: 'STANDARD' | 'EVENT' | 'OFFER' | 'ALERT';
+export interface ITimeInterval {
+	startDate: IDate;
+	startTime: ITimeOfDay;
+	endDate: IDate;
+	endTime: ITimeOfDay;
 }
 
 export interface IReviewReply {
