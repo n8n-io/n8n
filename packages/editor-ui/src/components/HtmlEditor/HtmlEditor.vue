@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor">
-		<div ref="htmlEditor" data-test-id="html-editor-container"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import {
@@ -246,6 +239,13 @@ onBeforeUnmount(() => {
 	htmlEditorEventBus.off('format-html', formatHtml);
 });
 </script>
+
+<template>
+	<div :class="$style.editor">
+		<div ref="htmlEditor" data-test-id="html-editor-container"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .editor {

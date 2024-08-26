@@ -1,137 +1,3 @@
-<template>
-	<div v-if="!isLDAPFeatureEnabled">
-		<div :class="[$style.header, 'mb-2xl']">
-			<n8n-heading size="2xlarge">
-				{{ $locale.baseText('settings.ldap') }}
-			</n8n-heading>
-		</div>
-
-		<n8n-info-tip type="note" theme="info" tooltip-placement="right" class="mb-l">
-			{{ $locale.baseText('settings.ldap.note') }}
-		</n8n-info-tip>
-		<n8n-action-box
-			:description="$locale.baseText('settings.ldap.disabled.description')"
-			:button-text="$locale.baseText('settings.ldap.disabled.buttonText')"
-			@click:button="goToUpgrade"
-		>
-			<template #heading>
-				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
-			</template>
-		</n8n-action-box>
-	</div>
-	<div v-else>
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<n8n-heading size="2xlarge">
-					{{ $locale.baseText('settings.ldap') }}
-				</n8n-heading>
-			</div>
-			<div :class="$style.docsInfoTip">
-				<n8n-info-tip theme="info" type="note">
-					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-				</n8n-info-tip>
-			</div>
-			<div :class="$style.settingsForm">
-				<n8n-form-inputs
-					v-if="formInputs"
-					ref="ldapConfigForm"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					:column-view="true"
-					vertical-spacing="l"
-					@update="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
-			</div>
-			<div>
-				<n8n-button
-					v-if="loginEnabled"
-					:label="
-						loadingTestConnection
-							? $locale.baseText('settings.ldap.testingConnection')
-							: $locale.baseText('settings.ldap.testConnection')
-					"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingTestConnection"
-					@click="onTestConnectionClick"
-				/>
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.save')"
-					size="large"
-					:disabled="!hasAnyChanges || !readyToSubmit"
-					@click="onSaveClick"
-				/>
-			</div>
-		</div>
-		<div v-if="loginEnabled">
-			<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{
-				$locale.baseText('settings.ldap.section.synchronization.title')
-			}}</n8n-heading>
-			<div :class="$style.syncTable">
-				<ElTable
-					:key="tableKey"
-					v-loading="loadingTable"
-					:border="true"
-					:stripe="true"
-					:data="dataTable"
-					:cell-style="cellClassStyle"
-					style="width: 100%"
-					max-height="250"
-				>
-					<ElTableColumn
-						prop="status"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
-					/>
-					<ElTableColumn
-						prop="endedAt"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
-					/>
-					<ElTableColumn
-						prop="runMode"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
-					/>
-					<ElTableColumn
-						prop="runTime"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
-					/>
-					<ElTableColumn
-						prop="details"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
-					/>
-					<template #empty>{{
-						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
-					}}</template>
-					<template #append>
-						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
-						</InfiniteLoading>
-					</template>
-				</ElTable>
-			</div>
-			<div class="pb-3xl">
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.dryRun')"
-					type="secondary"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingDryRun"
-					@click="onDryRunClick"
-				/>
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.synchronizeNow')"
-					size="large"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingLiveRun"
-					@click="onLiveRunClick"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import type { CSSProperties } from 'vue';
 import { defineComponent } from 'vue';
@@ -736,6 +602,140 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-if="!isLDAPFeatureEnabled">
+		<div :class="[$style.header, 'mb-2xl']">
+			<n8n-heading size="2xlarge">
+				{{ $locale.baseText('settings.ldap') }}
+			</n8n-heading>
+		</div>
+
+		<n8n-info-tip type="note" theme="info" tooltip-placement="right" class="mb-l">
+			{{ $locale.baseText('settings.ldap.note') }}
+		</n8n-info-tip>
+		<n8n-action-box
+			:description="$locale.baseText('settings.ldap.disabled.description')"
+			:button-text="$locale.baseText('settings.ldap.disabled.buttonText')"
+			@click:button="goToUpgrade"
+		>
+			<template #heading>
+				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
+			</template>
+		</n8n-action-box>
+	</div>
+	<div v-else>
+		<div :class="$style.container">
+			<div :class="$style.header">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText('settings.ldap') }}
+				</n8n-heading>
+			</div>
+			<div :class="$style.docsInfoTip">
+				<n8n-info-tip theme="info" type="note">
+					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+				</n8n-info-tip>
+			</div>
+			<div :class="$style.settingsForm">
+				<n8n-form-inputs
+					v-if="formInputs"
+					ref="ldapConfigForm"
+					:inputs="formInputs"
+					:event-bus="formBus"
+					:column-view="true"
+					vertical-spacing="l"
+					@update="onInput"
+					@ready="onReadyToSubmit"
+					@submit="onSubmit"
+				/>
+			</div>
+			<div>
+				<n8n-button
+					v-if="loginEnabled"
+					:label="
+						loadingTestConnection
+							? $locale.baseText('settings.ldap.testingConnection')
+							: $locale.baseText('settings.ldap.testConnection')
+					"
+					size="large"
+					class="mr-s"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingTestConnection"
+					@click="onTestConnectionClick"
+				/>
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.save')"
+					size="large"
+					:disabled="!hasAnyChanges || !readyToSubmit"
+					@click="onSaveClick"
+				/>
+			</div>
+		</div>
+		<div v-if="loginEnabled">
+			<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{
+				$locale.baseText('settings.ldap.section.synchronization.title')
+			}}</n8n-heading>
+			<div :class="$style.syncTable">
+				<ElTable
+					:key="tableKey"
+					v-loading="loadingTable"
+					:border="true"
+					:stripe="true"
+					:data="dataTable"
+					:cell-style="cellClassStyle"
+					style="width: 100%"
+					max-height="250"
+				>
+					<ElTableColumn
+						prop="status"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
+					/>
+					<ElTableColumn
+						prop="endedAt"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+					/>
+					<ElTableColumn
+						prop="runMode"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
+					/>
+					<ElTableColumn
+						prop="runTime"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
+					/>
+					<ElTableColumn
+						prop="details"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
+					/>
+					<template #empty>{{
+						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
+					}}</template>
+					<template #append>
+						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
+						</InfiniteLoading>
+					</template>
+				</ElTable>
+			</div>
+			<div class="pb-3xl">
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.dryRun')"
+					type="secondary"
+					size="large"
+					class="mr-s"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingDryRun"
+					@click="onDryRunClick"
+				/>
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.synchronizeNow')"
+					size="large"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingLiveRun"
+					@click="onLiveRunClick"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

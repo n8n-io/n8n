@@ -1,3 +1,46 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
+import Modal from './Modal.vue';
+import { ABOUT_MODAL_KEY } from '../constants';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useRootStore } from '@/stores/root.store';
+import { useToast } from '@/composables/useToast';
+import { useClipboard } from '@/composables/useClipboard';
+import { useDebugInfo } from '@/composables/useDebugInfo';
+
+export default defineComponent({
+	name: 'About',
+	components: {
+		Modal,
+	},
+	data() {
+		return {
+			ABOUT_MODAL_KEY,
+			modalBus: createEventBus(),
+		};
+	},
+	computed: {
+		...mapStores(useRootStore, useSettingsStore),
+	},
+	methods: {
+		closeDialog() {
+			this.modalBus.emit('close');
+		},
+		async copyDebugInfoToClipboard() {
+			useToast().showToast({
+				title: this.$locale.baseText('about.debug.toast.title'),
+				message: this.$locale.baseText('about.debug.toast.message'),
+				type: 'info',
+				duration: 5000,
+			});
+			await useClipboard().copy(useDebugInfo().generateDebugInfo());
+		},
+	},
+});
+</script>
+
 <template>
 	<Modal
 		max-width="540px"
@@ -67,49 +110,6 @@
 		</template>
 	</Modal>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system/utils';
-import Modal from './Modal.vue';
-import { ABOUT_MODAL_KEY } from '../constants';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useRootStore } from '@/stores/root.store';
-import { useToast } from '@/composables/useToast';
-import { useClipboard } from '@/composables/useClipboard';
-import { useDebugInfo } from '@/composables/useDebugInfo';
-
-export default defineComponent({
-	name: 'About',
-	components: {
-		Modal,
-	},
-	data() {
-		return {
-			ABOUT_MODAL_KEY,
-			modalBus: createEventBus(),
-		};
-	},
-	computed: {
-		...mapStores(useRootStore, useSettingsStore),
-	},
-	methods: {
-		closeDialog() {
-			this.modalBus.emit('close');
-		},
-		async copyDebugInfoToClipboard() {
-			useToast().showToast({
-				title: this.$locale.baseText('about.debug.toast.title'),
-				message: this.$locale.baseText('about.debug.toast.message'),
-				type: 'info',
-				duration: 5000,
-			});
-			await useClipboard().copy(useDebugInfo().generateDebugInfo());
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .container > * {

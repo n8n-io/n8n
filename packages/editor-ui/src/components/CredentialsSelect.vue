@@ -1,53 +1,3 @@
-<template>
-	<div>
-		<div :class="$style['parameter-value-container']">
-			<n8n-select
-				ref="innerSelect"
-				:size="inputSize"
-				filterable
-				:model-value="displayValue"
-				:placeholder="$locale.baseText('parameterInput.select')"
-				:title="displayTitle"
-				:disabled="isReadOnly"
-				data-test-id="credential-select"
-				@update:model-value="(value: string) => $emit('update:modelValue', value)"
-				@keydown.stop
-				@focus="$emit('setFocus')"
-				@blur="$emit('onBlur')"
-			>
-				<n8n-option
-					v-for="credType in supportedCredentialTypes"
-					:key="credType.name"
-					:value="credType.name"
-					:label="credType.displayName"
-					data-test-id="credential-select-option"
-				>
-					<div class="list-option">
-						<div class="option-headline">
-							{{ credType.displayName }}
-						</div>
-					</div>
-				</n8n-option>
-			</n8n-select>
-			<slot name="issues-and-options" />
-		</div>
-
-		<ScopesNotice
-			v-if="scopes.length > 0"
-			:active-credential-type="activeCredentialType"
-			:scopes="scopes"
-		/>
-		<div>
-			<NodeCredentials
-				:node="node"
-				:readonly="isReadOnly"
-				:override-cred-type="node.parameters[parameter.name]"
-				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
-			/>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import type { ICredentialType } from 'n8n-workflow';
 import { defineComponent } from 'vue';
@@ -155,6 +105,56 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<div :class="$style['parameter-value-container']">
+			<n8n-select
+				ref="innerSelect"
+				:size="inputSize"
+				filterable
+				:model-value="displayValue"
+				:placeholder="$locale.baseText('parameterInput.select')"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				data-test-id="credential-select"
+				@update:model-value="(value: string) => $emit('update:modelValue', value)"
+				@keydown.stop
+				@focus="$emit('setFocus')"
+				@blur="$emit('onBlur')"
+			>
+				<n8n-option
+					v-for="credType in supportedCredentialTypes"
+					:key="credType.name"
+					:value="credType.name"
+					:label="credType.displayName"
+					data-test-id="credential-select-option"
+				>
+					<div class="list-option">
+						<div class="option-headline">
+							{{ credType.displayName }}
+						</div>
+					</div>
+				</n8n-option>
+			</n8n-select>
+			<slot name="issues-and-options" />
+		</div>
+
+		<ScopesNotice
+			v-if="scopes.length > 0"
+			:active-credential-type="activeCredentialType"
+			:scopes="scopes"
+		/>
+		<div>
+			<NodeCredentials
+				:node="node"
+				:readonly="isReadOnly"
+				:override-cred-type="node.parameters[parameter.name]"
+				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
+			/>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .parameter-value-container {

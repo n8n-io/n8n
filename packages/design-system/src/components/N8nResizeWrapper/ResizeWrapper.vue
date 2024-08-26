@@ -1,16 +1,3 @@
-<template>
-	<div :class="$style.resize">
-		<div
-			v-for="direction in enabledDirections"
-			:key="direction"
-			:data-dir="direction"
-			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
-			@mousedown="resizerMove"
-		/>
-		<slot></slot>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 
@@ -179,6 +166,19 @@ const resizerMove = (event: MouseEvent) => {
 	emit('resizestart');
 };
 </script>
+
+<template>
+	<div :class="$style.resize">
+		<div
+			v-for="direction in enabledDirections"
+			:key="direction"
+			:data-dir="direction"
+			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
+			@mousedown="resizerMove"
+		/>
+		<slot></slot>
+	</div>
+</template>
 
 <style lang="scss" module>
 .resize {
