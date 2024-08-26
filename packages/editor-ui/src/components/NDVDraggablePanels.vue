@@ -15,8 +15,8 @@ import { useAssistantStore } from '@/stores/assistant.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
-const MIN_PANEL_WIDTH = 280;
-const PANEL_WIDTH = 320;
+const MIN_PANEL_WIDTH = 310;
+const PANEL_WIDTH = 350;
 const PANEL_WIDTH_LARGE = 420;
 const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 

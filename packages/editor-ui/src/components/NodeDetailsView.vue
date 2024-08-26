@@ -666,6 +666,7 @@ onBeforeUnmount(() => {
 		width="auto"
 		append-to="#app-modals"
 		data-test-id="ndv"
+		z-index="2000"
 		:data-has-output-connection="hasOutputConnection"
 	>
 		<n8n-tooltip

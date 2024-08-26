@@ -192,6 +192,7 @@ export default defineComponent({
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"
+		z-index="3000"
 	>
 		<template v-if="$slots.header" #header>
 			<slot v-if="!loading" name="header" />
