@@ -1,4 +1,4 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionType } from 'n8n-workflow';
 
 interface MemoryMessage {
@@ -15,8 +15,11 @@ interface LmGeneration {
 	message: MemoryMessage;
 }
 
-type ExcludedKeys = NodeConnectionType.Main | NodeConnectionType.AiChain;
-type AllowedEndpointType = Exclude<NodeConnectionType, ExcludedKeys>;
+type ExcludedKeys = (typeof NodeConnectionType)['Main' | 'AiChain'];
+type AllowedEndpointType = Exclude<
+	(typeof NodeConnectionType)[keyof typeof NodeConnectionType],
+	ExcludedKeys
+>;
 
 const fallbackParser = (execData: IDataObject) => ({
 	type: 'json' as 'json' | 'text' | 'markdown',
@@ -168,6 +171,17 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
+	[NodeConnectionType.AiVectorRetriever](execData: IDataObject) {
+		if (execData.documents) {
+			return {
+				type: 'json',
+				data: execData.documents,
+				parsed: true,
+			};
+		}
+
+		return fallbackParser(execData);
+	},
 	[NodeConnectionType.AiEmbedding](execData: IDataObject) {
 		if (execData.documents) {
 			return {
@@ -213,9 +227,11 @@ export type ParsedAiContent = Array<{
 export const useAiContentParsers = () => {
 	const parseAiRunData = (
 		executionData: INodeExecutionData[],
-		endpointType: NodeConnectionType,
+		endpointType: NodeConnectionTypes,
 	): ParsedAiContent => {
-		if ([NodeConnectionType.AiChain, NodeConnectionType.Main].includes(endpointType)) {
+		if (
+			([NodeConnectionType.AiChain, NodeConnectionType.Main] as string[]).includes(endpointType)
+		) {
 			return executionData.map((data) => ({ raw: data.json, parsedContent: null }));
 		}
 

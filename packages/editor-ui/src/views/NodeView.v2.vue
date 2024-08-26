@@ -58,7 +58,13 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { TelemetryHelpers, NodeConnectionType, jsonParse } from 'n8n-workflow';
-import type { IDataObject, ExecutionSummary, IConnection, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ExecutionSummary,
+	IConnection,
+	IWorkflowBase,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -853,7 +859,7 @@ async function onSwitchActiveNode(nodeName: string) {
 	setNodeActiveByName(nodeName);
 }
 
-async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionType) {
+async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConnectionTypes) {
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
@@ -1377,7 +1383,7 @@ function registerCustomActions() {
 			connectiontype: connectionType,
 			node,
 		}: {
-			connectiontype: NodeConnectionType;
+			connectiontype: NodeConnectionTypes;
 			node: string;
 		}) => {
 			void onOpenSelectiveNodeCreator(node, connectionType);

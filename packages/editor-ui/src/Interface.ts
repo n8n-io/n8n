@@ -45,10 +45,10 @@ import type {
 	BannerName,
 	INodeExecutionData,
 	INodeProperties,
-	NodeConnectionType,
 	INodeCredentialsDetails,
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -182,7 +182,7 @@ export interface INodeTranslationHeaders {
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
-	type: NodeConnectionType;
+	type: NodeConnectionTypes;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -1785,8 +1785,8 @@ export type AddedNode = {
 } & Partial<INodeUi>;
 
 export type AddedNodeConnection = {
-	from: { nodeIndex: number; outputIndex?: number; type?: NodeConnectionType };
-	to: { nodeIndex: number; inputIndex?: number; type?: NodeConnectionType };
+	from: { nodeIndex: number; outputIndex?: number; type?: NodeConnectionTypes };
+	to: { nodeIndex: number; inputIndex?: number; type?: NodeConnectionTypes };
 };
 
 export type AddedNodesAndConnections = {
@@ -1809,7 +1809,7 @@ export type NewConnectionInfo = {
 	eventSource: NodeCreatorOpenSource;
 	connection?: Connection;
 	nodeCreatorView?: NodeFilterType;
-	outputType?: NodeConnectionType;
+	outputType?: NodeConnectionTypes;
 	endpointUuid?: string;
 };
 

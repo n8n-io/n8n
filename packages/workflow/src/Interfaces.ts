@@ -71,7 +71,7 @@ export interface IConnection {
 	node: string;
 
 	// The type of the input on destination node (for example "main")
-	type: NodeConnectionType;
+	type: NodeConnectionTypes;
 
 	// The output/input-index of destination node (if node has multiple inputs/outputs of the same type)
 	index: number;
@@ -907,7 +907,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			parentCallbackManager?: CallbackManager,
 		): Promise<any>;
 		getInputConnectionData(
-			inputName: ConnectionTypes,
+			inputName: NodeConnectionTypes,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -920,12 +920,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionTypes,
 			data: INodeExecutionData[][] | ExecutionError,
 			runIndex?: number,
 		): { index: number };
 		addOutputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionTypes,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
@@ -1046,7 +1046,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		inputName: ConnectionTypes,
+		inputName: NodeConnectionTypes,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1755,61 +1755,23 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes =
-	| 'ai_agent'
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_tool'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore'
-	| 'main';
+export const NodeConnectionType = {
+	AiAgent: 'ai_agent',
+	AiChain: 'ai_chain',
+	AiDocument: 'ai_document',
+	AiEmbedding: 'ai_embedding',
+	AiLanguageModel: 'ai_languageModel',
+	AiMemory: 'ai_memory',
+	AiOutputParser: 'ai_outputParser',
+	AiRetriever: 'ai_retriever',
+	AiTextSplitter: 'ai_textSplitter',
+	AiTool: 'ai_tool',
+	AiVectorStore: 'ai_vectorStore',
+	AiVectorRetriever: 'ai_vectorRetriever',
+	Main: 'main',
+} as const;
 
-export const enum NodeConnectionType {
-	AiAgent = 'ai_agent',
-
-	AiChain = 'ai_chain',
-
-	AiDocument = 'ai_document',
-
-	AiEmbedding = 'ai_embedding',
-
-	AiLanguageModel = 'ai_languageModel',
-
-	AiMemory = 'ai_memory',
-
-	AiOutputParser = 'ai_outputParser',
-
-	AiRetriever = 'ai_retriever',
-
-	AiTextSplitter = 'ai_textSplitter',
-
-	AiTool = 'ai_tool',
-
-	AiVectorStore = 'ai_vectorStore',
-
-	Main = 'main',
-}
-
-export const nodeConnectionTypes: NodeConnectionType[] = [
-	NodeConnectionType.AiAgent,
-	NodeConnectionType.AiChain,
-	NodeConnectionType.AiDocument,
-	NodeConnectionType.AiEmbedding,
-	NodeConnectionType.AiLanguageModel,
-	NodeConnectionType.AiMemory,
-	NodeConnectionType.AiOutputParser,
-	NodeConnectionType.AiRetriever,
-	NodeConnectionType.AiTextSplitter,
-	NodeConnectionType.AiTool,
-	NodeConnectionType.AiVectorStore,
-	NodeConnectionType.Main,
-];
+export type NodeConnectionTypes = (typeof NodeConnectionType)[keyof typeof NodeConnectionType];
 
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
@@ -1822,7 +1784,7 @@ export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionTypes;
 	filter?: INodeInputFilter;
 	maxConnections?: number;
 }
@@ -1832,7 +1794,7 @@ export interface INodeOutputConfiguration {
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionTypes;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -1850,10 +1812,10 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
+	inputs: Array<NodeConnectionTypes | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
+	outputs: Array<NodeConnectionTypes | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];

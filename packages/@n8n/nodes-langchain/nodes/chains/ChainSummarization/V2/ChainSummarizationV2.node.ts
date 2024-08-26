@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { loadSummarizationChain } from 'langchain/chains';
@@ -23,7 +24,12 @@ import { getTracingConfig } from '../../../../utils/tracing';
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
 	const operationMode = parameters?.operationMode;
-	const inputs = [
+	const inputs: Array<{
+		displayName: string;
+		maxConnections?: number;
+		type: NodeConnectionTypes;
+		required?: boolean;
+	}> = [
 		{ displayName: '', type: NodeConnectionType.Main },
 		{
 			displayName: 'Model',

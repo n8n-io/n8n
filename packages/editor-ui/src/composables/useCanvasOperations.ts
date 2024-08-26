@@ -68,7 +68,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection } from '@vue-flow/core';
 import type {
-	ConnectionTypes,
+	NodeConnectionTypes,
 	IConnection,
 	IConnections,
 	INode,
@@ -242,7 +242,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		for (const [type, incomingConnectionsByInputIndex] of Object.entries(
 			incomingConnectionsByType,
-		) as Array<[NodeConnectionType, NodeInputConnections]>) {
+		) as Array<[NodeConnectionTypes, NodeInputConnections]>) {
 			// Only connect nodes connected to the first input of a type
 			for (const incomingConnection of incomingConnectionsByInputIndex.at(0) ?? []) {
 				const incomingNodeId = workflowsStore.getNodeByName(incomingConnection.node)?.id;
@@ -905,7 +905,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					}
 				}
 
-				let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+				let outputs: Array<NodeConnectionTypes | INodeOutputConfiguration> = [];
 				try {
 					// It fails when the outputs are an expression. As those nodes have
 					// normally no outputs by default and the only reason we need the
@@ -1135,7 +1135,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	function isConnectionAllowed(
 		sourceNode: INodeUi,
 		targetNode: INodeUi,
-		connectionType: NodeConnectionType,
+		connectionType: NodeConnectionTypes,
 	): boolean {
 		const blocklist = [STICKY_NODE_TYPE];
 
@@ -1154,7 +1154,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				return false;
 			}
 
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			let inputs: Array<NodeConnectionTypes | INodeInputConfiguration> = [];
 			if (targetNodeType) {
 				inputs =
 					NodeHelpers.getNodeInputs(editableWorkflowObject.value, workflowNode, targetNodeType) ||

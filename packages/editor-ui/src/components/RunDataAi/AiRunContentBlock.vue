@@ -8,7 +8,7 @@ import VueMarkdown from 'vue-markdown-render';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType, type IDataObject, NodeConnectionTypes } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
@@ -26,13 +26,16 @@ const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
 function getInitialExpandedState() {
 	const collapsedTypes = {
-		input: [NodeConnectionType.AiDocument, NodeConnectionType.AiTextSplitter],
+		input: [
+			NodeConnectionType.AiDocument,
+			NodeConnectionType.AiTextSplitter,
+		] as NodeConnectionTypes[],
 		output: [
 			NodeConnectionType.AiDocument,
 			NodeConnectionType.AiEmbedding,
 			NodeConnectionType.AiTextSplitter,
 			NodeConnectionType.AiVectorStore,
-		],
+		] as NodeConnectionTypes[],
 	};
 
 	return !collapsedTypes[props.runData.inOut].includes(props.runData.type);

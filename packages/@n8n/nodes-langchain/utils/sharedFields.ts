@@ -68,11 +68,11 @@ const connectionsString = {
 };
 
 type AllowedConnectionTypes =
-	| NodeConnectionType.AiAgent
-	| NodeConnectionType.AiChain
-	| NodeConnectionType.AiDocument
-	| NodeConnectionType.AiVectorStore
-	| NodeConnectionType.AiRetriever;
+	| (typeof NodeConnectionType)['AiAgent']
+	| (typeof NodeConnectionType)['AiChain']
+	| (typeof NodeConnectionType)['AiDocument']
+	| (typeof NodeConnectionType)['AiVectorStore']
+	| (typeof NodeConnectionType)['AiRetriever'];
 
 function determineArticle(nextWord: string): string {
 	// check if the next word starts with a vowel sound

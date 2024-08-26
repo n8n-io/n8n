@@ -41,9 +41,9 @@ import type {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
-	ConnectionTypes,
 	CloseFunction,
 	INodeOutputConfiguration,
+	NodeConnectionTypes,
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -174,7 +174,7 @@ export class Workflow {
 				continue;
 			}
 
-			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionType[]) {
+			for (const type of Object.keys(connections[sourceNode]) as NodeConnectionTypes[]) {
 				if (!connections[sourceNode].hasOwnProperty(type)) {
 					continue;
 				}
@@ -580,11 +580,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {NodeConnectionTypes} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type: ConnectionTypes = 'main',
+		type: NodeConnectionTypes = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -664,7 +664,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -673,12 +673,12 @@ export class Workflow {
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {NodeConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -688,13 +688,13 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {ConnectionTypes} [type='main']
+	 * @param {NodeConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		connectionType: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -710,13 +710,13 @@ export class Workflow {
 			return [];
 		}
 
-		let types: ConnectionTypes[];
+		let types: NodeConnectionTypes[];
 		if (connectionType === 'ALL') {
-			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+			types = Object.keys(connections[nodeName]) as NodeConnectionTypes[];
 		} else if (connectionType === 'ALL_NON_MAIN') {
 			types = Object.keys(connections[nodeName]).filter(
 				(type) => type !== 'main',
-			) as ConnectionTypes[];
+			) as NodeConnectionTypes[];
 		} else {
 			types = [connectionType];
 		}
@@ -800,7 +800,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: ConnectionTypes = 'main';
+		const type: NodeConnectionTypes = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -907,7 +907,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: ConnectionTypes = 'main',
+		type: NodeConnectionTypes = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {

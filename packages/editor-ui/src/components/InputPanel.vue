@@ -11,11 +11,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
-	ConnectionTypes,
 	IConnectedNode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
+	NodeConnectionTypes,
 	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
@@ -121,10 +121,10 @@ export default defineComponent({
 			} else {
 				// If we can not figure out the node type we set no outputs
 				if (!Array.isArray(inputs)) {
-					inputs = [] as ConnectionTypes[];
+					inputs = [] as NodeConnectionTypes[];
 				}
 				if (!Array.isArray(outputs)) {
-					outputs = [] as ConnectionTypes[];
+					outputs = [] as NodeConnectionTypes[];
 				}
 			}
 
@@ -274,8 +274,8 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
-			type: ConnectionTypes,
+			item: NodeConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
+			type: NodeConnectionTypes,
 		) {
 			if (!item) return false;
 

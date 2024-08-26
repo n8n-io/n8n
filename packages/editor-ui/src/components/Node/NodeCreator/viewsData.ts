@@ -59,7 +59,7 @@ import {
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
-import type { INodeTypeDescription, Themed } from 'n8n-workflow';
+import type { INodeTypeDescription, NodeConnectionTypes, Themed } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useTemplatesStore } from '@/stores/templates.store';
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -83,7 +83,7 @@ export interface NodeViewItem {
 		};
 		info?: string;
 		url?: string;
-		connectionType?: NodeConnectionType;
+		connectionType?: NodeConnectionTypes;
 		panelClass?: string;
 		group?: string[];
 		sections?: NodeViewItemSection[];
@@ -179,7 +179,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
-	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
+	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionTypes) {
 		return {
 			connectionType: nodeConnectionType,
 			iconProps: {

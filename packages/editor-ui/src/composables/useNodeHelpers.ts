@@ -20,7 +20,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	ConnectionTypes,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
@@ -37,6 +36,7 @@ import type {
 	INodeTypeNameVersion,
 	IConnection,
 	IPinData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import type {
@@ -342,7 +342,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+		let inputs: Array<NodeConnectionTypes | INodeInputConfiguration> = [];
 		if (nodeType && workflowNode) {
 			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 		}
@@ -571,7 +571,7 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		//TODO: check if this needs to be fixed in different place
 		if (
@@ -617,7 +617,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -627,7 +627,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionTypes = NodeConnectionType.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];
@@ -763,7 +763,7 @@ export function useNodeHelpers() {
 
 		const allNodeConnections = workflowsStore.outgoingConnectionsByNodeName(sourceNode.name);
 
-		const connectionType = Object.keys(allNodeConnections)[0] as NodeConnectionType;
+		const connectionType = Object.keys(allNodeConnections)[0] as NodeConnectionTypes;
 		const nodeConnections = allNodeConnections[connectionType];
 		const outputMap = NodeViewUtils.getOutputSummary(
 			data,
@@ -1021,7 +1021,7 @@ export function useNodeHelpers() {
 
 	function getOutputEndpointUUID(
 		nodeName: string,
-		connectionType: NodeConnectionType,
+		connectionType: NodeConnectionTypes,
 		index: number,
 	): string | null {
 		const node = workflowsStore.getNodeByName(nodeName);
@@ -1033,7 +1033,7 @@ export function useNodeHelpers() {
 	}
 	function getInputEndpointUUID(
 		nodeName: string,
-		connectionType: NodeConnectionType,
+		connectionType: NodeConnectionTypes,
 		index: number,
 	) {
 		const node = workflowsStore.getNodeByName(nodeName);

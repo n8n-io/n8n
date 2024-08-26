@@ -16,8 +16,8 @@ import type {
 
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
-import type { INodeInputConfiguration } from 'n8n-workflow';
-import { NodeConnectionType, nodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import type { INodeInputConfiguration, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -79,7 +79,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		node,
 		creatorView,
 	}: {
-		connectionType: NodeConnectionType;
+		connectionType: NodeConnectionTypes;
 		node: string;
 		creatorView?: NodeFilterType;
 	}) {
@@ -218,7 +218,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// after the node creator is opened
 		const isOutput = mode === CanvasConnectionMode.Output;
 		const isScopedConnection =
-			type !== NodeConnectionType.Main && nodeConnectionTypes.includes(type);
+			type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
 
 		if (isScopedConnection) {
 			useViewStacks()
@@ -238,7 +238,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
-	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
+	function getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionTypes) {
 		let filter;
 		const workflow = workflowsStore.getCurrentWorkflow();
 		const workflowNode = workflow.getNode(nodeName);

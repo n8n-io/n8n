@@ -1,4 +1,9 @@
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INodeTypeDescription,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPort } from '@/types';
 import { CanvasConnectionMode } from '@/types';
@@ -17,14 +22,14 @@ export function mapLegacyConnectionsToCanvasConnections(
 		const fromId = nodes.find((node) => node.name === fromNodeName)?.id ?? '';
 		const fromConnectionTypes = Object.keys(
 			legacyConnections[fromNodeName],
-		) as NodeConnectionType[];
+		) as NodeConnectionTypes[];
 
 		fromConnectionTypes.forEach((fromConnectionType) => {
 			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
 			fromPorts.forEach((toPorts, fromIndex) => {
 				toPorts.forEach((toPort) => {
 					const toId = nodes.find((node) => node.name === toPort.node)?.id ?? '';
-					const toConnectionType = toPort.type as NodeConnectionType;
+					const toConnectionType = toPort.type;
 					const toIndex = toPort.index;
 
 					const sourceHandle = createCanvasConnectionHandleString({
@@ -124,7 +129,7 @@ export function createCanvasConnectionHandleString({
 	index = 0,
 }: {
 	mode: 'inputs' | 'outputs';
-	type?: NodeConnectionType;
+	type?: NodeConnectionTypes;
 	index?: number;
 }) {
 	return `${mode}/${type}/${index}`;

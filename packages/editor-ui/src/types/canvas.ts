@@ -3,14 +3,14 @@ import type {
 	ExecutionStatus,
 	INodeConnections,
 	IConnection,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
 
-export type CanvasConnectionPortType = NodeConnectionType;
+export type CanvasConnectionPortType = NodeConnectionTypes;
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -134,7 +134,7 @@ export interface CanvasNodeInjectionData {
 export interface CanvasNodeHandleInjectionData {
 	label: Ref<string | undefined>;
 	mode: Ref<CanvasConnectionMode>;
-	type: Ref<NodeConnectionType>;
+	type: Ref<NodeConnectionTypes>;
 	isConnected: Ref<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
 }

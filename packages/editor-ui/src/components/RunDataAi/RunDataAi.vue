@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, ref, watch } from 'vue';
-import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
+import type { ITaskSubRunMetadata, ITaskDataConnections, NodeConnectionTypes } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -66,7 +66,7 @@ function getReferencedData(
 			returnData.push({
 				data: data[type][0],
 				inOut,
-				type: type as NodeConnectionType,
+				type: type as NodeConnectionTypes,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,

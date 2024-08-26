@@ -35,7 +35,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	ResourceMapperValue,
-	ConnectionTypes,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
@@ -43,6 +42,7 @@ import type {
 	DisplayCondition,
 	NodeHint,
 	INodeExecutionData,
+	NodeConnectionTypes,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -1245,8 +1245,8 @@ export function getNodeWebhookUrl(
 }
 
 export function getConnectionTypes(
-	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
-): ConnectionTypes[] {
+	connections: Array<NodeConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
+): NodeConnectionTypes[] {
 	return connections
 		.map((connection) => {
 			if (typeof connection === 'string') {
@@ -1261,7 +1261,7 @@ export function getNodeInputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<NodeConnectionTypes | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
@@ -1273,7 +1273,7 @@ export function getNodeInputs(
 			nodeTypeData.inputs,
 			'internal',
 			{},
-		) || []) as ConnectionTypes[];
+		) || []) as NodeConnectionTypes[];
 	} catch (e) {
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
@@ -1353,8 +1353,8 @@ export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): Array<ConnectionTypes | INodeOutputConfiguration> {
-	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+): Array<NodeConnectionTypes | INodeOutputConfiguration> {
+	let outputs: Array<NodeConnectionTypes | INodeOutputConfiguration> = [];
 
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
@@ -1366,7 +1366,7 @@ export function getNodeOutputs(
 				nodeTypeData.outputs,
 				'internal',
 				{},
-			) || []) as ConnectionTypes[];
+			) || []) as NodeConnectionTypes[];
 		} catch (e) {
 			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}

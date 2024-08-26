@@ -2,7 +2,7 @@
 import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { INodeExecutionData, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+import type { INodeExecutionData, INodeTypeDescription, NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
@@ -12,7 +12,7 @@ interface RunMeta {
 	executionTimeMs: number;
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
-	connectionType: NodeConnectionType;
+	connectionType: NodeConnectionTypes;
 }
 const props = defineProps<{
 	inputData: IAiData;

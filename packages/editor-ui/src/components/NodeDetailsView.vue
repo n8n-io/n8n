@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IRunData, Workflow } from 'n8n-workflow';
-import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type { IRunData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { jsonParse, NodeHelpers } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -40,7 +40,7 @@ const emit = defineEmits<{
 	saveKeyboardShortcut: [event: KeyboardEvent];
 	valueChanged: [parameterData: IUpdateInformation];
 	switchSelectedNode: [nodeTypeName: string];
-	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionType];
+	openConnectionNodeCreator: [nodeTypeName: string, connectionType: NodeConnectionTypes];
 	redrawNode: [nodeName: string];
 	stopExecution: [];
 }>();
@@ -248,7 +248,7 @@ const maxInputRun = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+	if (outputs.some((output) => output !== 'main')) {
 		node = activeNode.value;
 	}
 
@@ -382,7 +382,7 @@ const onFeatureRequestClick = () => {
 			node_type: activeNode.value.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: pushRef.value,
-			pane: NodeConnectionType.Main,
+			pane: 'main',
 			type: 'i-wish-this-node-would',
 		});
 	}
@@ -458,7 +458,7 @@ const onSwitchSelectedNode = (nodeTypeName: string) => {
 	emit('switchSelectedNode', nodeTypeName);
 };
 
-const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionType) => {
+const onOpenConnectionNodeCreator = (nodeTypeName: string, connectionType: NodeConnectionTypes) => {
 	emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 };
 

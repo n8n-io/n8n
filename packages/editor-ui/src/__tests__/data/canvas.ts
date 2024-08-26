@@ -7,7 +7,7 @@ import type {
 	CanvasNodeInjectionData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
-import { NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionType, NodeConnectionTypes } from 'n8n-workflow';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -115,7 +115,7 @@ export function createCanvasHandleProvide({
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
-	type?: NodeConnectionType;
+	type?: NodeConnectionTypes;
 	isConnected?: boolean;
 	isConnecting?: boolean;
 } = {}) {

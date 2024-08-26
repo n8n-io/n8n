@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
@@ -223,7 +224,12 @@ async function getChain(
 
 function getInputs(parameters: IDataObject) {
 	const hasOutputParser = parameters?.hasOutputParser;
-	const inputs = [
+	const inputs: Array<{
+		displayName: string;
+		maxConnections?: number;
+		type: NodeConnectionTypes;
+		required?: boolean;
+	}> = [
 		{ displayName: '', type: NodeConnectionType.Main },
 		{
 			displayName: 'Model',

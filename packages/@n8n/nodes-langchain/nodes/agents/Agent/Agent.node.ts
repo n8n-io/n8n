@@ -1,6 +1,6 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
+	NodeConnectionTypes,
 	INodeInputConfiguration,
 	INodeInputFilter,
 	IExecuteFunctions,
@@ -28,16 +28,16 @@ import { toolsAgentExecute } from './agents/ToolsAgent/execute';
 function getInputs(
 	agent: 'toolsAgent' | 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 	hasOutputParser?: boolean,
-): Array<ConnectionTypes | INodeInputConfiguration> {
+): Array<NodeConnectionTypes | INodeInputConfiguration> {
 	interface SpecialInput {
-		type: ConnectionTypes;
+		type: NodeConnectionTypes;
 		filter?: INodeInputFilter;
 		required?: boolean;
 	}
 
 	const getInputData = (
 		inputs: SpecialInput[],
-	): Array<ConnectionTypes | INodeInputConfiguration> => {
+	): Array<NodeConnectionTypes | INodeInputConfiguration> => {
 		const displayNames: { [key: string]: string } = {
 			[NodeConnectionType.AiLanguageModel]: 'Model',
 			[NodeConnectionType.AiMemory]: 'Memory',
@@ -58,9 +58,9 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: (
+					[NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory] as string[]
+				).includes(type)
 					? 1
 					: undefined,
 			};

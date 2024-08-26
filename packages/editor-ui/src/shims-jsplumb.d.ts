@@ -5,13 +5,13 @@ import type {
 	AbstractConnector,
 	Overlay,
 } from '@jsplumb/core';
-import type { NodeConnectionType } from 'n8n-workflow';
+import type { NodeConnectionTypes } from 'n8n-workflow';
 import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 
 declare module '@jsplumb/core' {
 	interface EndpointRepresentation {
 		canvas: HTMLElement;
-		scope: NodeConnectionType;
+		scope: NodeConnectionTypes;
 	}
 	interface AbstractConnector {
 		canvas: HTMLElement;
@@ -29,7 +29,7 @@ declare module '@jsplumb/core' {
 		};
 	}
 	interface Endpoint {
-		scope: NodeConnectionType;
+		scope: NodeConnectionTypes;
 		__meta: {
 			nodeName: string;
 			nodeId: string;

@@ -38,7 +38,6 @@ import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
 	CloseFunction,
-	ConnectionTypes,
 	ContextType,
 	EventNamesAiNodesType,
 	FieldType,
@@ -103,6 +102,7 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2619,7 +2619,7 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionTypes,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
@@ -2728,7 +2728,7 @@ async function getInputConnectionData(
 	executeData: IExecuteData | undefined,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	inputName: ConnectionTypes,
+	inputName: NodeConnectionTypes,
 	itemIndex: number,
 ): Promise<unknown> {
 	const node = this.getNode();
@@ -3672,7 +3672,7 @@ export function getExecuteFunctions(
 			},
 
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionTypes,
 				itemIndex: number,
 			): Promise<unknown> {
 				return await getInputConnectionData.call(
@@ -3813,7 +3813,7 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
@@ -3843,7 +3843,7 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionTypes,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
@@ -4234,7 +4234,7 @@ export function getExecuteWebhookFunctions(
 				return additionalData.httpRequest.headers;
 			},
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionTypes,
 				itemIndex: number,
 			): Promise<unknown> {
 				// To be able to use expressions like "$json.sessionId" set the

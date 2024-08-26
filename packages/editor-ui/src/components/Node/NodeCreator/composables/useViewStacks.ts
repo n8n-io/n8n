@@ -39,7 +39,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	type INodeInputFilter,
-	type NodeConnectionType,
+	type NodeConnectionTypes,
 	type Themed,
 } from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
@@ -280,7 +280,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	async function gotoCompatibleConnectionView(
-		connectionType: NodeConnectionType,
+		connectionType: NodeConnectionTypes,
 		isOutput?: boolean,
 		filter?: INodeInputFilter,
 	) {
