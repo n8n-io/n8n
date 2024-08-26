@@ -41,7 +41,7 @@ export class WebflowOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '={{$self["legacy"] ? "" : "cms:read cms:write sites:read"}}',
+			default: '={{$self["legacy"] ? "" : "cms:read cms:write sites:read forms:read"}}',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
