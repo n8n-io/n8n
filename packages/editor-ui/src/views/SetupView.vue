@@ -1,23 +1,15 @@
-<template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:form-loading="loading"
-		data-test-id="setup-form"
-		@submit="onSubmit"
-	/>
-</template>
-
 <script lang="ts">
 import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
 
 import { useToast } from '@/composables/useToast';
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export default defineComponent({
 	name: 'SetupView',
@@ -91,12 +83,15 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, usePostHog),
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			try {
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
+				const isPartOfOnboardingExperiment =
+					this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+					MORE_ONBOARDING_OPTIONS_EXPERIMENT.variant;
 				this.loading = true;
 				await this.usersStore.createOwner(
 					values as { firstName: string; lastName: string; email: string; password: string },
@@ -109,7 +104,11 @@ export default defineComponent({
 				}
 
 				if (forceRedirectedHere) {
-					await this.$router.push({ name: VIEWS.HOMEPAGE });
+					if (isPartOfOnboardingExperiment) {
+						await this.$router.push({ name: VIEWS.WORKFLOWS });
+					} else {
+						await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+					}
 				} else {
 					await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 				}
@@ -121,3 +120,12 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<AuthView
+		:form="FORM_CONFIG"
+		:form-loading="loading"
+		data-test-id="setup-form"
+		@submit="onSubmit"
+	/>
+</template>

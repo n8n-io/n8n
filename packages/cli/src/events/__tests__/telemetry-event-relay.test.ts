@@ -5,10 +5,10 @@ import config from '@/config';
 import type { IWorkflowBase } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
 import type { Telemetry } from '@/telemetry';
-import type { License } from '@/License';
+import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { NodeTypes } from '@/NodeTypes';
+import type { NodeTypes } from '@/node-types';
 import type { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import type { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { RelayEventMap } from '@/events/relay-event-map';
@@ -20,7 +20,22 @@ const flushPromises = async () => await new Promise((resolve) => setImmediate(re
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
-	const globalConfig = mock<GlobalConfig>({ userManagement: { emails: { mode: 'smtp' } } });
+	const globalConfig = mock<GlobalConfig>({
+		userManagement: {
+			emails: {
+				mode: 'smtp',
+			},
+		},
+		endpoints: {
+			metrics: {
+				enable: true,
+				includeDefaultMetrics: true,
+				includeApiEndpoints: false,
+				includeCacheMetrics: false,
+				includeMessageEventBusMetrics: false,
+			},
+		},
+	});
 	const workflowRepository = mock<WorkflowRepository>();
 	const nodeTypes = mock<NodeTypes>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -848,10 +863,10 @@ describe('TelemetryEventRelay', () => {
 			const event: RelayEventMap['user-submitted-personalization-survey'] = {
 				userId: 'user123',
 				answers: {
+					version: 'v4',
+					personalization_survey_n8n_version: '1.0.0',
+					personalization_survey_submitted_at: '2021-10-01T00:00:00.000Z',
 					companySize: '1-10',
-					workArea: 'IT',
-					automationGoal: 'Improve efficiency',
-					valueExpectation: 'Time savings',
 				},
 			};
 
@@ -859,10 +874,10 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User responded to personalization questions', {
 				user_id: 'user123',
+				version: 'v4',
+				personalization_survey_n8n_version: '1.0.0',
+				personalization_survey_submitted_at: '2021-10-01T00:00:00.000Z',
 				company_size: '1-10',
-				work_area: 'IT',
-				automation_goal: 'Improve efficiency',
-				value_expectation: 'Time savings',
 			});
 		});
 
@@ -927,6 +942,13 @@ describe('TelemetryEventRelay', () => {
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
+					metrics: {
+						metrics_enabled: true,
+						metrics_category_default: true,
+						metrics_category_routes: false,
+						metrics_category_cache: false,
+						metrics_category_logs: false,
+					},
 				}),
 			);
 		});

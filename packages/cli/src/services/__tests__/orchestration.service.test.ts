@@ -7,18 +7,19 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 import config from '@/config';
 import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { RedisService } from '@/services/redis.service';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { Logger } from '@/Logger';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { Logger } from '@/logger';
 import { Push } from '@/push';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { mockInstance } from '@test/mocking';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
 
 const instanceSettings = Container.get(InstanceSettings);
 const redisClientService = mockInstance(RedisClientService);
@@ -96,8 +97,9 @@ describe('Orchestration Service', () => {
 	test('should handle worker responses', async () => {
 		const response = await handleWorkerResponseMessageMain(
 			JSON.stringify(workerRestartEventBusResponse),
+			mock<MainResponseReceivedHandlerOptions>(),
 		);
-		expect(response.command).toEqual('restartEventBus');
+		expect(response?.command).toEqual('restartEventBus');
 	});
 
 	test('should handle command messages from others', async () => {

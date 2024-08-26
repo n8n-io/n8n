@@ -1,52 +1,3 @@
-<template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
-		:center="true"
-		width="420px"
-		@enter="save"
-	>
-		<template #content>
-			<div :class="$style.content">
-				<n8n-input
-					ref="nameInput"
-					v-model="name"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
-					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
-				/>
-				<TagsDropdown
-					v-if="settingsStore.areTagsEnabled"
-					ref="dropdown"
-					v-model="currentTagIds"
-					:create-enabled="true"
-					:event-bus="dropdownBus"
-					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
-					@blur="onTagsBlur"
-					@esc="onTagsEsc"
-				/>
-			</div>
-		</template>
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<n8n-button
-					:loading="isSaving"
-					:label="$locale.baseText('duplicateWorkflowDialog.save')"
-					float="right"
-					@click="save"
-				/>
-				<n8n-button
-					type="secondary"
-					:disabled="isSaving"
-					:label="$locale.baseText('duplicateWorkflowDialog.cancel')"
-					float="right"
-					@click="close"
-				/>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -198,6 +149,55 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="modalName"
+		:event-bus="modalBus"
+		:title="$locale.baseText('duplicateWorkflowDialog.duplicateWorkflow')"
+		:center="true"
+		width="420px"
+		@enter="save"
+	>
+		<template #content>
+			<div :class="$style.content">
+				<n8n-input
+					ref="nameInput"
+					v-model="name"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
+					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
+				/>
+				<TagsDropdown
+					v-if="settingsStore.areTagsEnabled"
+					ref="dropdown"
+					v-model="currentTagIds"
+					:create-enabled="true"
+					:event-bus="dropdownBus"
+					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
+					@blur="onTagsBlur"
+					@esc="onTagsEsc"
+				/>
+			</div>
+		</template>
+		<template #footer="{ close }">
+			<div :class="$style.footer">
+				<n8n-button
+					:loading="isSaving"
+					:label="$locale.baseText('duplicateWorkflowDialog.save')"
+					float="right"
+					@click="save"
+				/>
+				<n8n-button
+					type="secondary"
+					:disabled="isSaving"
+					:label="$locale.baseText('duplicateWorkflowDialog.cancel')"
+					float="right"
+					@click="close"
+				/>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .content {

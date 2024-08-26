@@ -1,65 +1,3 @@
-<template>
-	<div :class="classes" v-bind="$attrs">
-		<table :class="$style.datatable">
-			<thead :class="$style.datatableHeader">
-				<tr>
-					<th
-						v-for="column in columns"
-						:key="column.id"
-						:class="column.classes"
-						:style="getThStyle(column)"
-					>
-						{{ column.label }}
-					</th>
-				</tr>
-			</thead>
-			<tbody>
-				<template v-for="row in visibleRows">
-					<slot name="row" :columns="columns" :row="row" :get-td-value="getTdValue">
-						<tr :key="row.id">
-							<td v-for="column in columns" :key="column.id" :class="column.classes">
-								<component :is="column.render" v-if="column.render" :row="row" :column="column" />
-								<span v-else>{{ getTdValue(row, column) }}</span>
-							</td>
-						</tr>
-					</slot>
-				</template>
-			</tbody>
-		</table>
-
-		<div :class="$style.pagination">
-			<N8nPagination
-				v-if="totalPages > 1"
-				background
-				:pager-count="5"
-				:page-size="rowsPerPage"
-				layout="prev, pager, next"
-				:total="totalRows"
-				:current-page="currentPage"
-				@update:current-page="onUpdateCurrentPage"
-			/>
-
-			<div :class="$style.pageSizeSelector">
-				<N8nSelect
-					size="mini"
-					:model-value="rowsPerPage"
-					teleported
-					@update:model-value="onRowsPerPageChange"
-				>
-					<template #prepend>{{ t('datatable.pageSize') }}</template>
-					<N8nOption
-						v-for="size in rowsPerPageOptions"
-						:key="size"
-						:label="`${size}`"
-						:value="size"
-					/>
-					<N8nOption :label="`All`" value="*"> </N8nOption>
-				</N8nSelect>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
 import N8nSelect from '../N8nSelect';
@@ -137,6 +75,68 @@ function getThStyle(column: DatatableColumn) {
 	};
 }
 </script>
+
+<template>
+	<div :class="classes" v-bind="$attrs">
+		<table :class="$style.datatable">
+			<thead :class="$style.datatableHeader">
+				<tr>
+					<th
+						v-for="column in columns"
+						:key="column.id"
+						:class="column.classes"
+						:style="getThStyle(column)"
+					>
+						{{ column.label }}
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<template v-for="row in visibleRows">
+					<slot name="row" :columns="columns" :row="row" :get-td-value="getTdValue">
+						<tr :key="row.id">
+							<td v-for="column in columns" :key="column.id" :class="column.classes">
+								<component :is="column.render" v-if="column.render" :row="row" :column="column" />
+								<span v-else>{{ getTdValue(row, column) }}</span>
+							</td>
+						</tr>
+					</slot>
+				</template>
+			</tbody>
+		</table>
+
+		<div :class="$style.pagination">
+			<N8nPagination
+				v-if="totalPages > 1"
+				background
+				:pager-count="5"
+				:page-size="rowsPerPage"
+				layout="prev, pager, next"
+				:total="totalRows"
+				:current-page="currentPage"
+				@update:current-page="onUpdateCurrentPage"
+			/>
+
+			<div :class="$style.pageSizeSelector">
+				<N8nSelect
+					size="mini"
+					:model-value="rowsPerPage"
+					teleported
+					@update:model-value="onRowsPerPageChange"
+				>
+					<template #prepend>{{ t('datatable.pageSize') }}</template>
+					<N8nOption
+						v-for="size in rowsPerPageOptions"
+						:key="size"
+						:label="`${size}`"
+						:value="size"
+					/>
+					<N8nOption :label="`All`" value="*"> </N8nOption>
+				</N8nSelect>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .datatableWrapper {

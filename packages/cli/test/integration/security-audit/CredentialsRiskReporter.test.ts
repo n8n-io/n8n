@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/testDb';

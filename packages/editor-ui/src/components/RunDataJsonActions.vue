@@ -1,39 +1,3 @@
-<template>
-	<div :class="$style.actionsGroup">
-		<n8n-icon-button
-			v-if="noSelection"
-			:title="i18n.baseText('runData.copyToClipboard')"
-			icon="copy"
-			type="tertiary"
-			:circle="false"
-			@click="handleCopyClick({ command: 'value' })"
-		/>
-		<el-dropdown v-else trigger="click" @command="handleCopyClick">
-			<span class="el-dropdown-link">
-				<n8n-icon-button
-					:title="i18n.baseText('runData.copyToClipboard')"
-					icon="copy"
-					type="tertiary"
-					:circle="false"
-				/>
-			</span>
-			<template #dropdown>
-				<el-dropdown-menu>
-					<el-dropdown-item :command="{ command: 'value' }">
-						{{ i18n.baseText('runData.copyValue') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
-						{{ i18n.baseText('runData.copyItemPath') }}
-					</el-dropdown-item>
-					<el-dropdown-item :command="{ command: 'parameterPath' }">
-						{{ i18n.baseText('runData.copyParameterPath') }}
-					</el-dropdown-item>
-				</el-dropdown-menu>
-			</template>
-		</el-dropdown>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -237,6 +201,42 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.actionsGroup">
+		<n8n-icon-button
+			v-if="noSelection"
+			:title="i18n.baseText('runData.copyToClipboard')"
+			icon="copy"
+			type="tertiary"
+			:circle="false"
+			@click="handleCopyClick({ command: 'value' })"
+		/>
+		<el-dropdown v-else trigger="click" @command="handleCopyClick">
+			<span class="el-dropdown-link">
+				<n8n-icon-button
+					:title="i18n.baseText('runData.copyToClipboard')"
+					icon="copy"
+					type="tertiary"
+					:circle="false"
+				/>
+			</span>
+			<template #dropdown>
+				<el-dropdown-menu>
+					<el-dropdown-item :command="{ command: 'value' }">
+						{{ i18n.baseText('runData.copyValue') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
+						{{ i18n.baseText('runData.copyItemPath') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{ command: 'parameterPath' }">
+						{{ i18n.baseText('runData.copyParameterPath') }}
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
+		</el-dropdown>
+	</div>
+</template>
 
 <style lang="scss" module>
 .actionsGroup {

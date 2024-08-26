@@ -86,7 +86,7 @@ export namespace ExecutionSummaries {
 	type OrderFields = {
 		order?: {
 			top?: ExecutionStatus;
-			stoppedAt?: 'DESC';
+			startedAt?: 'DESC';
 		};
 	};
 

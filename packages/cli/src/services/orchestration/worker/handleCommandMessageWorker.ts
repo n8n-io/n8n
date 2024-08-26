@@ -3,12 +3,12 @@ import Container from 'typedi';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisConstants';
 import * as os from 'os';
-import { License } from '@/License';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { License } from '@/license';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { N8N_VERSION } from '@/constants';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 

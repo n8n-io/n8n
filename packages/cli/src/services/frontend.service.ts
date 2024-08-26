@@ -15,21 +15,21 @@ import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { LICENSE_FEATURES } from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { License } from '@/License';
-import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { getLdapLoginLabel } from '@/Ldap/helpers.ee';
-import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialTypes } from '@/credential-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { License } from '@/license';
+import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
-import { UserManagementMailer } from '@/UserManagement/email';
+} from '@/workflows/workflow-history/workflow-history-helper.ee';
+import { UserManagementMailer } from '@/user-management/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { UrlService } from './url.service';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/PublicApi';

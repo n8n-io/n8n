@@ -4,8 +4,8 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { type GlobalRole, type User } from '@db/entities/User';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { TOTPService } from '@/Mfa/totp.service';
-import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/mfa/totp.service';
+import { MfaService } from '@/mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
 import { AuthUserRepository } from '@/databases/repositories/authUser.repository';

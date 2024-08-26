@@ -5,20 +5,20 @@ import http from 'http';
 import { ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
+import * as ResponseHelper from '@/response-helper';
 import config from '@/config';
 import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
 import type { ICredentialsOverwrite } from '@/Interfaces';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
-import { BaseCommand } from './BaseCommand';
+import { BaseCommand } from './base-command';
 import { JobProcessor } from '@/scaling/job-processor';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 

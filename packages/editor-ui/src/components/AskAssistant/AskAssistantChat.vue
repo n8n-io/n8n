@@ -71,6 +71,7 @@ function onClose() {
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
 			:class="$style.container"
+			data-test-id="ask-assistant-sidebar"
 			@resize="onResizeDebounced"
 		>
 			<div
@@ -96,7 +97,7 @@ function onClose() {
 .container {
 	grid-area: rightsidebar;
 	height: 100%;
-	z-index: 3000; /* Above NDV, below notifications */
+	z-index: 99999; /* Needs to be high enough so it doesn't get covered by element-ui dialogs */
 }
 
 .wrapper {

@@ -1,131 +1,3 @@
-<template>
-	<div
-		class="fixed-collection-parameter"
-		:data-test-id="`fixed-collection-${parameter.name}`"
-		@keydown.stop
-	>
-		<div v-if="getProperties.length === 0" class="no-items-exist">
-			<n8n-text size="small">{{
-				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
-			}}</n8n-text>
-		</div>
-
-		<div
-			v-for="property in getProperties"
-			:key="property.name"
-			class="fixed-collection-parameter-property"
-		>
-			<n8n-input-label
-				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
-				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
-				:underline="true"
-				size="small"
-				color="text-dark"
-			/>
-			<div v-if="multipleValues">
-				<div
-					v-for="(_, index) in mutableValues[property.name]"
-					:key="property.name + index"
-					class="parameter-item"
-				>
-					<div
-						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
-					>
-						<div v-if="!isReadOnly" class="delete-option">
-							<n8n-icon-button
-								type="tertiary"
-								text
-								size="mini"
-								icon="trash"
-								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name, index)"
-							></n8n-icon-button>
-							<n8n-icon-button
-								v-if="sortable && index !== 0"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-up"
-								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-								@click="moveOptionUp(property.name, index)"
-							></n8n-icon-button>
-							<n8n-icon-button
-								v-if="sortable && index !== mutableValues[property.name].length - 1"
-								type="tertiary"
-								text
-								size="mini"
-								icon="angle-down"
-								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-								@click="moveOptionDown(property.name, index)"
-							></n8n-icon-button>
-						</div>
-						<Suspense>
-							<ParameterInputList
-								:parameters="property.values"
-								:node-values="nodeValues"
-								:path="getPropertyPath(property.name, index)"
-								:hide-delete="true"
-								:is-read-only="isReadOnly"
-								@value-changed="valueChanged"
-							/>
-						</Suspense>
-					</div>
-				</div>
-			</div>
-			<div v-else class="parameter-item">
-				<div class="parameter-item-wrapper">
-					<div v-if="!isReadOnly" class="delete-option">
-						<n8n-icon-button
-							type="tertiary"
-							text
-							size="mini"
-							icon="trash"
-							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-							@click="deleteOption(property.name)"
-						></n8n-icon-button>
-					</div>
-					<ParameterInputList
-						:parameters="property.values"
-						:node-values="nodeValues"
-						:path="getPropertyPath(property.name)"
-						:is-read-only="isReadOnly"
-						class="parameter-item"
-						:hide-delete="true"
-						@value-changed="valueChanged"
-					/>
-				</div>
-			</div>
-		</div>
-
-		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
-			<n8n-button
-				v-if="parameter.options && parameter.options.length === 1"
-				type="tertiary"
-				block
-				data-test-id="fixed-collection-add"
-				:label="getPlaceholderText"
-				@click="optionSelected(parameter.options[0].name)"
-			/>
-			<div v-else class="add-option">
-				<n8n-select
-					v-model="selectedOption"
-					:placeholder="getPlaceholderText"
-					size="small"
-					filterable
-					@update:model-value="optionSelected"
-				>
-					<n8n-option
-						v-for="item in parameterOptions"
-						:key="item.name"
-						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
-						:value="item.name"
-					></n8n-option>
-				</n8n-select>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -338,6 +210,134 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		class="fixed-collection-parameter"
+		:data-test-id="`fixed-collection-${parameter.name}`"
+		@keydown.stop
+	>
+		<div v-if="getProperties.length === 0" class="no-items-exist">
+			<n8n-text size="small">{{
+				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+			}}</n8n-text>
+		</div>
+
+		<div
+			v-for="property in getProperties"
+			:key="property.name"
+			class="fixed-collection-parameter-property"
+		>
+			<n8n-input-label
+				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
+				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
+				:underline="true"
+				size="small"
+				color="text-dark"
+			/>
+			<div v-if="multipleValues">
+				<div
+					v-for="(_, index) in mutableValues[property.name]"
+					:key="property.name + index"
+					class="parameter-item"
+				>
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
+						<div v-if="!isReadOnly" class="delete-option">
+							<n8n-icon-button
+								type="tertiary"
+								text
+								size="mini"
+								icon="trash"
+								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+								@click="deleteOption(property.name, index)"
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== 0"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-up"
+								:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+								@click="moveOptionUp(property.name, index)"
+							></n8n-icon-button>
+							<n8n-icon-button
+								v-if="sortable && index !== mutableValues[property.name].length - 1"
+								type="tertiary"
+								text
+								size="mini"
+								icon="angle-down"
+								:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+								@click="moveOptionDown(property.name, index)"
+							></n8n-icon-button>
+						</div>
+						<Suspense>
+							<ParameterInputList
+								:parameters="property.values"
+								:node-values="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hide-delete="true"
+								:is-read-only="isReadOnly"
+								@value-changed="valueChanged"
+							/>
+						</Suspense>
+					</div>
+				</div>
+			</div>
+			<div v-else class="parameter-item">
+				<div class="parameter-item-wrapper">
+					<div v-if="!isReadOnly" class="delete-option">
+						<n8n-icon-button
+							type="tertiary"
+							text
+							size="mini"
+							icon="trash"
+							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+							@click="deleteOption(property.name)"
+						></n8n-icon-button>
+					</div>
+					<ParameterInputList
+						:parameters="property.values"
+						:node-values="nodeValues"
+						:path="getPropertyPath(property.name)"
+						:is-read-only="isReadOnly"
+						class="parameter-item"
+						:hide-delete="true"
+						@value-changed="valueChanged"
+					/>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
+			<n8n-button
+				v-if="parameter.options && parameter.options.length === 1"
+				type="tertiary"
+				block
+				data-test-id="fixed-collection-add"
+				:label="getPlaceholderText"
+				@click="optionSelected(parameter.options[0].name)"
+			/>
+			<div v-else class="add-option">
+				<n8n-select
+					v-model="selectedOption"
+					:placeholder="getPlaceholderText"
+					size="small"
+					filterable
+					@update:model-value="optionSelected"
+				>
+					<n8n-option
+						v-for="item in parameterOptions"
+						:key="item.name"
+						:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
+						:value="item.name"
+					></n8n-option>
+				</n8n-select>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style scoped lang="scss">
 .fixed-collection-parameter {

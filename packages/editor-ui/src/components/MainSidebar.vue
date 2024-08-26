@@ -1,102 +1,3 @@
-<template>
-	<div
-		id="side-menu"
-		:class="{
-			['side-menu']: true,
-			[$style.sideMenu]: true,
-			[$style.sideMenuCollapsed]: isCollapsed,
-		}"
-	>
-		<div
-			id="collapse-change-button"
-			:class="['clickable', $style.sideMenuCollapseButton]"
-			@click="toggleCollapse"
-		>
-			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
-		</div>
-		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
-			<template #header>
-				<div :class="$style.logo">
-					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
-				</div>
-				<ProjectNavigation
-					:collapsed="isCollapsed"
-					:plan-name="cloudPlanStore.currentPlanData?.displayName"
-				/>
-			</template>
-
-			<template #beforeLowerMenu>
-				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
-			</template>
-			<template #menuSuffix>
-				<div>
-					<div
-						v-if="hasVersionUpdates"
-						data-test-id="version-updates-panel-button"
-						:class="$style.updates"
-						@click="openUpdatesPanel"
-					>
-						<div :class="$style.giftContainer">
-							<GiftNotificationIcon />
-						</div>
-						<n8n-text
-							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
-							color="text-base"
-						>
-							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
-								nextVersions.length > 1 ? 's' : ''
-							}}
-						</n8n-text>
-					</div>
-					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-				</div>
-			</template>
-			<template v-if="showUserArea" #footer>
-				<div :class="$style.userArea">
-					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
-						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
-							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar
-									:first-name="usersStore.currentUser?.firstName"
-									:last-name="usersStore.currentUser?.lastName"
-									size="small"
-								/>
-							</div>
-							<template v-if="isCollapsed" #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item command="settings">
-										{{ $locale.baseText('settings') }}
-									</el-dropdown-item>
-									<el-dropdown-item command="logout">
-										{{ $locale.baseText('auth.signout') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
-							</template>
-						</el-dropdown>
-					</div>
-					<div
-						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
-					>
-						<n8n-text size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser?.fullName
-						}}</n8n-text>
-					</div>
-					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-action-dropdown
-							:items="userMenuItems"
-							placement="top-start"
-							data-test-id="user-menu"
-							@select="onUserActionToggle"
-						/>
-					</div>
-				</div>
-			</template>
-		</n8n-menu>
-	</div>
-</template>
-
 <script lang="ts">
 import type { IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
@@ -282,7 +183,7 @@ export default defineComponent({
 							icon: 'graduation-cap',
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
 							link: {
-								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+								href: 'https://docs.n8n.io/courses/',
 								target: '_blank',
 							},
 						},
@@ -412,6 +313,105 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		id="side-menu"
+		:class="{
+			['side-menu']: true,
+			[$style.sideMenu]: true,
+			[$style.sideMenuCollapsed]: isCollapsed,
+		}"
+	>
+		<div
+			id="collapse-change-button"
+			:class="['clickable', $style.sideMenuCollapseButton]"
+			@click="toggleCollapse"
+		>
+			<n8n-icon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
+			<n8n-icon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
+		</div>
+		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+			<template #header>
+				<div :class="$style.logo">
+					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
+				</div>
+				<ProjectNavigation
+					:collapsed="isCollapsed"
+					:plan-name="cloudPlanStore.currentPlanData?.displayName"
+				/>
+			</template>
+
+			<template #beforeLowerMenu>
+				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+			</template>
+			<template #menuSuffix>
+				<div>
+					<div
+						v-if="hasVersionUpdates"
+						data-test-id="version-updates-panel-button"
+						:class="$style.updates"
+						@click="openUpdatesPanel"
+					>
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text
+							:class="{ ['ml-xs']: true, [$style.expanded]: fullyExpanded }"
+							color="text-base"
+						>
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length }} update{{
+								nextVersions.length > 1 ? 's' : ''
+							}}
+						</n8n-text>
+					</div>
+					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+				</div>
+			</template>
+			<template v-if="showUserArea" #footer>
+				<div :class="$style.userArea">
+					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
+						<!-- This dropdown is only enabled when sidebar is collapsed -->
+						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
+							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
+								<n8n-avatar
+									:first-name="usersStore.currentUser?.firstName"
+									:last-name="usersStore.currentUser?.lastName"
+									size="small"
+								/>
+							</div>
+							<template v-if="isCollapsed" #dropdown>
+								<el-dropdown-menu>
+									<el-dropdown-item command="settings">
+										{{ $locale.baseText('settings') }}
+									</el-dropdown-item>
+									<el-dropdown-item command="logout">
+										{{ $locale.baseText('auth.signout') }}
+									</el-dropdown-item>
+								</el-dropdown-menu>
+							</template>
+						</el-dropdown>
+					</div>
+					<div
+						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
+					>
+						<n8n-text size="small" :bold="true" color="text-dark">{{
+							usersStore.currentUser?.fullName
+						}}</n8n-text>
+					</div>
+					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-action-dropdown
+							:items="userMenuItems"
+							placement="top-start"
+							data-test-id="user-menu"
+							@select="onUserActionToggle"
+						/>
+					</div>
+				</div>
+			</template>
+		</n8n-menu>
+	</div>
+</template>
 
 <style lang="scss" module>
 .sideMenu {

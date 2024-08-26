@@ -1,23 +1,3 @@
-<template>
-	<div>
-		<AuthView
-			v-if="!showMfaView"
-			:form="FORM_CONFIG"
-			:form-loading="loading"
-			:with-sso="true"
-			data-test-id="signin-form"
-			@submit="onEmailPasswordSubmitted"
-		/>
-		<MfaView
-			v-if="showMfaView"
-			:report-error="reportError"
-			@submit="onMFASubmitted"
-			@on-back-click="onBackClick"
-			@on-form-changed="onFormChanged"
-		/>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
@@ -200,3 +180,23 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<AuthView
+			v-if="!showMfaView"
+			:form="FORM_CONFIG"
+			:form-loading="loading"
+			:with-sso="true"
+			data-test-id="signin-form"
+			@submit="onEmailPasswordSubmitted"
+		/>
+		<MfaView
+			v-if="showMfaView"
+			:report-error="reportError"
+			@submit="onMFASubmitted"
+			@on-back-click="onBackClick"
+			@on-form-changed="onFormChanged"
+		/>
+	</div>
+</template>

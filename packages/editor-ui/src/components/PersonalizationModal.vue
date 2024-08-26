@@ -1,57 +1,3 @@
-<template>
-	<Modal
-		:name="PERSONALIZATION_MODAL_KEY"
-		:title="$locale.baseText('personalizationModal.customizeN8n')"
-		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:center-title="true"
-		:show-close="false"
-		:event-bus="modalBus"
-		:close-on-click-modal="false"
-		:close-on-press-escape="false"
-		width="460px"
-		data-test-id="personalization-form"
-		@enter="onSave"
-	>
-		<template #content>
-			<div :class="$style.container">
-				<n8n-form-inputs
-					v-model="formValues"
-					:inputs="survey"
-					:column-view="true"
-					:event-bus="formBus"
-					:teleported="teleported"
-					tag-size="small"
-					@submit="onSubmit"
-				/>
-				<n8n-card v-if="canRegisterForEnterpriseTrial">
-					<n8n-checkbox v-model="registerForEnterpriseTrial">
-						<i18n-t keypath="personalizationModal.registerEmailForTrial">
-							<template #trial>
-								<strong>
-									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
-								</strong>
-							</template>
-						</i18n-t>
-						<n8n-text size="small" tag="div" color="text-light">
-							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
-						</n8n-text>
-					</n8n-checkbox>
-				</n8n-card>
-			</div>
-		</template>
-		<template #footer>
-			<div>
-				<n8n-button
-					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.getStarted')"
-					float="right"
-					@click="onSave"
-				/>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -135,11 +81,11 @@ import {
 	REPORTED_SOURCE_OTHER,
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
+	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
-import type { GenericValue } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/root.store';
@@ -674,9 +620,12 @@ export default defineComponent({
 	methods: {
 		closeDialog() {
 			this.modalBus.emit('close');
+			const isPartOfOnboardingExperiment =
+				this.posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+				MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
 			// In case the redirect to homepage for new users didn't happen
 			// we try again after closing the modal
-			if (this.$route.name !== VIEWS.HOMEPAGE) {
+			if (this.$route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
 				void this.$router.replace({ name: VIEWS.HOMEPAGE });
 			}
 		},
@@ -692,19 +641,16 @@ export default defineComponent({
 			this.isSaving = true;
 
 			try {
-				const survey: Record<string, GenericValue> = {
+				const survey: IPersonalizationLatestVersion = {
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
 					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
-				await this.externalHooks.run(
-					'personalizationModal.onSubmit',
-					survey as IPersonalizationLatestVersion,
-				);
+				await this.externalHooks.run('personalizationModal.onSubmit', survey);
 
-				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
+				await this.usersStore.submitPersonalizationSurvey(survey);
 
 				this.posthogStore.setMetadata(survey, 'user');
 
@@ -752,6 +698,60 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="PERSONALIZATION_MODAL_KEY"
+		:title="$locale.baseText('personalizationModal.customizeN8n')"
+		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
+		:center-title="true"
+		:show-close="false"
+		:event-bus="modalBus"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
+		width="460px"
+		data-test-id="personalization-form"
+		@enter="onSave"
+	>
+		<template #content>
+			<div :class="$style.container">
+				<n8n-form-inputs
+					v-model="formValues"
+					:inputs="survey"
+					:column-view="true"
+					:event-bus="formBus"
+					:teleported="teleported"
+					tag-size="small"
+					@submit="onSubmit"
+				/>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
+			</div>
+		</template>
+		<template #footer>
+			<div>
+				<n8n-button
+					:loading="isSaving"
+					:label="$locale.baseText('personalizationModal.getStarted')"
+					float="right"
+					@click="onSave"
+				/>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .container {

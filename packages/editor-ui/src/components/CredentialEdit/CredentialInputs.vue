@@ -1,28 +1,3 @@
-<template>
-	<div v-if="credentialProperties.length" :class="$style.container" @keydown.stop>
-		<form
-			v-for="parameter in credentialProperties"
-			:key="parameter.name"
-			autocomplete="off"
-			data-test-id="credential-connection-parameter"
-			@submit.prevent
-		>
-			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
-			<n8n-notice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
-			<ParameterInputExpanded
-				v-else
-				:parameter="parameter"
-				:value="credentialDataValues[parameter.name]"
-				:documentation-url="documentationUrl"
-				:show-validation-warnings="showValidationWarnings"
-				:label="{ size: 'medium' }"
-				event-source="credentials"
-				@update="valueChanged"
-			/>
-		</form>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type {
 	ICredentialDataDecryptedObject,
@@ -59,6 +34,31 @@ function valueChanged(parameterData: IUpdateInformation) {
 	});
 }
 </script>
+
+<template>
+	<div v-if="credentialProperties.length" :class="$style.container" @keydown.stop>
+		<form
+			v-for="parameter in credentialProperties"
+			:key="parameter.name"
+			autocomplete="off"
+			data-test-id="credential-connection-parameter"
+			@submit.prevent
+		>
+			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
+			<n8n-notice v-if="parameter.type === 'notice'" :content="parameter.displayName" />
+			<ParameterInputExpanded
+				v-else
+				:parameter="parameter"
+				:value="credentialDataValues[parameter.name]"
+				:documentation-url="documentationUrl"
+				:show-validation-warnings="showValidationWarnings"
+				:label="{ size: 'medium' }"
+				event-source="credentials"
+				@update="valueChanged"
+			/>
+		</form>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

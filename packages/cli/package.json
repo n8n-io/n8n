@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.55.0",
+  "version": "1.56.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -93,7 +93,7 @@
     "@n8n_io/ai-assistant-sdk": "1.9.4",
     "@n8n_io/license-sdk": "2.13.1",
     "@oclif/core": "4.0.7",
-    "@rudderstack/rudder-sdk-node": "2.0.7",
+    "@rudderstack/rudder-sdk-node": "2.0.9",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
     "aws4": "1.11.0",
@@ -155,7 +155,6 @@
     "reflect-metadata": "0.2.2",
     "replacestream": "4.0.3",
     "samlify": "2.8.9",
-    "sanitize-html": "2.12.1",
     "semver": "7.5.4",
     "shelljs": "0.8.5",
     "simple-git": "3.17.0",
@@ -172,7 +171,8 @@
     "ws": "8.17.1",
     "xml2js": "catalog:",
     "xmllint-wasm": "3.0.1",
+    "xss": "^1.0.14",
     "yamljs": "0.3.0",
-    "zod": "3.22.4"
+    "zod": "catalog:"
   }
 }
