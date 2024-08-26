@@ -69,7 +69,7 @@ import { WorkflowStaticDataService } from './workflows/workflow-static-data.serv
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from './events/event.service';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';

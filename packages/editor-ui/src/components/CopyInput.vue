@@ -1,27 +1,3 @@
-<template>
-	<div>
-		<n8n-input-label :label="label">
-			<div
-				:class="{
-					[$style.copyText]: true,
-					[$style[size]]: true,
-					[$style.collapsed]: collapse,
-					[$style.noHover]: disableCopy,
-					'ph-no-capture': redactValue,
-				}"
-				data-test-id="copy-input"
-				@click="copy"
-			>
-				<span ref="copyInputValue">{{ value }}</span>
-				<div v-if="!disableCopy" :class="$style.copyButton">
-					<span>{{ copyButtonText }}</span>
-				</div>
-			</div>
-		</n8n-input-label>
-		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
@@ -70,6 +46,30 @@ function copy() {
 	});
 }
 </script>
+
+<template>
+	<div>
+		<n8n-input-label :label="label">
+			<div
+				:class="{
+					[$style.copyText]: true,
+					[$style[size]]: true,
+					[$style.collapsed]: collapse,
+					[$style.noHover]: disableCopy,
+					'ph-no-capture': redactValue,
+				}"
+				data-test-id="copy-input"
+				@click="copy"
+			>
+				<span ref="copyInputValue">{{ value }}</span>
+				<div v-if="!disableCopy" :class="$style.copyButton">
+					<span>{{ copyButtonText }}</span>
+				</div>
+			</div>
+		</n8n-input-label>
+		<div v-if="hint" :class="$style.hint">{{ hint }}</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .copyText {

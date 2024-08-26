@@ -1,23 +1,3 @@
-<template>
-	<div>
-		<PushConnectionTracker class="actions"></PushConnectionTracker>
-		<div :class="$style.workerListHeader">
-			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
-		</div>
-		<div v-if="!initialStatusReceived">
-			<n8n-spinner />
-		</div>
-		<div v-else>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
-			<div v-else>
-				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -118,6 +98,26 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<div :class="$style.workerListHeader">
+			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+		</div>
+		<div v-if="!initialStatusReceived">
+			<n8n-spinner />
+		</div>
+		<div v-else>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .workerListHeader {

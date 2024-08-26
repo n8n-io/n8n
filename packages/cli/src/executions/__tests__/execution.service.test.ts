@@ -11,7 +11,7 @@ import type { WaitTracker } from '@/wait-tracker';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import type { Job } from '@/scaling/types';
+import type { Job } from '@/scaling/scaling.types';
 import { mockInstance } from '@test/mocking';
 
 describe('ExecutionService', () => {

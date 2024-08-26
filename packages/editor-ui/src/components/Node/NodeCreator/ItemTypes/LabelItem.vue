@@ -1,9 +1,3 @@
-<template>
-	<div :class="$style.label">
-		<span :class="$style.name" v-text="item.key" />
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { LabelItemProps } from '@/Interface';
 
@@ -12,6 +6,12 @@ export interface Props {
 }
 defineProps<Props>();
 </script>
+
+<template>
+	<div :class="$style.label">
+		<span :class="$style.name" v-text="item.key" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .label {

@@ -88,13 +88,22 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 
 	console.log('Running benchmarks...');
 	const runScriptPath = path.join(scriptsDir, 'runOnVm.mjs');
-	await sshClient.ssh(
-		`npx zx ${runScriptPath} --n8nDockerTag=${config.n8nTag} --benchmarkDockerTag=${config.benchmarkTag} ${config.n8nSetupToUse}`,
-		{
-			// Test run should always log its output
-			verbose: true,
-		},
-	);
+
+	const flags = {
+		n8nDockerTag: config.n8nTag,
+		benchmarkDockerTag: config.benchmarkTag,
+		k6ApiToken: config.k6ApiToken,
+	};
+
+	const flagsString = Object.entries(flags)
+		.filter(([, value]) => value !== undefined)
+		.map(([key, value]) => `--${key}=${value}`)
+		.join(' ');
+
+	await sshClient.ssh(`npx zx ${runScriptPath} ${flagsString} ${config.n8nSetupToUse}`, {
+		// Test run should always log its output
+		verbose: true,
+	});
 }
 
 async function ensureVmIsReachable(sshClient) {

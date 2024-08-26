@@ -1,14 +1,3 @@
-<template>
-	<div>
-		<div v-for="size in sizes" :key="size" class="spacing-group">
-			<div class="spacing-example" :class="`${property[0]}${side ? side[0] : ''}-${size}`">
-				<div class="spacing-box" />
-				<div class="label">{{ property[0] }}{{ side ? side[0] : '' }}-{{ size }}</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed } from 'vue';
 
@@ -41,6 +30,17 @@ const props = withDefaults(defineProps<SpacingPreviewProps>(), {
 
 const sizes = computed(() => [...SIZES, ...(props.property === 'margin' ? ['auto'] : [])]);
 </script>
+
+<template>
+	<div>
+		<div v-for="size in sizes" :key="size" class="spacing-group">
+			<div class="spacing-example" :class="`${property[0]}${side ? side[0] : ''}-${size}`">
+				<div class="spacing-box" />
+				<div class="label">{{ property[0] }}{{ side ? side[0] : '' }}-{{ size }}</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss">
 $box-size: 64px;

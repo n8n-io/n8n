@@ -1,12 +1,3 @@
-<template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:form-loading="loading"
-		data-test-id="setup-form"
-		@submit="onSubmit"
-	/>
-</template>
-
 <script lang="ts">
 import AuthView from './AuthView.vue';
 import { defineComponent } from 'vue';
@@ -129,3 +120,12 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<AuthView
+		:form="FORM_CONFIG"
+		:form-loading="loading"
+		data-test-id="setup-form"
+		@submit="onSubmit"
+	/>
+</template>

@@ -1,23 +1,3 @@
-<template>
-	<div class="n8n-markdown">
-		<div
-			v-if="!loading"
-			ref="editor"
-			:class="$style[theme]"
-			@click="onClick"
-			@mousedown="onMouseDown"
-			@change="onChange"
-			v-html="htmlContent"
-		/>
-		<div v-else :class="$style.markdown">
-			<div v-for="(_, index) in loadingBlocks" :key="index">
-				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
-				<div :class="$style.spacer" />
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import type { Options as MarkdownOptions } from 'markdown-it';
@@ -212,6 +192,26 @@ const onCheckboxChange = (index: number) => {
 	emit('update-content', newContent);
 };
 </script>
+
+<template>
+	<div class="n8n-markdown">
+		<div
+			v-if="!loading"
+			ref="editor"
+			:class="$style[theme]"
+			@click="onClick"
+			@mousedown="onMouseDown"
+			@change="onChange"
+			v-html="htmlContent"
+		/>
+		<div v-else :class="$style.markdown">
+			<div v-for="(_, index) in loadingBlocks" :key="index">
+				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
+				<div :class="$style.spacer" />
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .markdown {

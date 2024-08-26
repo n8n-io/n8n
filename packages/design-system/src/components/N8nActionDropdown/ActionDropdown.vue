@@ -1,57 +1,3 @@
-<template>
-	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<ElDropdown
-			ref="elementDropdown"
-			:placement="placement"
-			:trigger="trigger"
-			:popper-class="popperClass"
-			:teleported="teleported"
-			:disabled="disabled"
-			@command="onSelect"
-			@visible-change="onVisibleChange"
-		>
-			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
-				v-else
-				type="tertiary"
-				text
-				:class="$style.activator"
-				:size="activatorSize"
-				:icon="activatorIcon"
-				@blur="onButtonBlur"
-			/>
-
-			<template #dropdown>
-				<ElDropdownMenu :class="$style.userActionsMenu">
-					<ElDropdownItem
-						v-for="item in items"
-						:key="item.id"
-						:command="item.id"
-						:disabled="item.disabled"
-						:divided="item.divided"
-						:class="$style.elementItem"
-					>
-						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
-							<span v-if="item.icon" :class="$style.icon">
-								<N8nIcon :icon="item.icon" :size="iconSize" />
-							</span>
-							<span :class="$style.label">
-								{{ item.label }}
-							</span>
-							<N8nKeyboardShortcut
-								v-if="item.shortcut"
-								v-bind="item.shortcut"
-								:class="$style.shortcut"
-							>
-							</N8nKeyboardShortcut>
-						</div>
-					</ElDropdownItem>
-				</ElDropdownMenu>
-			</template>
-		</ElDropdown>
-	</div>
-</template>
-
 <script lang="ts" setup>
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
@@ -128,6 +74,60 @@ const open = () => elementDropdown.value?.handleOpen();
 const close = () => elementDropdown.value?.handleClose();
 defineExpose({ open, close });
 </script>
+
+<template>
+	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
+		<ElDropdown
+			ref="elementDropdown"
+			:placement="placement"
+			:trigger="trigger"
+			:popper-class="popperClass"
+			:teleported="teleported"
+			:disabled="disabled"
+			@command="onSelect"
+			@visible-change="onVisibleChange"
+		>
+			<slot v-if="$slots.activator" name="activator" />
+			<n8n-icon-button
+				v-else
+				type="tertiary"
+				text
+				:class="$style.activator"
+				:size="activatorSize"
+				:icon="activatorIcon"
+				@blur="onButtonBlur"
+			/>
+
+			<template #dropdown>
+				<ElDropdownMenu :class="$style.userActionsMenu">
+					<ElDropdownItem
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
+						:class="$style.elementItem"
+					>
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
+							<span v-if="item.icon" :class="$style.icon">
+								<N8nIcon :icon="item.icon" :size="iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+							<N8nKeyboardShortcut
+								v-if="item.shortcut"
+								v-bind="item.shortcut"
+								:class="$style.shortcut"
+							>
+							</N8nKeyboardShortcut>
+						</div>
+					</ElDropdownItem>
+				</ElDropdownMenu>
+			</template>
+		</ElDropdown>
+	</div>
+</template>
 
 <style lang="scss" module>
 :global(.el-dropdown__list) {

@@ -1,3 +1,110 @@
+<script lang="ts">
+import type { ElTable } from 'element-plus';
+import { MAX_TAG_NAME_LENGTH } from '@/constants';
+import type { ITagRow } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { N8nInput } from 'n8n-design-system';
+
+type TableRef = InstanceType<typeof ElTable>;
+type N8nInputRef = InstanceType<typeof N8nInput>;
+
+const INPUT_TRANSITION_TIMEOUT = 350;
+const DELETE_TRANSITION_TIMEOUT = 100;
+
+export default defineComponent({
+	name: 'TagsTable',
+	props: ['rows', 'isLoading', 'newName', 'isSaving'],
+	data() {
+		return {
+			maxLength: MAX_TAG_NAME_LENGTH,
+		};
+	},
+	watch: {
+		rows(newValue: ITagRow[] | undefined) {
+			if (newValue?.[0] && newValue[0].create) {
+				this.focusOnCreate();
+			}
+		},
+	},
+	mounted() {
+		if (this.rows.length === 1 && this.rows[0].create) {
+			this.focusOnInput();
+		}
+	},
+	methods: {
+		getRowClasses: ({ row }: { row: ITagRow }): string => {
+			return row.disable ? 'disabled' : '';
+		},
+
+		getSpan({ row, columnIndex }: { row: ITagRow; columnIndex: number }): number | number[] {
+			// expand text column with delete message
+			if (columnIndex === 0 && row.tag && row.delete) {
+				return [1, 2];
+			}
+			// hide usage column on delete
+			if (columnIndex === 1 && row.tag && row.delete) {
+				return [0, 0];
+			}
+
+			return 1;
+		},
+
+		enableUpdate(row: ITagRow): void {
+			if (row.tag) {
+				this.$emit('updateEnable', row.tag.id);
+				this.$emit('newNameChange', row.tag.name);
+				this.focusOnInput();
+			}
+		},
+
+		enableDelete(row: ITagRow): void {
+			if (row.tag) {
+				this.$emit('deleteEnable', row.tag.id);
+				this.focusOnDelete();
+			}
+		},
+
+		cancel(): void {
+			this.$emit('cancelOperation');
+		},
+		apply(): void {
+			this.$emit('applyOperation');
+		},
+
+		onNewNameChange(name: string): void {
+			this.$emit('newNameChange', name);
+		},
+
+		focusOnInput(): void {
+			setTimeout(() => {
+				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
+				if (inputRef?.focus) {
+					inputRef.focus();
+				}
+			}, INPUT_TRANSITION_TIMEOUT);
+		},
+
+		focusOnDelete(): void {
+			setTimeout(() => {
+				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
+				if (inputRef?.focus) {
+					inputRef.focus();
+				}
+			}, DELETE_TRANSITION_TIMEOUT);
+		},
+
+		focusOnCreate(): void {
+			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
+			if (bodyWrapperRef) {
+				bodyWrapperRef.scrollTop = 0;
+			}
+
+			this.focusOnInput();
+		},
+	},
+});
+</script>
+
 <template>
 	<el-table
 		ref="table"
@@ -106,113 +213,6 @@
 		</el-table-column>
 	</el-table>
 </template>
-
-<script lang="ts">
-import type { ElTable } from 'element-plus';
-import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import type { ITagRow } from '@/Interface';
-import { defineComponent } from 'vue';
-import type { N8nInput } from 'n8n-design-system';
-
-type TableRef = InstanceType<typeof ElTable>;
-type N8nInputRef = InstanceType<typeof N8nInput>;
-
-const INPUT_TRANSITION_TIMEOUT = 350;
-const DELETE_TRANSITION_TIMEOUT = 100;
-
-export default defineComponent({
-	name: 'TagsTable',
-	props: ['rows', 'isLoading', 'newName', 'isSaving'],
-	data() {
-		return {
-			maxLength: MAX_TAG_NAME_LENGTH,
-		};
-	},
-	watch: {
-		rows(newValue: ITagRow[] | undefined) {
-			if (newValue?.[0] && newValue[0].create) {
-				this.focusOnCreate();
-			}
-		},
-	},
-	mounted() {
-		if (this.rows.length === 1 && this.rows[0].create) {
-			this.focusOnInput();
-		}
-	},
-	methods: {
-		getRowClasses: ({ row }: { row: ITagRow }): string => {
-			return row.disable ? 'disabled' : '';
-		},
-
-		getSpan({ row, columnIndex }: { row: ITagRow; columnIndex: number }): number | number[] {
-			// expand text column with delete message
-			if (columnIndex === 0 && row.tag && row.delete) {
-				return [1, 2];
-			}
-			// hide usage column on delete
-			if (columnIndex === 1 && row.tag && row.delete) {
-				return [0, 0];
-			}
-
-			return 1;
-		},
-
-		enableUpdate(row: ITagRow): void {
-			if (row.tag) {
-				this.$emit('updateEnable', row.tag.id);
-				this.$emit('newNameChange', row.tag.name);
-				this.focusOnInput();
-			}
-		},
-
-		enableDelete(row: ITagRow): void {
-			if (row.tag) {
-				this.$emit('deleteEnable', row.tag.id);
-				this.focusOnDelete();
-			}
-		},
-
-		cancel(): void {
-			this.$emit('cancelOperation');
-		},
-		apply(): void {
-			this.$emit('applyOperation');
-		},
-
-		onNewNameChange(name: string): void {
-			this.$emit('newNameChange', name);
-		},
-
-		focusOnInput(): void {
-			setTimeout(() => {
-				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
-				if (inputRef?.focus) {
-					inputRef.focus();
-				}
-			}, INPUT_TRANSITION_TIMEOUT);
-		},
-
-		focusOnDelete(): void {
-			setTimeout(() => {
-				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
-				if (inputRef?.focus) {
-					inputRef.focus();
-				}
-			}, DELETE_TRANSITION_TIMEOUT);
-		},
-
-		focusOnCreate(): void {
-			const bodyWrapperRef = (this.$refs.table as TableRef).$refs.bodyWrapper as HTMLElement;
-			if (bodyWrapperRef) {
-				bodyWrapperRef.scrollTop = 0;
-			}
-
-			this.focusOnInput();
-		},
-	},
-});
-</script>
 
 <style lang="scss" scoped>
 .tags-table {
