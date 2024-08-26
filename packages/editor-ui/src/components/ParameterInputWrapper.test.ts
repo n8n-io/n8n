@@ -2,9 +2,16 @@ import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { STORES } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 describe('ParameterInputWrapper.vue', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
+	});
 	test('should resolve expression', async () => {
 		const { getByTestId } = renderComponent(ParameterInputWrapper, {
 			pinia: createTestingPinia({

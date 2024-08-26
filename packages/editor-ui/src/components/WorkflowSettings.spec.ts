@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, getDropdownItems } from '@/__tests__/utils';
 import { EnterpriseEditionFeature, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
 import { nextTick } from 'vue';
@@ -35,6 +35,8 @@ describe('WorkflowSettingsVue', () => {
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
+
+		createAppModals();
 
 		workflowsStore = useWorkflowsStore();
 		settingsStore = useSettingsStore();
@@ -63,6 +65,10 @@ describe('WorkflowSettingsVue', () => {
 		uiStore.modalsById[WORKFLOW_SETTINGS_MODAL_KEY] = {
 			open: true,
 		};
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
 	});
 
 	afterAll(() => {

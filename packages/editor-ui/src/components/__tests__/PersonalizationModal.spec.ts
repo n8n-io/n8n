@@ -2,7 +2,7 @@ import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { PERSONALIZATION_MODAL_KEY, ROLE, STORES, VIEWS } from '@/constants';
-import { retry } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, retry } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
 import { useUsersStore } from '@/stores/users.store';
@@ -55,6 +55,14 @@ const renderComponent = createComponentRenderer(PersonalizationModal, {
 });
 
 describe('PersonalizationModal.vue', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
+	});
+
 	it('should render correctly', async () => {
 		const wrapper = renderComponent();
 

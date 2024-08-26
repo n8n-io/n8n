@@ -1,8 +1,9 @@
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import {screen} from '@testing-library/dom'
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, getDropdownItems } from '@/__tests__/utils';
 import ModalRoot from '@/components/ModalRoot.vue';
 import DeleteUserModal from '@/components/DeleteUserModal.vue';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
@@ -55,6 +56,8 @@ describe('SettingsUsersView', () => {
 		usersStore = useUsersStore();
 		rbacStore = useRBACStore();
 
+		createAppModals();
+
 		useSettingsStore().settings.enterprise = {
 			...defaultSettings.enterprise,
 			[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
@@ -69,6 +72,10 @@ describe('SettingsUsersView', () => {
 		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 
 		usersStore.currentUserId = loggedInUser.id;
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
 	});
 
 	it('should show confirmation modal before deleting user and delete with transfer', async () => {
@@ -89,6 +96,8 @@ describe('SettingsUsersView', () => {
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
 		const actionDelete = within(actionDropdown).getByTestId('action-delete');
 		await userEvent.click(actionDelete);
+
+		console.log(screen.debug())
 
 		const modal = getByTestId('deleteUser-modal');
 		expect(modal).toBeVisible();

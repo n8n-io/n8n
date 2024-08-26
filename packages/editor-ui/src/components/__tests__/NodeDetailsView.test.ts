@@ -14,6 +14,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 async function createPiniaWithActiveNode() {
 	const node = mockNodes[0];
@@ -47,7 +48,12 @@ describe('NodeDetailsView', () => {
 		server = setupServer();
 	});
 
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
+		cleanupAppModals();
 		vi.clearAllMocks();
 	});
 

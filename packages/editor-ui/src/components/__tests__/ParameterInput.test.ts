@@ -7,6 +7,7 @@ import { faker } from '@faker-js/faker';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '../../stores/nodeTypes.store';
+import { cleanupAppModals, createAppModals } from '@/__tests__/utils';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockNodeTypesState: Partial<ReturnType<typeof useNodeTypesStore>>;
@@ -57,6 +58,11 @@ describe('ParameterInput.vue', () => {
 		mockNodeTypesState = {
 			allNodeTypes: [],
 		};
+		createAppModals();
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
 	});
 
 	test('should render an options parameter (select)', async () => {

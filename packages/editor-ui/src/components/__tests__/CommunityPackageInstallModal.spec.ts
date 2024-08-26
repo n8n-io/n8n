@@ -3,7 +3,7 @@ import CommunityPackageInstallModal from '../CommunityPackageInstallModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY, STORES } from '@/constants';
 import userEvent from '@testing-library/user-event';
-import { retry } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, retry } from '@/__tests__/utils';
 
 const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 	props: {
@@ -33,6 +33,13 @@ const renderComponent = createComponentRenderer(CommunityPackageInstallModal, {
 });
 
 describe('CommunityPackageInstallModal', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
+	afterEach(() => {
+		cleanupAppModals();
+	});
 	it('should disable install button until user agrees', async () => {
 		const wrapper = renderComponent();
 

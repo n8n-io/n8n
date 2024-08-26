@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import { STORES } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -35,8 +35,13 @@ const DEFAULT_SETUP = {
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
 describe('FilterConditions.vue', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('renders default state properly', async () => {

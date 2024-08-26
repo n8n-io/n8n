@@ -90,3 +90,20 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	expect(selectedItem).toBeInTheDocument();
 	return selectedItem?.querySelector('p')?.textContent?.trim();
 };
+
+/**
+ * Create a container for teleported modals
+ *
+ * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
+ * @returns {HTMLElement} appModals
+ */
+export const createAppModals = () => {
+	const appModals = document.createElement('div');
+	appModals.id = 'app-modals';
+	document.body.appendChild(appModals);
+	return appModals;
+};
+
+export const cleanupAppModals = () => {
+	document.body.innerHTML = '';
+};
