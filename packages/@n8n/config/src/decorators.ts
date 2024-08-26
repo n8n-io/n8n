@@ -34,18 +34,22 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 					value = readFileSync(filePath, 'utf8');
 				}
 
+				if (value === undefined) continue;
+
 				if (type === Number) {
 					value = Number(value);
 					if (isNaN(value as number)) {
-						// TODO: add a warning
+						console.warn(`Invalid number value for ${envName}: ${value}`);
 						value = undefined;
 					}
 				} else if (type === Boolean) {
-					if (value !== 'true' && value !== 'false') {
-						// TODO: add a warning
-						value = undefined;
+					if (['true', 'TRUE', '1'].includes(value as string)) {
+						value = true;
+					} else if (['false', 'FALSE', '0'].includes(value as string)) {
+						value = false;
 					} else {
-						value = value === 'true';
+						console.warn(`Invalid boolean value for ${envName}: ${value}`);
+						value = undefined;
 					}
 				} else if (type === Object) {
 					// eslint-disable-next-line n8n-local-rules/no-plain-errors
