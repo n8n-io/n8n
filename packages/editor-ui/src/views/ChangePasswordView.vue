@@ -1,13 +1,3 @@
-<template>
-	<AuthView
-		v-if="config"
-		:form="config"
-		:form-loading="loading"
-		@submit="onSubmit"
-		@update="onInput"
-	/>
-</template>
-
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
 import { useToast } from '@/composables/useToast';
@@ -170,3 +160,13 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<AuthView
+		v-if="config"
+		:form="config"
+		:form-loading="loading"
+		@submit="onSubmit"
+		@update="onInput"
+	/>
+</template>

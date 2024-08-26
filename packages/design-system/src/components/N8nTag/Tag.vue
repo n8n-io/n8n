@@ -1,9 +1,3 @@
-<template>
-	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
-		{{ text }}
-	</span>
-</template>
-
 <script lang="ts" setup>
 interface TagProps {
 	text: string;
@@ -11,6 +5,12 @@ interface TagProps {
 defineOptions({ name: 'N8nTag' });
 defineProps<TagProps>();
 </script>
+
+<template>
+	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
+		{{ text }}
+	</span>
+</template>
 
 <style lang="scss" module>
 .tag {

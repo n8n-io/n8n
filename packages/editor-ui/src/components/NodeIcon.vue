@@ -1,20 +1,3 @@
-<template>
-	<n8n-node-icon
-		:type="iconType"
-		:src="iconSource.path || iconSource.fileBuffer"
-		:name="iconSource.icon"
-		:color="color"
-		:disabled="disabled"
-		:size="size"
-		:circle="circle"
-		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
-		:show-tooltip="showTooltip"
-		:tooltip-position="tooltipPosition"
-		:badge="badge"
-		@click="emit('click')"
-	></n8n-node-icon>
-</template>
-
 <script setup lang="ts">
 import type { IVersionNode, SimplifiedNodeType } from '@/Interface';
 import { useRootStore } from '@/stores/root.store';
@@ -129,5 +112,22 @@ const badge = computed(() => {
 	return undefined;
 });
 </script>
+
+<template>
+	<n8n-node-icon
+		:type="iconType"
+		:src="iconSource.path || iconSource.fileBuffer"
+		:name="iconSource.icon"
+		:color="color"
+		:disabled="disabled"
+		:size="size"
+		:circle="circle"
+		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:show-tooltip="showTooltip"
+		:tooltip-position="tooltipPosition"
+		:badge="badge"
+		@click="emit('click')"
+	></n8n-node-icon>
+</template>
 
 <style lang="scss" module></style>

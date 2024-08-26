@@ -1,23 +1,3 @@
-<template>
-	<div :class="['n8n-tags', $style.tags]">
-		<N8nTag
-			v-for="tag in visibleTags"
-			:key="tag.id"
-			:text="tag.name"
-			@click="emit('click:tag', tag.id, $event)"
-		/>
-		<N8nLink
-			v-if="truncate && !showAll && hiddenTagsLength > 0"
-			theme="text"
-			underline
-			size="small"
-			@click.stop.prevent="onExpand"
-		>
-			{{ t('tags.showMore', [`${hiddenTagsLength}`]) }}
-		</N8nLink>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import N8nTag from '../N8nTag';
@@ -66,6 +46,26 @@ const onExpand = () => {
 	emit('expand', true);
 };
 </script>
+
+<template>
+	<div :class="['n8n-tags', $style.tags]">
+		<N8nTag
+			v-for="tag in visibleTags"
+			:key="tag.id"
+			:text="tag.name"
+			@click="emit('click:tag', tag.id, $event)"
+		/>
+		<N8nLink
+			v-if="truncate && !showAll && hiddenTagsLength > 0"
+			theme="text"
+			underline
+			size="small"
+			@click.stop.prevent="onExpand"
+		>
+			{{ t('tags.showMore', [`${hiddenTagsLength}`]) }}
+		</N8nLink>
+	</div>
+</template>
 
 <style lang="scss" module>
 .tags {

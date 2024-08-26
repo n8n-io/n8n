@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
+import type { AxiosRequestConfig } from 'axios';
 import { N8nApiClient } from './n8nApiClient';
-import { AxiosRequestConfig } from 'axios';
 
 export class AuthenticatedN8nApiClient extends N8nApiClient {
 	constructor(

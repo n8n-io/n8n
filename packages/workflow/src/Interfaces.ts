@@ -1204,7 +1204,8 @@ export type NodePropertyTypes =
 	| 'resourceMapper'
 	| 'filter'
 	| 'assignmentCollection'
-	| 'credentials';
+	| 'credentials'
+	| 'workflowSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

@@ -1,20 +1,3 @@
-<template>
-	<component
-		:is="tag"
-		ref="wrapper"
-		:class="{ [$style.dragging]: isDragging }"
-		@mousedown="onDragStart"
-	>
-		<slot :is-dragging="isDragging"></slot>
-
-		<Teleport to="body">
-			<div v-show="isDragging" ref="draggable" :class="$style.draggable" :style="draggableStyle">
-				<slot name="preview" :can-drop="canDrop" :el="draggingElement"></slot>
-			</div>
-		</Teleport>
-	</component>
-</template>
-
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -136,6 +119,23 @@ const onDragEnd = () => {
 	}, 0);
 };
 </script>
+
+<template>
+	<component
+		:is="tag"
+		ref="wrapper"
+		:class="{ [$style.dragging]: isDragging }"
+		@mousedown="onDragStart"
+	>
+		<slot :is-dragging="isDragging"></slot>
+
+		<Teleport to="body">
+			<div v-show="isDragging" ref="draggable" :class="$style.draggable" :style="draggableStyle">
+				<slot name="preview" :can-drop="canDrop" :el="draggingElement"></slot>
+			</div>
+		</Teleport>
+	</component>
+</template>
 
 <style lang="scss" module>
 .dragging {
