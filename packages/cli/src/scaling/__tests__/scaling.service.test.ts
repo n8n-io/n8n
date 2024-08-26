@@ -37,6 +37,12 @@ describe('ScalingService', () => {
 				},
 			},
 		},
+		endpoints: {
+			metrics: {
+				includeQueueMetrics: false,
+				queueMetricsInterval: 20,
+			},
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);

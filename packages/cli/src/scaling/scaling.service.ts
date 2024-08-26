@@ -316,7 +316,7 @@ export class ScalingService {
 
 	/** Set up an interval to collect queue metrics and emit them in an event. */
 	private scheduleQueueMetrics() {
-		if (this.instanceType !== 'main' && this.queueMetricsInterval) return;
+		if (!this.isQueueMetricsEnabled || this.queueMetricsInterval) return;
 
 		this.queueMetricsInterval = setInterval(async () => {
 			const pendingJobCounts = await this.getPendingJobCounts();
@@ -333,8 +333,10 @@ export class ScalingService {
 
 	/** Stop collecting queue metrics. */
 	private stopQueueMetrics() {
-		clearInterval(this.queueMetricsInterval);
-		this.queueMetricsInterval = undefined;
+		if (this.queueMetricsInterval) {
+			clearInterval(this.queueMetricsInterval);
+			this.queueMetricsInterval = undefined;
+		}
 	}
 
 	// #endregion
