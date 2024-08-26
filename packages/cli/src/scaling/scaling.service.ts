@@ -16,8 +16,7 @@ import type {
 	JobStatus,
 	JobId,
 	QueueRecoveryContext,
-	MessageToWorker,
-	MessageToMain,
+	PubSubMessage,
 } from './scaling.types';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
@@ -210,7 +209,9 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners() {
-		this.queue.on('global:progress', (jobId: JobId, msg: MessageToWorker) => {
+		this.queue.on('global:progress', (jobId: JobId, msg: unknown) => {
+			if (!this.isPubSubMessage(msg)) return;
+
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
@@ -237,12 +238,18 @@ export class ScalingService {
 	 * Register listeners on a `main` process for Bull queue events.
 	 */
 	private registerMainListeners() {
-		this.queue.on('global:progress', (_jobId: JobId, msg: MessageToMain) => {
+		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
+			if (!this.isPubSubMessage(msg)) return;
+
 			if (msg.kind === 'respond-to-webhook') {
 				const decodedResponse = this.decodeWebhookResponse(msg.response);
 				this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 			}
 		});
+	}
+
+	private isPubSubMessage(candidate: unknown): candidate is PubSubMessage {
+		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
 	}
 
 	// #endregion

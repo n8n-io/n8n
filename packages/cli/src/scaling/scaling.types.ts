@@ -28,13 +28,19 @@ export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-export type MessageToMain = {
+export type PubSubMessage = MessageToMain | MessageToWorker;
+
+type MessageToMain = RepondToWebhookMessage;
+
+type MessageToWorker = AbortJobMessage;
+
+type RepondToWebhookMessage = {
 	kind: 'respond-to-webhook';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
 };
 
-export type MessageToWorker = {
+type AbortJobMessage = {
 	kind: 'abort-job';
 };
 
