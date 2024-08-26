@@ -122,8 +122,8 @@ async function onDrop(expression: string, event: MouseEvent) {
 
 <template>
 	<el-dialog
-		width="calc(100vw - var(--spacing-3xl))"
-		append-to-body
+		width="calc(100% - var(--spacing-3xl))"
+		append-to="#app-modals"
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"

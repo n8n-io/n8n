@@ -1037,7 +1037,7 @@ onUpdated(async () => {
 			>
 				<el-dialog
 					:model-value="codeEditDialogVisible"
-					append-to-body
+					append-to="#app-modals"
 					width="80%"
 					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()

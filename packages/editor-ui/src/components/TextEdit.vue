@@ -60,7 +60,7 @@ const closeDialog = () => {
 	<div v-if="dialogVisible">
 		<el-dialog
 			:model-value="dialogVisible"
-			append-to-body
+			append-to="#app-modals"
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
 				.nodeText()
