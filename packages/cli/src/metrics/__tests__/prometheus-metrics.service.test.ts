@@ -7,6 +7,7 @@ import type express from 'express';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import type { EventService } from '@/events/event.service';
 
 const mockMiddleware = (
 	_req: express.Request,
@@ -39,11 +40,21 @@ describe('PrometheusMetricsService', () => {
 
 	const app = mock<express.Application>();
 	const eventBus = mock<MessageEventBus>();
-	const service = new PrometheusMetricsService(mock(), eventBus, globalConfig, mock());
+	const eventService = mock<EventService>();
+	const prometheusMetricsService = new PrometheusMetricsService(
+		mock(),
+		eventBus,
+		globalConfig,
+		eventService,
+	);
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
 
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_version_info',
@@ -53,7 +64,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up default metrics collection with `prom-client`', async () => {
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promClient.collectDefaultMetrics).toHaveBeenCalled();
 		});
@@ -84,7 +95,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_updates_total',
@@ -92,11 +103,11 @@ describe('PrometheusMetricsService', () => {
 				labelNames: ['cache'],
 			});
 			// @ts-expect-error private field
-			expect(service.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
+			expect(prometheusMetricsService.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
 		it('should set up route metrics with `express-prom-bundle`', async () => {
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promBundle).toHaveBeenCalledWith({
 				autoregister: false,
@@ -122,19 +133,55 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up event bus metrics', async () => {
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
 		});
 
-		it.skip('should set up queue metrics', async () => {
-			await service.init(app);
+		it('should set up queue metrics if enabled', async () => {
+			config.set('executions.mode', 'queue');
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(1, {
+			await prometheusMetricsService.init(app);
+
+			// call 1 is for `n8n_version_info`
+
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
 				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
 				labelNames: ['queue'],
 			});
+
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
+				name: 'n8n_scaling_mode_queue_jobs_active',
+				help: 'Current number of jobs being processed across all workers in scaling mode.',
+				labelNames: ['queue'],
+			});
+
+			// calls 1-3 are for `n8n_cache_hits_total`, `n8n_cache_misses_total` and `n8n_cache_updates_total`
+
+			expect(promClient.Counter).toHaveBeenNthCalledWith(4, {
+				name: 'n8n_scaling_mode_queue_jobs_completed',
+				help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
+				labelNames: ['queue'],
+			});
+
+			expect(promClient.Counter).toHaveBeenNthCalledWith(5, {
+				name: 'n8n_scaling_mode_queue_jobs_failed',
+				help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
+				labelNames: ['queue'],
+			});
+
+			expect(eventService.on).toHaveBeenCalledWith('job-counts-updated', expect.any(Function));
+		});
+
+		it('should not set up queue metrics if disabled', async () => {
+			config.set('executions.mode', 'regular');
+
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Gauge).toHaveBeenCalledTimes(1); // version metric
+			expect(promClient.Counter).toHaveBeenCalledTimes(3); // cache metrics
+			expect(eventService.on).not.toHaveBeenCalled();
 		});
 	});
 });
