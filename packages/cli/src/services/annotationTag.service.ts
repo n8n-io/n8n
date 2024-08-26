@@ -49,22 +49,4 @@ export class AnnotationTagService {
 
 		return allTags as GetAllResult<T>;
 	}
-
-	async getById(id: string) {
-		return await this.tagRepository.findOneOrFail({
-			where: { id },
-		});
-	}
-
-	/**
-	 * Sort tags based on the order of the tag IDs in the request.
-	 */
-	sortByRequestOrder(tags: AnnotationTagEntity[], { requestOrder }: { requestOrder: string[] }) {
-		const tagMap = tags.reduce<Record<string, AnnotationTagEntity>>((acc, tag) => {
-			acc[tag.id] = tag;
-			return acc;
-		}, {});
-
-		return requestOrder.map((tagId) => tagMap[tagId]);
-	}
 }
