@@ -37,7 +37,8 @@ describe('PrometheusMetricsService', () => {
 		},
 	});
 
-	const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
+	const eventBus = mock<MessageEventBus>();
+	const service = new PrometheusMetricsService(mock(), eventBus, globalConfig, mock());
 
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
@@ -122,9 +123,6 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up event bus metrics', async () => {
-			const eventBus = mock<MessageEventBus>();
-			const service = new PrometheusMetricsService(mock(), eventBus, globalConfig, mock());
-
 			await service.init(mock<express.Application>());
 
 			expect(eventBus.on).toHaveBeenCalledWith('metrics.eventBus.event', expect.any(Function));
