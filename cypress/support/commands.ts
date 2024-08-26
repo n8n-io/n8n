@@ -59,14 +59,18 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	void Cypress.session.clearAllSavedSessions();
-	cy.session([email, password], () =>
-		cy.request({
-			method: 'POST',
-			url: `${BACKEND_BASE_URL}/rest/login`,
-			body: { email, password },
-			failOnStatusCode: false,
-		}),
-	);
+	cy.session([email, password], () => {
+		return cy
+			.request({
+				method: 'POST',
+				url: `${BACKEND_BASE_URL}/rest/login`,
+				body: { email, password },
+				failOnStatusCode: false,
+			})
+			.then((response) => {
+				Cypress.env('currentUserId', response.body.data.id);
+			});
+	});
 });
 
 Cypress.Commands.add('signinAsOwner', () => cy.signin(INSTANCE_OWNER));

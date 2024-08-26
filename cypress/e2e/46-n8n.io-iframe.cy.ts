@@ -19,16 +19,7 @@ describe('n8n.io iframe', () => {
 
 			cy.overrideSettings({ telemetry: { enabled: true }, instanceId: testInstanceId });
 
-			let testUserId = '';
-
-			cy.intercept('GET', '/rest/login', (req) => {
-				req.continue((res) => {
-					console.log('res.body.data.id', res.body.data.id);
-					testUserId = res.body.data.id;
-				});
-			}).as('loginRequest');
-
-			cy.wait('@loginRequest');
+			const testUserId = Cypress.env('currentUserId');
 
 			const iframeUrl = `https://n8n.io/self-install?instanceId=${testInstanceId}&userId=${testUserId}`;
 
