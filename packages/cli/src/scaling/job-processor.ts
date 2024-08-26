@@ -8,7 +8,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NodeTypes } from '@/node-types';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './types';
+import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
 import type PCancelable from 'p-cancelable';
 
 /**
