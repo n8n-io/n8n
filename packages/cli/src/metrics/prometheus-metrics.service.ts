@@ -11,7 +11,7 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 import type { Includes, MetricCategory, MetricLabel } from './types';
 import { GlobalConfig } from '@n8n/config';
-import { EventService } from '@/events/event.service';
+import { MetricsEventService } from '@/events/metrics-event.service';
 import config from '@/config';
 
 @Service()
@@ -20,7 +20,7 @@ export class PrometheusMetricsService {
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
 		private readonly globalConfig: GlobalConfig,
-		private readonly eventService: EventService,
+		private readonly metricsEventService: MetricsEventService,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -49,11 +49,11 @@ export class PrometheusMetricsService {
 
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
-		this.initDefaultMetrics();
-		this.initN8nVersionMetric();
-		this.initCacheMetrics();
-		this.initEventBusMetrics();
-		this.initRouteMetrics(app);
+		// this.initDefaultMetrics();
+		// this.initN8nVersionMetric();
+		// this.initCacheMetrics();
+		// this.initEventBusMetrics();
+		// this.initRouteMetrics(app);
 		this.initQueueMetrics();
 		this.mountMetricsEndpoint(app);
 	}
@@ -252,7 +252,7 @@ export class PrometheusMetricsService {
 			labelNames: ['queue'],
 		});
 
-		this.eventService.on('job-counts-updated', (jobCounts) => {
+		this.metricsEventService.on('job-counts-updated', (jobCounts) => {
 			this.gauges.waiting.set(jobCounts.waiting);
 			this.gauges.active.set(jobCounts.active);
 			this.counters.completed?.inc(jobCounts.completed);

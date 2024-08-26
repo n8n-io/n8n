@@ -23,7 +23,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { InstanceSettings } from 'n8n-core';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { EventService } from '@/events/event.service';
+import { MetricsEventService } from '@/events/metrics-event.service';
 
 @Service()
 export class ScalingService {
@@ -39,7 +39,7 @@ export class ScalingService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly orchestrationService: OrchestrationService,
-		private readonly eventService: EventService,
+		private readonly metricsEventService: MetricsEventService,
 	) {}
 
 	// #region Lifecycle
@@ -316,12 +316,12 @@ export class ScalingService {
 
 	/** Set up an interval to collect queue metrics and emit them in an event. */
 	private scheduleQueueMetrics() {
-		if (this.queueMetricsInterval) return;
+		if (this.instanceType !== 'main' && this.queueMetricsInterval) return;
 
 		this.queueMetricsInterval = setInterval(async () => {
 			const pendingJobCounts = await this.getPendingJobCounts();
 
-			this.eventService.emit('job-counts-updated', {
+			this.metricsEventService.emit('job-counts-updated', {
 				...pendingJobCounts, // active, waiting
 				...this.jobCounters, // completed, failed
 			});
