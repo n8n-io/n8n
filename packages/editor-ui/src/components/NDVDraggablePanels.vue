@@ -109,14 +109,25 @@ watch(containerWidth, (width) => {
 	setPositions(mainPanelDimensions.value.relativeLeft);
 });
 
-const assistantSidebarWidth = computed(() =>
-	assistantStore.isAssistantOpen ? assistantStore.chatWidth : 0,
-);
+const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
+const isAssistantOpen = computed(() => assistantStore.isAssistantOpen);
 
-watch(assistantSidebarWidth, () => {
-	setTimeout(() => {
-		setTotalWidth();
-	}, 0);
+// As assistant sidebar opens and closes, use window width to calculate the container width
+// This will prevent animation race conditions from making ndv twitchy that happens when using setTotalWidth
+watch(isAssistantOpen, async () => {
+	if (isAssistantOpen.value) {
+		containerWidth.value = window.innerWidth - assistantSidebarWidth.value;
+	} else {
+		// It looks the best if we delay closing adjustment until slide transition is done
+		setTimeout(() => {
+			containerWidth.value = window.innerWidth;
+		}, 200);
+	}
+});
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	setTotalWidth();
 });
 
 const currentNodePaneType = computed((): string => {
