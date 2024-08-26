@@ -31,6 +31,7 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
+import type { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -71,8 +72,13 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
-	UsageCount;
+export type ITagDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+export type IAnnotationTagDb = Pick<AnnotationTagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // ----------------------------------
 //            workflows

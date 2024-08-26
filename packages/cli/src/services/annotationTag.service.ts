@@ -1,13 +1,12 @@
 import { Service } from 'typedi';
 import { validateEntity } from '@/GenericHelpers';
-import type { ITagWithCountDb } from '@/Interfaces';
+import type { IAnnotationTagDb, IAnnotationTagWithCountDb } from '@/Interfaces';
 import type { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
 import { AnnotationTagRepository } from '@db/repositories/annotationTag.repository';
-import { ExternalHooks } from '@/ExternalHooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true }
-	? ITagWithCountDb[]
-	: AnnotationTagEntity[];
+	? IAnnotationTagWithCountDb[]
+	: IAnnotationTagDb[];
 
 @Service()
 export class AnnotationTagService {
@@ -57,13 +56,15 @@ export class AnnotationTagService {
 				return {
 					...rest,
 					usageCount: annotationMappings.length,
-				} as ITagWithCountDb;
+				} as IAnnotationTagWithCountDb;
 			}) as GetAllResult<T>;
 		}
 
-		return await (this.tagRepository.find({
+		const allTags = (await this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
-		}) as Promise<GetAllResult<T>>);
+		})) as IAnnotationTagDb[];
+
+		return allTags as GetAllResult<T>;
 	}
 
 	async getById(id: string) {
