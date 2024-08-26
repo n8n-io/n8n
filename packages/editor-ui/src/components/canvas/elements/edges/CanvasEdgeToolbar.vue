@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables/useI18n';
 import { computed, useCssModule } from 'vue';
-import { NodeConnectionType, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionType, type NodeConnectionTypes } from 'n8n-workflow';
 
 const emit = defineEmits<{
 	add: [];

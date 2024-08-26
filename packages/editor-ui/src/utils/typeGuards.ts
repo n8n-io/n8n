@@ -1,10 +1,10 @@
-import {
+import type {
 	INodeParameterResourceLocator,
 	INodeTypeDescription,
-	NodeConnectionType,
 	TriggerPanelDefinition,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
