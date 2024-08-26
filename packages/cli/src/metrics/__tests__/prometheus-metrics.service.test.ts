@@ -70,9 +70,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_hits_total`', async () => {
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_hits_total',
@@ -82,10 +80,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up `n8n_cache_misses_total`', async () => {
-			config.set('endpoints.metrics.includeCacheMetrics', true);
-			const service = new PrometheusMetricsService(mock(), mock(), globalConfig, mock());
-
-			await service.init(app);
+			await prometheusMetricsService.init(app);
 
 			expect(promClient.Counter).toHaveBeenCalledWith({
 				name: 'n8n_cache_misses_total',
