@@ -949,7 +949,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_routes: false,
 						metrics_category_cache: false,
 						metrics_category_logs: false,
-						metrics_category_queues: false,
+						metrics_category_queue: false,
 					},
 				}),
 			);
