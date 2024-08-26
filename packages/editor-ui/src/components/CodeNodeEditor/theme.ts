@@ -32,16 +32,103 @@ interface ThemeSettings {
 	maxHeight?: string;
 	minHeight?: string;
 	rows?: number;
-	highlightColors?: 'default' | 'html';
 }
 
-export const codeNodeEditorTheme = ({
-	isReadOnly,
-	minHeight,
-	maxHeight,
-	rows,
-	highlightColors,
-}: ThemeSettings) => [
+export const htmlEditorHighlighting = syntaxHighlighting(
+	HighlightStyle.define([
+		{ tag: tags.keyword, color: '#c678dd' },
+		{
+			tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
+			color: '#e06c75',
+		},
+		{ tag: [tags.function(tags.variableName), tags.labelName], color: '#61afef' },
+		{
+			tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)],
+			color: '#d19a66',
+		},
+		{ tag: [tags.definition(tags.name), tags.separator], color: '#abb2bf' },
+		{
+			tag: [
+				tags.typeName,
+				tags.className,
+				tags.number,
+				tags.changed,
+				tags.annotation,
+				tags.modifier,
+				tags.self,
+				tags.namespace,
+			],
+			color: '#e06c75',
+		},
+		{
+			tag: [
+				tags.operator,
+				tags.operatorKeyword,
+				tags.url,
+				tags.escape,
+				tags.regexp,
+				tags.link,
+				tags.special(tags.string),
+			],
+			color: '#56b6c2',
+		},
+		{ tag: [tags.meta, tags.comment], color: '#7d8799' },
+		{ tag: tags.strong, fontWeight: 'bold' },
+		{ tag: tags.emphasis, fontStyle: 'italic' },
+		{ tag: tags.strikethrough, textDecoration: 'line-through' },
+		{ tag: tags.link, color: '#7d8799', textDecoration: 'underline' },
+		{ tag: tags.heading, fontWeight: 'bold', color: '#e06c75' },
+		{ tag: [tags.atom, tags.bool, tags.special(tags.variableName)], color: '#d19a66' },
+		{ tag: [tags.processingInstruction, tags.string, tags.inserted], color: '#98c379' },
+		{ tag: tags.invalid, color: 'red', 'font-weight': 'bold' },
+	]),
+);
+
+export const codeEditorSyntaxHighlighting = syntaxHighlighting(
+	HighlightStyle.define([
+		{
+			tag: tags.comment,
+			color: 'var(--color-code-tags-comment)',
+		},
+		{
+			tag: [tags.string, tags.special(tags.brace)],
+			color: 'var(--color-code-tags-string)',
+		},
+		{
+			tag: [tags.number, tags.self, tags.bool, tags.null],
+			color: 'var(--color-code-tags-primitive)',
+		},
+		{
+			tag: tags.keyword,
+			color: 'var(--color-code-tags-keyword)',
+		},
+		{
+			tag: tags.operator,
+			color: 'var(--color-code-tags-operator)',
+		},
+		{
+			tag: [
+				tags.variableName,
+				tags.propertyName,
+				tags.attributeName,
+				tags.regexp,
+				tags.className,
+				tags.typeName,
+			],
+			color: 'var(--color-code-tags-variable)',
+		},
+		{
+			tag: [
+				tags.definition(tags.typeName),
+				tags.definition(tags.propertyName),
+				tags.function(tags.variableName),
+			],
+			color: 'var(--color-code-tags-definition)',
+		},
+	]),
+);
+
+export const codeEditorTheme = ({ isReadOnly, minHeight, maxHeight, rows }: ThemeSettings) =>
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
@@ -111,98 +198,4 @@ export const codeNodeEditorTheme = ({
 		'.cm-diagnosticText': {
 			color: 'var(--color-text-base)',
 		},
-	}),
-	highlightColors === 'html'
-		? syntaxHighlighting(
-				HighlightStyle.define([
-					{ tag: tags.keyword, color: '#c678dd' },
-					{
-						tag: [tags.name, tags.deleted, tags.character, tags.propertyName, tags.macroName],
-						color: '#e06c75',
-					},
-					{ tag: [tags.function(tags.variableName), tags.labelName], color: '#61afef' },
-					{
-						tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)],
-						color: '#d19a66',
-					},
-					{ tag: [tags.definition(tags.name), tags.separator], color: '#abb2bf' },
-					{
-						tag: [
-							tags.typeName,
-							tags.className,
-							tags.number,
-							tags.changed,
-							tags.annotation,
-							tags.modifier,
-							tags.self,
-							tags.namespace,
-						],
-						color: '#e06c75',
-					},
-					{
-						tag: [
-							tags.operator,
-							tags.operatorKeyword,
-							tags.url,
-							tags.escape,
-							tags.regexp,
-							tags.link,
-							tags.special(tags.string),
-						],
-						color: '#56b6c2',
-					},
-					{ tag: [tags.meta, tags.comment], color: '#7d8799' },
-					{ tag: tags.strong, fontWeight: 'bold' },
-					{ tag: tags.emphasis, fontStyle: 'italic' },
-					{ tag: tags.strikethrough, textDecoration: 'line-through' },
-					{ tag: tags.link, color: '#7d8799', textDecoration: 'underline' },
-					{ tag: tags.heading, fontWeight: 'bold', color: '#e06c75' },
-					{ tag: [tags.atom, tags.bool, tags.special(tags.variableName)], color: '#d19a66' },
-					{ tag: [tags.processingInstruction, tags.string, tags.inserted], color: '#98c379' },
-					{ tag: tags.invalid, color: 'red', 'font-weight': 'bold' },
-				]),
-			)
-		: syntaxHighlighting(
-				HighlightStyle.define([
-					{
-						tag: tags.comment,
-						color: 'var(--color-code-tags-comment)',
-					},
-					{
-						tag: [tags.string, tags.special(tags.brace)],
-						color: 'var(--color-code-tags-string)',
-					},
-					{
-						tag: [tags.number, tags.self, tags.bool, tags.null],
-						color: 'var(--color-code-tags-primitive)',
-					},
-					{
-						tag: tags.keyword,
-						color: 'var(--color-code-tags-keyword)',
-					},
-					{
-						tag: tags.operator,
-						color: 'var(--color-code-tags-operator)',
-					},
-					{
-						tag: [
-							tags.variableName,
-							tags.propertyName,
-							tags.attributeName,
-							tags.regexp,
-							tags.className,
-							tags.typeName,
-						],
-						color: 'var(--color-code-tags-variable)',
-					},
-					{
-						tag: [
-							tags.definition(tags.typeName),
-							tags.definition(tags.propertyName),
-							tags.function(tags.variableName),
-						],
-						color: 'var(--color-code-tags-definition)',
-					},
-				]),
-			),
-];
+	});

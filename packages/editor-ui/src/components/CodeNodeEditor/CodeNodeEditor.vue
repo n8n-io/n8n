@@ -47,9 +47,6 @@
 </template>
 
 <script setup lang="ts">
-import { javascript } from '@codemirror/lang-javascript';
-import { python } from '@codemirror/lang-python';
-import type { LanguageSupport } from '@codemirror/language';
 import type { Extension, Line } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
@@ -68,12 +65,12 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useMessage } from '@/composables/useMessage';
 import AskAI from './AskAI/AskAI.vue';
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
-import { useCompleter } from './completer';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { codeNodeEditorTheme } from './theme';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useCodeEditor } from '@/composables/useCodeEditor';
 
 type Props = {
 	mode: CodeExecutionMode;
@@ -109,20 +106,21 @@ const isLoadingAIResponse = ref(false);
 const codeNodeEditorRef = ref<HTMLDivElement>();
 const codeNodeEditorContainerRef = ref<HTMLDivElement>();
 
-const { autocompletionExtension } = useCompleter(() => props.mode, editor);
-const { createLinter } = useLinter(() => props.mode, editor);
+const linter = useLinter(
+	() => props.mode,
+	() => props.language,
+	editor,
+);
 
 const rootStore = useRootStore();
 const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-onMounted(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+const extensions = computed(() => [linter.value])
 
-	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
-
-	const { isReadOnly, language } = props;
+const { isReadOnly, language } = props;
+	const {}
 	const extensions: Extension[] = [
 		...readOnlyEditorExtensions,
 		EditorState.readOnly.of(isReadOnly),
@@ -142,15 +140,7 @@ onMounted(() => {
 		}
 
 		extensions.push(
-			...writableEditorExtensions,
-			EditorView.domEventHandlers({
-				focus: () => {
-					isEditorFocused.value = true;
-				},
-				blur: () => {
-					isEditorFocused.value = false;
-				},
-			}),
+			...writableEditorExtensions
 
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!viewUpdate.docChanged) return;
@@ -165,9 +155,6 @@ onMounted(() => {
 			}),
 		);
 	}
-
-	const [languageSupport, ...otherExtensions] = languageExtensions.value;
-	extensions.push(languageCompartment.value.of(languageSupport), ...otherExtensions);
 
 	const state = EditorState.create({
 		doc: props.modelValue ?? placeholder.value,
@@ -184,6 +171,24 @@ onMounted(() => {
 		refreshPlaceholder();
 		emit('update:modelValue', placeholder.value);
 	}
+
+const {} = useCodeEditor({
+	editorRef: codeNodeEditorRef.value,
+	language: () => props.language,
+	editorValue: () => props.modelValue,
+	placeholder,
+	extensions,
+	isReadOnly: () => props.isReadOnly,
+	theme: () => ({
+		maxHeight: props.fillParent ? '100%' : '40vh',
+		minHeight: '20vh',
+		rows: props.rows,
+	})
+})
+
+onMounted(() => {
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
 });
 
 onBeforeUnmount(() => {
@@ -197,16 +202,6 @@ const aiEnabled = computed(() => {
 
 const placeholder = computed(() => {
 	return CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '';
-});
-
-// eslint-disable-next-line vue/return-in-computed-property
-const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
-	switch (props.language) {
-		case 'javaScript':
-			return [javascript(), autocompletionExtension('javaScript')];
-		case 'python':
-			return [python(), autocompletionExtension('python')];
-	}
 });
 
 watch(
