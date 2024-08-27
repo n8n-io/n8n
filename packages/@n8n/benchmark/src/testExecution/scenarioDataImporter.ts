@@ -1,5 +1,5 @@
-import { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
-import { Workflow } from '@/n8nApiClient/n8nApiClient.types';
+import type { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
+import type { Workflow } from '@/n8nApiClient/n8nApiClient.types';
 import { WorkflowApiClient } from '@/n8nApiClient/workflowsApiClient';
 
 /**

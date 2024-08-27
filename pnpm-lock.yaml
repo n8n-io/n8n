@@ -51,6 +51,9 @@ catalogs:
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
+    zod:
+      specifier: 3.23.8
+      version: 3.23.8
   frontend:
     '@vitest/coverage-v8':
       specifier: ^1.6.0
@@ -510,7 +513,7 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       zod:
-        specifier: 3.23.8
+        specifier: 'catalog:'
         version: 3.23.8
       zod-to-json-schema:
         specifier: 3.23.0
@@ -915,8 +918,8 @@ importers:
         specifier: 0.3.0
         version: 0.3.0
       zod:
-        specifier: 3.22.4
-        version: 3.22.4
+        specifier: 'catalog:'
+        version: 3.23.8
     devDependencies:
       '@redocly/cli':
         specifier: ^1.6.0
@@ -13373,9 +13376,6 @@ packages:
     resolution: {integrity: sha512-az0uJ243PxsRIa2x1WmNE/pnuA05gUq/JB8Lwe1EDCCL/Fz9MgjYQ0fPlyc2Tcv6aF2ZA7WM5TWaRZVEFaAIag==}
     peerDependencies:
       zod: ^3.23.3
-
-  zod@3.22.4:
-    resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
 
   zod@3.23.8:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
@@ -27955,8 +27955,6 @@ snapshots:
   zod-to-json-schema@3.23.0(zod@3.23.8):
     dependencies:
       zod: 3.23.8
-
-  zod@3.22.4: {}
 
   zod@3.23.8: {}
 

@@ -6,7 +6,7 @@ import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 
 import { CacheService } from '@/services/cache/cache.service';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageTypes } from '@/eventbus';
 import type { Includes, MetricCategory, MetricLabel } from './types';

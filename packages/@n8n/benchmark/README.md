@@ -40,6 +40,14 @@ N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=password ./bin/n8n-benchmark run
 K6_PATH=/opt/homebrew/bin/k6 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=password ./bin/n8n-benchmark run
 ```
 
+## Running in the cloud
+
+There's a script to run the performance tests in a cloud environment. The script provisions a cloud environment, sets up n8n in the environment, runs the tests and destroys the environment.
+
+```sh
+pnpm run-in-cloud
+```
+
 ## Configuration
 
 The configuration options the cli accepts can be seen from [config.ts](./src/config/config.ts)

@@ -1,3 +1,36 @@
+<script lang="ts" setup>
+import N8nText from '../N8nText';
+import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
+import type { TextColor } from 'n8n-design-system/types/text';
+
+const SIZE = ['small', 'medium'] as const;
+
+interface InputLabelProps {
+	compact?: boolean;
+	color?: TextColor;
+	label?: string;
+	tooltipText?: string;
+	inputName?: string;
+	required?: boolean;
+	bold?: boolean;
+	size?: (typeof SIZE)[number];
+	underline?: boolean;
+	showTooltip?: boolean;
+	showOptions?: boolean;
+}
+
+defineOptions({ name: 'N8nInputLabel' });
+withDefaults(defineProps<InputLabelProps>(), {
+	compact: false,
+	bold: true,
+	size: 'medium',
+});
+
+const addTargetBlank = (html: string) =>
+	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
+</script>
+
 <template>
 	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
@@ -44,39 +77,6 @@
 		<slot />
 	</div>
 </template>
-
-<script lang="ts" setup>
-import N8nText from '../N8nText';
-import N8nIcon from '../N8nIcon';
-import N8nTooltip from '../N8nTooltip';
-import type { TextColor } from 'n8n-design-system/types/text';
-
-const SIZE = ['small', 'medium'] as const;
-
-interface InputLabelProps {
-	compact?: boolean;
-	color?: TextColor;
-	label?: string;
-	tooltipText?: string;
-	inputName?: string;
-	required?: boolean;
-	bold?: boolean;
-	size?: (typeof SIZE)[number];
-	underline?: boolean;
-	showTooltip?: boolean;
-	showOptions?: boolean;
-}
-
-defineOptions({ name: 'N8nInputLabel' });
-withDefaults(defineProps<InputLabelProps>(), {
-	compact: false,
-	bold: true,
-	size: 'medium',
-});
-
-const addTargetBlank = (html: string) =>
-	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
-</script>
 
 <style lang="scss" module>
 .container {

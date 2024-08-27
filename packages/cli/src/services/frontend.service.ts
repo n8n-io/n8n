@@ -22,7 +22,7 @@ import { License } from '@/license';
 import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 import { getLdapLoginLabel } from '@/ldap/helpers.ee';
 import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,

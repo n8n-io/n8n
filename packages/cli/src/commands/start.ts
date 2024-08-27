@@ -15,7 +15,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Server } from '@/server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';

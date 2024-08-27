@@ -1,27 +1,3 @@
-<template>
-	<component
-		:is="element"
-		:class="classes"
-		:disabled="isDisabled"
-		:aria-disabled="ariaDisabled"
-		:aria-busy="ariaBusy"
-		:href="href"
-		aria-live="polite"
-		v-bind="{
-			...attrs,
-			...(props.nativeType ? { type: props.nativeType } : {}),
-		}"
-	>
-		<span v-if="loading || icon" :class="$style.icon">
-			<N8nSpinner v-if="loading" :size="iconSize" />
-			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
-		</span>
-		<span v-if="label || $slots.default">
-			<slot>{{ label }}</slot>
-		</span>
-	</component>
-</template>
-
 <script setup lang="ts">
 import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 import N8nIcon from '../N8nIcon';
@@ -74,6 +50,30 @@ const classes = computed(() => {
 	);
 });
 </script>
+
+<template>
+	<component
+		:is="element"
+		:class="classes"
+		:disabled="isDisabled"
+		:aria-disabled="ariaDisabled"
+		:aria-busy="ariaBusy"
+		:href="href"
+		aria-live="polite"
+		v-bind="{
+			...attrs,
+			...(props.nativeType ? { type: props.nativeType } : {}),
+		}"
+	>
+		<span v-if="loading || icon" :class="$style.icon">
+			<N8nSpinner v-if="loading" :size="iconSize" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="iconSize" />
+		</span>
+		<span v-if="label || $slots.default">
+			<slot>{{ label }}</slot>
+		</span>
+	</component>
+</template>
 
 <style lang="scss">
 @import './Button';

@@ -726,7 +726,12 @@ function onRevertCreateConnection({ connection }: { connection: [IConnection, IC
 	revertCreateConnection(connection);
 }
 
-function onCreateConnectionCancelled(event: ConnectStartEvent) {
+function onCreateConnectionCancelled(event: ConnectStartEvent, mouseEvent?: MouseEvent) {
+	const preventDefault = (mouseEvent?.target as HTMLElement).classList?.contains('clickable');
+	if (preventDefault) {
+		return;
+	}
+
 	setTimeout(() => {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			connection: {

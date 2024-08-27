@@ -1,32 +1,3 @@
-<template>
-	<div>
-		<n8n-tooltip placement="right" :disabled="!tooltipText">
-			<template #content>
-				<div>{{ tooltipText }}</div>
-			</template>
-			<div>
-				<n8n-button
-					v-bind="$attrs"
-					:loading
-					:disabled="disabled || !!disabledHint"
-					:label="buttonLabel"
-					:type="type"
-					:size="size"
-					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
-					:transparent-background="transparent"
-					:title="
-						!isTriggerNode && !tooltipText
-							? $locale.baseText('ndv.execute.testNode.description')
-							: ''
-					"
-					@mouseover="onMouseOver"
-					@click="onClick"
-				/>
-			</div>
-		</n8n-tooltip>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -319,3 +290,32 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<n8n-tooltip placement="right" :disabled="!tooltipText">
+			<template #content>
+				<div>{{ tooltipText }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
+					:transparent-background="transparent"
+					:title="
+						!isTriggerNode && !tooltipText
+							? $locale.baseText('ndv.execute.testNode.description')
+							: ''
+					"
+					@mouseover="onMouseOver"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</div>
+</template>

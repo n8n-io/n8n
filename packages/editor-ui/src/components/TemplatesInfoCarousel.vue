@@ -1,41 +1,3 @@
-<template>
-	<div v-show="loading || collections.length" :class="$style.container">
-		<agile
-			ref="slider"
-			:dots="false"
-			:nav-buttons="false"
-			:infinite="false"
-			:slides-to-show="4"
-			@after-change="updateCarouselScroll"
-		>
-			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
-			<TemplatesInfoCard
-				v-for="collection in loading ? [] : collections"
-				:key="collection.id"
-				data-test-id="templates-info-card"
-				:collection="collection"
-				:show-item-count="showItemCount"
-				:width="cardsWidth"
-				@click="(e) => onCardClick(e, collection.id)"
-			/>
-		</agile>
-		<button
-			v-show="showNavigation && carouselScrollPosition > 0"
-			:class="{ [$style.leftButton]: true }"
-			@click="scrollLeft"
-		>
-			<font-awesome-icon icon="chevron-left" />
-		</button>
-		<button
-			v-show="showNavigation && !scrollEnd"
-			:class="{ [$style.rightButton]: true }"
-			@click="scrollRight"
-		>
-			<font-awesome-icon icon="chevron-right" />
-		</button>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -142,6 +104,44 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div v-show="loading || collections.length" :class="$style.container">
+		<agile
+			ref="slider"
+			:dots="false"
+			:nav-buttons="false"
+			:infinite="false"
+			:slides-to-show="4"
+			@after-change="updateCarouselScroll"
+		>
+			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
+			<TemplatesInfoCard
+				v-for="collection in loading ? [] : collections"
+				:key="collection.id"
+				data-test-id="templates-info-card"
+				:collection="collection"
+				:show-item-count="showItemCount"
+				:width="cardsWidth"
+				@click="(e) => onCardClick(e, collection.id)"
+			/>
+		</agile>
+		<button
+			v-show="showNavigation && carouselScrollPosition > 0"
+			:class="{ [$style.leftButton]: true }"
+			@click="scrollLeft"
+		>
+			<font-awesome-icon icon="chevron-left" />
+		</button>
+		<button
+			v-show="showNavigation && !scrollEnd"
+			:class="{ [$style.rightButton]: true }"
+			@click="scrollRight"
+		>
+			<font-awesome-icon icon="chevron-right" />
+		</button>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

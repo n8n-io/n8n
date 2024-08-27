@@ -181,7 +181,7 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 			redis: {
-				prefix: 'redis',
+				prefix: 'cache',
 				ttl: 3600000,
 			},
 		},

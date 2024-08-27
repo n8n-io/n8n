@@ -1,94 +1,3 @@
-<template>
-	<el-dialog
-		width="calc(100vw - var(--spacing-3xl))"
-		append-to-body
-		:class="$style.modal"
-		:model-value="dialogVisible"
-		:before-close="closeDialog"
-	>
-		<button :class="$style.close" @click="closeDialog">
-			<Close height="18" width="18" />
-		</button>
-		<div :class="$style.container">
-			<div :class="$style.sidebar">
-				<N8nInput
-					v-model="search"
-					size="small"
-					:class="$style.search"
-					:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
-				>
-					<template #prefix>
-						<N8nIcon :class="$style.ioSearchIcon" icon="search" />
-					</template>
-				</N8nInput>
-
-				<RunDataSchema
-					:class="$style.schema"
-					:search="appliedSearch"
-					:nodes="parentNodes"
-					mapping-enabled
-					pane-type="input"
-					connection-type="main"
-				/>
-			</div>
-
-			<div :class="$style.io">
-				<div :class="$style.input">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('expressionEdit.expression') }}
-						</N8nText>
-						<N8nText
-							:class="$style.tip"
-							size="small"
-							v-html="i18n.baseText('expressionTip.javascript')"
-						/>
-					</div>
-
-					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
-						<template #default>
-							<ExpressionEditorModalInput
-								ref="expressionInputRef"
-								:model-value="modelValue"
-								:is-read-only="isReadOnly"
-								:path="path"
-								:class="[
-									$style.editor,
-									{
-										'ph-no-capture': redactValues,
-									},
-								]"
-								data-test-id="expression-modal-input"
-								@change="valueChanged"
-								@close="closeDialog"
-							/>
-						</template>
-					</DraggableTarget>
-				</div>
-
-				<div :class="$style.output">
-					<div :class="$style.header">
-						<N8nText bold size="large">
-							{{ i18n.baseText('parameterInput.result') }}
-						</N8nText>
-						<OutputItemSelect />
-					</div>
-
-					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
-						<ExpressionOutput
-							ref="expressionResultRef"
-							:class="$style.editor"
-							:segments="segments"
-							:extensions="theme"
-							data-test-id="expression-modal-output"
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
-	</el-dialog>
-</template>
-
 <script setup lang="ts">
 import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import { computed, ref, toRaw, watch } from 'vue';
@@ -210,6 +119,97 @@ async function onDrop(expression: string, event: MouseEvent) {
 	await dropInEditor(toRaw(inputEditor.value), event, expression);
 }
 </script>
+
+<template>
+	<el-dialog
+		width="calc(100vw - var(--spacing-3xl))"
+		append-to-body
+		:class="$style.modal"
+		:model-value="dialogVisible"
+		:before-close="closeDialog"
+	>
+		<button :class="$style.close" @click="closeDialog">
+			<Close height="18" width="18" />
+		</button>
+		<div :class="$style.container">
+			<div :class="$style.sidebar">
+				<N8nInput
+					v-model="search"
+					size="small"
+					:class="$style.search"
+					:placeholder="i18n.baseText('ndv.search.placeholder.input.schema')"
+				>
+					<template #prefix>
+						<N8nIcon :class="$style.ioSearchIcon" icon="search" />
+					</template>
+				</N8nInput>
+
+				<RunDataSchema
+					:class="$style.schema"
+					:search="appliedSearch"
+					:nodes="parentNodes"
+					mapping-enabled
+					pane-type="input"
+					connection-type="main"
+				/>
+			</div>
+
+			<div :class="$style.io">
+				<div :class="$style.input">
+					<div :class="$style.header">
+						<N8nText bold size="large">
+							{{ i18n.baseText('expressionEdit.expression') }}
+						</N8nText>
+						<N8nText
+							:class="$style.tip"
+							size="small"
+							v-html="i18n.baseText('expressionTip.javascript')"
+						/>
+					</div>
+
+					<DraggableTarget :class="$style.editorContainer" type="mapping" @drop="onDrop">
+						<template #default>
+							<ExpressionEditorModalInput
+								ref="expressionInputRef"
+								:model-value="modelValue"
+								:is-read-only="isReadOnly"
+								:path="path"
+								:class="[
+									$style.editor,
+									{
+										'ph-no-capture': redactValues,
+									},
+								]"
+								data-test-id="expression-modal-input"
+								@change="valueChanged"
+								@close="closeDialog"
+							/>
+						</template>
+					</DraggableTarget>
+				</div>
+
+				<div :class="$style.output">
+					<div :class="$style.header">
+						<N8nText bold size="large">
+							{{ i18n.baseText('parameterInput.result') }}
+						</N8nText>
+						<OutputItemSelect />
+					</div>
+
+					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
+						<ExpressionOutput
+							ref="expressionResultRef"
+							:class="$style.editor"
+							:segments="segments"
+							:extensions="theme"
+							data-test-id="expression-modal-output"
+						/>
+					</div>
+				</div>
+			</div>
+		</div>
+	</el-dialog>
+</template>
 
 <style module lang="scss">
 .modal {
