@@ -26,14 +26,13 @@ async function main() {
 			N8N_VERSION: n8nTag,
 			BENCHMARK_VERSION: benchmarkTag,
 			K6_API_TOKEN: k6ApiToken,
-			N8N_BENCHMARK_SCENARIO_NAME_PREFIX: n8nSetupToUse,
 		},
 	});
 
 	try {
 		await $$`docker-compose up -d n8n`;
 
-		await $$`docker-compose run benchmark run`;
+		await $$`docker-compose run benchmark run --scenarioNamePrefix=${n8nSetupToUse} `;
 	} catch (error) {
 		console.error('An error occurred while running the benchmarks:');
 		console.error(error);
