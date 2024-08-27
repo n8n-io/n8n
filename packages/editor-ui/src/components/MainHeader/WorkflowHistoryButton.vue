@@ -15,18 +15,16 @@ const props = defineProps<{
 	isNewWorkflow: boolean;
 }>();
 
-const isFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
+const isFeatureEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory],
+);
 
-const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
-	return {
-		name: VIEWS.WORKFLOW_HISTORY,
-		params: {
-			workflowId: props.workflow.id,
-		},
-	};
-});
+const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => ({
+	name: VIEWS.WORKFLOW_HISTORY,
+	params: {
+		workflowId: props.workflow.id,
+	},
+}));
 
 const goToUpgrade = () => {
 	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
@@ -34,7 +32,7 @@ const goToUpgrade = () => {
 </script>
 
 <template>
-	<N8nTooltip placement="top">
+	<N8nTooltip placement="bottom">
 		<RouterLink :to="workflowHistoryRoute" :class="$style.workflowHistoryButton">
 			<N8nIconButton
 				:disabled="isNewWorkflow || !isFeatureEnabled"
@@ -52,7 +50,7 @@ const goToUpgrade = () => {
 			<span v-else-if="isFeatureEnabled">{{
 				locale.baseText('workflowHistory.button.tooltip.enabled')
 			}}</span>
-			<i18n-t keypath="workflowHistory.button.tooltip.disabled">
+			<i18n-t v-else keypath="workflowHistory.button.tooltip.disabled">
 				<template #link>
 					<N8nLink size="small" @click="goToUpgrade">
 						{{ locale.baseText('workflowHistory.button.tooltip.disabled.link') }}
