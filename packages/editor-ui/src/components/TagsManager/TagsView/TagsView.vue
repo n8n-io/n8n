@@ -21,7 +21,7 @@ export default defineComponent({
 			default: 'tagsTable.usage',
 		},
 		usageLocaleKey: {
-			type: String as () => BaseTextKey,
+			type: String as PropType<BaseTextKey>,
 			default: 'tagsView.inUse',
 		},
 		tags: {
