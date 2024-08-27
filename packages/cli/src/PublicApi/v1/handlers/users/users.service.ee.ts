@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
-import type { User } from '@db/entities/User';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@/databases/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import

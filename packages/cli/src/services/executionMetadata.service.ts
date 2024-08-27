@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
-import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import type { ExecutionMetadata } from '@/databases/entities/execution-metadata';
 
 @Service()
 export class ExecutionMetadataService {

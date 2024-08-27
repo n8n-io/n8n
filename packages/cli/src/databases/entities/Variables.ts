@@ -1,5 +1,5 @@
 import { Column, Entity } from '@n8n/typeorm';
-import { WithStringId } from './AbstractEntity';
+import { WithStringId } from './abstract-entity';
 
 @Entity()
 export class Variables extends WithStringId {

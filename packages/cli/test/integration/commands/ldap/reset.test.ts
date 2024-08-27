@@ -4,10 +4,10 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 
 import { Reset } from '@/commands/ldap/reset';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { getLdapSynchronizations, saveLdapSynchronization } from '@/ldap/helpers.ee';
 import { LdapService } from '@/ldap/ldap.service.ee';
 import { Push } from '@/push';

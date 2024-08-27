@@ -2,10 +2,10 @@ import Container from 'typedi';
 
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { randomName } from '../random';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { User } from '@/databases/entities/User';
-import type { Project } from '@/databases/entities/Project';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { Project } from '@/databases/entities/project';
+import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
 
 export const createTeamProject = async (name?: string, adminUser?: User) => {
 	const projectRepository = Container.get(ProjectRepository);

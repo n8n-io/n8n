@@ -7,8 +7,8 @@ import {
 } from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
-import { generateNanoId } from '@db/utils/generators';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import Container from 'typedi';
 
 let securityAuditService: SecurityAuditService;

@@ -2,8 +2,8 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { mockInstance } from '@test/mocking';
 import { NamingService } from '@/services/naming.service';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 
 describe('NamingService', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);

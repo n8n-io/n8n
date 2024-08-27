@@ -3,12 +3,12 @@ import { Container } from 'typedi';
 import { Reset } from '@/commands/user-management/reset';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';

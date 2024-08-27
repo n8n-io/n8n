@@ -52,7 +52,7 @@ import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import type { IExecutionDb, IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 /**

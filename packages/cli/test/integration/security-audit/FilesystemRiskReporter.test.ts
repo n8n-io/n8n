@@ -3,7 +3,7 @@ import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import Container from 'typedi';
 
 let securityAuditService: SecurityAuditService;

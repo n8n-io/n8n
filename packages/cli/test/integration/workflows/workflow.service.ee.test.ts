@@ -1,9 +1,9 @@
 import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
