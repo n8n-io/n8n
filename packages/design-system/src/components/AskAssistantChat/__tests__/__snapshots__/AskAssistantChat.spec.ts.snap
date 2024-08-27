@@ -840,10 +840,13 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
           class="info"
         >
           <p>
-            Hi Kobi, I'm Assistant and I'm here to assist you with building workflows.
+            I'm your Assistant, here to guide you through your journey with n8n.
           </p>
           <p>
-            Whenever you encounter a task that I can help with, you'll see the 
+            While I'm still learning, I'm already equipped to help you debug any errors you might encounter.
+          </p>
+          <p>
+            If you run into an issue with a node, you'll see the 
             <button
               class="button"
               style="height: 18px;"
@@ -896,10 +899,10 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
                 </div>
               </div>
             </button>
-             button.
+             button
           </p>
           <p>
-            Clicking it starts a chat session with me.
+            Clicking it will start a chat with me, and I'll do my best to assist you!
           </p>
         </div>
       </div>
