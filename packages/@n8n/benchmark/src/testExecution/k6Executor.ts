@@ -9,6 +9,11 @@ export type K6ExecutorOpts = {
 	n8nApiBaseUrl: string;
 };
 
+export type K6RunOpts = {
+	/** Name of the scenario run. Used e.g. when the run is reported to k6 cloud */
+	scenarioRunName: string;
+};
+
 /**
  * Flag for the k6 CLI.
  * @example ['--duration', '1m']
@@ -36,8 +41,8 @@ export function handleSummary(data) {
 
 	constructor(private readonly opts: K6ExecutorOpts) {}
 
-	async executeTestScenario(scenario: Scenario) {
-		const augmentedTestScriptPath = this.augmentSummaryScript(scenario);
+	async executeTestScenario(scenario: Scenario, { scenarioRunName }: K6RunOpts) {
+		const augmentedTestScriptPath = this.augmentSummaryScript(scenario, scenarioRunName);
 		const runDirPath = path.dirname(augmentedTestScriptPath);
 
 		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '1m'], ['--vus', '5']];
@@ -62,7 +67,7 @@ export function handleSummary(data) {
 			console.log((chunk as Buffer).toString());
 		}
 
-		this.loadEndOfTestSummary(runDirPath, scenario.name);
+		this.loadEndOfTestSummary(runDirPath, scenarioRunName);
 	}
 
 	/**
@@ -70,24 +75,24 @@ export function handleSummary(data) {
 	 *
 	 * @returns Absolute path to the augmented test script
 	 */
-	private augmentSummaryScript(scenario: Scenario) {
+	private augmentSummaryScript(scenario: Scenario, scenarioRunName: string) {
 		const fullTestScriptPath = path.join(scenario.scenarioDirPath, scenario.scriptPath);
 		const testScript = fs.readFileSync(fullTestScriptPath, 'utf8');
-		const summaryScript = this.handleSummaryScript.replace('{{scenarioName}}', scenario.name);
+		const summaryScript = this.handleSummaryScript.replace('{{scenarioName}}', scenarioRunName);
 
 		const augmentedTestScript = `${testScript}\n\n${summaryScript}`;
 
-		const tempFilePath = tmpfile(`${scenario.name}.ts`, augmentedTestScript);
+		const tempFilePath = tmpfile(`${scenarioRunName}.ts`, augmentedTestScript);
 
 		return tempFilePath;
 	}
 
-	private loadEndOfTestSummary(dir: string, scenarioName: string): K6EndOfTestSummary {
-		const summaryReportPath = path.join(dir, `${scenarioName}.summary.json`);
+	private loadEndOfTestSummary(dir: string, scenarioRunName: string): K6EndOfTestSummary {
+		const summaryReportPath = path.join(dir, `${scenarioRunName}.summary.json`);
 		const summaryReport = fs.readFileSync(summaryReportPath, 'utf8');
 
 		try {
-			return JSON.parse(summaryReport);
+			return JSON.parse(summaryReport) as K6EndOfTestSummary;
 		} catch (error) {
 			throw new Error(`Failed to parse the summary report at ${summaryReportPath}`);
 		}
