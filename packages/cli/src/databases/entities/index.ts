@@ -22,9 +22,9 @@ import { WorkflowHistory } from './workflow-history';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
 import { InvalidAuthToken } from './invalid-auth-token';
-import { AnnotationTagEntity } from './AnnotationTagEntity';
-import { AnnotationTagMapping } from './AnnotationTagMapping';
-import { ExecutionAnnotation } from './ExecutionAnnotation';
+import { AnnotationTagEntity } from './annotation-tag-entity';
+import { AnnotationTagMapping } from './annotation-tag-mapping';
+import { ExecutionAnnotation } from './execution-annotation';
 
 export const entities = {
 	AnnotationTagEntity,

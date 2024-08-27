@@ -31,7 +31,7 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
-import type { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';

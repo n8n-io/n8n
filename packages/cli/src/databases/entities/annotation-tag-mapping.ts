@@ -1,6 +1,6 @@
 import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import type { ExecutionAnnotation } from './ExecutionAnnotation';
-import type { AnnotationTagEntity } from './AnnotationTagEntity';
+import type { ExecutionAnnotation } from './execution-annotation';
+import type { AnnotationTagEntity } from './annotation-tag-entity';
 
 /**
  * This entity represents the junction table between the execution annotations and the tags

@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { AnnotationTagMapping } from '@db/entities/AnnotationTagMapping';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
 
 @Service()
 export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapping> {

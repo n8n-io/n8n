@@ -1,8 +1,8 @@
 import { Service } from 'typedi';
 import { validateEntity } from '@/generic-helpers';
 import type { IAnnotationTagDb, IAnnotationTagWithCountDb } from '@/Interfaces';
-import type { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
-import { AnnotationTagRepository } from '@db/repositories/annotationTag.repository';
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import { AnnotationTagRepository } from '@/databases/repositories/annotationTag.repository';
 
 type GetAllResult<T> = T extends { withUsageCount: true }
 	? IAnnotationTagWithCountDb[]

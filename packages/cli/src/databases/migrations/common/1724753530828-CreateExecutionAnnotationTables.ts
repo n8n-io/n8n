@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 const annotationsTableName = 'execution_annotations';
 const annotationTagsTableName = 'annotation_tag_entity';

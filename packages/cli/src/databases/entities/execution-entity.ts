@@ -16,7 +16,7 @@ import { idStringifier } from '../utils/transformers';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
-import type { ExecutionAnnotation } from '@db/entities/ExecutionAnnotation';
+import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
 
 @Entity()
 @Index(['workflowId', 'id'])

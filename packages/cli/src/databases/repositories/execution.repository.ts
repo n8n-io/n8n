@@ -51,8 +51,8 @@ import { Logger } from '@/logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 import { separate } from '@/utils';
-import { AnnotationTagEntity } from '@db/entities/AnnotationTagEntity';
-import { AnnotationTagMapping } from '@db/entities/AnnotationTagMapping';
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
