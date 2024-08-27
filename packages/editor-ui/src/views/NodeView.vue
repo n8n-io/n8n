@@ -82,7 +82,6 @@ import {
 	deepCopy,
 	jsonParse,
 	NodeConnectionType,
-	nodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
 } from 'n8n-workflow';
