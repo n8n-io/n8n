@@ -18,6 +18,7 @@ import type {
 	NodeError,
 	Workflow,
 	IConnectedNode,
+	AssignmentCollectionValue,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -41,6 +42,7 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
+	SET_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -681,6 +683,37 @@ export default defineComponent({
 							nodeHints.push({
 								message:
 									"Operation would be performed for each input item, you may want to use the 'Execute Once' setting to only execute once for the first input item",
+								whenToDisplay: 'beforeExecution',
+								location: 'outputPane',
+							});
+						}
+					}
+
+					// add expression in field name hint for Set node
+					if (this.node.type === SET_NODE_TYPE && this.node.parameters.mode === 'manual') {
+						const rawParameters = NodeHelpers.getNodeParameters(
+							this.nodeType.properties,
+							this.node.parameters,
+							true,
+							false,
+							this.node,
+							undefined,
+							false,
+						);
+
+						const assignments =
+							((rawParameters?.assignments as AssignmentCollectionValue) || {})?.assignments || [];
+						const expressionInFieldName: number[] = [];
+
+						for (const [index, assignment] of assignments.entries()) {
+							if (assignment.name.startsWith('=')) {
+								expressionInFieldName.push(index + 1);
+							}
+						}
+
+						if (expressionInFieldName.length > 0) {
+							nodeHints.push({
+								message: `Expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')} , did you mean to use it in value instead?`,
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
