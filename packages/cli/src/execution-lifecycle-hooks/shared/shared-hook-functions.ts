@@ -3,7 +3,7 @@ import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionMetadataService } from '@/services/executionMetadata.service';
 import { Logger } from '@/logger';
 

@@ -14,7 +14,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/events/event.service';

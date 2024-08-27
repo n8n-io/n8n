@@ -5,7 +5,7 @@ import config from '@/config';
 import type { ListQuery } from '@/requests';
 import type { User } from '@/databases/entities/User';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
 import { ProjectService } from '@/services/project.service';
 import { UserManagementMailer } from '@/user-management/email';

@@ -17,7 +17,7 @@ import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 

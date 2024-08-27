@@ -7,11 +7,11 @@ import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typ
 import { AuthService } from '@/auth/auth.service';
 import type { AuthUser } from '@/databases/entities/auth-user';
 import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import type { Settings } from '@/databases/entities/settings';

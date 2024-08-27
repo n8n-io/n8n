@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/workflow-entity';
+import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
 import type { WorkflowRequest } from '../../../types';

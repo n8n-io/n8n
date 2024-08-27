@@ -4,7 +4,7 @@ import path from 'path';
 import { Credentials } from 'n8n-core';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../base-command';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import Container from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
 

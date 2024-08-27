@@ -5,7 +5,7 @@ import { Logger } from '@/logger';
 import { License } from '@/license';
 import { EventService } from '@/events/event.service';
 import type { User } from '@/databases/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 

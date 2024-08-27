@@ -5,8 +5,8 @@ import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
 import { MigrationExecutor, DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/logger';
-import { getConnectionOptions } from '@db/config';
-import type { Migration } from '@db/types';
+import { getConnectionOptions } from '@/databases/config';
+import type { Migration } from '@/databases/types';
 import { wrapMigration } from '@/databases/utils/migration-helpers';
 
 // This function is extracted to make it easier to unit test it.

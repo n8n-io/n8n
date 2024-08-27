@@ -9,7 +9,7 @@ import { OAuth1CredentialController } from '@/controllers/oauth/oauth1-credentia
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/User';
 import type { OAuthRequest } from '@/requests';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logger';
