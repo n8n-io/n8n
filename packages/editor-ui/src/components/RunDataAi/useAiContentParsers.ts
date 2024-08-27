@@ -15,7 +15,7 @@ interface LmGeneration {
 	message: MemoryMessage;
 }
 
-type ExcludedKeys = (typeof NodeConnectionType)['Main' | 'AiChain'];
+type ExcludedKeys = (typeof NodeConnectionType)['Main' | 'AiChain' | 'AiVectorRetriever'];
 type AllowedEndpointType = Exclude<
 	(typeof NodeConnectionType)[keyof typeof NodeConnectionType],
 	ExcludedKeys
@@ -161,17 +161,6 @@ const outputTypeParsers: {
 	[NodeConnectionType.AiOutputParser]: fallbackParser,
 	[NodeConnectionType.AiRetriever]: fallbackParser,
 	[NodeConnectionType.AiVectorStore](execData: IDataObject) {
-		if (execData.documents) {
-			return {
-				type: 'json',
-				data: execData.documents,
-				parsed: true,
-			};
-		}
-
-		return fallbackParser(execData);
-	},
-	[NodeConnectionType.AiVectorRetriever](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
