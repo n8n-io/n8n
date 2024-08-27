@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { Telemetry } from '@/telemetry';
-import { MessageEventBus } from './eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from './eventbus/message-event-bus/message-event-bus';
 
 /**
  * @deprecated Do not add to this class. It will be removed once we remove

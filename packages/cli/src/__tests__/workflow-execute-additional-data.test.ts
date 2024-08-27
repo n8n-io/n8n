@@ -1,6 +1,6 @@
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { mockInstance } from '@test/mocking';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { getBase } from '@/workflow-execute-additional-data';
 import Container from 'typedi';
 import { CredentialsHelper } from '@/credentials-helper';

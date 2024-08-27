@@ -3,13 +3,13 @@ import { Container } from 'typedi';
 import type { StatusResult } from 'simple-git';
 import type { PublicSourceControlRequest } from '../../../types';
 import { globalScope } from '../../shared/middlewares/global.middleware';
-import type { ImportResult } from '@/environments/sourceControl/types/importResult';
-import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
+import type { ImportResult } from '@/environments/source-control/types/import-result';
+import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
+import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
 import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
-} from '@/environments/sourceControl/sourceControlHelper.ee';
+} from '@/environments/source-control/source-control-helper.ee';
 import { EventService } from '@/events/event.service';
 
 export = {
