@@ -6,7 +6,7 @@ import {
 	CREDENTIAL_TRANSLATIONS_DIR,
 } from '@/controllers/translation.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { CredentialTypes } from '@/CredentialTypes';
+import type { CredentialTypes } from '@/credential-types';
 
 describe('TranslationController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');

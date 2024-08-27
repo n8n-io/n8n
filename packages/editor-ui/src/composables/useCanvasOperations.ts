@@ -980,11 +980,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// If added node is a trigger and it's the first one added to the canvas
 		// we place it at canvasAddButtonPosition to replace the canvas add button
-		const position =
+		const position = (
 			nodeTypesStore.isTriggerNode(node.type) && triggerNodes.value.length === 0
-				? canvasStore.canvasAddButtonPosition
+				? [0, 0]
 				: // If no node is active find a free spot
-					(lastClickPosition.value as XYPosition);
+					lastClickPosition.value
+		) as XYPosition;
 
 		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position);
 	}

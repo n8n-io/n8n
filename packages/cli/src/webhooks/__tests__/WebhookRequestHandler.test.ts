@@ -9,7 +9,7 @@ import type {
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
-import { createWebhookHandlerFor } from '@/webhooks/WebhookRequestHandler';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 describe('WebhookRequestHandler', () => {

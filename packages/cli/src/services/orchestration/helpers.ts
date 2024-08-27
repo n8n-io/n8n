@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { jsonParse } from 'n8n-workflow';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { RedisServiceCommandObject } from '../redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '../redis/RedisConstants';
 import * as os from 'os';

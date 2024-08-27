@@ -2,21 +2,23 @@ import type { Response } from 'express';
 import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
+
 import type { PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
-import { ExternalHooks } from '@/ExternalHooks';
-import { License } from '@/License';
+import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
 import { badPasswords } from '@test/testData';
 import { mockInstance } from '@test/mocking';
 import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
-import { MfaService } from '@/Mfa/mfa.service';
+import { InvalidAuthTokenRepository } from '@db/repositories/invalidAuthToken.repository';
+import { UserRepository } from '@db/repositories/user.repository';
+import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
 const browserId = 'test-browser-id';
@@ -28,6 +30,7 @@ describe('MeController', () => {
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(AuthUserRepository);
+	mockInstance(InvalidAuthTokenRepository);
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 

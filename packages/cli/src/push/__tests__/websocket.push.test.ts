@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { PushDataExecutionRecovered } from '@/Interfaces';
 
 import { mockInstance } from '@test/mocking';

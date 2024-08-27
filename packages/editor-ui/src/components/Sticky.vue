@@ -1,109 +1,3 @@
-<template>
-	<div
-		:id="nodeId"
-		:ref="data?.name"
-		class="sticky-wrapper"
-		:style="stickyPosition"
-		:data-name="data?.name"
-		data-test-id="sticky"
-	>
-		<div
-			:class="{
-				'sticky-default': true,
-				'touch-active': isTouchActive,
-				'is-touch-device': deviceSupport.isTouchDevice,
-				'is-read-only': isReadOnly,
-			}"
-			:style="stickySize"
-		>
-			<div v-show="isSelected" class="select-sticky-background" />
-			<div
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
-				class="sticky-box"
-				@click.left="mouseLeftClick"
-				@contextmenu="onContextMenu"
-			>
-				<N8nResizeableSticky
-					v-if="node"
-					:id="node.id"
-					:model-value="node.parameters.content"
-					:height="node.parameters.height"
-					:width="node.parameters.width"
-					:scale="nodeViewScale"
-					:background-color="node.parameters.color"
-					:read-only="isReadOnly"
-					:default-text="defaultText"
-					:edit-mode="isActive && !isReadOnly"
-					:grid-size="gridSize"
-					@edit="onEdit"
-					@resizestart="onResizeStart"
-					@resize="onResize"
-					@resizeend="onResizeEnd"
-					@markdown-click="onMarkdownClick"
-					@update:model-value="onInputChange"
-				/>
-			</div>
-
-			<div
-				v-show="showActions"
-				ref="stickOptions"
-				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
-			>
-				<div
-					v-touch:tap="deleteNode"
-					class="option"
-					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.delete')"
-				>
-					<font-awesome-icon icon="trash" />
-				</div>
-				<n8n-popover
-					effect="dark"
-					trigger="click"
-					placement="top"
-					:popper-style="{ width: '208px' }"
-					:visible="isColorPopoverVisible"
-					@show="onShowPopover"
-					@hide="onHidePopover"
-				>
-					<template #reference>
-						<div
-							class="option"
-							data-test-id="change-sticky-color"
-							:title="$locale.baseText('node.changeColor')"
-							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
-						>
-							<font-awesome-icon icon="palette" />
-						</div>
-					</template>
-					<div class="content">
-						<div
-							v-for="(_, index) in Array.from({ length: 7 })"
-							:key="index"
-							class="color"
-							data-test-id="color"
-							:class="`sticky-color-${index + 1}`"
-							:style="{
-								'border-width': '1px',
-								'border-style': 'solid',
-								'border-color': 'var(--color-foreground-xdark)',
-								'background-color': `var(--color-sticky-background-${index + 1})`,
-								'box-shadow':
-									(index === 0 && node?.parameters.color === '') ||
-									index + 1 === node?.parameters.color
-										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
-										: 'none',
-							}"
-							@click="changeColor(index + 1)"
-						></div>
-					</div>
-				</n8n-popover>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import type { PropType, StyleValue } from 'vue';
@@ -439,6 +333,112 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		:id="nodeId"
+		:ref="data?.name"
+		class="sticky-wrapper"
+		:style="stickyPosition"
+		:data-name="data?.name"
+		data-test-id="sticky"
+	>
+		<div
+			:class="{
+				'sticky-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': deviceSupport.isTouchDevice,
+				'is-read-only': isReadOnly,
+			}"
+			:style="stickySize"
+		>
+			<div v-show="isSelected" class="select-sticky-background" />
+			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
+				class="sticky-box"
+				@click.left="mouseLeftClick"
+				@contextmenu="onContextMenu"
+			>
+				<N8nResizeableSticky
+					v-if="node"
+					:id="node.id"
+					:model-value="node.parameters.content"
+					:height="node.parameters.height"
+					:width="node.parameters.width"
+					:scale="nodeViewScale"
+					:background-color="node.parameters.color"
+					:read-only="isReadOnly"
+					:default-text="defaultText"
+					:edit-mode="isActive && !isReadOnly"
+					:grid-size="gridSize"
+					@edit="onEdit"
+					@resizestart="onResizeStart"
+					@resize="onResize"
+					@resizeend="onResizeEnd"
+					@markdown-click="onMarkdownClick"
+					@update:model-value="onInputChange"
+				/>
+			</div>
+
+			<div
+				v-show="showActions"
+				ref="stickOptions"
+				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
+			>
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					data-test-id="delete-sticky"
+					:title="$locale.baseText('node.delete')"
+				>
+					<font-awesome-icon icon="trash" />
+				</div>
+				<n8n-popover
+					effect="dark"
+					trigger="click"
+					placement="top"
+					:popper-style="{ width: '208px' }"
+					:visible="isColorPopoverVisible"
+					@show="onShowPopover"
+					@hide="onHidePopover"
+				>
+					<template #reference>
+						<div
+							class="option"
+							data-test-id="change-sticky-color"
+							:title="$locale.baseText('node.changeColor')"
+							@click="() => setColorPopoverVisible(!isColorPopoverVisible)"
+						>
+							<font-awesome-icon icon="palette" />
+						</div>
+					</template>
+					<div class="content">
+						<div
+							v-for="(_, index) in Array.from({ length: 7 })"
+							:key="index"
+							class="color"
+							data-test-id="color"
+							:class="`sticky-color-${index + 1}`"
+							:style="{
+								'border-width': '1px',
+								'border-style': 'solid',
+								'border-color': 'var(--color-foreground-xdark)',
+								'background-color': `var(--color-sticky-background-${index + 1})`,
+								'box-shadow':
+									(index === 0 && node?.parameters.color === '') ||
+									index + 1 === node?.parameters.color
+										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
+										: 'none',
+							}"
+							@click="changeColor(index + 1)"
+						></div>
+					</div>
+				</n8n-popover>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .sticky-wrapper {

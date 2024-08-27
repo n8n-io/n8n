@@ -1,0 +1,52 @@
+{
+  "name": "@n8n/n8n-benchmark",
+  "version": "1.0.0",
+  "description": "Cli for running benchmark tests for n8n",
+  "main": "dist/index",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
+    "start": "./bin/n8n-benchmark",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc --noEmit",
+    "run-in-cloud": "zx scripts/runInCloud.mjs",
+    "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
+  },
+  "engines": {
+    "node": ">=20.10"
+  },
+  "keywords": [
+    "automate",
+    "automation",
+    "IaaS",
+    "iPaaS",
+    "n8n",
+    "workflow",
+    "benchmark",
+    "performance"
+  ],
+  "dependencies": {
+    "@oclif/core": "4.0.7",
+    "axios": "catalog:",
+    "convict": "6.2.4",
+    "dotenv": "8.6.0",
+    "zx": "^8.1.4"
+  },
+  "devDependencies": {
+    "@types/convict": "^6.1.1",
+    "@types/k6": "^0.52.0",
+    "@types/node": "^20.14.8",
+    "tsc-alias": "^1.8.7",
+    "typescript": "^5.5.2"
+  },
+  "bin": {
+    "n8n-benchmark": "./bin/n8n-benchmark"
+  },
+  "oclif": {
+    "bin": "n8n-benchmark",
+    "commands": "./dist/commands",
+    "topicSeparator": " "
+  }
+}

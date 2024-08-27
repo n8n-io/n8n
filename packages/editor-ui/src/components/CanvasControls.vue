@@ -1,3 +1,37 @@
+<script lang="ts" setup>
+import { onBeforeMount, onBeforeUnmount } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useCanvasStore } from '@/stores/canvas.store';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import { useDeviceSupport } from 'n8n-design-system';
+
+const canvasStore = useCanvasStore();
+const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
+const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
+const deviceSupport = useDeviceSupport();
+
+const keyDown = (e: KeyboardEvent) => {
+	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
+	if ((e.key === '=' || e.key === '+') && !isCtrlKeyPressed) {
+		zoomIn();
+	} else if ((e.key === '_' || e.key === '-') && !isCtrlKeyPressed) {
+		zoomOut();
+	} else if (e.key === '0' && !isCtrlKeyPressed) {
+		resetZoom();
+	} else if (e.key === '1' && !isCtrlKeyPressed) {
+		zoomToFit();
+	}
+};
+
+onBeforeMount(() => {
+	document.addEventListener('keydown', keyDown);
+});
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', keyDown);
+});
+</script>
+
 <template>
 	<div
 		:class="{
@@ -57,39 +91,6 @@
 		</KeyboardShortcutTooltip>
 	</div>
 </template>
-<script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useCanvasStore } from '@/stores/canvas.store';
-import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
-import { useDeviceSupport } from 'n8n-design-system';
-
-const canvasStore = useCanvasStore();
-const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
-const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
-const deviceSupport = useDeviceSupport();
-
-const keyDown = (e: KeyboardEvent) => {
-	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
-	if ((e.key === '=' || e.key === '+') && !isCtrlKeyPressed) {
-		zoomIn();
-	} else if ((e.key === '_' || e.key === '-') && !isCtrlKeyPressed) {
-		zoomOut();
-	} else if (e.key === '0' && !isCtrlKeyPressed) {
-		resetZoom();
-	} else if (e.key === '1' && !isCtrlKeyPressed) {
-		zoomToFit();
-	}
-};
-
-onBeforeMount(() => {
-	document.addEventListener('keydown', keyDown);
-});
-
-onBeforeUnmount(() => {
-	document.removeEventListener('keydown', keyDown);
-});
-</script>
 
 <style lang="scss" module>
 .zoomMenu {

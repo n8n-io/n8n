@@ -1,476 +1,3 @@
-<template>
-	<div ref="wrapper" :class="parameterInputClasses" @keydown.stop>
-		<ExpressionEditModal
-			:dialog-visible="expressionEditDialogVisible"
-			:model-value="modelValueExpressionEdit"
-			:parameter="parameter"
-			:node="node"
-			:path="path"
-			:event-source="eventSource || 'ndv'"
-			:is-read-only="isReadOnly"
-			:redact-values="shouldRedactValue"
-			@close-dialog="closeExpressionEditDialog"
-			@update:model-value="expressionUpdated"
-		></ExpressionEditModal>
-
-		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
-			<ResourceLocator
-				v-if="isResourceLocatorParameter"
-				ref="resourceLocator"
-				:parameter="parameter"
-				:model-value="modelValueResourceLocator"
-				:dependent-parameters-values="dependentParametersValues"
-				:display-title="displayTitle"
-				:expression-display-value="expressionDisplayValue"
-				:expression-computed-value="expressionEvaluated"
-				:is-value-expression="isModelValueExpression"
-				:is-read-only="isReadOnly"
-				:parameter-issues="getIssues"
-				:droppable="droppable"
-				:node="node"
-				:path="path"
-				:event-bus="eventBus"
-				@update:model-value="valueChanged"
-				@modal-opener-click="openExpressionEditorModal"
-				@focus="setFocus"
-				@blur="onBlur"
-				@drop="onResourceLocatorDrop"
-			/>
-			<ExpressionParameterInput
-				v-else-if="isModelValueExpression || forceShowExpression"
-				ref="inputField"
-				:model-value="expressionDisplayValue"
-				:title="displayTitle"
-				:is-read-only="isReadOnly"
-				:rows="rows"
-				:is-assignment="isAssignment"
-				:path="path"
-				:additional-expression-data="additionalExpressionData"
-				:class="{ 'ph-no-capture': shouldRedactValue }"
-				:event-bus="eventBus"
-				@update:model-value="expressionUpdated"
-				@modal-opener-click="openExpressionEditorModal"
-				@focus="setFocus"
-				@blur="onBlur"
-			/>
-			<div
-				v-else-if="
-					['json', 'string'].includes(parameter.type) ||
-					remoteParameterOptionsLoadingIssues !== null
-				"
-			>
-				<el-dialog
-					:model-value="codeEditDialogVisible"
-					append-to-body
-					width="80%"
-					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
-						.nodeText()
-						.inputLabelDisplayName(parameter, path)}`"
-					:before-close="closeCodeEditDialog"
-					data-test-id="code-editor-fullscreen"
-				>
-					<div :key="codeEditDialogVisible.toString()" class="ignore-key-press code-edit-dialog">
-						<CodeNodeEditor
-							v-if="editorType === 'codeNodeEditor'"
-							:mode="codeEditorMode"
-							:model-value="modelValueString"
-							:default-value="parameter.default"
-							:language="editorLanguage"
-							:is-read-only="isReadOnly"
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-						<HtmlEditor
-							v-else-if="editorType === 'htmlEditor'"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							:disable-expression-coloring="!isHtmlNode"
-							:disable-expression-completions="!isHtmlNode"
-							fullscreen
-							@update:model-value="valueChangedDebounced"
-						/>
-						<SqlEditor
-							v-else-if="editorType === 'sqlEditor'"
-							:model-value="modelValueString"
-							:dialect="getArgument('sqlDialect')"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fullscreen
-							@update:model-value="valueChangedDebounced"
-						/>
-						<JsEditor
-							v-else-if="editorType === 'jsEditor'"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-
-						<JsonEditor
-							v-else-if="parameter.type === 'json'"
-							:model-value="modelValueString"
-							:is-read-only="isReadOnly"
-							:rows="editorRows"
-							fill-parent
-							@update:model-value="valueChangedDebounced"
-						/>
-					</div>
-				</el-dialog>
-
-				<TextEdit
-					:dialog-visible="textEditDialogVisible"
-					:model-value="`${modelValue}`"
-					:parameter="parameter"
-					:path="path"
-					:is-read-only="isReadOnly"
-					@close-dialog="closeTextEditDialog"
-					@update:model-value="expressionUpdated"
-				></TextEdit>
-
-				<CodeNodeEditor
-					v-if="editorType === 'codeNodeEditor' && isCodeNode"
-					:key="'code-' + codeEditDialogVisible.toString()"
-					:mode="codeEditorMode"
-					:model-value="modelValueString"
-					:default-value="parameter.default"
-					:language="editorLanguage"
-					:is-read-only="isReadOnly || editorIsReadOnly"
-					:rows="editorRows"
-					:ai-button-enabled="settingsStore.isCloudDeployment"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<n8n-icon
-							v-if="!editorIsReadOnly"
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
-							size="xsmall"
-							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</template>
-				</CodeNodeEditor>
-
-				<HtmlEditor
-					v-else-if="editorType === 'htmlEditor'"
-					:key="'html-' + codeEditDialogVisible.toString()"
-					:model-value="modelValueString"
-					:is-read-only="isReadOnly"
-					:rows="editorRows"
-					:disable-expression-coloring="!isHtmlNode"
-					:disable-expression-completions="!isHtmlNode"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<n8n-icon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
-							size="xsmall"
-							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</template>
-				</HtmlEditor>
-
-				<SqlEditor
-					v-else-if="editorType === 'sqlEditor'"
-					:key="'sql-' + codeEditDialogVisible.toString()"
-					:model-value="modelValueString"
-					:dialect="getArgument('sqlDialect')"
-					:is-read-only="isReadOnly"
-					:rows="editorRows"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<n8n-icon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
-							size="xsmall"
-							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</template>
-				</SqlEditor>
-
-				<JsEditor
-					v-else-if="editorType === 'jsEditor'"
-					:key="'js-' + codeEditDialogVisible.toString()"
-					:model-value="modelValueString"
-					:is-read-only="isReadOnly || editorIsReadOnly"
-					:rows="editorRows"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<n8n-icon
-							v-if="!editorIsReadOnly"
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
-							size="xsmall"
-							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</template>
-				</JsEditor>
-
-				<JsonEditor
-					v-else-if="parameter.type === 'json'"
-					:key="'json-' + codeEditDialogVisible.toString()"
-					:model-value="modelValueString"
-					:is-read-only="isReadOnly"
-					:rows="editorRows"
-					@update:model-value="valueChangedDebounced"
-				>
-					<template #suffix>
-						<n8n-icon
-							data-test-id="code-editor-fullscreen-button"
-							icon="external-link-alt"
-							size="xsmall"
-							class="textarea-modal-opener"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</template>
-				</JsonEditor>
-
-				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
-					<CodeNodeEditor
-						v-if="!codeEditDialogVisible"
-						:mode="codeEditorMode"
-						:model-value="modelValueString"
-						:language="editorLanguage"
-						:is-read-only="true"
-						:rows="editorRows"
-					/>
-				</div>
-
-				<N8nInput
-					v-else
-					ref="inputField"
-					v-model="tempValue"
-					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
-					:size="inputSize"
-					:type="getStringInputType"
-					:rows="editorRows"
-					:disabled="
-						isReadOnly ||
-						remoteParameterOptionsLoading ||
-						remoteParameterOptionsLoadingIssues !== null
-					"
-					:title="displayTitle"
-					:placeholder="getPlaceholder()"
-					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
-					@keydown.stop
-					@focus="setFocus"
-					@blur="onBlur"
-				>
-					<template #suffix>
-						<n8n-icon
-							v-if="!isReadOnly && !isSecretParameter"
-							icon="external-link-alt"
-							size="xsmall"
-							class="edit-window-button textarea-modal-opener"
-							:class="{
-								focused: isFocused,
-								invalid: !isFocused && getIssues.length > 0 && !isModelValueExpression,
-							}"
-							:title="i18n.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-							@focus="setFocus"
-						/>
-					</template>
-				</N8nInput>
-			</div>
-
-			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<el-color-picker
-					size="small"
-					class="color-picker"
-					:model-value="displayValue"
-					:disabled="isReadOnly"
-					:title="displayTitle"
-					:show-alpha="getArgument('showAlpha')"
-					@focus="setFocus"
-					@blur="onBlur"
-					@update:model-value="valueChanged"
-				/>
-				<N8nInput
-					v-model="tempValue"
-					:size="inputSize"
-					type="text"
-					:disabled="isReadOnly"
-					:title="displayTitle"
-					@update:model-value="valueChanged"
-					@keydown.stop
-					@focus="setFocus"
-					@blur="onBlur"
-				/>
-			</div>
-
-			<el-date-picker
-				v-else-if="parameter.type === 'dateTime'"
-				ref="inputField"
-				v-model="tempValue"
-				type="datetime"
-				value-format="YYYY-MM-DDTHH:mm:ss"
-				:size="inputSize"
-				:title="displayTitle"
-				:disabled="isReadOnly"
-				:placeholder="
-					parameter.placeholder
-						? getPlaceholder()
-						: i18n.baseText('parameterInput.selectDateAndTime')
-				"
-				:picker-options="dateTimePickerOptions"
-				:class="{ 'ph-no-capture': shouldRedactValue }"
-				@update:model-value="valueChanged"
-				@focus="setFocus"
-				@blur="onBlur"
-				@keydown.stop
-			/>
-
-			<N8nInputNumber
-				v-else-if="parameter.type === 'number'"
-				ref="inputField"
-				:size="inputSize"
-				:model-value="displayValue"
-				:controls="false"
-				:max="getArgument('maxValue')"
-				:min="getArgument('minValue')"
-				:precision="getArgument('numberPrecision')"
-				:disabled="isReadOnly"
-				:class="{ 'ph-no-capture': shouldRedactValue }"
-				:title="displayTitle"
-				:placeholder="parameter.placeholder"
-				@update:model-value="onUpdateTextInput"
-				@focus="setFocus"
-				@blur="onBlur"
-				@keydown.stop
-			/>
-
-			<CredentialsSelect
-				v-else-if="parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'"
-				ref="inputField"
-				:parameter="parameter"
-				:node="node"
-				:active-credential-type="activeCredentialType"
-				:input-size="inputSize"
-				:display-value="displayValue"
-				:is-read-only="isReadOnly"
-				:display-title="displayTitle"
-				@credential-selected="credentialSelected"
-				@update:model-value="valueChanged"
-				@set-focus="setFocus"
-				@on-blur="onBlur"
-			>
-				<template #issues-and-options>
-					<ParameterIssues :issues="getIssues" />
-				</template>
-			</CredentialsSelect>
-
-			<N8nSelect
-				v-else-if="parameter.type === 'options'"
-				ref="inputField"
-				:size="inputSize"
-				filterable
-				:model-value="displayValue"
-				:placeholder="
-					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
-				"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
-				:title="displayTitle"
-				@update:model-value="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-			>
-				<n8n-option
-					v-for="option in parameterOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="getOptionsOptionDisplayName(option)"
-				>
-					<div class="list-option">
-						<div
-							class="option-headline"
-							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
-						>
-							{{ getOptionsOptionDisplayName(option) }}
-						</div>
-						<div
-							v-if="option.description"
-							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
-						></div>
-					</div>
-				</n8n-option>
-			</N8nSelect>
-
-			<N8nSelect
-				v-else-if="parameter.type === 'multiOptions'"
-				ref="inputField"
-				:size="inputSize"
-				filterable
-				multiple
-				:model-value="displayValue"
-				:loading="remoteParameterOptionsLoading"
-				:disabled="isReadOnly || remoteParameterOptionsLoading"
-				:title="displayTitle"
-				:placeholder="i18n.baseText('parameterInput.select')"
-				@update:model-value="valueChanged"
-				@keydown.stop
-				@focus="setFocus"
-				@blur="onBlur"
-			>
-				<n8n-option
-					v-for="option in parameterOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="getOptionsOptionDisplayName(option)"
-				>
-					<div class="list-option">
-						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
-						<div
-							v-if="option.description"
-							class="option-description"
-							v-html="getOptionsOptionDescription(option)"
-						></div>
-					</div>
-				</n8n-option>
-			</N8nSelect>
-
-			<!-- temporary state of booleans while data is mapped -->
-			<N8nInput
-				v-else-if="parameter.type === 'boolean' && droppable"
-				:size="inputSize"
-				:model-value="JSON.stringify(displayValue)"
-				:disabled="isReadOnly"
-				:title="displayTitle"
-			/>
-			<el-switch
-				v-else-if="parameter.type === 'boolean'"
-				ref="inputField"
-				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
-				active-color="#13ce66"
-				:model-value="displayValue"
-				:disabled="isReadOnly"
-				@update:model-value="valueChanged"
-			/>
-		</div>
-
-		<ParameterIssues
-			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
-			:issues="getIssues"
-		/>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
 
@@ -939,7 +466,7 @@ const shortPath = computed<string>(() => {
 });
 
 const isResourceLocatorParameter = computed<boolean>(() => {
-	return props.parameter.type === 'resourceLocator';
+	return props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector';
 });
 
 const isSecretParameter = computed<boolean>(() => {
@@ -1427,6 +954,498 @@ onUpdated(async () => {
 	}
 });
 </script>
+
+<template>
+	<div ref="wrapper" :class="parameterInputClasses" @keydown.stop>
+		<ExpressionEditModal
+			:dialog-visible="expressionEditDialogVisible"
+			:model-value="modelValueExpressionEdit"
+			:parameter="parameter"
+			:node="node"
+			:path="path"
+			:event-source="eventSource || 'ndv'"
+			:is-read-only="isReadOnly"
+			:redact-values="shouldRedactValue"
+			@close-dialog="closeExpressionEditDialog"
+			@update:model-value="expressionUpdated"
+		></ExpressionEditModal>
+
+		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
+			<ResourceLocator
+				v-if="parameter.type === 'resourceLocator'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:dependent-parameters-values="dependentParametersValues"
+				:display-title="displayTitle"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:is-value-expression="isModelValueExpression"
+				:is-read-only="isReadOnly"
+				:parameter-issues="getIssues"
+				:droppable="droppable"
+				:node="node"
+				:path="path"
+				:event-bus="eventBus"
+				@update:model-value="valueChanged"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
+			<WorkflowSelectorParameterInput
+				v-else-if="parameter.type === 'workflowSelector'"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:model-value="modelValueResourceLocator"
+				:dependent-parameters-values="dependentParametersValues"
+				:display-title="displayTitle"
+				:expression-display-value="expressionDisplayValue"
+				:expression-computed-value="expressionEvaluated"
+				:is-value-expression="isModelValueExpression"
+				:expression-edit-dialog-visible="expressionEditDialogVisible"
+				:path="path"
+				:parameter-issues="getIssues"
+				@update:model-value="valueChanged"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
+			<ExpressionParameterInput
+				v-else-if="isModelValueExpression || forceShowExpression"
+				ref="inputField"
+				:model-value="expressionDisplayValue"
+				:title="displayTitle"
+				:is-read-only="isReadOnly"
+				:rows="rows"
+				:is-assignment="isAssignment"
+				:path="path"
+				:additional-expression-data="additionalExpressionData"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:event-bus="eventBus"
+				@update:model-value="expressionUpdated"
+				@modal-opener-click="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+			/>
+			<div
+				v-else-if="
+					['json', 'string'].includes(parameter.type) ||
+					remoteParameterOptionsLoadingIssues !== null
+				"
+			>
+				<el-dialog
+					:model-value="codeEditDialogVisible"
+					append-to-body
+					width="80%"
+					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
+						.nodeText()
+						.inputLabelDisplayName(parameter, path)}`"
+					:before-close="closeCodeEditDialog"
+					data-test-id="code-editor-fullscreen"
+				>
+					<div :key="codeEditDialogVisible.toString()" class="ignore-key-press code-edit-dialog">
+						<CodeNodeEditor
+							v-if="editorType === 'codeNodeEditor'"
+							:mode="codeEditorMode"
+							:model-value="modelValueString"
+							:default-value="parameter.default"
+							:language="editorLanguage"
+							:is-read-only="isReadOnly"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+						<HtmlEditor
+							v-else-if="editorType === 'htmlEditor'"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							:disable-expression-coloring="!isHtmlNode"
+							:disable-expression-completions="!isHtmlNode"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
+						<SqlEditor
+							v-else-if="editorType === 'sqlEditor'"
+							:model-value="modelValueString"
+							:dialect="getArgument('sqlDialect')"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fullscreen
+							@update:model-value="valueChangedDebounced"
+						/>
+						<JsEditor
+							v-else-if="editorType === 'jsEditor'"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+
+						<JsonEditor
+							v-else-if="parameter.type === 'json'"
+							:model-value="modelValueString"
+							:is-read-only="isReadOnly"
+							:rows="editorRows"
+							fill-parent
+							@update:model-value="valueChangedDebounced"
+						/>
+					</div>
+				</el-dialog>
+
+				<TextEdit
+					:dialog-visible="textEditDialogVisible"
+					:model-value="`${modelValue}`"
+					:parameter="parameter"
+					:path="path"
+					:is-read-only="isReadOnly"
+					@close-dialog="closeTextEditDialog"
+					@update:model-value="expressionUpdated"
+				></TextEdit>
+
+				<CodeNodeEditor
+					v-if="editorType === 'codeNodeEditor' && isCodeNode"
+					:key="'code-' + codeEditDialogVisible.toString()"
+					:mode="codeEditorMode"
+					:model-value="modelValueString"
+					:default-value="parameter.default"
+					:language="editorLanguage"
+					:is-read-only="isReadOnly || editorIsReadOnly"
+					:rows="editorRows"
+					:ai-button-enabled="settingsStore.isCloudDeployment"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							v-if="!editorIsReadOnly"
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</CodeNodeEditor>
+
+				<HtmlEditor
+					v-else-if="editorType === 'htmlEditor'"
+					:key="'html-' + codeEditDialogVisible.toString()"
+					:model-value="modelValueString"
+					:is-read-only="isReadOnly"
+					:rows="editorRows"
+					:disable-expression-coloring="!isHtmlNode"
+					:disable-expression-completions="!isHtmlNode"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</HtmlEditor>
+
+				<SqlEditor
+					v-else-if="editorType === 'sqlEditor'"
+					:key="'sql-' + codeEditDialogVisible.toString()"
+					:model-value="modelValueString"
+					:dialect="getArgument('sqlDialect')"
+					:is-read-only="isReadOnly"
+					:rows="editorRows"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</SqlEditor>
+
+				<JsEditor
+					v-else-if="editorType === 'jsEditor'"
+					:key="'js-' + codeEditDialogVisible.toString()"
+					:model-value="modelValueString"
+					:is-read-only="isReadOnly || editorIsReadOnly"
+					:rows="editorRows"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							v-if="!editorIsReadOnly"
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</JsEditor>
+
+				<JsonEditor
+					v-else-if="parameter.type === 'json'"
+					:key="'json-' + codeEditDialogVisible.toString()"
+					:model-value="modelValueString"
+					:is-read-only="isReadOnly"
+					:rows="editorRows"
+					@update:model-value="valueChangedDebounced"
+				>
+					<template #suffix>
+						<n8n-icon
+							data-test-id="code-editor-fullscreen-button"
+							icon="external-link-alt"
+							size="xsmall"
+							class="textarea-modal-opener"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+						/>
+					</template>
+				</JsonEditor>
+
+				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
+					<CodeNodeEditor
+						v-if="!codeEditDialogVisible"
+						:mode="codeEditorMode"
+						:model-value="modelValueString"
+						:language="editorLanguage"
+						:is-read-only="true"
+						:rows="editorRows"
+					/>
+				</div>
+
+				<N8nInput
+					v-else
+					ref="inputField"
+					v-model="tempValue"
+					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
+					:size="inputSize"
+					:type="getStringInputType"
+					:rows="editorRows"
+					:disabled="
+						isReadOnly ||
+						remoteParameterOptionsLoading ||
+						remoteParameterOptionsLoadingIssues !== null
+					"
+					:title="displayTitle"
+					:placeholder="getPlaceholder()"
+					@update:model-value="(valueChanged($event) as undefined) && onUpdateTextInput($event)"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+				>
+					<template #suffix>
+						<n8n-icon
+							v-if="!isReadOnly && !isSecretParameter"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:class="{
+								focused: isFocused,
+								invalid: !isFocused && getIssues.length > 0 && !isModelValueExpression,
+							}"
+							:title="i18n.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+							@focus="setFocus"
+						/>
+					</template>
+				</N8nInput>
+			</div>
+
+			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
+				<el-color-picker
+					size="small"
+					class="color-picker"
+					:model-value="displayValue"
+					:disabled="isReadOnly"
+					:title="displayTitle"
+					:show-alpha="getArgument('showAlpha')"
+					@focus="setFocus"
+					@blur="onBlur"
+					@update:model-value="valueChanged"
+				/>
+				<N8nInput
+					v-model="tempValue"
+					:size="inputSize"
+					type="text"
+					:disabled="isReadOnly"
+					:title="displayTitle"
+					@update:model-value="valueChanged"
+					@keydown.stop
+					@focus="setFocus"
+					@blur="onBlur"
+				/>
+			</div>
+
+			<el-date-picker
+				v-else-if="parameter.type === 'dateTime'"
+				ref="inputField"
+				v-model="tempValue"
+				type="datetime"
+				value-format="YYYY-MM-DDTHH:mm:ss"
+				:size="inputSize"
+				:title="displayTitle"
+				:disabled="isReadOnly"
+				:placeholder="
+					parameter.placeholder
+						? getPlaceholder()
+						: i18n.baseText('parameterInput.selectDateAndTime')
+				"
+				:picker-options="dateTimePickerOptions"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
+
+			<N8nInputNumber
+				v-else-if="parameter.type === 'number'"
+				ref="inputField"
+				:size="inputSize"
+				:model-value="displayValue"
+				:controls="false"
+				:max="getArgument('maxValue')"
+				:min="getArgument('minValue')"
+				:precision="getArgument('numberPrecision')"
+				:disabled="isReadOnly"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:title="displayTitle"
+				:placeholder="parameter.placeholder"
+				@update:model-value="onUpdateTextInput"
+				@focus="setFocus"
+				@blur="onBlur"
+				@keydown.stop
+			/>
+
+			<CredentialsSelect
+				v-else-if="parameter.type === 'credentialsSelect' || parameter.name === 'genericAuthType'"
+				ref="inputField"
+				:parameter="parameter"
+				:node="node"
+				:active-credential-type="activeCredentialType"
+				:input-size="inputSize"
+				:display-value="displayValue"
+				:is-read-only="isReadOnly"
+				:display-title="displayTitle"
+				@credential-selected="credentialSelected"
+				@update:model-value="valueChanged"
+				@set-focus="setFocus"
+				@on-blur="onBlur"
+			>
+				<template #issues-and-options>
+					<ParameterIssues :issues="getIssues" />
+				</template>
+			</CredentialsSelect>
+
+			<N8nSelect
+				v-else-if="parameter.type === 'options'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				:model-value="displayValue"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
+				"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@update:model-value="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:key="option.value"
+					:value="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div
+							class="option-headline"
+							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
+						>
+							{{ getOptionsOptionDisplayName(option) }}
+						</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</N8nSelect>
+
+			<N8nSelect
+				v-else-if="parameter.type === 'multiOptions'"
+				ref="inputField"
+				:size="inputSize"
+				filterable
+				multiple
+				:model-value="displayValue"
+				:loading="remoteParameterOptionsLoading"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				:placeholder="i18n.baseText('parameterInput.select')"
+				@update:model-value="valueChanged"
+				@keydown.stop
+				@focus="setFocus"
+				@blur="onBlur"
+			>
+				<n8n-option
+					v-for="option in parameterOptions"
+					:key="option.value"
+					:value="option.value"
+					:label="getOptionsOptionDisplayName(option)"
+				>
+					<div class="list-option">
+						<div class="option-headline">{{ getOptionsOptionDisplayName(option) }}</div>
+						<div
+							v-if="option.description"
+							class="option-description"
+							v-html="getOptionsOptionDescription(option)"
+						></div>
+					</div>
+				</n8n-option>
+			</N8nSelect>
+
+			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && droppable"
+				:size="inputSize"
+				:model-value="JSON.stringify(displayValue)"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+			/>
+			<el-switch
+				v-else-if="parameter.type === 'boolean'"
+				ref="inputField"
+				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
+				active-color="#13ce66"
+				:model-value="displayValue"
+				:disabled="isReadOnly"
+				@update:model-value="valueChanged"
+			/>
+		</div>
+
+		<ParameterIssues
+			v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter"
+			:issues="getIssues"
+		/>
+	</div>
+</template>
 
 <style scoped lang="scss">
 .readonly-code {

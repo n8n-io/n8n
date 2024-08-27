@@ -1,4 +1,4 @@
-import * as ResponseHelper from '@/ResponseHelper';
+import * as ResponseHelper from '@/response-helper';
 import type { NextFunction, Response } from 'express';
 import type { ExecutionRequest } from './execution.types';
 import type { JsonObject } from 'n8n-workflow';

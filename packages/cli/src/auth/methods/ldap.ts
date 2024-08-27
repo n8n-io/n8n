@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 
-import { LdapService } from '@/Ldap/ldap.service.ee';
+import { LdapService } from '@/ldap/ldap.service.ee';
 import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
@@ -9,7 +9,7 @@ import {
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
-} from '@/Ldap/helpers.ee';
+} from '@/ldap/helpers.ee';
 import type { User } from '@db/entities/User';
 import { EventService } from '@/events/event.service';
 

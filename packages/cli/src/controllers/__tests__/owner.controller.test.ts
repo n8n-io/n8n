@@ -10,7 +10,7 @@ import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { License } from '@/License';
+import { License } from '@/license';
 import type { OwnerRequest } from '@/requests';
 import type { UserService } from '@/services/user.service';
 import { PasswordUtility } from '@/services/password.utility';

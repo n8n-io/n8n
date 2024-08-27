@@ -9,15 +9,15 @@ import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WorkflowRunner } from '@/WorkflowRunner';
+import { ActiveExecutions } from '@/active-executions';
+import { WorkflowRunner } from '@/workflow-runner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 
-import { BaseCommand } from './BaseCommand';
+import { BaseCommand } from './base-command';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,

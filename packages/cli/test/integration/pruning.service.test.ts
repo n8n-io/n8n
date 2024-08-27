@@ -9,7 +9,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';

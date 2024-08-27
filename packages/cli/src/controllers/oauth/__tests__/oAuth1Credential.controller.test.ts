@@ -11,11 +11,11 @@ import type { User } from '@db/entities/User';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { ExternalHooks } from '@/ExternalHooks';
-import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/external-hooks';
+import { Logger } from '@/logger';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
-import { SecretsHelper } from '@/SecretsHelpers';
-import { CredentialsHelper } from '@/CredentialsHelper';
+import { SecretsHelper } from '@/secrets-helpers';
+import { CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 

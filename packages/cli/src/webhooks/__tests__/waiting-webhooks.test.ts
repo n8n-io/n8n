@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { IExecutionResponse } from '@/Interfaces';

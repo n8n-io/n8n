@@ -1,7 +1,7 @@
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import { License } from '@/License';
+import { License } from '@/license';
 
 import { mockInstance } from '../../shared/mocking';
 import { randomApiKey } from '../shared/random';

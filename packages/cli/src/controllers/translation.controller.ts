@@ -6,7 +6,7 @@ import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialTypes } from '@/credential-types';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
 export const NODE_HEADERS_PATH = join(NODES_BASE_DIR, 'dist/nodes/headers');

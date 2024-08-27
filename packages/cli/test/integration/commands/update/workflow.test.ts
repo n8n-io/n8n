@@ -1,4 +1,4 @@
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';

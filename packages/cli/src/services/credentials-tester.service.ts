@@ -34,14 +34,14 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { User } from '@db/entities/User';
-import { NodeTypes } from '@/NodeTypes';
-import { CredentialTypes } from '@/CredentialTypes';
+import { NodeTypes } from '@/node-types';
+import { CredentialTypes } from '@/credential-types';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { isObjectLiteral } from '../utils';
-import { Logger } from '@/Logger';
-import { CredentialsHelper } from '../CredentialsHelper';
+import { Logger } from '@/logger';
+import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 

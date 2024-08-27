@@ -63,6 +63,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { getEndpointScope } from '@/utils/nodeViewUtils';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { getConnectionInfo } from '@/utils/canvasUtils';
+import type { UnpinNodeDataEvent } from '@/event-bus/data-pinning';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -992,8 +993,8 @@ export function useNodeHelpers() {
 		});
 	}
 
-	function removePinDataConnections(pinData: IPinData) {
-		Object.keys(pinData).forEach((nodeName) => {
+	function removePinDataConnections(event: UnpinNodeDataEvent) {
+		for (const nodeName of event.nodeNames) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return;
@@ -1015,7 +1016,7 @@ export function useNodeHelpers() {
 			canvasStore.jsPlumbInstance.setSuspendDrawing(true);
 			connectionsArray.forEach(NodeViewUtils.resetConnection);
 			canvasStore.jsPlumbInstance.setSuspendDrawing(false, true);
-		});
+		}
 	}
 
 	function getOutputEndpointUUID(

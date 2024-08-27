@@ -2,12 +2,12 @@ import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import * as Db from '@/Db';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { replaceInvalidCredentials } from '@/WorkflowHelpers';
+import { replaceInvalidCredentials } from '@/workflow-helpers';
 import { Project } from '@db/entities/Project';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';

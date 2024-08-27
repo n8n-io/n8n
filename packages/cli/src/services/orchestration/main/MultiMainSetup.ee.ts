@@ -3,7 +3,7 @@ import { Service } from 'typedi';
 import { TIME } from '@/constants';
 import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisClientService } from '@/services/redis/redis-client.service';
 import { TypedEmitter } from '@/TypedEmitter';

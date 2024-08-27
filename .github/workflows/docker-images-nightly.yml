@@ -6,10 +6,6 @@ on:
     - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
-      repository:
-        description: 'GitHub repository to create image off.'
-        required: true
-        default: 'n8n-io/n8n'
       branch:
         description: 'GitHub branch to create image off.'
         required: true
@@ -49,7 +45,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.1.1
         with:
-          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
           ref: ${{ github.event.inputs.branch || 'master' }}
 
       - name: Set up QEMU

@@ -26,7 +26,7 @@ import type { ListQuery } from '@/requests';
 import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
-import { License } from '@/License';
+import { License } from '@/license';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';

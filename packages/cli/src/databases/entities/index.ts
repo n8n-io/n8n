@@ -21,6 +21,7 @@ import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
 import { Project } from './Project';
 import { ProjectRelation } from './ProjectRelation';
+import { InvalidAuthToken } from './InvalidAuthToken';
 import { AnnotationTagEntity } from './AnnotationTagEntity';
 import { AnnotationTagMapping } from './AnnotationTagMapping';
 import { ExecutionAnnotation } from './ExecutionAnnotation';
@@ -37,6 +38,7 @@ export const entities = {
 	ExecutionEntity,
 	InstalledNodes,
 	InstalledPackages,
+	InvalidAuthToken,
 	Settings,
 	SharedCredentials,
 	SharedWorkflow,

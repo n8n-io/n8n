@@ -5,11 +5,11 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
-import { License } from '@/License';
+import { License } from '@/license';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
 	Delete,
@@ -22,7 +22,7 @@ import {
 	ProjectScope,
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/user-management/email';
 import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';

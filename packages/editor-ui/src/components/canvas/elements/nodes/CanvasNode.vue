@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed, provide, toRef, watch } from 'vue';
 import type {
-	CanvasNodeData,
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
+	CanvasNodeData,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -14,8 +14,10 @@ import CanvasHandleRenderer from '@/components/canvas/elements/handles/CanvasHan
 import { useNodeConnections } from '@/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/constants';
 import { useContextMenu } from '@/composables/useContextMenu';
+import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
-import type { XYPosition, NodeProps } from '@vue-flow/core';
+import { useCanvas } from '@/composables/useCanvas';
+import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -37,6 +39,8 @@ const props = defineProps<Props>();
 
 const nodeTypesStore = useNodeTypesStore();
 const contextMenu = useContextMenu();
+
+const { connectingHandle } = useCanvas();
 
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
@@ -127,9 +131,23 @@ const createEndpointMappingFn =
 		index: number,
 		endpoints: CanvasConnectionPort[],
 	): CanvasElementPortWithRenderData => {
+		const handleId = createCanvasConnectionHandleString({
+			mode,
+			type: endpoint.type,
+			index: endpoint.index,
+		});
+		const handleType = mode === CanvasConnectionMode.Input ? 'target' : 'source';
+		const isConnected = !!connections.value[mode][endpoint.type]?.[endpoint.index]?.length;
+		const isConnecting =
+			connectingHandle.value?.nodeId === props.id &&
+			connectingHandle.value?.handleType === handleType &&
+			connectingHandle.value?.handleId === handleId;
+
 		return {
 			...endpoint,
-			connected: !!connections.value[mode][endpoint.type]?.[endpoint.index]?.length,
+			handleId,
+			isConnected,
+			isConnecting,
 			position,
 			offset: {
 				[offsetAxis]: `${(100 / (endpoints.length + 1)) * (index + 1)}%`,
@@ -214,37 +232,33 @@ watch(
 		:class="[$style.canvasNode, { [$style.showToolbar]: showToolbar }]"
 		data-test-id="canvas-node"
 	>
-		<template
-			v-for="source in mappedOutputs"
-			:key="`${CanvasConnectionMode.Output}/${source.type}/${source.index}`"
-		>
+		<template v-for="source in mappedOutputs" :key="source.handleId">
 			<CanvasHandleRenderer
 				data-test-id="canvas-node-output-handle"
-				:connected="source.connected"
 				:mode="CanvasConnectionMode.Output"
 				:type="source.type"
 				:label="source.label"
 				:index="source.index"
 				:position="source.position"
 				:offset="source.offset"
+				:is-connected="source.isConnected"
+				:is-connecting="source.isConnecting"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>
 		</template>
 
-		<template
-			v-for="target in mappedInputs"
-			:key="`${CanvasConnectionMode.Input}/${target.type}/${target.index}`"
-		>
+		<template v-for="target in mappedInputs" :key="target.handleId">
 			<CanvasHandleRenderer
 				data-test-id="canvas-node-input-handle"
-				:connected="!!connections[CanvasConnectionMode.Input][target.type]?.[target.index]?.length"
 				:mode="CanvasConnectionMode.Input"
 				:type="target.type"
 				:label="target.label"
 				:index="target.index"
 				:position="target.position"
 				:offset="target.offset"
+				:is-connected="target.isConnected"
+				:is-connecting="target.isConnecting"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>
@@ -296,5 +310,6 @@ watch(
 	left: 50%;
 	transform: translate(-50%, -100%);
 	opacity: 0;
+	z-index: 1;
 }
 </style>

@@ -3,12 +3,12 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, type IDataObject } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import { License } from '@/License';
+import { License } from '@/license';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
+import { ExternalSecretsProviders } from '@/external-secrets/external-secrets-providers.ee';
 import config from '@/config';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 
 import { mockInstance } from '../../shared/mocking';

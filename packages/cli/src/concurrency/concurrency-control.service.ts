@@ -1,4 +1,4 @@
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import config from '@/config';
 import { Service } from 'typedi';
 import { ConcurrencyQueue } from './concurrency-queue';

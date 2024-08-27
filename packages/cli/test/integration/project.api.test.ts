@@ -27,7 +27,7 @@ import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '../shared/mocking';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { RoleService } from '@/services/role.service';
 

@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import config from '@/config';
 import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
 import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/RedisServiceCommands';

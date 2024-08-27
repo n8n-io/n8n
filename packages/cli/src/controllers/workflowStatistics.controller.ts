@@ -5,7 +5,7 @@ import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { StatisticsRequest } from './workflow-statistics.types';
 

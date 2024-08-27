@@ -1,52 +1,3 @@
-<template>
-	<el-dialog
-		:model-value="uiStore.modalsById[name].open"
-		:before-close="onCloseDialog"
-		:class="{
-			'dialog-wrapper': true,
-			scrollable: scrollable,
-			[getCustomClass()]: true,
-		}"
-		:center="center"
-		:width="width"
-		:show-close="showClose"
-		:close-on-click-modal="closeOnClickModal"
-		:close-on-press-escape="closeOnPressEscape"
-		:style="styles"
-		:append-to-body="appendToBody"
-		:data-test-id="`${name}-modal`"
-		:modal-class="center ? $style.center : ''"
-	>
-		<template v-if="$slots.header" #header>
-			<slot v-if="!loading" name="header" />
-		</template>
-		<template v-else-if="title" #title>
-			<div :class="centerTitle ? $style.centerTitle : ''">
-				<div v-if="title">
-					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
-				</div>
-				<div v-if="subtitle" :class="$style.subtitle">
-					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
-				</div>
-			</div>
-		</template>
-		<div
-			class="modal-content"
-			@keydown.stop
-			@keydown.enter="handleEnter"
-			@keydown.esc="onCloseDialog"
-		>
-			<slot v-if="!loading" name="content" />
-			<div v-else :class="$style.loader">
-				<n8n-spinner />
-			</div>
-		</div>
-		<div v-if="!loading && $slots.footer" :class="$style.footer">
-			<slot name="footer" :close="closeDialog" />
-		</div>
-	</el-dialog>
-</template>
-
 <script lang="ts">
 import { ElDialog } from 'element-plus';
 import { defineComponent } from 'vue';
@@ -208,6 +159,55 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<el-dialog
+		:model-value="uiStore.modalsById[name].open"
+		:before-close="onCloseDialog"
+		:class="{
+			'dialog-wrapper': true,
+			scrollable: scrollable,
+			[getCustomClass()]: true,
+		}"
+		:center="center"
+		:width="width"
+		:show-close="showClose"
+		:close-on-click-modal="closeOnClickModal"
+		:close-on-press-escape="closeOnPressEscape"
+		:style="styles"
+		:append-to-body="appendToBody"
+		:data-test-id="`${name}-modal`"
+		:modal-class="center ? $style.center : ''"
+	>
+		<template v-if="$slots.header" #header>
+			<slot v-if="!loading" name="header" />
+		</template>
+		<template v-else-if="title" #title>
+			<div :class="centerTitle ? $style.centerTitle : ''">
+				<div v-if="title">
+					<n8n-heading tag="h1" size="xlarge">{{ title }}</n8n-heading>
+				</div>
+				<div v-if="subtitle" :class="$style.subtitle">
+					<n8n-heading tag="h3" size="small" color="text-light">{{ subtitle }}</n8n-heading>
+				</div>
+			</div>
+		</template>
+		<div
+			class="modal-content"
+			@keydown.stop
+			@keydown.enter="handleEnter"
+			@keydown.esc="onCloseDialog"
+		>
+			<slot v-if="!loading" name="content" />
+			<div v-else :class="$style.loader">
+				<n8n-spinner />
+			</div>
+		</div>
+		<div v-if="!loading && $slots.footer" :class="$style.footer">
+			<slot name="footer" :close="closeDialog" />
+		</div>
+	</el-dialog>
+</template>
 
 <style lang="scss">
 .dialog-wrapper {

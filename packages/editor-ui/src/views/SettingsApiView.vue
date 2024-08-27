@@ -1,91 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div :class="$style.header">
-			<n8n-heading size="2xlarge">
-				{{ $locale.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
-					({{ $locale.baseText('generic.beta') }})
-				</span>
-			</n8n-heading>
-		</div>
-
-		<div v-if="apiKey">
-			<p class="mb-s">
-				<n8n-info-tip :bold="false">
-					<i18n-t keypath="settings.api.view.info" tag="span">
-						<template #apiAction>
-							<a
-								href="https://docs.n8n.io/api"
-								target="_blank"
-								v-text="$locale.baseText('settings.api.view.info.api')"
-							/>
-						</template>
-						<template #webhookAction>
-							<a
-								href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
-								target="_blank"
-								v-text="$locale.baseText('settings.api.view.info.webhook')"
-							/>
-						</template>
-					</i18n-t>
-				</n8n-info-tip>
-			</p>
-			<n8n-card class="mb-4xs" :class="$style.card">
-				<span :class="$style.delete">
-					<n8n-link :bold="true" @click="showDeleteModal">
-						{{ $locale.baseText('generic.delete') }}
-					</n8n-link>
-				</span>
-				<div>
-					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
-						:value="apiKey"
-						:copy-button-text="$locale.baseText('generic.clickToCopy')"
-						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
-						:redact-value="true"
-						:disable-copy="isRedactedApiKey"
-						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
-						@copy="onCopy"
-					/>
-				</div>
-			</n8n-card>
-			<div :class="$style.hint">
-				<n8n-text size="small">
-					{{
-						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
-					}}
-				</n8n-text>
-				{{ ' ' }}
-				<n8n-link :to="apiDocsURL" :new-window="true" size="small">
-					{{
-						$locale.baseText(
-							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
-						)
-					}}
-				</n8n-link>
-			</div>
-		</div>
-		<n8n-action-box
-			v-else-if="!isPublicApiEnabled && isTrialing"
-			data-test-id="public-api-upgrade-cta"
-			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
-			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
-			:button-text="$locale.baseText('settings.api.trial.upgradePlan.cta')"
-			@click:button="onUpgrade"
-		/>
-		<n8n-action-box
-			v-else-if="mounted && !isLoadingCloudPlans"
-			:button-text="
-				$locale.baseText(
-					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
-				)
-			"
-			:description="$locale.baseText('settings.api.create.description')"
-			@click:button="createApiKey"
-		/>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IUser } from '@/Interface';
@@ -210,6 +122,94 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div :class="$style.header">
+			<n8n-heading size="2xlarge">
+				{{ $locale.baseText('settings.api') }}
+				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
+					({{ $locale.baseText('generic.beta') }})
+				</span>
+			</n8n-heading>
+		</div>
+
+		<div v-if="apiKey">
+			<p class="mb-s">
+				<n8n-info-tip :bold="false">
+					<i18n-t keypath="settings.api.view.info" tag="span">
+						<template #apiAction>
+							<a
+								href="https://docs.n8n.io/api"
+								target="_blank"
+								v-text="$locale.baseText('settings.api.view.info.api')"
+							/>
+						</template>
+						<template #webhookAction>
+							<a
+								href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+								target="_blank"
+								v-text="$locale.baseText('settings.api.view.info.webhook')"
+							/>
+						</template>
+					</i18n-t>
+				</n8n-info-tip>
+			</p>
+			<n8n-card class="mb-4xs" :class="$style.card">
+				<span :class="$style.delete">
+					<n8n-link :bold="true" @click="showDeleteModal">
+						{{ $locale.baseText('generic.delete') }}
+					</n8n-link>
+				</span>
+				<div>
+					<CopyInput
+						:label="$locale.baseText('settings.api.view.myKey')"
+						:value="apiKey"
+						:copy-button-text="$locale.baseText('generic.clickToCopy')"
+						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
+						:redact-value="true"
+						:disable-copy="isRedactedApiKey"
+						:hint="!isRedactedApiKey ? $locale.baseText('settings.api.view.copy') : ''"
+						@copy="onCopy"
+					/>
+				</div>
+			</n8n-card>
+			<div :class="$style.hint">
+				<n8n-text size="small">
+					{{
+						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
+					}}
+				</n8n-text>
+				{{ ' ' }}
+				<n8n-link :to="apiDocsURL" :new-window="true" size="small">
+					{{
+						$locale.baseText(
+							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
+						)
+					}}
+				</n8n-link>
+			</div>
+		</div>
+		<n8n-action-box
+			v-else-if="!isPublicApiEnabled && isTrialing"
+			data-test-id="public-api-upgrade-cta"
+			:heading="$locale.baseText('settings.api.trial.upgradePlan.title')"
+			:description="$locale.baseText('settings.api.trial.upgradePlan.description')"
+			:button-text="$locale.baseText('settings.api.trial.upgradePlan.cta')"
+			@click:button="onUpgrade"
+		/>
+		<n8n-action-box
+			v-else-if="mounted && !isLoadingCloudPlans"
+			:button-text="
+				$locale.baseText(
+					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
+				)
+			"
+			:description="$locale.baseText('settings.api.create.description')"
+			@click:button="createApiKey"
+		/>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

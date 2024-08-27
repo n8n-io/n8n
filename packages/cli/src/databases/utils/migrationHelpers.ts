@@ -9,8 +9,8 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { createSchemaBuilder } from '@db/dsl';
-import { NodeTypes } from '@/NodeTypes';
-import { Logger } from '@/Logger';
+import { NodeTypes } from '@/node-types';
+import { Logger } from '@/logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -93,6 +93,8 @@ function parseJson<T>(data: string | T): T {
 const globalConfig = Container.get(GlobalConfig);
 const dbType = globalConfig.database.type;
 const isMysql = ['mariadb', 'mysqldb'].includes(dbType);
+const isSqlite = dbType === 'sqlite';
+const isPostgres = dbType === 'postgresdb';
 const dbName = globalConfig.database[dbType === 'mariadb' ? 'mysqldb' : dbType].database;
 const tablePrefix = globalConfig.database.tablePrefix;
 
@@ -101,6 +103,8 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	tablePrefix,
 	dbType,
 	isMysql,
+	isSqlite,
+	isPostgres,
 	dbName,
 	migrationName: migration.name,
 	queryRunner,

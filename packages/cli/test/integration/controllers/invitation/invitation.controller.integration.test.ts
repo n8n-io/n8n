@@ -1,8 +1,8 @@
 import Container from 'typedi';
 import { Not } from '@n8n/typeorm';
 import { EventService } from '@/events/event.service';
-import { ExternalHooks } from '@/ExternalHooks';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { ExternalHooks } from '@/external-hooks';
+import { UserManagementMailer } from '@/user-management/email';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { PasswordUtility } from '@/services/password.utility';
 

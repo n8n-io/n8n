@@ -6,7 +6,7 @@ import { SettingsRepository } from '@db/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { BaseCommand } from '../BaseCommand';
+import { BaseCommand } from '../base-command';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const defaultUserProps = {

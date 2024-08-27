@@ -1,33 +1,3 @@
-<template>
-	<Modal
-		:title="i18n.baseText(titleLocaleKey)"
-		:name="modalKey"
-		:event-bus="modalBus"
-		min-width="620px"
-		min-height="420px"
-		@enter="onEnter"
-	>
-		<template #content>
-			<el-row>
-				<TagsView
-					v-if="hasTags || isCreating"
-					:is-loading="isLoading"
-					:tags="tags"
-					:usage-locale-key="usageLocaleKey"
-					@create="onCreate"
-					@update="onUpdate"
-					@delete="onDelete"
-					@disable-create="onDisableCreate"
-				/>
-				<NoTagsView v-else @enable-create="onEnableCreate" />
-			</el-row>
-		</template>
-		<template #footer="{ close }">
-			<n8n-button :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
-		</template>
-	</Modal>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import type { ITag } from '@/Interface';
@@ -173,3 +143,33 @@ function onEnter() {
 	}
 }
 </script>
+
+<template>
+	<Modal
+		:title="i18n.baseText(titleLocaleKey)"
+		:name="modalKey"
+		:event-bus="modalBus"
+		min-width="620px"
+		min-height="420px"
+		@enter="onEnter"
+	>
+		<template #content>
+			<el-row>
+				<TagsView
+					v-if="hasTags || isCreating"
+					:is-loading="isLoading"
+					:tags="tags"
+					:usage-locale-key="usageLocaleKey"
+					@create="onCreate"
+					@update="onUpdate"
+					@delete="onDelete"
+					@disable-create="onDisableCreate"
+				/>
+				<NoTagsView v-else @enable-create="onEnableCreate" />
+			</el-row>
+		</template>
+		<template #footer="{ close }">
+			<n8n-button :label="i18n.baseText('tagsManager.done')" float="right" @click="close" />
+		</template>
+	</Modal>
+</template>

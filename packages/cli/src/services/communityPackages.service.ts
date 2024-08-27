@@ -23,10 +23,10 @@ import {
 } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/Interfaces';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { Logger } from '@/Logger';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@/logger';
 import { OrchestrationService } from './orchestration.service';
-import { License } from '@/License';
+import { License } from '@/license';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 

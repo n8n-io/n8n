@@ -1,7 +1,7 @@
 import { Flags } from '@oclif/core';
 import fs from 'fs';
 import path from 'path';
-import { BaseCommand } from '../BaseCommand';
+import { BaseCommand } from '../base-command';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
 import { ApplicationError } from 'n8n-workflow';

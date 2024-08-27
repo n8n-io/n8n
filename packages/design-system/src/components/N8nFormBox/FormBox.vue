@@ -1,43 +1,3 @@
-<template>
-	<div :class="['n8n-form-box', $style.container]">
-		<div v-if="title" :class="$style.heading">
-			<N8nHeading size="xlarge">
-				{{ title }}
-			</N8nHeading>
-		</div>
-		<div :class="$style.inputsContainer">
-			<N8nFormInputs
-				:inputs="inputs"
-				:event-bus="formBus"
-				:column-view="true"
-				@update="onUpdateModelValue"
-				@submit="onSubmit"
-			/>
-		</div>
-		<div v-if="secondaryButtonText || buttonText" :class="$style.buttonsContainer">
-			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
-				<N8nLink size="medium" theme="text" @click="onSecondaryButtonClick">
-					{{ secondaryButtonText }}
-				</N8nLink>
-			</span>
-			<N8nButton
-				v-if="buttonText"
-				:label="buttonText"
-				:loading="buttonLoading"
-				data-test-id="form-submit-button"
-				size="large"
-				@click="onButtonClick"
-			/>
-		</div>
-		<div :class="$style.actionContainer">
-			<N8nLink v-if="redirectText && redirectLink" :to="redirectLink">
-				{{ redirectText }}
-			</N8nLink>
-		</div>
-		<slot></slot>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
@@ -79,6 +39,46 @@ const onSubmit = (e: { [key: string]: Value }) => emit('submit', e);
 const onButtonClick = () => formBus.emit('submit');
 const onSecondaryButtonClick = (event: Event) => emit('secondaryClick', event);
 </script>
+
+<template>
+	<div :class="['n8n-form-box', $style.container]">
+		<div v-if="title" :class="$style.heading">
+			<N8nHeading size="xlarge">
+				{{ title }}
+			</N8nHeading>
+		</div>
+		<div :class="$style.inputsContainer">
+			<N8nFormInputs
+				:inputs="inputs"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onUpdateModelValue"
+				@submit="onSubmit"
+			/>
+		</div>
+		<div v-if="secondaryButtonText || buttonText" :class="$style.buttonsContainer">
+			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
+				<N8nLink size="medium" theme="text" @click="onSecondaryButtonClick">
+					{{ secondaryButtonText }}
+				</N8nLink>
+			</span>
+			<N8nButton
+				v-if="buttonText"
+				:label="buttonText"
+				:loading="buttonLoading"
+				data-test-id="form-submit-button"
+				size="large"
+				@click="onButtonClick"
+			/>
+		</div>
+		<div :class="$style.actionContainer">
+			<N8nLink v-if="redirectText && redirectLink" :to="redirectLink">
+				{{ redirectText }}
+			</N8nLink>
+		</div>
+		<slot></slot>
+	</div>
+</template>
 
 <style lang="scss" module>
 .heading {

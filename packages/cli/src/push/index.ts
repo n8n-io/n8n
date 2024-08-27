@@ -7,7 +7,7 @@ import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { IPushDataType } from '@/Interfaces';

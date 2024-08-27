@@ -1,41 +1,3 @@
-<template>
-	<aside :class="$style.floatingNodes">
-		<ul
-			v-for="connectionGroup in connectionGroups"
-			:key="connectionGroup"
-			:class="[$style.nodesList, $style[connectionGroup]]"
-		>
-			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
-				<n8n-tooltip
-					v-if="node && nodeType"
-					:key="node.name"
-					:placement="tooltipPositionMapper[connectionGroup]"
-					:teleported="false"
-					:offset="60"
-				>
-					<template #content>{{ node.name }}</template>
-
-					<li
-						:class="$style.connectedNode"
-						data-test-id="floating-node"
-						:data-node-name="node.name"
-						:data-node-placement="connectionGroup"
-						@click="emit('switchSelectedNode', node.name)"
-					>
-						<NodeIcon
-							:node-type="nodeType"
-							:node-name="node.name"
-							:tooltip-position="tooltipPositionMapper[connectionGroup]"
-							:size="35"
-							circle
-						/>
-					</li>
-				</n8n-tooltip>
-			</template>
-		</ul>
-	</aside>
-</template>
-
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -136,6 +98,44 @@ defineExpose({
 	moveNodeDirection,
 });
 </script>
+
+<template>
+	<aside :class="$style.floatingNodes">
+		<ul
+			v-for="connectionGroup in connectionGroups"
+			:key="connectionGroup"
+			:class="[$style.nodesList, $style[connectionGroup]]"
+		>
+			<template v-for="{ node, nodeType } in connectedNodes[connectionGroup]">
+				<n8n-tooltip
+					v-if="node && nodeType"
+					:key="node.name"
+					:placement="tooltipPositionMapper[connectionGroup]"
+					:teleported="false"
+					:offset="60"
+				>
+					<template #content>{{ node.name }}</template>
+
+					<li
+						:class="$style.connectedNode"
+						data-test-id="floating-node"
+						:data-node-name="node.name"
+						:data-node-placement="connectionGroup"
+						@click="emit('switchSelectedNode', node.name)"
+					>
+						<NodeIcon
+							:node-type="nodeType"
+							:node-name="node.name"
+							:tooltip-position="tooltipPositionMapper[connectionGroup]"
+							:size="35"
+							circle
+						/>
+					</li>
+				</n8n-tooltip>
+			</template>
+		</ul>
+	</aside>
+</template>
 
 <style lang="scss" module>
 .floatingNodes {

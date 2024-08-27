@@ -6,6 +6,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
 import type { User } from '@db/entities/User';
+import type { InvalidAuthTokenRepository } from '@db/repositories/invalidAuthToken.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
@@ -26,7 +27,15 @@ describe('AuthService', () => {
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
-	const authService = new AuthService(mock(), mock(), jwtService, urlService, userRepository);
+	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
+	const authService = new AuthService(
+		mock(),
+		mock(),
+		jwtService,
+		urlService,
+		userRepository,
+		invalidAuthTokenRepository,
+	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	jest.useFakeTimers({ now });
@@ -70,16 +79,36 @@ describe('AuthService', () => {
 
 		it('should 401 if no cookie is set', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = undefined;
+
 			await authService.authMiddleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 		});
 
 		it('should 401 and clear the cookie if the JWT is expired', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 			await authService.authMiddleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+		});
+
+		it('should 401 and clear the cookie if the JWT has been invalidated', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			await authService.authMiddleware(req, res, next);
+
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalled();
+			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(next).not.toHaveBeenCalled();
 			expect(res.status).toHaveBeenCalledWith(401);
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
@@ -88,9 +117,11 @@ describe('AuthService', () => {
 		it('should refresh the cookie before it expires', async () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
 			await authService.authMiddleware(req, res, next);
+
 			expect(next).toHaveBeenCalled();
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
@@ -300,6 +331,23 @@ describe('AuthService', () => {
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toEqual(user);
+		});
+	});
+
+	describe('invalidateToken', () => {
+		const req = mock<AuthenticatedRequest>({
+			cookies: {
+				[AUTH_COOKIE_NAME]: validToken,
+			},
+		});
+
+		it('should invalidate the token', async () => {
+			await authService.invalidateToken(req);
+
+			expect(invalidAuthTokenRepository.insert).toHaveBeenCalledWith({
+				token: validToken,
+				expiresAt: new Date('2024-02-08T01:23:45.000Z'),
+			});
 		});
 	});
 });

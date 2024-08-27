@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { assert, type IUser } from 'n8n-workflow';
-import { License } from '../License';
+import { License } from '../license';
 import { N8N_VERSION } from '../constants';
 import config from '@/config';
 import type { AiAssistantRequest } from '@/requests';

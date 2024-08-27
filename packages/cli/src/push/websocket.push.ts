@@ -1,6 +1,6 @@
 import type WebSocket from 'ws';
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
