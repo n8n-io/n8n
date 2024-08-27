@@ -219,12 +219,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function addEmptyAssistantMessage(id: string) {
+
+	function addLoadingAssistantMessage(id: string) {
 		chatMessages.value.push({
 			id,
 			role: 'assistant',
 			type: 'text',
-			content: '',
+			content: locale.baseText('aiAssistant.loading.message'),
 			read: false,
 		});
 	}
@@ -309,7 +310,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		addEmptyAssistantMessage(id);
+		addLoadingAssistantMessage(id);
 		openChat();
 
 		streaming.value = true;
@@ -344,7 +345,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(currentSessionId.value);
 
 		const id = getRandomId();
-		addEmptyAssistantMessage(id);
+		addLoadingAssistantMessage(id);
 		streaming.value = true;
 		chatWithAssistant(
 			rootStore.restApiContext,
@@ -394,7 +395,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		try {
 			addUserMessage(chatMessage.text, id);
-			addEmptyAssistantMessage(id);
+			addLoadingAssistantMessage(id);
 
 			streaming.value = true;
 			assert(currentSessionId.value);
