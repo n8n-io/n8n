@@ -28,16 +28,19 @@ export type JobStatus = Bull.JobStatus;
 
 export type JobOptions = Bull.JobOptions;
 
-/** Message sent by worker to queue or by queue to worker. */
-export type JobMessage = RepondToWebhookMessage | AbortJobMessage;
+export type PubSubMessage = MessageToMain | MessageToWorker;
 
-export type RepondToWebhookMessage = {
+type MessageToMain = RepondToWebhookMessage;
+
+type MessageToWorker = AbortJobMessage;
+
+type RepondToWebhookMessage = {
 	kind: 'respond-to-webhook';
 	executionId: string;
 	response: IExecuteResponsePromiseData;
 };
 
-export type AbortJobMessage = {
+type AbortJobMessage = {
 	kind: 'abort-job';
 };
 

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'packages/@n8n/benchmark/**'
       - 'pnpm-lock.yaml'

@@ -42,7 +42,7 @@ import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ExternalHooks } from './external-hooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-import type { RunningJobSummary } from './scaling/types';
+import type { RunningJobSummary } from './scaling/scaling.types';
 import type { Scope } from '@n8n/permissions';
 
 export interface ICredentialsTypeData {
