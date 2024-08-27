@@ -47,7 +47,7 @@ const filter = ref('');
 const focused = ref(false);
 const preventUpdate = ref(false);
 
-const container = ref<HTMLDivElement | undefined>();
+const container = ref<HTMLDivElement>();
 
 const dropdownId = uuid();
 
@@ -145,9 +145,12 @@ function onTagsUpdated(selected: string[]) {
 }
 
 function focusFirstOption() {
+	// focus on create option
 	if (createRef.value?.$el) {
 		createRef.value.$el.dispatchEvent(new Event('mouseenter'));
-	} else if (tagRefs.value?.[0]?.$el) {
+	}
+	// focus on top option after filter
+	else if (tagRefs.value?.[0]?.$el) {
 		tagRefs.value[0].$el.dispatchEvent(new Event('mouseenter'));
 	}
 }
