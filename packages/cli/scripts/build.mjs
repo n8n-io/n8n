@@ -36,6 +36,8 @@ function generateUserManagementEmailTemplates() {
 		const command = `pnpm mjml --output ${destination} ${source}`;
 		shell.exec(command, { silent: false });
 	});
+
+	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
 }
 
 function copySwaggerTheme() {
