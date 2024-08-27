@@ -108,15 +108,13 @@ const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
 
 const isReadOnly = computed(() => props.readOnly || props.foreignCredentials.length > 0);
 
-const node = computed(() => useNDVStore().activeNode);
+const node = computed(() => ndvStore.activeNode);
 
-const isTriggerNode = computed(
-	() => !!node.value && useNodeTypesStore().isTriggerNode(node.value.type),
-);
+const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
 const isExecutable = computed(() => {
 	if (props.nodeType && node.value) {
-		const workflow = useWorkflowsStore().getCurrentWorkflow();
+		const workflow = workflowsStore.getCurrentWorkflow();
 		const workflowNode = workflow.getNode(node.value.name);
 		const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, props.nodeType);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
