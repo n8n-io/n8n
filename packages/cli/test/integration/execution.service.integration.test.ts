@@ -72,6 +72,10 @@ describe('ExecutionService', () => {
 				waitTill: null,
 				retrySuccessId: null,
 				workflowName: expect.any(String),
+				annotation: {
+					tags: expect.arrayContaining([]),
+					vote: null,
+				},
 			};
 
 			expect(output.count).toBe(2);
