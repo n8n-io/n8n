@@ -69,7 +69,7 @@ watch(
 );
 
 onMounted(() => {
-	const select = selectRef.value?.$refs?.innerSelect as { $refs: { input: Element } } | undefined;
+	const select = selectRef.value?.innerSelect;
 
 	if (select) {
 		const input = select.$refs.input as Element | undefined;
