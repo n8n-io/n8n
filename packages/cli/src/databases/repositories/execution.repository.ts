@@ -724,10 +724,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private reduceExecutionsWithAnnotations(
 		rawExecutionsWithTags: Array<
 			ExecutionSummary & {
-				'annotation.id': number;
-				'annotation.vote': AnnotationVote;
-				'annotation.tags.id': string;
-				'annotation.tags.name': string;
+				annotation_id: number;
+				annotation_vote: AnnotationVote;
+				annotation_tags_id: string;
+				annotation_tags_name: string;
 			}
 		>,
 	) {
@@ -735,10 +735,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			(
 				acc,
 				{
-					'annotation.id': _,
-					'annotation.vote': vote,
-					'annotation.tags.id': tagId,
-					'annotation.tags.name': tagName,
+					annotation_id: _,
+					annotation_vote: vote,
+					annotation_tags_id: tagId,
+					annotation_tags_name: tagName,
 					...row
 				},
 			) => {
@@ -778,10 +778,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const rawExecutionsWithTags: Array<
 			ExecutionSummary & {
-				'annotation.id': number;
-				'annotation.vote': AnnotationVote;
-				'annotation.tags.id': string;
-				'annotation.tags.name': string;
+				annotation_id: number;
+				annotation_vote: AnnotationVote;
+				annotation_tags_id: string;
+				annotation_tags_name: string;
 			}
 		> = await qb.getRawMany();
 
@@ -946,7 +946,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 */
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
-			(key) => `annotation.${key} AS "annotation.${key}"`,
+			(key) => `annotation.${key} AS "annotation_${key}"`,
 		);
 
 		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
@@ -960,10 +960,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return this.manager
 			.createQueryBuilder()
-			.select(['e.*', 'ate.id AS "annotation.tags.id"', 'ate.name AS "annotation.tags.name"'])
+			.select(['e.*', 'ate.id AS "annotation_tags_id"', 'ate.name AS "annotation_tags_name"'])
 			.from(`(${subQuery.getQuery()})`, 'e')
 			.setParameters(subQuery.getParameters())
-			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e."annotation.id"')
+			.leftJoin(AnnotationTagMapping, 'atm', 'atm.annotationId = e.annotation_id')
 			.leftJoin(AnnotationTagEntity, 'ate', 'ate.id = atm.tagId');
 	}
 
