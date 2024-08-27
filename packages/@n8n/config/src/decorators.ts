@@ -49,9 +49,9 @@ export const Config: ClassDecorator = (ConfigClass: Class) => {
 						config[key] = parsed;
 					}
 				} else if (type === Boolean) {
-					if (['true', 'TRUE', '1'].includes(value)) {
+					if (['true', '1'].includes(value.toLowerCase())) {
 						config[key] = true;
-					} else if (['false', 'FALSE', '0'].includes(value)) {
+					} else if (['false', '0'].includes(value.toLowerCase())) {
 						config[key] = false;
 					} else {
 						console.warn(`Invalid boolean value for ${envName}: ${value}`);
