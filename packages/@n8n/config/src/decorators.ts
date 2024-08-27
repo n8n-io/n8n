@@ -6,7 +6,7 @@ import { Container, Service } from 'typedi';
 type Class = Function;
 type Constructable<T = unknown> = new (rawValue: string) => T;
 type PropertyKey = string | symbol;
-type PropertyType = typeof Number | typeof Boolean | typeof String | Class;
+type PropertyType = number | boolean | string | Class;
 interface PropertyMetadata {
 	type: PropertyType;
 	envName?: string;
