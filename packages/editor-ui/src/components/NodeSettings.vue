@@ -110,7 +110,10 @@ const nodeValues = ref<INodeParameters>({
 	notes: '',
 	parameters: {},
 });
+
+// Used to prevent nodeValues from being overwritten by defaults on reopening ndv
 const nodeValuesInitialized = ref(false);
+
 const hiddenIssuesInputs = ref<string[]>([]);
 const nodeSettings = ref<INodeProperties[]>([]);
 const subConnections = ref<InstanceType<typeof NDVSubConnections> | null>(null);
