@@ -174,13 +174,11 @@ export default defineComponent({
 					<span class="add-tag-wrapper">
 						<n8n-button
 							class="add-tag"
-							v-bind="{
-								label: `+ ` + $locale.baseText('executionAnnotationView.addTag'),
-								type: 'secondary',
-								size: 'mini',
-								outline: false,
-								text: true,
-							}"
+							:label="`+ ` + $locale.baseText('executionAnnotationView.addTag')"
+							type="secondary"
+							size="mini"
+							:outline="false"
+							:text="true"
 							@click="onTagsEditEnable"
 						/>
 					</span>
