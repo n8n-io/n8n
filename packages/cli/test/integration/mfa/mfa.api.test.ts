@@ -3,8 +3,8 @@ import { randomInt, randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import type { User } from '@/databases/entities/User';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 
 import * as testDb from '../shared/testDb';

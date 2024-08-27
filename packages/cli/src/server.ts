@@ -37,27 +37,27 @@ import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
-import '@/controllers/activeWorkflows.controller';
+import '@/controllers/active-workflows.controller';
 import '@/controllers/auth.controller';
-import '@/controllers/binaryData.controller';
+import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
-import '@/controllers/aiAssistant.controller';
-import '@/controllers/dynamicNodeParameters.controller';
+import '@/controllers/ai-assistant.controller';
+import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
-import '@/controllers/nodeTypes.controller';
-import '@/controllers/oauth/oAuth1Credential.controller';
-import '@/controllers/oauth/oAuth2Credential.controller';
+import '@/controllers/node-types.controller';
+import '@/controllers/oauth/oauth1-credential.controller';
+import '@/controllers/oauth/oauth2-credential.controller';
 import '@/controllers/orchestration.controller';
 import '@/controllers/owner.controller';
-import '@/controllers/passwordReset.controller';
+import '@/controllers/password-reset.controller';
 import '@/controllers/project.controller';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
 import '@/controllers/users.controller';
-import '@/controllers/userSettings.controller';
-import '@/controllers/workflowStatistics.controller';
+import '@/controllers/user-settings.controller';
+import '@/controllers/workflow-statistics.controller';
 import '@/credentials/credentials.controller';
 import '@/eventbus/eventBus.controller';
 import '@/executions/executions.controller';
@@ -121,7 +121,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/communityPackages.controller');
+			await import('@/controllers/community-packages.controller');
 		}
 
 		if (inE2ETests) {

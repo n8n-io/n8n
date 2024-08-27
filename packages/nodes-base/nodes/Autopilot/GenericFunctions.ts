@@ -19,16 +19,14 @@ export async function autopilotApiRequest(
 	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('autopilotApi')) as IDataObject;
-
-	const apiKey = `${credentials.apiKey}`;
+	const credentials = await this.getCredentials<{ apiKey: string }>('autopilotApi');
 
 	const endpoint = 'https://api2.autopilothq.com/v1';
 
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
-			autopilotapikey: apiKey,
+			autopilotapikey: credentials.apiKey,
 		},
 		method,
 		body,

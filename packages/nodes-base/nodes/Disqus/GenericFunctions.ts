@@ -17,7 +17,7 @@ export async function disqusApiRequest(
 	body: IDataObject = {},
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('disqusApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ accessToken: string }>('disqusApi');
 	qs.api_key = credentials.accessToken;
 
 	// Convert to query string into a format the API can read

@@ -4,8 +4,8 @@ import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
-import { Project } from '../entities/Project';
-import { ProjectRelation } from '../entities/ProjectRelation';
+import { Project } from '../entities/project';
+import { ProjectRelation } from '../entities/project-relation';
 
 @Service()
 export class UserRepository extends Repository<User> {

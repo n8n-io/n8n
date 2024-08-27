@@ -3,10 +3,10 @@ import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/User';
 import { CredentialsHelper } from '@/credentials-helper';
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
+import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 
 import { createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';

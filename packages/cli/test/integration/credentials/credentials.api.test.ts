@@ -5,11 +5,11 @@ import { Credentials } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import type { Project } from '@db/entities/Project';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { User } from '@/databases/entities/User';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/project';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
 import * as testDb from '../shared/testDb';
 import { setupTestServer } from '../shared/utils';

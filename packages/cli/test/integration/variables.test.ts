@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 
-import type { Variables } from '@db/entities/Variables';
-import { VariablesRepository } from '@db/repositories/variables.repository';
-import { generateNanoId } from '@db/utils/generators';
+import type { Variables } from '@/databases/entities/Variables';
+import { VariablesRepository } from '@/databases/repositories/variables.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 
 import * as testDb from './shared/testDb';
