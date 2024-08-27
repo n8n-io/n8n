@@ -364,7 +364,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	function addFeedbackAssistantMessage() {
-		const id = getRandomId()
+		const id = getRandomId();
 		chatMessages.value.push({
 			id,
 			role: 'assistant',
