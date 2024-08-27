@@ -225,7 +225,7 @@ export default defineComponent({
 	z-index: 1;
 	display: flex;
 	flex-direction: column;
-	overflow: scroll;
+	overflow: auto;
 }
 
 .section {
