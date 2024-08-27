@@ -584,7 +584,7 @@ export class Workflow {
 	 */
 	getHighestNode(
 		nodeName: string,
-		type: NodeConnectionTypes = 'main',
+		type: NodeConnectionTypes = NodeConnectionType.Main,
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -664,7 +664,7 @@ export class Workflow {
 	 */
 	getChildNodes(
 		nodeName: string,
-		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -678,7 +678,7 @@ export class Workflow {
 	 */
 	getParentNodes(
 		nodeName: string,
-		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		type: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
 		depth = -1,
 	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -694,7 +694,7 @@ export class Workflow {
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		connectionType: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		connectionType: NodeConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionType.Main,
 		depth = -1,
 		checkedNodesIncoming?: string[],
 	): string[] {
@@ -715,7 +715,7 @@ export class Workflow {
 			types = Object.keys(connections[nodeName]) as NodeConnectionTypes[];
 		} else if (connectionType === 'ALL_NON_MAIN') {
 			types = Object.keys(connections[nodeName]).filter(
-				(type) => type !== 'main',
+				(type) => type !== NodeConnectionType.Main,
 			) as NodeConnectionTypes[];
 		} else {
 			types = [connectionType];
@@ -800,7 +800,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type: NodeConnectionTypes = 'main';
+		const type: NodeConnectionTypes = NodeConnectionType.Main;
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -907,7 +907,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type: NodeConnectionTypes = 'main',
+		type: NodeConnectionTypes = NodeConnectionType.Main,
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {

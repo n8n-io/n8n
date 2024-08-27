@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IRunData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
-import { jsonParse, NodeHelpers } from 'n8n-workflow';
+import { jsonParse, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type { IUpdateInformation, TargetItem } from '@/Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
@@ -248,7 +248,7 @@ const maxInputRun = computed(() => {
 
 	const runData: IRunData | null = workflowRunData.value;
 
-	if (outputs.some((output) => output !== 'main')) {
+	if (outputs.some((output) => output !== NodeConnectionType.Main)) {
 		node = activeNode.value;
 	}
 
@@ -382,7 +382,7 @@ const onFeatureRequestClick = () => {
 			node_type: activeNode.value.type,
 			workflow_id: workflowsStore.workflowId,
 			push_ref: pushRef.value,
-			pane: 'main',
+			pane: NodeConnectionType.Main,
 			type: 'i-wish-this-node-would',
 		});
 	}
