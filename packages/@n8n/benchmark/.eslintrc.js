@@ -12,7 +12,7 @@ module.exports = {
 		project: './tsconfig.json',
 	},
 
-	ignorePatterns: ['scenarios/**'],
+	ignorePatterns: ['scenarios/**', 'scripts/**'],
 
 	rules: {
 		'n8n-local-rules/no-plain-errors': 'off',

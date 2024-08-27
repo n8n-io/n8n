@@ -7,7 +7,7 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 import config from '@/config';
 import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { RedisService } from '@/services/redis.service';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';

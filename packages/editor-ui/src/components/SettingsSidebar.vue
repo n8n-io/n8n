@@ -1,25 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
-			<template #header>
-				<div :class="$style.returnButton" data-test-id="settings-back" @click="$emit('return')">
-					<i class="mr-xs">
-						<font-awesome-icon icon="arrow-left" />
-					</i>
-					<n8n-heading size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
-				</div>
-			</template>
-			<template #menuSuffix>
-				<div :class="$style.versionContainer">
-					<n8n-link size="small" @click="onVersionClick">
-						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
-					</n8n-link>
-				</div>
-			</template>
-		</n8n-menu>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -215,6 +193,28 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
+			<template #header>
+				<div :class="$style.returnButton" data-test-id="settings-back" @click="$emit('return')">
+					<i class="mr-xs">
+						<font-awesome-icon icon="arrow-left" />
+					</i>
+					<n8n-heading size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+				</div>
+			</template>
+			<template #menuSuffix>
+				<div :class="$style.versionContainer">
+					<n8n-link size="small" @click="onVersionClick">
+						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
+					</n8n-link>
+				</div>
+			</template>
+		</n8n-menu>
+	</div>
+</template>
 
 <style lang="scss" module>
 .container {

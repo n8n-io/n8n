@@ -1,4 +1,4 @@
-import { eventNamesAll } from './EventMessageClasses';
+import { eventNamesAll } from './event-message-classes';
 import express from 'express';
 import type {
 	MessageEventBusDestinationWebhookOptions,
@@ -10,17 +10,17 @@ import { RestController, Get, Post, Delete, GlobalScope, Licensed } from '@/deco
 import { AuthenticatedRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { MessageEventBus } from './MessageEventBus/MessageEventBus';
+import { MessageEventBus } from './message-event-bus/message-event-bus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
-} from './MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+} from './message-event-bus-destination/message-event-bus-destination-sentry.ee';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
-} from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
+} from './message-event-bus-destination/message-event-bus-destination-syslog.ee';
+import { MessageEventBusDestinationWebhook } from './message-event-bus-destination/message-event-bus-destination-webhook.ee';
+import type { MessageEventBusDestination } from './message-event-bus-destination/message-event-bus-destination.ee';
 
 const isWithIdString = (candidate: unknown): candidate is { id: string } => {
 	const o = candidate as { id: string };

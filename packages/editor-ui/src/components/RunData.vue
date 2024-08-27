@@ -1,578 +1,3 @@
-<template>
-	<div :class="['run-data', $style.container]" @mouseover="activatePane">
-		<n8n-callout
-			v-if="
-				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
-			"
-			theme="secondary"
-			icon="thumbtack"
-			:class="$style.pinnedDataCallout"
-		>
-			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
-				<n8n-link
-					theme="secondary"
-					size="small"
-					underline
-					bold
-					@click.stop="onTogglePinData({ source: 'banner-link' })"
-				>
-					{{ $locale.baseText('runData.pindata.unpin') }}
-				</n8n-link>
-			</span>
-			<template #trailingContent>
-				<n8n-link
-					:to="dataPinningDocsUrl"
-					size="small"
-					theme="secondary"
-					bold
-					underline
-					@click="onClickDataPinningDocsLink"
-				>
-					{{ $locale.baseText('runData.pindata.learnMore') }}
-				</n8n-link>
-			</template>
-		</n8n-callout>
-
-		<BinaryDataDisplay
-			v-if="binaryDataDisplayData"
-			:window-visible="binaryDataDisplayVisible"
-			:display-data="binaryDataDisplayData"
-			@close="closeBinaryDataDisplay"
-		/>
-
-		<div :class="$style.header">
-			<slot name="header"></slot>
-
-			<div
-				v-show="!hasRunError"
-				:class="$style.displayModes"
-				data-test-id="run-data-pane-header"
-				@click.stop
-			>
-				<Suspense>
-					<LazyRunDataSearch
-						v-if="showIOSearch"
-						v-model="search"
-						:class="$style.search"
-						:pane-type="paneType"
-						:display-mode="displayMode"
-						:is-area-active="isPaneActive"
-						@focus="activatePane"
-					/>
-				</Suspense>
-
-				<n8n-radio-buttons
-					v-show="
-						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
-					"
-					:model-value="displayMode"
-					:options="displayModes"
-					data-test-id="ndv-run-data-display-mode"
-					@update:model-value="onDisplayModeChange"
-				/>
-
-				<n8n-icon-button
-					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
-					v-show="!editMode.enabled"
-					:title="$locale.baseText('runData.editOutput')"
-					:circle="false"
-					:disabled="node?.disabled"
-					icon="pencil-alt"
-					type="tertiary"
-					data-test-id="ndv-edit-pinned-data"
-					@click="enterEditMode({ origin: 'editIconButton' })"
-				/>
-
-				<RunDataPinButton
-					v-if="(canPinData || !!binaryData?.length) && rawInputData.length && !editMode.enabled"
-					:disabled="
-						(!rawInputData.length && !pinnedData.hasData.value) ||
-						isReadOnlyRoute ||
-						readOnlyEnv ||
-						!!binaryData?.length
-					"
-					:tooltip-contents-visibility="{
-						binaryDataTooltipContent: !!binaryData?.length,
-						pinDataDiscoveryTooltipContent:
-							isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible,
-					}"
-					:data-pinning-docs-url="dataPinningDocsUrl"
-					:pinned-data="pinnedData"
-					@toggle-pin-data="onTogglePinData({ source: 'pin-icon-click' })"
-				/>
-
-				<div v-show="editMode.enabled" :class="$style.editModeActions">
-					<n8n-button
-						type="tertiary"
-						:label="$locale.baseText('runData.editor.cancel')"
-						@click="onClickCancelEdit"
-					/>
-					<n8n-button
-						class="ml-2xs"
-						type="primary"
-						:label="$locale.baseText('runData.editor.save')"
-						@click="onClickSaveEdit"
-					/>
-				</div>
-			</div>
-		</div>
-
-		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
-			<slot name="input-select"></slot>
-		</div>
-
-		<div
-			v-if="maxRunIndex > 0 && !isInputSchemaView"
-			v-show="!editMode.enabled"
-			:class="$style.runSelector"
-		>
-			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
-
-			<n8n-select
-				:model-value="runIndex"
-				:class="$style.runSelectorInner"
-				size="small"
-				teleported
-				data-test-id="run-selector"
-				@update:model-value="onRunIndexChange"
-				@click.stop
-			>
-				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
-				<n8n-option
-					v-for="option in maxRunIndex + 1"
-					:key="option"
-					:label="getRunLabel(option)"
-					:value="option - 1"
-				></n8n-option>
-			</n8n-select>
-
-			<n8n-tooltip v-if="canLinkRuns" placement="right">
-				<template #content>
-					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
-				</template>
-				<n8n-icon-button
-					:icon="linkedRuns ? 'unlink' : 'link'"
-					class="linkRun"
-					text
-					type="tertiary"
-					size="small"
-					data-test-id="link-run"
-					@click="toggleLinkRuns"
-				/>
-			</n8n-tooltip>
-
-			<slot name="run-info"></slot>
-		</div>
-
-		<slot v-if="!isInputSchemaView" name="before-data" />
-
-		<n8n-callout
-			v-for="hint in getNodeHints()"
-			:key="hint.message"
-			:class="$style.hintCallout"
-			:theme="hint.type || 'info'"
-		>
-			<n8n-text size="small" v-html="hint.message"></n8n-text>
-		</n8n-callout>
-
-		<div
-			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
-			:class="$style.outputs"
-			data-test-id="branches"
-		>
-			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
-
-			<div :class="$style.tabs">
-				<n8n-tabs
-					:model-value="currentOutputIndex"
-					:options="branches"
-					@update:model-value="onBranchChange"
-				/>
-			</div>
-		</div>
-
-		<div
-			v-else-if="
-				!hasRunError &&
-				hasNodeRun &&
-				((dataCount > 0 && maxRunIndex === 0) || search) &&
-				!isArtificialRecoveredEventItem &&
-				!isInputSchemaView
-			"
-			v-show="!editMode.enabled && !hasRunError"
-			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
-			data-test-id="ndv-items-count"
-		>
-			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
-
-			<n8n-text v-if="search" :class="$style.itemsText">
-				{{
-					$locale.baseText('ndv.search.items', {
-						adjustToNumber: unfilteredDataCount,
-						interpolate: { matched: dataCount, total: unfilteredDataCount },
-					})
-				}}
-			</n8n-text>
-			<n8n-text v-else :class="$style.itemsText">
-				{{
-					$locale.baseText('ndv.output.items', {
-						adjustToNumber: dataCount,
-						interpolate: { count: dataCount },
-					})
-				}}
-			</n8n-text>
-		</div>
-
-		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
-			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
-				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
-				<n8n-text>{{ executingMessage }}</n8n-text>
-			</div>
-
-			<div v-else-if="editMode.enabled" :class="$style.editMode">
-				<div :class="[$style.editModeBody, 'ignore-key-press']">
-					<JsonEditor
-						:model-value="editMode.value"
-						:fill-parent="true"
-						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
-					/>
-				</div>
-				<div :class="$style.editModeFooter">
-					<n8n-info-tip :bold="false" :class="$style.editModeFooterInfotip">
-						{{ $locale.baseText('runData.editor.copyDataInfo') }}
-						<n8n-link :to="dataEditingDocsUrl" size="small">
-							{{ $locale.baseText('generic.learnMore') }}
-						</n8n-link>
-					</n8n-info-tip>
-				</div>
-			</div>
-
-			<div
-				v-else-if="paneType === 'output' && hasSubworkflowExecutionError"
-				:class="$style.stretchVertically"
-			>
-				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
-			</div>
-
-			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
-				<slot name="node-not-run"></slot>
-			</div>
-
-			<div
-				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
-				:class="$style.center"
-			>
-				<n8n-text>
-					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
-					<n8n-link @click="enableNode">
-						{{ $locale.baseText('ndv.input.disabled.cta') }}
-					</n8n-link>
-				</n8n-text>
-			</div>
-
-			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
-				<slot name="recovered-artificial-output-data"></slot>
-			</div>
-
-			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
-				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
-					{{
-						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
-							interpolate: { nodeName: node?.name ?? '' },
-						})
-					}}
-				</n8n-text>
-				<div v-else-if="$slots['content']">
-					<NodeErrorView
-						v-if="workflowRunErrorAsNodeError"
-						:error="workflowRunErrorAsNodeError"
-						:class="$style.inlineError"
-						compact
-					/>
-					<slot name="content"></slot>
-				</div>
-				<NodeErrorView
-					v-else-if="workflowRunErrorAsNodeError"
-					:error="workflowRunErrorAsNodeError"
-					:class="$style.dataDisplay"
-				/>
-			</div>
-
-			<div
-				v-else-if="
-					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
-				"
-				:class="$style.center"
-			>
-				<div v-if="search">
-					<n8n-text tag="h3" size="large">{{
-						$locale.baseText('ndv.search.noMatch.title')
-					}}</n8n-text>
-					<n8n-text>
-						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
-							<template #link>
-								<a href="#" @click="onSearchClear">
-									{{ $locale.baseText('ndv.search.noMatch.description.link') }}
-								</a>
-							</template>
-						</i18n-t>
-					</n8n-text>
-				</div>
-				<n8n-text v-else>
-					{{ noDataInBranchMessage }}
-				</n8n-text>
-			</div>
-
-			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
-				<slot name="no-output-data">xxx</slot>
-			</div>
-
-			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
-				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
-				<n8n-text align="center" tag="div"
-					><span
-						v-html="
-							$locale.baseText('ndv.output.tooMuchData.message', {
-								interpolate: { size: dataSizeInMB },
-							})
-						"
-					></span
-				></n8n-text>
-
-				<n8n-button
-					outline
-					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
-					@click="showTooMuchData"
-				/>
-
-				<n8n-button
-					size="small"
-					:label="$locale.baseText('runData.downloadBinaryData')"
-					@click="downloadJsonData()"
-				/>
-			</div>
-
-			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
-			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
-
-			<div
-				v-else-if="
-					hasNodeRun &&
-					displayMode === 'table' &&
-					binaryData.length > 0 &&
-					inputData.length === 1 &&
-					Object.keys(jsonData[0] || {}).length === 0
-				"
-				:class="$style.center"
-			>
-				<n8n-text>
-					{{ $locale.baseText('runData.switchToBinary.info') }}
-					<a @click="switchToBinary">
-						{{ $locale.baseText('runData.switchToBinary.binary') }}
-					</a>
-				</n8n-text>
-			</div>
-
-			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
-				<n8n-text tag="h3" size="large">{{
-					$locale.baseText('ndv.search.noMatch.title')
-				}}</n8n-text>
-				<n8n-text>
-					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
-						<template #link>
-							<a href="#" @click="onSearchClear">
-								{{ $locale.baseText('ndv.search.noMatch.description.link') }}
-							</a>
-						</template>
-					</i18n-t>
-				</n8n-text>
-			</div>
-
-			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
-				<LazyRunDataTable
-					:node="node"
-					:input-data="inputDataPage"
-					:mapping-enabled="mappingEnabled"
-					:distance-from-active="distanceFromActive"
-					:run-index="runIndex"
-					:page-offset="currentPageOffset"
-					:total-runs="maxRunIndex"
-					:has-default-hover-state="paneType === 'input' && !search"
-					:search="search"
-					@mounted="$emit('tableMounted', $event)"
-					@active-row-changed="onItemHover"
-					@display-mode-change="onDisplayModeChange"
-				/>
-			</Suspense>
-
-			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
-				<LazyRunDataJson
-					:pane-type="paneType"
-					:edit-mode="editMode"
-					:push-ref="pushRef"
-					:node="node"
-					:input-data="inputDataPage"
-					:mapping-enabled="mappingEnabled"
-					:distance-from-active="distanceFromActive"
-					:run-index="runIndex"
-					:total-runs="maxRunIndex"
-					:search="search"
-				/>
-			</Suspense>
-
-			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<LazyRunDataHtml :input-html="inputHtml" />
-			</Suspense>
-
-			<Suspense v-else-if="hasNodeRun && isSchemaView">
-				<LazyRunDataSchema
-					:nodes="nodes"
-					:mapping-enabled="mappingEnabled"
-					:node="node"
-					:data="jsonData"
-					:pane-type="paneType"
-					:connection-type="connectionType"
-					:run-index="runIndex"
-					:output-index="currentOutputIndex"
-					:total-runs="maxRunIndex"
-					:search="search"
-					:class="$style.schema"
-					@clear:search="onSearchClear"
-				/>
-			</Suspense>
-
-			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
-				<n8n-text align="center" tag="div">{{
-					$locale.baseText('runData.noBinaryDataFound')
-				}}</n8n-text>
-			</div>
-
-			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
-				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
-					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
-						<div>
-							{{ index + 1 }}
-						</div>
-					</div>
-
-					<div :class="$style.binaryRow">
-						<div
-							v-for="(binaryData, key) in binaryDataEntry"
-							:key="index + '_' + key"
-							:class="$style.binaryCell"
-						>
-							<div :data-test-id="'ndv-binary-data_' + index">
-								<div :class="$style.binaryHeader">
-									{{ key }}
-								</div>
-								<div v-if="binaryData.fileName">
-									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileName') }}:
-										</n8n-text>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
-								</div>
-								<div v-if="binaryData.directory">
-									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.directory') }}:
-										</n8n-text>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
-								</div>
-								<div v-if="binaryData.fileExtension">
-									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
-										>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
-								</div>
-								<div v-if="binaryData.mimeType">
-									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.mimeType') }}:
-										</n8n-text>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
-								</div>
-								<div v-if="binaryData.fileSize">
-									<div>
-										<n8n-text size="small" :bold="true"
-											>{{ $locale.baseText('runData.fileSize') }}:
-										</n8n-text>
-									</div>
-									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
-								</div>
-
-								<div :class="$style.binaryButtonContainer">
-									<n8n-button
-										v-if="isViewable(index, key)"
-										size="small"
-										:label="$locale.baseText('runData.showBinaryData')"
-										data-test-id="ndv-view-binary-data"
-										@click="displayBinaryData(index, key)"
-									/>
-									<n8n-button
-										v-if="isDownloadable(index, key)"
-										size="small"
-										type="secondary"
-										:label="$locale.baseText('runData.downloadBinaryData')"
-										data-test-id="ndv-download-binary-data"
-										@click="downloadBinaryData(index, key)"
-									/>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div
-			v-if="
-				hasNodeRun &&
-				!hasRunError &&
-				binaryData.length === 0 &&
-				dataCount > pageSize &&
-				!isSchemaView &&
-				!isArtificialRecoveredEventItem
-			"
-			v-show="!editMode.enabled"
-			:class="$style.pagination"
-			data-test-id="ndv-data-pagination"
-		>
-			<el-pagination
-				background
-				:hide-on-single-page="true"
-				:current-page="currentPage"
-				:pager-count="5"
-				:page-size="pageSize"
-				layout="prev, pager, next"
-				:total="dataCount"
-				@update:current-page="onCurrentPageChange"
-			>
-			</el-pagination>
-
-			<div :class="$style.pageSizeSelector">
-				<n8n-select
-					size="mini"
-					:model-value="pageSize"
-					teleported
-					@update:model-value="onPageSizeChange"
-				>
-					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
-					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
-					</n8n-option>
-					<n8n-option :label="$locale.baseText('ndv.output.all')" :value="dataCount"> </n8n-option>
-				</n8n-select>
-			</div>
-		</div>
-		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
-	</div>
-</template>
-
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, toRef } from 'vue';
 import type { PropType } from 'vue';
@@ -1710,6 +1135,581 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="['run-data', $style.container]" @mouseover="activatePane">
+		<n8n-callout
+			v-if="
+				canPinData && pinnedData.hasData.value && !editMode.enabled && !isProductionExecutionPreview
+			"
+			theme="secondary"
+			icon="thumbtack"
+			:class="$style.pinnedDataCallout"
+		>
+			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
+			<span v-if="!isReadOnlyRoute && !readOnlyEnv" class="ml-4xs">
+				<n8n-link
+					theme="secondary"
+					size="small"
+					underline
+					bold
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
+				>
+					{{ $locale.baseText('runData.pindata.unpin') }}
+				</n8n-link>
+			</span>
+			<template #trailingContent>
+				<n8n-link
+					:to="dataPinningDocsUrl"
+					size="small"
+					theme="secondary"
+					bold
+					underline
+					@click="onClickDataPinningDocsLink"
+				>
+					{{ $locale.baseText('runData.pindata.learnMore') }}
+				</n8n-link>
+			</template>
+		</n8n-callout>
+
+		<BinaryDataDisplay
+			v-if="binaryDataDisplayData"
+			:window-visible="binaryDataDisplayVisible"
+			:display-data="binaryDataDisplayData"
+			@close="closeBinaryDataDisplay"
+		/>
+
+		<div :class="$style.header">
+			<slot name="header"></slot>
+
+			<div
+				v-show="!hasRunError"
+				:class="$style.displayModes"
+				data-test-id="run-data-pane-header"
+				@click.stop
+			>
+				<Suspense>
+					<LazyRunDataSearch
+						v-if="showIOSearch"
+						v-model="search"
+						:class="$style.search"
+						:pane-type="paneType"
+						:display-mode="displayMode"
+						:is-area-active="isPaneActive"
+						@focus="activatePane"
+					/>
+				</Suspense>
+
+				<n8n-radio-buttons
+					v-show="
+						hasNodeRun && (inputData.length || binaryData.length || search) && !editMode.enabled
+					"
+					:model-value="displayMode"
+					:options="displayModes"
+					data-test-id="ndv-run-data-display-mode"
+					@update:model-value="onDisplayModeChange"
+				/>
+
+				<n8n-icon-button
+					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
+					v-show="!editMode.enabled"
+					:title="$locale.baseText('runData.editOutput')"
+					:circle="false"
+					:disabled="node?.disabled"
+					icon="pencil-alt"
+					type="tertiary"
+					data-test-id="ndv-edit-pinned-data"
+					@click="enterEditMode({ origin: 'editIconButton' })"
+				/>
+
+				<RunDataPinButton
+					v-if="(canPinData || !!binaryData?.length) && rawInputData.length && !editMode.enabled"
+					:disabled="
+						(!rawInputData.length && !pinnedData.hasData.value) ||
+						isReadOnlyRoute ||
+						readOnlyEnv ||
+						!!binaryData?.length
+					"
+					:tooltip-contents-visibility="{
+						binaryDataTooltipContent: !!binaryData?.length,
+						pinDataDiscoveryTooltipContent:
+							isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible,
+					}"
+					:data-pinning-docs-url="dataPinningDocsUrl"
+					:pinned-data="pinnedData"
+					@toggle-pin-data="onTogglePinData({ source: 'pin-icon-click' })"
+				/>
+
+				<div v-show="editMode.enabled" :class="$style.editModeActions">
+					<n8n-button
+						type="tertiary"
+						:label="$locale.baseText('runData.editor.cancel')"
+						@click="onClickCancelEdit"
+					/>
+					<n8n-button
+						class="ml-2xs"
+						type="primary"
+						:label="$locale.baseText('runData.editor.save')"
+						@click="onClickSaveEdit"
+					/>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="inputSelectLocation === 'header'" :class="$style.inputSelect">
+			<slot name="input-select"></slot>
+		</div>
+
+		<div
+			v-if="maxRunIndex > 0 && !isInputSchemaView"
+			v-show="!editMode.enabled"
+			:class="$style.runSelector"
+		>
+			<slot v-if="inputSelectLocation === 'runs'" name="input-select"></slot>
+
+			<n8n-select
+				:model-value="runIndex"
+				:class="$style.runSelectorInner"
+				size="small"
+				teleported
+				data-test-id="run-selector"
+				@update:model-value="onRunIndexChange"
+				@click.stop
+			>
+				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
+				<n8n-option
+					v-for="option in maxRunIndex + 1"
+					:key="option"
+					:label="getRunLabel(option)"
+					:value="option - 1"
+				></n8n-option>
+			</n8n-select>
+
+			<n8n-tooltip v-if="canLinkRuns" placement="right">
+				<template #content>
+					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+				</template>
+				<n8n-icon-button
+					:icon="linkedRuns ? 'unlink' : 'link'"
+					class="linkRun"
+					text
+					type="tertiary"
+					size="small"
+					data-test-id="link-run"
+					@click="toggleLinkRuns"
+				/>
+			</n8n-tooltip>
+
+			<slot name="run-info"></slot>
+		</div>
+
+		<slot v-if="!isInputSchemaView" name="before-data" />
+
+		<n8n-callout
+			v-for="hint in getNodeHints()"
+			:key="hint.message"
+			:class="$style.hintCallout"
+			:theme="hint.type || 'info'"
+		>
+			<n8n-text size="small" v-html="hint.message"></n8n-text>
+		</n8n-callout>
+
+		<div
+			v-if="maxOutputIndex > 0 && branches.length > 1 && !isInputSchemaView"
+			:class="$style.outputs"
+			data-test-id="branches"
+		>
+			<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
+
+			<div :class="$style.tabs">
+				<n8n-tabs
+					:model-value="currentOutputIndex"
+					:options="branches"
+					@update:model-value="onBranchChange"
+				/>
+			</div>
+		</div>
+
+		<div
+			v-else-if="
+				!hasRunError &&
+				hasNodeRun &&
+				((dataCount > 0 && maxRunIndex === 0) || search) &&
+				!isArtificialRecoveredEventItem &&
+				!isInputSchemaView
+			"
+			v-show="!editMode.enabled && !hasRunError"
+			:class="[$style.itemsCount, { [$style.muted]: paneType === 'input' && maxRunIndex === 0 }]"
+			data-test-id="ndv-items-count"
+		>
+			<slot v-if="inputSelectLocation === 'items'" name="input-select"></slot>
+
+			<n8n-text v-if="search" :class="$style.itemsText">
+				{{
+					$locale.baseText('ndv.search.items', {
+						adjustToNumber: unfilteredDataCount,
+						interpolate: { matched: dataCount, total: unfilteredDataCount },
+					})
+				}}
+			</n8n-text>
+			<n8n-text v-else :class="$style.itemsText">
+				{{
+					$locale.baseText('ndv.output.items', {
+						adjustToNumber: dataCount,
+						interpolate: { count: dataCount },
+					})
+				}}
+			</n8n-text>
+		</div>
+
+		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
+			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
+				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
+				<n8n-text>{{ executingMessage }}</n8n-text>
+			</div>
+
+			<div v-else-if="editMode.enabled" :class="$style.editMode">
+				<div :class="[$style.editModeBody, 'ignore-key-press']">
+					<JsonEditor
+						:model-value="editMode.value"
+						:fill-parent="true"
+						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
+					/>
+				</div>
+				<div :class="$style.editModeFooter">
+					<n8n-info-tip :bold="false" :class="$style.editModeFooterInfotip">
+						{{ $locale.baseText('runData.editor.copyDataInfo') }}
+						<n8n-link :to="dataEditingDocsUrl" size="small">
+							{{ $locale.baseText('generic.learnMore') }}
+						</n8n-link>
+					</n8n-info-tip>
+				</div>
+			</div>
+
+			<div
+				v-else-if="paneType === 'output' && hasSubworkflowExecutionError"
+				:class="$style.stretchVertically"
+			>
+				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+			</div>
+
+			<div v-else-if="!hasNodeRun && !(isInputSchemaView && node?.disabled)" :class="$style.center">
+				<slot name="node-not-run"></slot>
+			</div>
+
+			<div
+				v-else-if="paneType === 'input' && !isInputSchemaView && node?.disabled"
+				:class="$style.center"
+			>
+				<n8n-text>
+					{{ $locale.baseText('ndv.input.disabled', { interpolate: { nodeName: node.name } }) }}
+					<n8n-link @click="enableNode">
+						{{ $locale.baseText('ndv.input.disabled.cta') }}
+					</n8n-link>
+				</n8n-text>
+			</div>
+
+			<div v-else-if="hasNodeRun && isArtificialRecoveredEventItem" :class="$style.center">
+				<slot name="recovered-artificial-output-data"></slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && hasRunError" :class="$style.stretchVertically">
+				<n8n-text v-if="isPaneTypeInput" :class="$style.center" size="large" tag="p" bold>
+					{{
+						$locale.baseText('nodeErrorView.inputPanel.previousNodeError.title', {
+							interpolate: { nodeName: node?.name ?? '' },
+						})
+					}}
+				</n8n-text>
+				<div v-else-if="$slots['content']">
+					<NodeErrorView
+						v-if="workflowRunErrorAsNodeError"
+						:error="workflowRunErrorAsNodeError"
+						:class="$style.inlineError"
+						compact
+					/>
+					<slot name="content"></slot>
+				</div>
+				<NodeErrorView
+					v-else-if="workflowRunErrorAsNodeError"
+					:error="workflowRunErrorAsNodeError"
+					:class="$style.dataDisplay"
+				/>
+			</div>
+
+			<div
+				v-else-if="
+					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
+				"
+				:class="$style.center"
+			>
+				<div v-if="search">
+					<n8n-text tag="h3" size="large">{{
+						$locale.baseText('ndv.search.noMatch.title')
+					}}</n8n-text>
+					<n8n-text>
+						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+							<template #link>
+								<a href="#" @click="onSearchClear">
+									{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+								</a>
+							</template>
+						</i18n-t>
+					</n8n-text>
+				</div>
+				<n8n-text v-else>
+					{{ noDataInBranchMessage }}
+				</n8n-text>
+			</div>
+
+			<div v-else-if="hasNodeRun && !inputData.length && !search" :class="$style.center">
+				<slot name="no-output-data">xxx</slot>
+			</div>
+
+			<div v-else-if="hasNodeRun && !showData" :class="$style.center">
+				<n8n-text :bold="true" color="text-dark" size="large">{{ tooMuchDataTitle }}</n8n-text>
+				<n8n-text align="center" tag="div"
+					><span
+						v-html="
+							$locale.baseText('ndv.output.tooMuchData.message', {
+								interpolate: { size: dataSizeInMB },
+							})
+						"
+					></span
+				></n8n-text>
+
+				<n8n-button
+					outline
+					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
+					@click="showTooMuchData"
+				/>
+
+				<n8n-button
+					size="small"
+					:label="$locale.baseText('runData.downloadBinaryData')"
+					@click="downloadJsonData()"
+				/>
+			</div>
+
+			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
+			<slot v-else-if="hasNodeRun && $slots['content']" name="content"></slot>
+
+			<div
+				v-else-if="
+					hasNodeRun &&
+					displayMode === 'table' &&
+					binaryData.length > 0 &&
+					inputData.length === 1 &&
+					Object.keys(jsonData[0] || {}).length === 0
+				"
+				:class="$style.center"
+			>
+				<n8n-text>
+					{{ $locale.baseText('runData.switchToBinary.info') }}
+					<a @click="switchToBinary">
+						{{ $locale.baseText('runData.switchToBinary.binary') }}
+					</a>
+				</n8n-text>
+			</div>
+
+			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
+				<n8n-text tag="h3" size="large">{{
+					$locale.baseText('ndv.search.noMatch.title')
+				}}</n8n-text>
+				<n8n-text>
+					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<template #link>
+							<a href="#" @click="onSearchClear">
+								{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</i18n-t>
+				</n8n-text>
+			</div>
+
+			<Suspense v-else-if="hasNodeRun && displayMode === 'table' && node">
+				<LazyRunDataTable
+					:node="node"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:page-offset="currentPageOffset"
+					:total-runs="maxRunIndex"
+					:has-default-hover-state="paneType === 'input' && !search"
+					:search="search"
+					@mounted="$emit('tableMounted', $event)"
+					@active-row-changed="onItemHover"
+					@display-mode-change="onDisplayModeChange"
+				/>
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json' && node">
+				<LazyRunDataJson
+					:pane-type="paneType"
+					:edit-mode="editMode"
+					:push-ref="pushRef"
+					:node="node"
+					:input-data="inputDataPage"
+					:mapping-enabled="mappingEnabled"
+					:distance-from-active="distanceFromActive"
+					:run-index="runIndex"
+					:total-runs="maxRunIndex"
+					:search="search"
+				/>
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
+				<LazyRunDataHtml :input-html="inputHtml" />
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && isSchemaView">
+				<LazyRunDataSchema
+					:nodes="nodes"
+					:mapping-enabled="mappingEnabled"
+					:node="node"
+					:data="jsonData"
+					:pane-type="paneType"
+					:connection-type="connectionType"
+					:run-index="runIndex"
+					:output-index="currentOutputIndex"
+					:total-runs="maxRunIndex"
+					:search="search"
+					:class="$style.schema"
+					@clear:search="onSearchClear"
+				/>
+			</Suspense>
+
+			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
+				<n8n-text align="center" tag="div">{{
+					$locale.baseText('runData.noBinaryDataFound')
+				}}</n8n-text>
+			</div>
+
+			<div v-else-if="displayMode === 'binary'" :class="$style.dataDisplay">
+				<div v-for="(binaryDataEntry, index) in binaryData" :key="index">
+					<div v-if="binaryData.length > 1" :class="$style.binaryIndex">
+						<div>
+							{{ index + 1 }}
+						</div>
+					</div>
+
+					<div :class="$style.binaryRow">
+						<div
+							v-for="(binaryData, key) in binaryDataEntry"
+							:key="index + '_' + key"
+							:class="$style.binaryCell"
+						>
+							<div :data-test-id="'ndv-binary-data_' + index">
+								<div :class="$style.binaryHeader">
+									{{ key }}
+								</div>
+								<div v-if="binaryData.fileName">
+									<div>
+										<n8n-text size="small" :bold="true"
+											>{{ $locale.baseText('runData.fileName') }}:
+										</n8n-text>
+									</div>
+									<div :class="$style.binaryValue">{{ binaryData.fileName }}</div>
+								</div>
+								<div v-if="binaryData.directory">
+									<div>
+										<n8n-text size="small" :bold="true"
+											>{{ $locale.baseText('runData.directory') }}:
+										</n8n-text>
+									</div>
+									<div :class="$style.binaryValue">{{ binaryData.directory }}</div>
+								</div>
+								<div v-if="binaryData.fileExtension">
+									<div>
+										<n8n-text size="small" :bold="true"
+											>{{ $locale.baseText('runData.fileExtension') }}:</n8n-text
+										>
+									</div>
+									<div :class="$style.binaryValue">{{ binaryData.fileExtension }}</div>
+								</div>
+								<div v-if="binaryData.mimeType">
+									<div>
+										<n8n-text size="small" :bold="true"
+											>{{ $locale.baseText('runData.mimeType') }}:
+										</n8n-text>
+									</div>
+									<div :class="$style.binaryValue">{{ binaryData.mimeType }}</div>
+								</div>
+								<div v-if="binaryData.fileSize">
+									<div>
+										<n8n-text size="small" :bold="true"
+											>{{ $locale.baseText('runData.fileSize') }}:
+										</n8n-text>
+									</div>
+									<div :class="$style.binaryValue">{{ binaryData.fileSize }}</div>
+								</div>
+
+								<div :class="$style.binaryButtonContainer">
+									<n8n-button
+										v-if="isViewable(index, key)"
+										size="small"
+										:label="$locale.baseText('runData.showBinaryData')"
+										data-test-id="ndv-view-binary-data"
+										@click="displayBinaryData(index, key)"
+									/>
+									<n8n-button
+										v-if="isDownloadable(index, key)"
+										size="small"
+										type="secondary"
+										:label="$locale.baseText('runData.downloadBinaryData')"
+										data-test-id="ndv-download-binary-data"
+										@click="downloadBinaryData(index, key)"
+									/>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div
+			v-if="
+				hasNodeRun &&
+				!hasRunError &&
+				binaryData.length === 0 &&
+				dataCount > pageSize &&
+				!isSchemaView &&
+				!isArtificialRecoveredEventItem
+			"
+			v-show="!editMode.enabled"
+			:class="$style.pagination"
+			data-test-id="ndv-data-pagination"
+		>
+			<el-pagination
+				background
+				:hide-on-single-page="true"
+				:current-page="currentPage"
+				:pager-count="5"
+				:page-size="pageSize"
+				layout="prev, pager, next"
+				:total="dataCount"
+				@update:current-page="onCurrentPageChange"
+			>
+			</el-pagination>
+
+			<div :class="$style.pageSizeSelector">
+				<n8n-select
+					size="mini"
+					:model-value="pageSize"
+					teleported
+					@update:model-value="onPageSizeChange"
+				>
+					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
+					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
+					</n8n-option>
+					<n8n-option :label="$locale.baseText('ndv.output.all')" :value="dataCount"> </n8n-option>
+				</n8n-select>
+			</div>
+		</div>
+		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .infoIcon {

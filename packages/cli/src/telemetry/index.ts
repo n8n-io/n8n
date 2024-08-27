@@ -11,7 +11,7 @@ import { Logger } from '@/logger';
 import { License } from '@/license';
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
+import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';

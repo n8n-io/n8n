@@ -1,57 +1,3 @@
-<template>
-	<Modal
-		:name="PERSONALIZATION_MODAL_KEY"
-		:title="$locale.baseText('personalizationModal.customizeN8n')"
-		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
-		:center-title="true"
-		:show-close="false"
-		:event-bus="modalBus"
-		:close-on-click-modal="false"
-		:close-on-press-escape="false"
-		width="460px"
-		data-test-id="personalization-form"
-		@enter="onSave"
-	>
-		<template #content>
-			<div :class="$style.container">
-				<n8n-form-inputs
-					v-model="formValues"
-					:inputs="survey"
-					:column-view="true"
-					:event-bus="formBus"
-					:teleported="teleported"
-					tag-size="small"
-					@submit="onSubmit"
-				/>
-				<n8n-card v-if="canRegisterForEnterpriseTrial">
-					<n8n-checkbox v-model="registerForEnterpriseTrial">
-						<i18n-t keypath="personalizationModal.registerEmailForTrial">
-							<template #trial>
-								<strong>
-									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
-								</strong>
-							</template>
-						</i18n-t>
-						<n8n-text size="small" tag="div" color="text-light">
-							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
-						</n8n-text>
-					</n8n-checkbox>
-				</n8n-card>
-			</div>
-		</template>
-		<template #footer>
-			<div>
-				<n8n-button
-					:loading="isSaving"
-					:label="$locale.baseText('personalizationModal.getStarted')"
-					float="right"
-					@click="onSave"
-				/>
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -752,6 +698,60 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="PERSONALIZATION_MODAL_KEY"
+		:title="$locale.baseText('personalizationModal.customizeN8n')"
+		:subtitle="$locale.baseText('personalizationModal.theseQuestionsHelpUs')"
+		:center-title="true"
+		:show-close="false"
+		:event-bus="modalBus"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
+		width="460px"
+		data-test-id="personalization-form"
+		@enter="onSave"
+	>
+		<template #content>
+			<div :class="$style.container">
+				<n8n-form-inputs
+					v-model="formValues"
+					:inputs="survey"
+					:column-view="true"
+					:event-bus="formBus"
+					:teleported="teleported"
+					tag-size="small"
+					@submit="onSubmit"
+				/>
+				<n8n-card v-if="canRegisterForEnterpriseTrial">
+					<n8n-checkbox v-model="registerForEnterpriseTrial">
+						<i18n-t keypath="personalizationModal.registerEmailForTrial">
+							<template #trial>
+								<strong>
+									{{ $locale.baseText('personalizationModal.registerEmailForTrial.enterprise') }}
+								</strong>
+							</template>
+						</i18n-t>
+						<n8n-text size="small" tag="div" color="text-light">
+							{{ $locale.baseText('personalizationModal.registerEmailForTrial.notice') }}
+						</n8n-text>
+					</n8n-checkbox>
+				</n8n-card>
+			</div>
+		</template>
+		<template #footer>
+			<div>
+				<n8n-button
+					:loading="isSaving"
+					:label="$locale.baseText('personalizationModal.getStarted')"
+					float="right"
+					@click="onSave"
+				/>
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .container {

@@ -1,79 +1,3 @@
-<template>
-	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
-		<Suspense>
-			<LazyRunDataJsonActions
-				v-if="!editMode.enabled"
-				:node="node"
-				:push-ref="pushRef"
-				:display-mode="displayMode"
-				:distance-from-active="distanceFromActive"
-				:selected-json-path="selectedJsonPath"
-				:json-data="jsonData"
-				:pane-type="paneType"
-			/>
-		</Suspense>
-		<Draggable
-			type="mapping"
-			target-data-key="mappable"
-			:disabled="!mappingEnabled"
-			@dragstart="onDragStart"
-			@dragend="onDragEnd"
-		>
-			<template #preview="{ canDrop, el }">
-				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
-			</template>
-			<VueJsonPretty
-				:data="jsonData"
-				:deep="10"
-				:show-length="true"
-				:selected-value="selectedJsonPath"
-				root-path=""
-				selectable-type="single"
-				class="json-data"
-				@update:selected-value="selectedJsonPath = $event"
-			>
-				<template #renderNodeKey="{ node }">
-					<TextWithHighlights
-						:content="getContent(node.key)"
-						:search="search"
-						data-target="mappable"
-						:data-value="getJsonParameterPath(node.path)"
-						:data-name="node.key"
-						:data-path="node.path"
-						:data-depth="node.level"
-						:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-					/>
-				</template>
-				<template #renderNodeValue="{ node }">
-					<TextWithHighlights
-						v-if="isNaN(node.index)"
-						:content="getContent(node.content)"
-						:search="search"
-					/>
-					<TextWithHighlights
-						v-else
-						:content="getContent(node.content)"
-						:search="search"
-						data-target="mappable"
-						:data-value="getJsonParameterPath(node.path)"
-						:data-name="getListItemName(node.path)"
-						:data-path="node.path"
-						:data-depth="node.level"
-						:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-						class="ph-no-capture"
-					/>
-				</template>
-			</VueJsonPretty>
-		</Draggable>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import type { PropType } from 'vue';
@@ -221,6 +145,82 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
+		<Suspense>
+			<LazyRunDataJsonActions
+				v-if="!editMode.enabled"
+				:node="node"
+				:push-ref="pushRef"
+				:display-mode="displayMode"
+				:distance-from-active="distanceFromActive"
+				:selected-json-path="selectedJsonPath"
+				:json-data="jsonData"
+				:pane-type="paneType"
+			/>
+		</Suspense>
+		<Draggable
+			type="mapping"
+			target-data-key="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+		>
+			<template #preview="{ canDrop, el }">
+				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
+			</template>
+			<VueJsonPretty
+				:data="jsonData"
+				:deep="10"
+				:show-length="true"
+				:selected-value="selectedJsonPath"
+				root-path=""
+				selectable-type="single"
+				class="json-data"
+				@update:selected-value="selectedJsonPath = $event"
+			>
+				<template #renderNodeKey="{ node }">
+					<TextWithHighlights
+						:content="getContent(node.key)"
+						:search="search"
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="node.key"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+					/>
+				</template>
+				<template #renderNodeValue="{ node }">
+					<TextWithHighlights
+						v-if="isNaN(node.index)"
+						:content="getContent(node.content)"
+						:search="search"
+					/>
+					<TextWithHighlights
+						v-else
+						:content="getContent(node.content)"
+						:search="search"
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="getListItemName(node.path)"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						class="ph-no-capture"
+					/>
+				</template>
+			</VueJsonPretty>
+		</Draggable>
+	</div>
+</template>
 
 <style lang="scss" module>
 .jsonDisplay {

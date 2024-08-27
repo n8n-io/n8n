@@ -1,0 +1,69 @@
+name: Run Nightly Benchmark
+run-name: Benchmark ${{ inputs.n8n_tag }}
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Use debug logging'
+        required: true
+        default: 'false'
+      n8n_tag:
+        description: 'Name of the n8n docker tag to run the benchmark against.'
+        required: true
+        default: 'nightly'
+      benchmark_tag:
+        description: 'Name of the benchmark cli docker tag to run the benchmark with.'
+        required: true
+        default: 'latest'
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
+  K6_API_TOKEN: ${{ secrets.K6_API_TOKEN }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: benchmarking
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.8.5'
+
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Azure login
+        uses: azure/login@v2.1.1
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Run the benchmark with debug logging
+        if: github.event.inputs.debug == 'true'
+        run: pnpm run-in-cloud sqlite --debug
+        working-directory: packages/@n8n/benchmark
+
+      - name: Run the benchmark
+        if: github.event.inputs.debug != 'true'
+        run: pnpm run-in-cloud sqlite
+        working-directory: packages/@n8n/benchmark

@@ -1,66 +1,3 @@
-<template>
-	<ResourcesListLayout
-		ref="layout"
-		resource-key="credentials"
-		:resources="allCredentials"
-		:initialize="initialize"
-		:filters="filters"
-		:additional-filters-handler="onFilter"
-		:type-props="{ itemSize: 77 }"
-		:loading="loading"
-		:disabled="readOnlyEnv || !projectPermissions.credential.create"
-		@click:add="addCredential"
-		@update:filters="filters = $event"
-	>
-		<template #header>
-			<ProjectTabs />
-		</template>
-		<template #add-button="{ disabled }">
-			<div>
-				<n8n-button
-					size="large"
-					block
-					:disabled="disabled"
-					data-test-id="resources-list-add"
-					@click="addCredential"
-				>
-					{{ addCredentialButtonText }}
-				</n8n-button>
-			</div>
-		</template>
-		<template #default="{ data }">
-			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
-		</template>
-		<template #filters="{ setKeyValue }">
-			<div class="mb-s">
-				<n8n-input-label
-					:label="$locale.baseText('credentials.filters.type')"
-					:bold="false"
-					size="small"
-					color="text-base"
-					class="mb-3xs"
-				/>
-				<n8n-select
-					ref="typeInput"
-					:model-value="filters.type"
-					size="medium"
-					multiple
-					filterable
-					:class="$style['type-input']"
-					@update:model-value="setKeyValue('type', $event)"
-				>
-					<n8n-option
-						v-for="credentialType in allCredentialTypes"
-						:key="credentialType.name"
-						:value="credentialType.name"
-						:label="credentialType.displayName"
-					/>
-				</n8n-select>
-			</div>
-		</template>
-	</ResourcesListLayout>
-</template>
-
 <script lang="ts">
 import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
 import { defineComponent } from 'vue';
@@ -210,6 +147,69 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<ResourcesListLayout
+		ref="layout"
+		resource-key="credentials"
+		:resources="allCredentials"
+		:initialize="initialize"
+		:filters="filters"
+		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 77 }"
+		:loading="loading"
+		:disabled="readOnlyEnv || !projectPermissions.credential.create"
+		@click:add="addCredential"
+		@update:filters="filters = $event"
+	>
+		<template #header>
+			<ProjectTabs />
+		</template>
+		<template #add-button="{ disabled }">
+			<div>
+				<n8n-button
+					size="large"
+					block
+					:disabled="disabled"
+					data-test-id="resources-list-add"
+					@click="addCredential"
+				>
+					{{ addCredentialButtonText }}
+				</n8n-button>
+			</div>
+		</template>
+		<template #default="{ data }">
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+		</template>
+		<template #filters="{ setKeyValue }">
+			<div class="mb-s">
+				<n8n-input-label
+					:label="$locale.baseText('credentials.filters.type')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<n8n-select
+					ref="typeInput"
+					:model-value="filters.type"
+					size="medium"
+					multiple
+					filterable
+					:class="$style['type-input']"
+					@update:model-value="setKeyValue('type', $event)"
+				>
+					<n8n-option
+						v-for="credentialType in allCredentialTypes"
+						:key="credentialType.name"
+						:value="credentialType.name"
+						:label="credentialType.displayName"
+					/>
+				</n8n-select>
+			</div>
+		</template>
+	</ResourcesListLayout>
+</template>
 
 <style lang="scss" module>
 .type-input {

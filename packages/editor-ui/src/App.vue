@@ -1,3 +1,54 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import LoadingView from '@/views/LoadingView.vue';
+import BannerStack from '@/components/banners/BannerStack.vue';
+import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
+import Modals from '@/components/Modals.vue';
+import Telemetry from '@/components/Telemetry.vue';
+import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
+import { loadLanguage } from '@/plugins/i18n';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { HIRING_BANNER, VIEWS } from '@/constants';
+import { useRootStore } from '@/stores/root.store';
+import { useAssistantStore } from './stores/assistant.store';
+import { useUIStore } from './stores/ui.store';
+import { useUsersStore } from './stores/users.store';
+import { useSettingsStore } from './stores/settings.store';
+import { useHistoryHelper } from '@/composables/useHistoryHelper';
+
+const route = useRoute();
+const rootStore = useRootStore();
+const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+
+// Initialize undo/redo
+useHistoryHelper(route);
+
+const loading = ref(true);
+const defaultLocale = computed(() => rootStore.defaultLocale);
+const isDemoMode = computed(() => route.name === VIEWS.DEMO);
+const showAssistantButton = computed(() => assistantStore.canShowAssistantButtons);
+
+watch(defaultLocale, (newLocale) => {
+	void loadLanguage(newLocale);
+});
+
+const logHiringBanner = () => {
+	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
+		console.log(HIRING_BANNER);
+	}
+};
+
+onMounted(async () => {
+	logHiringBanner();
+	void useExternalHooks().run('app.mount');
+	loading.value = false;
+});
+</script>
+
 <template>
 	<div :class="[$style.app, 'root-container']">
 		<LoadingView v-if="loading" />
@@ -33,101 +84,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import BannerStack from '@/components/banners/BannerStack.vue';
-import Modals from '@/components/Modals.vue';
-import LoadingView from '@/views/LoadingView.vue';
-import Telemetry from '@/components/Telemetry.vue';
-import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
-import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
-import { HIRING_BANNER, VIEWS } from '@/constants';
-
-import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useToast } from '@/composables/useToast';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useRootStore } from '@/stores/root.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsageStore } from '@/stores/usage.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useHistoryHelper } from '@/composables/useHistoryHelper';
-import { useRoute } from 'vue-router';
-import { useAssistantStore } from './stores/assistant.store';
-
-export default defineComponent({
-	name: 'App',
-	components: {
-		BannerStack,
-		LoadingView,
-		Telemetry,
-		Modals,
-		AskAssistantChat,
-		AskAssistantFloatingButton,
-	},
-	setup() {
-		return {
-			...useGlobalLinkActions(),
-			...useHistoryHelper(useRoute()),
-			...useToast(),
-			externalHooks: useExternalHooks(),
-		};
-	},
-	computed: {
-		...mapStores(
-			useAssistantStore,
-			useNodeTypesStore,
-			useRootStore,
-			useSettingsStore,
-			useTemplatesStore,
-			useUIStore,
-			useUsersStore,
-			useSourceControlStore,
-			useCloudPlanStore,
-			useUsageStore,
-		),
-		defaultLocale(): string {
-			return this.rootStore.defaultLocale;
-		},
-		isDemoMode(): boolean {
-			return this.$route.name === VIEWS.DEMO;
-		},
-		showAssistantButton(): boolean {
-			return this.assistantStore.canShowAssistantButtons;
-		},
-	},
-	data() {
-		return {
-			loading: true,
-		};
-	},
-	watch: {
-		defaultLocale(newLocale) {
-			void loadLanguage(newLocale);
-		},
-	},
-	async mounted() {
-		this.logHiringBanner();
-		void useExternalHooks().run('app.mount');
-		this.loading = false;
-	},
-	methods: {
-		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER);
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .app {
