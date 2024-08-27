@@ -1,10 +1,10 @@
 import Container from 'typedi';
-import type { ExecutionData } from '@db/entities/ExecutionData';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { ExecutionData } from '@/databases/entities/execution-data';
+import type { ExecutionEntity } from '@db/entities/execution-entity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
-import { ExecutionMetadataRepository } from '@/databases/repositories/executionMetadata.repository';
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
+import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 
 export async function createManyExecutions(
 	amount: number,

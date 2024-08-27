@@ -1,6 +1,6 @@
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import type { AuthProviderType } from '@db/entities/AuthIdentity';
+import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import Container from 'typedi';
 
 /**

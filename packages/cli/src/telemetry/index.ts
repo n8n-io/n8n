@@ -14,7 +14,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';

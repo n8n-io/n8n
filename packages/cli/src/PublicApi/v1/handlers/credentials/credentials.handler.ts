@@ -3,7 +3,7 @@ import type express from 'express';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialTypes } from '@/credential-types';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import { projectScope } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';

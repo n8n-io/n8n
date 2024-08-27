@@ -3,10 +3,10 @@ import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { User } from '@/databases/entities/User';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
-import type { Project } from '@db/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import { ProjectService } from '@/services/project.service';
 import { UserManagementMailer } from '@/user-management/email';
 

@@ -3,7 +3,7 @@ import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 

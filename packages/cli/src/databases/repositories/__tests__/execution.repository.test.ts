@@ -6,7 +6,7 @@ import { BinaryDataService } from 'n8n-core';
 import { nanoid } from 'nanoid';
 import { mock } from 'jest-mock-extended';
 
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionEntity } from '@db/entities/execution-entity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { mockInstance, mockEntityManager } from '@test/mocking';
 

@@ -14,7 +14,7 @@ import type {
 } from 'n8n-workflow';
 
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 

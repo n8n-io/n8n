@@ -1,12 +1,12 @@
 import { Container } from 'typedi';
 import * as Db from '@/Db';
-import type { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
-import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import type { User } from '@/databases/entities/User';
+import { WorkflowEntity } from '@db/entities/workflow-entity';
+import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
+import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import type { Project } from '@/databases/entities/Project';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import type { Project } from '@/databases/entities/project';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';

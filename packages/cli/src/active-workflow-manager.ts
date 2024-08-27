@@ -30,7 +30,7 @@ import type { IWorkflowDb } from '@/Interfaces';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionService } from './executions/execution.service';
 import {

@@ -6,10 +6,10 @@ import { v4 as uuid } from 'uuid';
 import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
+import type { User } from '@/databases/entities/User';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -32,7 +32,7 @@ import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { EventService } from '@/events/event.service';
 
 @Service()

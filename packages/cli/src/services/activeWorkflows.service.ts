@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 
-import type { User } from '@db/entities/User';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { User } from '@/databases/entities/User';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

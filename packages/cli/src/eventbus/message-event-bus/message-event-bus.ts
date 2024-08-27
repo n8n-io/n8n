@@ -8,7 +8,7 @@ import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
-import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
+import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';

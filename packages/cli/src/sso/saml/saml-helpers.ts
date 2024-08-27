@@ -3,10 +3,10 @@ import type { FlowResult } from 'samlify/types/src/flow';
 import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { User } from '@db/entities/User';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { AuthIdentityRepository } from '@db/repositories/auth-identity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { License } from '@/license';
