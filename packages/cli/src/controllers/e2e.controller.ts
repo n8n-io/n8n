@@ -4,7 +4,7 @@ import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { License } from '@/license';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';

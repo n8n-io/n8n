@@ -1,26 +1,3 @@
-<template>
-	<div class="progress-circle">
-		<svg class="progress-ring" :width="diameter" :height="diameter">
-			<circle
-				:class="$style.progressRingCircle"
-				:stroke-width="strokeWidth"
-				stroke="#DCDFE6"
-				fill="transparent"
-				:r="radius"
-				v-bind="{ cx, cy }"
-			/>
-			<circle
-				:class="$style.progressRingCircle"
-				stroke="#5C4EC2"
-				:stroke-width="strokeWidth"
-				fill="transparent"
-				:r="radius"
-				v-bind="{ cx, cy, style }"
-			/>
-		</svg>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 const props = withDefaults(
@@ -49,6 +26,29 @@ const style = computed(() => ({
 	strokeDashoffset: `${strokeDashoffset.value}`,
 }));
 </script>
+
+<template>
+	<div class="progress-circle">
+		<svg class="progress-ring" :width="diameter" :height="diameter">
+			<circle
+				:class="$style.progressRingCircle"
+				:stroke-width="strokeWidth"
+				stroke="#DCDFE6"
+				fill="transparent"
+				:r="radius"
+				v-bind="{ cx, cy }"
+			/>
+			<circle
+				:class="$style.progressRingCircle"
+				stroke="#5C4EC2"
+				:stroke-width="strokeWidth"
+				fill="transparent"
+				:r="radius"
+				v-bind="{ cx, cy, style }"
+			/>
+		</svg>
+	</div>
+</template>
 
 <style module>
 .progressRingCircle {

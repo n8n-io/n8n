@@ -1,7 +1,3 @@
-<template>
-	<div ref="root" :class="$style.editor" @keydown.stop></div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { Prec } from '@codemirror/state';
@@ -108,6 +104,10 @@ onMounted(() => {
 
 defineExpose({ editor });
 </script>
+
+<template>
+	<div ref="root" :class="$style.editor" @keydown.stop></div>
+</template>
 
 <style lang="scss" module>
 :global(.cm-content) {

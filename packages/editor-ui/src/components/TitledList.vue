@@ -1,3 +1,10 @@
+<script lang="ts" setup>
+defineProps<{
+	title: string;
+	items: string[];
+}>();
+</script>
+
 <template>
 	<div class="titled-list">
 		<p v-text="title" />
@@ -7,12 +14,6 @@
 	</div>
 </template>
 
-<script lang="ts" setup>
-defineProps<{
-	title: string;
-	items: string[];
-}>();
-</script>
 <style lang="scss" scoped>
 .titled-list {
 	display: flex;

@@ -10,9 +10,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
+const settingsStore = useSettingsStore();
 
 const router = useRouter();
 const route = useRoute();
@@ -20,7 +22,10 @@ const workflowHelpers = useWorkflowHelpers({ router });
 
 const { resetWorkspace } = useCanvasOperations({ router });
 
-const nodeViewVersion = useLocalStorage('NodeView.version', '1');
+const nodeViewVersion = useLocalStorage(
+	'NodeView.version',
+	settingsStore.deploymentType === 'n8n-internal' ? '2' : '1',
+);
 
 const workflowId = computed<string>(() => route.params.name as string);
 

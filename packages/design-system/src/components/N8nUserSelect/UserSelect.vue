@@ -1,35 +1,3 @@
-<template>
-	<N8nSelect
-		data-test-id="user-select-trigger"
-		v-bind="$attrs"
-		:model-value="modelValue"
-		:filterable="true"
-		:filter-method="setFilter"
-		:placeholder="placeholder || t('nds.userSelect.selectUser')"
-		:default-first-option="true"
-		teleported
-		:popper-class="$style.limitPopperWidth"
-		:no-data-text="t('nds.userSelect.noMatchingUsers')"
-		:size="size"
-		@blur="onBlur"
-		@focus="onFocus"
-	>
-		<template v-if="$slots.prefix" #prefix>
-			<slot name="prefix" />
-		</template>
-		<N8nOption
-			v-for="user in sortedUsers"
-			:key="user.id"
-			:value="user.id"
-			:class="$style.itemContainer"
-			:label="getLabel(user)"
-			:disabled="user.disabled"
-		>
-			<N8nUserInfo v-bind="user" :is-current-user="currentUserId === user.id" />
-		</N8nOption>
-	</N8nSelect>
-</template>
-
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
@@ -111,6 +79,38 @@ const onFocus = () => emit('focus');
 const getLabel = (user: IUser) =>
 	!user.fullName ? user.email : `${user.fullName} (${user.email})`;
 </script>
+
+<template>
+	<N8nSelect
+		data-test-id="user-select-trigger"
+		v-bind="$attrs"
+		:model-value="modelValue"
+		:filterable="true"
+		:filter-method="setFilter"
+		:placeholder="placeholder || t('nds.userSelect.selectUser')"
+		:default-first-option="true"
+		teleported
+		:popper-class="$style.limitPopperWidth"
+		:no-data-text="t('nds.userSelect.noMatchingUsers')"
+		:size="size"
+		@blur="onBlur"
+		@focus="onFocus"
+	>
+		<template v-if="$slots.prefix" #prefix>
+			<slot name="prefix" />
+		</template>
+		<N8nOption
+			v-for="user in sortedUsers"
+			:key="user.id"
+			:value="user.id"
+			:class="$style.itemContainer"
+			:label="getLabel(user)"
+			:disabled="user.disabled"
+		>
+			<N8nUserInfo v-bind="user" :is-current-user="currentUserId === user.id" />
+		</N8nOption>
+	</N8nSelect>
+</template>
 
 <style lang="scss" module>
 .itemContainer {

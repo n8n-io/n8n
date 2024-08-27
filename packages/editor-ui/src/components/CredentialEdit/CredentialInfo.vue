@@ -1,3 +1,23 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+import TimeAgo from '../TimeAgo.vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+export default defineComponent({
+	name: 'CredentialInfo',
+	components: {
+		TimeAgo,
+	},
+	props: ['currentCredential', 'credentialPermissions'],
+	methods: {
+		shortNodeType(nodeType: INodeTypeDescription) {
+			return this.$locale.shortNodeType(nodeType.name);
+		},
+	},
+});
+</script>
+
 <template>
 	<div :class="$style.container">
 		<el-row v-if="currentCredential">
@@ -36,26 +56,6 @@
 		</el-row>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-import TimeAgo from '../TimeAgo.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-
-export default defineComponent({
-	name: 'CredentialInfo',
-	components: {
-		TimeAgo,
-	},
-	props: ['currentCredential', 'credentialPermissions'],
-	methods: {
-		shortNodeType(nodeType: INodeTypeDescription) {
-			return this.$locale.shortNodeType(nodeType.name);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

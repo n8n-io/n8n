@@ -3,7 +3,7 @@ import { BinaryDataService } from 'n8n-core';
 import { Worker } from '@/commands/worker';
 import config from '@/config';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';

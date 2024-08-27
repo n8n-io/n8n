@@ -1,50 +1,3 @@
-<template>
-	<div :class="$style.parameterInput" data-test-id="parameter-input">
-		<ParameterInput
-			ref="param"
-			:input-size="inputSize"
-			:parameter="parameter"
-			:model-value="modelValue"
-			:path="path"
-			:is-read-only="isReadOnly"
-			:is-assignment="isAssignment"
-			:droppable="droppable"
-			:active-drop="activeDrop"
-			:force-show-expression="forceShowExpression"
-			:hide-issues="hideIssues"
-			:documentation-url="documentationUrl"
-			:error-highlight="errorHighlight"
-			:is-for-credential="isForCredential"
-			:event-source="eventSource"
-			:expression-evaluated="evaluatedExpressionValue"
-			:additional-expression-data="resolvedAdditionalExpressionData"
-			:label="label"
-			:rows="rows"
-			:data-test-id="`parameter-input-${parsedParameterName}`"
-			:event-bus="eventBus"
-			@focus="onFocus"
-			@blur="onBlur"
-			@drop="onDrop"
-			@text-input="onTextInput"
-			@update="onValueChanged"
-		/>
-		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
-			<div>
-				<InputHint
-					v-if="expressionOutput"
-					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
-					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
-					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-					:hint="expressionOutput"
-					:single-line="true"
-				/>
-				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
-			</div>
-			<slot v-if="$slots.options" name="options" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { IUpdateInformation, InputSize } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
@@ -236,6 +189,53 @@ function onTextInput(parameterData: IUpdateInformation) {
 	emit('textInput', parameterData);
 }
 </script>
+
+<template>
+	<div :class="$style.parameterInput" data-test-id="parameter-input">
+		<ParameterInput
+			ref="param"
+			:input-size="inputSize"
+			:parameter="parameter"
+			:model-value="modelValue"
+			:path="path"
+			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
+			:droppable="droppable"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="evaluatedExpressionValue"
+			:additional-expression-data="resolvedAdditionalExpressionData"
+			:label="label"
+			:rows="rows"
+			:data-test-id="`parameter-input-${parsedParameterName}`"
+			:event-bus="eventBus"
+			@focus="onFocus"
+			@blur="onBlur"
+			@drop="onDrop"
+			@text-input="onTextInput"
+			@update="onValueChanged"
+		/>
+		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
+			<div>
+				<InputHint
+					v-if="expressionOutput"
+					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
+					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
+					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+					:hint="expressionOutput"
+					:single-line="true"
+				/>
+				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
+			</div>
+			<slot v-if="$slots.options" name="options" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .parameterInput {

@@ -2,9 +2,9 @@ import { Container } from 'typedi';
 
 import type { User } from '@db/entities/User';
 import config from '@/config';
-import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
-import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
-import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
+import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
+import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
+import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
 
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';

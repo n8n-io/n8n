@@ -1,24 +1,3 @@
-<template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
-		<template #title>
-			{{ $locale.baseText('workerList.item.netListTitle') }} ({{ items.length }})
-		</template>
-		<template #content>
-			<div v-if="props.items.length > 0" :class="$style.accordionItems">
-				<div
-					v-for="item in props.items"
-					:key="item.address"
-					:class="$style.accordionItem"
-					@click="onCopyToClipboard(item.address)"
-				>
-					{{ item.family }}: <span :class="$style.clickable">{{ item.address }}</span>
-					{{ item.internal ? '(internal)' : '' }}
-				</div>
-			</div>
-		</template>
-	</WorkerAccordion>
-</template>
-
 <script setup lang="ts">
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
@@ -44,6 +23,27 @@ function onCopyToClipboard(content: string) {
 	} catch {}
 }
 </script>
+
+<template>
+	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
+		<template #title>
+			{{ $locale.baseText('workerList.item.netListTitle') }} ({{ items.length }})
+		</template>
+		<template #content>
+			<div v-if="props.items.length > 0" :class="$style.accordionItems">
+				<div
+					v-for="item in props.items"
+					:key="item.address"
+					:class="$style.accordionItem"
+					@click="onCopyToClipboard(item.address)"
+				>
+					{{ item.family }}: <span :class="$style.clickable">{{ item.address }}</span>
+					{{ item.internal ? '(internal)' : '' }}
+				</div>
+			</div>
+		</template>
+	</WorkerAccordion>
+</template>
 
 <style lang="scss" module>
 .accordionItems {

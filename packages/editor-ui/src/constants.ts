@@ -4,7 +4,11 @@ import type {
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type {
+	CanvasInjectionData,
+	CanvasNodeHandleInjectionData,
+	CanvasNodeInjectionData,
+} from '@/types';
 import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -856,6 +860,7 @@ export const INSECURE_CONNECTION_WARNING = `
  * Injection Keys
  */
 
+export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;

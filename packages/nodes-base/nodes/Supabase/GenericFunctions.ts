@@ -23,10 +23,10 @@ export async function supabaseApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('supabaseApi')) as {
+	const credentials = await this.getCredentials<{
 		host: string;
 		serviceRole: string;
-	};
+	}>('supabaseApi');
 
 	const options: IRequestOptions = {
 		headers: {
