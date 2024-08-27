@@ -1,7 +1,7 @@
 import path from 'path';
 
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
+import type { InstalledPackages } from '@/databases/entities/installed-packages';
+import type { InstalledNodes } from '@/databases/entities/installed-nodes';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 

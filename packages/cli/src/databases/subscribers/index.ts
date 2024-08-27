@@ -1,4 +1,4 @@
-import { UserSubscriber } from './UserSubscriber';
+import { UserSubscriber } from './user-subscriber';
 
 export const subscribers = {
 	UserSubscriber,

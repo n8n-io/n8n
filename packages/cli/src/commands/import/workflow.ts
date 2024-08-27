@@ -5,14 +5,14 @@ import fs from 'fs';
 import glob from 'fast-glob';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { generateNanoId } from '@db/utils/generators';
 import { UserRepository } from '@db/repositories/user.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/Interfaces';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../base-command';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {

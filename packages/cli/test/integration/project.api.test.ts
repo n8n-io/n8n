@@ -9,9 +9,9 @@ import {
 	getProjectRelations,
 } from './shared/db/projects';
 import Container from 'typedi';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { Project } from '@/databases/entities/project';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import type { ProjectRole } from '@/databases/entities/project-relation';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
 import {
@@ -21,8 +21,8 @@ import {
 } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
 import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';

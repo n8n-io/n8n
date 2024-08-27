@@ -3,12 +3,12 @@ import type { INode } from 'n8n-workflow';
 
 import config from '@/config';
 import { STARTING_NODES } from '@/constants';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
-import type { Project } from '@db/entities/Project';
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/User';
+import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@db/repositories/project.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 

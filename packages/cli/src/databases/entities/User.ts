@@ -11,20 +11,20 @@ import {
 } from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import type { SharedWorkflow } from './SharedWorkflow';
-import type { SharedCredentials } from './SharedCredentials';
+import type { SharedWorkflow } from './shared-workflow';
+import type { SharedCredentials } from './shared-credentials';
 import { NoXss } from '@/validators/no-xss.validator';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
-import { WithTimestamps, jsonColumnType } from './AbstractEntity';
+import { WithTimestamps, jsonColumnType } from './abstract-entity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
-import type { AuthIdentity } from './AuthIdentity';
+import type { AuthIdentity } from './auth-identity';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
 } from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
-import type { ProjectRelation } from './ProjectRelation';
+import type { ProjectRelation } from './project-relation';
 import { NoUrl } from '@/validators/no-url.validator';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';

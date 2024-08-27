@@ -12,7 +12,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { EventService } from '@/events/event.service';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { Response } from 'express';
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';

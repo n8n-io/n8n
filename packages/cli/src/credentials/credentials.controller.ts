@@ -26,9 +26,9 @@ import { UserManagementMailer } from '@/user-management/email';
 import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { z } from 'zod';
 import { EventService } from '@/events/event.service';
 

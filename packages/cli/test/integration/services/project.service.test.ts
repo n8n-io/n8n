@@ -3,8 +3,8 @@ import * as testDb from '../shared/testDb';
 import Container from 'typedi';
 import { createMember } from '../shared/db/users';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { Scope } from '@n8n/permissions';
 
 let projectRepository: ProjectRepository;

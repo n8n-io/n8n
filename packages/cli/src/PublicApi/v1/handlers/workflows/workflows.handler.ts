@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/workflow-entity';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
 import type { WorkflowRequest } from '../../../types';
@@ -27,7 +27,7 @@ import {
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

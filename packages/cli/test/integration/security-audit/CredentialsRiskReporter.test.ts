@@ -9,7 +9,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
+import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 
 let securityAuditService: SecurityAuditService;
 

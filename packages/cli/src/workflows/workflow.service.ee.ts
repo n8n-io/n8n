@@ -2,12 +2,12 @@ import { Service } from 'typedi';
 import omit from 'lodash/omit';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/User';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -19,11 +19,11 @@ import type {
 import { OwnershipService } from '@/services/ownership.service';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
-import { Project } from '@/databases/entities/Project';
+import { Project } from '@/databases/entities/project';
 import { ProjectService } from '@/services/project.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 
 @Service()
 export class EnterpriseWorkflowService {
