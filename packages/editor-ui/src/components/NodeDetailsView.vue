@@ -12,6 +12,7 @@ import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
 import {
+	APP_MODALS_ELEMENT_ID,
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
 	EXECUTABLE_TRIGGER_NODE_TYPES,
@@ -664,7 +665,7 @@ onBeforeUnmount(() => {
 		class="data-display-wrapper ndv-wrapper"
 		overlay-class="data-display-overlay"
 		width="auto"
-		append-to="#app-modals"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		data-test-id="ndv"
 		z-index="2000"
 		:data-has-output-connection="hasOutputConnection"

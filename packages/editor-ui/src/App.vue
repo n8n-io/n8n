@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import LoadingView from '@/views/LoadingView.vue';
 import BannerStack from '@/components/banners/BannerStack.vue';
@@ -9,7 +9,7 @@ import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
 import { loadLanguage } from '@/plugins/i18n';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { HIRING_BANNER, VIEWS } from '@/constants';
+import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
 import { useAssistantStore } from './stores/assistant.store';
 import { useUIStore } from './stores/ui.store';
@@ -32,8 +32,29 @@ const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const showAssistantButton = computed(() => assistantStore.canShowAssistantButtons);
 
+const appGrid = ref<Element | null>(null);
+
+const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
+
 watch(defaultLocale, (newLocale) => {
 	void loadLanguage(newLocale);
+});
+
+onMounted(async () => {
+	logHiringBanner();
+	void useExternalHooks().run('app.mount');
+	loading.value = false;
+	window.addEventListener('resize', updateGridWidth);
+	await updateGridWidth();
+});
+
+onBeforeUnmount(() => {
+	window.removeEventListener('resize', updateGridWidth);
+});
+
+// As assistant sidebar width changes, recalculate the total width regularly
+watch(assistantSidebarWidth, async () => {
+	await updateGridWidth();
 });
 
 const logHiringBanner = () => {
@@ -42,11 +63,12 @@ const logHiringBanner = () => {
 	}
 };
 
-onMounted(async () => {
-	logHiringBanner();
-	void useExternalHooks().run('app.mount');
-	loading.value = false;
-});
+const updateGridWidth = async () => {
+	await nextTick();
+	if (appGrid.value) {
+		uiStore.appGridWidth = appGrid.value.clientWidth;
+	}
+};
 </script>
 
 <template>
@@ -59,7 +81,7 @@ onMounted(async () => {
 			[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 		}"
 	>
-		<div id="app-grid" :class="$style['app-grid']">
+		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
 			<div id="banners" :class="$style.banners">
 				<BannerStack v-if="!isDemoMode" />
 			</div>
@@ -77,7 +99,7 @@ onMounted(async () => {
 					<component :is="Component" v-else />
 				</router-view>
 			</div>
-			<div id="app-modals" :class="$style.modals">
+			<div :id="APP_MODALS_ELEMENT_ID" :class="$style.modals">
 				<Modals />
 			</div>
 			<Telemetry />

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
 /**
  * Retries the given assertion until it passes or the timeout is reached
@@ -99,7 +100,7 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
  */
 export const createAppModals = () => {
 	const appModals = document.createElement('div');
-	appModals.id = 'app-modals';
+	appModals.id = APP_MODALS_ELEMENT_ID;
 	document.body.appendChild(appModals);
 	return appModals;
 };

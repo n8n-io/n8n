@@ -6,6 +6,7 @@ import { mapStores } from 'pinia';
 import type { EventBus } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import type { ModalKey } from '@/Interface';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
 export default defineComponent({
 	name: 'Modal',
@@ -116,6 +117,9 @@ export default defineComponent({
 			}
 			return styles;
 		},
+		appModalsId() {
+			return `#${APP_MODALS_ELEMENT_ID}`;
+		},
 	},
 	mounted() {
 		window.addEventListener('keydown', this.onWindowKeydown);
@@ -188,7 +192,7 @@ export default defineComponent({
 		:close-on-click-modal="closeOnClickModal"
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
-		:append-to="appendToBody ? undefined : '#app-modals'"
+		:append-to="appendToBody ? undefined : appModalsId"
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
 		:modal-class="center ? $style.center : ''"

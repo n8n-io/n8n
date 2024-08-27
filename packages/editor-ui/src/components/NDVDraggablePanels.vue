@@ -11,7 +11,7 @@ import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import type { XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { useAssistantStore } from '@/stores/assistant.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -36,11 +36,10 @@ interface Props {
 
 const { callDebounced } = useDebounce();
 const ndvStore = useNDVStore();
-const assistantStore = useAssistantStore();
+const uiStore = useUIStore();
 
 const props = defineProps<Props>();
 
-const containerWidth = ref<number>(1);
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
 
@@ -59,8 +58,6 @@ const slots = defineSlots<{
 }>();
 
 onMounted(() => {
-	setTotalWidth();
-
 	/*
 		Only set(or restore) initial position if `mainPanelDimensions`
 		is at the default state({relativeLeft:1, relativeRight: 1, relativeWidth: 1}) to make sure we use store values if they are set
@@ -74,7 +71,6 @@ onMounted(() => {
 		restorePositionData();
 	}
 
-	window.addEventListener('resize', setTotalWidth);
 	emit('init', { position: mainPanelDimensions.value.relativeLeft });
 	setTimeout(() => {
 		initialized.value = true;
@@ -84,9 +80,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	window.removeEventListener('resize', setTotalWidth);
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
+
+const containerWidth = computed(() => uiStore.appGridWidth);
 
 watch(containerWidth, (width) => {
 	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
@@ -107,27 +104,6 @@ watch(containerWidth, (width) => {
 	}
 
 	setPositions(mainPanelDimensions.value.relativeLeft);
-});
-
-const assistantSidebarWidth = computed(() => assistantStore.chatWidth);
-const isAssistantOpen = computed(() => assistantStore.isAssistantOpen);
-
-// As assistant sidebar opens and closes, use window width to calculate the container width
-// This will prevent animation race conditions from making ndv twitchy that happens when using setTotalWidth
-watch(isAssistantOpen, async () => {
-	if (isAssistantOpen.value) {
-		containerWidth.value = window.innerWidth - assistantSidebarWidth.value;
-	} else {
-		// It looks the best if we delay closing adjustment until slide transition is done
-		setTimeout(() => {
-			containerWidth.value = window.innerWidth;
-		}, 200);
-	}
-});
-
-// As assistant sidebar width changes, recalculate the total width regularly
-watch(assistantSidebarWidth, async () => {
-	setTotalWidth();
 });
 
 const currentNodePaneType = computed((): string => {
@@ -318,10 +294,6 @@ function relativeWidthToPx(relativeWidth: number) {
 	return relativeWidth * containerWidth.value;
 }
 
-function onResizeStart() {
-	setTotalWidth();
-}
-
 function onResizeEnd() {
 	storePositionData();
 }
@@ -386,13 +358,6 @@ function onDragEnd() {
 	}, 0);
 	storePositionData();
 }
-
-function setTotalWidth() {
-	const appModals = document.getElementById('app-grid');
-	if (appModals) {
-		containerWidth.value = appModals.clientWidth;
-	}
-}
 </script>
 
 <template>
@@ -416,7 +381,6 @@ function setTotalWidth() {
 				:grid-size="20"
 				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
-				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
 			>
 				<div :class="$style.dragButtonContainer">
