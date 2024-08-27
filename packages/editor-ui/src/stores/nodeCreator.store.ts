@@ -17,7 +17,7 @@ import type {
 import { computed, ref } from 'vue';
 import { transformNodeType } from '@/components/Node/NodeCreator/utils';
 import type { INodeInputConfiguration, NodeConnectionTypes } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, nodeConnectionTypes } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -218,7 +218,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		// after the node creator is opened
 		const isOutput = mode === CanvasConnectionMode.Output;
 		const isScopedConnection =
-			type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
+			type !== NodeConnectionType.Main && nodeConnectionTypes.includes(type);
 
 		if (isScopedConnection) {
 			useViewStacks()
