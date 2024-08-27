@@ -1,108 +1,3 @@
-<template>
-	<div
-		ref="container"
-		:class="['execution-annotation-sidebar', $style.container]"
-		data-test-id="execution-annotation-sidebar"
-	>
-		<div :class="$style.section">
-			<!--			<div :class="$style.heading">-->
-			<!--				<n8n-heading tag="h2" size="medium" color="text-dark">-->
-			<!--					{{ $locale.baseText('generic.annotations') }}-->
-			<!--				</n8n-heading>-->
-			<!--			</div>-->
-			<div :class="$style.vote">
-				<div>{{ $locale.baseText('generic.rating') }}</div>
-				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
-			</div>
-			<span class="tags" data-test-id="annotation-tags-container">
-				<AnnotationTagsDropdown
-					v-if="isTagsEditEnabled"
-					v-model="appliedTagIds"
-					ref="dropdown"
-					:create-enabled="true"
-					:event-bus="tagsEventBus"
-					:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
-					class="tags-edit"
-					data-test-id="workflow-tags-dropdown"
-					@blur="onTagsBlur"
-					@esc="onTagsEditEsc"
-				/>
-				<div v-else-if="tagIds.length === 0">
-					<span
-						class="add-tag add-tag-standalone clickable"
-						data-test-id="new-tag-link"
-						@click="onTagsEditEnable"
-					>
-						+ {{ $locale.baseText('executionAnnotationView.addTag') }}
-					</span>
-				</div>
-
-				<span
-					v-else
-					class="tags-container"
-					data-test-id="execution-annotation-tags"
-					@click="onTagsEditEnable"
-				>
-					<span v-for="tag in tags" :key="tag.id" class="clickable">
-						<el-tag :title="tag.name" type="info" size="small" :disable-transitions="true">
-							{{ tag.name }}
-						</el-tag>
-					</span>
-					<span class="add-tag-wrapper">
-						<n8n-button
-							class="add-tag"
-							v-bind="{
-								label: `+ ` + $locale.baseText('executionAnnotationView.addTag'),
-								type: 'secondary',
-								size: 'mini',
-								outline: false,
-								text: true,
-							}"
-							@click="onTagsEditEnable"
-						/>
-					</span>
-					<!--					<span-->
-					<!--						class="el-tag&#45;&#45;small add-tag clickable"-->
-					<!--						data-test-id="new-tag-link"-->
-					<!--						@click="onTagsEditEnable"-->
-					<!--					>-->
-					<!--						+ {{ $locale.baseText('workflowDetails.addTag') }}-->
-					<!--					</span>-->
-				</span>
-			</span>
-		</div>
-		<div :class="$style.section">
-			<div :class="$style.heading">
-				<n8n-heading tag="h3" size="small" color="text-dark">
-					{{ $locale.baseText('generic.annotationData') }}
-				</n8n-heading>
-			</div>
-			<div
-				v-if="activeExecution?.customData && Object.keys(activeExecution?.customData).length > 0"
-				:class="$style.metadata"
-			>
-				<div
-					v-for="attr in Object.keys(activeExecution?.customData)"
-					v-bind:key="attr"
-					:class="$style.customDataEntry"
-				>
-					<n8n-text :class="$style.key" size="small" color="text-base">
-						{{ attr }}
-					</n8n-text>
-					<n8n-text :class="$style.value" size="small" color="text-base">
-						{{ activeExecution?.customData[attr] }}
-					</n8n-text>
-				</div>
-			</div>
-			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
-				<n8n-text color="text-base" size="small" align="center">
-					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
-				</n8n-text>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { defineComponent } from 'vue';
@@ -110,13 +5,10 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import AnnotationTagsContainer from '@/components/AnnotationTagsContainer.vue';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
-import N8nNotice from 'n8n-design-system/components/N8nNotice';
-import { useAnnotationTagsStore } from '@/stores/tags.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -233,6 +125,99 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		ref="container"
+		:class="['execution-annotation-sidebar', $style.container]"
+		data-test-id="execution-annotation-sidebar"
+	>
+		<div :class="$style.section">
+			<div :class="$style.vote">
+				<div>{{ $locale.baseText('generic.rating') }}</div>
+				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
+			</div>
+			<span class="tags" data-test-id="annotation-tags-container">
+				<AnnotationTagsDropdown
+					v-if="isTagsEditEnabled"
+					v-model="appliedTagIds"
+					ref="dropdown"
+					:create-enabled="true"
+					:event-bus="tagsEventBus"
+					:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
+					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
+					@blur="onTagsBlur"
+					@esc="onTagsEditEsc"
+				/>
+				<div v-else-if="tagIds.length === 0">
+					<span
+						class="add-tag add-tag-standalone clickable"
+						data-test-id="new-tag-link"
+						@click="onTagsEditEnable"
+					>
+						+ {{ $locale.baseText('executionAnnotationView.addTag') }}
+					</span>
+				</div>
+
+				<span
+					v-else
+					class="tags-container"
+					data-test-id="execution-annotation-tags"
+					@click="onTagsEditEnable"
+				>
+					<span v-for="tag in tags" :key="tag.id" class="clickable">
+						<el-tag :title="tag.name" type="info" size="small" :disable-transitions="true">
+							{{ tag.name }}
+						</el-tag>
+					</span>
+					<span class="add-tag-wrapper">
+						<n8n-button
+							class="add-tag"
+							v-bind="{
+								label: `+ ` + $locale.baseText('executionAnnotationView.addTag'),
+								type: 'secondary',
+								size: 'mini',
+								outline: false,
+								text: true,
+							}"
+							@click="onTagsEditEnable"
+						/>
+					</span>
+				</span>
+			</span>
+		</div>
+		<div :class="$style.section">
+			<div :class="$style.heading">
+				<n8n-heading tag="h3" size="small" color="text-dark">
+					{{ $locale.baseText('generic.annotationData') }}
+				</n8n-heading>
+			</div>
+			<div
+				v-if="activeExecution?.customData && Object.keys(activeExecution?.customData).length > 0"
+				:class="$style.metadata"
+			>
+				<div
+					v-for="attr in Object.keys(activeExecution?.customData)"
+					v-bind:key="attr"
+					:class="$style.customDataEntry"
+				>
+					<n8n-text :class="$style.key" size="small" color="text-base">
+						{{ attr }}
+					</n8n-text>
+					<n8n-text :class="$style.value" size="small" color="text-base">
+						{{ activeExecution?.customData[attr] }}
+					</n8n-text>
+				</div>
+			</div>
+			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
+				<n8n-text color="text-base" size="small" align="center">
+					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
+				</n8n-text>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .container {

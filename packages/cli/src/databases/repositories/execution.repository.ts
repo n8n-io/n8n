@@ -720,8 +720,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	/**
 	 * This function reduces duplicate rows in the raw result set of the query builder from *toQueryBuilderWithAnnotations*
 	 * by merging the tags of the same execution annotation.
-	 * @param rawExecutionsWithTags
-	 * @private
 	 */
 	private reduceExecutionsWithAnnotations(
 		rawExecutionsWithTags: Array<
@@ -945,9 +943,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * IMPORTANT: Query made with this query builder fetches duplicate execution rows for each tag,
 	 *  this is intended, as we are working with raw query.
 	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
-	 *
-	 *  @param {ExecutionSummaries.Query} query
-	 *  @private
 	 */
 	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(

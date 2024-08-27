@@ -10,8 +10,6 @@ export class AnnotationTagMappingRepository extends Repository<AnnotationTagMapp
 
 	/**
 	 * Overwrite annotation tags for the given execution. Annotation should already exist.
-	 * @param annotationId
-	 * @param tagIds
 	 */
 	async overwriteTags(annotationId: number, tagIds: string[]) {
 		return await this.manager.transaction(async (tx) => {
