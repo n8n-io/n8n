@@ -1,6 +1,7 @@
 import {
 	Column,
 	Entity,
+	Index,
 	JoinColumn,
 	JoinTable,
 	ManyToMany,
@@ -15,6 +16,7 @@ import type { AnnotationTagMapping } from './AnnotationTagMapping';
 import type { AnnotationVote } from 'n8n-workflow';
 
 @Entity({ name: 'execution_annotations' })
+@Index(['execution'])
 export class ExecutionAnnotation {
 	@PrimaryGeneratedColumn()
 	id: number;
