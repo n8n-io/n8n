@@ -4,7 +4,7 @@ import type {
 	IExecuteFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -77,10 +77,7 @@ export async function getOptionalOutputParsers(
 	let outputParsers: BaseOutputParser[] = [];
 
 	if (ctx.getNodeParameter('hasOutputParser', 0, true) === true) {
-		outputParsers = (await ctx.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
-			0,
-		)) as BaseOutputParser[];
+		outputParsers = (await ctx.getInputConnectionData('ai_outputParser', 0)) as BaseOutputParser[];
 	}
 
 	return outputParsers;
@@ -184,8 +181,7 @@ export const getConnectedTools = async (
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 ) => {
-	const connectedTools =
-		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const connectedTools = ((await ctx.getInputConnectionData('ai_tool', 0)) as Tool[]) || [];
 
 	if (!enforceUniqueNames) return connectedTools;
 

@@ -1,4 +1,4 @@
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -53,15 +53,15 @@ export class InformationExtractor implements INodeType {
 			name: 'Information Extractor',
 		},
 		inputs: [
-			{ displayName: '', type: NodeConnectionType.Main },
+			{ displayName: '', type: 'main' },
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Text',
@@ -223,10 +223,7 @@ export class InformationExtractor implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const llm = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 
 		const schemaType = this.getNodeParameter('schemaType', 0, '') as
 			| 'fromAttributes'

@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import * as assistant from './assistant';
 import * as audio from './audio';
@@ -45,22 +44,19 @@ const prettifyOperation = (resource: string, operation: string) => {
 const configureNodeInputs = (resource: string, operation: string, hideTools: string) => {
 	if (resource === 'assistant' && operation === 'message') {
 		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiMemory, displayName: 'Memory', maxConnections: 1 },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+			{ type: 'main' },
+			{ type: 'ai_memory', displayName: 'Memory', maxConnections: 1 },
+			{ type: 'ai_tool', displayName: 'Tools' },
 		];
 	}
 	if (resource === 'text' && operation === 'message') {
 		if (hideTools === 'hide') {
-			return [NodeConnectionType.Main];
+			return ['main'];
 		}
-		return [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
-		];
+		return [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }];
 	}
 
-	return [NodeConnectionType.Main];
+	return ['main'];
 };
 
 // eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle

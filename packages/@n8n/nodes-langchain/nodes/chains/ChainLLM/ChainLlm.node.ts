@@ -1,4 +1,4 @@
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -77,10 +77,7 @@ async function getImageMessage(
 	}
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
-	const model = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const model = (await context.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
 
 	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
@@ -230,11 +227,11 @@ function getInputs(parameters: IDataObject) {
 		type: NodeConnectionTypes;
 		required?: boolean;
 	}> = [
-		{ displayName: '', type: NodeConnectionType.Main },
+		{ displayName: '', type: 'main' },
 		{
 			displayName: 'Model',
 			maxConnections: 1,
-			type: NodeConnectionType.AiLanguageModel,
+			type: 'ai_languageModel',
 			required: true,
 		},
 	];
@@ -242,7 +239,7 @@ function getInputs(parameters: IDataObject) {
 	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
 	if (hasOutputParser === undefined || hasOutputParser === true) {
-		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
+		inputs.push({ displayName: 'Output Parser', type: 'ai_outputParser' });
 	}
 	return inputs;
 }
@@ -274,7 +271,7 @@ export class ChainLlm implements INodeType {
 			},
 		},
 		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1978),
@@ -509,7 +506,7 @@ export class ChainLlm implements INodeType {
 				],
 			},
 			{
-				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require`,
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -527,10 +524,7 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const llm = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 
 		const outputParsers = await getOptionalOutputParsers(this);
 

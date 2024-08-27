@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeConnectionType } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -92,11 +91,11 @@ export class MemoryManager implements INodeType {
 		inputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: 'main',
 			},
 			{
 				displayName: 'Memory',
-				type: NodeConnectionType.AiMemory,
+				type: 'ai_memory',
 				required: true,
 				maxConnections: 1,
 			},
@@ -105,7 +104,7 @@ export class MemoryManager implements INodeType {
 		outputs: [
 			{
 				displayName: '',
-				type: NodeConnectionType.Main,
+				type: 'main',
 			},
 		],
 		properties: [
@@ -296,10 +295,7 @@ export class MemoryManager implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
-		const memory = (await this.getInputConnectionData(
-			NodeConnectionType.AiMemory,
-			0,
-		)) as BaseChatMemory;
+		const memory = (await this.getInputConnectionData('ai_memory', 0)) as BaseChatMemory;
 
 		const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
 

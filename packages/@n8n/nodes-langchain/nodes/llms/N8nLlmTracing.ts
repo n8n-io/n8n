@@ -7,8 +7,7 @@ import type {
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
 import type { LLMResult } from '@langchain/core/outputs';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, NodeConnectionTypes } from 'n8n-workflow';
 import { pick } from 'lodash';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { SerializedFields } from '@langchain/core/dist/load/map_keys';
@@ -32,7 +31,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	executionFunctions: IExecuteFunctions;
 
-	connectionType = NodeConnectionType.AiLanguageModel;
+	connectionType: NodeConnectionTypes = 'ai_languageModel';
 
 	promptTokensEstimate = 0;
 

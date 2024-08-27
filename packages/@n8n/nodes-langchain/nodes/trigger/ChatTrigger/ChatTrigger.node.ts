@@ -1,4 +1,4 @@
-import { Node, NodeConnectionType } from 'n8n-workflow';
+import { Node } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IWebhookFunctions,
@@ -70,7 +70,7 @@ export class ChatTrigger extends Node {
 				{
 					displayName: 'Memory',
 					maxConnections: 1,
-					type: '${NodeConnectionType.AiMemory}',
+					type: '${'ai_memory'}',
 					required: true,
 				}
 			];
@@ -516,7 +516,7 @@ export class ChatTrigger extends Node {
 
 		if (bodyData.action === 'loadPreviousSession') {
 			if (options?.loadPreviousSession === 'memory') {
-				const memory = (await ctx.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+				const memory = (await ctx.getInputConnectionData('ai_memory', 0)) as
 					| BaseChatMemory
 					| undefined;
 				const messages = ((await memory?.chatHistory.getMessages()) ?? [])

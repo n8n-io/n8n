@@ -3,7 +3,6 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
-	NodeConnectionType,
 } from 'n8n-workflow';
 import type { Embeddings } from '@langchain/core/embeddings';
 import { createClient } from '@supabase/supabase-js';
@@ -52,11 +51,11 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: ['ai_vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
 			supabaseTableNameRLC,
@@ -90,10 +89,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		const queryName = this.getNodeParameter('queryName', itemIndex) as string;
 
 		const credentials = await this.getCredentials('supabaseApi');
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);

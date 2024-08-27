@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeCredentialDescription,
 	INodeProperties,
@@ -145,14 +145,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			inputs: `={{
 			((parameters) => {
 				const mode = parameters?.mode;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+				const inputs = [{ displayName: "Embedding", type: "${'ai_embedding'}", required: true, maxConnections: 1}]
 
 				if (['insert', 'load', 'update'].includes(mode)) {
-					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
+					inputs.push({ displayName: "", type: "${'main'}"})
 				}
 
 				if (['insert'].includes(mode)) {
-					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
+					inputs.push({ displayName: "Document", type: "${'ai_document'}", required: true, maxConnections: 1})
 				}
 				return inputs
 			})($parameter)
@@ -161,9 +161,9 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			((parameters) => {
 				const mode = parameters?.mode ?? 'retrieve';
 				if (mode === 'retrieve') {
-					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
+					return [{ displayName: "Vector Store", type: "${'ai_vectorStore'}"}]
 				}
-				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
+				return [{ displayName: "", type: "${'main'}"}]
 			})($parameter)
 		}}`,
 			properties: [
@@ -176,7 +176,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					options: getOperationModeOptions(args),
 				},
 				{
-					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
+					...getConnectionHintNoticeField(['ai_retriever']),
 					displayOptions: {
 						show: {
 							mode: ['retrieve'],
@@ -237,10 +237,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 			const mode = this.getNodeParameter('mode', 0) as NodeOperationMode;
 
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
-				0,
-			)) as Embeddings;
+			const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 			if (mode === 'load') {
 				const items = this.getInputData(0);
@@ -289,10 +286,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			if (mode === 'insert') {
 				const items = this.getInputData();
 
-				const documentInput = (await this.getInputConnectionData(
-					NodeConnectionType.AiDocument,
-					0,
-				)) as N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>;
+				const documentInput = (await this.getInputConnectionData('ai_document', 0)) as
+					| N8nJsonLoader
+					| N8nBinaryLoader
+					| Array<Document<Record<string, unknown>>>;
 
 				const resultData = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -379,10 +376,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
-			const embeddings = (await this.getInputConnectionData(
-				NodeConnectionType.AiEmbedding,
-				0,
-			)) as Embeddings;
+			const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);

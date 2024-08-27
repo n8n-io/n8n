@@ -1,9 +1,4 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
@@ -24,10 +19,7 @@ export async function openAiFunctionsAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing OpenAi Functions Agent');
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as ChatOpenAI;
+	const model = (await this.getInputConnectionData('ai_languageModel', 0)) as ChatOpenAI;
 
 	if (!(model instanceof ChatOpenAI)) {
 		throw new NodeOperationError(
@@ -35,9 +27,7 @@ export async function openAiFunctionsAgentExecute(
 			'OpenAI Functions Agent requires OpenAI Chat Model',
 		);
 	}
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = (await this.getInputConnectionData('ai_memory', 0)) as BaseChatMemory | undefined;
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, false);
 	const outputParsers = await getOptionalOutputParsers(this);
 	const options = this.getNodeParameter('options', 0, {}) as {

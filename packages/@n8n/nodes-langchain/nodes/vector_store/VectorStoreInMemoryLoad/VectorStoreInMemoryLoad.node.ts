@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
 	type SupplyData,
 	type IExecuteFunctions,
 	type INodeType,
@@ -41,11 +40,11 @@ export class VectorStoreInMemoryLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: ['ai_vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -60,10 +59,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			itemIndex,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', itemIndex)) as Embeddings;
 
 		const workflowId = this.getWorkflow().id;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;

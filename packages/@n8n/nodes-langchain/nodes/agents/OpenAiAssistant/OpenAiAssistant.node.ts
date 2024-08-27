@@ -1,7 +1,7 @@
 import { AgentExecutor } from 'langchain/agents';
 import { OpenAI as OpenAIClient } from 'openai';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -41,11 +41,8 @@ export class OpenAiAssistant implements INodeType {
 				],
 			},
 		},
-		inputs: [
-			{ type: NodeConnectionType.Main },
-			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
-		],
-		outputs: [NodeConnectionType.Main],
+		inputs: [{ type: 'main' }, { type: 'ai_tool', displayName: 'Tools' }],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'openAiApi',

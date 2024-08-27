@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -57,7 +56,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+		outputs: ['ai_memory'],
 		outputNames: ['Memory'],
 		credentials: [
 			{
@@ -66,7 +65,7 @@ export class MemoryZep implements INodeType {
 			},
 		],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_agent']),
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',

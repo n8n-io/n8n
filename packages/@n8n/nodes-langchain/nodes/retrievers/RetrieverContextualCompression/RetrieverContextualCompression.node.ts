@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -43,13 +42,13 @@ export class RetrieverContextualCompression implements INodeType {
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: 'ai_retriever',
 				required: true,
 			},
 		],
@@ -57,7 +56,7 @@ export class RetrieverContextualCompression implements INodeType {
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: 'ai_retriever',
 			},
 		],
 		properties: [],
@@ -67,12 +66,12 @@ export class RetrieverContextualCompression implements INodeType {
 		this.logger.verbose('Supplying data for Contextual Compression Retriever');
 
 		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
+			'ai_languageModel',
 			itemIndex,
 		)) as BaseLanguageModel;
 
 		const baseRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
+			'ai_retriever',
 			itemIndex,
 		)) as BaseRetriever;
 

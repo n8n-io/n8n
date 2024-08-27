@@ -1,9 +1,4 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
@@ -23,10 +18,7 @@ export async function planAndExecuteAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing PlanAndExecute Agent');
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseChatModel;
+	const model = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseChatModel;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 

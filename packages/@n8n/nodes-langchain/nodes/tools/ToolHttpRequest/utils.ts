@@ -6,7 +6,7 @@ import type {
 	ExecutionError,
 	NodeApiError,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { getOAuth2AdditionalParameters } from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
 
@@ -569,7 +569,7 @@ export const configureToolFunction = (
 	optimizeResponse: (response: string) => string,
 ) => {
 	return async (query: string | IDataObject): Promise<string> => {
-		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
+		const { index } = ctx.addInputData('ai_tool', [[{ json: { query } }]]);
 
 		let response: string = '';
 		let options: IHttpRequestOptions | null = null;
@@ -765,9 +765,9 @@ export const configureToolFunction = (
 		}
 
 		if (executionError) {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, executionError as ExecutionError);
+			void ctx.addOutputData('ai_tool', index, executionError as ExecutionError);
 		} else {
-			void ctx.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
+			void ctx.addOutputData('ai_tool', index, [[{ json: { response } }]]);
 		}
 
 		return response;

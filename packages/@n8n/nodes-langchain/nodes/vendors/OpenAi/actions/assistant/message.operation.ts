@@ -4,12 +4,7 @@ import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import {
-	ApplicationError,
-	NodeConnectionType,
-	NodeOperationError,
-	updateDisplayOptions,
-} from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -201,7 +196,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+	const memory = (await this.getInputConnectionData('ai_memory', 0)) as
 		| BufferWindowMemory
 		| undefined;
 

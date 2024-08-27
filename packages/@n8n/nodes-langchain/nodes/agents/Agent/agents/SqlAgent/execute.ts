@@ -1,7 +1,6 @@
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
-	NodeConnectionType,
 	NodeOperationError,
 	type IDataObject,
 } from 'n8n-workflow';
@@ -31,10 +30,7 @@ export async function sqlAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing SQL Agent');
 
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
+	const model = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 	const items = this.getInputData();
 
 	const returnData: INodeExecutionData[] = [];
@@ -113,7 +109,7 @@ export async function sqlAgentAgentExecute(
 			const toolkit = new SqlToolkit(dbInstance, model);
 			const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-			const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			const memory = (await this.getInputConnectionData('ai_memory', 0)) as
 				| BaseChatMemory
 				| undefined;
 

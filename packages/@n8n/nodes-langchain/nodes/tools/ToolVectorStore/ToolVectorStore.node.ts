@@ -1,5 +1,4 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 
 import { VectorStoreQATool } from 'langchain/tools';
 import type { VectorStore } from '@langchain/core/vectorstores';
@@ -38,21 +37,21 @@ export class ToolVectorStore implements INodeType {
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorStore,
+				type: 'ai_vectorStore',
 				required: true,
 			},
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiTool],
+		outputs: ['ai_tool'],
 		outputNames: ['Tool'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_agent']),
 			{
 				displayName: 'Name',
 				name: 'name',
@@ -88,14 +87,11 @@ export class ToolVectorStore implements INodeType {
 		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
 		const vectorStore = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorStore,
+			'ai_vectorStore',
 			itemIndex,
 		)) as VectorStore;
 
-		const llm = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const llm = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 
 		const description = VectorStoreQATool.getDescription(name, toolDescription);
 		const vectorStoreTool = new VectorStoreQATool(name, description, {

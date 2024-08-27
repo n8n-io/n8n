@@ -1,5 +1,4 @@
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -49,11 +48,11 @@ export class VectorStoreZepLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.AiVectorStore],
+		outputs: ['ai_vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -97,10 +96,7 @@ export class VectorStoreZepLoad implements INodeType {
 			apiKey?: string;
 			apiUrl: string;
 		};
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,

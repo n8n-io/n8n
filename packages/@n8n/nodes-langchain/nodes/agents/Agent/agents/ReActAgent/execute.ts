@@ -1,9 +1,4 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
@@ -26,7 +21,7 @@ export async function reActAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing ReAct Agent');
 
-	const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
+	const model = (await this.getInputConnectionData('ai_languageModel', 0)) as
 		| BaseLanguageModel
 		| BaseChatModel;
 

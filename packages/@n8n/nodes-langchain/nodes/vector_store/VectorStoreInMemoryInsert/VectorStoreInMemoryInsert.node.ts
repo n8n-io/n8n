@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
-	NodeConnectionType,
 	type INodeExecutionData,
 	type IExecuteFunctions,
 	type INodeType,
@@ -40,21 +39,21 @@ export class VectorStoreInMemoryInsert implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			'main',
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: NodeConnectionType.AiDocument,
+				type: 'ai_document',
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
+				type: 'ai_embedding',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		properties: [
 			{
 				displayName:
@@ -83,14 +82,11 @@ export class VectorStoreInMemoryInsert implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData(0);
-		const embeddings = (await this.getInputConnectionData(
-			NodeConnectionType.AiEmbedding,
-			0,
-		)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
 
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 		const clearStore = this.getNodeParameter('clearStore', 0) as boolean;
-		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
+		const documentInput = (await this.getInputConnectionData('ai_document', 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 

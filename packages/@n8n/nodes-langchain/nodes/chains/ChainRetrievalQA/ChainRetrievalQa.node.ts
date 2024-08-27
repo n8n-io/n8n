@@ -1,5 +1,4 @@
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -42,21 +41,21 @@ export class ChainRetrievalQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			NodeConnectionType.Main,
+			'main',
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
+				type: 'ai_languageModel',
 				required: true,
 			},
 			{
 				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiRetriever,
+				type: 'ai_retriever',
 				required: true,
 			},
 		],
-		outputs: [NodeConnectionType.Main],
+		outputs: ['main'],
 		credentials: [],
 		properties: [
 			getTemplateNoticeField(1960),
@@ -143,15 +142,9 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData(
-			NodeConnectionType.AiLanguageModel,
-			0,
-		)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData('ai_languageModel', 0)) as BaseLanguageModel;
 
-		const retriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiRetriever,
-			0,
-		)) as BaseRetriever;
+		const retriever = (await this.getInputConnectionData('ai_retriever', 0)) as BaseRetriever;
 
 		const items = this.getInputData();
 		const chain = RetrievalQAChain.fromLLM(model, retriever);

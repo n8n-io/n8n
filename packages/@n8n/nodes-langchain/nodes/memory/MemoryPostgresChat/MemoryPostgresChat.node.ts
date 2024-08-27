@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
 import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import type pg from 'pg';
@@ -46,10 +45,10 @@ export class MemoryPostgresChat implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiMemory],
+		outputs: ['ai_memory'],
 		outputNames: ['Memory'],
 		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			getConnectionHintNoticeField(['ai_agent']),
 			sessionIdOption,
 			sessionKeyProperty,
 			{

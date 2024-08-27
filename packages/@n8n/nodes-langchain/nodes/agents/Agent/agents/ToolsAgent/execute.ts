@@ -1,4 +1,4 @@
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { AgentAction, AgentFinish, AgentStep } from 'langchain/agents';
@@ -77,7 +77,7 @@ async function extractBinaryMessages(ctx: IExecuteFunctions) {
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Tools Agent');
-	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
+	const model = await this.getInputConnectionData('ai_languageModel', 0);
 
 	if (!isChatInstance(model) || !model.bindTools) {
 		throw new NodeOperationError(
@@ -86,9 +86,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		);
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = (await this.getInputConnectionData('ai_memory', 0)) as BaseChatMemory | undefined;
 
 	const tools = (await getConnectedTools(this, true, false)) as Array<DynamicStructuredTool | Tool>;
 	const outputParser = (await getOptionalOutputParsers(this))?.[0];
