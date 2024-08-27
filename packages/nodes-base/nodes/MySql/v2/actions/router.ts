@@ -16,7 +16,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	nodeOptions.nodeVersion = this.getNode().typeVersion;
 
-	const credentials = (await this.getCredentials('mySql')) as MysqlNodeCredentials;
+	const credentials = await this.getCredentials<MysqlNodeCredentials>('mySql');
 
 	const pool = await createPool.call(this, credentials, nodeOptions);
 
