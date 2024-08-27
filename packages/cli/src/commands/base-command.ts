@@ -16,7 +16,6 @@ import { NodeTypes } from '@/node-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { N8nInstanceType } from '@/Interfaces';
 import { PostHogClient } from '@/posthog';
-import { InternalHooks } from '@/internal-hooks';
 import { License } from '@/license';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { initExpressionEvaluator } from '@/expression-evaluator';
@@ -24,6 +23,7 @@ import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -120,8 +120,10 @@ export abstract class BaseCommand extends Command {
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
 
+		// TODO: remove this after the cyclic dependencies around the event-bus are resolved
+		Container.get(MessageEventBus);
+
 		await Container.get(PostHogClient).init();
-		await Container.get(InternalHooks).init();
 		await Container.get(TelemetryEventRelay).init();
 	}
 
