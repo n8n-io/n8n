@@ -5,7 +5,7 @@ import { configurePostgres } from '../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db } = await configurePostgres.call(this, credentials, options);

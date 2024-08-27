@@ -191,7 +191,7 @@ export async function validateWebhookAuthentication(
 		// Basic authorization is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await ctx.getCredentials('httpBasicAuth');
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {
@@ -211,7 +211,7 @@ export async function validateWebhookAuthentication(
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await ctx.getCredentials('httpHeaderAuth');
+			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpHeaderAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.name || !expectedAuth.value) {
@@ -232,12 +232,12 @@ export async function validateWebhookAuthentication(
 		let expectedAuth;
 
 		try {
-			expectedAuth = (await ctx.getCredentials('jwtAuth')) as {
+			expectedAuth = await ctx.getCredentials<{
 				keyType: 'passphrase' | 'pemKey';
 				publicKey: string;
 				secret: string;
 				algorithm: jwt.Algorithm;
-			};
+			}>('jwtAuth');
 		} catch {}
 
 		if (expectedAuth === undefined) {

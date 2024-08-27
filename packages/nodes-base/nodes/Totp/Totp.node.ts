@@ -126,7 +126,7 @@ export class Totp implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
-		const credentials = (await this.getCredentials('totpApi')) as { label: string; secret: string };
+		const credentials = await this.getCredentials<{ label: string; secret: string }>('totpApi');
 
 		if (!credentials.label.includes(':')) {
 			throw new NodeOperationError(this.getNode(), 'Malformed label - expected `issuer:username`');

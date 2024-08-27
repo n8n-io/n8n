@@ -42,10 +42,10 @@ export async function googleApiRequest(
 		}
 
 		if (authenticationMethod === 'serviceAccount') {
-			const credentials = (await this.getCredentials('googleApi')) as {
+			const credentials = await this.getCredentials<{
 				email: string;
 				privateKey: string;
-			};
+			}>('googleApi');
 
 			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'books');
 

@@ -20,10 +20,10 @@ export async function microsoftApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('microsoftDynamicsOAuth2Api')) as {
+	const credentials = await this.getCredentials<{
 		subdomain: string;
 		region: string;
-	};
+	}>('microsoftDynamicsOAuth2Api');
 
 	let options: IRequestOptions = {
 		headers: {
