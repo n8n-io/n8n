@@ -561,6 +561,12 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			if (event === 'anyUpdate' || event === 'rowUpdate') {
+				if (sheetName.length > 31) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Sheet name is too long choose a name with 31 characters or less',
+					);
+				}
 				const sheetRange = `${sheetName}!${range}`;
 
 				let dataStartIndex = startIndex - 1;
