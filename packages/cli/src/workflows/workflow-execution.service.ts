@@ -16,7 +16,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -32,7 +32,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { Logger } from '@/logger';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from '@/subworkflows/subworkflow-policy-checker.service';
 

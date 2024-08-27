@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
+import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionMetadataService } from '@/services/executionMetadata.service';
 import { mockInstance } from '@test/mocking';
 

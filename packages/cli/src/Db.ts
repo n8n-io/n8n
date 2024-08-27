@@ -6,7 +6,7 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
-import { wrapMigration } from '@db/utils/migrationHelpers';
+import { wrapMigration } from '@/databases/utils/migration-helpers';
 import type { Migration } from '@db/types';
 import { getConnectionOptions } from '@db/config';
 

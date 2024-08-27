@@ -7,15 +7,15 @@ import type {
 } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import type { User } from '@db/entities/User';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { User } from '@/databases/entities/User';
 import { ExternalHooks } from '@/external-hooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
 import { Container } from 'typedi';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EventService } from '@/events/event.service';
 

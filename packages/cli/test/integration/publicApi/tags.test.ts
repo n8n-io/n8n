@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { TagRepository } from '@db/repositories/tag.repository';
 
 import { randomApiKey } from '../shared/random';

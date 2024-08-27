@@ -10,7 +10,7 @@ import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/workflow-entity';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
