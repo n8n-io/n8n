@@ -19,7 +19,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/license';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { initExpressionEvaluator } from '@/expression-evaluator';
-import { generateHostInstanceId } from '@db/utils/generators';
+import { generateHostInstanceId } from '@/databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';

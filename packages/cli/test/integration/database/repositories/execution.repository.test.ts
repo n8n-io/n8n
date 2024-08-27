@@ -1,5 +1,5 @@
 import Container from 'typedi';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import * as testDb from '../../shared/testDb';
 import { createWorkflow } from '../../shared/db/workflows';

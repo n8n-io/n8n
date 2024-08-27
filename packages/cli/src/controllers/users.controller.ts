@@ -13,7 +13,7 @@ import type { PublicUser } from '@/Interfaces';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/logger';

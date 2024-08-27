@@ -6,9 +6,9 @@ import { randomString } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@/databases/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
 import * as testDb from '../shared/testDb';

@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import type { UserSettings } from '@/Interfaces';
 
 export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {

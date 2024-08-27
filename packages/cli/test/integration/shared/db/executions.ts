@@ -1,8 +1,8 @@
 import Container from 'typedi';
 import type { ExecutionData } from '@/databases/entities/execution-data';
-import type { ExecutionEntity } from '@db/entities/execution-entity';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 

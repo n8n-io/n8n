@@ -1,9 +1,9 @@
 import Container from 'typedi';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
-import { AuthIdentityRepository } from '@db/repositories/auth-identity.repository';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { BaseCommand } from '../base-command';
 import { Flags } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';

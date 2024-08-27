@@ -7,8 +7,8 @@ import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
-import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
-import { createSchemaBuilder } from '@db/dsl';
+import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@/databases/types';
+import { createSchemaBuilder } from '@/databases/dsl';
 import { NodeTypes } from '@/node-types';
 import { Logger } from '@/logger';
 
