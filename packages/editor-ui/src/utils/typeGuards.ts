@@ -1,10 +1,10 @@
-import type {
-	INodeParameterResourceLocator,
-	INodeTypeDescription,
-	TriggerPanelDefinition,
-	NodeConnectionTypes,
+import {
+	type INodeParameterResourceLocator,
+	type INodeTypeDescription,
+	type TriggerPanelDefinition,
+	type NodeConnectionTypes,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { nodeConnectionTypes } from 'n8n-workflow';
 import type { IExecutionResponse, ICredentialsResponse, NewCredentialsModal } from '@/Interface';
 import type { jsPlumbDOMElement } from '@jsplumb/browser-ui';
 import type { Connection } from '@jsplumb/core';
@@ -70,7 +70,7 @@ export function isDateObject(date: unknown): date is Date {
 export function isValidNodeConnectionType(
 	connectionType: string | undefined,
 ): connectionType is NodeConnectionTypes {
-	return nodeConnectionTypes.includes(connectionType as NodeConnectionTypes);
+	return Object.values(NodeConnectionType).includes(connectionType as NodeConnectionTypes);
 }
 
 export function isValidCanvasConnectionMode(mode: string): mode is CanvasConnectionMode {
