@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -64,14 +64,14 @@ export const configuredOutputs = (parameters: WebhookParameters) => {
 	if (!Array.isArray(httpMethod))
 		return [
 			{
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: httpMethod,
 			},
 		];
 
 	const outputs = httpMethod.map((method) => {
 		return {
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: method,
 		};
 	});

@@ -9,7 +9,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
 import { capitalize } from '@utils/utilities';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
@@ -21,21 +21,21 @@ const configuredOutputs = (parameters: INodeParameters) => {
 
 	if (mode === 'expression') {
 		return Array.from({ length: parameters.numberOutputs as number }, (_, i) => ({
-			type: `${NodeConnectionType.Main}`,
+			type: 'main',
 			displayName: i.toString(),
 		}));
 	} else {
 		const rules = ((parameters.rules as IDataObject)?.values as IDataObject[]) ?? [];
 		const ruleOutputs = rules.map((rule, index) => {
 			return {
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: rule.outputKey || index.toString(),
 			};
 		});
 		if ((parameters.options as IDataObject)?.fallbackOutput === 'extra') {
 			const renameFallbackOutput = (parameters.options as IDataObject)?.renameFallbackOutput;
 			ruleOutputs.push({
-				type: `${NodeConnectionType.Main}`,
+				type: 'main',
 				displayName: renameFallbackOutput || 'Fallback',
 			});
 		}

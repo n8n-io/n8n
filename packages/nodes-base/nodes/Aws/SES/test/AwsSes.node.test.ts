@@ -1,6 +1,5 @@
 import qs from 'node:querystring';
 import assert from 'node:assert';
-import { NodeConnectionType } from 'n8n-workflow';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
@@ -49,7 +48,7 @@ describe('AwsSes Node', () => {
 								[
 									{
 										node: 'AWS SES',
-										type: NodeConnectionType.Main,
+										type: 'main',
 										index: 0,
 									},
 								],

@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class SwitchV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -33,13 +33,13 @@ export class SwitchV2 implements INodeType {
 							return Array
 								.from(
 									{ length: parameters.outputsAmount },
-									(_, i) => ({ type: "${NodeConnectionType.Main}", displayName: i.toString() })
+									(_, i) => ({ type: "main", displayName: i.toString() })
 								)
 						}
 
 
 						return rules.map(value => {
-							return { type: "${NodeConnectionType.Main}", displayName: value.outputKey }
+							return { type: "main", displayName: value.outputKey }
 						})
 					})($parameter)
 				}}`,

@@ -1,4 +1,4 @@
-import { ApplicationError, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
 import type {
 	GenericValue,
 	IBinaryKeyData,
@@ -365,7 +365,7 @@ export function addSourceField(data: INodeExecutionData[], sourceField: string) 
 
 export const configuredInputs = (parameters: INodeParameters) => {
 	return Array.from({ length: (parameters.numberInputs as number) || 2 }, (_, i) => ({
-		type: `${NodeConnectionType.Main}`,
+		type: 'main',
 		displayName: `Input ${(i + 1).toString()}`,
 	}));
 };
@@ -374,7 +374,7 @@ export function getNodeInputsData(this: IExecuteFunctions) {
 	const returnData: INodeExecutionData[][] = [];
 
 	const inputs = NodeHelpers.getConnectionTypes(this.getNodeInputs()).filter(
-		(type) => type === NodeConnectionType.Main,
+		(type) => type === 'main',
 	);
 
 	for (let i = 0; i < inputs.length; i++) {
