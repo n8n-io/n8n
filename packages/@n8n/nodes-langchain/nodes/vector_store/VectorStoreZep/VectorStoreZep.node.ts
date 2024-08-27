@@ -79,10 +79,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -102,10 +102,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,

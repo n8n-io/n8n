@@ -74,7 +74,7 @@ export class MemoryPostgresChat implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+		const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 		const tableName = this.getNodeParameter('tableName', itemIndex, 'n8n_chat_histories') as string;
 		const sessionId = getSessionId(this, itemIndex);
 
