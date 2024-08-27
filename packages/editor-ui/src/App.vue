@@ -106,7 +106,7 @@ onMounted(async () => {
 		'banners banners'
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: minmax(0, max-content) minmax(100px, auto);
+	grid-auto-columns: minmax(0, max-content) 1fr;
 	grid-template-rows: auto fit-content($header-height) 1fr;
 }
 
