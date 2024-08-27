@@ -60,7 +60,7 @@ function onDisableCreate() {
 	isCreating.value = false;
 }
 
-async function onCreate(name: string, cb: (tag: ITag | null, error?: Error) => void) {
+async function onCreate(name: string, createCallback: (tag: ITag | null, error?: Error) => void) {
 	try {
 		if (!name) {
 			throw new Error(i18n.baseText('tagsManager.tagNameCannotBeEmpty'));
@@ -69,18 +69,22 @@ async function onCreate(name: string, cb: (tag: ITag | null, error?: Error) => v
 		const newTag = await props.onCreateTag(name);
 		tagIds.value = [newTag.id, ...tagIds.value];
 		emit('update:tags', [...props.tags, newTag]);
-		cb(newTag);
+		createCallback(newTag);
 	} catch (error) {
 		// const escapedName = escape(name);
 		// Implement showError function or emit an event for error handling
-		cb(null, error as Error);
+		createCallback(null, error as Error);
 	}
 }
 
-async function onUpdate(id: string, name: string, cb: (success: boolean, error?: Error) => void) {
+async function onUpdate(
+	id: string,
+	name: string,
+	updateCallback: (success: boolean, error?: Error) => void,
+) {
 	const tag = props.tags.find((t) => t.id === id);
 	if (!tag) {
-		cb(false, new Error('Tag not found'));
+		updateCallback(false, new Error('Tag not found'));
 		return;
 	}
 	const oldName = tag.name;
@@ -91,7 +95,7 @@ async function onUpdate(id: string, name: string, cb: (success: boolean, error?:
 		}
 
 		if (name === oldName) {
-			cb(true);
+			updateCallback(true);
 			return;
 		}
 
@@ -100,16 +104,16 @@ async function onUpdate(id: string, name: string, cb: (success: boolean, error?:
 			'update:tags',
 			props.tags.map((t) => (t.id === id ? updatedTag : t)),
 		);
-		cb(true);
+		updateCallback(true);
 	} catch (error) {
-		cb(false, error as Error);
+		updateCallback(false, error as Error);
 	}
 }
 
-async function onDelete(id: string, cb: (deleted: boolean, error?: Error) => void) {
+async function onDelete(id: string, deleteCallback: (deleted: boolean, error?: Error) => void) {
 	const tag = props.tags.find((t) => t.id === id);
 	if (!tag) {
-		cb(false, new Error('Tag not found'));
+		deleteCallback(false, new Error('Tag not found'));
 		return;
 	}
 
@@ -124,9 +128,9 @@ async function onDelete(id: string, cb: (deleted: boolean, error?: Error) => voi
 			'update:tags',
 			props.tags.filter((t) => t.id !== id),
 		);
-		cb(deleted);
+		deleteCallback(deleted);
 	} catch (error) {
-		cb(false, error as Error);
+		deleteCallback(false, error as Error);
 	}
 }
 
