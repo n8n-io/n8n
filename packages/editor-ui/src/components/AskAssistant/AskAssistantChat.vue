@@ -33,7 +33,7 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 				).length
 			: null;
-	if (quickReplyType === 'all-good' || quickReplyType === 'still-stuck') {
+	if (quickReplyType !== undefined) {
 		telemetry.track('User gave feedback', {
 			task,
 			chat_session_id: assistantStore.currentSessionId,

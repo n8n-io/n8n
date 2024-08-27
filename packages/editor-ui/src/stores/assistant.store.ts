@@ -30,7 +30,7 @@ import { useToast } from '@/composables/useToast';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
-export const DEFAULT_CHAT_WIDTH = 325;
+export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
@@ -61,7 +61,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
-	const nodeSuccessfullyExecuted = ref<boolean>(false);
+	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -116,7 +116,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
-		nodeSuccessfullyExecuted.value = false;
+		nodeExecutionStatus.value = 'not_executed';
 	}
 
 	function closeChat() {
@@ -218,7 +218,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			read: true,
 		});
 	}
-
 
 	function addLoadingAssistantMessage(id: string) {
 		chatMessages.value.push({
@@ -364,25 +363,51 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		);
 	}
 
+	function addFeedbackAssistantMessage() {
+		const id = getRandomId()
+		chatMessages.value.push({
+			id,
+			role: 'assistant',
+			type: 'text',
+			content: locale.baseText('aiAssistant.feedback.nodeError'),
+			read: true,
+			quickReplies: [
+				{
+					text: locale.baseText('generic.yes'),
+					type: 'new-suggestion',
+				},
+				{
+					text: locale.baseText('aiAssistant.feedback.nodeError.no'),
+					type: 'event:end-session',
+				},
+			],
+		});
+	}
+
 	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
-		if (
-			!chatSessionError.value ||
-			pushEvent.nodeName !== chatSessionError.value.node.name ||
-			nodeSuccessfullyExecuted.value
-		) {
+		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
-		if (pushEvent.data.error) {
-			await sendEvent('node-execution-errored', pushEvent.data.error);
-		} else if (pushEvent.data.executionStatus === 'success') {
+		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
+			addFeedbackAssistantMessage();
+			nodeExecutionStatus.value = 'error';
+			telemetry.track('User executed node after assistant suggestion', {
+				task: 'error',
+				chat_session_id: currentSessionId.value,
+				success: false,
+			});
+		} else if (
+			pushEvent.data.executionStatus === 'success' &&
+			nodeExecutionStatus.value !== 'success'
+		) {
 			await sendEvent('node-execution-succeeded');
-			nodeSuccessfullyExecuted.value = true;
+			nodeExecutionStatus.value = 'success';
+			telemetry.track('User executed node after assistant suggestion', {
+				task: 'error',
+				chat_session_id: currentSessionId.value,
+				success: true,
+			});
 		}
-		telemetry.track('User executed node after assistant suggestion', {
-			task: 'error',
-			chat_session_id: currentSessionId.value,
-			success: pushEvent.data.executionStatus === 'success',
-		});
 	}
 
 	async function sendMessage(
