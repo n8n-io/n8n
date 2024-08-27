@@ -162,7 +162,7 @@ export class PayPalTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const endpoint = '/notifications/verify-webhook-signature';
 
-		const { env } = (await this.getCredentials('payPalApi')) as { env: string };
+		const { env } = await this.getCredentials<{ env: string }>('payPalApi');
 
 		// if sanbox omit verification
 		if (env === 'sanbox') {

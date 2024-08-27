@@ -3,10 +3,10 @@ import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { hasScope } from '@n8n/permissions';
 
-import type { User } from '@db/entities/User';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { User } from '@/databases/entities/User';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions/global-roles';
 import { mockEntityManager } from '@test/mocking';
 

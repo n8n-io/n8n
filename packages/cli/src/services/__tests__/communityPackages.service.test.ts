@@ -13,12 +13,12 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
+import { InstalledPackages } from '@/databases/entities/installed-packages';
 import type { CommunityPackages } from '@/Interfaces';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
-import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
-import { InstalledNodes } from '@db/entities/InstalledNodes';
+import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
+import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
+import { InstalledNodes } from '@/databases/entities/installed-nodes';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { License } from '@/license';
 

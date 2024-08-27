@@ -1,6 +1,6 @@
 import Container from 'typedi';
 
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import * as testDb from '../shared/testDb';

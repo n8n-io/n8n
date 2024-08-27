@@ -90,7 +90,7 @@ export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
 }
 
-export abstract class ICredentials {
+export abstract class ICredentials<T extends object = ICredentialDataDecryptedObject> {
 	id?: string;
 
 	name: string;
@@ -106,11 +106,11 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getData(nodeType?: string): T;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: ICredentialDataDecryptedObject): void;
+	abstract setData(data: T): void;
 }
 
 export interface IUser {
@@ -128,11 +128,11 @@ export type ProjectSharingData = {
 	updatedAt: string;
 };
 
-export interface ICredentialsDecrypted {
+export interface ICredentialsDecrypted<T extends object = ICredentialDataDecryptedObject> {
 	id: string;
 	name: string;
 	type: string;
-	data?: ICredentialDataDecryptedObject;
+	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 }
@@ -718,7 +718,7 @@ export interface IExecuteWorkflowInfo {
 
 export type ICredentialTestFunction = (
 	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
+	credential: ICredentialsDecrypted<ICredentialDataDecryptedObject>,
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
@@ -860,7 +860,10 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
-	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+		itemIndex?: number,
+	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;

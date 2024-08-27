@@ -1,7 +1,7 @@
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mockInstance } from '@test/mocking';
 import * as helpers from '@/ldap/helpers.ee';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
 

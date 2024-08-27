@@ -6,7 +6,8 @@ import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import { getOptionOverrides } from '@db/config';
+import { getOptionOverrides } from '@/databases/config';
+import { kebabCase } from 'lodash';
 
 export const testDbPrefix = 'n8n_test_';
 
@@ -79,9 +80,9 @@ const repositories = [
  */
 export async function truncate(names: Array<(typeof repositories)[number]>) {
 	for (const name of names) {
-		const RepositoryClass: Class<Repository<object>> = (
-			await import(`@db/repositories/${name.charAt(0).toLowerCase() + name.slice(1)}.repository`)
-		)[`${name}Repository`];
+		const RepositoryClass: Class<Repository<object>> =
+			// eslint-disable-next-line n8n-local-rules/no-dynamic-import-template
+			(await import(`@/databases/repositories/${kebabCase(name)}.repository`))[`${name}Repository`];
 		await Container.get(RepositoryClass).delete({});
 	}
 }
