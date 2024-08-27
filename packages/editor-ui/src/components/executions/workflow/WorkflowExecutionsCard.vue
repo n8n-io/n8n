@@ -128,6 +128,7 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nTags
 						v-if="executionUIDetails.tags.length > 0"
 						:tags="executionUIDetails.tags"
+						:clickable="false"
 					></N8nTags>
 				</div>
 			</div>

@@ -13,6 +13,7 @@ interface TagsProp {
 	tags?: ITag[];
 	truncate?: boolean;
 	truncateAt?: number;
+	clickable?: boolean;
 }
 
 defineOptions({ name: 'N8nTags' });
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<TagsProp>(), {
 	tags: () => [],
 	truncate: false,
 	truncateAt: 3,
+	clickable: true,
 });
 
 const emit = defineEmits<{
@@ -53,6 +55,7 @@ const onExpand = () => {
 			v-for="tag in visibleTags"
 			:key="tag.id"
 			:text="tag.name"
+			:clickable="clickable"
 			@click="emit('click:tag', tag.id, $event)"
 		/>
 		<N8nLink
