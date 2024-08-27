@@ -7,11 +7,13 @@ import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { setupTestServer } from './shared/utils';
 import { GlobalConfig } from '@n8n/config';
 import config from '@/config';
+import { EventService } from '@/events/event.service';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 
+const eventService = Container.get(EventService);
 const globalConfig = Container.get(GlobalConfig);
 globalConfig.endpoints.metrics = {
 	enable: true,
@@ -249,6 +251,35 @@ describe('PrometheusMetricsService', () => {
 
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_waiting 0');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_active 0');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_completed 0');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
+	});
+
+	it('should set queue metrics in response to `job-counts-updated` event', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('queue');
+		config.set('executions.mode', 'queue');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		eventService.emit('job-counts-updated', { waiting: 1, active: 2, completed: 0, failed: 0 });
+
+		/**
+		 * Assert
+		 */
+		const response = await agent.get('/metrics');
+
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_waiting 1');
+		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_active 2');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_completed 0');
 		expect(lines).toContain('n8n_test_scaling_mode_queue_jobs_failed 0');
 	});
