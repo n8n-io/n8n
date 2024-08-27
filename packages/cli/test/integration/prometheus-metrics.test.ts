@@ -35,7 +35,7 @@ const agent = request.agent(server.app);
 
 let prometheusService: PrometheusMetricsService;
 
-describe('Metrics', () => {
+describe('PrometheusMetricsService', () => {
 	beforeAll(() => {
 		prometheusService = Container.get(PrometheusMetricsService);
 	});
