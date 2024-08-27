@@ -1,14 +1,14 @@
 import Container from 'typedi';
 import { hash } from 'bcryptjs';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { type GlobalRole, type User } from '@db/entities/User';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { type GlobalRole, type User } from '@/databases/entities/User';
+import { AuthIdentityRepository } from '@db/repositories/auth-identity.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';

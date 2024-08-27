@@ -16,7 +16,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 import { Logger } from '@/logger';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');

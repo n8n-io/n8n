@@ -5,16 +5,16 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
 
 import { AuthService } from '@/auth/auth.service';
-import type { AuthUser } from '@db/entities/AuthUser';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@/databases/entities/auth-user';
+import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { AuthUserRepository } from '@db/repositories/authUser.repository';
-import type { Settings } from '@db/entities/Settings';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import type { Settings } from '@/databases/entities/settings';
 import { UserService } from '@/services/user.service';
 import type { AuthenticatedRequest } from '@/requests';
 import type { Invitation } from '@/Interfaces';

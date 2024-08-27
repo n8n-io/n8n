@@ -1,6 +1,6 @@
 import { getNodeTypes } from '@/security-audit/utils';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/security-audit/constants';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import type { RiskReporter, Risk } from '@/security-audit/types';
 import { Service } from 'typedi';
 

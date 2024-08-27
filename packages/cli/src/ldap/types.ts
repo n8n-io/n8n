@@ -1,4 +1,4 @@
-import type { RunningMode } from '@db/entities/AuthProviderSyncHistory';
+import type { RunningMode } from '@/databases/entities/auth-provider-sync-history';
 import type { AuthenticatedRequest } from '@/requests';
 
 export type ConnectionSecurity = 'none' | 'tls' | 'startTls';

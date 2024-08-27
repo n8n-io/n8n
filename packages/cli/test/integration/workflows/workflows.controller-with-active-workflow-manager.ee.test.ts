@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';

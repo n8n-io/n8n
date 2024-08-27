@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {

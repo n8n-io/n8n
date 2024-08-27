@@ -1,4 +1,4 @@
-import { DynamicNodeParametersController } from '@/controllers/dynamicNodeParameters.controller';
+import { DynamicNodeParametersController } from '@/controllers/dynamic-node-parameters.controller';
 import type { DynamicNodeParametersRequest } from '@/requests';
 import type { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { mock } from 'jest-mock-extended';

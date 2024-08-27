@@ -5,12 +5,12 @@ import { type Response } from 'express';
 import { Cipher } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
-import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
+import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/User';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ExternalHooks } from '@/external-hooks';
 import { Logger } from '@/logger';
 import { VariablesService } from '@/environments/variables/variables.service.ee';

@@ -2,7 +2,7 @@ import { TagRepository } from '@db/repositories/tag.repository';
 import { Service } from 'typedi';
 import { validateEntity } from '@/generic-helpers';
 import type { ITagWithCountDb } from '@/Interfaces';
-import type { TagEntity } from '@db/entities/TagEntity';
+import type { TagEntity } from '@/databases/entities/tag-entity';
 import { ExternalHooks } from '@/external-hooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];

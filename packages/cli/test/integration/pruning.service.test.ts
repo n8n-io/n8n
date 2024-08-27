@@ -4,8 +4,8 @@ import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
 import * as testDb from './shared/testDb';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { ExecutionEntity } from '@db/entities/execution-entity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';

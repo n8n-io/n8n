@@ -1,7 +1,7 @@
 import { mockClear } from 'jest-mock-extended';
-import { User } from '@db/entities/User';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { User } from '@/databases/entities/User';
+import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service.ee';
 import { Logger } from '@/logger';
 import { mockInstance } from '@test/mocking';
