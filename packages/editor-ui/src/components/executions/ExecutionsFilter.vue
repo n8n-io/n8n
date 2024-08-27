@@ -140,12 +140,10 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 // Can't use v-model on TagsDropdown component and thus vModel.tags is useless
 // We just emit the updated filter
 const onTagsChange = () => {
-	// filter.tags = tags;
 	emit('filterChanged', filter);
 };
 
 const onAnnotationTagsChange = () => {
-	// filter.annotationTags = tags;
 	emit('filterChanged', filter);
 };
 

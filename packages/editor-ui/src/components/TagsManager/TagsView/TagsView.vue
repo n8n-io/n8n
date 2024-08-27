@@ -17,11 +17,11 @@ export default defineComponent({
 	components: { TagsTableHeader, TagsTable },
 	props: {
 		usageColumnTitleLocaleKey: {
-			type: PropType<BaseTextKey>,
+			type: String as PropType<BaseTextKey>,
 			default: 'tagsTable.usage',
 		},
 		usageLocaleKey: {
-			type: PropType<BaseTextKey>,
+			type: String as PropType<BaseTextKey>,
 			default: 'tagsView.inUse',
 		},
 		tags: {
