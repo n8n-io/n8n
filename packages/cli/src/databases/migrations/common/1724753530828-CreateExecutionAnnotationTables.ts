@@ -4,7 +4,7 @@ const annotationsTableName = 'execution_annotations';
 const annotationTagsTableName = 'annotation_tag_entity';
 const annotationTagMappingsTableName = 'execution_annotation_tags';
 
-export class CreateAnnotationTables1723039529455 implements ReversibleMigration {
+export class CreateAnnotationTables1724753530828 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(annotationsTableName)
 			.withColumns(

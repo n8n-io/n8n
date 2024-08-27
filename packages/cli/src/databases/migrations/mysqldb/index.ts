@@ -61,7 +61,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
-import { CreateAnnotationTables1723039529455 } from '../common/1723039529455-CreateExecutionAnnotationTables';
+import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -126,5 +126,5 @@ export const mysqlMigrations: Migration[] = [
 	AddConstraintToExecutionMetadata1720101653148,
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
-	CreateAnnotationTables1723039529455,
+	CreateAnnotationTables1724753530828,
 ];
