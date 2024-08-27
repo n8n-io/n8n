@@ -86,7 +86,7 @@ export abstract class AbstractEventMessage {
 
 	ts: DateTime;
 
-	eventName: EventNamesTypes;
+	abstract eventName: EventNamesTypes;
 
 	message: string;
 

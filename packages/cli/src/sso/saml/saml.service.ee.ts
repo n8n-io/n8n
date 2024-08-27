@@ -55,7 +55,6 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
-		relayState: this.urlService.getInstanceBaseUrl(),
 		signatureConfig: {
 			prefix: 'ds',
 			location: {
@@ -76,7 +75,9 @@ export class SamlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
-	) {}
+	) {
+		this._samlPreferences.relayState = this.urlService.getInstanceBaseUrl();
+	}
 
 	async init(): Promise<void> {
 		// load preferences first but do not apply so as to not load samlify unnecessarily

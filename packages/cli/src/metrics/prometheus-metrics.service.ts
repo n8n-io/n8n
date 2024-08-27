@@ -14,32 +14,36 @@ import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class PrometheusMetricsService {
+	private readonly counters: { [key: string]: Counter<string> | null } = {};
+
+	private readonly prefix: string;
+
+	private readonly includes: Includes;
+
 	constructor(
 		private readonly cacheService: CacheService,
 		private readonly eventBus: MessageEventBus,
-		private readonly globalConfig: GlobalConfig,
-	) {}
-
-	private readonly counters: { [key: string]: Counter<string> | null } = {};
-
-	private readonly prefix = this.globalConfig.endpoints.metrics.prefix;
-
-	private readonly includes: Includes = {
-		metrics: {
-			default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,
-			routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
-			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
-			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
-		},
-		labels: {
-			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
-			nodeType: this.globalConfig.endpoints.metrics.includeNodeTypeLabel,
-			workflowId: this.globalConfig.endpoints.metrics.includeWorkflowIdLabel,
-			apiPath: this.globalConfig.endpoints.metrics.includeApiPathLabel,
-			apiMethod: this.globalConfig.endpoints.metrics.includeApiMethodLabel,
-			apiStatusCode: this.globalConfig.endpoints.metrics.includeApiStatusCodeLabel,
-		},
-	};
+		globalConfig: GlobalConfig,
+	) {
+		const { metrics } = globalConfig.endpoints;
+		this.prefix = metrics.prefix;
+		this.includes = {
+			metrics: {
+				default: metrics.includeDefaultMetrics,
+				routes: metrics.includeApiEndpoints,
+				cache: metrics.includeCacheMetrics,
+				logs: metrics.includeMessageEventBusMetrics,
+			},
+			labels: {
+				credentialsType: metrics.includeCredentialTypeLabel,
+				nodeType: metrics.includeNodeTypeLabel,
+				workflowId: metrics.includeWorkflowIdLabel,
+				apiPath: metrics.includeApiPathLabel,
+				apiMethod: metrics.includeApiMethodLabel,
+				apiStatusCode: metrics.includeApiStatusCodeLabel,
+			},
+		};
+	}
 
 	async init(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time

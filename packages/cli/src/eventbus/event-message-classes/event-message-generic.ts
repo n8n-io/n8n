@@ -3,6 +3,7 @@ import { EventMessageTypeNames } from 'n8n-workflow';
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './abstract-event-message';
 import type { AbstractEventPayload } from './abstract-event-payload';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
+import type { EventNamesTypes } from '.';
 
 export const eventMessageGenericDestinationTestEvent = 'n8n.destination.test';
 
@@ -16,6 +17,8 @@ export interface EventMessageGenericOptions extends AbstractEventMessageOptions 
 
 export class EventMessageGeneric extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.generic;
+
+	eventName: EventNamesTypes;
 
 	payload: EventPayloadGeneric;
 
