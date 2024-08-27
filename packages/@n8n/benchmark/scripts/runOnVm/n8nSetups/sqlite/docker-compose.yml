@@ -4,6 +4,8 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
+      - DB_SQLITE_POOL_SIZE=3
+      - DB_SQLITE_ENABLE_WAL=true
     ports:
       - 5678:5678
     volumes:

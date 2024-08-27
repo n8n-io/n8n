@@ -2,8 +2,8 @@ import { Container } from 'typedi';
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { User } from '@/databases/entities/User';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 import {
 	randomEmail,

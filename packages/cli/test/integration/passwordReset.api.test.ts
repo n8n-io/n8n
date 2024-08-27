@@ -7,12 +7,12 @@ import { randomString } from 'n8n-workflow';
 import { AuthService } from '@/auth/auth.service';
 import { License } from '@/license';
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 import { ExternalHooks } from '@/external-hooks';
 import { JwtService } from '@/services/jwt.service';
 import { UserManagementMailer } from '@/user-management/email';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { mockInstance } from '../shared/mocking';

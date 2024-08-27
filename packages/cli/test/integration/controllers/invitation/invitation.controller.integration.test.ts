@@ -24,7 +24,7 @@ import {
 
 import type { User } from '@/databases/entities/User';
 import type { UserInvitationResult } from '../../shared/utils/users';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);

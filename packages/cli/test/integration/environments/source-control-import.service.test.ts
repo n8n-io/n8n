@@ -9,7 +9,7 @@ import type { InstanceSettings } from 'n8n-core';
 import * as testDb from '../shared/testDb';
 import { SourceControlImportService } from '@/environments/source-control/source-control-import.service.ee';
 import { createMember, getGlobalOwner } from '../shared/db/users';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { mockInstance } from '../../shared/mocking';
 import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
 import type { ExportableCredential } from '@/environments/source-control/types/exportable-credential';

@@ -7,7 +7,7 @@ import type { AbstractEventMessage } from '../event-message-classes/abstract-eve
 import type { EventMessageTypes } from '../event-message-classes';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
-import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
+import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
 import { License } from '@/license';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {

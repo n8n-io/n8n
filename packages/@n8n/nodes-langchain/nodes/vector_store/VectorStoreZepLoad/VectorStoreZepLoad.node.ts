@@ -92,11 +92,14 @@ export class VectorStoreZepLoad implements INodeType {
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
-		const embeddings = (await this.getInputConnectionData('ai_embedding', 0)) as Embeddings;
+		}>('zepApi');
+		const embeddings = (await this.getInputConnectionData(
+			'ai_embedding',
+			0,
+		)) as Embeddings;
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,

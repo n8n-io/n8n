@@ -6,8 +6,8 @@ import { BinaryDataService } from 'n8n-core';
 import { nanoid } from 'nanoid';
 import { mock } from 'jest-mock-extended';
 
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionEntity } from '@/databases/entities/execution-entity';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance, mockEntityManager } from '@test/mocking';
 
 describe('ExecutionRepository', () => {

@@ -1,4 +1,4 @@
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 const COLLATION_57 = 'utf8mb4_general_ci';
 const COLLATION_80 = 'utf8mb4_0900_ai_ci';

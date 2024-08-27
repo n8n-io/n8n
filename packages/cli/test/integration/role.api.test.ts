@@ -1,10 +1,10 @@
 import { Container } from 'typedi';
 import type { Scope } from '@n8n/permissions';
 
-import type { GlobalRole } from '@db/entities/User';
-import type { ProjectRole } from '@db/entities/ProjectRelation';
-import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
-import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import type { GlobalRole } from '@/databases/entities/User';
+import type { ProjectRole } from '@/databases/entities/project-relation';
+import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
+import type { WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import { RoleService } from '@/services/role.service';
 
 import * as utils from './shared/utils/';

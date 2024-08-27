@@ -12,8 +12,8 @@ import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } fr
 import { get as pslGet } from 'psl';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import { EventRelay } from './event-relay';

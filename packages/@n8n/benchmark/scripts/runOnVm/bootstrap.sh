@@ -10,8 +10,8 @@ CURRENT_USER=$(whoami)
 # Mount the data disk
 if [ -d "/n8n" ]; then
 	echo "Data disk already mounted. Clearing it..."
-	rm -rf /n8n/*
-	rm -rf /n8n/.[!.]*
+	sudo rm -rf /n8n/*
+	sudo rm -rf /n8n/.[!.]*
 else
 	sudo mkdir -p /n8n
 	sudo parted /dev/sdc --script mklabel gpt mkpart xfspart xfs 0% 100%

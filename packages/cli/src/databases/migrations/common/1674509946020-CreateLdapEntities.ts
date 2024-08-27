@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
 
 export class CreateLdapEntities1674509946020 implements ReversibleMigration {

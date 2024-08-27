@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Service } from 'typedi';
 import { Cipher } from 'n8n-core';
-import { AuthUserRepository } from '@db/repositories/authUser.repository';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { TOTPService } from './totp.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
