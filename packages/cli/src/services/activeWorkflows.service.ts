@@ -41,7 +41,7 @@ export class ActiveWorkflowsService {
 			'workflow:read',
 		]);
 		if (!workflow) {
-			this.logger.verbose('User attempted to access workflow errors without permissions', {
+			this.logger.warn('User attempted to access workflow errors without permissions', {
 				workflowId,
 				userId: user.id,
 			});

@@ -116,7 +116,7 @@ export class EmbeddingsGooglePalm implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings Google PaLM');
+		this.logger.debug('Supply data for embeddings Google PaLM');
 		const modelName = this.getNodeParameter(
 			'modelName',
 			itemIndex,

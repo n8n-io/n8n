@@ -162,7 +162,7 @@ export class ChainSummarizationV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Vector Store QA Chain');
+		this.logger.debug('Executing Vector Store QA Chain');
 		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
 		const model = (await this.getInputConnectionData(

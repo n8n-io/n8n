@@ -388,7 +388,7 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		this.logger.verbose('New credential created', {
+		this.logger.debug('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});

@@ -309,7 +309,7 @@ export class WorkflowsController {
 		);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to access a workflow without permissions', {
+			this.logger.warn('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -362,7 +362,7 @@ export class WorkflowsController {
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
-			this.logger.verbose('User attempted to delete a workflow without permissions', {
+			this.logger.warn('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
