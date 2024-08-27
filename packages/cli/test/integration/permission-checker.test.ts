@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
 import type { User } from '@/databases/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';

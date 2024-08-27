@@ -6,9 +6,9 @@ import { STARTING_NODES } from '@/constants';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/User';
 import type { Project } from '@/databases/entities/project';
-import { ProjectRepository } from '@db/repositories/project.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 

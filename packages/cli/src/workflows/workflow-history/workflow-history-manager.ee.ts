@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { DateTime } from 'luxon';
-import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { WORKFLOW_HISTORY_PRUNE_INTERVAL } from './constants';
 import {
 	getWorkflowHistoryPruneTime,

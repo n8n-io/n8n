@@ -13,7 +13,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@/databases/entities/User';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
 

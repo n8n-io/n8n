@@ -27,7 +27,7 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/credential-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/logger';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { Service } from 'typedi';
 import { CredentialsTester } from '@/services/credentials-tester.service';

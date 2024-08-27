@@ -7,10 +7,10 @@ import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { validateEntity } from '@/generic-helpers';

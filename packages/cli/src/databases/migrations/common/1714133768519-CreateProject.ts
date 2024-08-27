@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';

@@ -1,4 +1,4 @@
-import { TagRepository } from '@db/repositories/tag.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 import { Service } from 'typedi';
 import { validateEntity } from '@/generic-helpers';
 import type { ITagWithCountDb } from '@/Interfaces';

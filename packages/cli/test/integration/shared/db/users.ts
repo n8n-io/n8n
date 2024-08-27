@@ -2,8 +2,8 @@ import Container from 'typedi';
 import { hash } from 'bcryptjs';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { type GlobalRole, type User } from '@/databases/entities/User';
-import { AuthIdentityRepository } from '@db/repositories/auth-identity.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 import { MfaService } from '@/mfa/mfa.service';
 

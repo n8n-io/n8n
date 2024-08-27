@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import { License } from '@/license';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExternalSecretsProviders } from '@/external-secrets/external-secrets-providers.ee';
 import config from '@/config';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';

@@ -13,7 +13,7 @@ import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
 import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ExternalHooks } from '@/external-hooks';

@@ -19,7 +19,7 @@ import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interf
 import { AssignableRole } from '@/databases/entities/User';
 import type { GlobalRole, User } from '@/databases/entities/User';
 import type { Variables } from '@/databases/entities/Variables';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import type { Project, ProjectType } from '@/databases/entities/project';
