@@ -3,8 +3,9 @@ name: PR E2E
 on:
   pull_request_review:
     types: [submitted]
-    branch:
+    branches:
       - 'master'
+      - 'release/*'
 
 concurrency:
   group: e2e-${{ github.event.pull_request.number || github.ref }}
@@ -18,7 +19,6 @@ jobs:
     with:
       pr_number: ${{ github.event.pull_request.number }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
-      spec: 'e2e/*'
     secrets:
       CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
 

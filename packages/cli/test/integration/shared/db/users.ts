@@ -4,8 +4,8 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { type GlobalRole, type User } from '@db/entities/User';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { TOTPService } from '@/Mfa/totp.service';
-import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/mfa/totp.service';
+import { MfaService } from '@/mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
 import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
@@ -78,11 +78,19 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
-export async function createOwner() {
+export async function createOwner({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:owner' }));
+	}
+
 	return await createUser({ role: 'global:owner' });
 }
 
-export async function createMember() {
+export async function createMember({ withApiKey } = { withApiKey: false }) {
+	if (withApiKey) {
+		return await addApiKey(await createUser({ role: 'global:member' }));
+	}
+
 	return await createUser({ role: 'global:member' });
 }
 

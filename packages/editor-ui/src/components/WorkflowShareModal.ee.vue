@@ -1,121 +1,3 @@
-<template>
-	<Modal
-		width="460px"
-		max-height="75%"
-		:title="modalTitle"
-		:event-bus="modalBus"
-		:name="WORKFLOW_SHARE_MODAL_KEY"
-		:center="true"
-		:before-close="onCloseModal"
-	>
-		<template #content>
-			<div v-if="!isSharingEnabled" :class="$style.container">
-				<n8n-text>
-					{{
-						$locale.baseText(
-							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
-						)
-					}}
-				</n8n-text>
-			</div>
-			<div v-else :class="$style.container">
-				<n8n-info-tip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
-					:bold="false"
-					class="mb-s"
-				>
-					{{
-						$locale.baseText('workflows.shareModal.info.sharee', {
-							interpolate: { workflowOwnerName },
-						})
-					}}
-				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
-					<div>
-						<ProjectSharing
-							v-model="sharedWithProjects"
-							:home-project="workflow.homeProject"
-							:projects="projects"
-							:roles="workflowRoles"
-							:readonly="!workflowPermissions.share"
-							:static="isHomeTeamProject || !workflowPermissions.share"
-							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-							@project-added="onProjectAdded"
-							@project-removed="onProjectRemoved"
-						/>
-						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
-							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
-								<template #projectName>
-									{{ workflow.homeProject?.name }}
-								</template>
-								<template #members>
-									<strong>
-										{{
-											$locale.baseText('workflows.shareModal.info.members.number', {
-												interpolate: {
-													number: String(numberOfMembersInHomeTeamProject),
-												},
-												adjustToNumber: numberOfMembersInHomeTeamProject,
-											})
-										}}
-									</strong>
-								</template>
-							</i18n-t>
-						</n8n-info-tip>
-					</div>
-					<template #fallback>
-						<n8n-text>
-							<i18n-t
-								:keypath="
-									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
-										.tooltip
-								"
-								tag="span"
-							>
-								<template #action />
-							</i18n-t>
-						</n8n-text>
-					</template>
-				</enterprise-edition>
-			</div>
-		</template>
-
-		<template #footer>
-			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
-				<n8n-button @click="goToUpgrade">
-					{{
-						$locale.baseText(
-							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
-						)
-					}}
-				</n8n-button>
-			</div>
-			<enterprise-edition
-				v-else
-				:features="[EnterpriseEditionFeature.Sharing]"
-				:class="$style.actionButtons"
-			>
-				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
-					{{ $locale.baseText('workflows.shareModal.changesHint') }}
-				</n8n-text>
-				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
-					{{ $locale.baseText('generic.close') }}
-				</n8n-button>
-				<n8n-button
-					v-else
-					v-show="workflowPermissions.share"
-					:loading="loading"
-					:disabled="!isDirty"
-					data-test-id="workflow-sharing-modal-save-button"
-					@click="onSave"
-				>
-					{{ $locale.baseText('workflows.shareModal.save') }}
-				</n8n-button>
-			</enterprise-edition>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -130,9 +12,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
-import type { PermissionsMap } from '@/permissions';
-import type { WorkflowScope } from '@n8n/permissions';
-import { getWorkflowPermissions } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { nodeViewEventBus } from '@/event-bus';
@@ -224,8 +104,8 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			return getWorkflowPermissions(this.workflow);
+		workflowPermissions() {
+			return getResourcePermissions(this.workflow?.scopes).workflow;
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
@@ -375,6 +255,124 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		width="460px"
+		max-height="75%"
+		:title="modalTitle"
+		:event-bus="modalBus"
+		:name="WORKFLOW_SHARE_MODAL_KEY"
+		:center="true"
+		:before-close="onCloseModal"
+	>
+		<template #content>
+			<div v-if="!isSharingEnabled" :class="$style.container">
+				<n8n-text>
+					{{
+						$locale.baseText(
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+						)
+					}}
+				</n8n-text>
+			</div>
+			<div v-else :class="$style.container">
+				<n8n-info-tip
+					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					:bold="false"
+					class="mb-s"
+				>
+					{{
+						$locale.baseText('workflows.shareModal.info.sharee', {
+							interpolate: { workflowOwnerName },
+						})
+					}}
+				</n8n-info-tip>
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+					<div>
+						<ProjectSharing
+							v-model="sharedWithProjects"
+							:home-project="workflow.homeProject"
+							:projects="projects"
+							:roles="workflowRoles"
+							:readonly="!workflowPermissions.share"
+							:static="isHomeTeamProject || !workflowPermissions.share"
+							:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+							@project-added="onProjectAdded"
+							@project-removed="onProjectRemoved"
+						/>
+						<n8n-info-tip v-if="isHomeTeamProject" :bold="false" class="mt-s">
+							<i18n-t keypath="workflows.shareModal.info.members" tag="span">
+								<template #projectName>
+									{{ workflow.homeProject?.name }}
+								</template>
+								<template #members>
+									<strong>
+										{{
+											$locale.baseText('workflows.shareModal.info.members.number', {
+												interpolate: {
+													number: String(numberOfMembersInHomeTeamProject),
+												},
+												adjustToNumber: numberOfMembersInHomeTeamProject,
+											})
+										}}
+									</strong>
+								</template>
+							</i18n-t>
+						</n8n-info-tip>
+					</div>
+					<template #fallback>
+						<n8n-text>
+							<i18n-t
+								:keypath="
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+										.tooltip
+								"
+								tag="span"
+							>
+								<template #action />
+							</i18n-t>
+						</n8n-text>
+					</template>
+				</enterprise-edition>
+			</div>
+		</template>
+
+		<template #footer>
+			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
+				<n8n-button @click="goToUpgrade">
+					{{
+						$locale.baseText(
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+						)
+					}}
+				</n8n-button>
+			</div>
+			<enterprise-edition
+				v-else
+				:features="[EnterpriseEditionFeature.Sharing]"
+				:class="$style.actionButtons"
+			>
+				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
+					{{ $locale.baseText('workflows.shareModal.changesHint') }}
+				</n8n-text>
+				<n8n-button v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+					{{ $locale.baseText('generic.close') }}
+				</n8n-button>
+				<n8n-button
+					v-else
+					v-show="workflowPermissions.share"
+					:loading="loading"
+					:disabled="!isDirty"
+					data-test-id="workflow-sharing-modal-save-button"
+					@click="onSave"
+				>
+					{{ $locale.baseText('workflows.shareModal.save') }}
+				</n8n-button>
+			</enterprise-edition>
+		</template>
+	</Modal>
+</template>
 
 <style module lang="scss">
 .container {

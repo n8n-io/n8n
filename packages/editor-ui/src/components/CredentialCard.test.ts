@@ -6,7 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialsResponse } from '@/Interface';
 import type { ProjectSharingData } from '@/types/projects.types';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useProjectsStore } from '@/stores/projects.store';
 
 const renderComponent = createComponentRenderer(CredentialCard);
 
@@ -22,12 +22,12 @@ const createCredential = (overrides = {}): ICredentialsResponse => ({
 });
 
 describe('CredentialCard', () => {
-	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let projectsStore: ReturnType<typeof useProjectsStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
-		settingsStore = useSettingsStore();
+		projectsStore = useProjectsStore();
 	});
 
 	it('should render name and home project name', () => {
@@ -63,7 +63,7 @@ describe('CredentialCard', () => {
 	});
 
 	it('should show Move action only if there is resource permission and not on community plan', async () => {
-		vi.spyOn(settingsStore, 'isCommunityPlan', 'get').mockReturnValue(false);
+		vi.spyOn(projectsStore, 'isTeamProjectFeatureEnabled', 'get').mockReturnValue(true);
 
 		const data = createCredential({
 			scopes: ['credential:move'],

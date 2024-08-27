@@ -11,9 +11,9 @@ import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repo
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { License } from '@/License';
+import { License } from '@/license';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';

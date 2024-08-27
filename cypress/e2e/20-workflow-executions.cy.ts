@@ -183,6 +183,50 @@ describe('Current Workflow Executions', () => {
 			.invoke('attr', 'title')
 			.should('eq', newWorkflowName);
 	});
+
+	it('should load items and auto scroll after filter change', () => {
+		createMockExecutions();
+		createMockExecutions();
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait(['@getExecutions']);
+
+		executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
+
+		executionsTab.getters.executionListItems().eq(10).click();
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-status-select').should('be.visible').click();
+		getVisibleSelect().find('li:contains("Error")').click();
+
+		executionsTab.getters.executionListItems().should('have.length', 5);
+		executionsTab.getters.successfulExecutionListItems().should('have.length', 1);
+		executionsTab.getters.failedExecutionListItems().should('have.length', 4);
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-status-select').should('be.visible').click();
+		getVisibleSelect().find('li:contains("Success")').click();
+
+		// check if the list is scrolled
+		executionsTab.getters.executionListItems().eq(10).should('be.visible');
+		executionsTab.getters.executionsList().then(($el) => {
+			const { scrollTop, scrollHeight, clientHeight } = $el[0];
+			expect(scrollTop).to.be.greaterThan(0);
+			expect(scrollTop + clientHeight).to.be.lessThan(scrollHeight);
+
+			// scroll to the bottom
+			$el[0].scrollTo(0, scrollHeight);
+			executionsTab.getters.executionListItems().should('have.length', 18);
+			executionsTab.getters.successfulExecutionListItems().should('have.length', 18);
+			executionsTab.getters.failedExecutionListItems().should('have.length', 0);
+		});
+
+		cy.getByTestId('executions-filter-button').click();
+		cy.getByTestId('executions-filter-reset-button').should('be.visible').click();
+		executionsTab.getters.executionListItems().eq(11).should('be.visible');
+	});
 });
 
 const createMockExecutions = () => {

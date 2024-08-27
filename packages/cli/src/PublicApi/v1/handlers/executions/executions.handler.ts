@@ -2,12 +2,12 @@ import type express from 'express';
 import { Container } from 'typedi';
 import { replaceCircularReferences } from 'n8n-workflow';
 
-import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/active-executions';
 import { validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooks } from '@/InternalHooks';
+import { EventService } from '@/events/event.service';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 
@@ -78,9 +78,9 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			void Container.get(InternalHooks).onUserRetrievedExecution({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-execution', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json(replaceCircularReferences(execution));
@@ -95,9 +95,10 @@ export = {
 				status = undefined,
 				includeData = false,
 				workflowId = undefined,
+				projectId,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read'], projectId);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -129,9 +130,9 @@ export = {
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
-			void Container.get(InternalHooks).onUserRetrievedAllExecutions({
-				user_id: req.user.id,
-				public_api: true,
+			Container.get(EventService).emit('user-retrieved-all-executions', {
+				userId: req.user.id,
+				publicApi: true,
 			});
 
 			return res.json({

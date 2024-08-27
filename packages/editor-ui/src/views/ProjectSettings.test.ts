@@ -11,6 +11,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { IN8nUISettings } from 'n8n-workflow';
+import { ProjectTypes } from '@/types/projects.types';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -28,7 +29,12 @@ vi.mock('vue-router', () => {
 
 const renderComponent = createComponentRenderer(ProjectSettings);
 
-const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
+const projects = [
+	ProjectTypes.Personal,
+	ProjectTypes.Personal,
+	ProjectTypes.Team,
+	ProjectTypes.Team,
+].map(createProjectListItem);
 
 let router: ReturnType<typeof useRouter>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
@@ -48,7 +54,7 @@ describe('ProjectSettings', () => {
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 		vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue({
 			enterprise: {
 				projects: {

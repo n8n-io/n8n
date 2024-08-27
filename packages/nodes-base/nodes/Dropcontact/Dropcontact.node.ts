@@ -190,7 +190,7 @@ export class Dropcontact implements INodeType {
 						operation: ['enrich'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

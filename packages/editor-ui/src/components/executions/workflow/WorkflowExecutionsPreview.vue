@@ -1,22 +1,113 @@
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { ElDropdown } from 'element-plus';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useMessage } from '@/composables/useMessage';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import type { ExecutionSummary } from 'n8n-workflow';
+import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useI18n } from '@/composables/useI18n';
+import { getResourcePermissions } from '@/permissions';
+
+type RetryDropdownRef = InstanceType<typeof ElDropdown>;
+
+const props = defineProps<{
+	execution: ExecutionSummary;
+}>();
+
+const emit = defineEmits<{
+	deleteCurrentExecution: [];
+	retryExecution: Array<{ execution: ExecutionSummary; command: string }>;
+	stopExecution: [];
+}>();
+
+const route = useRoute();
+const locale = useI18n();
+
+const executionHelpers = useExecutionHelpers();
+const message = useMessage();
+const executionDebugging = useExecutionDebugging();
+const workflowsStore = useWorkflowsStore();
+
+const retryDropdownRef = ref<RetryDropdownRef | null>(null);
+const workflowId = computed(() => route.params.name as string);
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+);
+const executionId = computed(() => route.params.executionId as string);
+const executionUIDetails = computed<IExecutionUIData | null>(() =>
+	props.execution ? executionHelpers.getUIDetails(props.execution) : null,
+);
+const debugButtonData = computed(() =>
+	props.execution?.status === 'success'
+		? {
+				text: locale.baseText('executionsList.debug.button.copyToEditor'),
+				type: 'secondary',
+			}
+		: {
+				text: locale.baseText('executionsList.debug.button.debugInEditor'),
+				type: 'primary',
+			},
+);
+const isRetriable = computed(
+	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
+);
+
+async function onDeleteExecution(): Promise<void> {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('executionDetails.confirmMessage.message'),
+		locale.baseText('executionDetails.confirmMessage.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
+			cancelButtonText: '',
+		},
+	);
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+	emit('deleteCurrentExecution');
+}
+
+function handleRetryClick(command: string) {
+	emit('retryExecution', { execution: props.execution, command });
+}
+
+function handleStopClick() {
+	emit('stopExecution');
+}
+
+function onRetryButtonBlur(event: FocusEvent) {
+	// Hide dropdown when clicking outside of current document
+	if (retryDropdownRef.value && event.relatedTarget === null) {
+		retryDropdownRef.value.handleClose();
+	}
+}
+</script>
+
 <template>
 	<div v-if="executionUIDetails?.name === 'new'" :class="$style.newInfo">
-		<n8n-text :class="$style.newMessage" color="text-light">
-			{{ $locale.baseText('executionDetails.newMessage') }}
-		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
-			{{ $locale.baseText('executionsList.stopExecution') }}
-		</n8n-button>
+		<N8nText :class="$style.newMessage" color="text-light">
+			{{ locale.baseText('executionDetails.newMessage') }}
+		</N8nText>
+		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ locale.baseText('executionsList.stopExecution') }}
+		</N8nButton>
 	</div>
 	<div v-else-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
-			<n8n-spinner type="ring" />
+			<N8nSpinner type="ring" />
 		</div>
-		<n8n-text :class="$style.runningMessage" color="text-light">
-			{{ $locale.baseText('executionDetails.runningMessage') }}
-		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
-			{{ $locale.baseText('executionsList.stopExecution') }}
-		</n8n-button>
+		<N8nText :class="$style.runningMessage" color="text-light">
+			{{ locale.baseText('executionDetails.runningMessage') }}
+		</N8nText>
+		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ locale.baseText('executionsList.stopExecution') }}
+		</N8nButton>
 	</div>
 	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
 		<div
@@ -25,57 +116,53 @@
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
 			<div>
-				<n8n-text size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
+				<N8nText size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
 					executionUIDetails?.startTime
-				}}</n8n-text
+				}}</N8nText
 				><br />
-				<n8n-spinner
+				<N8nSpinner
 					v-if="executionUIDetails?.name === 'running'"
 					size="small"
 					:class="[$style.spinner, 'mr-4xs']"
 				/>
-				<n8n-text
+				<N8nText
 					size="medium"
 					:class="[$style.status, $style[executionUIDetails.name]]"
 					data-test-id="execution-preview-label"
 				>
 					{{ executionUIDetails.label }}
-				</n8n-text>
+				</N8nText>
 				{{ ' ' }}
-				<n8n-text
-					v-if="executionUIDetails?.showTimestamp === false"
-					color="text-base"
-					size="medium"
-				>
+				<N8nText v-if="executionUIDetails?.showTimestamp === false" color="text-base" size="medium">
 					| ID#{{ execution.id }}
-				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+				</N8nText>
+				<N8nText v-else-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
-						$locale.baseText('executionDetails.runningTimeRunning', {
+						locale.baseText('executionDetails.runningTimeRunning', {
 							interpolate: { time: executionUIDetails?.runningTime },
 						})
 					}}
 					| ID#{{ execution.id }}
-				</n8n-text>
-				<n8n-text
+				</N8nText>
+				<N8nText
 					v-else-if="executionUIDetails.name !== 'waiting'"
 					color="text-base"
 					size="medium"
 					data-test-id="execution-preview-id"
 				>
 					{{
-						$locale.baseText('executionDetails.runningTimeFinished', {
+						locale.baseText('executionDetails.runningTimeFinished', {
 							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
 						})
 					}}
 					| ID#{{ execution.id }}
-				</n8n-text>
-				<br /><n8n-text v-if="execution.mode === 'retry'" color="text-base" size="medium">
-					{{ $locale.baseText('executionDetails.retry') }}
+				</N8nText>
+				<br /><N8nText v-if="execution.mode === 'retry'" color="text-base" size="medium">
+					{{ locale.baseText('executionDetails.retry') }}
 					<router-link
 						:class="$style.executionLink"
 						:to="{
-							name: executionPreviewViewName,
+							name: VIEWS.EXECUTION_PREVIEW,
 							params: {
 								workflowId: execution.workflowId,
 								executionId: execution.retryOf,
@@ -84,24 +171,31 @@
 					>
 						#{{ execution.retryOf }}
 					</router-link>
-				</n8n-text>
+				</N8nText>
 			</div>
 			<div>
-				<n8n-button size="medium" :type="debugButtonData.type" :class="$style.debugLink">
-					<router-link
-						:to="{
-							name: executionDebugViewName,
-							params: {
-								name: execution.workflowId,
-								executionId: execution.id,
-							},
-						}"
+				<router-link
+					:to="{
+						name: VIEWS.EXECUTION_DEBUG,
+						params: {
+							name: execution.workflowId,
+							executionId: execution.id,
+						},
+					}"
+				>
+					<N8nButton
+						size="medium"
+						:type="debugButtonData.type"
+						:class="$style.debugLink"
+						:disabled="!workflowPermissions.update"
 					>
-						<span data-test-id="execution-debug-button" @click="handleDebugLinkClick">{{
-							debugButtonData.text
-						}}</span>
-					</router-link>
-				</n8n-button>
+						<span
+							data-test-id="execution-debug-button"
+							@click="executionDebugging.handleDebugLinkClick"
+							>{{ debugButtonData.text }}</span
+						>
+					</N8nButton>
+				</router-link>
 
 				<ElDropdown
 					v-if="isRetriable"
@@ -111,28 +205,30 @@
 					@command="handleRetryClick"
 				>
 					<span class="retry-button">
-						<n8n-icon-button
+						<N8nIconButton
 							size="medium"
 							type="tertiary"
-							:title="$locale.baseText('executionsList.retryExecution')"
+							:title="locale.baseText('executionsList.retryExecution')"
+							:disabled="!workflowPermissions.update"
 							icon="redo"
 							data-test-id="execution-preview-retry-button"
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
 					<template #dropdown>
-						<el-dropdown-menu>
-							<el-dropdown-item command="current-workflow">
-								{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-							</el-dropdown-item>
-							<el-dropdown-item command="original-workflow">
-								{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-							</el-dropdown-item>
-						</el-dropdown-menu>
+						<ElDropdownMenu>
+							<ElDropdownItem command="current-workflow">
+								{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+							</ElDropdownItem>
+							<ElDropdownItem command="original-workflow">
+								{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+							</ElDropdownItem>
+						</ElDropdownMenu>
 					</template>
 				</ElDropdown>
-				<n8n-icon-button
-					:title="$locale.baseText('executionDetails.deleteExecution')"
+				<N8nIconButton
+					:title="locale.baseText('executionDetails.deleteExecution')"
+					:disabled="!workflowPermissions.update"
 					icon="trash"
 					size="medium"
 					type="tertiary"
@@ -145,114 +241,10 @@
 			mode="execution"
 			loader-type="spinner"
 			:execution-id="executionId"
-			:execution-mode="executionMode"
+			:execution-mode="execution?.mode || ''"
 		/>
 	</div>
 </template>
-
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import { ElDropdown } from 'element-plus';
-import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
-import { useMessage } from '@/composables/useMessage';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import type { ExecutionSummary } from 'n8n-workflow';
-import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { mapStores } from 'pinia';
-
-type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
-
-export default defineComponent({
-	name: 'WorkflowExecutionsPreview',
-	components: {
-		ElDropdown,
-		WorkflowPreview,
-	},
-	props: {
-		execution: {
-			type: Object as PropType<ExecutionSummary>,
-			required: true,
-		},
-	},
-	setup() {
-		const executionHelpers = useExecutionHelpers();
-
-		return {
-			executionHelpers,
-			...useMessage(),
-			...useExecutionDebugging(),
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-		executionId(): string {
-			return this.$route.params.executionId as string;
-		},
-		executionUIDetails(): IExecutionUIData | null {
-			return this.execution ? this.executionHelpers.getUIDetails(this.execution) : null;
-		},
-		executionMode(): string {
-			return this.execution?.mode || '';
-		},
-		debugButtonData(): Record<string, string> {
-			return this.execution?.status === 'success'
-				? {
-						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
-						type: 'secondary',
-					}
-				: {
-						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
-						type: 'primary',
-					};
-		},
-		isRetriable(): boolean {
-			return !!this.execution && this.executionHelpers.isExecutionRetriable(this.execution);
-		},
-		executionDebugViewName() {
-			return VIEWS.EXECUTION_DEBUG;
-		},
-		executionPreviewViewName() {
-			return VIEWS.EXECUTION_PREVIEW;
-		},
-	},
-	methods: {
-		async onDeleteExecution(): Promise<void> {
-			const deleteConfirmed = await this.confirm(
-				this.$locale.baseText('executionDetails.confirmMessage.message'),
-				this.$locale.baseText('executionDetails.confirmMessage.headline'),
-				{
-					type: 'warning',
-					confirmButtonText: this.$locale.baseText(
-						'executionDetails.confirmMessage.confirmButtonText',
-					),
-					cancelButtonText: '',
-				},
-			);
-			if (deleteConfirmed !== MODAL_CONFIRM) {
-				return;
-			}
-			this.$emit('deleteCurrentExecution');
-		},
-		handleRetryClick(command: string): void {
-			this.$emit('retryExecution', { execution: this.execution, command });
-		},
-		handleStopClick(): void {
-			this.$emit('stopExecution');
-		},
-		onRetryButtonBlur(event: FocusEvent): void {
-			// Hide dropdown when clicking outside of current document
-			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
-			if (retryDropdownRef && event.relatedTarget === null) {
-				retryDropdownRef.handleClose();
-			}
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .previewContainer {
@@ -321,7 +313,6 @@ export default defineComponent({
 
 .debugLink {
 	margin-right: var(--spacing-xs);
-	padding: 0;
 
 	a > span {
 		display: block;

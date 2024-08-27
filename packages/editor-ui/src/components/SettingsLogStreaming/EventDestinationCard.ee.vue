@@ -1,50 +1,3 @@
-<template>
-	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
-		<template #header>
-			<div>
-				<n8n-heading tag="h2" bold :class="$style.cardHeading">
-					{{ destination.label }}
-				</n8n-heading>
-				<div :class="$style.cardDescription">
-					<n8n-text color="text-light" size="small">
-						<span>{{ $locale.baseText(typeLabelName) }}</span>
-					</n8n-text>
-				</div>
-			</div>
-		</template>
-		<template #append>
-			<div ref="cardActions" :class="$style.cardActions">
-				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
-					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
-						{{ $locale.baseText('workflowActivator.active') }}
-					</n8n-text>
-					<n8n-text v-else color="text-base" size="small" bold>
-						{{ $locale.baseText('workflowActivator.inactive') }}
-					</n8n-text>
-				</div>
-
-				<el-switch
-					class="mr-s"
-					:disabled="readonly"
-					:model-value="nodeParameters.enabled"
-					:title="
-						nodeParameters.enabled
-							? $locale.baseText('workflowActivator.deactivateWorkflow')
-							: $locale.baseText('workflowActivator.activateWorkflow')
-					"
-					active-color="#13ce66"
-					inactive-color="#8899AA"
-					data-test-id="workflow-activate-switch"
-					@update:model-value="onEnabledSwitched($event)"
-				>
-				</el-switch>
-
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
-			</div>
-		</template>
-	</n8n-card>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
@@ -177,6 +130,53 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
+		<template #header>
+			<div>
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
+					{{ destination.label }}
+				</n8n-heading>
+				<div :class="$style.cardDescription">
+					<n8n-text color="text-light" size="small">
+						<span>{{ $locale.baseText(typeLabelName) }}</span>
+					</n8n-text>
+				</div>
+			</div>
+		</template>
+		<template #append>
+			<div ref="cardActions" :class="$style.cardActions">
+				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
+					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
+						{{ $locale.baseText('workflowActivator.active') }}
+					</n8n-text>
+					<n8n-text v-else color="text-base" size="small" bold>
+						{{ $locale.baseText('workflowActivator.inactive') }}
+					</n8n-text>
+				</div>
+
+				<el-switch
+					class="mr-s"
+					:disabled="readonly"
+					:model-value="nodeParameters.enabled"
+					:title="
+						nodeParameters.enabled
+							? $locale.baseText('workflowActivator.deactivateWorkflow')
+							: $locale.baseText('workflowActivator.activateWorkflow')
+					"
+					active-color="#13ce66"
+					inactive-color="#8899AA"
+					data-test-id="workflow-activate-switch"
+					@update:model-value="onEnabledSwitched($event)"
+				>
+				</el-switch>
+
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+			</div>
+		</template>
+	</n8n-card>
+</template>
 
 <style lang="scss" module>
 .cardLink {

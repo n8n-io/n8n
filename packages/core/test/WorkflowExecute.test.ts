@@ -120,7 +120,10 @@ describe('WorkflowExecute', () => {
 						if (nodeData.data === undefined) {
 							return null;
 						}
-						return nodeData.data.main[0]!.map((entry) => entry.json);
+						const toMap = testData.output.testAllOutputs
+							? nodeData.data.main
+							: [nodeData.data.main[0]!];
+						return toMap.map((data) => data!.map((entry) => entry.json));
 					});
 
 					// expect(resultData).toEqual(testData.output.nodeData[nodeName]);

@@ -62,7 +62,7 @@ export class RabbitMQTrigger implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Content Is Binary',

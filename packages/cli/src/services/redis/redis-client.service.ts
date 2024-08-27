@@ -1,17 +1,19 @@
 import { Service } from 'typedi';
-import config from '@/config';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import type { RedisClientType } from './RedisServiceBaseClasses';
-import { OnShutdown } from '@/decorators/OnShutdown';
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
+import { GlobalConfig } from '@n8n/config';
+
+import type { RedisClientType } from './redis.types';
 
 @Service()
 export class RedisClientService {
 	private readonly clients = new Set<ioRedis | Cluster>();
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
+	) {}
 
 	createClient(arg: { type: RedisClientType; extraOptions?: RedisOptions }) {
 		const client =
@@ -22,13 +24,6 @@ export class RedisClientService {
 		this.clients.add(client);
 
 		return client;
-	}
-
-	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
-	disconnectClients() {
-		for (const client of this.clients) {
-			client.disconnect();
-		}
 	}
 
 	/**
@@ -57,7 +52,7 @@ export class RedisClientService {
 	}) {
 		const options = this.getOptions({ extraOptions });
 
-		const { host, port } = config.getEnv('queue.bull.redis');
+		const { host, port } = this.globalConfig.queue.bull.redis;
 
 		options.host = host;
 		options.port = port;
@@ -87,7 +82,7 @@ export class RedisClientService {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls } = config.getEnv('queue.bull.redis');
+		const { username, password, db, tls } = this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -124,7 +119,7 @@ export class RedisClientService {
 	private retryStrategy() {
 		const RETRY_INTERVAL = 500; // ms
 		const RESET_LENGTH = 30_000; // ms
-		const MAX_TIMEOUT = config.getEnv('queue.bull.redis.timeoutThreshold');
+		const MAX_TIMEOUT = this.globalConfig.queue.bull.redis.timeoutThreshold;
 
 		let lastAttemptTs = 0;
 		let cumulativeTimeout = 0;
@@ -152,8 +147,7 @@ export class RedisClientService {
 	}
 
 	private clusterNodes() {
-		return config
-			.getEnv('queue.bull.redis.clusterNodes')
+		return this.globalConfig.queue.bull.redis.clusterNodes
 			.split(',')
 			.filter((pair) => pair.trim().length > 0)
 			.map((pair) => {

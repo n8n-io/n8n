@@ -13,6 +13,7 @@ type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
 	| 'credentials'

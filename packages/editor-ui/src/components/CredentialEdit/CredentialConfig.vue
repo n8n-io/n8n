@@ -1,3 +1,192 @@
+<script setup lang="ts">
+import { computed, onBeforeMount, watch } from 'vue';
+
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import type { IUpdateInformation } from '@/Interface';
+import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
+import type { PermissionsRecord } from '@/permissions';
+import { addCredentialTranslation } from '@/plugins/i18n';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRootStore } from '@/stores/root.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import Banner from '../Banner.vue';
+import CopyInput from '../CopyInput.vue';
+import CredentialInputs from './CredentialInputs.vue';
+import GoogleAuthButton from './GoogleAuthButton.vue';
+import OauthButton from './OauthButton.vue';
+import CredentialDocs from './CredentialDocs.vue';
+import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
+
+type Props = {
+	mode: string;
+	credentialType: ICredentialType;
+	credentialProperties: INodeProperties[];
+	credentialData: ICredentialDataDecryptedObject;
+	credentialId?: string;
+	credentialPermissions: PermissionsRecord['credential'];
+	parentTypes?: string[];
+	showValidationWarning?: boolean;
+	authError?: string;
+	testedSuccessfully?: boolean;
+	isOAuthType?: boolean;
+	allOAuth2BasePropertiesOverridden?: boolean;
+	isOAuthConnected?: boolean;
+	isRetesting?: boolean;
+	requiredPropertiesFilled?: boolean;
+	showAuthTypeSelector?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	parentTypes: () => [],
+	credentialId: '',
+	authError: '',
+	showValidationWarning: false,
+	credentialPermissions: () => ({}) as PermissionsRecord['credential'],
+});
+const emit = defineEmits<{
+	update: [value: IUpdateInformation];
+	authTypeChanged: [value: string];
+	scrollToTop: [];
+	retest: [];
+	oauth: [];
+}>();
+
+const credentialsStore = useCredentialsStore();
+const ndvStore = useNDVStore();
+const rootStore = useRootStore();
+const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
+
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
+onBeforeMount(async () => {
+	if (rootStore.defaultLocale === 'en') return;
+
+	uiStore.activeCredentialType = props.credentialType.name;
+
+	const key = `n8n-nodes-base.credentials.${props.credentialType.name}`;
+
+	if (i18n.exists(key)) return;
+
+	const credTranslation = await credentialsStore.getCredentialTranslation(
+		props.credentialType.name,
+	);
+
+	addCredentialTranslation(
+		{ [props.credentialType.name]: credTranslation },
+		rootStore.defaultLocale,
+	);
+});
+
+const appName = computed(() => {
+	if (!props.credentialType) {
+		return '';
+	}
+
+	return (
+		getAppNameFromCredType(props.credentialType.displayName) ||
+		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo')
+	);
+});
+const credentialTypeName = computed(() => props.credentialType?.name);
+const credentialOwnerName = computed(() =>
+	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
+);
+const documentationUrl = computed(() => {
+	const type = props.credentialType;
+	const activeNode = ndvStore.activeNode;
+	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
+
+	const docUrl = type?.documentationUrl;
+
+	if (!docUrl) {
+		return '';
+	}
+
+	let url: URL;
+	if (docUrl.startsWith('https://') || docUrl.startsWith('http://')) {
+		url = new URL(docUrl);
+		if (url.hostname !== DOCS_DOMAIN) return docUrl;
+	} else {
+		// Don't show documentation link for community nodes if the URL is not an absolute path
+		if (isCommunityNode) return '';
+		else url = new URL(`${BUILTIN_CREDENTIALS_DOCS_URL}${docUrl}/`);
+	}
+
+	if (url.hostname === DOCS_DOMAIN) {
+		url.searchParams.set('utm_source', 'n8n_app');
+		url.searchParams.set('utm_medium', 'credential_settings');
+		url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
+	}
+
+	return url.href;
+});
+
+const isGoogleOAuthType = computed(
+	() =>
+		credentialTypeName.value === 'googleOAuth2Api' || props.parentTypes.includes('googleOAuth2Api'),
+);
+
+const oAuthCallbackUrl = computed(() => {
+	const oauthType =
+		credentialTypeName.value === 'oAuth2Api' || props.parentTypes.includes('oAuth2Api')
+			? 'oauth2'
+			: 'oauth1';
+	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
+});
+
+const showOAuthSuccessBanner = computed(() => {
+	return (
+		props.isOAuthType &&
+		props.requiredPropertiesFilled &&
+		props.isOAuthConnected &&
+		!props.authError
+	);
+});
+
+const isMissingCredentials = computed(() => props.credentialType === null);
+
+const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
+
+const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
+
+function onDataChange(event: IUpdateInformation): void {
+	emit('update', event);
+}
+
+function onDocumentationUrlClick(): void {
+	telemetry.track('User clicked credential modal docs link', {
+		docs_link: documentationUrl.value,
+		credential_type: credentialTypeName.value,
+		source: 'modal',
+		workflow_id: workflowsStore.workflowId,
+	});
+}
+
+function onAuthTypeChange(newType: string): void {
+	emit('authTypeChanged', newType);
+}
+
+watch(showOAuthSuccessBanner, (newValue, oldValue) => {
+	if (newValue && !oldValue) {
+		emit('scrollToTop');
+	}
+});
+</script>
+
 <template>
 	<div>
 		<div :class="$style.config" data-test-id="node-credentials-config-container">
@@ -155,196 +344,6 @@
 		</CredentialDocs>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { computed, onBeforeMount, watch } from 'vue';
-
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
-import type { IUpdateInformation } from '@/Interface';
-import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
-import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import type { PermissionsMap } from '@/permissions';
-import { addCredentialTranslation } from '@/plugins/i18n';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useRootStore } from '@/stores/root.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { CredentialScope } from '@n8n/permissions';
-import Banner from '../Banner.vue';
-import CopyInput from '../CopyInput.vue';
-import CredentialInputs from './CredentialInputs.vue';
-import GoogleAuthButton from './GoogleAuthButton.vue';
-import OauthButton from './OauthButton.vue';
-import CredentialDocs from './CredentialDocs.vue';
-import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
-
-type Props = {
-	mode: string;
-	credentialType: ICredentialType;
-	credentialProperties: INodeProperties[];
-	credentialData: ICredentialDataDecryptedObject;
-	credentialId?: string;
-	credentialPermissions?: PermissionsMap<CredentialScope>;
-	parentTypes?: string[];
-	showValidationWarning?: boolean;
-	authError?: string;
-	testedSuccessfully?: boolean;
-	isOAuthType?: boolean;
-	allOAuth2BasePropertiesOverridden?: boolean;
-	isOAuthConnected?: boolean;
-	isRetesting?: boolean;
-	requiredPropertiesFilled?: boolean;
-	showAuthTypeSelector?: boolean;
-};
-
-const props = withDefaults(defineProps<Props>(), {
-	parentTypes: () => [],
-	credentialId: '',
-	authError: '',
-	showValidationWarning: false,
-	credentialPermissions: () => ({}) as PermissionsMap<CredentialScope>,
-});
-const emit = defineEmits<{
-	update: [value: IUpdateInformation];
-	authTypeChanged: [value: string];
-	scrollToTop: [];
-	retest: [];
-	oauth: [];
-}>();
-
-const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
-const rootStore = useRootStore();
-const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
-
-const i18n = useI18n();
-const telemetry = useTelemetry();
-
-onBeforeMount(async () => {
-	if (rootStore.defaultLocale === 'en') return;
-
-	uiStore.activeCredentialType = props.credentialType.name;
-
-	const key = `n8n-nodes-base.credentials.${props.credentialType.name}`;
-
-	if (i18n.exists(key)) return;
-
-	const credTranslation = await credentialsStore.getCredentialTranslation(
-		props.credentialType.name,
-	);
-
-	addCredentialTranslation(
-		{ [props.credentialType.name]: credTranslation },
-		rootStore.defaultLocale,
-	);
-});
-
-const appName = computed(() => {
-	if (!props.credentialType) {
-		return '';
-	}
-
-	return (
-		getAppNameFromCredType(props.credentialType.displayName) ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo')
-	);
-});
-const credentialTypeName = computed(() => props.credentialType?.name);
-const credentialOwnerName = computed(() =>
-	credentialsStore.getCredentialOwnerNameById(`${props.credentialId}`),
-);
-const documentationUrl = computed(() => {
-	const type = props.credentialType;
-	const activeNode = ndvStore.activeNode;
-	const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
-
-	const docUrl = type?.documentationUrl;
-
-	if (!docUrl) {
-		return '';
-	}
-
-	let url: URL;
-	if (docUrl.startsWith('https://') || docUrl.startsWith('http://')) {
-		url = new URL(docUrl);
-		if (url.hostname !== DOCS_DOMAIN) return docUrl;
-	} else {
-		// Don't show documentation link for community nodes if the URL is not an absolute path
-		if (isCommunityNode) return '';
-		else url = new URL(`${BUILTIN_CREDENTIALS_DOCS_URL}${docUrl}/`);
-	}
-
-	if (url.hostname === DOCS_DOMAIN) {
-		url.searchParams.set('utm_source', 'n8n_app');
-		url.searchParams.set('utm_medium', 'credential_settings');
-		url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
-	}
-
-	return url.href;
-});
-
-const isGoogleOAuthType = computed(
-	() =>
-		credentialTypeName.value === 'googleOAuth2Api' || props.parentTypes.includes('googleOAuth2Api'),
-);
-
-const oAuthCallbackUrl = computed(() => {
-	const oauthType =
-		credentialTypeName.value === 'oAuth2Api' || props.parentTypes.includes('oAuth2Api')
-			? 'oauth2'
-			: 'oauth1';
-	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
-});
-
-const showOAuthSuccessBanner = computed(() => {
-	return (
-		props.isOAuthType &&
-		props.requiredPropertiesFilled &&
-		props.isOAuthConnected &&
-		!props.authError
-	);
-});
-
-const isMissingCredentials = computed(() => props.credentialType === null);
-
-const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
-
-const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
-
-function onDataChange(event: IUpdateInformation): void {
-	emit('update', event);
-}
-
-function onDocumentationUrlClick(): void {
-	telemetry.track('User clicked credential modal docs link', {
-		docs_link: documentationUrl.value,
-		credential_type: credentialTypeName.value,
-		source: 'modal',
-		workflow_id: workflowsStore.workflowId,
-	});
-}
-
-function onAuthTypeChange(newType: string): void {
-	emit('authTypeChanged', newType);
-}
-
-watch(showOAuthSuccessBanner, (newValue, oldValue) => {
-	if (newValue && !oldValue) {
-		emit('scrollToTop');
-	}
-});
-</script>
 
 <style lang="scss" module>
 .config {

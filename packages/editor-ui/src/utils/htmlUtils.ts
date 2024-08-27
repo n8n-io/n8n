@@ -18,6 +18,10 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			if (ALLOWED_HTML_ATTRIBUTES.includes(name) || name.startsWith('data-')) {
+				// href is allowed but we need to sanitize certain protocols
+				if (name === 'href' && !value.match(/^https?:\/\//gm)) {
+					return '';
+				}
 				return `${name}="${friendlyAttrValue(value)}"`;
 			}
 

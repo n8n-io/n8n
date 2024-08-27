@@ -1,9 +1,9 @@
-import { ExecutionRequest } from './execution.types';
+import { ExecutionRequest, type ExecutionSummaries } from './execution.types';
 import { ExecutionService } from './execution.service';
 import { Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
-import { License } from '@/License';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { License } from '@/license';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import type { User } from '@/databases/entities/User';
@@ -53,10 +53,20 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			return await this.executionService.findLatestCurrentAndCompleted(query);
+			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
+			await this.executionService.addScopes(
+				req.user,
+				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
+			);
+			return executions;
 		}
 
-		return await this.executionService.findRangeWithCount(query);
+		const executions = await this.executionService.findRangeWithCount(query);
+		await this.executionService.addScopes(
+			req.user,
+			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
+		);
+		return executions;
 	}
 
 	@Get('/:id')

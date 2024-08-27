@@ -1,16 +1,23 @@
-import { EventEmitter } from 'node:events';
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
+import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type MultiMainEvents = {
+	'leader-stepdown': never;
+	'leader-takeover': never;
+};
 
 @Service()
-export class MultiMainSetup extends EventEmitter {
+export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly redisPublisher: RedisServicePubSubPublisher,
 		private readonly redisClientService: RedisClientService,
 	) {
@@ -45,7 +52,7 @@ export class MultiMainSetup extends EventEmitter {
 	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
-		const isLeader = config.getEnv('multiMainSetup.instanceType') === 'leader';
+		const { isLeader } = this.instanceSettings;
 
 		if (isLeader) await this.redisPublisher.clear(this.leaderKey);
 	}
@@ -64,8 +71,8 @@ export class MultiMainSetup extends EventEmitter {
 		if (leaderId && leaderId !== this.instanceId) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is other instance "${leaderId}"`);
 
-			if (config.getEnv('multiMainSetup.instanceType') === 'leader') {
-				config.set('multiMainSetup.instanceType', 'follower');
+			if (this.instanceSettings.isLeader) {
+				this.instanceSettings.markAsFollower();
 
 				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning, wait-tracking, queue recovery
 
@@ -80,7 +87,7 @@ export class MultiMainSetup extends EventEmitter {
 				`[Instance ID ${this.instanceId}] Leadership vacant, attempting to become leader...`,
 			);
 
-			config.set('multiMainSetup.instanceType', 'follower');
+			this.instanceSettings.markAsFollower();
 
 			/**
 			 * Lost leadership - stop triggers, pollers, pruning, wait tracking, license renewal, queue recovery
@@ -101,7 +108,7 @@ export class MultiMainSetup extends EventEmitter {
 		if (keySetSuccessfully) {
 			this.logger.debug(`[Instance ID ${this.instanceId}] Leader is now this instance`);
 
-			config.set('multiMainSetup.instanceType', 'leader');
+			this.instanceSettings.markAsLeader();
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 
@@ -110,7 +117,7 @@ export class MultiMainSetup extends EventEmitter {
 			 */
 			this.emit('leader-takeover');
 		} else {
-			config.set('multiMainSetup.instanceType', 'follower');
+			this.instanceSettings.markAsFollower();
 		}
 	}
 

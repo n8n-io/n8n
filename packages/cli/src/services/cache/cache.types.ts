@@ -8,5 +8,3 @@ export type TaggedMemoryCache = MemoryCache & { kind: 'memory' };
 export type Hash<T = unknown> = Record<string, T>;
 
 export type MaybeHash<T> = Hash<T> | undefined;
-
-export type CacheEvent = `metrics.cache.${'hit' | 'miss' | 'update'}`;

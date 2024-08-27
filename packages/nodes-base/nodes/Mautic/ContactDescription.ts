@@ -1178,7 +1178,7 @@ export const contactFields: INodeProperties[] = [
 				operation: ['sendEmail', 'editDoNotContactList', 'editContactPoint'],
 			},
 		},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

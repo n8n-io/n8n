@@ -221,7 +221,7 @@ export class RespondToWebhook implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -290,7 +290,11 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
-		const WEBHOOK_NODE_TYPES = ['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger'];
+		const WEBHOOK_NODE_TYPES = [
+			'n8n-nodes-base.webhook',
+			'n8n-nodes-base.formTrigger',
+			'@n8n/n8n-nodes-langchain.chatTrigger',
+		];
 
 		try {
 			if (nodeVersion >= 1.1) {

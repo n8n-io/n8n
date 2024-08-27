@@ -196,6 +196,8 @@ export class MongoDb implements INodeType {
 					const options = this.getNodeParameter('options', i);
 					const limit = options.limit as number;
 					const skip = options.skip as number;
+					const projection =
+						options.projection && (JSON.parse(options.projection as string) as Document);
 					const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
 
 					if (skip > 0) {
@@ -206,6 +208,10 @@ export class MongoDb implements INodeType {
 					}
 					if (sort && Object.keys(sort).length !== 0 && sort.constructor === Object) {
 						query = query.sort(sort);
+					}
+
+					if (projection && projection instanceof Document) {
+						query = query.project(projection);
 					}
 
 					const queryResult = await query.toArray();

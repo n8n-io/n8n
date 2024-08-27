@@ -11,7 +11,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
@@ -21,7 +21,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
 import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 

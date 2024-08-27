@@ -196,7 +196,7 @@ export class Redis implements INodeType {
 						operation: ['get'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -484,7 +484,7 @@ export class Redis implements INodeType {
 						operation: ['pop'],
 					},
 				},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

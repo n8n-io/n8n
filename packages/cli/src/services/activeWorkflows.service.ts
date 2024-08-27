@@ -3,9 +3,9 @@ import { Service } from 'typedi';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ActivationErrorsService } from '@/ActivationErrors.service';
+import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 @Service()
 export class ActiveWorkflowsService {

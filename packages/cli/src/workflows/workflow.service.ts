@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { NodeApiError } from 'n8n-workflow';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
@@ -11,21 +11,20 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { validateEntity } from '@/GenericHelpers';
-import { ExternalHooks } from '@/ExternalHooks';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks';
 import { hasSharing, type ListQuery } from '@/requests';
 import { TagService } from '@/services/tag.service';
-import { InternalHooks } from '@/InternalHooks';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
-import { Logger } from '@/Logger';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { Logger } from '@/logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
-import { WorkflowSharingService } from './workflowSharing.service';
+import { WorkflowSharingService } from './workflow-sharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { Scope } from '@n8n/permissions';
@@ -34,7 +33,7 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @Service()
 export class WorkflowService {
@@ -219,11 +218,10 @@ export class WorkflowService {
 		}
 
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 		this.eventService.emit('workflow-saved', {
 			user,
-			workflowId: updatedWorkflow.id,
-			workflowName: updatedWorkflow.name,
+			workflow: updatedWorkflow,
+			publicApi: false,
 		});
 
 		if (updatedWorkflow.active) {
@@ -282,8 +280,7 @@ export class WorkflowService {
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
 
-		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
-		this.eventService.emit('workflow-deleted', { user, workflowId });
+		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;

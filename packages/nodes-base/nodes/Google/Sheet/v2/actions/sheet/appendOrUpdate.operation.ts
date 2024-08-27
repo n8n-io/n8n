@@ -18,7 +18,12 @@ import {
 	checkForSchemaChanges,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
+import {
+	cellFormat,
+	handlingExtraData,
+	locationDefine,
+	useAppendOption,
+} from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -193,7 +198,7 @@ export const description: SheetProperties = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -212,14 +217,7 @@ export const description: SheetProperties = [
 				...handlingExtraData,
 				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
 			},
-			{
-				displayName: 'Use Append',
-				name: 'useAppend',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to use append instead of update(default), this is more efficient but in some cases data might be misaligned',
-			},
+			useAppendOption,
 		],
 	},
 ];
@@ -340,8 +338,18 @@ export async function execute(
 		} else {
 			const valueToMatchOn =
 				nodeVersion < 4
-					? (this.getNodeParameter('valueToMatchOn', i) as string)
-					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i) as string);
+					? (this.getNodeParameter('valueToMatchOn', i, '') as string)
+					: (this.getNodeParameter(`columns.value[${columnsToMatchOn[0]}]`, i, '') as string);
+
+			if (valueToMatchOn === '') {
+				throw new NodeOperationError(
+					this.getNode(),
+					"The 'Column to Match On' parameter is required",
+					{
+						itemIndex: i,
+					},
+				);
+			}
 
 			if (nodeVersion < 4) {
 				const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];

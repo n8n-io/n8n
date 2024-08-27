@@ -33,6 +33,14 @@ export const returnAllOrLimit: INodeProperties[] = [
 	},
 ];
 
+export const looseTypeValidationProperty: INodeProperties = {
+	displayName: 'Less Strict Type Validation',
+	description: 'Whether to try casting value types based on the selected operator',
+	name: 'looseTypeValidation',
+	type: 'boolean',
+	default: true,
+};
+
 export const encodeDecodeOptions: INodePropertyOptions[] = [
 	{
 		name: 'armscii8',

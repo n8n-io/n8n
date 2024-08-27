@@ -8,7 +8,7 @@ info:
     email: hello@n8n.io
   license:
     name: Sustainable Use License
-    url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
+    url: https://github.com/n8n-io/n8n/blob/master/LICENSE.md
   version: 1.1.1
 externalDocs:
   description: n8n API documentation
@@ -30,6 +30,10 @@ tags:
     description: Operations about tags
   - name: SourceControl
     description: Operations about source control
+  - name: Variables
+    description: Operations about variables
+  - name: Projects
+    description: Operations about projects
 
 paths:
   /audit:
@@ -56,14 +60,28 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/transfer:
+    $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
+  /credentials/{id}/transfer:
+    $ref: './handlers/credentials/spec/paths/credentials.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
     $ref: './handlers/users/spec/paths/users.id.yml'
+  /users/{id}/role:
+    $ref: './handlers/users/spec/paths/users.id.role.yml'
   /source-control/pull:
     $ref: './handlers/sourceControl/spec/paths/sourceControl.yml'
+  /variables:
+    $ref: './handlers/variables/spec/paths/variables.yml'
+  /variables/{id}:
+    $ref: './handlers/variables/spec/paths/variables.id.yml'
+  /projects:
+    $ref: './handlers/projects/spec/paths/projects.yml'
+  /projects/{projectId}:
+    $ref: './handlers/projects/spec/paths/projects.projectId.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'

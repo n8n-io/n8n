@@ -145,7 +145,16 @@ describe('Canvas Actions', () => {
 		});
 	});
 
-	it('should delete connections by pressing the delete button', () => {
+	it('should delete node by pressing keyboard backspace', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should delete connections by clicking on the delete button', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);

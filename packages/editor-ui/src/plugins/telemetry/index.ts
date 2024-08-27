@@ -167,6 +167,20 @@ export class Telemetry {
 		}
 	}
 
+	trackAiTransform(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().pushRef;
+			properties.ndv_session_id = useNDVStore().pushRef;
+
+			switch (event) {
+				case 'generationFinished':
+					this.track('Ai Transform code generation finished', properties, { withPostHog: true });
+				default:
+					break;
+			}
+		}
+	}
+
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.nodes_panel_session_id = this.userNodesPanelSession.pushRef;

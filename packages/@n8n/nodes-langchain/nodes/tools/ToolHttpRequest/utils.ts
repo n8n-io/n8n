@@ -27,6 +27,8 @@ import type {
 	SendIn,
 	ToolParameter,
 } from './interfaces';
+import type { DynamicZodObject } from '../../../types/zod.types';
+import { z } from 'zod';
 
 const genericCredentialRequest = async (ctx: IExecuteFunctions, itemIndex: number) => {
 	const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
@@ -566,7 +568,7 @@ export const configureToolFunction = (
 	httpRequest: (options: IHttpRequestOptions) => Promise<any>,
 	optimizeResponse: (response: string) => string,
 ) => {
-	return async (query: string): Promise<string> => {
+	return async (query: string | IDataObject): Promise<string> => {
 		const { index } = ctx.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 		let response: string = '';
@@ -581,18 +583,22 @@ export const configureToolFunction = (
 			if (query) {
 				let dataFromModel;
 
-				try {
-					dataFromModel = jsonParse<IDataObject>(query);
-				} catch (error) {
-					if (toolParameters.length === 1) {
-						dataFromModel = { [toolParameters[0].name]: query };
-					} else {
-						throw new NodeOperationError(
-							ctx.getNode(),
-							`Input is not a valid JSON: ${error.message}`,
-							{ itemIndex },
-						);
+				if (typeof query === 'string') {
+					try {
+						dataFromModel = jsonParse<IDataObject>(query);
+					} catch (error) {
+						if (toolParameters.length === 1) {
+							dataFromModel = { [toolParameters[0].name]: query };
+						} else {
+							throw new NodeOperationError(
+								ctx.getNode(),
+								`Input is not a valid JSON: ${error.message}`,
+								{ itemIndex },
+							);
+						}
 					}
+				} else {
+					dataFromModel = query;
 				}
 
 				for (const parameter of toolParameters) {
@@ -727,6 +733,8 @@ export const configureToolFunction = (
 				}
 			}
 		} catch (error) {
+			console.error(error);
+
 			const errorMessage = 'Input provided by model is not valid';
 
 			if (error instanceof NodeOperationError) {
@@ -765,3 +773,38 @@ export const configureToolFunction = (
 		return response;
 	};
 };
+
+function makeParameterZodSchema(parameter: ToolParameter) {
+	let schema: z.ZodTypeAny;
+
+	if (parameter.type === 'string') {
+		schema = z.string();
+	} else if (parameter.type === 'number') {
+		schema = z.number();
+	} else if (parameter.type === 'boolean') {
+		schema = z.boolean();
+	} else if (parameter.type === 'json') {
+		schema = z.record(z.any());
+	} else {
+		schema = z.string();
+	}
+
+	if (!parameter.required) {
+		schema = schema.optional();
+	}
+
+	if (parameter.description) {
+		schema = schema.describe(parameter.description);
+	}
+
+	return schema;
+}
+
+export function makeToolInputSchema(parameters: ToolParameter[]): DynamicZodObject {
+	const schemaEntries = parameters.map((parameter) => [
+		parameter.name,
+		makeParameterZodSchema(parameter),
+	]);
+
+	return z.object(Object.fromEntries(schemaEntries));
+}

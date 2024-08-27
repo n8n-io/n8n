@@ -120,7 +120,7 @@ export class GetResponseTrigger implements INodeType {
 			{
 				displayName: 'Options',
 				name: 'options',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				type: 'collection',
 				default: {},
 				options: [

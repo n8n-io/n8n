@@ -1,9 +1,3 @@
-<template>
-	<span ref="observed">
-		<slot></slot>
-	</span>
-</template>
-
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
@@ -37,3 +31,9 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<span ref="observed">
+		<slot></slot>
+	</span>
+</template>

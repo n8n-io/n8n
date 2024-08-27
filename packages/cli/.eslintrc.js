@@ -21,6 +21,7 @@ module.exports = {
 	rules: {
 		'n8n-local-rules/no-dynamic-import-template': 'error',
 		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
+		'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
 		complexity: 'error',
 
 		// TODO: Remove this
@@ -39,9 +40,15 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['./src/databases/**/*.ts', './test/**/*.ts'],
+			files: ['./src/databases/**/*.ts', './test/**/*.ts', './src/**/__tests__/**/*.ts'],
 			rules: {
 				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
+			},
+		},
+		{
+			files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
+			rules: {
+				'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
 			},
 		},
 		{

@@ -34,6 +34,10 @@ export const linkUserToProject = async (user: User, project: Project, role: Proj
 	);
 };
 
+export async function getProjectByNameOrFail(name: string) {
+	return await Container.get(ProjectRepository).findOneOrFail({ where: { name } });
+}
+
 export const getPersonalProject = async (user: User): Promise<Project> => {
 	return await Container.get(ProjectRepository).findOneOrFail({
 		where: {

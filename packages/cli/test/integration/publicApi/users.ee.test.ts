@@ -1,14 +1,16 @@
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import { License } from '@/License';
+import { License } from '@/license';
 
 import { mockInstance } from '../../shared/mocking';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
-import { createUser, createUserShell } from '../shared/db/users';
+import { createOwner, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
+import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
+import type { User } from '@/databases/entities/User';
 
 mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),
@@ -83,6 +85,46 @@ describe('With license unlimited quota:users', () => {
 				expect(createdAt).toBeDefined();
 				expect(updatedAt).toBeDefined();
 			}
+		});
+
+		it('should return users filtered by project ID', async () => {
+			/**
+			 * Arrange
+			 */
+			const [owner, firstMember, secondMember, thirdMember] = await Promise.all([
+				createOwner({ withApiKey: true }),
+				createUser({ role: 'global:member' }),
+				createUser({ role: 'global:member' }),
+				createUser({ role: 'global:member' }),
+			]);
+
+			const [firstProject, secondProject] = await Promise.all([
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+			await Promise.all([
+				linkUserToProject(firstMember, firstProject, 'project:admin'),
+				linkUserToProject(secondMember, firstProject, 'project:viewer'),
+				linkUserToProject(thirdMember, secondProject, 'project:admin'),
+			]);
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/users').query({
+				projectId: firstProject.id,
+			});
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.nextCursor).toBeNull();
+			expect(response.body.data.map((user: User) => user.id)).toEqual(
+				expect.arrayContaining([firstMember.id, secondMember.id]),
+			);
 		});
 	});
 

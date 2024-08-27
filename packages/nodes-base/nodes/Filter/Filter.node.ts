@@ -13,11 +13,13 @@ export class Filter extends VersionedNodeType {
 			iconColor: 'light-blue',
 			group: ['transform'],
 			description: 'Remove items matching a condition',
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new FilterV1(baseDescription),
 			2: new FilterV2(baseDescription),
+			2.1: new FilterV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

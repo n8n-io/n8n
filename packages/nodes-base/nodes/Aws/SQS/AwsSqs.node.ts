@@ -132,7 +132,7 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				default: {},
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				options: [
 					{
 						displayName: 'Delay Seconds',

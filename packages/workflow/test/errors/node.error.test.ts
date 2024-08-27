@@ -3,7 +3,6 @@ import type { INode } from '@/Interfaces';
 import { NodeApiError } from '@/errors/node-api.error';
 import { NodeOperationError } from '@/errors/node-operation.error';
 import { ApplicationError } from '@/errors/application.error';
-import { OBFUSCATED_ERROR_MESSAGE } from '@/Constants';
 
 describe('NodeError', () => {
 	const node = mock<INode>();
@@ -22,7 +21,8 @@ describe('NodeError', () => {
 		const error = new Error('Original error message');
 		const nodeOpError = new NodeOperationError(node, error);
 
-		expect(nodeOpError.message).toBe(OBFUSCATED_ERROR_MESSAGE);
+		expect(nodeOpError.obfuscate).toBe(true);
+		expect(nodeOpError.message).toBe('Original error message');
 		expect(nodeOpError.messages).toContain('Original error message');
 	});
 
@@ -30,6 +30,7 @@ describe('NodeError', () => {
 		const appError = new ApplicationError('Processed error message');
 		const nodeOpError = new NodeOperationError(node, appError);
 
+		expect(nodeOpError.obfuscate).toBe(false);
 		expect(nodeOpError.message).toBe('Processed error message');
 		expect(nodeOpError.messages).not.toContain('Processed error message');
 	});
@@ -38,6 +39,7 @@ describe('NodeError', () => {
 		const errorMessage = 'String error message';
 		const nodeOpError = new NodeOperationError(node, errorMessage);
 
+		expect(nodeOpError.obfuscate).toBe(false);
 		expect(nodeOpError.message).toBe(errorMessage);
 		expect(nodeOpError.messages).toHaveLength(0);
 	});
@@ -47,6 +49,7 @@ describe('NodeError', () => {
 		const options = { description: 'Error description' };
 		const nodeOpError = new NodeOperationError(node, error, options);
 
+		expect(nodeOpError.obfuscate).toBe(false);
 		expect(nodeOpError.message).toBe('Initial error message');
 	});
 
@@ -55,6 +58,7 @@ describe('NodeError', () => {
 		const options = { message: 'Overridden message', description: 'Error description' };
 		const nodeOpError = new NodeOperationError(node, error, options);
 
+		expect(nodeOpError.obfuscate).toBe(false);
 		expect(nodeOpError.message).toBe('Overridden message');
 		expect(nodeOpError.description).toBe('Error description');
 	});

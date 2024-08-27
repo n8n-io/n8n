@@ -1,6 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -20,6 +20,6 @@
     "dist/**/*"
   ],
   "dependencies": {
-    "axios": "1.6.7"
+    "axios": "catalog:"
   }
 }

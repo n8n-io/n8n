@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.55.0
+
+### What changed?
+
+The `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES` environment variable now also blocks access to n8n's static cache directory at `~/.cache/n8n/public`.
+
+### When is action necessary?
+
+If you are writing to or reading from a file at n8n's static cache directory via a node, e.g. `Read/Write Files from Disk`, please update your node to use a different path.
+
 ## 1.52.0
 
 ### What changed?

@@ -151,4 +151,13 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			})
 		)?.project;
 	}
+
+	async getAllRelationsForCredentials(credentialIds: string[]) {
+		return await this.find({
+			where: {
+				credentialsId: In(credentialIds),
+			},
+			relations: ['project'],
+		});
+	}
 }

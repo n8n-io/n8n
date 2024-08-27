@@ -81,6 +81,18 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v20.0',
+						value: 'v20.0',
+					},
+					{
+						name: 'v19.0',
+						value: 'v19.0',
+					},
+					{
+						name: 'v18.0',
+						value: 'v18.0',
+					},
+					{
 						name: 'v17.0',
 						value: 'v17.0',
 					},
@@ -218,7 +230,7 @@ export class FacebookGraphApi implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

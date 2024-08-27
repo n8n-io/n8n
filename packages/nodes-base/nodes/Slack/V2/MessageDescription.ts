@@ -555,7 +555,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Include Link to Workflow',
@@ -944,7 +944,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -1223,12 +1223,12 @@ export const messageFields: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
-				placeholder: 'Select a channel...',
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',
 				},
 			},
 		],
 		default: {},
+		placeholder: 'Add option',
 	},
 ];

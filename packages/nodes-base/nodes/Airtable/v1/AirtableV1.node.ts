@@ -347,7 +347,7 @@ const versionDescription: INodeTypeDescription = {
 			},
 			default: {},
 			description: 'Additional options which decide which records should be returned',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			options: [
 				{
 					displayName: 'Fields',
@@ -502,7 +502,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			displayOptions: {
 				show: {
 					operation: ['append', 'delete', 'update'],

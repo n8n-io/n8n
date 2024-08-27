@@ -4,7 +4,6 @@ import { createWriteStream } from 'fs';
 import { stat } from 'fs/promises';
 import type {
 	IWebhookFunctions,
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
 	INodeTypeDescription,
@@ -15,12 +14,9 @@ import type {
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
-import basicAuth from 'basic-auth';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
-import jwt from 'jsonwebtoken';
 
-import { formatPrivateKey } from '../../utils/utilities';
 import {
 	authenticationProperty,
 	credentialsProperty,
@@ -39,6 +35,7 @@ import {
 	configuredOutputs,
 	isIpWhitelisted,
 	setupOutputConnection,
+	validateWebhookAuthentication,
 } from './utils';
 
 export class Webhook extends Node {

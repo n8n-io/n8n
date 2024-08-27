@@ -182,13 +182,18 @@ describe('ResourceMapper.vue', () => {
 			},
 			{ merge: true },
 		);
+
 		await waitAllPromises();
 		expect(getByText('Set the value for each foo')).toBeInTheDocument();
 		expect(
 			getByText('Look for incoming data that matches the foos in the service'),
 		).toBeInTheDocument();
 		expect(getByText('Foos to Match On')).toBeInTheDocument();
-		expect(getByText('The foos that identify the row(s) to modify')).toBeInTheDocument();
+		expect(
+			getByText(
+				'The foos to use when matching rows in the service to the input items of this node. Usually an ID.',
+			),
+		).toBeInTheDocument();
 	});
 
 	it('should render correct fields based on saved schema', async () => {

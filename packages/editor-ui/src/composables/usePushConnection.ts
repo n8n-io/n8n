@@ -41,6 +41,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -57,6 +58,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const assistantStore = useAssistantStore();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
@@ -293,7 +295,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
-			codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
+			codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'final');
 
 			const workflow = workflowHelpers.getCurrentWorkflow();
 			if (runDataExecuted.waitTill !== undefined) {
@@ -328,6 +330,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 					message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 					type: 'success',
 					duration: 0,
+					dangerouslyUseHTMLString: true,
 				});
 			} else if (runDataExecuted.finished !== true) {
 				titleChange.titleSet(workflow.name as string, 'ERROR');
@@ -438,7 +441,6 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
-							dangerouslyUseHTMLString: true,
 						});
 					}
 				}
@@ -535,6 +537,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const pushData = receivedData.data;
 			workflowsStore.addNodeExecutionData(pushData);
 			workflowsStore.removeExecutingNode(pushData.nodeName);
+			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
 			const pushData = receivedData.data;

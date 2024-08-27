@@ -85,7 +85,7 @@ export class LingvaNex implements INodeType {
 				displayName: 'Additional Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

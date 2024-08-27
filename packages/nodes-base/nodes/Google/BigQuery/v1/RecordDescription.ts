@@ -108,7 +108,7 @@ export const recordFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -122,7 +122,7 @@ export const recordFields: INodeProperties[] = [
 				name: 'ignoreUnknownValues',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to gnore row values that do not match the schema',
+				description: 'Whether to ignore row values that do not match the schema',
 			},
 			{
 				displayName: 'Skip Invalid Rows',
@@ -257,7 +257,7 @@ export const recordFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Options',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

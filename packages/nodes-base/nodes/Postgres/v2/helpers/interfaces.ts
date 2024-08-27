@@ -47,6 +47,7 @@ export type PostgresNodeOptions = {
 	largeNumbersOutput?: 'numbers' | 'text';
 	skipOnConflict?: boolean;
 	replaceEmptyStrings?: boolean;
+	treatQueryParametersInSingleQuotesAsText?: boolean;
 };
 
 export type PostgresNodeCredentials = {

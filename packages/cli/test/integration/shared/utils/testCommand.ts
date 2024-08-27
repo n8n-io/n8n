@@ -2,10 +2,13 @@ import type { Config } from '@oclif/core';
 import type { Class } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
-import type { BaseCommand } from '@/commands/BaseCommand';
+import type { BaseCommand } from '@/commands/base-command';
 import * as testDb from '../testDb';
-import { TelemetryEventRelay } from '@/telemetry/telemetry-event-relay.service';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { mockInstance } from '@test/mocking';
+import { InternalHooks } from '@/internal-hooks';
+
+mockInstance(InternalHooks);
 
 export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	const config = mock<Config>();

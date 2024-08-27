@@ -5,6 +5,7 @@ import { Service } from 'typedi';
 import { promisify } from 'util';
 import axios from 'axios';
 
+import { GlobalConfig } from '@n8n/config';
 import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
@@ -13,15 +14,21 @@ import { toError } from '@/utils';
 import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import {
+	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/Interfaces';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { Logger } from '@/Logger';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@/logger';
+import { OrchestrationService } from './orchestration.service';
+import { License } from '@/license';
+
+const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -45,6 +52,8 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
 export class CommunityPackagesService {
+	reinstallMissingPackages = false;
+
 	missingPackages: string[] = [];
 
 	constructor(
@@ -52,6 +61,9 @@ export class CommunityPackagesService {
 		private readonly logger: Logger,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly orchestrationService: OrchestrationService,
+		private readonly license: License,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	get hasMissingPackages() {
@@ -73,11 +85,11 @@ export class CommunityPackagesService {
 		return await this.installedPackageRepository.find({ relations: ['installedNodes'] });
 	}
 
-	async removePackageFromDatabase(packageName: InstalledPackages) {
+	private async removePackageFromDatabase(packageName: InstalledPackages) {
 		return await this.installedPackageRepository.remove(packageName);
 	}
 
-	async persistInstalledPackage(packageLoader: PackageDirectoryLoader) {
+	private async persistInstalledPackage(packageLoader: PackageDirectoryLoader) {
 		try {
 			return await this.installedPackageRepository.saveInstalledPackageWithNodes(packageLoader);
 		} catch (maybeError) {
@@ -251,7 +263,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	async setMissingPackages({ reinstallMissingPackages }: { reinstallMissingPackages: boolean }) {
+	async checkForMissingPackages() {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
@@ -271,24 +283,25 @@ export class CommunityPackagesService {
 
 		if (missingPackages.size === 0) return;
 
-		this.logger.error(
-			'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
-		);
-
-		if (reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+		const { reinstallMissing } = this.globalConfig.nodes.communityPackages;
+		if (reinstallMissing) {
 			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
 			try {
 				// Optimistic approach - stop if any installation fails
-
 				for (const missingPackage of missingPackages) {
-					await this.installNpmModule(missingPackage.packageName, missingPackage.version);
+					await this.installPackage(missingPackage.packageName, missingPackage.version);
 
 					missingPackages.delete(missingPackage);
 				}
 				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+				await this.loadNodesAndCredentials.postProcessLoaders();
 			} catch (error) {
 				this.logger.error('n8n was unable to install the missing packages.');
 			}
+		} else {
+			this.logger.warn(
+				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
+			);
 		}
 
 		this.missingPackages = [...missingPackages].map(
@@ -296,32 +309,38 @@ export class CommunityPackagesService {
 		);
 	}
 
-	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		return await this.installOrUpdateNpmModule(packageName, { version });
+	async installPackage(packageName: string, version?: string): Promise<InstalledPackages> {
+		return await this.installOrUpdatePackage(packageName, { version });
 	}
 
-	async updateNpmModule(
+	async updatePackage(
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		return await this.installOrUpdateNpmModule(packageName, { installedPackage });
+		return await this.installOrUpdatePackage(packageName, { installedPackage });
 	}
 
-	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
-		await this.executeNpmCommand(`npm remove ${packageName}`);
+	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
+		await this.removeNpmPackage(packageName);
 		await this.removePackageFromDatabase(installedPackage);
-		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		await this.loadNodesAndCredentials.postProcessLoaders();
+		await this.orchestrationService.publish('community-package-uninstall', { packageName });
 	}
 
-	private async installOrUpdateNpmModule(
+	private getNpmRegistry() {
+		const { registry } = this.globalConfig.nodes.communityPackages;
+		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
+		}
+		return registry;
+	}
+
+	private async installOrUpdatePackage(
 		packageName: string,
 		options: { version?: string } | { installedPackage: InstalledPackages },
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const command = isUpdate
-			? `npm install ${packageName}@latest`
-			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
+		const packageVersion = isUpdate || !options.version ? 'latest' : options.version;
+		const command = `npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`;
 
 		try {
 			await this.executeNpmCommand(command);
@@ -337,9 +356,8 @@ export class CommunityPackagesService {
 			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
 		} catch (error) {
 			// Remove this package since loading it failed
-			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await this.executeNpmCommand(removeCommand);
+				await this.executeNpmCommand(`npm remove ${packageName}`);
 			} catch {}
 			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -351,7 +369,12 @@ export class CommunityPackagesService {
 					await this.removePackageFromDatabase(options.installedPackage);
 				}
 				const installedPackage = await this.persistInstalledPackage(loader);
+				await this.orchestrationService.publish(
+					isUpdate ? 'community-package-update' : 'community-package-install',
+					{ packageName, packageVersion },
+				);
 				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
 				throw new ApplicationError('Failed to save installed package', {
@@ -361,12 +384,26 @@ export class CommunityPackagesService {
 			}
 		} else {
 			// Remove this package since it contains no loadable nodes
-			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await this.executeNpmCommand(removeCommand);
+				await this.executeNpmCommand(`npm remove ${packageName}`);
 			} catch {}
-
 			throw new ApplicationError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
+	}
+
+	async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
+		await this.executeNpmCommand(
+			`npm install ${packageName}@${packageVersion} --registry=${this.getNpmRegistry()}`,
+		);
+		await this.loadNodesAndCredentials.loadPackage(packageName);
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.logger.info(`Community package installed: ${packageName}`);
+	}
+
+	async removeNpmPackage(packageName: string) {
+		await this.executeNpmCommand(`npm remove ${packageName}`);
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.logger.info(`Community package uninstalled: ${packageName}`);
 	}
 }

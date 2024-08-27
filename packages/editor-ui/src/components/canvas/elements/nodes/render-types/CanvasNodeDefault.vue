@@ -123,6 +123,7 @@ function openContextMenu(event: MouseEvent) {
 	--configurable-node--icon-offset: 40px;
 	--configurable-node--icon-size: 30px;
 	--trigger-node--border-radius: 36px;
+	--canvas-node--status-icons-offset: var(--spacing-2xs);
 
 	height: var(--canvas-node--height);
 	width: var(--canvas-node--width);
@@ -184,7 +185,7 @@ function openContextMenu(event: MouseEvent) {
 	 */
 
 	&.selected {
-		box-shadow: 0 0 0 4px var(--color-canvas-selected);
+		box-shadow: 0 0 0 8px var(--color-canvas-selected-transparent);
 	}
 
 	&.success {
@@ -213,7 +214,7 @@ function openContextMenu(event: MouseEvent) {
 	top: 100%;
 	position: absolute;
 	width: 100%;
-	min-width: 200px;
+	min-width: calc(var(--canvas-node--width) * 2);
 	margin-top: var(--spacing-2xs);
 	display: flex;
 	flex-direction: column;
@@ -223,22 +224,33 @@ function openContextMenu(event: MouseEvent) {
 
 .label {
 	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-compact);
 	text-align: center;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	font-weight: var(--font-weight-bold);
+	line-height: var(--font-line-height-compact);
 }
 
 .subtitle {
+	width: 100%;
+	text-align: center;
 	color: var(--color-text-light);
 	font-size: var(--font-size-xs);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	line-height: var(--font-line-height-compact);
+	font-weight: 400;
 }
 
 .statusIcons {
 	position: absolute;
-	bottom: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+	bottom: var(--canvas-node--status-icons-offset);
+	right: var(--canvas-node--status-icons-offset);
 }
 
 .triggerIcon {

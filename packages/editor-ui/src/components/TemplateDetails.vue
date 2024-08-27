@@ -1,61 +1,3 @@
-<template>
-	<div>
-		<n8n-loading :loading="loading" :rows="5" variant="p" />
-
-		<TemplateDetailsBlock
-			v-if="!loading && template && template.nodes.length > 0"
-			:title="blockTitle"
-		>
-			<div :class="$style.icons">
-				<div
-					v-for="node in filterTemplateNodes(template.nodes)"
-					:key="node.name"
-					:class="$style.icon"
-				>
-					<NodeIcon
-						:node-type="node"
-						:size="24"
-						:show-tooltip="true"
-						@click="redirectToSearchPage(node)"
-					/>
-				</div>
-			</div>
-		</TemplateDetailsBlock>
-
-		<TemplateDetailsBlock
-			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
-			:title="$locale.baseText('template.details.categories')"
-		>
-			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
-		</TemplateDetailsBlock>
-
-		<TemplateDetailsBlock
-			v-if="!loading && template"
-			:title="$locale.baseText('template.details.details')"
-		>
-			<div :class="$style.text">
-				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
-					{{ $locale.baseText('template.details.created') }}
-					<TimeAgo :date="template.createdAt" />
-					{{ $locale.baseText('template.details.by') }}
-					{{ template.user ? template.user.username : 'n8n team' }}
-				</n8n-text>
-			</div>
-			<div :class="$style.text">
-				<n8n-text
-					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
-					size="small"
-					color="text-base"
-				>
-					{{ $locale.baseText('template.details.viewed') }}
-					{{ abbreviateNumber(template.totalViews) }}
-					{{ $locale.baseText('template.details.times') }}
-				</n8n-text>
-			</div>
-		</TemplateDetailsBlock>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -115,6 +57,65 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<n8n-loading :loading="loading" :rows="5" variant="p" />
+
+		<TemplateDetailsBlock
+			v-if="!loading && template && template.nodes.length > 0"
+			:title="blockTitle"
+		>
+			<div :class="$style.icons">
+				<div
+					v-for="node in filterTemplateNodes(template.nodes)"
+					:key="node.name"
+					:class="$style.icon"
+				>
+					<NodeIcon
+						:node-type="node"
+						:size="24"
+						:show-tooltip="true"
+						@click="redirectToSearchPage(node)"
+					/>
+				</div>
+			</div>
+		</TemplateDetailsBlock>
+
+		<TemplateDetailsBlock
+			v-if="!loading && isFullTemplatesCollection(template) && template.categories.length > 0"
+			:title="$locale.baseText('template.details.categories')"
+		>
+			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
+		</TemplateDetailsBlock>
+
+		<TemplateDetailsBlock
+			v-if="!loading && template"
+			:title="$locale.baseText('template.details.details')"
+		>
+			<div :class="$style.text">
+				<n8n-text v-if="isTemplatesWorkflow(template)" size="small" color="text-base">
+					{{ $locale.baseText('template.details.created') }}
+					<TimeAgo :date="template.createdAt" />
+					{{ $locale.baseText('template.details.by') }}
+					{{ template.user ? template.user.username : 'n8n team' }}
+				</n8n-text>
+			</div>
+			<div :class="$style.text">
+				<n8n-text
+					v-if="isTemplatesWorkflow(template) && template.totalViews !== 0"
+					size="small"
+					color="text-base"
+				>
+					{{ $locale.baseText('template.details.viewed') }}
+					{{ abbreviateNumber(template.totalViews) }}
+					{{ $locale.baseText('template.details.times') }}
+				</n8n-text>
+			</div>
+		</TemplateDetailsBlock>
+	</div>
+</template>
+
 <style lang="scss" module>
 .icons {
 	display: flex;

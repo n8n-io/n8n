@@ -25,7 +25,7 @@ import {
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 
 export const mockNode = ({
 	id = uuid(),
@@ -145,6 +145,35 @@ export function createTestWorkflowObject({
 		pinData,
 		nodeTypes,
 	});
+}
+
+export function createTestWorkflow({
+	id = uuid(),
+	name = 'Test Workflow',
+	nodes = [],
+	connections = {},
+	active = false,
+	settings = {
+		timezone: 'DEFAULT',
+		executionOrder: 'v1',
+	},
+	pinData = {},
+	...rest
+}: Partial<IWorkflowDb> = {}): IWorkflowDb {
+	return {
+		createdAt: '',
+		updatedAt: '',
+		id,
+		name,
+		nodes,
+		connections,
+		active,
+		settings,
+		versionId: '1',
+		meta: {},
+		pinData,
+		...rest,
+	};
 }
 
 export function createTestNode(node: Partial<INode> = {}): INode {

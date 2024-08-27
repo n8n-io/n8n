@@ -13,12 +13,13 @@ export class If extends VersionedNodeType {
 			iconColor: 'green',
 			group: ['transform'],
 			description: 'Route items to different branches (true/false)',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new IfV1(baseDescription),
 			2: new IfV2(baseDescription),
+			2.1: new IfV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -303,6 +303,12 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	const getNodeParameterActionResult = async (
+		sendData: DynamicNodeParameters.ActionResultRequest,
+	) => {
+		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
+	};
+
 	// #endregion
 
 	return {
@@ -321,6 +327,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		getResourceMapperFields,
+		getNodeParameterActionResult,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
 		getNodesInformation,

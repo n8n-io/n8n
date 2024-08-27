@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor">
-		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
@@ -114,6 +107,13 @@ function destroyEditor() {
 	editor.value?.destroy();
 }
 </script>
+
+<template>
+	<div :class="$style.editor">
+		<div ref="jsonEditorRef" class="ph-no-capture json-editor"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .editor {

@@ -52,6 +52,14 @@ get:
       schema:
         type: string
         example: My Workflow
+    - name: projectId
+      in: query
+      required: false
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
     - $ref: '../../../../shared/spec/parameters/limit.yml'
     - $ref: '../../../../shared/spec/parameters/cursor.yml'
   responses:

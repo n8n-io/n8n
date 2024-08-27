@@ -1,8 +1,7 @@
 import { nanoid } from 'nanoid';
 
-import { InternalHooks } from '@/InternalHooks';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 import { setupTestCommand } from '@test-integration/utils/testCommand';
 import { mockInstance } from '../../shared/mocking';
@@ -11,7 +10,6 @@ import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credent
 import { createMember, createOwner } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';
 
-mockInstance(InternalHooks);
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
 

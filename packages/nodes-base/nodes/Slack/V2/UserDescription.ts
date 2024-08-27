@@ -27,7 +27,7 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: "Get User's Profile",
 				value: 'getProfile',
-				description: "Get a user's",
+				description: "Get a user's profile",
 				action: "Get a user's profile",
 			},
 			{

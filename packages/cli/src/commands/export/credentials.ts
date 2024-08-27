@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { Credentials } from 'n8n-core';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
-import { BaseCommand } from '../BaseCommand';
+import { BaseCommand } from '../base-command';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { ApplicationError } from 'n8n-workflow';

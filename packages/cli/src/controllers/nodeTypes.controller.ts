@@ -4,7 +4,7 @@ import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { Post, RestController } from '@/decorators';
 import config from '@/config';
-import { NodeTypes } from '@/NodeTypes';
+import { NodeTypes } from '@/node-types';
 
 @RestController('/node-types')
 export class NodeTypesController {

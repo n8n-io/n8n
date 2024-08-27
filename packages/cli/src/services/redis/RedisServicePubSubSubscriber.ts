@@ -5,7 +5,7 @@ import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
 @Service()
 export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 	async init(): Promise<void> {
-		await super.init('subscriber');
+		await super.init('subscriber(n8n)');
 
 		this.redisClient?.on('message', (channel: string, message: string) => {
 			this.messageHandlers.forEach((handler: (channel: string, message: string) => void) =>

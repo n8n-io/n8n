@@ -1,51 +1,3 @@
-<template>
-	<div
-		ref="codeNodeEditorContainerRef"
-		:class="['code-node-editor', $style['code-node-editor-container'], language]"
-		@mouseover="onMouseOver"
-		@mouseout="onMouseOut"
-	>
-		<el-tabs
-			v-if="aiEnabled"
-			ref="tabs"
-			v-model="activeTab"
-			type="card"
-			:before-leave="onBeforeTabLeave"
-		>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.code')"
-				name="code"
-				data-test-id="code-node-tab-code"
-			>
-				<div
-					ref="codeNodeEditorRef"
-					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
-				/>
-				<slot name="suffix" />
-			</el-tab-pane>
-			<el-tab-pane
-				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
-				name="ask-ai"
-				data-test-id="code-node-tab-ai"
-			>
-				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
-				<AskAI
-					:key="activeTab"
-					:has-changes="hasChanges"
-					@replace-code="onReplaceCode"
-					@started-loading="onAiLoadStart"
-					@finished-loading="onAiLoadEnd"
-				/>
-			</el-tab-pane>
-		</el-tabs>
-		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else :class="$style.fillHeight">
-			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
-			<slot name="suffix" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -60,13 +12,12 @@ import jsParser from 'prettier/plugins/babel';
 import * as estree from 'prettier/plugins/estree';
 import { type Ref, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { ASK_AI_EXPERIMENT, CODE_NODE_TYPE } from '@/constants';
+import { CODE_NODE_TYPE } from '@/constants';
 import { codeNodeEditorEventBus } from '@/event-bus';
 import { useRootStore } from '@/stores/root.store';
 import { usePostHog } from '@/stores/posthog.store';
 
 import { useMessage } from '@/composables/useMessage';
-import { useSettingsStore } from '@/stores/settings.store';
 import AskAI from './AskAI/AskAI.vue';
 import { readOnlyEditorExtensions, writableEditorExtensions } from './baseExtensions';
 import { useCompleter } from './completer';
@@ -114,13 +65,14 @@ const { autocompletionExtension } = useCompleter(() => props.mode, editor);
 const { createLinter } = useLinter(() => props.mode, editor);
 
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const posthog = usePostHog();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
 onMounted(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.on('error-line-number', highlightLine);
+	if (!props.isReadOnly) codeNodeEditorEventBus.on('highlightLine', highlightLine);
+
+	codeNodeEditorEventBus.on('codeDiffApplied', diffApplied);
 
 	const { isReadOnly, language } = props;
 	const extensions: Extension[] = [
@@ -187,17 +139,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	if (!props.isReadOnly) codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	codeNodeEditorEventBus.off('codeDiffApplied', diffApplied);
+	if (!props.isReadOnly) codeNodeEditorEventBus.off('highlightLine', highlightLine);
 });
 
 const aiEnabled = computed(() => {
-	const isAiExperimentEnabled = [ASK_AI_EXPERIMENT.gpt3, ASK_AI_EXPERIMENT.gpt4].includes(
-		(posthog.getVariant(ASK_AI_EXPERIMENT.name) ?? '') as string,
-	);
-
-	return (
-		isAiExperimentEnabled && settingsStore.settings.ai.enabled && props.language === 'javaScript'
-	);
+	return posthog.isAiEnabled() && props.language === 'javaScript';
 });
 
 const placeholder = computed(() => {
@@ -213,6 +160,22 @@ const languageExtensions = computed<[LanguageSupport, ...Extension[]]>(() => {
 			return [python(), autocompletionExtension('python')];
 	}
 });
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		if (!editor.value) {
+			return;
+		}
+		const current = editor.value.state.doc.toString();
+		if (current === newValue) {
+			return;
+		}
+		editor.value.dispatch({
+			changes: { from: 0, to: getCurrentEditorContent().length, insert: newValue },
+		});
+	},
+);
 
 watch(
 	() => props.mode,
@@ -331,6 +294,13 @@ function getLine(lineNumber: number): Line | null {
 	}
 }
 
+function diffApplied() {
+	codeNodeEditorContainerRef.value?.classList.add('flash-editor');
+	codeNodeEditorContainerRef.value?.addEventListener('animationend', () => {
+		codeNodeEditorContainerRef.value?.classList.remove('flash-editor');
+	});
+}
+
 function highlightLine(lineNumber: number | 'final') {
 	if (!editor.value) return;
 
@@ -393,10 +363,77 @@ function onAiLoadEnd() {
 }
 </script>
 
+<template>
+	<div
+		ref="codeNodeEditorContainerRef"
+		:class="['code-node-editor', $style['code-node-editor-container'], language]"
+		@mouseover="onMouseOver"
+		@mouseout="onMouseOut"
+	>
+		<el-tabs
+			v-if="aiEnabled"
+			ref="tabs"
+			v-model="activeTab"
+			type="card"
+			:before-leave="onBeforeTabLeave"
+		>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.code')"
+				name="code"
+				data-test-id="code-node-tab-code"
+			>
+				<div
+					ref="codeNodeEditorRef"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+				/>
+				<slot name="suffix" />
+			</el-tab-pane>
+			<el-tab-pane
+				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
+				name="ask-ai"
+				data-test-id="code-node-tab-ai"
+			>
+				<!-- Key the AskAI tab to make sure it re-mounts when changing tabs -->
+				<AskAI
+					:key="activeTab"
+					:has-changes="hasChanges"
+					@replace-code="onReplaceCode"
+					@started-loading="onAiLoadStart"
+					@finished-loading="onAiLoadEnd"
+				/>
+			</el-tab-pane>
+		</el-tabs>
+		<!-- If AskAi not enabled, there's no point in rendering tabs -->
+		<div v-else :class="$style.fillHeight">
+			<div ref="codeNodeEditorRef" :class="['ph-no-capture', $style.fillHeight]" />
+			<slot name="suffix" />
+		</div>
+	</div>
+</template>
+
 <style scoped lang="scss">
 :deep(.el-tabs) {
 	.code-editor-tabs .cm-editor {
 		border: 0;
+	}
+}
+
+@keyframes backgroundAnimation {
+	0% {
+		background-color: none;
+	}
+	30% {
+		background-color: rgba(41, 163, 102, 0.1);
+	}
+	100% {
+		background-color: none;
+	}
+}
+
+.flash-editor {
+	:deep(.cm-editor),
+	:deep(.cm-gutter) {
+		animation: backgroundAnimation 1.5s ease-in-out;
 	}
 }
 </style>

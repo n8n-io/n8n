@@ -15,7 +15,7 @@ describe('CanvasNodeStatusIcons', () => {
 			},
 		});
 
-		expect(getByTestId('canvas-node-status-pinned')).toHaveTextContent('5');
+		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
 	it('should render correctly for a running node', () => {

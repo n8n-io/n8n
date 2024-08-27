@@ -6,6 +6,7 @@ import type {
 	SupplyData,
 	ExecutionError,
 } from 'n8n-workflow';
+
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
@@ -208,7 +209,7 @@ export class ToolCode implements INodeType {
 					try {
 						response = await runFunction(query);
 					} catch (error: unknown) {
-						executionError = error as ExecutionError;
+						executionError = new NodeOperationError(this.getNode(), error as ExecutionError);
 						response = `There was an error: "${executionError.message}"`;
 					}
 
@@ -229,6 +230,7 @@ export class ToolCode implements INodeType {
 					} else {
 						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
 					}
+
 					return response;
 				},
 			}),

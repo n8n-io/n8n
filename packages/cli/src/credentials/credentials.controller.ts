@@ -5,11 +5,11 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
-import { License } from '@/License';
+import { License } from '@/license';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
 	Delete,
@@ -22,7 +22,7 @@ import {
 	ProjectScope,
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserManagementMailer } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/user-management/email';
 import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
@@ -30,7 +30,7 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { z } from 'zod';
-import { EventService } from '@/eventbus/event.service';
+import { EventService } from '@/events/event.service';
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -127,11 +127,11 @@ export class CredentialsController {
 		const mergedCredentials = deepCopy(credentials);
 		const decryptedData = this.credentialsService.decrypt(storedCredential);
 
-		// When a sharee opens a credential, the fields and the credential data are missing
-		// so the payload will be empty
+		// When a sharee (or project viewer) opens a credential, the fields and the
+		// credential data are missing so the payload will be empty
 		// We need to replace the credential contents with the db version if that's the case
 		// So the credential can be tested properly
-		this.credentialsService.replaceCredentialContentsForSharee(
+		await this.credentialsService.replaceCredentialContentsForSharee(
 			req.user,
 			storedCredential,
 			decryptedData,
@@ -291,25 +291,22 @@ export class CredentialsController {
 		let newShareeIds: string[] = [];
 
 		await Db.transaction(async (trx) => {
-			const currentPersonalProjectIDs = credential.shared
+			const currentProjectIds = credential.shared
 				.filter((sc) => sc.role === 'credential:user')
 				.map((sc) => sc.projectId);
-			const newPersonalProjectIds = shareWithIds;
+			const newProjectIds = shareWithIds;
 
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIds, (id) => id],
-			);
+			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
 			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIds, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
+				[newProjectIds, (id) => id],
+				[currentProjectIds, (id) => id],
 			);
 
 			const deleteResult = await trx.delete(SharedCredentials, {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),
 			});
-			await this.enterpriseCredentialsService.shareWithProjects(credential, toShare, trx);
+			await this.enterpriseCredentialsService.shareWithProjects(req.user, credential, toShare, trx);
 
 			if (deleteResult.affected) {
 				amountRemoved = deleteResult.affected;

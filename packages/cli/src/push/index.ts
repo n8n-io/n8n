@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import type { Socket } from 'net';
@@ -8,7 +7,7 @@ import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
 
 import config from '@/config';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { IPushDataType } from '@/Interfaces';
@@ -17,6 +16,11 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import { TypedEmitter } from '@/TypedEmitter';
+
+type PushEvents = {
+	editorUiConnected: string;
+};
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -28,7 +32,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  * @emits message when a message is received from a client
  */
 @Service()
-export class Push extends EventEmitter {
+export class Push extends TypedEmitter<PushEvents> {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(private readonly orchestrationService: OrchestrationService) {
@@ -37,7 +41,6 @@ export class Push extends EventEmitter {
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
-			user,
 			ws,
 			query: { pushRef },
 		} = req;

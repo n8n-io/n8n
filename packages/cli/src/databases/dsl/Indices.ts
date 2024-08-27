@@ -1,5 +1,5 @@
 import type { QueryRunner } from '@n8n/typeorm';
-import { TableIndex } from '@n8n/typeorm';
+import { TableIndex, TypeORMError } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 
 abstract class IndexOperation extends LazyPromise<void> {
@@ -48,10 +48,29 @@ export class CreateIndex extends IndexOperation {
 }
 
 export class DropIndex extends IndexOperation {
+	constructor(
+		tableName: string,
+		columnNames: string[],
+		tablePrefix: string,
+		queryRunner: QueryRunner,
+		customIndexName?: string,
+		protected skipIfMissing = false,
+	) {
+		super(tableName, columnNames, tablePrefix, queryRunner, customIndexName);
+	}
+
 	async execute(queryRunner: QueryRunner) {
-		return await queryRunner.dropIndex(
-			this.fullTableName,
-			this.customIndexName ?? this.fullIndexName,
-		);
+		return await queryRunner
+			.dropIndex(this.fullTableName, this.customIndexName ?? this.fullIndexName)
+			.catch((error) => {
+				if (
+					error instanceof TypeORMError &&
+					error.message.includes('not found') &&
+					this.skipIfMissing
+				) {
+					return;
+				}
+				throw error;
+			});
 	}
 }

@@ -11,7 +11,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/Interfaces';
 import { ImportService } from '@/services/import.service';
-import { BaseCommand } from '../BaseCommand';
+import { BaseCommand } from '../base-command';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 

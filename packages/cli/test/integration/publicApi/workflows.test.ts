@@ -9,7 +9,7 @@ import type { Project } from '@db/entities/Project';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
@@ -21,6 +21,8 @@ import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
 import type { SuperAgentTest } from '../shared/types';
 import { Telemetry } from '@/telemetry';
+import { ProjectService } from '@/services/project.service';
+import { createTeamProject } from '@test-integration/db/projects';
 
 mockInstance(Telemetry);
 
@@ -263,6 +265,47 @@ describe('GET /workflows', () => {
 				expect(tags.some((savedTag) => savedTag.id === tag.id)).toBe(true);
 			});
 		}
+	});
+
+	test('for owner, should return all workflows filtered by `projectId`', async () => {
+		license.setQuota('quota:maxTeamProjects', -1);
+		const firstProject = await Container.get(ProjectService).createTeamProject('First', owner);
+		const secondProject = await Container.get(ProjectService).createTeamProject('Second', member);
+
+		await Promise.all([
+			createWorkflow({ name: 'First workflow' }, firstProject),
+			createWorkflow({ name: 'Second workflow' }, secondProject),
+		]);
+
+		const firstResponse = await authOwnerAgent.get(`/workflows?projectId=${firstProject.id}`);
+		const secondResponse = await authOwnerAgent.get(`/workflows?projectId=${secondProject.id}`);
+
+		expect(firstResponse.statusCode).toBe(200);
+		expect(firstResponse.body.data.length).toBe(1);
+		expect(firstResponse.body.data[0].name).toBe('First workflow');
+
+		expect(secondResponse.statusCode).toBe(200);
+		expect(secondResponse.body.data.length).toBe(1);
+		expect(secondResponse.body.data[0].name).toBe('Second workflow');
+	});
+
+	test('for member, should return all member-accessible workflows filtered by `projectId`', async () => {
+		license.setQuota('quota:maxTeamProjects', -1);
+		const otherProject = await Container.get(ProjectService).createTeamProject(
+			'Other project',
+			member,
+		);
+
+		await Promise.all([
+			createWorkflow({}, member),
+			createWorkflow({ name: 'Other workflow' }, otherProject),
+		]);
+
+		const response = await authMemberAgent.get(`/workflows?projectId=${otherProject.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1);
+		expect(response.body.data[0].name).toBe('Other workflow');
 	});
 
 	test('should return all owned workflows filtered by name', async () => {
@@ -1463,5 +1506,46 @@ describe('PUT /workflows/:id/tags', () => {
 				});
 			}
 		}
+	});
+});
+
+describe('PUT /workflows/:id/transfer', () => {
+	test('should transfer workflow to project', async () => {
+		/**
+		 * Arrange
+		 */
+		const firstProject = await createTeamProject('first-project', member);
+		const secondProject = await createTeamProject('second-project', member);
+		const workflow = await createWorkflow({}, firstProject);
+
+		/**
+		 * Act
+		 */
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}/transfer`).send({
+			destinationProjectId: secondProject.id,
+		});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(204);
+	});
+
+	test('if no destination project, should reject', async () => {
+		/**
+		 * Arrange
+		 */
+		const firstProject = await createTeamProject('first-project', member);
+		const workflow = await createWorkflow({}, firstProject);
+
+		/**
+		 * Act
+		 */
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}/transfer`).send({});
+
+		/**
+		 * Assert
+		 */
+		expect(response.statusCode).toBe(400);
 	});
 });

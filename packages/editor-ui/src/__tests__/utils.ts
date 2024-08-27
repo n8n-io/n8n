@@ -72,7 +72,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 };
 
 export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
+	await userEvent.click(within(dropdownTriggerParent).getByRole('combobox'));
 	const selectTrigger = dropdownTriggerParent.querySelector(
 		'.select-trigger[aria-describedby]',
 	) as HTMLElement;
@@ -83,4 +83,10 @@ export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
 
 	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
+};
+
+export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
+	const selectedItem = Array.from(items).find((item) => item.classList.contains('selected'));
+	expect(selectedItem).toBeInTheDocument();
+	return selectedItem?.querySelector('p')?.textContent?.trim();
 };

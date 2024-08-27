@@ -35,6 +35,8 @@ import {
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
 	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+	NEW_ASSISTANT_SESSION_MODAL,
+	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -114,6 +116,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_ACTIVE_MODAL_KEY,
 				COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 				MFA_SETUP_MODAL_KEY,
+				PROMPT_MFA_CODE_MODAL_KEY,
 				SOURCE_CONTROL_PUSH_MODAL_KEY,
 				SOURCE_CONTROL_PULL_MODAL_KEY,
 				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -122,6 +125,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				SETUP_CREDENTIALS_MODAL_KEY,
 				PROJECT_MOVE_RESOURCE_MODAL,
 				PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+				NEW_ASSISTANT_SESSION_MODAL,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -696,7 +700,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 });
 
 /**
- * Helper function for listening to credential changes in the store
+ * Helper function for listening to model opening and closings in the store
  */
 export const listenForModalChanges = (opts: {
 	store: UiStore;

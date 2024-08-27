@@ -7,11 +7,12 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
-import type {
-	ConnectionTypes,
-	IConnectedNode,
-	IDataObject,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type ConnectionTypes,
+	type IConnectedNode,
+	type IDataObject,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { i18n } from '@/plugins/i18n';
@@ -27,13 +28,13 @@ type Props = {
 	nodes?: IConnectedNode[];
 	node?: INodeUi | null;
 	data?: IDataObject[];
-	mappingEnabled: boolean;
-	runIndex: number;
-	outputIndex: number;
-	totalRuns: number;
+	mappingEnabled?: boolean;
+	runIndex?: number;
+	outputIndex?: number;
+	totalRuns?: number;
 	paneType: 'input' | 'output';
-	connectionType: ConnectionTypes;
-	search: string;
+	connectionType?: ConnectionTypes;
+	search?: string;
 };
 
 type SchemaNode = {
@@ -51,6 +52,12 @@ const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 1,
 	node: null,
 	data: undefined,
+	runIndex: 0,
+	outputIndex: 0,
+	totalRuns: 1,
+	connectionType: NodeConnectionType.Main,
+	search: '',
+	mappingEnabled: false,
 });
 
 const draggingPath = ref<string>('');
@@ -102,6 +109,24 @@ const nodes = computed(() => {
 const filteredNodes = computed(() =>
 	nodes.value.filter((node) => !props.search || !isDataEmpty(node.schema)),
 );
+
+const nodeAdditionalInfo = (node: INodeUi) => {
+	const returnData: string[] = [];
+	if (node.disabled) {
+		returnData.push(i18n.baseText('node.disabled'));
+	}
+
+	const connections = ndvStore.ndvNodeInputNumber[node.name];
+	if (connections) {
+		if (connections.length === 1) {
+			returnData.push(`Input ${connections}`);
+		} else {
+			returnData.push(`Inputs ${connections.join(', ')}`);
+		}
+	}
+
+	return returnData.length ? `(${returnData.join(' | ')})` : '';
+};
 
 const isDataEmpty = (schema: Schema | null) => {
 	if (!schema) return true;
@@ -285,7 +310,9 @@ watch(
 
 					<div :class="$style.title">
 						{{ currentNode.node.name }}
-						<span v-if="currentNode.node.disabled">({{ $locale.baseText('node.disabled') }})</span>
+						<span v-if="nodeAdditionalInfo(currentNode.node)" :class="$style.subtitle">{{
+							nodeAdditionalInfo(currentNode.node)
+						}}</span>
 					</div>
 					<font-awesome-icon
 						v-if="currentNode.nodeType.group.includes('trigger')"
@@ -414,9 +441,7 @@ watch(
 	--title-spacing-left: 38px;
 	display: flex;
 	flex-direction: column;
-	padding: 0 0 var(--spacing-s) var(--spacing-s);
 	container: schema / inline-size;
-	min-height: 100%;
 
 	&.animating {
 		overflow: hidden;
@@ -437,7 +462,6 @@ watch(
 
 .schema {
 	display: grid;
-	padding-right: var(--spacing-s);
 	grid-template-rows: 1fr;
 
 	&.animated {
@@ -459,6 +483,7 @@ watch(
 
 .innerSchema {
 	min-height: 0;
+	min-width: 0;
 
 	> div {
 		margin-bottom: var(--spacing-xs);
@@ -473,6 +498,13 @@ watch(
 	cursor: pointer;
 }
 
+.subtitle {
+	margin-left: auto;
+	padding-left: var(--spacing-2xs);
+	color: var(--color-text-light);
+	font-weight: var(--font-weight-regular);
+}
+
 .header {
 	display: flex;
 	align-items: center;
@@ -480,7 +512,6 @@ watch(
 	top: 0;
 	z-index: 1;
 	padding-bottom: var(--spacing-2xs);
-	padding-right: var(--spacing-s);
 	background: var(--color-run-data-background);
 }
 

@@ -11,7 +11,6 @@ import { Telemetry } from '@/telemetry';
 mockInstance(Telemetry);
 
 let member: User;
-let anotherMember: User;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
@@ -20,7 +19,6 @@ const testServer = utils.setupTestServer({
 
 beforeAll(async () => {
 	member = await createUser({ role: 'global:member' });
-	anotherMember = await createUser({ role: 'global:member' });
 
 	await utils.initNodeTypes();
 });
