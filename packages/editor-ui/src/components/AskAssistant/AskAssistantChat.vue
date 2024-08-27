@@ -36,6 +36,7 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 	if (quickReplyType === 'all-good' || quickReplyType === 'still-stuck') {
 		telemetry.track('User gave feedback', {
 			task,
+			chat_session_id: assistantStore.currentSessionId,
 			is_quick_reply: !!quickReplyType,
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
