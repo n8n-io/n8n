@@ -2639,7 +2639,7 @@ export default defineComponent({
 			// after the node creator is opened
 			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
 			const isScopedConnection =
-				type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
+				type !== NodeConnectionType.Main && nodeConnectionTypes.includes(type);
 
 			if (isScopedConnection) {
 				useViewStacks()
