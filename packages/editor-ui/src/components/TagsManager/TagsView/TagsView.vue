@@ -16,6 +16,10 @@ export default defineComponent({
 	name: 'TagsView',
 	components: { TagsTableHeader, TagsTable },
 	props: {
+		usageColumnTitleLocaleKey: {
+			type: String as () => BaseTextKey,
+			default: 'tagsTable.usage',
+		},
 		usageLocaleKey: {
 			type: String as () => BaseTextKey,
 			default: 'tagsView.inUse',
@@ -187,6 +191,7 @@ export default defineComponent({
 			:is-loading="isLoading"
 			:is-saving="isSaving"
 			:new-name="newName"
+			:usage-column-title-locale-key="usageColumnTitleLocaleKey"
 			data-test-id="tags-table"
 			@new-name-change="onNewNameChange"
 			@update-enable="onUpdateEnable"

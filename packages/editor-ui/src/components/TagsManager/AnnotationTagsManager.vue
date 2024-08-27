@@ -1,18 +1,3 @@
-<template>
-	<TagsManager
-		title-locale-key="annotationTagsManager.manageTags"
-		usage-locale-key="annotationTagsView.inUse"
-		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
-		:tags="tags"
-		:is-loading="isLoading"
-		:on-fetch-tags="fetchTags"
-		:on-create-tag="createTag"
-		:on-update-tag="updateTag"
-		:on-delete-tag="deleteTag"
-		@update:tags="onTagsUpdate"
-	/>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
@@ -108,3 +93,19 @@ function onTagsUpdate(updatedTags: ITag[]) {
 	console.log('Tags updated:', updatedTags);
 }
 </script>
+
+<template>
+	<TagsManager
+		title-locale-key="annotationTagsManager.manageTags"
+		usage-locale-key="annotationTagsView.inUse"
+		usage-column-title-locale-key="annotationTagsView.usage"
+		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
+		:tags="tags"
+		:is-loading="isLoading"
+		:on-fetch-tags="fetchTags"
+		:on-create-tag="createTag"
+		:on-update-tag="updateTag"
+		:on-delete-tag="deleteTag"
+		@update:tags="onTagsUpdate"
+	/>
+</template>

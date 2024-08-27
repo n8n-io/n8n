@@ -11,6 +11,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 interface TagsManagerProps {
 	modalKey: string;
 	usageLocaleKey: BaseTextKey;
+	usageColumnTitleLocaleKey: BaseTextKey;
 	titleLocaleKey: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
@@ -23,6 +24,7 @@ interface TagsManagerProps {
 const props = withDefaults(defineProps<TagsManagerProps>(), {
 	titleLocaleKey: 'tagsManager.manageTags',
 	usageLocaleKey: 'tagsView.inUse',
+	usageColumnTitleLocaleKey: 'tagsTable.usage',
 });
 
 const emit = defineEmits<{
@@ -160,6 +162,7 @@ function onEnter() {
 					:is-loading="isLoading"
 					:tags="tags"
 					:usage-locale-key="usageLocaleKey"
+					:usage-column-title-locale-key="usageColumnTitleLocaleKey"
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"
