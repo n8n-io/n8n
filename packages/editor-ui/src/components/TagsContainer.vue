@@ -34,7 +34,7 @@ const emit = defineEmits<{
 const maxWidth = ref(320);
 const intersectionEventBus = createEventBus();
 const visibility = ref<{ [id: string]: boolean }>({});
-const tagsContainer = ref<ComponentInstance<typeof IntersectionObserver> | null>(null);
+const tagsContainer = ref<ComponentInstance<typeof IntersectionObserver>>();
 
 // Computed
 const style = computed(() => ({
