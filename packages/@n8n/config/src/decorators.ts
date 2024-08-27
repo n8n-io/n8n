@@ -15,8 +15,7 @@ interface PropertyMetadata {
 const globalMetadata = new Map<Class, Map<PropertyKey, PropertyMetadata>>();
 
 const readEnv = (envName: string) => {
-	const value = process.env[envName];
-	if (value) return value;
+	if (envName in process.env) return process.env[envName];
 
 	// Read the value from a file, if "_FILE" environment variable is defined
 	const filePath = process.env[`${envName}_FILE`];
