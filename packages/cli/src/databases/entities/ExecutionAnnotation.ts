@@ -16,7 +16,6 @@ import type { AnnotationTagMapping } from './AnnotationTagMapping';
 import type { AnnotationVote } from 'n8n-workflow';
 
 @Entity({ name: 'execution_annotations' })
-@Index(['execution'])
 export class ExecutionAnnotation {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -36,6 +35,7 @@ export class ExecutionAnnotation {
 	@RelationId((annotation: ExecutionAnnotation) => annotation.execution)
 	executionId: string;
 
+	@Index({ unique: true })
 	@OneToOne('ExecutionEntity', 'annotation', {
 		onDelete: 'CASCADE',
 	})
