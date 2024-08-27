@@ -213,10 +213,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	return actions;
 });
 
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
-
 const workflowTagIds = computed(() => {
 	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -720,11 +716,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<WorkflowHistoryButton
-					:workflow="workflow"
-					:is-new-workflow="isNewWorkflow"
-					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-				/>
+				<WorkflowHistoryButton :workflow="workflow" :is-new-workflow="isNewWorkflow" />
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
