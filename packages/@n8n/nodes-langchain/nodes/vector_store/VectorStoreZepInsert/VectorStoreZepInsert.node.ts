@@ -110,10 +110,10 @@ export class VectorStoreZepInsert implements INodeType {
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader

@@ -17,7 +17,7 @@ export async function automizyApiRequest(
 	qs: IDataObject = {},
 	option = {},
 ): Promise<any> {
-	const credentials = (await this.getCredentials('automizyApi')) as IDataObject;
+	const credentials = await this.getCredentials<{ apiToken: string }>('automizyApi');
 
 	const options: IRequestOptions = {
 		headers: {
