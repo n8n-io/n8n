@@ -1,9 +1,3 @@
-<template>
-	<div ref="targetRef" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @mouseup="onMouseUp">
-		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
-	</div>
-</template>
-
 <script setup lang="ts">
 import type { XYPosition } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -84,3 +78,9 @@ function getStickyPosition(): XYPosition | null {
 	return [left + props.stickyOffset[0], top + props.stickyOffset[1]];
 }
 </script>
+
+<template>
+	<div ref="targetRef" @mouseenter="onMouseEnter" @mouseleave="onMouseLeave" @mouseup="onMouseUp">
+		<slot :droppable="droppable" :active-drop="activeDrop"></slot>
+	</div>
+</template>

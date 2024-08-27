@@ -110,19 +110,22 @@ export function createCanvasHandleProvide({
 	label = 'Handle',
 	mode = CanvasConnectionMode.Input,
 	type = NodeConnectionType.Main,
-	connected = false,
+	isConnected = false,
+	isConnecting = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
 	type?: NodeConnectionType;
-	connected?: boolean;
+	isConnected?: boolean;
+	isConnecting?: boolean;
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
 			label: ref(label),
 			mode: ref(mode),
 			type: ref(type),
-			connected: ref(connected),
+			isConnected: ref(isConnected),
+			isConnecting: ref(isConnecting),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

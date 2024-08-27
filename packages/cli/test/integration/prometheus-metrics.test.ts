@@ -7,7 +7,7 @@ import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { setupTestServer } from './shared/utils';
 import { GlobalConfig } from '@n8n/config';
 
-jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
+jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 
 const toLines = (response: Response) => response.text.trim().split('\n');
 

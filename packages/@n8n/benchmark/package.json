@@ -10,6 +10,8 @@
     "start": "./bin/n8n-benchmark",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typecheck": "tsc --noEmit",
+    "run-in-cloud": "zx scripts/runInCloud.mjs",
+    "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
   },
   "engines": {

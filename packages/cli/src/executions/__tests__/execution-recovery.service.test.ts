@@ -15,11 +15,11 @@ import { Push } from '@/push';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
-import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
+import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
 import { setupMessages } from './utils';
 
-import type { EventMessageTypes as EventMessage } from '@/eventbus/EventMessageClasses';
+import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);

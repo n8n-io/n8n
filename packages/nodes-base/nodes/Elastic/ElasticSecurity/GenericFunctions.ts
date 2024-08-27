@@ -21,21 +21,13 @@ export async function elasticSecurityApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		username,
-		password,
-		baseUrl: rawBaseUrl,
-	} = (await this.getCredentials('elasticSecurityApi')) as ElasticSecurityApiCredentials;
+	const { baseUrl: rawBaseUrl } = (await this.getCredentials(
+		'elasticSecurityApi',
+	)) as ElasticSecurityApiCredentials;
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-	const token = Buffer.from(`${username}:${password}`).toString('base64');
-
 	const options: IRequestOptions = {
-		headers: {
-			Authorization: `Basic ${token}`,
-			'kbn-xsrf': true,
-		},
 		method,
 		body,
 		qs,
@@ -52,7 +44,7 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'elasticSecurityApi', options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;

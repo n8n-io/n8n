@@ -1,82 +1,3 @@
-<template>
-	<n8n-popover
-		placement="bottom"
-		:width="width"
-		:popper-class="$style.popover"
-		:visible="show"
-		:teleported="false"
-		data-test-id="resource-locator-dropdown"
-	>
-		<div v-if="errorView" :class="$style.messageContainer">
-			<slot name="error"></slot>
-		</div>
-		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
-			<n8n-input
-				ref="search"
-				:model-value="filter"
-				:clearable="true"
-				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
-				data-test-id="rlc-search"
-				@update:model-value="onFilterInput"
-			>
-				<template #prefix>
-					<font-awesome-icon :class="$style.searchIcon" icon="search" />
-				</template>
-			</n8n-input>
-		</div>
-		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
-			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
-		</div>
-		<div
-			v-else-if="!errorView && sortedResources.length === 0 && !loading"
-			:class="$style.messageContainer"
-		>
-			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
-		</div>
-		<div
-			v-else-if="!errorView"
-			ref="resultsContainer"
-			:class="$style.container"
-			@scroll="onResultsEnd"
-		>
-			<div
-				v-for="(result, i) in sortedResources"
-				:key="result.value.toString()"
-				:ref="`item-${i}`"
-				:class="{
-					[$style.resourceItem]: true,
-					[$style.selected]: result.value === modelValue,
-					[$style.hovering]: hoverIndex === i,
-				}"
-				data-test-id="rlc-item"
-				@click="() => onItemClick(result.value)"
-				@mouseenter="() => onItemHover(i)"
-				@mouseleave="() => onItemHoverLeave()"
-			>
-				<div :class="$style.resourceNameContainer">
-					<span>{{ result.name }}</span>
-				</div>
-				<div :class="$style.urlLink">
-					<font-awesome-icon
-						v-if="showHoverUrl && result.url && hoverIndex === i"
-						icon="external-link-alt"
-						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
-						@click="openUrl($event, result.url)"
-					/>
-				</div>
-			</div>
-			<div v-if="loading && !errorView">
-				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
-					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				</div>
-			</div>
-		</div>
-		<template #reference>
-			<slot />
-		</template>
-	</n8n-popover>
-</template>
-
 <script lang="ts">
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { defineComponent } from 'vue';
@@ -266,6 +187,85 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<n8n-popover
+		placement="bottom"
+		:width="width"
+		:popper-class="$style.popover"
+		:visible="show"
+		:teleported="false"
+		data-test-id="resource-locator-dropdown"
+	>
+		<div v-if="errorView" :class="$style.messageContainer">
+			<slot name="error"></slot>
+		</div>
+		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
+			<n8n-input
+				ref="search"
+				:model-value="filter"
+				:clearable="true"
+				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				data-test-id="rlc-search"
+				@update:model-value="onFilterInput"
+			>
+				<template #prefix>
+					<font-awesome-icon :class="$style.searchIcon" icon="search" />
+				</template>
+			</n8n-input>
+		</div>
+		<div v-if="filterRequired && !filter && !errorView && !loading" :class="$style.searchRequired">
+			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
+		</div>
+		<div
+			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			:class="$style.messageContainer"
+		>
+			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
+		</div>
+		<div
+			v-else-if="!errorView"
+			ref="resultsContainer"
+			:class="$style.container"
+			@scroll="onResultsEnd"
+		>
+			<div
+				v-for="(result, i) in sortedResources"
+				:key="result.value.toString()"
+				:ref="`item-${i}`"
+				:class="{
+					[$style.resourceItem]: true,
+					[$style.selected]: result.value === modelValue,
+					[$style.hovering]: hoverIndex === i,
+				}"
+				data-test-id="rlc-item"
+				@click="() => onItemClick(result.value)"
+				@mouseenter="() => onItemHover(i)"
+				@mouseleave="() => onItemHoverLeave()"
+			>
+				<div :class="$style.resourceNameContainer">
+					<span>{{ result.name }}</span>
+				</div>
+				<div :class="$style.urlLink">
+					<font-awesome-icon
+						v-if="showHoverUrl && result.url && hoverIndex === i"
+						icon="external-link-alt"
+						:title="result.linkAlt || $locale.baseText('resourceLocator.mode.list.openUrl')"
+						@click="openUrl($event, result.url)"
+					/>
+				</div>
+			</div>
+			<div v-if="loading && !errorView">
+				<div v-for="i in 3" :key="i" :class="$style.loadingItem">
+					<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				</div>
+			</div>
+		</div>
+		<template #reference>
+			<slot />
+		</template>
+	</n8n-popover>
+</template>
 
 <style lang="scss" module>
 :root .popover {

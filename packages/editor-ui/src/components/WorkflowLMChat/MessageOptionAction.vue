@@ -1,14 +1,3 @@
-<template>
-	<N8nTooltip :placement="placement">
-		<button :class="$style.button" :style="{ color: '#aaa' }" @click="emit('click')">
-			<N8nIcon :icon="icon" size="small" />
-		</button>
-		<template #content>
-			{{ label }}
-		</template>
-	</N8nTooltip>
-</template>
-
 <script setup lang="ts">
 const emit = defineEmits<{
 	click: [];
@@ -20,6 +9,17 @@ defineProps<{
 	placement: 'left' | 'right' | 'top' | 'bottom';
 }>();
 </script>
+
+<template>
+	<N8nTooltip :placement="placement">
+		<button :class="$style.button" :style="{ color: '#aaa' }" @click="emit('click')">
+			<N8nIcon :icon="icon" size="small" />
+		</button>
+		<template #content>
+			{{ label }}
+		</template>
+	</N8nTooltip>
+</template>
 
 <style module>
 .button {
