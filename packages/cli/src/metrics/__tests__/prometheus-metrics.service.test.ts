@@ -68,6 +68,8 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache hits.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
+			expect(service.counters.cacheHitsTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
 		it('should set up `n8n_cache_misses_total`', async () => {
@@ -81,6 +83,8 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache misses.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
+			expect(service.counters.cacheMissesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
 		it('should set up `n8n_cache_updates_total`', async () => {
@@ -94,6 +98,8 @@ describe('PrometheusMetricsService', () => {
 				help: 'Total number of cache updates.',
 				labelNames: ['cache'],
 			});
+			// @ts-expect-error private field
+			expect(service.counters.cacheUpdatesTotal?.inc).toHaveBeenCalledWith(0);
 		});
 
 		it('should set up route metrics with `express-prom-bundle`', async () => {
