@@ -53,6 +53,27 @@ describe('PrometheusMetricsService', () => {
 		prometheusMetricsService.disableAllMetrics();
 	});
 
+	describe('constructor', () => {
+		it('should enable metrics based on global config', async () => {
+			const customGlobalConfig = { ...globalConfig };
+			customGlobalConfig.endpoints.metrics.includeCacheMetrics = true;
+			const customPrometheusMetricsService = new PrometheusMetricsService(
+				mock(),
+				mock(),
+				customGlobalConfig,
+				mock(),
+			);
+
+			await customPrometheusMetricsService.init(app);
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_cache_hits_total',
+				help: 'Total number of cache hits.',
+				labelNames: ['cache'],
+			});
+		});
+	});
+
 	describe('init', () => {
 		it('should set up `n8n_version_info`', async () => {
 			await prometheusMetricsService.init(app);
