@@ -493,10 +493,10 @@ export class Wait extends Webhook {
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
-			if (dateTimeStr === '') {
+			if (isNaN(Date.parse(dateTimeStr))) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'[Wait node] Cannot put execution to wait because `dateTime` parameter is empty. Please pick a specific date and time to wait until.',
+					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
 				);
 			}
 
