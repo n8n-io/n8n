@@ -982,6 +982,8 @@
 	"ndv.httpRequest.credentialOnly.docsNotice": "Use the <a target=\"_blank\" href=\"{docsUrl}\">{nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a {nodeName} credential below.",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
+	"noAnnotationTagsView.title": "Organize your executions",
+	"noAnnotationTagsView.description": "Execution tags help you label and identify different classes of execution. Plus once you tag an execution, it’s never deleted",
 	"node.thisIsATriggerNode": "This is a Trigger node. <a target=\"_blank\" href=\"https://docs.n8n.io/workflows/components/nodes/\">Learn more</a>",
 	"node.activateDeactivateNode": "Activate/Deactivate Node",
 	"node.changeColor": "Change color",

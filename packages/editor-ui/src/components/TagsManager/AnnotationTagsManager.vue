@@ -99,6 +99,8 @@ function onTagsUpdate(updatedTags: ITag[]) {
 		title-locale-key="annotationTagsManager.manageTags"
 		usage-locale-key="annotationTagsView.inUse"
 		usage-column-title-locale-key="annotationTagsView.usage"
+		no-tags-title-locale-key="noAnnotationTagsView.title"
+		no-tags-description-locale-key="noAnnotationTagsView.description"
 		:modal-key="ANNOTATION_TAGS_MANAGER_MODAL_KEY"
 		:tags="tags"
 		:is-loading="isLoading"

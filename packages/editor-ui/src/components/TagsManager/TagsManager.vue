@@ -13,6 +13,8 @@ interface TagsManagerProps {
 	usageLocaleKey: BaseTextKey;
 	usageColumnTitleLocaleKey: BaseTextKey;
 	titleLocaleKey: BaseTextKey;
+	noTagsTitleLocaleKey: BaseTextKey;
+	noTagsDescriptionLocaleKey: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
 	onFetchTags: () => Promise<void>;
@@ -25,6 +27,8 @@ const props = withDefaults(defineProps<TagsManagerProps>(), {
 	titleLocaleKey: 'tagsManager.manageTags',
 	usageLocaleKey: 'tagsView.inUse',
 	usageColumnTitleLocaleKey: 'tagsTable.usage',
+	noTagsTitleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
+	noTagsDescriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
 });
 
 const emit = defineEmits<{
@@ -168,7 +172,12 @@ function onEnter() {
 					@delete="onDelete"
 					@disable-create="onDisableCreate"
 				/>
-				<NoTagsView v-else @enable-create="onEnableCreate" />
+				<NoTagsView
+					v-else
+					:title-locale-key="noTagsTitleLocaleKey"
+					:description-locale-key="noTagsDescriptionLocaleKey"
+					@enable-create="onEnableCreate"
+				/>
 			</el-row>
 		</template>
 		<template #footer="{ close }">
