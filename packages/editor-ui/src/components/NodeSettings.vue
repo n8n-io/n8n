@@ -53,17 +53,26 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { importCurlEventBus, ndvEventBus } from '@/event-bus';
 
-const props = defineProps<{
-	eventBus: EventBus;
-	dragging: boolean;
-	pushRef: string;
-	nodeType: INodeTypeDescription | null;
-	readOnly: boolean;
-	foreignCredentials: string[];
-	blockUI: boolean;
-	executable: boolean;
-	inputSize: number;
-}>();
+const props = withDefaults(
+	defineProps<{
+		eventBus: EventBus;
+		dragging: boolean;
+		pushRef: string;
+		nodeType: INodeTypeDescription | null;
+		readOnly: boolean;
+		foreignCredentials: string[];
+		blockUI: boolean;
+		executable: boolean;
+		inputSize: number;
+	}>(),
+	{
+		foreignCredentials: () => [],
+		readOnly: false,
+		executable: true,
+		inputSize: 0,
+		blockUI: false,
+	},
+);
 
 const emit = defineEmits<{
 	stopExecution: [];
