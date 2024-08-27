@@ -87,11 +87,6 @@ async function deleteTag(id: string): Promise<boolean> {
 		throw error;
 	}
 }
-
-function onTagsUpdate(updatedTags: ITag[]) {
-	// If needed, you can perform additional actions when tags are updated
-	console.log('Tags updated:', updatedTags);
-}
 </script>
 
 <template>
@@ -108,6 +103,5 @@ function onTagsUpdate(updatedTags: ITag[]) {
 		:on-create-tag="createTag"
 		:on-update-tag="updateTag"
 		:on-delete-tag="deleteTag"
-		@update:tags="onTagsUpdate"
 	/>
 </template>

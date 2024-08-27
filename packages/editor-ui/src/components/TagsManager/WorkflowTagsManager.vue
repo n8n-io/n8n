@@ -1,16 +1,3 @@
-<template>
-	<TagsManager
-		:modal-key="TAGS_MANAGER_MODAL_KEY"
-		:tags="tags"
-		:is-loading="isLoading"
-		:on-fetch-tags="fetchTags"
-		:on-create-tag="createTag"
-		:on-update-tag="updateTag"
-		:on-delete-tag="deleteTag"
-		@update:tags="onTagsUpdate"
-	/>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
@@ -100,9 +87,16 @@ async function deleteTag(id: string): Promise<boolean> {
 		throw error;
 	}
 }
-
-function onTagsUpdate(updatedTags: ITag[]) {
-	// If needed, you can perform additional actions when tags are updated
-	console.log('Tags updated:', updatedTags);
-}
 </script>
+
+<template>
+	<TagsManager
+		:modal-key="TAGS_MANAGER_MODAL_KEY"
+		:tags="tags"
+		:is-loading="isLoading"
+		:on-fetch-tags="fetchTags"
+		:on-create-tag="createTag"
+		:on-update-tag="updateTag"
+		:on-delete-tag="deleteTag"
+	/>
+</template>

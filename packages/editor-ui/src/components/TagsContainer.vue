@@ -7,7 +7,6 @@ import IntersectionObserved from './IntersectionObserved.vue';
 import { createEventBus } from 'n8n-design-system/utils';
 import { debounce } from 'lodash-es';
 
-// Define the interface for the props
 interface TagsContainerProps {
 	tagIds: string[];
 	tagsById: { [id: string]: ITag };
@@ -17,15 +16,13 @@ interface TagsContainerProps {
 	hoverable?: boolean;
 }
 
-// Define props using the interface and withDefaults
 const props = withDefaults(defineProps<TagsContainerProps>(), {
-	limit: 20, // DEFAULT_MAX_TAGS_LIMIT
+	limit: 20,
 	clickable: false,
 	responsive: false,
 	hoverable: false,
 });
 
-// Define emits
 const emit = defineEmits<{
 	click: [tagId: string];
 }>();

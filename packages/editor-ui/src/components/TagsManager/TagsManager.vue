@@ -101,11 +101,7 @@ async function onUpdate(id: string, name: string, cb: (success: boolean, error?:
 			props.tags.map((t) => (t.id === id ? updatedTag : t)),
 		);
 		cb(true);
-
-		// Implement showMessage function or emit an event for success message
 	} catch (error) {
-		// const escapedName = escape(oldName);
-		// Implement showError function or emit an event for error handling
 		cb(false, error as Error);
 	}
 }
@@ -116,7 +112,6 @@ async function onDelete(id: string, cb: (deleted: boolean, error?: Error) => voi
 		cb(false, new Error('Tag not found'));
 		return;
 	}
-	// const name = tag.name;
 
 	try {
 		const deleted = await props.onDeleteTag(id);
@@ -130,11 +125,7 @@ async function onDelete(id: string, cb: (deleted: boolean, error?: Error) => voi
 			props.tags.filter((t) => t.id !== id),
 		);
 		cb(deleted);
-
-		// Implement showMessage function or emit an event for success message
 	} catch (error) {
-		// const escapedName = escape(name);
-		// Implement showError function or emit an event for error handling
 		cb(false, error as Error);
 	}
 }
