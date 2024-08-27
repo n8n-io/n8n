@@ -337,7 +337,7 @@ const checkWidthAndAdjustSidebar = async (width: number) => {
 				</div>
 			</template>
 			<template v-if="showUserArea" #footer>
-				<div :class="$style.userArea">
+				<div ref="user" :class="$style.userArea" >
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
 						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
