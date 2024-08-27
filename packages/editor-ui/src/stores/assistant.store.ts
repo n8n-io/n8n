@@ -61,6 +61,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
+	const nodeSuccessfullyExecuted = ref<boolean>(false);
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -115,6 +116,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
+		nodeSuccessfullyExecuted.value = false;
 	}
 
 	function closeChat() {
@@ -362,13 +364,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
-		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
+		if (
+			!chatSessionError.value ||
+			pushEvent.nodeName !== chatSessionError.value.node.name ||
+			nodeSuccessfullyExecuted.value
+		) {
 			return;
 		}
 		if (pushEvent.data.error) {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 		} else if (pushEvent.data.executionStatus === 'success') {
 			await sendEvent('node-execution-succeeded');
+			nodeSuccessfullyExecuted.value = true;
 		}
 		telemetry.track('User executed node after assistant suggestion', {
 			task: 'error',
