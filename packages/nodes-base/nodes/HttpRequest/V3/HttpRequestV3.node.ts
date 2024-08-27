@@ -18,6 +18,7 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
+	NodeExecutionOutput,
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
@@ -2136,6 +2137,23 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
+
+		if (
+			returnItems.length === 1 &&
+			returnItems[0].json.data &&
+			Array.isArray(returnItems[0].json.data)
+		) {
+			return new NodeExecutionOutput(
+				[returnItems],
+				[
+					{
+						message:
+							"Result has a 'data' property which contains an array of items, you can split this array into separate items by using 'Split Out' node",
+						location: 'outputPane',
+					},
+				],
+			);
+		}
 
 		return [returnItems];
 	}

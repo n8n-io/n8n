@@ -646,11 +646,46 @@ export default defineComponent({
 
 				if (workflowNode) {
 					const executionHints = this.executionHints;
+
 					const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
 						runExecutionData: this.workflowExecution?.data ?? null,
 						runIndex: this.runIndex,
 						connectionInputData: this.parentNodeOutputData,
 					});
+
+					// add limit reached hint
+					if (this.hasNodeRun && workflowNode.parameters.limit) {
+						const nodeOutputData =
+							this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0];
+						if (nodeOutputData && nodeOutputData.length === workflowNode.parameters.limit) {
+							nodeHints.push({
+								message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned`,
+								location: 'outputPane',
+								whenToDisplay: 'afterExecution',
+							});
+						}
+					}
+
+					// add Execute Once hint
+					if (
+						this.parentNodeOutputData &&
+						this.parentNodeOutputData.length > 1 &&
+						(workflowNode.parameters.operation === 'getAll' ||
+							this.nodeType.properties.find(
+								(property) => property.name === 'operation' && property.default === 'getAll',
+							))
+					) {
+						const executeOnce = this.workflow.getNode(this.node.name)?.executeOnce;
+
+						if (!executeOnce) {
+							nodeHints.push({
+								message:
+									"Operation would be performed for each input item, you may want to use the 'Execute Once' setting to only execute once for the first input item",
+								whenToDisplay: 'beforeExecution',
+								location: 'outputPane',
+							});
+						}
+					}
 
 					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
 				}
