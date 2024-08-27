@@ -34,6 +34,7 @@ export default class RunCommand extends Command {
 				email: config.get('n8n.user.email'),
 				password: config.get('n8n.user.password'),
 			},
+			config.get('scenarioNamePrefix'),
 		);
 
 		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
