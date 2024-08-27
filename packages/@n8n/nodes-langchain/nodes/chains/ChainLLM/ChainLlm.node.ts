@@ -506,7 +506,8 @@ export class ChainLlm implements INodeType {
 				],
 			},
 			{
-				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require`,
+				displayName:
+					"Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='ai_outputParser'>output parser</a> on the canvas to specify the output format you require",
 				name: 'notice',
 				type: 'notice',
 				default: '',
