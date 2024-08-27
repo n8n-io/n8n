@@ -9,8 +9,8 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import config from '@/config';
 import { EventDestinationsRepository } from '@/databases/repositories/event-destinations.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { Logger } from '@/logger';
 

@@ -2,7 +2,7 @@ import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workf
 import { Service } from 'typedi';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/workflow-runner';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/logger';
 import { OrchestrationService } from '@/services/orchestration.service';

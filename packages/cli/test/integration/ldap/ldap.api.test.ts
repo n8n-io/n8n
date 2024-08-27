@@ -5,7 +5,7 @@ import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap/constants';
 import { LdapService } from '@/ldap/ldap.service.ee';

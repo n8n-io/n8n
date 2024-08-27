@@ -34,7 +34,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import

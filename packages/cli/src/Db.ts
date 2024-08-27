@@ -7,8 +7,8 @@ import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { inTest } from '@/constants';
 import { wrapMigration } from '@/databases/utils/migration-helpers';
-import type { Migration } from '@db/types';
-import { getConnectionOptions } from '@db/config';
+import type { Migration } from '@/databases/types';
+import { getConnectionOptions } from '@/databases/config';
 
 let connection: Connection;
 

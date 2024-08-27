@@ -10,7 +10,7 @@ import {
 	COMMUNITY_NODES_RISKS_URL,
 	NPM_PACKAGE_URL,
 } from '@/security-audit/constants';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { Risk, RiskReporter } from '@/security-audit/types';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { GlobalConfig } from '@n8n/config';

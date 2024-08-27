@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/User';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
 import type { ICredentialsDb } from '@/Interfaces';

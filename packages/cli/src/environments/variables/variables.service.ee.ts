@@ -1,9 +1,9 @@
 import { Container, Service } from 'typedi';
 import type { Variables } from '@/databases/entities/Variables';
-import { generateNanoId } from '@db/utils/generators';
+import { generateNanoId } from '@/databases/utils/generators';
 import { canCreateNewVariable } from './environment-helpers';
 import { CacheService } from '@/services/cache/cache.service';
-import { VariablesRepository } from '@db/repositories/variables.repository';
+import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { EventService } from '@/events/event.service';

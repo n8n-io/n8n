@@ -8,7 +8,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { Container } from 'typedi';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
-import { TagRepository } from '@db/repositories/tag.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 import { TagService } from '@/services/tag.service';
 
 export = {

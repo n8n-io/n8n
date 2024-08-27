@@ -7,7 +7,7 @@ import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
 import type { User } from '@/databases/entities/User';
 import type { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
-import type { UserRepository } from '@db/repositories/user.repository';
+import type { UserRepository } from '@/databases/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';

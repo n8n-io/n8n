@@ -6,8 +6,8 @@ import { join as pathJoin } from 'path';
 import { GlobalConfig } from '@n8n/config';
 
 import type { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { Logger } from '@/logger';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

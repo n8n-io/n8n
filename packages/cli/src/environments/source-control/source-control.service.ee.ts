@@ -31,7 +31,7 @@ import type { Variables } from '@/databases/entities/Variables';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { ExportableCredential } from './types/exportable-credential';
 import { EventService } from '@/events/event.service';
-import { TagRepository } from '@db/repositories/tag.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
 import { Logger } from '@/logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ApplicationError } from 'n8n-workflow';

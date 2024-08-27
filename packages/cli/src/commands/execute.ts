@@ -9,7 +9,7 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './base-command';
 
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 
 export class Execute extends BaseCommand {

@@ -1,4 +1,4 @@
-import { WebhookRepository } from '@db/repositories/webhook.repository';
+import { WebhookRepository } from '@/databases/repositories/webhook.repository';
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
 import type { WebhookEntity } from '@/databases/entities/webhook-entity';
