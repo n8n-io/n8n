@@ -6,6 +6,9 @@ import type { BaseCommand } from '@/commands/base-command';
 import * as testDb from '../testDb';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { mockInstance } from '@test/mocking';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+
+mockInstance(MessageEventBus);
 
 export const setupTestCommand = <T extends BaseCommand>(Command: Class<T>) => {
 	const config = mock<Config>();
