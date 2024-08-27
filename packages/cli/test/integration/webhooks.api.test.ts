@@ -6,7 +6,7 @@ import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 
 import { mockInstance } from '../shared/mocking';
 import { initActiveWorkflowManager } from './shared/utils';

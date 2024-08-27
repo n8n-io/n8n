@@ -1,8 +1,8 @@
 import { validate } from 'class-validator';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/User';
 import type {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,

@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
+import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/logger';
 import { OwnershipService } from './ownership.service';

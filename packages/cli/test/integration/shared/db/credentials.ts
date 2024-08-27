@@ -1,13 +1,13 @@
 import { Container } from 'typedi';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import type { CredentialSharingRole } from '@/databases/entities/shared-credentials';
 import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialPayload } from '../types';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 
 export async function encryptCredentialData(
 	credential: CredentialsEntity,

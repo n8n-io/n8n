@@ -6,12 +6,12 @@ import { Logger } from '@/logger';
 import * as Db from '@/Db';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { replaceInvalidCredentials } from '@/workflow-helpers';
-import { Project } from '@db/entities/Project';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
-import type { TagEntity } from '@db/entities/TagEntity';
+import { Project } from '@/databases/entities/project';
+import { WorkflowEntity } from '@db/entities/workflow-entity';
+import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
+import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { ICredentialsDb } from '@/Interfaces';
 
 @Service()

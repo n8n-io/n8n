@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
-import { User } from '@db/entities/User';
+import { User } from '@/databases/entities/User';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
@@ -10,9 +10,9 @@ import {
 	UserSettingsUpdatePayload,
 } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
@@ -23,7 +23,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/Project';
+import { Project } from '@/databases/entities/project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service';

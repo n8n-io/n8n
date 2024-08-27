@@ -1,5 +1,5 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import type { EventDestinations } from '@db/entities/EventDestinations';
+import type { EventDestinations } from '@/databases/entities/event-destinations';
 import type { MessageEventBus } from '../message-event-bus/message-event-bus';
 import type { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { MessageEventBusDestinationSentry } from './message-event-bus-destination-sentry.ee';

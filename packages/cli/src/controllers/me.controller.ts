@@ -7,7 +7,7 @@ import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/generic-helpers';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import {
 	AuthenticatedRequest,
 	MeRequest,

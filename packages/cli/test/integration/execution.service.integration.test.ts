@@ -7,7 +7,7 @@ import { createExecution } from './shared/db/executions';
 import * as testDb from './shared/testDb';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { ExecutionSummaries } from '@/executions/execution.types';
-import { ExecutionMetadataRepository } from '@/databases/repositories/executionMetadata.repository';
+import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;

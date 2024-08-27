@@ -3,7 +3,7 @@ import type { INode } from 'n8n-workflow';
 import { CredentialAccessError, NodeOperationError } from 'n8n-workflow';
 
 import { OwnershipService } from '@/services/ownership.service';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectService } from '@/services/project.service';
 
 @Service()

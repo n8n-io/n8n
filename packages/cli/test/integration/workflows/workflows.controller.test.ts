@@ -3,12 +3,12 @@ import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/workflow-entity';
 import type { ListQuery } from '@/requests';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectRepository } from '@db/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';

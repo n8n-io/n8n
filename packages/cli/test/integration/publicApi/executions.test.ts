@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 import { randomApiKey } from '../shared/random';
@@ -21,7 +21,7 @@ import type { SuperAgentTest } from '../shared/types';
 import { mockInstance } from '@test/mocking';
 import { Telemetry } from '@/telemetry';
 import { createTeamProject } from '@test-integration/db/projects';
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 
 let owner: User;
 let user1: User;
