@@ -3,9 +3,9 @@ import type { DeepPartial } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/project';

@@ -25,14 +25,14 @@ import type { SourceControlWorkflowVersionId } from './types/source-control-work
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
 import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
-import { TagRepository } from '@db/repositories/tag.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Logger } from '@/logger';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { VariablesRepository } from '@db/repositories/variables.repository';
+import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
 import type { ResourceOwner } from './types/resource-owner';

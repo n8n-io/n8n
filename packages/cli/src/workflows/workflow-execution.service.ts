@@ -17,8 +17,8 @@ import {
 } from 'n8n-workflow';
 
 import type { User } from '@/databases/entities/User';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 import type {

@@ -4,9 +4,9 @@ import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { User } from '@/databases/entities/User';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

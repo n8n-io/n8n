@@ -3,9 +3,9 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/security-audit/constants';
 import type { RiskReporter, Risk } from '@/security-audit/types';
-import type { WorkflowEntity } from '@db/entities/workflow-entity';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 
 @Service()

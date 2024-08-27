@@ -3,7 +3,7 @@ import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
 import config from '@/config';
-import { WorkflowHistoryRepository } from '@db/repositories/workflow-history.repository';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { License } from '@/license';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 

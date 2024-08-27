@@ -18,9 +18,9 @@ import {
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
 import { License } from '@/license';
-import { UserRepository } from '@db/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { AuthIdentityRepository } from '@db/repositories/auth-identity.repository';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
