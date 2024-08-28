@@ -23,8 +23,6 @@ describe('n8n.io iframe', () => {
 
 			const iframeUrl = `https://n8n.io/self-install?instanceId=${testInstanceId}&userId=${testUserId}`;
 
-			cy.intercept(iframeUrl, (req) => req.reply(200)).as('iframeRequest');
-
 			cy.visit(workflowsPage.url);
 
 			cy.get('iframe').should('exist').and('have.attr', 'src', iframeUrl);
