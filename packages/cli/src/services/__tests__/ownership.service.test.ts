@@ -10,7 +10,7 @@ import { mock } from 'jest-mock-extended';
 import { Project } from '@/databases/entities/project';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { ProjectRelation } from '@/databases/entities/project-relation';
-import { mockCredential, mockProject } from '@test/mockObjects';
+import { mockCredential, mockProject } from '@test/mock-objects';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);

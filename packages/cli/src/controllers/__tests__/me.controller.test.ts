@@ -13,7 +13,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { badPasswords } from '@test/testData';
+import { badPasswords } from '@test/test-data';
 import { mockInstance } from '@test/mocking';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';

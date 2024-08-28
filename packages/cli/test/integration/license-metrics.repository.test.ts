@@ -1,6 +1,6 @@
 import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import Container from 'typedi';
 import { createManyWorkflows } from './shared/db/workflows';
 import { createManyCredentials } from './shared/db/credentials';

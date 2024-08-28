@@ -5,7 +5,7 @@ import { VariablesRepository } from '@/databases/repositories/variables.reposito
 import { generateNanoId } from '@/databases/utils/generators';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

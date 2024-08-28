@@ -1,6 +1,6 @@
 import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowRequest } from '@/requests';
-import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 
 @RestController('/active-workflows')
 export class ActiveWorkflowsController {

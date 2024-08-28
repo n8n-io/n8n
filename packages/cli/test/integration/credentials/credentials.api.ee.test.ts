@@ -11,7 +11,7 @@ import { ProjectService } from '@/services/project.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import * as utils from '../shared/utils';
 import {

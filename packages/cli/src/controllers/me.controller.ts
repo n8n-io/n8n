@@ -21,7 +21,7 @@ import { Logger } from '@/logger';
 import { ExternalHooks } from '@/external-hooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { isApiEnabled } from '@/PublicApi';
+import { isApiEnabled } from '@/public-api';
 import { EventService } from '@/events/event.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';

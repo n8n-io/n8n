@@ -23,7 +23,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { validateUser } from './shared/utils/users';
 import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';

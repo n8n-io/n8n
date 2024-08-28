@@ -16,7 +16,7 @@ import type { UserService } from '@/services/user.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { mockInstance } from '@test/mocking';
-import { badPasswords } from '@test/testData';
+import { badPasswords } from '@test/test-data';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');

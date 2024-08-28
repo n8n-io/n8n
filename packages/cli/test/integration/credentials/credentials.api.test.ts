@@ -11,7 +11,7 @@ import type { Project } from '@/databases/entities/project';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { setupTestServer } from '../shared/utils';
 import {
 	randomCredentialPayload as payload,
