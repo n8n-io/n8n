@@ -10,13 +10,13 @@ import config from '@/config';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { IPushDataType } from '@/Interfaces';
+import type { IPushDataType } from '@/interfaces';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 
 type PushEvents = {
 	editorUiConnected: string;

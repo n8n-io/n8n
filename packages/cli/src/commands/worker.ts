@@ -4,12 +4,12 @@ import express from 'express';
 import http from 'http';
 import { ApplicationError } from 'n8n-workflow';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import * as ResponseHelper from '@/response-helper';
 import config from '@/config';
 import type { ScalingService } from '@/scaling/scaling.service';
 import { N8N_VERSION, inTest } from '@/constants';
-import type { ICredentialsOverwrite } from '@/Interfaces';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';

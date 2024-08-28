@@ -1,5 +1,5 @@
 import { randomInt } from 'n8n-workflow';
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { Project } from '@/databases/entities/project';
 

@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
 import type { INode, INodeTypeData } from 'n8n-workflow';
 import { randomInt } from 'n8n-workflow';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

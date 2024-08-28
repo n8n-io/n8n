@@ -15,10 +15,10 @@ import type {
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@/validators/no-xss.validator';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole } from '@/databases/entities/User';
-import type { GlobalRole, User } from '@/databases/entities/User';
-import type { Variables } from '@/databases/entities/Variables';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
+import { AssignableRole } from '@/databases/entities/user';
+import type { GlobalRole, User } from '@/databases/entities/user';
+import type { Variables } from '@/databases/entities/variables';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';

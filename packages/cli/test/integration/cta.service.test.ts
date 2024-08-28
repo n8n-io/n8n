@@ -3,7 +3,7 @@ import * as testDb from './shared/test-db';
 import { CtaService } from '@/services/cta.service';
 import { createUser } from './shared/db/users';
 import { createManyWorkflows } from './shared/db/workflows';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { createWorkflowStatisticsItem } from './shared/db/workflow-statistics';
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 

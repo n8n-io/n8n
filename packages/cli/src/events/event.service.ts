@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 import type { RelayEventMap } from './relay-event-map';
 import type { QueueMetricsEventMap } from './queue-metrics-event-map';
 

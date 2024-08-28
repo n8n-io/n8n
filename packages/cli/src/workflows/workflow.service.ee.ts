@@ -3,7 +3,7 @@ import omit from 'lodash/omit';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

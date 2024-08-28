@@ -1,6 +1,6 @@
 import { ExecutionService } from './execution.service';
 import type { ExecutionRequest } from './execution.types';
-import type { IExecutionResponse, IExecutionFlattedResponse } from '@/Interfaces';
+import type { IExecutionResponse, IExecutionFlattedResponse } from '@/interfaces';
 import { EnterpriseWorkflowService } from '../workflows/workflow.service.ee';
 import type { WorkflowWithSharingsAndCredentials } from '@/workflows/workflows.types';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

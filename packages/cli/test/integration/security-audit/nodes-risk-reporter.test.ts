@@ -5,7 +5,7 @@ import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/consta
 import { toReportTitle } from '@/security-audit/utils';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import { mockInstance } from '../../shared/mocking';

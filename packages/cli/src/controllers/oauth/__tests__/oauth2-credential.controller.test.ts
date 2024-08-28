@@ -7,7 +7,7 @@ import { mock } from 'jest-mock-extended';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
