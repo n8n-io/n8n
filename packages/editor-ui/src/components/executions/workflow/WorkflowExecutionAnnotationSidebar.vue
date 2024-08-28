@@ -266,7 +266,7 @@ export default defineComponent({
 
 .vote {
 	padding: 0 0 var(--spacing-xs);
-	font-size: var(--font-size-s);
+	font-size: var(--font-size-xs);
 	flex: 1;
 	display: flex;
 	flex-direction: row;
