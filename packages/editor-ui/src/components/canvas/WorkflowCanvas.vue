@@ -35,9 +35,8 @@ const workflowObject = toRef(props, 'workflowObject');
 
 const nodes = computed(() => {
 	const stickyNoteNodes = props.workflow.nodes.filter((node) => node.type === STICKY_NODE_TYPE);
-	const nonStickyNoteNodes = props.workflow.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 
-	return nonStickyNoteNodes.length > 0
+	return props.workflow.nodes.length > stickyNoteNodes.length
 		? props.workflow.nodes
 		: [...props.fallbackNodes, ...stickyNoteNodes];
 });
