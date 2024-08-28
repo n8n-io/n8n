@@ -52,7 +52,7 @@ export class NodeMailer {
 				text: mailData.textOnly,
 				html: mailData.body,
 			});
-			this.logger.verbose(
+			this.logger.debug(
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {

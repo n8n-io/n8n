@@ -194,7 +194,7 @@ export class EnterpriseWorkflowService {
 
 		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 			if (isTamperingAttempt(node.id)) {
-				this.logger.verbose('Blocked workflow update due to tampering attempt', {
+				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,

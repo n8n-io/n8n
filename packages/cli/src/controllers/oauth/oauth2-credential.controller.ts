@@ -71,7 +71,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 		const returnUri = oAuthObj.code.getUri();
 
-		this.logger.verbose('OAuth2 authorization url created for credential', {
+		this.logger.debug('OAuth2 authorization url created for credential', {
 			userId: req.user.id,
 			credentialId: credential.id,
 		});
@@ -172,7 +172,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			delete decryptedDataOriginal.csrfSecret;
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
-			this.logger.verbose('OAuth2 callback successful for credential', {
+			this.logger.debug('OAuth2 callback successful for credential', {
 				credentialId,
 			});
 
