@@ -1,9 +1,7 @@
-import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
-import { useSettingsStore } from '@/stores/settings.store';
-import { EnterpriseEditionFeature } from '@/constants';
-import type { IN8nUISettings } from 'n8n-workflow/src';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => vi.fn(),
@@ -22,58 +20,42 @@ const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 	},
 });
 
-let pinia: ReturnType<typeof createPinia>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
-
-const workflow = {
-	id: '1',
-	name: 'Test Workflow',
-	tags: ['1', '2'],
-	active: false,
-};
-
 describe('WorkflowHistoryButton', () => {
-	beforeEach(() => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-
-		settingsStore = useSettingsStore();
-		settingsStore.settings = {
-			enterprise: {},
-		} as IN8nUISettings;
-	});
-
 	it('should be disabled if the feature is disabled', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.WorkflowHistory] = false;
-
-		const { getByRole } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: {
-				workflow,
+				workflowId: '1',
 				isNewWorkflow: false,
+				isFeatureEnabled: false,
 			},
 		});
 		expect(getByRole('button')).toBeDisabled();
+
+		await userEvent.hover(getByRole('button'));
+		expect(getByRole('tooltip')).toBeVisible();
+
+		within(getByRole('tooltip')).getByText('View plans').click();
+
+		expect(emitted()).toHaveProperty('upgrade');
 	});
 
 	it('should be disabled if the feature is enabled but the workflow is new', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.WorkflowHistory] = true;
-
 		const { getByRole } = renderComponent({
 			props: {
-				workflow,
+				workflowId: '1',
 				isNewWorkflow: true,
+				isFeatureEnabled: true,
 			},
 		});
 		expect(getByRole('button')).toBeDisabled();
 	});
 
 	it('should be enabled if the feature is enabled and the workflow is not new', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.WorkflowHistory] = true;
-
 		const { getByRole } = renderComponent({
 			props: {
-				workflow,
+				workflowId: '1',
 				isNewWorkflow: false,
+				isFeatureEnabled: true,
 			},
 		});
 		expect(getByRole('button')).toBeEnabled();

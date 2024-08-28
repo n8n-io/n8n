@@ -213,6 +213,10 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 	return actions;
 });
 
+const isWorkflowHistoryFeatureEnabled = computed(() => {
+	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
+});
+
 const workflowTagIds = computed(() => {
 	return (props.workflow.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -572,6 +576,10 @@ function goToUpgrade() {
 	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
+function goToWorkflowHistoryUpgrade() {
+	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+}
+
 function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
@@ -716,7 +724,12 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<WorkflowHistoryButton :workflow="workflow" :is-new-workflow="isNewWorkflow" />
+				<WorkflowHistoryButton
+					:workflow-id="props.workflow.id"
+					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
+					:is-new-workflow="isNewWorkflow"
+					@upgrade="goToWorkflowHistoryUpgrade"
+				/>
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input

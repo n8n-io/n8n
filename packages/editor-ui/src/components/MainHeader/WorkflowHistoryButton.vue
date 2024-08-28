@@ -1,34 +1,26 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { IWorkflowDb } from '@/Interface';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
 
 const locale = useI18n();
-const uiStore = useUIStore();
-const settingsStore = useSettingsStore();
 
 const props = defineProps<{
-	workflow: IWorkflowDb;
+	workflowId: string;
 	isNewWorkflow: boolean;
+	isFeatureEnabled: boolean;
 }>();
 
-const isFeatureEnabled = computed(
-	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory],
-);
+const emit = defineEmits<{
+	upgrade: [];
+}>();
 
 const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => ({
 	name: VIEWS.WORKFLOW_HISTORY,
 	params: {
-		workflowId: props.workflow.id,
+		workflowId: props.workflowId,
 	},
 }));
-
-const goToUpgrade = () => {
-	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
-};
 </script>
 
 <template>
@@ -52,7 +44,7 @@ const goToUpgrade = () => {
 			}}</span>
 			<i18n-t v-else keypath="workflowHistory.button.tooltip.disabled">
 				<template #link>
-					<N8nLink size="small" @click="goToUpgrade">
+					<N8nLink size="small" @click="emit('upgrade')">
 						{{ locale.baseText('workflowHistory.button.tooltip.disabled.link') }}
 					</N8nLink>
 				</template>
