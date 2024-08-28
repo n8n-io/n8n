@@ -12,15 +12,14 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
-import {
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
+import type {
 	INodeProperties,
 	INodeCredentialDescription,
 	INodeTypeDescription,
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	NodeConnectionType,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
