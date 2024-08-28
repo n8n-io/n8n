@@ -65,7 +65,7 @@ function onDoubleClick(event: MouseEvent) {
 	emit('dblclick', event);
 }
 
-function onOpen() {
+function onActivate() {
 	onEdit(true);
 }
 
@@ -82,11 +82,11 @@ function openContextMenu(event: MouseEvent) {
  */
 
 onMounted(() => {
-	eventBus.value?.on('update:node:active', onOpen);
+	eventBus.value?.on('update:node:active', onActivate);
 });
 
 onBeforeUnmount(() => {
-	eventBus.value?.off('update:node:active', onOpen);
+	eventBus.value?.off('update:node:active', onActivate);
 });
 </script>
 <template>
