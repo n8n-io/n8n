@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
@@ -50,8 +51,8 @@ export class Magento2 implements INodeType {
 		defaults: {
 			name: 'Magento 2',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'magento2Api',

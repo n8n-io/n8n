@@ -182,7 +182,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			webhooks: [
 				{
 					name: 'default',

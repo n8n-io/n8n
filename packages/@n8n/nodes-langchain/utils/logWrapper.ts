@@ -1,5 +1,5 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
-import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { Tool } from '@langchain/core/tools';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -31,7 +31,7 @@ export async function callMethodAsync<T>(
 	this: T,
 	parameters: {
 		executeFunctions: IExecuteFunctions;
-		connectionType: ConnectionTypes;
+		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => Promise<unknown>;
 		arguments: unknown[];
@@ -78,7 +78,7 @@ export function callMethodSync<T>(
 	this: T,
 	parameters: {
 		executeFunctions: IExecuteFunctions;
-		connectionType: ConnectionTypes;
+		connectionType: NodeConnectionType;
 		currentNodeRunIndex: number;
 		method: (...args: any[]) => T;
 		arguments: unknown[];
@@ -123,7 +123,7 @@ export function logWrapper(
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
-			let connectionType: ConnectionTypes | undefined;
+			let connectionType: NodeConnectionType | undefined;
 			// ========== BaseChatMemory ==========
 			if (isBaseChatMemory(originalInstance)) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {

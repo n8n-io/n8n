@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import get from 'lodash/get';
@@ -29,8 +30,8 @@ export class RenameKeys implements INodeType {
 			name: 'Rename Keys',
 			color: '#772244',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Keys',

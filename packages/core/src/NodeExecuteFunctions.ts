@@ -35,10 +35,9 @@ import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
-import type {
+import {
 	BinaryHelperFunctions,
 	CloseFunction,
-	ConnectionTypes,
 	ContextType,
 	EventNamesAiNodesType,
 	FieldType,
@@ -103,6 +102,7 @@ import type {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -2623,13 +2623,13 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
 ): Promise<void> => {
-	if (connectionType === 'main') {
+	if (connectionType === NodeConnectionType.Main) {
 		throw new ApplicationError('Setting type is not supported for main connection', {
 			extra: { type },
 		});
@@ -2732,7 +2732,7 @@ async function getInputConnectionData(
 	executeData: IExecuteData | undefined,
 	mode: WorkflowExecuteMode,
 	closeFunctions: CloseFunction[],
-	inputName: ConnectionTypes,
+	inputName: NodeConnectionType,
 	itemIndex: number,
 ): Promise<unknown> {
 	const node = this.getNode();
@@ -3676,7 +3676,7 @@ export function getExecuteFunctions(
 			},
 
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionType,
 				itemIndex: number,
 			): Promise<unknown> {
 				return await getInputConnectionData.call(
@@ -3817,7 +3817,7 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionType,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
@@ -3847,7 +3847,7 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionType,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
@@ -4238,7 +4238,7 @@ export function getExecuteWebhookFunctions(
 				return additionalData.httpRequest.headers;
 			},
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionType,
 				itemIndex: number,
 			): Promise<unknown> {
 				// To be able to use expressions like "$json.sessionId" set the

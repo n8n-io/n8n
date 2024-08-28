@@ -8,12 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type {
-	GristCredentials,
-	GristDefinedFields,
-	GristFilterProperties,
-	GristSortProperties,
-} from './types';
+import type { GristDefinedFields, GristFilterProperties, GristSortProperties } from './types';
 
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -22,9 +17,8 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
-		'gristApi',
-	)) as GristCredentials;
+	const { apiKey, planType, customSubdomain, selfHostedUrl } =
+		await this.getCredentials('gristApi');
 
 	const gristapiurl =
 		planType === 'free'

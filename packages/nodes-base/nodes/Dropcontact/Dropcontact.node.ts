@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
@@ -21,8 +22,8 @@ export class Dropcontact implements INodeType {
 		defaults: {
 			name: 'Dropcontact',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'dropcontactApi',

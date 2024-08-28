@@ -1,4 +1,4 @@
-import type {
+import {
 	IHookFunctions,
 	IWebhookFunctions,
 	IDataObject,
@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { getEvents, lemlistApiRequest } from './GenericFunctions';
@@ -23,7 +24,7 @@ export class LemlistTrigger implements INodeType {
 			name: 'Lemlist Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'lemlistApi',

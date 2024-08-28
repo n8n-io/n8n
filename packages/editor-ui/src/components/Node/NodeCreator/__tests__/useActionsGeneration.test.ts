@@ -14,9 +14,7 @@ describe('useActionsGenerator', () => {
 		defaults: {
 			name: 'Test',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
-		properties: [],
+		inputs: [NodeConnectionType.Main],		outputs: [NodeConnectionType.Main],		properties: [],
 	};
 
 	describe('App actions for resource category', () => {

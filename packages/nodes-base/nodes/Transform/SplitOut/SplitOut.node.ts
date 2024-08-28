@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 	NodeExecutionHint,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
 
 export class SplitOut implements INodeType {
@@ -24,8 +25,8 @@ export class SplitOut implements INodeType {
 		defaults: {
 			name: 'Split Out',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Fields To Split Out',
@@ -191,7 +192,7 @@ export class SplitOut implements INodeType {
 						if (splited[elementIndex].binary === undefined) {
 							splited[elementIndex].binary = {};
 						}
-						splited[elementIndex].binary![Object.keys(element)[0]] = Object.values(
+						splited[elementIndex].binary[Object.keys(element)[0]] = Object.values(
 							element,
 						)[0] as IBinaryData;
 

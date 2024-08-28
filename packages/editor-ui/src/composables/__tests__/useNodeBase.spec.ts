@@ -16,9 +16,7 @@ describe('useNodeBase', () => {
 
 	const jsPlumbInstance = mock<BrowserJsPlumbInstance>();
 	const nodeTypeDescription = mock<INodeTypeDescription>({
-		inputs: ['main'],
-		outputs: ['main'],
-	});
+		inputs: [NodeConnectionType.Main],		outputs: [NodeConnectionType.Main],	});
 	const workflowObject = mock<Workflow>();
 	const node = mock<INode>();
 

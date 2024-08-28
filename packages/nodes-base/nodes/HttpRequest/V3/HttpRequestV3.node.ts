@@ -18,6 +18,7 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
+	NodeConnectionType,
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
@@ -36,7 +37,6 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import type { HttpSslAuthCredentials } from '../interfaces';
 import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
@@ -57,8 +57,8 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'httpSslAuth',
@@ -1343,10 +1343,7 @@ export class HttpRequestV3 implements INodeType {
 			);
 
 			if (provideSslCertificates) {
-				sslCertificates = (await this.getCredentials(
-					'httpSslAuth',
-					itemIndex,
-				)) as HttpSslAuthCredentials;
+				sslCertificates = await this.getCredentials('httpSslAuth', itemIndex);
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;

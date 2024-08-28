@@ -34,9 +34,7 @@ describe('CredentialsHelper', () => {
 							name: 'Set',
 							color: '#0000FF',
 						},
-						inputs: ['main'],
-						outputs: ['main'],
-						properties: [
+						inputs: [NodeConnectionType.Main],						outputs: [NodeConnectionType.Main],						properties: [
 							{
 								displayName: 'Value1',
 								name: 'value1',

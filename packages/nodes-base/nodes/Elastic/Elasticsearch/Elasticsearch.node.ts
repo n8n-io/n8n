@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import omit from 'lodash/omit';
@@ -31,8 +32,8 @@ export class Elasticsearch implements INodeType {
 		defaults: {
 			name: 'Elasticsearch',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'elasticsearchApi',

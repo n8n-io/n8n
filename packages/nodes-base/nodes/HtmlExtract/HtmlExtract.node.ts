@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
@@ -57,8 +58,8 @@ export class HtmlExtract implements INodeType {
 			name: 'HTML Extract',
 			color: '#333377',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Source Data',

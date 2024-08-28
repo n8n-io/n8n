@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { contentfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
 
@@ -27,8 +28,8 @@ export class Contentful implements INodeType {
 		defaults: {
 			name: 'Contentful',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'contentfulApi',

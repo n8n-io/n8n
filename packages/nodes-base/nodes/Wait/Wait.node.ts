@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -234,8 +234,8 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: credentialsProperty(this.authPropertyName),
 		hints: [
 			{

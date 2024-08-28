@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { NodeApiError } from 'n8n-workflow';
 
@@ -32,8 +33,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google BigQuery',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'googleApi',
