@@ -6,9 +6,9 @@ import type { INode } from 'n8n-workflow';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { ImportService } from '@/services/import.service';
-import { TagEntity } from '@/databases/entities/TagEntity';
+import { TagEntity } from '@/databases/entities/tag-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
@@ -20,8 +20,8 @@ import {
 	newWorkflow,
 } from './shared/db/workflows';
 
-import type { User } from '@db/entities/User';
-import type { Project } from '@/databases/entities/Project';
+import type { User } from '@/databases/entities/User';
+import type { Project } from '@/databases/entities/project';
 import { getPersonalProject } from './shared/db/projects';
 
 describe('ImportService', () => {

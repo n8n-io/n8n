@@ -1,8 +1,8 @@
 import { Service } from 'typedi';
 
-import type { User } from '@db/entities/User';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { User } from '@/databases/entities/User';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Logger } from '@/logger';
@@ -41,7 +41,7 @@ export class ActiveWorkflowsService {
 			'workflow:read',
 		]);
 		if (!workflow) {
-			this.logger.verbose('User attempted to access workflow errors without permissions', {
+			this.logger.warn('User attempted to access workflow errors without permissions', {
 				workflowId,
 				userId: user.id,
 			});

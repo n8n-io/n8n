@@ -6,7 +6,7 @@ import { toReportTitle } from '@/security-audit/utils';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 import { mockInstance } from '../../shared/mocking';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';

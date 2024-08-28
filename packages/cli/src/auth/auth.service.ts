@@ -5,9 +5,9 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import { InvalidAuthTokenRepository } from '@db/repositories/invalidAuthToken.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { User } from '@/databases/entities/User';
+import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';

@@ -11,14 +11,14 @@ import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
+import type { User } from '@/databases/entities/User';
+import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '@test/mocking';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import type { EventService } from '@/events/event.service';
 
 describe('WorkflowStatisticsService', () => {

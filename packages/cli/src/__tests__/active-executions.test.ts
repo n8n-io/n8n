@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import type { ExecutionRepository } from '@db/repositories/execution.repository';
+import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mock } from 'jest-mock-extended';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { mockInstance } from '@test/mocking';

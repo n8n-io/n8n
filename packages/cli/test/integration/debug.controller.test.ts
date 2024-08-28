@@ -1,7 +1,7 @@
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { generateNanoId } from '@/databases/utils/generators';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 

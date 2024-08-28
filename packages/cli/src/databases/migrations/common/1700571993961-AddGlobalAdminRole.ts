@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { ApplicationError } from 'n8n-workflow';
 
 export class AddGlobalAdminRole1700571993961 implements ReversibleMigration {

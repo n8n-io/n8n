@@ -11,8 +11,8 @@ import {
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/security-audit/utils';
 import config from '@/config';
-import { generateNanoId } from '@db/utils/generators';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import Container from 'typedi';
 import { NodeConnectionType } from 'n8n-workflow';
 

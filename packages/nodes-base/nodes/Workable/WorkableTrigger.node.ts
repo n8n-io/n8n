@@ -137,10 +137,10 @@ export class WorkableTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = (await this.getCredentials('workableApi')) as {
+				const credentials = await this.getCredentials<{
 					accessToken: string;
 					subdomain: string;
-				};
+				}>('workableApi');
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;

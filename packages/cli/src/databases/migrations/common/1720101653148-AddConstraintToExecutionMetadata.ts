@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 import { nanoid } from 'nanoid';
 
 export class AddConstraintToExecutionMetadata1720101653148 implements ReversibleMigration {

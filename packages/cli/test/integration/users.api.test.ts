@@ -3,12 +3,12 @@ import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@db/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { User } from '@/databases/entities/User';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { CacheService } from '@/services/cache/cache.service';
 import { ExecutionService } from '@/executions/execution.service';
 

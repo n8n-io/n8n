@@ -348,13 +348,13 @@ export class Jwt implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0);
 
-		const credentials = (await this.getCredentials('jwtAuth')) as {
+		const credentials = await this.getCredentials<{
 			keyType: 'passphrase' | 'pemKey';
 			publicKey: string;
 			privateKey: string;
 			secret: string;
 			algorithm: jwt.Algorithm;
-		};
+		}>('jwtAuth');
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const options = this.getNodeParameter('options', itemIndex, {}) as {

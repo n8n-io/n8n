@@ -1,4 +1,4 @@
-import type { Migration } from '@db/types';
+import type { Migration } from '@/databases/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
