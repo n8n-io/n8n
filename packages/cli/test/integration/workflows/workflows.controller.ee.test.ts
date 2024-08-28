@@ -14,7 +14,7 @@ import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/wor
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';

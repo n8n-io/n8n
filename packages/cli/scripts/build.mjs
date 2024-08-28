@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const SPEC_FILENAME = 'openapi.yml';
-const SPEC_THEME_FILENAME = 'swaggerTheme.css';
+const SPEC_THEME_FILENAME = 'swagger-theme.css';
 
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
@@ -32,15 +32,15 @@ function copyUserManagementEmailTemplates() {
 
 function copySwaggerTheme() {
 	const swaggerTheme = {
-		source: path.resolve(ROOT_DIR, 'src', 'PublicApi', SPEC_THEME_FILENAME),
-		destination: path.resolve(ROOT_DIR, 'dist', 'PublicApi'),
+		source: path.resolve(ROOT_DIR, 'src', 'public-api', SPEC_THEME_FILENAME),
+		destination: path.resolve(ROOT_DIR, 'dist', 'public-api'),
 	};
 
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
 }
 
 function bundleOpenApiSpecs() {
-	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'PublicApi');
+	const publicApiDir = path.resolve(ROOT_DIR, 'src', 'public-api');
 
 	shell
 		.find(publicApiDir)

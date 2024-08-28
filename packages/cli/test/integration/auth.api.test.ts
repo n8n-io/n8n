@@ -9,7 +9,7 @@ import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

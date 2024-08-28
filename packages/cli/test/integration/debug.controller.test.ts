@@ -3,7 +3,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { generateNanoId } from '@/databases/utils/generators';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
 
 import { mockInstance } from '../shared/mocking';
 import { randomName } from './shared/random';

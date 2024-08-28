@@ -3,7 +3,7 @@ import type { User } from '@/databases/entities/User';
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { setupTestServer } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
 

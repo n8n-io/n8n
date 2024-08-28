@@ -12,7 +12,7 @@ import { PermissionChecker } from '@/user-management/permission-checker';
 
 import { mockInstance } from '../shared/mocking';
 import { randomCredentialPayload as randomCred } from './shared/random';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import type { SaveCredentialFunction } from './shared/types';
 import { affixRoleToSaveCredential } from './shared/db/credentials';
 import { createOwner, createUser } from './shared/db/users';

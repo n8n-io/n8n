@@ -7,7 +7,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { mockInstance } from '../../shared/mocking';
 import {
 	FIRST_CREDENTIAL_ID,

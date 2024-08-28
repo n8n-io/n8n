@@ -13,7 +13,7 @@ import { saveLdapSynchronization } from '@/ldap/helpers.ee';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
-import * as testDb from './../shared/testDb';
+import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils/';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';

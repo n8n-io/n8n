@@ -4,7 +4,7 @@ import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionMetadataService } from '@/services/executionMetadata.service';
+import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { Logger } from '@/logger';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
