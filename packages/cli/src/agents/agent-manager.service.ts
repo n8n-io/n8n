@@ -9,14 +9,16 @@ import type {
 	WorkerMessage,
 } from './agent-types';
 import { nanoid } from 'nanoid';
-import { ApplicationError } from 'n8n-workflow';
-import { Logger } from '@/Logger';
+import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
+import { Logger } from '@/logger';
+import { TestClient } from './test-client';
 
 class JobRejectError {
 	constructor(public reason: string) {}
 }
 
 export type MessageCallback = (message: N8nMessage.ToAgent.All) => Promise<void> | void;
+export type WorkerMessageCallback = (message: N8nMessage.ToWorker.All) => Promise<void> | void;
 
 type JobAcceptCallback = () => void;
 type JobRejectCallback = (reason: JobRejectError) => void;
@@ -25,15 +27,22 @@ type JobRejectCallback = (reason: JobRejectError) => void;
 export class AgentManager {
 	private knownAgents: Record<Agent['id'], { agent: Agent; messageCallback: MessageCallback }> = {};
 
+	private workers: Record<string, WorkerMessageCallback> = {};
+
 	private jobs: Record<Job['id'], Job> = {};
 
-	private jobAcceptRejects: Record<Job['id'], [JobAcceptCallback, JobRejectCallback]> = {};
+	private jobAcceptRejects: Record<
+		Job['id'],
+		{ accept: JobAcceptCallback; reject: JobRejectCallback }
+	> = {};
 
 	private pendingJobOffers: JobOffer[] = [];
 
 	private pendingJobRequests: JobRequest[] = [];
 
-	constructor(private readonly logger: Logger) {}
+	constructor(private readonly logger: Logger) {
+		new TestClient(this);
+	}
 
 	expireJobs() {
 		const now = process.hrtime.bigint();
@@ -65,12 +74,22 @@ export class AgentManager {
 		}
 	}
 
+	registerWorker(workerId: string, messageCallback: WorkerMessageCallback) {
+		this.workers[workerId] = messageCallback;
+	}
+
+	unregisterWorker(workerId: string) {
+		if (workerId in this.workers) {
+			delete this.workers[workerId];
+		}
+	}
+
 	private async messageAgent(agentId: Agent['id'], message: N8nMessage.ToAgent.All) {
 		await this.knownAgents[agentId]?.messageCallback(message);
 	}
 
 	private async messageWorker(workerId: string, message: N8nMessage.ToWorker.All) {
-		//
+		await this.workers[workerId]?.(message);
 	}
 
 	async onAgentMessage(agentId: Agent['id'], message: AgentMessage.ToN8n.All) {
@@ -80,10 +99,25 @@ export class AgentManager {
 		}
 		switch (message.type) {
 			case 'agent:jobaccepted':
-				this.jobAcceptRejects[message.jobId]?.[0]?.();
+				this.jobAcceptRejects[message.jobId]?.accept?.();
 				break;
 			case 'agent:jobrejected':
-				this.jobAcceptRejects[message.jobId]?.[1]?.(new JobRejectError(message.reason));
+				this.jobAcceptRejects[message.jobId]?.reject?.(new JobRejectError(message.reason));
+				break;
+			case 'agent:joboffer':
+				this.jobOffered({
+					agentId,
+					jobType: message.jobType,
+					offerId: message.offerId,
+					validFor: message.validFor,
+					validUntil: process.hrtime.bigint() + BigInt(message.validFor * 1_000_000),
+				});
+				break;
+			case 'agent:jobdone':
+				await this.jobDoneHandler(message.jobId, message.data);
+				break;
+			case 'agent:joberror':
+				await this.jobErrorHandler(message.jobId, message.error);
 				break;
 			// Already handled
 			case 'agent:info':
@@ -91,17 +125,43 @@ export class AgentManager {
 		}
 	}
 
-	async onWorkerMessage(workerId: string, message: WorkerMessage.ToN8n.All) {
+	async onWorkerMessage(_workerId: string, message: WorkerMessage.ToN8n.All) {
 		switch (message.type) {
 			case 'worker:jobsettings':
 				await this.sendJobSettings(message.jobId, message.settings);
 				break;
+			case 'worker:jobcancel':
+				await this.cancelJob(message.jobId, message.reason);
+				break;
 		}
 	}
 
-	private async failJob(jobId: Job['id'], reason: string) {
+	private async cancelJob(jobId: Job['id'], reason: string) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
 		delete this.jobs[jobId];
-		// TODO: notify worker
+
+		await this.messageAgent(job.agentId, {
+			type: 'n8n:jobcancel',
+			jobId,
+			reason,
+		});
+	}
+
+	private async failJob(jobId: Job['id'], reason: string) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		delete this.jobs[jobId];
+		// TODO: special message type?
+		await this.messageWorker(job.workerId, {
+			type: 'n8n:joberror',
+			jobId,
+			error: reason,
+		});
 	}
 
 	private async getAgentOrFailJob(jobId: Job['id']): Promise<Agent> {
@@ -131,21 +191,56 @@ export class AgentManager {
 		});
 	}
 
+	async jobDoneHandler(jobId: Job['id'], data: INodeExecutionData[]) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		await this.workers[job.workerId]?.({
+			type: 'n8n:jobdone',
+			jobId: job.id,
+			data,
+		});
+		delete this.jobs[job.id];
+	}
+
+	async jobErrorHandler(jobId: Job['id'], error: unknown) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		await this.workers[job.workerId]?.({
+			type: 'n8n:joberror',
+			jobId: job.id,
+			error,
+		});
+		delete this.jobs[job.id];
+	}
+
 	async acceptOffer(offer: JobOffer, request: JobRequest): Promise<void> {
 		const jobId = nanoid(8);
-		await this.messageAgent(offer.agentId, {
-			type: 'n8n:jobofferaccept',
-			offerId: offer.offerId,
-			jobId,
-		});
 
 		try {
-			await new Promise((resolve, reject) => {
-				this.jobAcceptRejects[jobId] = [resolve as () => void, reject];
+			const acceptPromise = new Promise((resolve, reject) => {
+				this.jobAcceptRejects[jobId] = { accept: resolve as () => void, reject };
+
+				// TODO: customisable timeout
+				setTimeout(() => {
+					reject('Agent timed out');
+				}, 2000);
 			});
+
+			await this.messageAgent(offer.agentId, {
+				type: 'n8n:jobofferaccept',
+				offerId: offer.offerId,
+				jobId,
+			});
+
+			await acceptPromise;
 		} catch (e) {
+			request.acceptInProgress = false;
 			if (e instanceof JobRejectError) {
-				this.logger.warn(`Job (${jobId}) rejected with reason "${e.message}"`);
+				this.logger.warn(`Job (${jobId}) rejected with reason "${e.reason}"`);
 				return;
 			}
 			throw e;
@@ -156,12 +251,6 @@ export class AgentManager {
 			jobType: offer.jobType,
 			agentId: offer.agentId,
 			workerId: request.workerId,
-			jobDoneHandler: (data) => {
-				console.log(data);
-			},
-			jobErrorHandler: (error) => {
-				console.error(error);
-			},
 		};
 
 		this.jobs[jobId] = job;
@@ -176,8 +265,10 @@ export class AgentManager {
 		}
 		this.pendingJobRequests.splice(requestIndex, 1);
 
+		console.log('AAAAAAAA', { request, offer });
 		await this.messageWorker(request.workerId, {
 			type: 'n8n:jobready',
+			requestId: request.requestId,
 			jobId,
 		});
 	}
@@ -190,7 +281,7 @@ export class AgentManager {
 				continue;
 			}
 			const offerIndex = this.pendingJobOffers.findIndex((o) => o.jobType === request.jobType);
-			if (!offerIndex) {
+			if (offerIndex === -1) {
 				continue;
 			}
 			const offer = this.pendingJobOffers[offerIndex];

@@ -6,7 +6,7 @@ import Container, { Service } from 'typedi';
 import { Server as WSServer } from 'ws';
 import type WebSocket from 'ws';
 import type { AuthlessRequest } from '@/requests';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { Agent, AgentMessage, N8nMessage } from './agent-types';
 import { GlobalConfig } from '@n8n/config';
 import { AgentManager, type MessageCallback } from './agent-manager.service';
@@ -53,6 +53,8 @@ export class AgentService {
 					this.removeConnection(id);
 					isConnected = true;
 
+					this.agentConnections[id] = connection;
+
 					this.agentManager.registerAgent(
 						{
 							id,
@@ -62,6 +64,8 @@ export class AgentService {
 						},
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
+
+					this.sendMessage(id, { type: 'n8n:agentregistered' });
 
 					this.logger.info(`Agent "${message.name}"(${id}) has registered`);
 					return;

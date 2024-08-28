@@ -1,35 +1,66 @@
 import type { INodeExecutionData } from 'n8n-workflow';
 
+export type DataRequestType = 'input' | 'node' | 'all';
+
 export namespace N8nMessage {
 	export namespace ToAgent {
 		export interface InfoRequest {
 			type: 'n8n:inforequest';
 		}
+
+		export interface AgentRegistered {
+			type: 'n8n:agentregistered';
+		}
+
 		export interface JobOfferAccept {
 			type: 'n8n:jobofferaccept';
 			jobId: string;
 			offerId: string;
 		}
+
 		export interface JobCancel {
 			type: 'n8n:jobcancel';
 			jobId: string;
 			reason: string;
 		}
+
 		export interface JobSettings {
 			type: 'n8n:jobsettings';
 			jobId: Job['id'];
 			settings: unknown;
 		}
-		export type All = InfoRequest | JobOfferAccept | JobCancel | JobSettings;
+
+		export type All = InfoRequest | JobOfferAccept | JobCancel | JobSettings | AgentRegistered;
 	}
 
 	export namespace ToWorker {
 		export interface JobReady {
 			type: 'n8n:jobready';
+			requestId: JobRequest['requestId'];
 			jobId: Job['id'];
 		}
 
-		export type All = JobReady;
+		export interface JobDone {
+			type: 'n8n:jobdone';
+			jobId: Job['id'];
+			data: INodeExecutionData[];
+		}
+
+		export interface JobError {
+			type: 'n8n:joberror';
+			jobId: Job['id'];
+			error: unknown;
+		}
+
+		export interface JobDataRequest {
+			type: 'n8n:jobdatarequest';
+			jobId: Job['id'];
+			requestId: string;
+			requestType: DataRequestType;
+			param?: string;
+		}
+
+		export type All = JobReady | JobDone | JobError | JobDataRequest;
 	}
 }
 
@@ -41,7 +72,13 @@ export namespace WorkerMessage {
 			settings: unknown;
 		}
 
-		export type All = JobSettings;
+		export interface JobCancel {
+			type: 'worker:jobcancel';
+			jobId: Job['id'];
+			reason: string;
+		}
+
+		export type All = JobSettings | JobCancel;
 	}
 }
 
@@ -71,7 +108,13 @@ export namespace AgentMessage {
 			jobId: string;
 			error: unknown;
 		}
-		export type All = Info | JobDone | JobError | JobAccepted | JobRejected;
+		export interface JobOffer {
+			type: 'agent:joboffer';
+			offerId: string;
+			jobType: string;
+			validFor: number;
+		}
+		export type All = Info | JobDone | JobError | JobAccepted | JobRejected | JobOffer;
 	}
 }
 
@@ -87,9 +130,6 @@ export interface Job {
 	agentId: Agent['id'];
 	workerId: string;
 	jobType: string;
-
-	jobDoneHandler: (data: INodeExecutionData[]) => void;
-	jobErrorHandler: (error: unknown) => void;
 }
 
 export interface JobOffer {
@@ -97,7 +137,7 @@ export interface JobOffer {
 	agentId: Agent['id'];
 	jobType: string;
 	validFor: number;
-	validUntil: number;
+	validUntil: bigint;
 }
 
 export interface JobRequest {
@@ -105,7 +145,7 @@ export interface JobRequest {
 	workerId: string;
 	jobType: string;
 	validFor: number;
-	validUntil: number;
+	validUntil: bigint;
 
 	acceptInProgress?: boolean;
 }
