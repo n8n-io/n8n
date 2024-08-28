@@ -291,16 +291,7 @@ onBeforeMount(() => {
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">
 					<template #content>
-						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip">
-							<template #link>
-								<a
-									target="_blank"
-									href="https://docs.n8n.io/workflows/executions/custom-executions-data/"
-								>
-									{{ locale.baseText('executionsFilter.customData.docsTooltip.link') }}
-								</a>
-							</template>
-						</i18n-t>
+						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip" />
 					</template>
 					<span :class="$style.label">
 						{{ locale.baseText('executionsFilter.savedData') }}
