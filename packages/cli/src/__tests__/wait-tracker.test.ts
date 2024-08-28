@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/Interfaces';
 import { OrchestrationService } from '@/services/orchestration.service';
-import type { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import type { MultiMainSetup } from '@/services/orchestration/main/multi-main-setup.ee';
 
 jest.useFakeTimers();
 

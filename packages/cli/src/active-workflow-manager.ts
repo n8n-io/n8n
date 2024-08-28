@@ -30,7 +30,7 @@ import type { IWorkflowDb } from '@/Interfaces';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionService } from './executions/execution.service';
 import {
@@ -42,10 +42,10 @@ import { NodeTypes } from '@/node-types';
 import { ExternalHooks } from '@/external-hooks';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { Logger } from './logger';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { OnShutdown } from '@/decorators/on-shutdown';
@@ -95,7 +95,7 @@ export class ActiveWorkflowManager {
 	 */
 	async removeAll() {
 		let activeWorkflowIds: string[] = [];
-		this.logger.verbose('Call to remove all active workflows received (removeAll)');
+		this.logger.debug('Call to remove all active workflows received (removeAll)');
 
 		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
@@ -437,7 +437,7 @@ export class ActiveWorkflowManager {
 				});
 
 				if (wasActivated) {
-					this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
+					this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
 						workflowName: dbWorkflow.name,
 						workflowId: dbWorkflow.id,
 					});
@@ -469,7 +469,7 @@ export class ActiveWorkflowManager {
 			}
 		}
 
-		this.logger.verbose('Finished activating workflows (startup)');
+		this.logger.debug('Finished activating workflows (startup)');
 	}
 
 	async clearAllActivationErrors() {
@@ -800,7 +800,7 @@ export class ActiveWorkflowManager {
 				getPollFunctions,
 			);
 
-			this.logger.verbose(`Workflow ${dbWorkflow.display()} activated`, {
+			this.logger.debug(`Workflow ${dbWorkflow.display()} activated`, {
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 			});

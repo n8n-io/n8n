@@ -11,8 +11,8 @@ import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
 import { toError } from '@/utils';
-import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
+import type { InstalledPackages } from '@/databases/entities/installed-packages';
 import {
 	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,

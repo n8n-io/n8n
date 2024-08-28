@@ -32,7 +32,7 @@ import type { CommunityPackagesService } from '@/services/communityPackages.serv
 import { Logger } from '@/logger';
 import { UrlService } from './url.service';
 import { EventService } from '@/events/event.service';
-import { isApiEnabled } from '@/PublicApi';
+import { isApiEnabled } from '@/public-api';
 
 @Service()
 export class FrontendService {

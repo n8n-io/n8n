@@ -1,12 +1,12 @@
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import type { ListQuery } from '@/requests';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { User } from '@/databases/entities/User';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 
 @Service()
 export class OwnershipService {

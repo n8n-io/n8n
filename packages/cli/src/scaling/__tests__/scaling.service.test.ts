@@ -37,6 +37,12 @@ describe('ScalingService', () => {
 				},
 			},
 		},
+		endpoints: {
+			metrics: {
+				includeQueueMetrics: false,
+				queueMetricsInterval: 20,
+			},
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
@@ -73,6 +79,7 @@ describe('ScalingService', () => {
 			mock(),
 			instanceSettings,
 			orchestrationService,
+			mock(),
 		);
 
 		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');

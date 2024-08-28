@@ -325,7 +325,7 @@ export class PipedriveTrigger implements INodeType {
 			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
 
 			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				httpBasicAuth = await this.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 			} catch (error) {
 				// Do nothing
 			}

@@ -26,9 +26,9 @@ import type {
 import { NodeTypes } from '@/node-types';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/workflow-runner';
-import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { Logger } from '@/logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';

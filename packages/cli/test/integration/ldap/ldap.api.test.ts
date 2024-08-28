@@ -4,16 +4,16 @@ import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
+import type { User } from '@/databases/entities/User';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap/constants';
 import { LdapService } from '@/ldap/ldap.service.ee';
 import { saveLdapSynchronization } from '@/ldap/helpers.ee';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
-import * as testDb from './../shared/testDb';
+import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils/';
 import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../shared/db/users';
 import { getPersonalProject } from '../shared/db/projects';

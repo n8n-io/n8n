@@ -15,7 +15,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<PostgresType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 	const options = this.getNodeParameter('options', 0, {}) as PostgresNodeOptions;
 	const node = this.getNode();
 	options.nodeVersion = node.typeVersion;

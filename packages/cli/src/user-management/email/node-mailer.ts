@@ -61,7 +61,7 @@ export class NodeMailer {
 					},
 				],
 			});
-			this.logger.verbose(
+			this.logger.debug(
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {

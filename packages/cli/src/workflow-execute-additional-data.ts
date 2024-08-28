@@ -52,7 +52,7 @@ import { Push } from '@/push';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './user-management/permission-checker';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './secrets-helpers';
 import { OwnershipService } from './services/ownership.service';
@@ -180,7 +180,7 @@ export function executeErrorWorkflow(
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		const { errorWorkflow } = workflowData.settings ?? {};
 		if (errorWorkflow && !(mode === 'error' && workflowId && errorWorkflow === workflowId)) {
-			logger.verbose('Start external error workflow', {
+			logger.debug('Start external error workflow', {
 				executionId,
 				errorWorkflowId: errorWorkflow,
 				workflowId,
@@ -222,7 +222,7 @@ export function executeErrorWorkflow(
 			workflowId !== undefined &&
 			workflowData.nodes.some((node) => node.type === errorTriggerType)
 		) {
-			logger.verbose('Start internal error workflow', { executionId, workflowId });
+			logger.debug('Start internal error workflow', { executionId, workflowId });
 			void Container.get(OwnershipService)
 				.getWorkflowProjectCached(workflowId)
 				.then((project) => {

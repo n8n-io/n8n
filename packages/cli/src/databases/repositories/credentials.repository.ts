@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
-import { CredentialsEntity } from '../entities/CredentialsEntity';
+import { CredentialsEntity } from '../entities/credentials-entity';
 import type { ListQuery } from '@/requests';
 import type { User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';

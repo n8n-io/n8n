@@ -589,7 +589,7 @@ export class EmailReadImapV1 implements INodeType {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
-						this.logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
+						this.logger.debug(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
 							error,
 						});
 						try {
@@ -618,7 +618,7 @@ export class EmailReadImapV1 implements INodeType {
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(
 				async () => {
-					this.logger.verbose('Forcing reconnection of IMAP node.');
+					this.logger.debug('Forcing reconnection of IMAP node.');
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);

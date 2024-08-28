@@ -130,7 +130,7 @@ export class Mqtt implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = (await this.getCredentials('mqtt')) as unknown as MqttCredential;
+		const credentials = await this.getCredentials<MqttCredential>('mqtt');
 		const client = await createClient(credentials);
 
 		const publishPromises = [];
