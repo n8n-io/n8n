@@ -314,3 +314,12 @@ export const respondWithOptions: INodeProperties = {
 		},
 	],
 };
+
+export const appendAttribution: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+	description: 'Whether to include the link “Form automated with n8n” at the bottom of the form',
+};

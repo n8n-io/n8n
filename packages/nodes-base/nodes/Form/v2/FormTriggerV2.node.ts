@@ -9,6 +9,7 @@ import type {
 
 import { formWebhook } from '../utils';
 import {
+	appendAttribution,
 	formDescription,
 	formFields,
 	formRespondMode,
@@ -115,15 +116,7 @@ const descriptionV2: INodeTypeDescription = {
 			placeholder: 'Add option',
 			default: {},
 			options: [
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Append n8n Attribution',
-					name: 'appendAttribution',
-					type: 'boolean',
-					default: true,
-					description:
-						'Whether to include the link “Form automated with n8n” at the bottom of the form',
-				},
+				appendAttribution,
 				{
 					...respondWithOptions,
 					displayOptions: {
