@@ -3,6 +3,7 @@ import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
+import glob from 'fast-glob';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +14,7 @@ const SPEC_THEME_FILENAME = 'swagger-theme.css';
 
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
-copyUserManagementEmailTemplates();
+generateUserManagementEmailTemplates();
 generateTimezoneData();
 
 if (publicApiEnabled) {
@@ -21,13 +22,22 @@ if (publicApiEnabled) {
 	bundleOpenApiSpecs();
 }
 
-function copyUserManagementEmailTemplates() {
-	const templates = {
-		source: path.resolve(ROOT_DIR, 'src', 'user-management', 'email', 'templates'),
-		destination: path.resolve(ROOT_DIR, 'dist', 'user-management', 'email'),
-	};
+function generateUserManagementEmailTemplates() {
+	const sourceDir = path.resolve(ROOT_DIR, 'src', 'user-management', 'email', 'templates');
+	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'user-management', 'email', 'templates');
 
-	shell.cp('-r', templates.source, templates.destination);
+	shell.mkdir('-p', destinationDir);
+
+	const templates = glob.sync('*.mjml', { cwd: sourceDir });
+	templates.forEach((template) => {
+		if (template.startsWith('_')) return;
+		const source = path.resolve(sourceDir, template);
+		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
+		const command = `pnpm mjml --output ${destination} ${source}`;
+		shell.exec(command, { silent: false });
+	});
+
+	shell.cp(path.resolve(sourceDir, 'n8n-logo.png'), destinationDir);
 }
 
 function copySwaggerTheme() {
