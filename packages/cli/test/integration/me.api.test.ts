@@ -2,9 +2,9 @@ import { Container } from 'typedi';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ProjectRepository } from '@db/repositories/project.repository';
+import type { User } from '@/databases/entities/User';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';

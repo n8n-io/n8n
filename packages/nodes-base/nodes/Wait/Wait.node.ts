@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -346,6 +346,7 @@ export class Wait extends Webhook {
 				},
 				default: '',
 				description: 'The date and time to wait for before continuing',
+				required: true,
 			},
 
 			// ----------------------------------
@@ -491,6 +492,13 @@ export class Wait extends Webhook {
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+
+			if (isNaN(Date.parse(dateTimeStr))) {
+				throw new NodeOperationError(
+					context.getNode(),
+					'[Wait node] Cannot put execution to wait because `dateTime` parameter is not a valid date. Please pick a specific date and time to wait until.',
+				);
+			}
 
 			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
 				zone: context.getTimezone(),

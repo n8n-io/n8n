@@ -1,7 +1,7 @@
 import nock from 'nock';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/license';
 

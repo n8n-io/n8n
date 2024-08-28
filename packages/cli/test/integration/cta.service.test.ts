@@ -5,7 +5,7 @@ import { createUser } from './shared/db/users';
 import { createManyWorkflows } from './shared/db/workflows';
 import type { User } from '@/databases/entities/User';
 import { createWorkflowStatisticsItem } from './shared/db/workflowStatistics';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 
 describe('CtaService', () => {
 	let ctaService: CtaService;

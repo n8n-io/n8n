@@ -1,6 +1,6 @@
 import type express from 'express';
 import Container, { Service } from 'typedi';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlUserAttributes } from './types/saml-user-attributes';
@@ -19,14 +19,14 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './saml-helpers';
-import type { Settings } from '@db/entities/Settings';
+import type { Settings } from '@/databases/entities/settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './saml-validator';
 import { Logger } from '@/logger';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UrlService } from '@/services/url.service';

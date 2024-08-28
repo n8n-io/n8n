@@ -11,7 +11,7 @@ import { SecretsHelper } from '@/secrets-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as AdditionalData from '@/workflow-execute-additional-data';
-import type { WebhookEntity } from '@db/entities/WebhookEntity';
+import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import { NodeTypes } from '@/node-types';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -21,7 +21,7 @@ import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);

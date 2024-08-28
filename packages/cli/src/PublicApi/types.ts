@@ -1,7 +1,7 @@
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { TagEntity } from '@db/entities/TagEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { Risk } from '@/security-audit/types';
 import type { AuthlessRequest, AuthenticatedRequest } from '@/requests';
 

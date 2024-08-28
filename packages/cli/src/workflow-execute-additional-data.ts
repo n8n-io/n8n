@@ -52,7 +52,7 @@ import { Push } from '@/push';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './user-management/permission-checker';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { SecretsHelper } from './secrets-helpers';
 import { OwnershipService } from './services/ownership.service';

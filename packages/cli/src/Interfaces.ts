@@ -31,14 +31,14 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
-import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { AssignableRole, GlobalRole, User } from '@db/entities/User';
-import type { CredentialsRepository } from '@db/repositories/credentials.repository';
-import type { SettingsRepository } from '@db/repositories/settings.repository';
-import type { UserRepository } from '@db/repositories/user.repository';
-import type { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import type { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { AssignableRole, GlobalRole, User } from '@/databases/entities/User';
+import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import type { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { UserRepository } from '@/databases/repositories/user.repository';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { ExternalHooks } from './external-hooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';

@@ -107,7 +107,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options') as Options;
-		const credentials = (await this.getCredentials('mqtt')) as unknown as MqttCredential;
+		const credentials = await this.getCredentials<MqttCredential>('mqtt');
 		const client = await createClient(credentials);
 
 		const parsePayload = (topic: string, payload: Buffer) => {

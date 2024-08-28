@@ -7,7 +7,7 @@ import { URL } from 'url';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/User';
 import { ControllerRegistry } from '@/decorators';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
@@ -158,7 +158,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'oauth2':
-						await import('@/controllers/oauth/oAuth2Credential.controller');
+						await import('@/controllers/oauth/oauth2-credential.controller');
 						break;
 
 					case 'mfa':
@@ -183,7 +183,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'community-packages':
-						await import('@/controllers/communityPackages.controller');
+						await import('@/controllers/community-packages.controller');
 						break;
 
 					case 'me':
@@ -191,7 +191,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'passwordReset':
-						await import('@/controllers/passwordReset.controller');
+						await import('@/controllers/password-reset.controller');
 						break;
 
 					case 'owner':
@@ -219,7 +219,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'binaryData':
-						await import('@/controllers/binaryData.controller');
+						await import('@/controllers/binary-data.controller');
 						break;
 
 					case 'debug':
@@ -235,7 +235,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'dynamic-node-parameters':
-						await import('@/controllers/dynamicNodeParameters.controller');
+						await import('@/controllers/dynamic-node-parameters.controller');
 						break;
 				}
 			}
