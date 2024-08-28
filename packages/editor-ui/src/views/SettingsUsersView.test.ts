@@ -156,4 +156,23 @@ describe('SettingsUsersView', () => {
 			id: users[0].id,
 		});
 	});
+
+	it("should show success toast when changing a user's role", async () => {
+		const spy = vi.spyOn(usersStore, 'updateGlobalRole');
+
+		const { getByTestId, getByRole } = createComponentRenderer(SettingsUsersView)({ pinia });
+
+		const userListItem = getByTestId(`user-list-item-${users.at(-1)?.email}`);
+		expect(userListItem).toBeInTheDocument();
+
+		const actionToggle = within(userListItem).getByTestId('user-role-select');
+
+		const projectSelectDropdownItems = await getDropdownItems(actionToggle);
+		await userEvent.click(projectSelectDropdownItems[0]);
+
+		expect(spy).toHaveBeenCalledWith(expect.objectContaining({ newRoleName: 'global:member' }));
+		const toast = getByRole('alert');
+		expect(toast).toBeInTheDocument();
+		expect(toast.textContent).toContain('toast');
+	});
 });
