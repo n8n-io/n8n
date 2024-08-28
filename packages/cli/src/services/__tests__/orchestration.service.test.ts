@@ -6,11 +6,11 @@ import type { WorkflowActivateMode } from 'n8n-workflow';
 
 import config from '@/config';
 import { OrchestrationService } from '@/services/orchestration.service';
-import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
+import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { RedisService } from '@/services/redis.service';
-import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
-import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
+import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
+import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
@@ -54,7 +54,7 @@ describe('Orchestration Service', () => {
 	const eventBus = mockInstance(MessageEventBus);
 
 	beforeAll(async () => {
-		jest.mock('@/services/redis/RedisServicePubSubPublisher', () => {
+		jest.mock('@/services/redis/redis-service-pub-sub-publisher', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
 					init: jest.fn(),
@@ -64,7 +64,7 @@ describe('Orchestration Service', () => {
 				};
 			});
 		});
-		jest.mock('@/services/redis/RedisServicePubSubSubscriber', () => {
+		jest.mock('@/services/redis/redis-service-pub-sub-subscriber', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
 					subscribeToCommandChannel: jest.fn(),
@@ -81,8 +81,8 @@ describe('Orchestration Service', () => {
 	});
 
 	afterAll(async () => {
-		jest.mock('@/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
-		jest.mock('@/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
+		jest.mock('@/services/redis/redis-service-pub-sub-publisher').restoreAllMocks();
+		jest.mock('@/services/redis/redis-service-pub-sub-subscriber').restoreAllMocks();
 		await os.shutdown();
 	});
 

@@ -17,7 +17,7 @@ import { License } from '@/license';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';

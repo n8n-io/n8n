@@ -8,7 +8,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

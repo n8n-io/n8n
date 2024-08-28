@@ -1,4 +1,4 @@
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createMember, createOwner, createUser } from './shared/db/users';
 import {
@@ -20,7 +20,7 @@ import {
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
-import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
+import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { GlobalRole } from '@/databases/entities/User';

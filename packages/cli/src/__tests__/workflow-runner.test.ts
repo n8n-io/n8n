@@ -4,7 +4,7 @@ import type { User } from '@/databases/entities/User';
 import { WorkflowRunner } from '@/workflow-runner';
 import config from '@/config';
 
-import * as testDb from '@test-integration/testDb';
+import * as testDb from '@test-integration/test-db';
 import { setupTestServer } from '@test-integration/utils';
 import { createUser } from '@test-integration/db/users';
 import { createWorkflow } from '@test-integration/db/workflows';
