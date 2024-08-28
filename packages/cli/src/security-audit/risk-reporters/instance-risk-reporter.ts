@@ -13,7 +13,7 @@ import {
 import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { RiskReporter, Risk, n8n } from '@/security-audit/types';
-import { isApiEnabled } from '@/PublicApi';
+import { isApiEnabled } from '@/public-api';
 import { Logger } from '@/logger';
 import { GlobalConfig } from '@n8n/config';
 

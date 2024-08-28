@@ -6,7 +6,7 @@ import { randomCredentialPayload } from '../shared/random';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import Container from 'typedi';
 import { CredentialsService } from '@/credentials/credentials.service';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 const credentialPayload = randomCredentialPayload();

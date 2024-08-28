@@ -17,7 +17,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { mockInstance } from '../shared/mocking';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

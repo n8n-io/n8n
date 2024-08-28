@@ -45,7 +45,7 @@ import { Logger } from './logger';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { OnShutdown } from '@/decorators/on-shutdown';

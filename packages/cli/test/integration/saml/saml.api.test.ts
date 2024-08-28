@@ -4,7 +4,7 @@ import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '
 
 import { randomEmail, randomName, randomValidPassword } from '../shared/random';
 import * as utils from '../shared/utils/';
-import { sampleConfig } from './sampleMetadata';
+import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 

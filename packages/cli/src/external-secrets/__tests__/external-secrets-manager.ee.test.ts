@@ -11,7 +11,7 @@ import {
 	ErrorProvider,
 	FailedProvider,
 	MockProviders,
-} from '@test/ExternalSecrets/utils';
+} from '@test/external-secrets/utils';
 import { mock } from 'jest-mock-extended';
 
 describe('External Secrets Manager', () => {

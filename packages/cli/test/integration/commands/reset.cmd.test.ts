@@ -10,9 +10,9 @@ import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { getPersonalProject } from '../shared/db/projects';

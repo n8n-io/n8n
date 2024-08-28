@@ -11,7 +11,7 @@ import { License } from '@/license';
 import { ExternalHooks } from '@/external-hooks';
 import { ScalingService } from '@/scaling/scaling.service';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 import { mockInstance } from '../../shared/mocking';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 

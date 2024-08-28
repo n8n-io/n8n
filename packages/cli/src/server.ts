@@ -22,7 +22,7 @@ import {
 } from '@/constants';
 import type { APIRequest } from '@/requests';
 import { ControllerRegistry } from '@/decorators';
-import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
+import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

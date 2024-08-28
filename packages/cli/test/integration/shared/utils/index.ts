@@ -20,7 +20,7 @@ import { OrchestrationService } from '@/services/orchestration.service';
 
 import { mockInstance } from '../../../shared/mocking';
 
-export { setupTestServer } from './testServer';
+export { setupTestServer } from './test-server';
 
 // ----------------------------------
 //          initializers
@@ -137,7 +137,7 @@ export const setInstanceOwnerSetUp = async (value: boolean) => {
 //           community nodes
 // ----------------------------------
 
-export * from './communityNodes';
+export * from './community-nodes';
 
 // ----------------------------------
 //           workflow

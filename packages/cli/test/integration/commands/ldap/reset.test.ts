@@ -13,7 +13,7 @@ import { LdapService } from '@/ldap/ldap.service.ee';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 import { mockInstance } from '../../../shared/mocking';
 import { createLdapUser, createMember, getUserById } from '../../shared/db/users';
 import { createWorkflow } from '../../shared/db/workflows';

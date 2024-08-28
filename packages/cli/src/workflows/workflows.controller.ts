@@ -27,7 +27,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
-import { UserOnboardingService } from '@/services/userOnboarding.service';
+import { UserOnboardingService } from '@/services/user-onboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { WorkflowRequest } from './workflow.request';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
