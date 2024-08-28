@@ -18,7 +18,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["review"]}}',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]}}',
 					},
 				},
 			},
@@ -43,7 +43,7 @@ export const reviewOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["review"]}}/reply',
+						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/{{$parameter["reviewName"]}}/reply',
 					},
 				},
 			},
