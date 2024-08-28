@@ -90,7 +90,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				}
 			}
 		} catch (error) {
-			this.logger.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow success telemetry event');
 		}
 	}
 

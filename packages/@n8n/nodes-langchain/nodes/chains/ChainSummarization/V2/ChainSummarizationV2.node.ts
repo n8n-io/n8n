@@ -311,7 +311,7 @@ export class ChainSummarizationV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Summarization Chain V2');
+		this.logger.debug('Executing Summarization Chain V2');
 		const operationMode = this.getNodeParameter('operationMode', 0, 'nodeInputJson') as
 			| 'nodeInputJson'
 			| 'nodeInputBinary'

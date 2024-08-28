@@ -84,7 +84,7 @@ export class VectorStoreZepLoad implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Zep Load Vector Store');
+		this.logger.debug('Supplying data for Zep Load Vector Store');
 
 		const collectionName = this.getNodeParameter('collectionName', itemIndex) as string;
 

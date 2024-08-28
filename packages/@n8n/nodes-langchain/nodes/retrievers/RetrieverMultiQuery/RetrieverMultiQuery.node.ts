@@ -83,7 +83,7 @@ export class RetrieverMultiQuery implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for MultiQuery Retriever');
+		this.logger.debug('Supplying data for MultiQuery Retriever');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };
 
