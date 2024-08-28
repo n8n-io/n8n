@@ -98,8 +98,20 @@ export namespace ChatRequest {
 		text: string;
 	}
 
+	interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'thinking-step';
+		step: 'n8n_documentation' | 'n8n_forum';
+	}
+
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
+		| ((
+				| AssistantChatMessage
+				| CodeDiffMessage
+				| AssistantSummaryMessage
+				| AgentChatMessage
+				| AgentThinkingStep
+		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;

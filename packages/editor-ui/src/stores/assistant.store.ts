@@ -27,6 +27,7 @@ import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -183,6 +184,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplies: msg.quickReplies,
 					read,
 				});
+			} else if (msg.type === 'thinking-step') {
+				messages.push({
+					id,
+					type: 'text',
+					role: 'assistant',
+					content: locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`),
+					read,
+				});
 			}
 		});
 		chatMessages.value = messages;
@@ -224,7 +233,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			id,
 			role: 'assistant',
 			type: 'text',
-			content: locale.baseText('aiAssistant.loading.message'),
+			content: locale.baseText('aiAssistant.thinkingSteps.initial'),
 			read: false,
 		});
 	}
