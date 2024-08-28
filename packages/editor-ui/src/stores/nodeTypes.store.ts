@@ -4,7 +4,6 @@ import type { DynamicNodeParameters, NodeTypesByTypeNameAndVersion } from '@/Int
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils/typesUtils';
 import type {
-	NodeConnectionType,
 	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,

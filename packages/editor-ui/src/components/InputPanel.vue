@@ -183,7 +183,7 @@ export default defineComponent({
 		},
 		rootNodesParents() {
 			const workflow = this.workflow;
-			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')]
+			const parentNodes = [...workflow.getParentNodes(this.rootNode, NodeConnectionType.Main)]
 				.reverse()
 				.map((parent): IConnectedNode => ({ name: parent, depth: 1, indicies: [] }));
 

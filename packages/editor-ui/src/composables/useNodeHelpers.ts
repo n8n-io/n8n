@@ -12,8 +12,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
-import type {
+import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import {
 	INodeProperties,
 	INodeCredentialDescription,
 	INodeTypeDescription,

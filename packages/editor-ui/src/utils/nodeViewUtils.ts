@@ -5,7 +5,6 @@ import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@j
 import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
-	NodeConnectionType,
 	IConnection,
 	INodeExecutionData,
 	INodeTypeDescription,

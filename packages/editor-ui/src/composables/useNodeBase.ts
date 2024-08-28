@@ -10,7 +10,6 @@ import {
 
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type {
-	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,

@@ -68,7 +68,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection } from '@vue-flow/core';
 import type {
-	NodeConnectionType,
 	IConnection,
 	IConnections,
 	INode,

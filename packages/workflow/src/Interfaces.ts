@@ -1781,8 +1781,6 @@ export const enum NodeConnectionType {
 
 	AiVectorStore = 'ai_vectorStore',
 
-	AiVectorRetriever = 'ai_vectorRetriever',
-
 	Main = 'main',
 }
 
