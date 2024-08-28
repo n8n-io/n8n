@@ -65,6 +65,21 @@
 			],
 			"type": "node",
 			"request": "launch"
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Debug generate-types.ts with pnpm",
+			"runtimeExecutable": "pnpm",
+			"runtimeArgs": ["ts-node"],
+			"args": ["${workspaceFolder}/scripts/generate-types.ts"],
+			"cwd": "${workspaceFolder}",
+			"env": {
+				"TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+			},
+			"sourceMaps": true,
+			"smartStep": true,
+			"internalConsoleOptions": "openOnSessionStart"
 		}
 	]
 
