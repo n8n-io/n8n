@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { agent as testAgent } from 'supertest';
-import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';

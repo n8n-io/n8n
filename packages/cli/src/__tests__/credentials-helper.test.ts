@@ -7,7 +7,7 @@ import type {
 	INode,
 	INodeProperties,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
@@ -34,7 +34,9 @@ describe('CredentialsHelper', () => {
 							name: 'Set',
 							color: '#0000FF',
 						},
-						inputs: [NodeConnectionType.Main],						outputs: [NodeConnectionType.Main],						properties: [
+						inputs: [NodeConnectionType.Main],
+						outputs: [NodeConnectionType.Main],
+						properties: [
 							{
 								displayName: 'Value1',
 								name: 'value1',
