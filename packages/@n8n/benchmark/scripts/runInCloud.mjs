@@ -28,7 +28,7 @@ import { TerraformClient } from './terraformClient.mjs';
 const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
 
 const paths = {
-	n8nSetupsDir: path.join(path.resolve('scripts'), 'runOnVm', 'n8nSetups'),
+	n8nSetupsDir: path.join(path.resolve('scripts'), 'n8nSetups'),
 };
 
 async function main() {
@@ -142,7 +142,7 @@ async function transferScriptsToVm(sshClient) {
 
 	await sshClient.ssh('git clone --depth=1 https://github.com/n8n-io/n8n.git');
 
-	return '~/n8n/packages/@n8n/benchmark/scripts/runOnVm';
+	return '~/n8n/packages/@n8n/benchmark/scripts';
 }
 
 function readAvailableN8nSetups() {
