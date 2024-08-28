@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, provide, ref, toRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from 'vue';
 import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
@@ -245,9 +245,11 @@ watch(
 );
 
 onMounted(() => {
-	if (props.eventBus) {
-		props.eventBus.on('nodes:action', emitCanvasNodeEvent);
-	}
+	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
 });
 </script>
 
