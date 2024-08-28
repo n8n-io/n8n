@@ -1,9 +1,9 @@
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
 import type {
 	CredentialSharingRole,
 	SharedCredentials,
-} from '@/databases/entities/SharedCredentials';
-import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
+} from '@/databases/entities/shared-credentials';
+import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
 import type { GlobalRole, User } from '@/databases/entities/User';
 import {
 	GLOBAL_ADMIN_SCOPES,
@@ -27,7 +27,7 @@ import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
 import { License } from '@/license';
-import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 

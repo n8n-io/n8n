@@ -15,7 +15,7 @@
 // @ts-check
 import fs from 'fs';
 import minimist from 'minimist';
-import { $, sleep, which } from 'zx';
+import { sleep, which } from 'zx';
 import path from 'path';
 import { SshClient } from './sshClient.mjs';
 import { TerraformClient } from './terraformClient.mjs';
@@ -61,7 +61,6 @@ async function ensureDependencies() {
 }
 
 /**
- *
  * @param {Config} config
  * @param {BenchmarkEnv} benchmarkEnv
  */
@@ -86,7 +85,32 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	// Give some time for the VM to be ready
 	await sleep(1000);
 
-	console.log('Running benchmarks...');
+	if (config.n8nSetupToUse === 'all') {
+		const availableSetups = readAvailableN8nSetups();
+
+		for (const n8nSetup of availableSetups) {
+			await runBenchmarkForN8nSetup({
+				config,
+				sshClient,
+				scriptsDir,
+				n8nSetup,
+			});
+		}
+	} else {
+		await runBenchmarkForN8nSetup({
+			config,
+			sshClient,
+			scriptsDir,
+			n8nSetup: config.n8nSetupToUse,
+		});
+	}
+}
+
+/**
+ * @param {{ config: Config; sshClient: any; scriptsDir: string; n8nSetup: string; }} opts
+ */
+async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup }) {
+	console.log(`Running benchmarks for ${n8nSetup}...`);
 	const runScriptPath = path.join(scriptsDir, 'runOnVm.mjs');
 
 	const flags = {
@@ -100,7 +124,7 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 		.map(([key, value]) => `--${key}=${value}`)
 		.join(' ');
 
-	await sshClient.ssh(`npx zx ${runScriptPath} ${flagsString} ${config.n8nSetupToUse}`, {
+	await sshClient.ssh(`npx zx ${runScriptPath} ${flagsString} ${n8nSetup}`, {
 		// Test run should always log its output
 		verbose: true,
 	});
@@ -138,9 +162,14 @@ function readAvailableN8nSetups() {
  * @returns {Promise<Config>}
  */
 async function parseAndValidateConfig() {
-	const args = minimist(process.argv.slice(2), {
-		boolean: ['debug'],
+	const args = minimist(process.argv.slice(3), {
+		boolean: ['debug', 'help'],
 	});
+
+	if (args.help) {
+		printUsage();
+		process.exit(0);
+	}
 
 	const n8nSetupToUse = await getAndValidateN8nSetup(args);
 	const isVerbose = args.debug || false;
@@ -163,10 +192,8 @@ async function parseAndValidateConfig() {
 async function getAndValidateN8nSetup(args) {
 	// Last parameter is the n8n setup to use
 	const n8nSetupToUse = args._[args._.length - 1];
-
-	if (!n8nSetupToUse) {
-		printUsage();
-		process.exit(1);
+	if (!n8nSetupToUse || n8nSetupToUse === 'all') {
+		return 'all';
 	}
 
 	const availableSetups = readAvailableN8nSetups();
@@ -182,19 +209,20 @@ async function getAndValidateN8nSetup(args) {
 function printUsage() {
 	const availableSetups = readAvailableN8nSetups();
 
-	console.log('Usage: zx scripts/runInCloud.mjs <n8n setup name>');
-	console.log('   eg: zx scripts/runInCloud.mjs sqlite');
+	console.log('Usage: zx scripts/runInCloud.mjs [n8n setup name]');
+	console.log('   eg: zx scripts/runInCloud.mjs');
 	console.log('');
 	console.log('Options:');
+	console.log(
+		`  [n8n setup name]     Against which n8n setup to run the benchmarks. One of: ${['all', ...availableSetups].join(', ')}. Default is all`,
+	);
 	console.log('  --debug              Enable verbose output');
 	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
 	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
 	console.log(
-		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used.',
+		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used',
 	);
 	console.log('');
-	console.log('Available setups:');
-	console.log(`  ${availableSetups.join(', ')}`);
 }
 
 main().catch(console.error);

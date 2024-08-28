@@ -82,7 +82,7 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings HF Inference');
+		this.logger.debug('Supply data for embeddings HF Inference');
 		const model = this.getNodeParameter(
 			'modelName',
 			itemIndex,

@@ -34,6 +34,10 @@ const isTelemetryEnabled = computed((): boolean => {
 	return !!telemetry.value?.enabled;
 });
 
+const selfInstallSrc = computed((): string => {
+	return `https://n8n.io/self-install?instanceId=${rootStore.instanceId}&userId=${currentUserId.value}`;
+});
+
 watch(telemetry, () => {
 	init();
 });
@@ -70,5 +74,6 @@ function init() {
 </script>
 
 <template>
-	<span v-show="false" />
+	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
+	<span v-else v-show="false" />
 </template>

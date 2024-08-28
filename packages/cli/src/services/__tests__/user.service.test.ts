@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@db/entities/User';
+import { User } from '@/databases/entities/User';
 import { UserService } from '@/services/user.service';
 import { UrlService } from '@/services/url.service';
 import { mockInstance } from '@test/mocking';

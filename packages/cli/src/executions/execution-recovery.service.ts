@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { Push } from '@/push';
 import { sleep } from 'n8n-workflow';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { getWorkflowHooksMain } from '@/workflow-execute-additional-data'; // @TODO: Dependency cycle
 import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';

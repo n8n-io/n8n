@@ -49,6 +49,14 @@ class PrometheusMetricsConfig {
 	/** Whether to include metrics derived from n8n's internal events */
 	@Env('N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS')
 	includeMessageEventBusMetrics: boolean = false;
+
+	/** Whether to include metrics for jobs in scaling mode. Not supported in multi-main setup. */
+	@Env('N8N_METRICS_INCLUDE_QUEUE_METRICS')
+	includeQueueMetrics: boolean = false;
+
+	/** How often (in seconds) to update queue metrics. */
+	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
+	queueMetricsInterval: number = 20;
 }
 
 @Config

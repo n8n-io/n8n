@@ -2,8 +2,8 @@ import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import type { User, AssignableRole } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { User, AssignableRole } from '@/databases/entities/User';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import type { Invitation, PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 import { Logger } from '@/logger';
@@ -138,7 +138,6 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
-						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
@@ -168,7 +167,6 @@ export class UserService {
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
-							domain,
 							email,
 						});
 						invitedUser.error = e.message;

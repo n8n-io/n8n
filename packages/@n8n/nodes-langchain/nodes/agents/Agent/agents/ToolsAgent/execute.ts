@@ -76,7 +76,7 @@ async function extractBinaryMessages(ctx: IExecuteFunctions) {
 }
 
 export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing Tools Agent');
+	this.logger.debug('Executing Tools Agent');
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model) || !model.bindTools) {

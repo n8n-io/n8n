@@ -11,9 +11,9 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
-import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
+import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/on-shutdown';

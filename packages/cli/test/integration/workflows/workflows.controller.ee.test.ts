@@ -3,10 +3,10 @@ import { v4 as uuid } from 'uuid';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Project } from '@db/entities/Project';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import type { User } from '@db/entities/User';
-import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
+import type { Project } from '@/databases/entities/project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { User } from '@/databases/entities/User';
+import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
 import { UserManagementMailer } from '@/user-management/email';
@@ -14,7 +14,7 @@ import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/wor
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';

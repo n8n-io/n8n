@@ -12,8 +12,8 @@ import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } fr
 import { get as pslGet } from 'psl';
 import { TelemetryHelpers } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import type { IExecutionTrackProperties } from '@/Interfaces';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import { EventRelay } from './event-relay';
@@ -768,6 +768,7 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 			},
 		};
 

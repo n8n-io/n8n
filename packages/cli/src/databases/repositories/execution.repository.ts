@@ -38,10 +38,10 @@ import type {
 } from '@/Interfaces';
 
 import config from '@/config';
-import type { ExecutionData } from '../entities/ExecutionData';
-import { ExecutionEntity } from '../entities/ExecutionEntity';
-import { ExecutionMetadata } from '../entities/ExecutionMetadata';
-import { ExecutionDataRepository } from './executionData.repository';
+import type { ExecutionData } from '../entities/execution-data';
+import { ExecutionEntity } from '../entities/execution-entity';
+import { ExecutionMetadata } from '../entities/execution-metadata';
+import { ExecutionDataRepository } from './execution-data.repository';
 import { Logger } from '@/logger';
 import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';

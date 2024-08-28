@@ -3,9 +3,9 @@ import { v4 as uuid } from 'uuid';
 import { toReportTitle } from '@/security-audit/utils';
 import * as constants from '@/constants';
 import type { Risk } from '@/security-audit/types';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import type { InstalledNodes } from '@/databases/entities/installed-nodes';
+import type { InstalledPackages } from '@/databases/entities/installed-packages';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import Container from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 

@@ -4,8 +4,8 @@ import * as helpers from '@/sso/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso/saml/types/saml-user-attributes';
 import { mockInstance } from '@test/mocking';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { AuthIdentity } from '@/databases/entities/AuthIdentity';
-import { AuthIdentityRepository } from '@/databases/repositories/authIdentity.repository';
+import type { AuthIdentity } from '@/databases/entities/auth-identity';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 
 const userRepository = mockInstance(UserRepository);
 mockInstance(AuthIdentityRepository);
