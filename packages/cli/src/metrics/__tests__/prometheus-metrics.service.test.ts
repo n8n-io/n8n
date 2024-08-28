@@ -172,25 +172,21 @@ describe('PrometheusMetricsService', () => {
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
 				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
-				labelNames: ['queue'],
 			});
 
 			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_scaling_mode_queue_jobs_active',
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
-				labelNames: ['queue'],
 			});
 
 			expect(promClient.Counter).toHaveBeenNthCalledWith(1, {
 				name: 'n8n_scaling_mode_queue_jobs_completed',
 				help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
-				labelNames: ['queue'],
 			});
 
 			expect(promClient.Counter).toHaveBeenNthCalledWith(2, {
 				name: 'n8n_scaling_mode_queue_jobs_failed',
 				help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
-				labelNames: ['queue'],
 			});
 
 			expect(eventService.on).toHaveBeenCalledWith('job-counts-updated', expect.any(Function));

@@ -231,25 +231,21 @@ export class PrometheusMetricsService {
 		this.gauges.waiting = new promClient.Gauge({
 			name: this.prefix + 'scaling_mode_queue_jobs_waiting',
 			help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
-			labelNames: ['queue'],
 		});
 
 		this.gauges.active = new promClient.Gauge({
 			name: this.prefix + 'scaling_mode_queue_jobs_active',
 			help: 'Current number of jobs being processed across all workers in scaling mode.',
-			labelNames: ['queue'],
 		});
 
 		this.counters.completed = new promClient.Counter({
 			name: this.prefix + 'scaling_mode_queue_jobs_completed',
 			help: 'Total number of jobs completed across all workers in scaling mode since instance start.',
-			labelNames: ['queue'],
 		});
 
 		this.counters.failed = new promClient.Counter({
 			name: this.prefix + 'scaling_mode_queue_jobs_failed',
 			help: 'Total number of jobs failed across all workers in scaling mode since instance start.',
-			labelNames: ['queue'],
 		});
 
 		this.gauges.waiting.set(0);
