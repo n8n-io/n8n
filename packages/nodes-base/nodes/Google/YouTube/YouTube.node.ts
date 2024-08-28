@@ -8,8 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 

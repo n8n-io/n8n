@@ -6,8 +6,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV2 implements INodeType {
 	description: INodeTypeDescription = {

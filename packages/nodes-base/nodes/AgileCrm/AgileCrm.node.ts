@@ -5,8 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
 

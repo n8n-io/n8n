@@ -8,8 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 

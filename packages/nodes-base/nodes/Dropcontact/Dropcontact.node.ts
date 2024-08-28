@@ -5,8 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
 

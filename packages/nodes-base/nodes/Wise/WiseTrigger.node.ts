@@ -1,5 +1,5 @@
 import { createVerify } from 'crypto';
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	IDataObject,
@@ -7,8 +7,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import type { Profile } from './GenericFunctions';
 import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';

@@ -5,8 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 import get from 'lodash/get';
 import set from 'lodash/set';

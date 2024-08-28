@@ -7,8 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../../../utils/utilities';
 import {

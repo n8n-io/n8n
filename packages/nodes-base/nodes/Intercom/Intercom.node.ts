@@ -8,8 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { leadFields, leadOperations } from './LeadDescription';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
 import type { IAvatar, ILead, ILeadCompany } from './LeadInterface';

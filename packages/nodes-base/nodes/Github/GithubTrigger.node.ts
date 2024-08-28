@@ -7,8 +7,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 import { getRepositories, getUsers } from './SearchFunctions';

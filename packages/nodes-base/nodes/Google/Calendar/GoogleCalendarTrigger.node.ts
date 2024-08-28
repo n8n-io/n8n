@@ -5,8 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 

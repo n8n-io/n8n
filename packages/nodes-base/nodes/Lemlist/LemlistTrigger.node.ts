@@ -1,4 +1,4 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	IDataObject,
@@ -6,8 +6,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getEvents, lemlistApiRequest } from './GenericFunctions';
 

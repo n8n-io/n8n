@@ -7,8 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_DRIVE_FOLDER_URL_REGEX } from '../constants';

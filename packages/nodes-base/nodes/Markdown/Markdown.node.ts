@@ -6,8 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 import { Converter } from 'showdown';
 

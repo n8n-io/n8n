@@ -6,8 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { jsonParse, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import omit from 'lodash/omit';
 import {

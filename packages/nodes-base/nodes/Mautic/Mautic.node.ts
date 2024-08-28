@@ -8,8 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { mauticApiRequest, mauticApiRequestAllItems, validateJSON } from './GenericFunctions';

@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeConnectionType , NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
 import { generatePairedItemData } from '../../../utils/utilities';
