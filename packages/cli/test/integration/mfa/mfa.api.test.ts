@@ -7,7 +7,7 @@ import type { User } from '@/databases/entities/User';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import * as utils from '../shared/utils';
 import { randomValidPassword, uniqueId } from '../shared/random';
 import { createUser, createUserWithMfaEnabled } from '../shared/db/users';

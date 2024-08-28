@@ -8,7 +8,7 @@ import { Telemetry } from '@/telemetry';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { mockInstance } from '../../shared/mocking';
 import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';

@@ -10,7 +10,7 @@ import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credentia
 
 import { createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';
-import * as testDb from '@test-integration/testDb';
+import * as testDb from '@test-integration/test-db';
 import { setupTestServer } from '@test-integration/utils';
 import type { SuperAgentTest } from '@test-integration/types';
 

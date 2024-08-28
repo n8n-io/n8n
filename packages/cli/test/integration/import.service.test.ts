@@ -10,7 +10,7 @@ import { TagEntity } from '@/databases/entities/tag-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 import { createMember, createOwner } from './shared/db/users';
 import {

@@ -5,7 +5,7 @@ import type { User } from '@/databases/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/license';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
