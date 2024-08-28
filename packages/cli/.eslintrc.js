@@ -42,7 +42,7 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['./src/commands/**/*.ts', './src/databases/migrations/**/*.ts'],
+			files: ['./src/databases/migrations/**/*.ts'],
 			rules: {
 				'unicorn/filename-case': 'off',
 			},
