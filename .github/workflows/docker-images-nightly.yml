@@ -71,7 +71,7 @@ jobs:
           [[ "${{github.event.inputs.merge-master}}" == "true" ]] && git remote add upstream https://github.com/n8n-io/n8n.git -f; git merge upstream/master --allow-unrelated-histories || echo ""
         shell: bash
 
-      - name: Build and push
+      - name: Build and push to DockerHub
         uses: docker/build-push-action@v5.1.0
         with:
           context: .
@@ -84,8 +84,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
+
+      - name: Build and push to GitHub Container Registry
+        uses: docker/build-push-action@v5.1.0
+        if: github.event.inputs.tag == 'nightly'
+        with:
+          context: .
+          file: ./docker/images/n8n-custom/Dockerfile
+          build-args: |
+            N8N_RELEASE_TYPE=nightly
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ghcr.io/${{ github.repository_owner }}/n8n:nightly
 
       - name: Call Success URL - optionally
         run: |
