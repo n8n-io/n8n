@@ -78,6 +78,7 @@
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
+    "mjml": "^4.15.3",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
