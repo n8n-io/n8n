@@ -180,7 +180,8 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		).should('be.visible');
 
 		credentialsModal.getters.usersSelect().click();
-		getVisiblePopper().find('[data-test-id="project-sharing-info"]')
+		getVisiblePopper()
+			.find('[data-test-id="project-sharing-info"]')
 			.filter(':visible')
 			.should('have.length', 3)
 			.contains(INSTANCE_ADMIN.email)
