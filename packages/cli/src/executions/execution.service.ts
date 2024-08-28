@@ -22,7 +22,7 @@ import type {
 	IExecutionResponse,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+} from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -39,7 +39,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { License } from '@/license';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 export const schemaGetExecutionsQueryFilter = {

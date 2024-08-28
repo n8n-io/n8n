@@ -2,10 +2,10 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import axios from 'axios';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import * as ResponseHelper from '@/response-helper';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import type { IWorkflowResponse } from '@/Interfaces';
+import type { IWorkflowResponse } from '@/interfaces';
 import config from '@/config';
 import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';

@@ -3,7 +3,7 @@ import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';

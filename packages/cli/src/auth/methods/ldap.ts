@@ -10,7 +10,7 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/ldap/helpers.ee';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { EventService } from '@/events/event.service';
 
 export const handleLdapLogin = async (

@@ -4,7 +4,7 @@ import { Not } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/ldap/constants';

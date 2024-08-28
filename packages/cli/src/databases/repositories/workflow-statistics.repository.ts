@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
 import { StatisticsNames, WorkflowStatistics } from '../entities/workflow-statistics';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';

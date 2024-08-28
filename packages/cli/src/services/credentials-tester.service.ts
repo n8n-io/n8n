@@ -35,7 +35,7 @@ import {
 } from 'n8n-workflow';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { NodeTypes } from '@/node-types';
 import { CredentialTypes } from '@/credential-types';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';

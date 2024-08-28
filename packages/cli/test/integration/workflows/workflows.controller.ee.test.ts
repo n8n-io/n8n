@@ -5,7 +5,7 @@ import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workf
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';

@@ -7,7 +7,7 @@ import { URL } from 'url';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
@@ -150,7 +150,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'eventBus':
-						await import('@/eventbus/eventBus.controller');
+						await import('@/eventbus/event-bus.controller');
 						break;
 
 					case 'auth':

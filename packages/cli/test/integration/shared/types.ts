@@ -4,8 +4,8 @@ import type TestAgent from 'supertest/lib/agent';
 import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
+import type { User } from '@/databases/entities/user';
+import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/interfaces';
 import type { LicenseMocker } from './license';
 import type { Project } from '@/databases/entities/project';
 

@@ -6,7 +6,7 @@ import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { Logger } from '@/logger';
 import { RedisServicePubSubPublisher } from '@/services/redis/redis-service-pub-sub-publisher';
 import { RedisClientService } from '@/services/redis/redis-client.service';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
 	'leader-stepdown': never;

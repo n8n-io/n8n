@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments/source-control/source-control.service.ee';

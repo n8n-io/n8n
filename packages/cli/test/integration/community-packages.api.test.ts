@@ -3,7 +3,7 @@ import path from 'path';
 import type { InstalledPackages } from '@/databases/entities/installed-packages';
 import type { InstalledNodes } from '@/databases/entities/installed-nodes';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
 import { mockInstance } from '../shared/mocking';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
