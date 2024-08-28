@@ -5,7 +5,7 @@ import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/logger';
 import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 import { EventService } from '@/events/event.service';
 
 type WorkflowStatisticsEvents = {

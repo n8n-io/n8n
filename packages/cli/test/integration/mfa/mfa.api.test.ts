@@ -3,7 +3,7 @@ import { randomInt, randomString } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { TOTPService } from '@/mfa/totp.service';
 

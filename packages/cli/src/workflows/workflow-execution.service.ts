@@ -16,7 +16,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -26,7 +26,7 @@ import type {
 	IWorkflowDb,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+} from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

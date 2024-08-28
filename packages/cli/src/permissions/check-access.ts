@@ -6,7 +6,7 @@ import { RoleService } from '@/services/role.service';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Scope } from '@n8n/permissions';
 import { ApplicationError } from 'n8n-workflow';
 

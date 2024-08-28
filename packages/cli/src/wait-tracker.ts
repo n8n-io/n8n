@@ -1,6 +1,6 @@
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import { WorkflowRunner } from '@/workflow-runner';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OwnershipService } from '@/services/ownership.service';

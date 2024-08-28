@@ -4,7 +4,7 @@ import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';
 import { Logger } from '@/logger';
-import type { PushDataExecutionRecovered } from '@/Interfaces';
+import type { PushDataExecutionRecovered } from '@/interfaces';
 
 import { mockInstance } from '@test/mocking';
 

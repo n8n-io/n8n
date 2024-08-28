@@ -1,8 +1,8 @@
 import nock from 'nock';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@/databases/entities/User';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
+import type { User } from '@/databases/entities/user';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
 import { License } from '@/license';
 
 import * as testDb from './shared/test-db';

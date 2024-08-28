@@ -1,4 +1,4 @@
-import type { SecretsProviderSettings } from '@/Interfaces';
+import type { SecretsProviderSettings } from '@/interfaces';
 
 export type SecretsNamesPage = {
 	NextToken?: string;

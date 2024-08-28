@@ -16,7 +16,7 @@ import type { SharedCredentials } from './shared-credentials';
 import { NoXss } from '@/validators/no-xss.validator';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './abstract-entity';
-import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
+import type { IPersonalizationSurveyAnswers } from '@/interfaces';
 import type { AuthIdentity } from './auth-identity';
 import {
 	GLOBAL_OWNER_SCOPES,

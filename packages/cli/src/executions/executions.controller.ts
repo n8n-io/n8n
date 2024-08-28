@@ -6,7 +6,7 @@ import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Scope } from '@n8n/permissions';
 import { isPositiveInteger } from '@/utils';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

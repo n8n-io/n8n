@@ -1,4 +1,4 @@
-import type { IPushDataType, IWorkflowDb } from '@/Interfaces';
+import type { IPushDataType, IWorkflowDb } from '@/interfaces';
 import type { RunningJobSummary } from '@/scaling/scaling.types';
 
 export type PubSubMessageMap = {

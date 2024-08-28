@@ -35,7 +35,7 @@ import type {
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
-} from '@/Interfaces';
+} from '@/interfaces';
 
 import config from '@/config';
 import type { ExecutionData } from '../entities/execution-data';

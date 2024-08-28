@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';

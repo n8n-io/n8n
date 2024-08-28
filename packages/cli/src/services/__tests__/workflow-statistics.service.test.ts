@@ -11,7 +11,7 @@ import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowStatistics } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';

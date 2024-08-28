@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from 'typedi';
-import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
+import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/interfaces';
 import config from '@/config';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';

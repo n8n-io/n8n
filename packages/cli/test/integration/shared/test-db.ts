@@ -5,7 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import { getOptionOverrides } from '@/databases/config';
 import { kebabCase } from 'lodash';
 

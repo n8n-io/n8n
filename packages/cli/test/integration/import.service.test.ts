@@ -20,7 +20,7 @@ import {
 	newWorkflow,
 } from './shared/db/workflows';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Project } from '@/databases/entities/project';
 import { getPersonalProject } from './shared/db/projects';
 

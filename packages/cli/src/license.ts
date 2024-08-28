@@ -12,7 +12,7 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
+import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';

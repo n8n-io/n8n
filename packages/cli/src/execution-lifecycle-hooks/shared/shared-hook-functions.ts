@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
+import type { ExecutionPayload, IExecutionDb } from '@/interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

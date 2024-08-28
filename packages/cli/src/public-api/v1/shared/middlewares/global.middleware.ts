@@ -9,7 +9,7 @@ import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
 import type { Scope } from '@n8n/permissions';
 import { userHasScope } from '@/permissions/check-access';
-import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature } from '@/interfaces';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 const UNLIMITED_USERS_QUOTA = -1;

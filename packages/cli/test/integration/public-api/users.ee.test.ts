@@ -10,7 +10,7 @@ import * as testDb from '../shared/test-db';
 import { createOwner, createUser, createUserShell } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 
 mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),

@@ -14,7 +14,7 @@ import { TelemetryHelpers } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { IExecutionTrackProperties } from '@/Interfaces';
+import type { IExecutionTrackProperties } from '@/interfaces';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import { EventRelay } from './event-relay';
 import { snakeCase } from 'change-case';

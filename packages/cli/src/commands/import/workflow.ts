@@ -9,7 +9,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { generateNanoId } from '@/databases/utils/generators';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { IWorkflowToImport } from '@/Interfaces';
+import type { IWorkflowToImport } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../base-command';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

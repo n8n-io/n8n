@@ -1,6 +1,6 @@
 import { SecretManagerServiceClient as GcpClient } from '@google-cloud/secret-manager';
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '@/external-secrets/constants';
-import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
+import type { SecretsProvider, SecretsProviderState } from '@/interfaces';
 import { jsonParse, type INodeProperties } from 'n8n-workflow';
 import type {
 	GcpSecretsManagerContext,

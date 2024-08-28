@@ -27,7 +27,7 @@ import type {
 } from 'n8n-workflow';
 import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 
-import type { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/interfaces';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialTypes } from '@/credential-types';

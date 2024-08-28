@@ -6,7 +6,7 @@ import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typ
 
 import { AuthService } from '@/auth/auth.service';
 import type { AuthUser } from '@/databases/entities/auth-user';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -17,7 +17,7 @@ import { AuthUserRepository } from '@/databases/repositories/auth-user.repositor
 import type { Settings } from '@/databases/entities/settings';
 import { UserService } from '@/services/user.service';
 import type { AuthenticatedRequest } from '@/requests';
-import type { Invitation } from '@/Interfaces';
+import type { Invitation } from '@/interfaces';
 import RudderStack, { type constructorOptions } from '@rudderstack/rudder-sdk-node';
 
 /**

@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { PasswordUtility } from '@/services/password.utility';
 import { Container } from 'typedi';
 import { isLdapLoginEnabled } from '@/ldap/helpers.ee';
