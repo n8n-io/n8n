@@ -1,4 +1,4 @@
-import type { SecretsProvider } from '@/Interfaces';
+import type { SecretsProvider } from '@/interfaces';
 import { Service } from 'typedi';
 import { InfisicalProvider } from './providers/infisical';
 import { VaultProvider } from './providers/vault';

@@ -4,7 +4,7 @@ import { jsonParse, type IDataObject } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import { License } from '@/license';
-import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
+import type { ExternalSecretsSettings, SecretsProviderState } from '@/interfaces';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { ExternalSecretsProviders } from '@/external-secrets/external-secrets-providers.ee';
 import config from '@/config';

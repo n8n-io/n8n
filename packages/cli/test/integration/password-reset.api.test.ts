@@ -7,7 +7,7 @@ import { randomString } from 'n8n-workflow';
 import { AuthService } from '@/auth/auth.service';
 import { License } from '@/license';
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 import { ExternalHooks } from '@/external-hooks';
 import { JwtService } from '@/services/jwt.service';

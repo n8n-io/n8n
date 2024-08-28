@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import type { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { OwnerController } from '@/controllers/owner.controller';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

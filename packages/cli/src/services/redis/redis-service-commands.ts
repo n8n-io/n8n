@@ -1,4 +1,4 @@
-import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/Interfaces';
+import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'

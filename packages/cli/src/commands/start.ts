@@ -26,7 +26,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/wait-tracker';
 import { BaseCommand } from './base-command';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';

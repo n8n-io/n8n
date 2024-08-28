@@ -11,7 +11,7 @@ import type { WorkflowStatistics } from './workflow-statistics';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { WithTimestampsAndStringId, dbType, jsonColumnType } from './abstract-entity';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 
 @Entity()
 export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {

@@ -2,7 +2,7 @@ import { Container } from 'typedi';
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
 import {

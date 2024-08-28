@@ -11,8 +11,8 @@ import pick from 'lodash/pick';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRunner } from '@/workflow-runner';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
-import type { User } from '@/databases/entities/User';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
+import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
@@ -107,6 +107,8 @@ export class ExecuteBatch extends BaseCommand {
 			description: 'Omits the full execution information from output, displaying only summary.',
 		}),
 	};
+
+	static aliases = ['executeBatch'];
 
 	override needsCommunityPackages = true;
 

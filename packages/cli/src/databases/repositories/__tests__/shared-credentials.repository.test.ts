@@ -3,7 +3,7 @@ import { In } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { hasScope } from '@n8n/permissions';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';

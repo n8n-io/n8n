@@ -1,4 +1,4 @@
-import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature } from '@/interfaces';
 import { getRouteMetadata } from './controller.registry';
 import type { Controller } from './types';
 

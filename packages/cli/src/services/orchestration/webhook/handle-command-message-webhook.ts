@@ -5,7 +5,7 @@ import Container from 'typedi';
 import { Logger } from 'winston';
 import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
 import config from '@/config';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
 export async function handleCommandMessageWebhook(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');

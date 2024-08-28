@@ -10,7 +10,7 @@ import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { Logger } from '@/logger';
 import { N8N_VERSION } from '@/constants';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	// eslint-disable-next-line complexity

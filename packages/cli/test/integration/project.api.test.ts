@@ -23,7 +23,7 @@ import { randomCredentialPayload } from './shared/random';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { GlobalRole } from '@/databases/entities/User';
+import type { GlobalRole } from '@/databases/entities/user';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '../shared/mocking';

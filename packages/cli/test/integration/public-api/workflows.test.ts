@@ -4,7 +4,7 @@ import type { INode } from 'n8n-workflow';
 import config from '@/config';
 import { STARTING_NODES } from '@/constants';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

@@ -2,7 +2,7 @@ import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './shared-credentials';
 import { WithTimestampsAndStringId } from './abstract-entity';
-import type { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/interfaces';
 
 @Entity()
 export class CredentialsEntity extends WithTimestampsAndStringId implements ICredentialsDb {

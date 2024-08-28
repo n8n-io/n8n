@@ -7,14 +7,14 @@ import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/generic-helpers';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
+import type { PublicUser } from '@/interfaces';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/logger';

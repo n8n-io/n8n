@@ -5,11 +5,11 @@ import type {
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import * as Db from '@/Db';
-import type { ICredentialsDb } from '@/Interfaces';
+import * as Db from '@/db';
+import type { ICredentialsDb } from '@/interfaces';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ExternalHooks } from '@/external-hooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';

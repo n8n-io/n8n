@@ -10,7 +10,7 @@ import { Push } from '@/push';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {

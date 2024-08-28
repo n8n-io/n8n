@@ -3,7 +3,7 @@ import type { IWorkflowBase, JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { AbstractEventMessageOptions } from './abstract-event-message-options';
 import type { AbstractEventPayload } from './abstract-event-payload';
-import type { IExecutionBase } from '@/Interfaces';
+import type { IExecutionBase } from '@/interfaces';
 import type { EventNamesWorkflowType } from '.';
 
 // --------------------------------------

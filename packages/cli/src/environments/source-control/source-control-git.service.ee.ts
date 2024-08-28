@@ -19,7 +19,7 @@ import {
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { Logger } from '@/logger';
 import { ApplicationError } from 'n8n-workflow';
 import { OwnershipService } from '@/services/ownership.service';

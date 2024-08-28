@@ -26,7 +26,7 @@ import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrati
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 
 /**
  * Service for handling the execution of webhooks of manual executions

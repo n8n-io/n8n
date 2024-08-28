@@ -3,7 +3,7 @@ import * as testDb from './shared/test-db';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { createOwner, createAdmin, createMember } from './shared/db/users';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { saveCredential } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
 import { createTeamProject, linkUserToProject } from './shared/db/projects';

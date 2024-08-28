@@ -34,7 +34,7 @@ import type PCancelable from 'p-cancelable';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { AssignableRole, GlobalRole, User } from '@/databases/entities/User';
+import type { AssignableRole, GlobalRole, User } from '@/databases/entities/user';
 import type { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';

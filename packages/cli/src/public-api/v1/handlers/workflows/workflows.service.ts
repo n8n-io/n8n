@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
-import * as Db from '@/Db';
-import type { User } from '@/databases/entities/User';
+import * as Db from '@/db';
+import type { User } from '@/databases/entities/user';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
 import { SharedWorkflow, type WorkflowSharingRole } from '@/databases/entities/shared-workflow';

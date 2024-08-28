@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
