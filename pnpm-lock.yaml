@@ -1681,6 +1681,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 'catalog:'
+        version: 3.23.8
     devDependencies:
       '@types/amqplib':
         specifier: ^0.10.1

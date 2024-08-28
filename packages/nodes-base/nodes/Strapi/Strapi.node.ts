@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import type { StrapiApiCredential } from '../../credentials/StrapiApi.credentials';
 import {
 	getToken,
 	removeTrailingSlash,
@@ -143,14 +144,14 @@ export class Strapi implements INodeType {
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		let apiVersion: string;
+		let apiVersion: StrapiApiCredential['apiVersion'];
 
 		if (authenticationMethod === 'password') {
 			const { jwt } = await getToken.call(this);
-			apiVersion = (await this.getCredentials('strapiApi')).apiVersion as string;
+			apiVersion = (await this.getCredentials('strapiApi')).apiVersion;
 			headers.Authorization = `Bearer ${jwt}`;
 		} else {
-			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion as string;
+			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion;
 		}
 
 		for (let i = 0; i < length; i++) {

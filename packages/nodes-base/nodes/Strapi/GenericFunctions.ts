@@ -1,5 +1,4 @@
 import type {
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -10,6 +9,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import type { StrapiApiCredential } from '../../credentials/StrapiApi.credentials';
 
 export const removeTrailingSlash = (url: string) => {
 	if (url.endsWith('/')) {
@@ -28,7 +28,7 @@ export async function strapiApiRequest(
 	headers: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
-	let credentials: ICredentialDataDecryptedObject;
+	let credentials: Pick<StrapiApiCredential, 'apiVersion' | 'url'>;
 
 	if (authenticationMethod === 'password') {
 		credentials = await this.getCredentials('strapiApi');
@@ -36,7 +36,7 @@ export async function strapiApiRequest(
 		credentials = await this.getCredentials('strapiTokenApi');
 	}
 
-	const url = removeTrailingSlash(credentials.url as string);
+	const url = removeTrailingSlash(credentials.url);
 
 	try {
 		const options: IRequestOptions = {
