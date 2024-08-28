@@ -14,8 +14,8 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
 import { InstalledPackages } from '@/databases/entities/installed-packages';
-import type { CommunityPackages } from '@/Interfaces';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import type { CommunityPackages } from '@/interfaces';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
 import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import { InstalledNodes } from '@/databases/entities/installed-nodes';

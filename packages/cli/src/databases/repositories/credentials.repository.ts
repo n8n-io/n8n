@@ -3,7 +3,7 @@ import { DataSource, In, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/credentials-entity';
 import type { ListQuery } from '@/requests';
-import type { User } from '../entities/User';
+import type { User } from '../entities/user';
 import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
 

@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowRunner } from '@/workflow-runner';
 import config from '@/config';
 

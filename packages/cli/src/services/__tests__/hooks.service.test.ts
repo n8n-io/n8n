@@ -9,7 +9,7 @@ import type { WorkflowRepository } from '@/databases/repositories/workflow.repos
 import type { AuthService } from '@/auth/auth.service';
 import type { UserService } from '@/services/user.service';
 import { HooksService } from '@/services/hooks.service';
-import type { Invitation } from '@/Interfaces';
+import type { Invitation } from '@/interfaces';
 import type { AuthenticatedRequest } from '@/requests';
 import type { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import RudderStack from '@rudderstack/rudder-sdk-node';

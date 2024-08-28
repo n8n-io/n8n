@@ -4,7 +4,7 @@ import nock from 'nock';
 import { parse as parseQs } from 'querystring';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { CredentialsHelper } from '@/credentials-helper';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 

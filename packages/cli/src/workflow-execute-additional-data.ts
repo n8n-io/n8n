@@ -46,7 +46,7 @@ import type {
 	IWorkflowErrorData,
 	IPushDataType,
 	ExecutionPayload,
-} from '@/Interfaces';
+} from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import * as WorkflowHelpers from '@/workflow-helpers';

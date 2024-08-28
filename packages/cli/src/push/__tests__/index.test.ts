@@ -2,7 +2,7 @@ import type { WebSocket } from 'ws';
 import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import { WebSocketPush } from '@/push/websocket.push';

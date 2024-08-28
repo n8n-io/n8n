@@ -1,7 +1,7 @@
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { mockInstance } from '@test/mocking';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';

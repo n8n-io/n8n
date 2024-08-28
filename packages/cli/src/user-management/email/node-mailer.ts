@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { Logger } from '@/logger';
-import type { MailData, SendEmailResult } from './Interfaces';
+import type { MailData, SendEmailResult } from './interfaces';
 
 @Service()
 export class NodeMailer {

@@ -22,7 +22,7 @@ import {
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { CommunityPackages } from '@/Interfaces';
+import type { CommunityPackages } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
 import { OrchestrationService } from './orchestration.service';

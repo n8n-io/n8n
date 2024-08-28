@@ -1,5 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
-import { User } from './User';
+import { User } from './user';
 import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
 

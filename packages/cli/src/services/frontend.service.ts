@@ -28,7 +28,7 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper.ee';
 import { UserManagementMailer } from '@/user-management/email';
-import type { CommunityPackagesService } from '@/services/communityPackages.service';
+import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { Logger } from '@/logger';
 import { UrlService } from './url.service';
 import { EventService } from '@/events/event.service';
@@ -58,7 +58,7 @@ export class FrontendService {
 		this.initSettings();
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
 		}

@@ -14,15 +14,15 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
-import * as Db from '@/Db';
-import type { ICredentialsDb } from '@/Interfaces';
+import * as Db from '@/db';
+import type { ICredentialsDb } from '@/interfaces';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { validateEntity } from '@/generic-helpers';
 import { ExternalHooks } from '@/external-hooks';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/credential-types';
 import { OwnershipService } from '@/services/ownership.service';

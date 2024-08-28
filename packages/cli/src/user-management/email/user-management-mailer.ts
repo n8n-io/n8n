@@ -5,7 +5,7 @@ import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
 import { GlobalConfig } from '@n8n/config';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { EventService } from '@/events/event.service';
@@ -14,7 +14,7 @@ import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { toError } from '@/utils';
 
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './interfaces';
 import { NodeMailer } from './node-mailer';
 import { inTest } from '@/constants';
 

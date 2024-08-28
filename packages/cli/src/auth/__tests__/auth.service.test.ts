@@ -5,7 +5,7 @@ import type { NextFunction, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
