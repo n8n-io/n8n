@@ -9,7 +9,7 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - /n8n:/n8n
+      - ${RUN_DIR}:/n8n
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
     depends_on:
