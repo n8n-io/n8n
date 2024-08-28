@@ -138,7 +138,6 @@ export class UserService {
 					const result = await this.mailer.invite({
 						email,
 						inviteAcceptUrl,
-						domain,
 					});
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
@@ -168,7 +167,6 @@ export class UserService {
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
 							inviteAcceptUrl,
-							domain,
 							email,
 						});
 						invitedUser.error = e.message;
