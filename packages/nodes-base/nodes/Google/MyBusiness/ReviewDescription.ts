@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getAllReviewsPostReceive } from './GenericFunctions';
+import { handleSimplifyPostReceive } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
 	{
@@ -28,7 +28,7 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Get many reviews',
 				description: 'Retrieve multiple reviews',
 				routing: {
-					output: { postReceive: [getAllReviewsPostReceive] },
+					output: { postReceive: [handleSimplifyPostReceive] },
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',

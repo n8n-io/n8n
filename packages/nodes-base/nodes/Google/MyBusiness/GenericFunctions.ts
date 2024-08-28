@@ -19,18 +19,18 @@ const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown>
 	const params = execFns.getNode().parameters;
 	const additionalOptions = execFns.getNodeParameter(addOptName, {}) as Record<string, unknown>;
 
+	// Merge standard parameters with additional options from the node parameters
 	return { ...params, ...additionalOptions };
 };
 
-/* The following functions are used to map the requests and responses */
-// ToDo
+/* Helper to adjust date-time parameters for API requests */
 export async function handleDatesPresend(
 	this: IExecuteSingleFunctions,
 	opts: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	// Retrieve all parameters from the node
 	const params = getAllParams(this);
 	const body = Object.assign({}, opts.body);
+
 	const createDateTimeObject = (dateString: string) => {
 		const date = new Date(dateString);
 		return {
@@ -50,46 +50,30 @@ export async function handleDatesPresend(
 		};
 	};
 
-	const startDateTime = params.startDateTime
-		? createDateTimeObject(params.startDateTime as string)
-		: null;
-	const endDateTime = params.endDateTime
-		? createDateTimeObject(params.endDateTime as string)
-		: null;
+	// Convert start and end date-time parameters if provided
+	const startDateTime =
+		params.startDateTime || params.startDate
+			? createDateTimeObject((params.startDateTime || params.startDate) as string)
+			: null;
+	const endDateTime =
+		params.endDateTime || params.endDate
+			? createDateTimeObject((params.endDateTime || params.endDate) as string)
+			: null;
 
-	const schedule: Partial<ITimeInterval> = {};
-
-	// ToDo: Refactor the following code
-	if (startDateTime?.date) {
-		schedule.startDate = startDateTime.date;
-	}
-	if (startDateTime?.time) {
-		schedule.startTime = startDateTime.time!;
-	}
-	if (endDateTime?.date) {
-		schedule.endDate = endDateTime.date;
-	}
-	if (endDateTime?.time) {
-		schedule.endTime = endDateTime.time!;
-	}
-
-	if (params.startDate && !params.startDateTime) {
-		const startDate = createDateTimeObject(params.startDate as string);
-		schedule.startDate = startDate.date;
-	}
-
-	if (params.endDate && !params.endDateTime) {
-		const endDate = createDateTimeObject(params.endDate as string);
-		schedule.endDate = endDate.date;
-	}
+	const schedule: Partial<ITimeInterval> = {
+		startDate: startDateTime?.date,
+		endDate: endDateTime?.date,
+		startTime: startDateTime?.time,
+		endTime: endDateTime?.time,
+	};
 
 	Object.assign(body, { schedule });
 	opts.body = body;
 	return opts;
 }
 
-// ToDo: Duplicate code for simplification
-export async function getAllPostsPostReceive(
+/* Helper to simplify the response */
+export async function handleSimplifyPostReceive(
 	this: IExecuteSingleFunctions,
 	_: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
@@ -100,49 +84,19 @@ export async function getAllPostsPostReceive(
 		return [{ json: response.body }] as INodeExecutionData[];
 	}
 
-	// Check if the response body contains localPosts
-	if (response.body && (response.body as IDataObject).localPosts) {
-		// Map the localPosts to the node execution data format
-		const executionData: INodeExecutionData[] = (
-			(response.body as IDataObject).localPosts as IDataObject[]
-		).map((post: IDataObject) => {
-			return {
-				json: post,
-			};
-		});
-		return executionData;
+	const possibleKeys = ['localPosts', 'reviews']; // Keys to search for in the response body
+
+	// Find and return the first available key's data, if present
+	const dataKey = possibleKeys.find((key) => response.body && (response.body as IDataObject)[key]);
+	if (dataKey) {
+		const data = (response.body as IDataObject)[dataKey] as IDataObject[];
+		return data.length
+			? (data.map((item: IDataObject) => ({ json: item })) as INodeExecutionData[])
+			: ([{ json: {} }] as INodeExecutionData[]); // Always return an item
 	}
 
-	// If no localPosts are found, return an empty array
-	return [];
-}
-
-export async function getAllReviewsPostReceive(
-	this: IExecuteSingleFunctions,
-	_: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	// If response shouldn't be simplified, return the response body as is
-	const simplify = this.getNodeParameter('simplify', 0) as boolean;
-	if (!simplify) {
-		return [{ json: response.body }] as INodeExecutionData[];
-	}
-
-	// Check if the response body contains reviews
-	if (response.body && (response.body as IDataObject).reviews) {
-		// Map the reviews to the node execution data format
-		const executionData: INodeExecutionData[] = (
-			(response.body as IDataObject).reviews as IDataObject[]
-		).map((review: IDataObject) => {
-			return {
-				json: review,
-			};
-		});
-		return executionData;
-	}
-
-	// If no reviews are found, return an empty array
-	return [];
+	// If no valid key is found, return the response body as is
+	return [{ json: response.body }] as INodeExecutionData[];
 }
 
 /* The following functions are used for the loadOptions as for them there is no support for declarative style pagination */

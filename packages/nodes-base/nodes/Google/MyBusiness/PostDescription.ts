@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { getAllPostsPostReceive, handleDatesPresend } from './GenericFunctions';
+import { handleDatesPresend, handleSimplifyPostReceive } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -53,7 +53,7 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get many posts',
 				description: 'Retrieve multiple posts',
 				routing: {
-					output: { postReceive: [getAllPostsPostReceive] },
+					output: { postReceive: [handleSimplifyPostReceive] },
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
