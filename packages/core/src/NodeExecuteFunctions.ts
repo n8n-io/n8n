@@ -35,7 +35,7 @@ import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
-import {
+import type {
 	BinaryHelperFunctions,
 	CloseFunction,
 	ContextType,
@@ -102,9 +102,9 @@ import {
 	EnsureTypeOptions,
 	SSHTunnelFunctions,
 	SchedulingFunctions,
-	NodeConnectionType,
 } from 'n8n-workflow';
 import {
+	NodeConnectionType,
 	ExpressionError,
 	LoggerProxy as Logger,
 	NodeApiError,

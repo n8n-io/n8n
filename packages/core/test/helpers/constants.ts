@@ -45,7 +45,9 @@ export const predefinedNodesTypes: INodeTypeData = {
 					name: 'Version Test',
 					color: '#0000FF',
 				},
-				inputs: [NodeConnectionType.Main],				outputs: [NodeConnectionType.Main],				properties: [
+				inputs: [NodeConnectionType.Main],
+				outputs: [NodeConnectionType.Main],
+				properties: [
 					{
 						displayName: 'Display V1',
 						name: 'versionTest',
