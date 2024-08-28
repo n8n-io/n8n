@@ -218,7 +218,7 @@ export class CredentialsController {
 		// Remove the encrypted data as it is not needed in the frontend
 		const { data: _, ...rest } = responseData;
 
-		this.logger.verbose('Credential updated', { credentialId });
+		this.logger.debug('Credential updated', { credentialId });
 
 		this.eventService.emit('credentials-updated', {
 			user: req.user,

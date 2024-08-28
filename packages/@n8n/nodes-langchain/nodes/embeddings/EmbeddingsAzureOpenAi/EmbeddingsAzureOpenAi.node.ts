@@ -93,7 +93,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings');
+		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials<{
 			apiKey: string;
 			resourceName: string;

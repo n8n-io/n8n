@@ -101,7 +101,7 @@ export class VectorStoreZepInsert implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing data for Zep Insert Vector Store');
+		this.logger.debug('Executing data for Zep Insert Vector Store');
 		const items = this.getInputData(0);
 		const collectionName = this.getNodeParameter('collectionName', 0) as string;
 		const options =
