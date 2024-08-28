@@ -1,17 +1,12 @@
 export type InviteEmailData = {
 	email: string;
-	firstName?: string;
-	lastName?: string;
 	inviteAcceptUrl: string;
-	domain: string;
 };
 
 export type PasswordResetData = {
 	email: string;
-	firstName?: string;
-	lastName?: string;
+	firstName: string;
 	passwordResetUrl: string;
-	domain: string;
 };
 
 export type SendEmailResult = {
