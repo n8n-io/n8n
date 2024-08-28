@@ -768,6 +768,7 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 			},
 		};
 
