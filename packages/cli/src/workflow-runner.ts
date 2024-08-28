@@ -238,7 +238,7 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 
-		this.logger.verbose(
+		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },
 		);

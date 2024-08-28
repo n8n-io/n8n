@@ -95,7 +95,7 @@ export class ActiveWorkflowManager {
 	 */
 	async removeAll() {
 		let activeWorkflowIds: string[] = [];
-		this.logger.verbose('Call to remove all active workflows received (removeAll)');
+		this.logger.debug('Call to remove all active workflows received (removeAll)');
 
 		activeWorkflowIds.push(...this.activeWorkflows.allActiveWorkflows());
 
@@ -437,7 +437,7 @@ export class ActiveWorkflowManager {
 				});
 
 				if (wasActivated) {
-					this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
+					this.logger.debug(`Successfully started workflow ${dbWorkflow.display()}`, {
 						workflowName: dbWorkflow.name,
 						workflowId: dbWorkflow.id,
 					});
@@ -469,7 +469,7 @@ export class ActiveWorkflowManager {
 			}
 		}
 
-		this.logger.verbose('Finished activating workflows (startup)');
+		this.logger.debug('Finished activating workflows (startup)');
 	}
 
 	async clearAllActivationErrors() {
@@ -800,7 +800,7 @@ export class ActiveWorkflowManager {
 				getPollFunctions,
 			);
 
-			this.logger.verbose(`Workflow ${dbWorkflow.display()} activated`, {
+			this.logger.debug(`Workflow ${dbWorkflow.display()} activated`, {
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 			});
