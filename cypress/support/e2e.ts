@@ -39,6 +39,7 @@ beforeEach(() => {
 
 	cy.intercept('POST', '/rest/license/renew', {});
 
+	cy.intercept('GET', 'https://n8n.io/self-install', (req) => req.reply(200)).as('iframeRequest');
 	cy.intercept({ pathname: '/api/health' }, { status: 'OK' }).as('healthCheck');
 	cy.intercept({ pathname: '/api/versions/*' }, [
 		{
