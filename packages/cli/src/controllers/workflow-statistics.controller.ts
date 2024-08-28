@@ -40,7 +40,7 @@ export class WorkflowStatisticsController {
 		if (workflow) {
 			next();
 		} else {
-			this.logger.verbose('User attempted to read a workflow without permissions', {
+			this.logger.warn('User attempted to read a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});

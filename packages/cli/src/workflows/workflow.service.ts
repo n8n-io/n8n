@@ -96,7 +96,7 @@ export class WorkflowService {
 		]);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to update a workflow without permissions', {
+			this.logger.warn('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -120,7 +120,7 @@ export class WorkflowService {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			workflowUpdateData.versionId = uuid();
-			this.logger.verbose(
+			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: workflow.versionId,

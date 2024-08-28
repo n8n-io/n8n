@@ -504,7 +504,7 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
-		Container.get(Logger).verbose(
+		Container.get(Logger).debug(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
