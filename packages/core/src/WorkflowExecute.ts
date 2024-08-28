@@ -794,7 +794,7 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
-		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
+		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
 		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
@@ -1804,7 +1804,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.verbose('Workflow execution finished with error', {
+			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1818,13 +1818,13 @@ export class WorkflowExecute {
 			}
 		} else if (this.runExecutionData.waitTill!) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			Logger.verbose(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
+			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 			fullRunData.status = 'waiting';
 		} else {
-			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
+			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 			fullRunData.status = 'success';
 		}

@@ -90,7 +90,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 		await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
-		this.logger.verbose('OAuth1 authorization successful for new credential', {
+		this.logger.debug('OAuth1 authorization successful for new credential', {
 			userId: req.user.id,
 			credentialId: credential.id,
 		});
@@ -170,7 +170,7 @@ export class OAuth1CredentialController extends AbstractOAuthController {
 
 			await this.encryptAndSaveData(credential, decryptedDataOriginal);
 
-			this.logger.verbose('OAuth1 callback successful for new credential', {
+			this.logger.debug('OAuth1 callback successful for new credential', {
 				credentialId,
 			});
 			return res.render('oauth-callback');
