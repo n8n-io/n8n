@@ -83,22 +83,14 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: |
+          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
 
-      - name: Build and push to GitHub Container Registry
-        uses: docker/build-push-action@v5.1.0
+      - name: Push image to GHCR
         if: github.event.inputs.tag == 'nightly'
-        with:
-          context: .
-          file: ./docker/images/n8n-custom/Dockerfile
-          build-args: |
-            N8N_RELEASE_TYPE=nightly
-          platforms: linux/amd64,linux/arm64
-          provenance: false
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: ghcr.io/${{ github.repository_owner }}/n8n:nightly
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/${{ github.repository_owner }}/n8n:nightly \
+            ${{ secrets.DOCKER_USERNAME }}/n8n:nightly
 
       - name: Call Success URL - optionally
         run: |
