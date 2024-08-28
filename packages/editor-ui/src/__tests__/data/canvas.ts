@@ -3,11 +3,13 @@ import { ref } from 'vue';
 import type {
 	CanvasNode,
 	CanvasNodeData,
+	CanvasNodeEventBusEvents,
 	CanvasNodeHandleInjectionData,
 	CanvasNodeInjectionData,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
+import { createEventBus, EventBus } from 'n8n-design-system';
 
 export function createCanvasNodeData({
 	id = 'node',
@@ -89,11 +91,13 @@ export function createCanvasNodeProvide({
 	label = 'Test Node',
 	selected = false,
 	data = {},
+	eventBus = createEventBus<CanvasNodeEventBusEvents>(),
 }: {
 	id?: string;
 	label?: string;
 	selected?: boolean;
 	data?: Partial<CanvasNodeData>;
+	eventBus?: EventBus<CanvasNodeEventBusEvents>;
 } = {}) {
 	const props = createCanvasNodeProps({ id, label, selected, data });
 	return {
@@ -102,6 +106,7 @@ export function createCanvasNodeProvide({
 			label: ref(props.label),
 			selected: ref(props.selected),
 			data: ref(props.data),
+			eventBus: ref(eventBus),
 		} satisfies CanvasNodeInjectionData,
 	};
 }

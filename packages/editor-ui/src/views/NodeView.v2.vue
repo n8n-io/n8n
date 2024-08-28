@@ -36,6 +36,7 @@ import type {
 import type { Connection, ViewportTransform } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
+	CanvasEventBusEvents,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
@@ -137,7 +138,7 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 
-const canvasEventBus = createEventBus();
+const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -1346,7 +1347,7 @@ function fitView() {
 }
 
 function selectNodes(ids: string[]) {
-	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
+	setTimeout(() => canvasEventBus.emit('nodes:select', { ids }));
 }
 
 /**
