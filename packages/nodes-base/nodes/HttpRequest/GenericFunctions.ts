@@ -88,7 +88,6 @@ export function sanitizeUiMessage(
 			),
 		};
 	}
-	//redact headers with Base64 encoded credentials
 	const headers = sendRequest.headers as IDataObject;
 	if (headers) {
 		const headerKey = Object.keys(headers).find((key) => key.toLowerCase() === 'authorization');
