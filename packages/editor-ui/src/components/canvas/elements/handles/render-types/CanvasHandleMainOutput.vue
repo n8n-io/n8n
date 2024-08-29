@@ -13,6 +13,21 @@ const handleClasses = 'source';
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 const isHovered = ref(false);
 
+const labelSize = computed(() => {
+	if (label.value.length <= 2) return 'small';
+	else if (label.value.length <= 6) return 'medium';
+	return 'large';
+});
+
+const plusLineSize = computed(
+	() =>
+		({
+			small: 46,
+			medium: 66,
+			large: 80,
+		})[labelSize.value],
+);
+
 function onMouseEnter() {
 	isHovered.value = true;
 }
@@ -33,6 +48,7 @@ function onClickAdd() {
 			<CanvasHandlePlus
 				v-if="!isConnected"
 				v-show="isHandlePlusVisible"
+				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
@@ -53,12 +69,16 @@ function onClickAdd() {
 .label {
 	position: absolute;
 	top: 50%;
-	left: var(--spacing-s);
+	left: var(--spacing-m);
 	transform: translate(0, -50%);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	background: var(--color-canvas-label-background);
 	z-index: 1;
+	max-width: calc(100% - var(--spacing-m) - 24px);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 </style>
 
