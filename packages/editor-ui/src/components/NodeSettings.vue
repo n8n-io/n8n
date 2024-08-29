@@ -130,7 +130,7 @@ const isExecutable = computed(() => {
 		const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, props.nodeType);
 		const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode) {
+		if (!inputNames.includes(NodeConnectionType.Main) && !isTriggerNode.value) {
 			return false;
 		}
 	}
