@@ -63,6 +63,8 @@ export function useCanvasNode() {
 
 	const render = computed(() => data.value.render);
 
+	const eventBus = computed(() => node?.eventBus.value);
+
 	return {
 		node,
 		id,
@@ -84,5 +86,6 @@ export function useCanvasNode() {
 		executionWaiting,
 		executionRunning,
 		render,
+		eventBus,
 	};
 }

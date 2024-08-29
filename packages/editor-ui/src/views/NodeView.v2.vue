@@ -36,6 +36,7 @@ import type {
 import type { Connection, ViewportTransform } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
+	CanvasEventBusEvents,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
@@ -137,7 +138,7 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 
-const canvasEventBus = createEventBus();
+const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -219,6 +220,10 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 				},
 			],
 );
+
+const keyBindingsEnabled = computed(() => {
+	return !ndvStore.activeNode;
+});
 
 /**
  * Initialization
@@ -1346,7 +1351,7 @@ function fitView() {
 }
 
 function selectNodes(ids: string[]) {
-	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
+	setTimeout(() => canvasEventBus.emit('nodes:select', { ids }));
 }
 
 /**
@@ -1482,6 +1487,7 @@ onDeactivated(() => {
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
+		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
