@@ -221,6 +221,10 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 			],
 );
 
+const keyBindingsEnabled = computed(() => {
+	return !ndvStore.activeNode;
+});
+
 /**
  * Initialization
  */
@@ -1483,6 +1487,7 @@ onDeactivated(() => {
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
+		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
