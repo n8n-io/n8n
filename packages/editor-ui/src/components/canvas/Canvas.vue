@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasNode, CanvasNodeMoveEvent, ConnectStartEvent } from '@/types';
+import type {
+	CanvasConnection,
+	CanvasNode,
+	CanvasNodeMoveEvent,
+	CanvasEventBusEvents,
+	ConnectStartEvent,
+} from '@/types';
 import type {
 	EdgeMouseEvent,
 	Connection,
@@ -65,7 +71,7 @@ const props = withDefaults(
 		nodes: CanvasNode[];
 		connections: CanvasConnection[];
 		controlsPosition?: PanelPosition;
-		eventBus?: EventBus;
+		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 	}>(),
 	{
@@ -102,8 +108,8 @@ useKeybindings({
 	ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
 	d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
 	p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-	enter: () => emitWithLastSelectedNode((id) => emit('update:node:active', id)),
-	f2: () => emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+	f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 	tab: () => emit('create:node', 'tab'),
 	shift_s: () => emit('create:sticky'),
 	ctrl_alt_n: () => emit('create:workflow'),
@@ -154,6 +160,7 @@ function onNodesChange(events: NodeChange[]) {
 }
 
 function onSetNodeActive(id: string) {
+	props.eventBus.emit('nodes:action', { ids: [id], action: 'update:node:active' });
 	emit('update:node:active', id);
 }
 
@@ -166,7 +173,7 @@ function onSelectNode() {
 	emit('update:node:selected', lastSelectedNode.value.id);
 }
 
-function onSelectNodes(ids: string[]) {
+function onSelectNodes({ ids }: CanvasEventBusEvents['nodes:select']) {
 	clearSelectedNodes();
 	addSelectedNodes(ids.map(findNode).filter(isPresent));
 }
@@ -358,9 +365,11 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':
-			return emit('update:node:active', nodeIds[0]);
+			return onSetNodeActive(nodeIds[0]);
 		case 'rename':
 			return emit('update:node:name', nodeIds[0]);
+		case 'change_color':
+			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
 	}
 }
 
@@ -378,12 +387,12 @@ function minimapNodeClassnameFn(node: CanvasNode) {
 
 onMounted(() => {
 	props.eventBus.on('fitView', onFitView);
-	props.eventBus.on('selectNodes', onSelectNodes);
+	props.eventBus.on('nodes:select', onSelectNodes);
 });
 
 onUnmounted(() => {
 	props.eventBus.off('fitView', onFitView);
-	props.eventBus.off('selectNodes', onSelectNodes);
+	props.eventBus.off('nodes:select', onSelectNodes);
 });
 
 onPaneReady(async () => {
@@ -431,6 +440,7 @@ provide(CanvasKey, {
 			<Node
 				v-bind="canvasNodeProps"
 				:read-only="readOnly"
+				:event-bus="eventBus"
 				@delete="onDeleteNode"
 				@run="onRunNode"
 				@select="onSelectNode"
