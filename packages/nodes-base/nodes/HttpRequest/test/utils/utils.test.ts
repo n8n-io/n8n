@@ -136,5 +136,41 @@ describe('HTTP Node Utils', () => {
 				uri: 'https://example.com',
 			});
 		});
+		it('should redact the Authorization header', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: { sessionToken: 'secret', other: 'foo' },
+				headers: { authorization: 'Bearer some-sensitive-token', other: 'foo' },
+				auth: { user: 'user', password: 'secret' },
+			};
+			const authDataKeys = {};
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
+			expect(sanitizedRequest.headers).toEqual({ authorization: REDACTED, other: 'foo' });
+		});
+
+		it('should leave headers unchanged if Authorization header is not present', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: { sessionToken: 'secret', other: 'foo' },
+				headers: { other: 'foo' },
+				auth: { user: 'user', password: 'secret' },
+			};
+			const authDataKeys = {};
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
+			expect(sanitizedRequest.headers).toEqual({ other: 'foo' });
+		});
+
+		it('should handle case when headers are undefined', () => {
+			const requestOptions: IRequestOptions = {};
+
+			const authDataKeys = {};
+			const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
+			expect(sanitizedRequest.headers).toBeUndefined();
+		});
 	});
 });
