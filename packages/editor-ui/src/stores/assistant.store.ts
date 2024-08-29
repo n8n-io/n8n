@@ -391,6 +391,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 			],
 		});
+		onDoneStreaming(id);
 	}
 
 	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
