@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import { Cipher } from 'n8n-core';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { ExternalSecretsSettings } from '@/Interfaces';
+import type { ExternalSecretsSettings } from '@/interfaces';
 import { License } from '@/license';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/external-secrets/external-secrets-providers.ee';
@@ -11,7 +11,7 @@ import {
 	ErrorProvider,
 	FailedProvider,
 	MockProviders,
-} from '@test/ExternalSecrets/utils';
+} from '@test/external-secrets/utils';
 import { mock } from 'jest-mock-extended';
 
 describe('External Secrets Manager', () => {

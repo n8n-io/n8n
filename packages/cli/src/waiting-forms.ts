@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 
-import type { IExecutionResponse } from '@/Interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
 @Service()

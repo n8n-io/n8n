@@ -13,7 +13,7 @@ import {
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';

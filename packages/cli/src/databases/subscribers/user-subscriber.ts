@@ -5,7 +5,7 @@ import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Logger } from '@/logger';
 
 import { Project } from '../entities/project';
-import { User } from '../entities/User';
+import { User } from '../entities/user';
 import { UserRepository } from '../repositories/user.repository';
 
 @EventSubscriber()

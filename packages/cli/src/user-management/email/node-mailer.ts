@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import path from 'node:path';
 import { pick } from 'lodash';
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
@@ -7,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import { Logger } from '@/logger';
-import type { MailData, SendEmailResult } from './Interfaces';
+import type { MailData, SendEmailResult } from './interfaces';
 
 @Service()
 export class NodeMailer {
@@ -45,12 +46,20 @@ export class NodeMailer {
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
 		try {
-			await this.transport?.sendMail({
+			await this.transport.sendMail({
 				from: this.sender,
 				to: mailData.emailRecipients,
 				subject: mailData.subject,
 				text: mailData.textOnly,
 				html: mailData.body,
+				attachments: [
+					{
+						cid: 'n8n-logo',
+						filename: 'n8n-logo.png',
+						path: path.resolve(__dirname, 'templates/n8n-logo.png'),
+						contentDisposition: 'inline',
+					},
+				],
 			});
 			this.logger.debug(
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,

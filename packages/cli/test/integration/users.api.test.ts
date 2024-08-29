@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -23,7 +23,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { validateUser } from './shared/utils/users';
 import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';

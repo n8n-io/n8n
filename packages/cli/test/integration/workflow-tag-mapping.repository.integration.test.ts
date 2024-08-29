@@ -1,6 +1,6 @@
 import Container from 'typedi';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
 import { createWorkflow } from './shared/db/workflows';
 import { TagRepository } from '@/databases/repositories/tag.repository';

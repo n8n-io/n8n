@@ -5,7 +5,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import type { ListQuery } from '@/requests';
 import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 
 @Service()

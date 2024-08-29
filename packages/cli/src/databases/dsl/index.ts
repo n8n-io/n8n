@@ -1,5 +1,5 @@
 import type { QueryRunner } from '@n8n/typeorm';
-import { Column } from './Column';
+import { Column } from './column';
 import {
 	AddColumns,
 	AddForeignKey,
@@ -9,8 +9,8 @@ import {
 	DropForeignKey,
 	DropNotNull,
 	DropTable,
-} from './Table';
-import { CreateIndex, DropIndex } from './Indices';
+} from './table';
+import { CreateIndex, DropIndex } from './indices';
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
 	column: (name: string) => new Column(name),

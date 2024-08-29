@@ -9,7 +9,7 @@ import { License } from '@/license';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
 import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';

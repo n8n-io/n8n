@@ -20,6 +20,8 @@ import { useDebounce } from '@/composables/useDebounce';
 import DraggableTarget from './DraggableTarget.vue';
 import { dropInEditor } from '@/plugins/codemirror/dragAndDrop';
 
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
+
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -122,8 +124,8 @@ async function onDrop(expression: string, event: MouseEvent) {
 
 <template>
 	<el-dialog
-		width="calc(100vw - var(--spacing-3xl))"
-		append-to-body
+		width="calc(100% - var(--spacing-3xl))"
+		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
