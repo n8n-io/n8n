@@ -27,6 +27,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	});
 
 	function initialize() {
+		if (pushStoreEventListenerRemovalFn.value) {
+			return;
+		}
+
 		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
 			if (event.type === 'activeWorkflowUsersChanged') {
 				console.log('Received event', event);
@@ -41,6 +45,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	function terminate() {
 		if (typeof pushStoreEventListenerRemovalFn.value === 'function') {
 			pushStoreEventListenerRemovalFn.value();
+			pushStoreEventListenerRemovalFn.value = null;
 		}
 	}
 
