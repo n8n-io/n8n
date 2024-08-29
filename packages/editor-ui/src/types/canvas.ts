@@ -9,7 +9,7 @@ import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
 import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
-import { EventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system';
 
 export type CanvasConnectionPortType = NodeConnectionType;
 

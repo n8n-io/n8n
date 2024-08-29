@@ -9,7 +9,8 @@ import type {
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import { NodeConnectionType } from 'n8n-workflow';
-import { createEventBus, EventBus } from 'n8n-design-system';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 export function createCanvasNodeData({
 	id = 'node',
