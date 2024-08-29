@@ -88,7 +88,24 @@ export function sanitizeUiMessage(
 			),
 		};
 	}
+	const HEADER_BLOCKLIST = new Set([
+		'authorization',
+		'x-api-key',
+		'x-auth-token',
+		'cookie',
+		'proxy-authorization',
+		'sslclientcert',
+	]);
 
+	const headers = sendRequest.headers as IDataObject;
+
+	if (headers) {
+		for (const headerName of Object.keys(headers)) {
+			if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
+				headers[headerName] = REDACTED;
+			}
+		}
+	}
 	if (secrets && secrets.length > 0) {
 		return redact(sendRequest, secrets);
 	}
