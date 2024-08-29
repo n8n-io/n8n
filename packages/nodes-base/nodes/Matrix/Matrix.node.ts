@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { handleMatrixCall, matrixApiRequest } from './GenericFunctions';
 
@@ -35,8 +36,8 @@ export class Matrix implements INodeType {
 		defaults: {
 			name: 'Matrix',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'matrixApi',

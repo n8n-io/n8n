@@ -1,9 +1,10 @@
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { pushcutApiRequest } from './GenericFunctions';
@@ -21,7 +22,7 @@ export class PushcutTrigger implements INodeType {
 			name: 'Pushcut Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pushcutApi',

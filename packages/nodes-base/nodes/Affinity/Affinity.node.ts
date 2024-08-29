@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { affinityApiRequest, affinityApiRequestAllItems } from './GenericFunctions';
 
@@ -34,8 +35,8 @@ export class Affinity implements INodeType {
 		defaults: {
 			name: 'Affinity',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'affinityApi',

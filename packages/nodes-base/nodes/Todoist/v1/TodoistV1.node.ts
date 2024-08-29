@@ -10,6 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { todoistApiRequest } from '../GenericFunctions';
 
@@ -42,8 +43,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Todoist',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'todoistApi',

@@ -12,7 +12,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
-import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 import type {
 	INodeProperties,
 	INodeCredentialDescription,
@@ -20,7 +20,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	ConnectionTypes,
 	INodeInputConfiguration,
 	Workflow,
 	INodeExecutionData,
@@ -342,7 +341,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 		if (nodeType && workflowNode) {
 			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 		}
@@ -571,7 +570,7 @@ export function useNodeHelpers() {
 		runIndex = 0,
 		outputIndex = 0,
 		paneType: NodePanelType = 'output',
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		//TODO: check if this needs to be fixed in different place
 		if (
@@ -617,7 +616,7 @@ export function useNodeHelpers() {
 	function getInputData(
 		connectionsData: ITaskDataConnections,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): INodeExecutionData[] {
 		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
@@ -627,7 +626,7 @@ export function useNodeHelpers() {
 		node: string | null,
 		runIndex: number,
 		outputIndex: number,
-		connectionType: ConnectionTypes = NodeConnectionType.Main,
+		connectionType: NodeConnectionType = NodeConnectionType.Main,
 	): IBinaryKeyData[] {
 		if (node === null) {
 			return [];

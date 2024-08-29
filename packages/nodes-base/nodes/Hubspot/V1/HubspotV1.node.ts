@@ -13,7 +13,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import {
@@ -58,8 +58,8 @@ export class HubspotV1 implements INodeType {
 			defaults: {
 				name: 'HubSpot',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'hubspotApi',

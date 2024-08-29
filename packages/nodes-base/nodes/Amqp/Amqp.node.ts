@@ -12,7 +12,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 async function checkIfCredentialsValid(
 	credentials: IDataObject,
@@ -65,8 +65,8 @@ export class Amqp implements INodeType {
 		defaults: {
 			name: 'AMQP Sender',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'amqp',

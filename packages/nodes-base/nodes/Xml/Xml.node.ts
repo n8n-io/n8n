@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class Xml implements INodeType {
 			name: 'XML',
 			color: '#333377',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',

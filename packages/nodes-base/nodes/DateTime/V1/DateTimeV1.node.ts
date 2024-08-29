@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -61,8 +61,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Date & Time',
 		color: '#408000',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		{
 			displayName:
