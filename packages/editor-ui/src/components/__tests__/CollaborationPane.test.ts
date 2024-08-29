@@ -104,7 +104,7 @@ describe('CollaborationPane', () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
-		// Owner is second in the store bur shourld be rendered first
+		// Owner is second in the store but should be rendered first
 		expect(firstAvatar).toHaveAttribute('data-test-id', `user-stack-avatar-${OWNER_USER.id}`);
 	});
 });
