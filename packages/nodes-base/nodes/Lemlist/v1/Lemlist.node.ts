@@ -1,70 +1,100 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
-import { VersionedNodeType } from 'n8n-workflow';
+// eslint-disable-next-line n8n-nodes-base/node-dirname-against-convention
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeTypeBaseDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
-import { LemlistV1 } from './v1/Lemlist.node';
-
-export class Lemlist implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Lemlist',
-		name: 'lemlist',
-		icon: 'file:lemlist.svg',
-		group: ['transform'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume the Lemlist API',
-		defaults: {
-			name: 'Lemlist',
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+import { lemlistApiRequest, lemlistApiRequestAllItems } from '../GenericFunctions';
+import {
+	activityFields,
+	activityOperations,
+	campaignFields,
+	campaignOperations,
+	leadFields,
+	leadOperations,
+	teamFields,
+	teamOperations,
+	unsubscribeFields,
+	unsubscribeOperations,
+} from '././descriptions';
+const versionDescription: INodeTypeDescription = {
+	displayName: 'Lemlist',
+	name: 'lemlist',
+	icon: 'file:lemlist.svg',
+	group: ['transform'],
+	version: 1,
+	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+	description: 'Consume the Lemlist API',
+	defaults: {
+		name: 'Lemlist',
+	},
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
+	credentials: [
+		{
+			name: 'lemlistApi',
+			required: true,
 		},
-		inputs: [NodeConnectionType.Main],
-		outputs: [NodeConnectionType.Main],
-		credentials: [
-			{
-				name: 'lemlistApi',
-				required: true,
-			},
-		],
-		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Activity',
-						value: 'activity',
-					},
-					{
-						name: 'Campaign',
-						value: 'campaign',
-					},
-					{
-						name: 'Lead',
-						value: 'lead',
-					},
-					{
-						name: 'Team',
-						value: 'team',
-					},
-					{
-						name: 'Unsubscribe',
-						value: 'unsubscribe',
-					},
-				],
-				default: 'activity',
-			},
-			...activityOperations,
-			...activityFields,
-			...campaignOperations,
-			...campaignFields,
-			...leadOperations,
-			...leadFields,
-			...teamOperations,
-			...teamFields,
-			...unsubscribeOperations,
-			...unsubscribeFields,
-		],
-	};
+	],
+	properties: [
+		{
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Activity',
+					value: 'activity',
+				},
+				{
+					name: 'Campaign',
+					value: 'campaign',
+				},
+				{
+					name: 'Lead',
+					value: 'lead',
+				},
+				{
+					name: 'Team',
+					value: 'team',
+				},
+				{
+					name: 'Unsubscribe',
+					value: 'unsubscribe',
+				},
+			],
+			default: 'activity',
+		},
+		...activityOperations,
+		...activityFields,
+		...campaignOperations,
+		...campaignFields,
+		...leadOperations,
+		...leadFields,
+		...teamOperations,
+		...teamFields,
+		...unsubscribeOperations,
+		...unsubscribeFields,
+	],
+};
+export class LemlistV1 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			...versionDescription,
+		};
+	}
 
 	methods = {
 		loadOptions: {
@@ -267,7 +297,7 @@ export class Lemlist implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail()) {
+				if (this.continueOnFail(error)) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
