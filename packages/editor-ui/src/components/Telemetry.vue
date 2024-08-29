@@ -9,6 +9,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useRoute } from 'vue-router';
 
 const isTelemetryInitialized = ref(false);
+const shouldRenderIframe = ref(false);
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -62,6 +63,14 @@ function init() {
 	if (isTelemetryInitialized.value || !isTelemetryEnabledOnRoute.value || !isTelemetryEnabled.value)
 		return;
 
+	const isTelemetryInitializedCrossTabs =
+		localStorage.getItem('N8N_IS_TELEMETRY_INITIALIZED') === 'true';
+
+	if (!isTelemetryInitializedCrossTabs) {
+		localStorage.setItem('N8N_IS_TELEMETRY_INITIALIZED', 'true');
+		shouldRenderIframe.value = true;
+	}
+
 	telemetryPlugin.init(telemetry.value, {
 		instanceId: rootStore.instanceId,
 		userId: currentUserId.value,
@@ -71,9 +80,18 @@ function init() {
 
 	isTelemetryInitialized.value = true;
 }
+
+function logIframeLoad() {
+	console.log('iframe loaded:', new Date().toISOString()); // @TEMP: Delete me
+}
 </script>
 
 <template>
-	<iframe v-if="isTelemetryEnabled && currentUserId" v-show="false" :src="selfInstallSrc" />
+	<iframe
+		v-if="isTelemetryEnabled && shouldRenderIframe && currentUserId"
+		v-show="false"
+		:src="selfInstallSrc"
+		@load="logIframeLoad"
+	/>
 	<span v-else v-show="false" />
 </template>
