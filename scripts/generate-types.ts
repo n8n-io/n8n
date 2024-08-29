@@ -1,13 +1,14 @@
 import {
-	ArrayLiteralExpression,
+	Block,
 	ClassDeclaration,
 	ObjectLiteralExpression,
 	Project,
-	PropertyAssignment,
 	ScriptTarget,
 	SourceFile,
 	SyntaxKind,
 } from 'ts-morph';
+
+import prettier from 'prettier';
 
 // const NODES_FOLDER_GLOBE = './packages/nodes-base/nodes/**/*.ts';
 const NODES_FOLDER_GLOBE =
@@ -24,12 +25,37 @@ const nodesFiles = project.addSourceFilesAtPaths(NODES_FOLDER_GLOBE);
 project.resolveSourceFileDependencies();
 
 //-------------------------------------------------------------------------------
+const getImports = (sourceFile: SourceFile) => {
+	sourceFile.forEachChild((child) => {
+		if (child.getKind() === SyntaxKind.ImportDeclaration) {
+			const declaration = child.asKindOrThrow(SyntaxKind.ImportDeclaration);
+			const importFile = declaration.getModuleSpecifierSourceFile();
+
+			if (importFile) {
+				const moduleSymbol = importFile.getSymbol();
+
+				if (moduleSymbol) {
+					const exportSymbols = moduleSymbol.getExports();
+					exportSymbols.forEach((symbol) => {
+						const value = symbol.getValueDeclaration();
+						if (value && value.getKind() === SyntaxKind.VariableDeclaration) {
+							const variable = value.asKindOrThrow(SyntaxKind.VariableDeclaration).getInitializer();
+							if (!variable) return;
+							console.log(variable.getText());
+						}
+					});
+				}
+			}
+		}
+	});
+};
 
 const getClasses = (sourceFiles: SourceFile[]) => {
 	const returnData: ClassDeclaration[] = [];
 
 	sourceFiles.forEach((file) => {
 		const classes = file.getClasses();
+		getImports(file);
 
 		classes.forEach((declaration) => {
 			declaration.getImplements().forEach((impl) => {
@@ -43,53 +69,117 @@ const getClasses = (sourceFiles: SourceFile[]) => {
 	return returnData;
 };
 
-const getProperties = (declaration: ClassDeclaration): Record<string, any>[] => {
-	const description = declaration.getProperty('description');
-	if (!description) return [];
+const getDescription = (declaration: ClassDeclaration): ObjectLiteralExpression => {
+	const description = declaration.getProperty('description')?.getInitializerOrThrow();
 
-	const initializer = description.getInitializer();
-	if (!initializer || !initializer.isKind(SyntaxKind.ObjectLiteralExpression)) return [];
+	if (description && description.isKind(SyntaxKind.ObjectLiteralExpression)) {
+		return description;
+	}
 
-	const propertiesProp = (initializer as ObjectLiteralExpression).getProperty('properties');
-	if (!propertiesProp || !propertiesProp.isKind(SyntaxKind.PropertyAssignment)) return [];
+	const constructor = declaration.getConstructors()[0];
+	if (!constructor) {
+		throw new Error('Could not get description, no constructor found');
+	}
 
-	const propValue = (propertiesProp as PropertyAssignment).getInitializer();
-	if (!propValue || !propValue.isKind(SyntaxKind.ArrayLiteralExpression)) return [];
+	const body = constructor.getBody() as Block | undefined;
+	if (!body) {
+		throw new Error('Could not get description, no constructor body');
+	}
 
-	const propertyObjects = (propValue as ArrayLiteralExpression).getElements();
+	const statements = body.getStatements();
+	for (const statement of statements) {
+		if (statement.isKind(SyntaxKind.ExpressionStatement)) {
+			const expression = statement.getExpression();
+			if (expression.isKind(SyntaxKind.BinaryExpression)) {
+				const value = expression.getRight();
 
-	return propertyObjects
-		.filter((element) => element.isKind(SyntaxKind.ObjectLiteralExpression))
-		.map((obj) => {
-			const result: Record<string, any> = {};
-			(obj as ObjectLiteralExpression).getProperties().forEach((prop) => {
-				if (prop.isKind(SyntaxKind.PropertyAssignment)) {
-					const propAssignment = prop as PropertyAssignment;
-					const propName = propAssignment.getName();
-					const propValue = propAssignment.getInitializer();
-					if (propValue) {
-						result[propName] = propValue.getText();
+				if (expression.getLeft().getText() === 'this.description') {
+					if (value.isKind(SyntaxKind.ObjectLiteralExpression)) {
+						return value;
 					}
+
+					throw new Error('Could not get description');
 				}
-			});
-			return result;
-		});
+			}
+		}
+	}
+
+	throw new Error('Could not get description');
 };
+
+function convertObjectLiteralToJS(node: any): any {
+	const returnData: any = {};
+
+	node.getProperties().forEach((property: any) => {
+		if (property.isKind(SyntaxKind.PropertyAssignment)) {
+			const key = property.getName();
+			const valueNode = property.getInitializer();
+			const value = evaluateNode(valueNode);
+			returnData[key] = value;
+		}
+	});
+
+	return returnData;
+}
+
+function evaluateNode(node: any): any {
+	if (node.isKind(SyntaxKind.StringLiteral)) {
+		return node.getLiteralValue();
+	} else if (node.isKind(SyntaxKind.NumericLiteral)) {
+		return Number(node.getText());
+	} else if (node.isKind(SyntaxKind.TrueKeyword)) {
+		return true;
+	} else if (node.isKind(SyntaxKind.FalseKeyword)) {
+		return false;
+	} else if (node.isKind(SyntaxKind.ObjectLiteralExpression)) {
+		return convertObjectLiteralToJS(node);
+	} else if (node.isKind(SyntaxKind.ArrayLiteralExpression)) {
+		return node.getElements().map((element: any) => evaluateNode(element));
+	}
+	// Add more cases as needed for other types of literals
+	return undefined;
+}
+
+const getProperties = (description: ObjectLiteralExpression): Record<string, any>[] => {
+	const properties = description.getProperty('properties');
+
+	if (properties && properties.isKind(SyntaxKind.PropertyAssignment)) {
+		const propertiesValue = properties.getInitializer();
+
+		if (propertiesValue && propertiesValue.isKind(SyntaxKind.ArrayLiteralExpression)) {
+			return propertiesValue
+				.getElements()
+				.filter((element) => element.isKind(SyntaxKind.ObjectLiteralExpression))
+				.map((node) => convertObjectLiteralToJS(node));
+		}
+	}
+
+	return [];
+};
+
+// ----------------------------------------------------------------------------
 
 const propInfo: string[] = [];
 const classes = getClasses(nodesFiles);
 
 classes.forEach((declaration) => {
-	const propertyObjects = getProperties(declaration);
+	const description = getDescription(declaration);
+	const propertyObjects = getProperties(description);
 
-	propInfo.push(
-		`Class ${declaration.getName()} has properties: ${JSON.stringify(propertyObjects)}`,
-	);
+	propInfo.push(`const ${declaration.getName()}Type = ${JSON.stringify(propertyObjects)};`);
 });
 
-const targetFile = project.createSourceFile(TARGET_FILE, propInfo.join('\n'), { overwrite: true });
-
-targetFile.saveSync();
+prettier
+	.format(propInfo.join('\n'), {
+		parser: 'typescript',
+		useTabs: true,
+		tabWidth: 2,
+		singleQuote: true,
+	})
+	.then((formatedCode) => {
+		const targetFile = project.createSourceFile(TARGET_FILE, formatedCode, { overwrite: true });
+		targetFile.saveSync();
+	});
 
 // END ------------------------------------------------------------------------------
 console.log('Nodes types generated');
