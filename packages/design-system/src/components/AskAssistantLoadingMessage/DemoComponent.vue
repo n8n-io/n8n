@@ -37,7 +37,6 @@ const startMessageRotation = () => {
 onMounted(() => {
 	startMessageRotation();
 });
-
 </script>
 
 <template>
