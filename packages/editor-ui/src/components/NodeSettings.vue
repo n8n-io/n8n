@@ -78,7 +78,7 @@ const emit = defineEmits<{
 	redrawRequired: [];
 	valueChanged: [value: IUpdateInformation];
 	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
+	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
 	activate: [];
 	execute: [];
 }>();
@@ -601,7 +601,7 @@ const onSwitchSelectedNode = (node: string) => {
 	emit('switchSelectedNode', node);
 };
 
-const onOpenConnectionNodeCreator = (nodeName: string, connectionType: ConnectionTypes) => {
+const onOpenConnectionNodeCreator = (nodeName: string, connectionType: NodeConnectionType) => {
 	emit('openConnectionNodeCreator', nodeName, connectionType);
 };
 
