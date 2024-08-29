@@ -46,7 +46,6 @@ export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 		this.logger.debug('Received message from editor-UI', { pushRef, msg });
 
 		const userId = this.userIdByPushRef[pushRef];
-		console.log('onMessageReceived', pushRef, msg, userId);
 
 		this.emit('message', { pushRef, userId, msg });
 	}
