@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`CanvasHandleDiamond > should render with default props 1`] = `
-"<svg class="wrapper right" viewBox="0 0 70 24">
+"<svg class="wrapper right" viewBox="0 0 70 24" style="width: 70px; height: 24px;">
   <line class="" x1="0" y1="12" x2="47" y2="12" stroke="var(--color-foreground-xdark)" stroke-width="2"></line>
   <g class="plus clickable" transform="translate(46, 0)">
     <rect class="clickable" x="2" y="2" width="20" height="20" stroke="var(--color-foreground-xdark)" stroke-width="2" rx="4" fill="#ffffff"></rect>
