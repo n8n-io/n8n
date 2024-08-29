@@ -104,12 +104,10 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	url?: string,
-	headers: IDataObject = {},
-): Promise<any> {
+): Promise<IDataObject> {
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -121,14 +119,15 @@ export async function googleApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
-		if (Object.keys(body as IDataObject).length === 0) {
+		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
 
-		return await this.helpers.requestOAuth2.call(this, 'googleMyBusinessOAuth2Api', options);
+		return (await this.helpers.requestOAuth2.call(
+			this,
+			'googleMyBusinessOAuth2Api',
+			options,
+		)) as IDataObject;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -139,19 +138,19 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+	pageSize: number = 100,
+	url?: string,
+): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
-
 	let responseData;
-	query.pageSize = 100;
+	query.pageSize = pageSize;
 
 	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query, url);
 		query.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		returnData.push(...(responseData[propertyName] as IDataObject[]));
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

@@ -29,7 +29,6 @@ export class GoogleMyBusiness implements INodeType {
 				required: true,
 			},
 		],
-		// ToDo: Test the requests
 		requestDefaults: {
 			baseURL: 'https://mybusiness.googleapis.com/v4',
 			headers: {
@@ -63,12 +62,52 @@ export class GoogleMyBusiness implements INodeType {
 	};
 
 	methods = {
-		// ToDo: Test the loadOptions functions
 		loadOptions: {
+			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const accounts = await googleApiRequestAllItems.call(
+					this,
+					'accounts',
+					'GET',
+					'',
+					{},
+					{},
+					100,
+					'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+				);
+				for (const account of accounts) {
+					returnData.push({
+						name: account.name as string,
+						value: account.name as string,
+					});
+				}
+				return returnData;
+			},
+			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const account = this.getNodeParameter('account') as string;
+				const locations = await googleApiRequestAllItems.call(
+					this,
+					'accounts',
+					'GET',
+					'',
+					{},
+					{},
+					100,
+					`https://mybusinessaccountmanagement.googleapis.com/v1/${account}/locations`,
+				);
+				for (const location of locations) {
+					returnData.push({
+						name: location.name as string,
+						value: location.name as string,
+					});
+				}
+				return returnData;
+			},
 			async getPosts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const account = this.getNodeParameter('account');
-				const location = this.getNodeParameter('location');
+				const account = this.getNodeParameter('account') as string;
+				const location = this.getNodeParameter('location') as string;
 				const posts = await googleApiRequestAllItems.call(
 					this,
 					'localPosts',
@@ -77,26 +116,29 @@ export class GoogleMyBusiness implements INodeType {
 				);
 				for (const post of posts) {
 					returnData.push({
-						name: post.name,
-						value: post.name,
+						name: post.name as string,
+						value: post.name as string,
 					});
 				}
 				return returnData;
 			},
 			async getReviews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const account = this.getNodeParameter('account');
-				const location = this.getNodeParameter('location');
+				const account = this.getNodeParameter('account') as string;
+				const location = this.getNodeParameter('location') as string;
 				const reviews = await googleApiRequestAllItems.call(
 					this,
 					'reviews',
 					'GET',
 					`/${account}/${location}/reviews`,
+					{},
+					{},
+					50,
 				);
 				for (const review of reviews) {
 					returnData.push({
-						name: review.name,
-						value: review.name,
+						name: review.name as string,
+						value: review.name as string,
 					});
 				}
 				return returnData;
