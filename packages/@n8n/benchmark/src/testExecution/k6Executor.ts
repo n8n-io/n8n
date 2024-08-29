@@ -45,7 +45,7 @@ export function handleSummary(data) {
 		const augmentedTestScriptPath = this.augmentSummaryScript(scenario, scenarioRunName);
 		const runDirPath = path.dirname(augmentedTestScriptPath);
 
-		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '1m'], ['--vus', '5']];
+		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '3m'], ['--vus', '5']];
 
 		if (this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
