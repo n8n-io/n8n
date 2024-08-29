@@ -6,6 +6,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useCanvasMapping } from '@/composables/useCanvasMapping';
 import type { EventBus } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system';
+import type { CanvasEventBusEvents } from '@/types';
 import { STICKY_NODE_TYPE } from '@/constants';
 
 defineOptions({
@@ -18,12 +19,12 @@ const props = withDefaults(
 		workflow: IWorkflowDb;
 		workflowObject: Workflow;
 		fallbackNodes?: IWorkflowDb['nodes'];
-		eventBus?: EventBus;
+		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
 	}>(),
 	{
 		id: 'canvas',
-		eventBus: () => createEventBus(),
+		eventBus: () => createEventBus<CanvasEventBusEvents>(),
 		fallbackNodes: () => [],
 	},
 );
