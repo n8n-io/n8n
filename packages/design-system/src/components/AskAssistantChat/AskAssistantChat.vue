@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
+import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import CodeDiff from '../CodeDiff/CodeDiff.vue';
 import type { ChatUI } from '../../types/assistant';
 import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
@@ -33,6 +34,7 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	loadingMessage?: string;
 }
 
 const emit = defineEmits<{
@@ -221,8 +223,14 @@ function growInput() {
 					</div>
 				</div>
 			</div>
-
-			<div v-else :class="$style.placeholder" data-test-id="placeholder-message">
+			<div v-if="loadingMessage" :class="$style.messages">
+				<AssistantLoadingMessage :message="loadingMessage" />
+			</div>
+			<div
+				v-else-if="!messages?.length && !loadingMessage"
+				:class="$style.placeholder"
+				data-test-id="placeholder-message"
+			>
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
 					<p>
@@ -323,6 +331,10 @@ p {
 
 .messages {
 	padding: var(--spacing-xs);
+
+	& + & {
+		padding-top: 0;
+	}
 }
 
 .message {
