@@ -73,6 +73,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		keyBindings?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -81,6 +82,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		keyBindings: true,
 	},
 );
 
@@ -101,27 +103,36 @@ const {
 	findNode,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
-useKeybindings({
-	ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
-	ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
-	'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
-	ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
-	d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
-	p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
-	enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
-	f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
-	tab: () => emit('create:node', 'tab'),
-	shift_s: () => emit('create:sticky'),
-	ctrl_alt_n: () => emit('create:workflow'),
-	ctrl_enter: () => emit('run:workflow'),
-	ctrl_s: () => emit('save:workflow'),
-	ctrl_a: () => addSelectedNodes(graphNodes.value),
-	'+|=': async () => await onZoomIn(),
-	'-|_': async () => await onZoomOut(),
-	0: async () => await onResetZoom(),
-	1: async () => await onFitView(),
-	// @TODO implement arrow key shortcuts to modify selection
-});
+/**
+ * Key bindings
+ */
+
+const disableKeyBindings = computed(() => !props.keyBindings);
+
+useKeybindings(
+	{
+		ctrl_c: emitWithSelectedNodes((ids) => emit('copy:nodes', ids)),
+		ctrl_x: emitWithSelectedNodes((ids) => emit('cut:nodes', ids)),
+		'delete|backspace': emitWithSelectedNodes((ids) => emit('delete:nodes', ids)),
+		ctrl_d: emitWithSelectedNodes((ids) => emit('duplicate:nodes', ids)),
+		d: emitWithSelectedNodes((ids) => emit('update:nodes:enabled', ids)),
+		p: emitWithSelectedNodes((ids) => emit('update:nodes:pin', ids, 'keyboard-shortcut')),
+		enter: emitWithLastSelectedNode((id) => onSetNodeActive(id)),
+		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
+		tab: () => emit('create:node', 'tab'),
+		shift_s: () => emit('create:sticky'),
+		ctrl_alt_n: () => emit('create:workflow'),
+		ctrl_enter: () => emit('run:workflow'),
+		ctrl_s: () => emit('save:workflow'),
+		ctrl_a: () => addSelectedNodes(graphNodes.value),
+		'+|=': async () => await onZoomIn(),
+		'-|_': async () => await onZoomOut(),
+		0: async () => await onResetZoom(),
+		1: async () => await onFitView(),
+		// @TODO implement arrow key shortcuts to modify selection
+	},
+	{ disabled: disableKeyBindings },
+);
 
 const contextMenu = useContextMenu();
 
