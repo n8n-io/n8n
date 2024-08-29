@@ -16,6 +16,8 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
+const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+
 function onResize(data: { direction: string; x: number; width: number }) {
 	assistantStore.updateWindowWidth(data.width);
 }
@@ -84,6 +86,7 @@ function onClose() {
 					:user="user"
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"
+					:loading-message="loadingMessage"
 					@close="onClose"
 					@message="onUserMessage"
 					@code-replace="onCodeReplace"

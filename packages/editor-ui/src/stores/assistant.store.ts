@@ -64,6 +64,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
 	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
+	// This is used to show a message when the assistant is performing intermediate steps
+	// We use streaming for assistants that support it, and this for agents
+	const assistantThinkingMessage = ref<string | undefined>();
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -142,6 +145,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
+		assistantThinkingMessage.value = undefined;
 		// TODO: simplify
 		assistantMessages.forEach((msg) => {
 			if (msg.type === 'message') {
@@ -193,13 +197,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					read,
 				});
 			} else if (msg.type === 'thinking-step') {
-				messages.push({
-					id,
-					type: 'text',
-					role: 'assistant',
-					content: locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`),
-					read,
-				});
+				assistantThinkingMessage.value = locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`);
 			}
 		});
 		chatMessages.value = messages;
@@ -236,14 +234,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function addLoadingAssistantMessage(id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'text',
-			content: locale.baseText('aiAssistant.thinkingSteps.initial'),
-			read: false,
-		});
+	function addLoadingAssistantMessage(message: string) {
+		assistantThinkingMessage.value = message;
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -326,7 +318,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		addLoadingAssistantMessage(id);
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
 		streaming.value = true;
@@ -361,7 +353,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(currentSessionId.value);
 
 		const id = getRandomId();
-		addLoadingAssistantMessage(id);
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 		chatWithAssistant(
 			rootStore.restApiContext,
@@ -437,7 +429,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		try {
 			addUserMessage(chatMessage.text, id);
-			addLoadingAssistantMessage(id);
+			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 
 			streaming.value = true;
 			assert(currentSessionId.value);
@@ -607,5 +599,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat,
 		chatWindowOpen,
 		addAssistantMessages,
+		assistantThinkingMessage,
 	};
 });
