@@ -7,7 +7,7 @@ import { Logger } from '@/logger';
 import type { PushDataExecutionRecovered } from '@/interfaces';
 
 import { mockInstance } from '@test/mocking';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 
 jest.useFakeTimers();
 

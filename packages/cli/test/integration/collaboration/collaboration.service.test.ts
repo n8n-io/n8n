@@ -4,14 +4,14 @@ import { CacheService } from '@/services/cache/cache.service';
 import { mock } from 'jest-mock-extended';
 import * as testDb from '../shared/test-db';
 import Container from 'typedi';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
 import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { mockInstance } from '@test/mocking';
 import { UserService } from '@/services/user.service';
 
