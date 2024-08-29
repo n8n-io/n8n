@@ -96,6 +96,7 @@ import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -127,6 +128,7 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
+const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -252,6 +254,8 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
+
+		collaborationStore.notifyWorkflowOpened(workflowId.value);
 	} catch (error) {
 		toast.showError(
 			error,
@@ -1419,6 +1423,7 @@ watch(
 onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
+		collaborationStore.initialize();
 	}
 });
 
@@ -1472,6 +1477,7 @@ onBeforeUnmount(() => {
 
 onDeactivated(() => {
 	removeBeforeUnloadEventBindings();
+	collaborationStore.terminate();
 });
 </script>
 

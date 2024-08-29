@@ -278,7 +278,13 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
-	| PushDataWorkflowFailedToActivate;
+	| PushDataWorkflowFailedToActivate
+	| PushDataActiveWorkflowUsersChanged;
+
+type PushDataActiveWorkflowUsersChanged = {
+	data: IActiveWorkflowUsersChanged;
+	type: 'activeWorkflowUsersChanged';
+};
 
 type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
@@ -349,6 +355,19 @@ export type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+/** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
+export type Iso8601DateTimeString = string;
+
+export interface IActiveWorkflowUser {
+	user: PublicUser;
+	lastSeen: Iso8601DateTimeString;
+}
+
+export interface IActiveWorkflowUsersChanged {
+	workflowId: Workflow['id'];
+	activeUsers: IActiveWorkflowUser[];
+}
 
 export interface IActiveWorkflowAdded {
 	workflowId: Workflow['id'];
