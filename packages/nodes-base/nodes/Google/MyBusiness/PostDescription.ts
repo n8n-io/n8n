@@ -178,10 +178,9 @@ export const postFields: INodeProperties[] = [
 						description: 'This post wants a user to book an appointment/table/etc',
 					},
 					{
-						name: 'Get Offer',
-						value: 'GET_OFFER',
-						description:
-							'Deprecated. Use OFFER in LocalPostTopicType to create a post with offer content.',
+						name: 'Call',
+						value: 'CALL',
+						description: 'This post wants a user to call the business',
 					},
 					{
 						name: 'Learn More',
