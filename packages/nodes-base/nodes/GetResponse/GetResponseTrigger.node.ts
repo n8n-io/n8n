@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
@@ -26,7 +26,7 @@ export class GetResponseTrigger implements INodeType {
 			name: 'GetResponse Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'getResponseApi',

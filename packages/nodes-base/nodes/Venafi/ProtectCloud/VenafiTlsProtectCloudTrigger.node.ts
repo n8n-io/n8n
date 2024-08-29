@@ -1,11 +1,12 @@
-import type {
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeConnectionType,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { venafiApiRequest } from './GenericFunctions';
@@ -36,7 +37,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			},
 		],
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options

@@ -1,7 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock, mockClear } from 'vitest-mock-extended';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type INode,
+	type INodeTypeDescription,
+	type Workflow,
+} from 'n8n-workflow';
 
 import { useNodeBase } from '@/composables/useNodeBase';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -16,8 +21,8 @@ describe('useNodeBase', () => {
 
 	const jsPlumbInstance = mock<BrowserJsPlumbInstance>();
 	const nodeTypeDescription = mock<INodeTypeDescription>({
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 	});
 	const workflowObject = mock<Workflow>();
 	const node = mock<INode>();

@@ -8,7 +8,13 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
@@ -23,8 +29,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Discord',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		oldVersionNotice,
 		{

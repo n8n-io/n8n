@@ -1,12 +1,13 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeListSearchItems,
-	INodeListSearchResult,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeListSearchItems,
+	type INodeListSearchResult,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
@@ -23,8 +24,8 @@ export class AwsSns implements INodeType {
 		defaults: {
 			name: 'AWS SNS',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'aws',

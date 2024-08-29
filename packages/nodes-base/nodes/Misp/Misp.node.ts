@@ -1,10 +1,11 @@
-import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -55,8 +56,8 @@ export class Misp implements INodeType {
 		defaults: {
 			name: 'MISP',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mispApi',

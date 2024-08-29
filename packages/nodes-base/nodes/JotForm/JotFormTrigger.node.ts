@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	MultiPartFormData,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
 
@@ -31,7 +31,7 @@ export class JotFormTrigger implements INodeType {
 			name: 'JotForm Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'jotFormApi',

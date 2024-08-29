@@ -7,7 +7,6 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
-	ConnectionTypes,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -319,7 +318,7 @@ export default defineComponent({
 		onSwitchSelectedNode(node: string) {
 			this.$emit('switchSelectedNode', node);
 		},
-		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+		onOpenConnectionNodeCreator(node: string, connectionType: NodeConnectionType) {
 			this.$emit('openConnectionNodeCreator', node, connectionType);
 		},
 		populateHiddenIssuesSet() {

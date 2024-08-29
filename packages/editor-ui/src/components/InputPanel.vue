@@ -11,7 +11,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
-	ConnectionTypes,
 	IConnectedNode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
@@ -121,10 +120,10 @@ export default defineComponent({
 			} else {
 				// If we can not figure out the node type we set no outputs
 				if (!Array.isArray(inputs)) {
-					inputs = [] as ConnectionTypes[];
+					inputs = [] as NodeConnectionType[];
 				}
 				if (!Array.isArray(outputs)) {
-					outputs = [] as ConnectionTypes[];
+					outputs = [] as NodeConnectionType[];
 				}
 			}
 
@@ -184,7 +183,7 @@ export default defineComponent({
 		},
 		rootNodesParents() {
 			const workflow = this.workflow;
-			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')]
+			const parentNodes = [...workflow.getParentNodes(this.rootNode, NodeConnectionType.Main)]
 				.reverse()
 				.map((parent): IConnectedNode => ({ name: parent, depth: 1, indicies: [] }));
 
@@ -274,8 +273,8 @@ export default defineComponent({
 	},
 	methods: {
 		filterOutConnectionType(
-			item: ConnectionTypes | INodeOutputConfiguration | INodeInputConfiguration,
-			type: ConnectionTypes,
+			item: NodeConnectionType | INodeOutputConfiguration | INodeInputConfiguration,
+			type: NodeConnectionType,
 		) {
 			if (!item) return false;
 

@@ -55,7 +55,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
@@ -1502,7 +1502,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, 'main');
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;

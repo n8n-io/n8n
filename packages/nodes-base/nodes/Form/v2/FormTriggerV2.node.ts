@@ -1,10 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	INodeProperties,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	IWebhookFunctions,
+import {
+	NodeConnectionType,
+	type INodeProperties,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
 } from 'n8n-workflow';
 
 import { formWebhook } from '../utils';
@@ -39,7 +40,7 @@ const descriptionV2: INodeTypeDescription = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	webhooks: [
 		{
 			name: 'setup',

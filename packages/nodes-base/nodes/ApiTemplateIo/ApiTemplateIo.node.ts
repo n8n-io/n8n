@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -28,8 +28,8 @@ export class ApiTemplateIo implements INodeType {
 		defaults: {
 			name: 'APITemplate.io',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'apiTemplateIoApi',

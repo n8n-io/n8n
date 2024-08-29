@@ -10,7 +10,7 @@ import type {
 	IDeferredPromise,
 	IRun,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +24,7 @@ export class AmqpTrigger implements INodeType {
 			name: 'AMQP Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'amqp',

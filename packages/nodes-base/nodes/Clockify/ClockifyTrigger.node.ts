@@ -9,6 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { clockifyApiRequest } from './GenericFunctions';
 
@@ -28,7 +29,7 @@ export class ClockifyTrigger implements INodeType {
 			name: 'Clockify Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',

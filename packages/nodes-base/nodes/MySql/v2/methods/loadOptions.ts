@@ -19,7 +19,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		const columns = (
 			await connection.query(
 				`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)} FROM ${escapeSqlIdentifier(
-					credentials.database as string,
+					credentials.database,
 				)}`,
 			)
 		)[0] as IDataObject[];

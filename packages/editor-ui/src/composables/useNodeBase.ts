@@ -10,7 +10,6 @@ import {
 
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type {
-	ConnectionTypes,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
@@ -57,8 +56,8 @@ export function useNodeBase({
 
 	const nodeId = computed<string>(() => data.value?.id ?? '');
 
-	const inputs = ref<Array<ConnectionTypes | INodeInputConfiguration>>([]);
-	const outputs = ref<Array<ConnectionTypes | INodeOutputConfiguration>>([]);
+	const inputs = ref<Array<NodeConnectionType | INodeInputConfiguration>>([]);
+	const outputs = ref<Array<NodeConnectionType | INodeOutputConfiguration>>([]);
 
 	const createAddInputEndpointSpec = (
 		connectionName: NodeConnectionType,
@@ -139,7 +138,7 @@ export function useNodeBase({
 				inputConfiguration = value;
 			}
 
-			const inputName: ConnectionTypes = inputConfiguration.type;
+			const inputName: NodeConnectionType = inputConfiguration.type;
 
 			const rootCategoryInputName =
 				inputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
@@ -366,7 +365,7 @@ export function useNodeBase({
 		outputs.value.forEach((_value, i) => {
 			const outputConfiguration = outputConfigurations[i];
 
-			const outputName: ConnectionTypes = outputConfiguration.type;
+			const outputName: NodeConnectionType = outputConfiguration.type;
 
 			const rootCategoryOutputName =
 				outputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
@@ -536,12 +535,12 @@ export function useNodeBase({
 		addOutputEndpoints(node, nodeTypeData);
 	}
 
-	function getEndpointColor(connectionType: ConnectionTypes) {
+	function getEndpointColor(connectionType: NodeConnectionType) {
 		return `--node-type-${connectionType}-color`;
 	}
 
 	function getInputConnectionStyle(
-		connectionType: ConnectionTypes,
+		connectionType: NodeConnectionType,
 		nodeTypeData: INodeTypeDescription,
 	): EndpointOptions {
 		if (connectionType === NodeConnectionType.Main) {
@@ -559,7 +558,7 @@ export function useNodeBase({
 		}
 
 		const createSupplementalConnectionType = (
-			connectionName: ConnectionTypes,
+			connectionName: NodeConnectionType,
 		): EndpointOptions => ({
 			endpoint: createAddInputEndpointSpec(
 				connectionName as NodeConnectionType,
@@ -571,12 +570,12 @@ export function useNodeBase({
 	}
 
 	function getOutputConnectionStyle(
-		connectionType: ConnectionTypes,
+		connectionType: NodeConnectionType,
 		outputConfiguration: INodeOutputConfiguration,
 		nodeTypeData: INodeTypeDescription,
 	): EndpointOptions {
 		const createSupplementalConnectionType = (
-			connectionName: ConnectionTypes,
+			connectionName: NodeConnectionType,
 		): EndpointOptions => ({
 			endpoint: createDiamondOutputEndpointSpec(),
 			paintStyle: NodeViewUtils.getOutputEndpointStyle(

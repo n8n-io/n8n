@@ -12,7 +12,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
 import { formatPrivateKey } from '@utils/utilities';
@@ -28,8 +28,8 @@ export class RabbitMQ implements INodeType {
 		defaults: {
 			name: 'RabbitMQ',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'rabbitmq',
