@@ -38,6 +38,7 @@ import {
 	setAgentOptions,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
+import { HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1343,7 +1344,10 @@ export class HttpRequestV3 implements INodeType {
 			);
 
 			if (provideSslCertificates) {
-				sslCertificates = await this.getCredentials('httpSslAuth', itemIndex);
+				sslCertificates = (await this.getCredentials(
+					'httpSslAuth',
+					itemIndex,
+				)) as HttpSslAuthCredentials;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;

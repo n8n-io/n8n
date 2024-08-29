@@ -10,7 +10,12 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { omit } from 'lodash';
-import type { AddressFixedCollection, LoadedUser, RolesParameter } from './types';
+import type {
+	AddressFixedCollection,
+	FreshserviceCredentials,
+	LoadedUser,
+	RolesParameter,
+} from './types';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -19,7 +24,9 @@ export async function freshserviceApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain } = await this.getCredentials('freshserviceApi');
+	const { apiKey, domain } = (await this.getCredentials(
+		'freshserviceApi',
+	)) as FreshserviceCredentials;
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
 	const options: IRequestOptions = {
