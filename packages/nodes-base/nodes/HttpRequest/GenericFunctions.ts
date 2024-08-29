@@ -88,11 +88,22 @@ export function sanitizeUiMessage(
 			),
 		};
 	}
+	const HEADER_BLOCKLIST = new Set([
+		'authorization',
+		'x-api-key',
+		'x-auth-token',
+		'cookie',
+		'proxy-authorization',
+		'sslclientcert',
+	]);
+
 	const headers = sendRequest.headers as IDataObject;
+
 	if (headers) {
-		const headerKey = Object.keys(headers).find((key) => key.toLowerCase() === 'authorization');
-		if (headerKey) {
-			headers[headerKey] = REDACTED;
+		for (const headerName of Object.keys(headers)) {
+			if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
+				headers[headerName] = REDACTED;
+			}
 		}
 	}
 	if (secrets && secrets.length > 0) {
