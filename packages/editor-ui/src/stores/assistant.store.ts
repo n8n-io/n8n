@@ -455,6 +455,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
+			telemetry.track('User sent message in Assistant', {
+				message: chatMessage.text,
+				is_quick_reply: !!chatMessage.quickReplyType,
+				chat_session_id: currentSessionId.value,
+				message_number: chatMessages.value.filter((msg) => msg.role === 'user').length,
+			});
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id);
