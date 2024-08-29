@@ -3,7 +3,7 @@ import omit from 'lodash/omit';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
 
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
@@ -194,7 +194,7 @@ export class EnterpriseWorkflowService {
 
 		nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 			if (isTamperingAttempt(node.id)) {
-				this.logger.verbose('Blocked workflow update due to tampering attempt', {
+				this.logger.warn('Blocked workflow update due to tampering attempt', {
 					nodeType: node.type,
 					nodeName: node.name,
 					nodeId: node.id,

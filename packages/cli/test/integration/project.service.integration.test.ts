@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { ProjectService } from '@/services/project.service';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';

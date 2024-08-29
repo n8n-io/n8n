@@ -4,7 +4,7 @@ import type { WorkflowStatistics } from '@/databases/entities/workflow-statistic
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import type { IWorkflowStatisticsDataLoaded } from '@/Interfaces';
+import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { StatisticsRequest } from './workflow-statistics.types';
@@ -40,7 +40,7 @@ export class WorkflowStatisticsController {
 		if (workflow) {
 			next();
 		} else {
-			this.logger.verbose('User attempted to read a workflow without permissions', {
+			this.logger.warn('User attempted to read a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});

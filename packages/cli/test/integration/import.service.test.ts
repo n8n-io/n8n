@@ -10,7 +10,7 @@ import { TagEntity } from '@/databases/entities/tag-entity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 import { createMember, createOwner } from './shared/db/users';
 import {
@@ -20,7 +20,7 @@ import {
 	newWorkflow,
 } from './shared/db/workflows';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Project } from '@/databases/entities/project';
 import { getPersonalProject } from './shared/db/projects';
 

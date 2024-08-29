@@ -8,7 +8,7 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { RunningMode, SyncStatus } from '@/databases/entities/auth-provider-sync-history';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { Logger } from '@/logger';

@@ -5,7 +5,7 @@ import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/logger';
 import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 import { EventService } from '@/events/event.service';
 
 type WorkflowStatisticsEvents = {
@@ -90,7 +90,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				}
 			}
 		} catch (error) {
-			this.logger.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow success telemetry event');
 		}
 	}
 

@@ -1,4 +1,4 @@
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import type { Workflow } from 'n8n-workflow';
 import { ApplicationError } from 'n8n-workflow';
 

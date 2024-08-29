@@ -9,7 +9,7 @@ import {
 	type ITaskData,
 	type IWorkflowBase,
 } from 'n8n-workflow';
-import type { IExecutionResponse } from '@/Interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 
 mockInstance(Logger);
 

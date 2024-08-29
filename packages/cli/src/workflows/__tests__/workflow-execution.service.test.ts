@@ -2,7 +2,7 @@ import type { INode } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 

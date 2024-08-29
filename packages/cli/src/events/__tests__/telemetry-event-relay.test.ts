@@ -3,7 +3,7 @@ import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
 import { EventService } from '@/events/event.service';
 import config from '@/config';
 import type { IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import type { Telemetry } from '@/telemetry';
 import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
@@ -33,6 +33,7 @@ describe('TelemetryEventRelay', () => {
 				includeApiEndpoints: false,
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
+				includeQueueMetrics: false,
 			},
 		},
 	});
@@ -948,6 +949,7 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_routes: false,
 						metrics_category_cache: false,
 						metrics_category_logs: false,
+						metrics_category_queue: false,
 					},
 				}),
 			);

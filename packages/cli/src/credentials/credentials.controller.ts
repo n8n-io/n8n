@@ -23,7 +23,7 @@ import {
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserManagementMailer } from '@/user-management/email';
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
@@ -218,7 +218,7 @@ export class CredentialsController {
 		// Remove the encrypted data as it is not needed in the frontend
 		const { data: _, ...rest } = responseData;
 
-		this.logger.verbose('Credential updated', { credentialId });
+		this.logger.debug('Credential updated', { credentialId });
 
 		this.eventService.emit('credentials-updated', {
 			user: req.user,

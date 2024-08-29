@@ -202,6 +202,11 @@ export async function parseRawEmail(
 		headers,
 		headerLines: undefined,
 		attachments: undefined,
+		// Having data in IDataObjects that is not representable in JSON leads to
+		// inconsistencies between test executions and production executions.
+		// During a manual execution this would be stringified and during a
+		// production execution the next node would receive a date instance.
+		date: responseData.date ? responseData.date.toISOString() : responseData.date,
 	}) as IDataObject;
 
 	return {

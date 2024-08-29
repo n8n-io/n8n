@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
@@ -96,7 +96,7 @@ export class WorkflowService {
 		]);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to update a workflow without permissions', {
+			this.logger.warn('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -120,7 +120,7 @@ export class WorkflowService {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			workflowUpdateData.versionId = uuid();
-			this.logger.verbose(
+			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: workflow.versionId,

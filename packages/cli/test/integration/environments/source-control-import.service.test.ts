@@ -6,7 +6,7 @@ import { Cipher } from 'n8n-core';
 import { nanoid } from 'nanoid';
 import type { InstanceSettings } from 'n8n-core';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { SourceControlImportService } from '@/environments/source-control/source-control-import.service.ee';
 import { createMember, getGlobalOwner } from '../shared/db/users';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';

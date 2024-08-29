@@ -2,10 +2,10 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import axios from 'axios';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import * as ResponseHelper from '@/response-helper';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import type { IWorkflowResponse } from '@/Interfaces';
+import type { IWorkflowResponse } from '@/interfaces';
 import config from '@/config';
 import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
@@ -27,7 +27,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
-import { UserOnboardingService } from '@/services/userOnboarding.service';
+import { UserOnboardingService } from '@/services/user-onboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { WorkflowRequest } from './workflow.request';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
@@ -309,7 +309,7 @@ export class WorkflowsController {
 		);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to access a workflow without permissions', {
+			this.logger.warn('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -362,7 +362,7 @@ export class WorkflowsController {
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
-			this.logger.verbose('User attempted to delete a workflow without permissions', {
+			this.logger.warn('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});

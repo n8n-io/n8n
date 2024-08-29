@@ -1,7 +1,7 @@
 import { Project, type ProjectType } from '@/databases/entities/project';
 import { ProjectRelation } from '@/databases/entities/project-relation';
 import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import

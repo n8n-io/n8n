@@ -6,7 +6,7 @@ import glob from 'fast-glob';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { BaseCommand } from '../base-command';
@@ -15,7 +15,7 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/project';
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';

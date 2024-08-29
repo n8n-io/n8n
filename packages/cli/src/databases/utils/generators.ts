@@ -1,6 +1,6 @@
 import { customAlphabet } from 'nanoid';
 import { ALPHABET } from 'n8n-workflow';
-import type { N8nInstanceType } from '@/Interfaces';
+import type { N8nInstanceType } from '@/interfaces';
 
 const nanoid = customAlphabet(ALPHABET, 16);
 
