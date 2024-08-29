@@ -28,7 +28,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
-import { BaseTextKey } from '@/plugins/i18n';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -380,7 +379,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			role: 'assistant',
 			type: 'text',
 			content: locale.baseText('aiAssistant.feedback.nodeError'),
-			read: true,
+			read: false,
 			quickReplies: [
 				{
 					text: locale.baseText('generic.yes'),
@@ -434,6 +433,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			streaming.value = true;
 			assert(currentSessionId.value);
+			if (
+				chatMessage.quickReplyType === 'new-suggestion' &&
+				nodeExecutionStatus.value !== 'not_executed'
+			) {
+				nodeExecutionStatus.value = 'not_executed';
+			}
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
