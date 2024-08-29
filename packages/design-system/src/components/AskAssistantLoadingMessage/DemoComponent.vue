@@ -8,7 +8,7 @@ import Notice from '../N8nNotice/Notice.vue';
  * It should be only used in the storybook.
  */
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
 		animationType?: 'vertical' | 'horizontal';
 	}>(),
@@ -37,6 +37,7 @@ const startMessageRotation = () => {
 onMounted(() => {
 	startMessageRotation();
 });
+
 </script>
 
 <template>
