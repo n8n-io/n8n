@@ -164,8 +164,6 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-const updateFields: INodeProperties[] = [...insertFields];
-
 export const VectorStorePGVector = createVectorStoreNode({
 	meta: {
 		description: 'Work with your data in Postgresql with the PGVector extension',
@@ -181,13 +179,12 @@ export const VectorStorePGVector = createVectorStoreNode({
 				testedBy: 'postgresConnectionTest',
 			},
 		],
-		operationModes: ['load', 'insert', 'retrieve', 'update'],
+		operationModes: ['load', 'insert', 'retrieve'],
 	},
 	sharedFields,
 	insertFields,
 	loadFields: retrieveFields,
 	retrieveFields,
-	updateFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
