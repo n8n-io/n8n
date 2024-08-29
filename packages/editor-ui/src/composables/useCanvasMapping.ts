@@ -73,7 +73,6 @@ export function useCanvasMapping({
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
-		console.log(nodeOutputsById.value[node.id]);
 		return {
 			type: CanvasNodeRenderType.Default,
 			options: {
