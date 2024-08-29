@@ -149,14 +149,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		// TODO: simplify
 		assistantMessages.forEach((msg) => {
 			if (msg.type === 'message') {
-				messages.push({
-					id,
-					type: 'text',
-					role: 'assistant',
-					content: msg.text,
-					quickReplies: msg.quickReplies,
-					read,
-				});
+				if (msg.step) {
+					assistantThinkingMessage.value = locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`);
+				} else {
+					messages.push({
+						id,
+						type: 'text',
+						role: 'assistant',
+						content: msg.text,
+						quickReplies: msg.quickReplies,
+						read,
+					});
+				}
 			} else if (msg.type === 'code-diff') {
 				messages.push({
 					id,
@@ -196,8 +200,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplies: msg.quickReplies,
 					read,
 				});
-			} else if (msg.type === 'thinking-step') {
-				assistantThinkingMessage.value = locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`);
 			}
 		});
 		chatMessages.value = messages;
