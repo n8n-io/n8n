@@ -24,7 +24,7 @@ class CredentialSchemaRootObject<
 	S extends ZodType | null,
 	T extends { [k: string]: CredentialSchemaProperty<M, S> } = {},
 > {
-	constructor(private shape: T) {}
+	constructor(public shape: T) {}
 
 	validate<Data>(data: Data) {
 		return this.toZodSchema().safeParse(data);

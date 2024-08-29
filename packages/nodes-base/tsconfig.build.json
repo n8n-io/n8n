@@ -5,6 +5,7 @@
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": [
+		"types.d.ts",
 		"credentials/**/*.ts",
 		"nodes/**/*.ts",
 		"nodes/**/*.json",

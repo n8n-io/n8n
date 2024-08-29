@@ -506,14 +506,9 @@ export class Ftp implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
 
-		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
+		const credentials = await this.getCredentials(protocol === 'sftp' ? 'sftp' : 'ftp');
 
-		if (protocol === 'sftp') {
-			credentials = await this.getCredentials('sftp');
-		} else {
-			credentials = await this.getCredentials('ftp');
-		}
 		let ftp: ftpClient;
 		let sftp: sftpClient;
 
