@@ -46,7 +46,7 @@ function mapPostgresType(postgresType: string): FieldType {
 export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresNodeCredentials>('postgres');
 
 	const { db } = await configurePostgres.call(this, credentials);
 

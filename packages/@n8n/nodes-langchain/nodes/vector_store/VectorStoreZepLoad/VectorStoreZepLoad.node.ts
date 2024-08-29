@@ -84,7 +84,7 @@ export class VectorStoreZepLoad implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Zep Load Vector Store');
+		this.logger.debug('Supplying data for Zep Load Vector Store');
 
 		const collectionName = this.getNodeParameter('collectionName', itemIndex) as string;
 
@@ -93,10 +93,10 @@ export class VectorStoreZepLoad implements INodeType {
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
 			0,

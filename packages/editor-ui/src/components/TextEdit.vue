@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, nextTick } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
+import { APP_MODALS_ELEMENT_ID } from '@/constants';
 
 const props = defineProps<{
 	dialogVisible: boolean;
@@ -60,7 +61,7 @@ const closeDialog = () => {
 	<div v-if="dialogVisible">
 		<el-dialog
 			:model-value="dialogVisible"
-			append-to-body
+			:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
 				.nodeText()

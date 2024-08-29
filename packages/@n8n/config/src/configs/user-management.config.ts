@@ -49,19 +49,19 @@ class SmtpConfig {
 export class TemplateConfig {
 	/** Overrides default HTML template for inviting new people (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_INVITE')
-	invite: string = '';
+	'user-invited': string = '';
 
 	/** Overrides default HTML template for resetting password (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_PWRESET')
-	passwordReset: string = '';
+	'password-reset-requested': string = '';
 
 	/** Overrides default HTML template for notifying that a workflow was shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED')
-	workflowShared: string = '';
+	'workflow-shared': string = '';
 
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED')
-	credentialsShared: string = '';
+	'credentials-shared': string = '';
 }
 
 @Config

@@ -75,7 +75,7 @@ export class ChatTrigger extends Node {
 				}
 			];
 		 })() }}`,
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

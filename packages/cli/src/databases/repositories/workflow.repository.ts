@@ -14,8 +14,8 @@ import {
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 import config from '@/config';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { WebhookEntity } from '../entities/WebhookEntity';
+import { WorkflowEntity } from '../entities/workflow-entity';
+import { WebhookEntity } from '../entities/webhook-entity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {

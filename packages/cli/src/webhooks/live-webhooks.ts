@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { Workflow, NodeHelpers } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,

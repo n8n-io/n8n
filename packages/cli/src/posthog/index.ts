@@ -3,7 +3,7 @@ import type { PostHog } from 'posthog-node';
 import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
-import type { PublicUser } from '@/Interfaces';
+import type { PublicUser } from '@/interfaces';
 
 @Service()
 export class PostHogClient {

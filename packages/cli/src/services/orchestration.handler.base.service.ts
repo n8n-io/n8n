@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { RedisService } from './redis.service';
-import type { RedisServicePubSubSubscriber } from './redis/RedisServicePubSubSubscriber';
+import type { RedisServicePubSubSubscriber } from './redis/redis-service-pub-sub-subscriber';
 import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 import type { MainResponseReceivedHandlerOptions } from './orchestration/main/types';
 
