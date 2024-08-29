@@ -4,7 +4,9 @@
 		"lib": ["dom", "es2020", "es2022.error"],
 		"paths": {
 			"@test/*": ["./test/*"],
-			"@utils/*": ["./utils/*"]
+			"@utils/*": ["./utils/*"],
+			"@nodes/*": ["./nodes/*"],
+			"@credentials/*": ["./credentials/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line

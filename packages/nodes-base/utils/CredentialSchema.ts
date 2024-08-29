@@ -103,6 +103,26 @@ class CredentialSchemaString<
 	}
 }
 
+class CredentialSchemaNumber<
+	S extends ZodType,
+	M extends NumberMetadata,
+> extends CredentialSchemaProperty<M, S> {
+	constructor(
+		public metadata: M,
+		schema: S,
+	) {
+		super(metadata, schema);
+	}
+
+	toNodeProperties(name: string): INodeProperties {
+		return removeUndefinedProperties({
+			...super.toNodeProperties(name),
+			type: 'number',
+			default: this.metadata.default,
+		});
+	}
+}
+
 class CredentialSchemaOptions<
 	V extends string,
 	S extends ZodType,
@@ -157,6 +177,11 @@ type StringMetadata = BaseMetadata &
 		default: string;
 	}>;
 
+type NumberMetadata = BaseMetadata &
+	Partial<{
+		default: number;
+	}>;
+
 type Option<V extends string> = {
 	label: string;
 	value: V;
@@ -209,6 +234,10 @@ export const CredentialSchema = {
 	// eslint-disable-next-line id-denylist
 	string<M extends StringMetadata>(options: M) {
 		return new CredentialSchemaString(options, z.string());
+	},
+	// eslint-disable-next-line id-denylist
+	number<M extends NumberMetadata>(options: M) {
+		return new CredentialSchemaNumber(options, z.number());
 	},
 	url(options: Optional<StringMetadata, 'label'> = {}) {
 		return new CredentialSchemaString({ label: 'URL', ...options }, z.string().url());

@@ -1,4 +1,23 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow';
+import { CredentialSchema, type InferCredentialSchema } from '../utils/CredentialSchema';
+
+const sftpCredentialSchema = CredentialSchema.create({
+	host: CredentialSchema.string({ label: 'Host', placeholder: 'localhost' }),
+	port: CredentialSchema.number({ label: 'Port', default: 22 }),
+	username: CredentialSchema.string({ label: 'Username' }),
+	password: CredentialSchema.password(),
+	privateKey: CredentialSchema.password({
+		label: 'Private Key',
+		description:
+			'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
+	}),
+	passphrase: CredentialSchema.password({
+		label: 'Passphrase',
+		description: 'For an encrypted private key, this is the passphrase used to decrypt it',
+	}),
+});
+
+export type SftpCredentialSchema = InferCredentialSchema<typeof sftpCredentialSchema>;
 
 export class Sftp implements ICredentialType {
 	name = 'sftp';
@@ -7,55 +26,5 @@ export class Sftp implements ICredentialType {
 
 	documentationUrl = 'ftp';
 
-	properties: INodeProperties[] = [
-		{
-			displayName: 'Host',
-			name: 'host',
-			required: true,
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Port',
-			name: 'port',
-			required: true,
-			type: 'number',
-			default: 22,
-		},
-		{
-			displayName: 'Username',
-			name: 'username',
-			required: true,
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-		},
-		{
-			displayName: 'Private Key',
-			name: 'privateKey',
-			type: 'string',
-			typeOptions: { password: true },
-			default: '',
-			description:
-				'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format)',
-		},
-		{
-			displayName: 'Passphrase',
-			name: 'passphrase',
-			typeOptions: {
-				password: true,
-			},
-			type: 'string',
-			default: '',
-			description: 'For an encrypted private key, this is the passphrase used to decrypt it',
-		},
-	];
+	properties = sftpCredentialSchema.toNodeProperties();
 }

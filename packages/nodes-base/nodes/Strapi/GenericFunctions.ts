@@ -9,7 +9,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import type { StrapiApiCredential } from '../../credentials/StrapiApi.credentials';
+import type { StrapiApiCredential } from '@credentials/StrapiApi.credentials';
 
 export const removeTrailingSlash = (url: string) => {
 	if (url.endsWith('/')) {

@@ -1,4 +1,14 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow';
+import { CredentialSchema, type InferCredentialSchema } from '../utils/CredentialSchema';
+
+const ftpCredentialSchema = CredentialSchema.create({
+	host: CredentialSchema.string({ label: 'Host', placeholder: 'localhost' }),
+	port: CredentialSchema.number({ label: 'Port', default: 21 }),
+	username: CredentialSchema.string({ label: 'Username', optional: true }),
+	password: CredentialSchema.password({ optional: true }),
+});
+
+export type FtpCredentialSchema = InferCredentialSchema<typeof ftpCredentialSchema>;
 
 export class Ftp implements ICredentialType {
 	name = 'ftp';
@@ -7,36 +17,5 @@ export class Ftp implements ICredentialType {
 
 	documentationUrl = 'ftp';
 
-	properties: INodeProperties[] = [
-		{
-			displayName: 'Host',
-			name: 'host',
-			required: true,
-			type: 'string',
-			default: '',
-			placeholder: 'localhost',
-		},
-		{
-			displayName: 'Port',
-			name: 'port',
-			required: true,
-			type: 'number',
-			default: 21,
-		},
-		{
-			displayName: 'Username',
-			name: 'username',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-		},
-	];
+	properties = ftpCredentialSchema.toNodeProperties();
 }

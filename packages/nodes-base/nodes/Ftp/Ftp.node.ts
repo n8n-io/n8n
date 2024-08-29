@@ -7,7 +7,6 @@ import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
-	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -18,6 +17,8 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import type { FtpCredentialSchema } from '@credentials/Ftp.credentials';
+import type { SftpCredentialSchema } from '@credentials/Sftp.credentials';
 import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
 interface ReturnFtpItem {
@@ -439,14 +440,14 @@ export class Ftp implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const credentials = credential.data as FtpCredentialSchema;
 				const ftp = new ftpClient();
 				try {
 					await ftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						user: credentials.username as string,
-						password: credentials.password as string,
+						host: credentials.host,
+						port: credentials.port,
+						user: credentials.username,
+						password: credentials.password,
 					});
 				} catch (error) {
 					await ftp.end();
@@ -465,24 +466,24 @@ export class Ftp implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const credentials = credential.data as SftpCredentialSchema;
 				const sftp = new sftpClient();
 				try {
 					if (credentials.privateKey) {
 						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
-							passphrase: credentials.passphrase as string | undefined,
+							host: credentials.host,
+							port: credentials.port,
+							username: credentials.username,
+							password: credentials.password || undefined,
+							privateKey: formatPrivateKey(credentials.privateKey),
+							passphrase: credentials.passphrase,
 						});
 					} else {
 						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: credentials.password as string,
+							host: credentials.host,
+							port: credentials.port,
+							username: credentials.username,
+							password: credentials.password,
 						});
 					}
 				} catch (error) {
@@ -516,30 +517,30 @@ export class Ftp implements INodeType {
 			try {
 				if (protocol === 'sftp') {
 					sftp = new sftpClient();
-					if (credentials.privateKey) {
+					if ('privateKey' in credentials && credentials.privateKey) {
 						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
-							passphrase: credentials.passphrase as string | undefined,
+							host: credentials.host,
+							port: credentials.port,
+							username: credentials.username,
+							password: credentials.password || undefined,
+							privateKey: formatPrivateKey(credentials.privateKey),
+							passphrase: credentials.passphrase,
 						});
 					} else {
 						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: credentials.password as string,
+							host: credentials.host,
+							port: credentials.port,
+							username: credentials.username,
+							password: credentials.password,
 						});
 					}
 				} else {
 					ftp = new ftpClient();
 					await ftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						user: credentials.username as string,
-						password: credentials.password as string,
+						host: credentials.host,
+						port: credentials.port,
+						user: credentials.username,
+						password: credentials.password,
 					});
 				}
 			} catch (error) {

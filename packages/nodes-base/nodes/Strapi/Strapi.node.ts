@@ -11,7 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { StrapiApiCredential } from '../../credentials/StrapiApi.credentials';
 import {
 	getToken,
 	removeTrailingSlash,
@@ -21,6 +20,7 @@ import {
 } from './GenericFunctions';
 
 import { entryFields, entryOperations } from './EntryDescription';
+import type { StrapiApiCredential } from '@credentials/StrapiApi.credentials';
 
 export class Strapi implements INodeType {
 	description: INodeTypeDescription = {
