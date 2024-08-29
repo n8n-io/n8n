@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     timeout-minutes: 10
+    permissions:
+      id-token: write
     env:
       NPM_CONFIG_PROVENANCE: true
     outputs:

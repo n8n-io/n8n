@@ -5,7 +5,6 @@ import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@j
 import type { Connection, Endpoint, SelectOptions } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type {
-	ConnectionTypes,
 	IConnection,
 	INodeExecutionData,
 	INodeTypeDescription,
@@ -118,7 +117,7 @@ export function isCanvasAugmentedType<T>(overlay: T): overlay is T & { canvas: H
 	return typeof overlay === 'object' && overlay !== null && 'canvas' in overlay && !!overlay.canvas;
 }
 
-export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
+export const getConnectorColor = (type: NodeConnectionType, category?: string): string => {
 	if (category === 'error') {
 		return '--color-node-error-output-text-color';
 	}
@@ -132,7 +131,7 @@ export const getConnectorColor = (type: ConnectionTypes, category?: string): str
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
 	const connectorColor = getConnectorColor(
-		connection.parameters.type as ConnectionTypes,
+		connection.parameters.type as NodeConnectionType,
 		connection.parameters.category,
 	);
 	const additionalStyles: PaintStyle = {};
@@ -148,7 +147,7 @@ export const getConnectorPaintStylePull = (connection: Connection): PaintStyle =
 
 export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
 	const connectorColor = getConnectorColor(
-		connection.parameters.type as ConnectionTypes,
+		connection.parameters.type as NodeConnectionType,
 		connection.parameters.category,
 	);
 	return {
@@ -161,7 +160,10 @@ export const getConnectorPaintStyleData = (
 	connection: Connection,
 	category?: string,
 ): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as NodeConnectionType,
+		category,
+	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
 		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
@@ -194,7 +196,7 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 ];
 
 export const getAnchorPosition = (
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	type: 'input' | 'output',
 	amount: number,
 	spacerIndexes: number[] = [],
@@ -256,7 +258,7 @@ export const getEndpointScope = (
 export const getInputEndpointStyle = (
 	nodeTypeData: INodeTypeDescription,
 	color: string,
-	connectionType: ConnectionTypes = NodeConnectionType.Main,
+	connectionType: NodeConnectionType = NodeConnectionType.Main,
 ): EndpointStyle => {
 	let width = 8;
 	let height = nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20;
@@ -664,7 +666,7 @@ export const showConnectionActions = (connection: Connection) => {
 export const getOutputSummary = (
 	data: ITaskData[],
 	nodeConnections: NodeInputConnections,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 ) => {
 	const outputMap: {
 		[sourceOutputIndex: string]: {

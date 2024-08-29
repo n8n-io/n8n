@@ -27,15 +27,15 @@ import type {
 } from 'n8n-workflow';
 import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n-workflow';
 
-import type { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/interfaces';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';

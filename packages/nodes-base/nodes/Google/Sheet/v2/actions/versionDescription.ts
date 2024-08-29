@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as sheet from './sheet/Sheet.resource';
 import * as spreadsheet from './spreadsheet/SpreadSheet.resource';
@@ -15,8 +15,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Google Sheets',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	hints: [
 		{
 			message:

@@ -5,7 +5,6 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
-	ConnectionTypes,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,

@@ -7,7 +7,7 @@ import type {
 	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
@@ -133,8 +133,8 @@ export class Html implements INodeType {
 		defaults: {
 			name: 'HTML',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',
 		properties: [
 			{

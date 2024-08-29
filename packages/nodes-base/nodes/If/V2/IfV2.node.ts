@@ -7,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
@@ -23,8 +24,8 @@ export class IfV2 implements INodeType {
 				name: 'If',
 				color: '#408000',
 			},
-			inputs: ['main'],
-			outputs: ['main', 'main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 			outputNames: ['true', 'false'],
 			parameterPane: 'wide',
 			properties: [

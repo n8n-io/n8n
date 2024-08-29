@@ -1,12 +1,13 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { emeliaApiRequest, emeliaApiTest, emeliaGraphqlRequest } from './GenericFunctions';
@@ -29,7 +30,7 @@ export class EmeliaTrigger implements INodeType {
 			name: 'Emelia Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'emeliaApi',

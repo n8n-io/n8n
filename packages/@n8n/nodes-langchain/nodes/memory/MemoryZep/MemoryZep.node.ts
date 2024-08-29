@@ -104,11 +104,11 @@ export class MemoryZep implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = (await this.getCredentials('zepApi')) as {
+		const credentials = await this.getCredentials<{
 			apiKey?: string;
 			apiUrl?: string;
 			cloud?: boolean;
-		};
+		}>('zepApi');
 
 		const nodeVersion = this.getNode().typeVersion;
 

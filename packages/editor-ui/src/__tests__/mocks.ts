@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { mock } from 'vitest-mock-extended';
 
@@ -26,6 +26,7 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { CanvasNodeRenderType } from '@/types';
 
 export const mockNode = ({
 	id = uuid(),
@@ -51,8 +52,8 @@ export const mockNodeTypeDescription = ({
 	name,
 	version = 1,
 	credentials = [],
-	inputs = ['main'],
-	outputs = ['main'],
+	inputs = [NodeConnectionType.Main],
+	outputs = [NodeConnectionType.Main],
 }: {
 	name: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
@@ -94,6 +95,7 @@ export const mockNodes = [
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
+	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
 	mockNode({ name: 'End', type: NO_OP_NODE_TYPE }),
 ];
 
@@ -180,7 +182,7 @@ export function createTestNode(node: Partial<INode> = {}): INode {
 	return {
 		id: uuid(),
 		name: 'Node',
-		type: 'n8n-nodes-base.test',
+		type: 'n8n-nodes-base.set',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},

@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { lingvaNexApiRequest } from './GenericFunctions';
 
@@ -23,8 +24,8 @@ export class LingvaNex implements INodeType {
 		defaults: {
 			name: 'LingvaNex',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'lingvaNexApi',

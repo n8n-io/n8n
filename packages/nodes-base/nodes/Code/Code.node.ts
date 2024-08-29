@@ -1,10 +1,11 @@
-import type {
-	CodeExecutionMode,
-	CodeNodeEditorLanguage,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type CodeExecutionMode,
+	type CodeNodeEditorLanguage,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import set from 'lodash/set';
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
@@ -28,8 +29,8 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'Code',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		parameterPane: 'wide',
 		properties: [
 			{

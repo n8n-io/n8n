@@ -90,7 +90,7 @@ export const versionDescription: INodeTypeDescription = {
 		},
 	},
 	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools)}}`,
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'openAiApi',
