@@ -1,18 +1,23 @@
 import {
 	Block,
 	ClassDeclaration,
+	ImportSpecifier,
 	ObjectLiteralExpression,
 	Project,
+	PropertyAssignment,
 	ScriptTarget,
 	SourceFile,
+	SpreadAssignment,
 	SyntaxKind,
 } from 'ts-morph';
 
 import prettier from 'prettier';
 
-// const NODES_FOLDER_GLOBE = './packages/nodes-base/nodes/**/*.ts';
+// const NODES_FOLDER_GLOBE = './packages/nodes-base/nodes/**/*.node.ts';
 const NODES_FOLDER_GLOBE =
 	'packages/nodes-base/nodes/Google/CloudStorage/GoogleCloudStorage.node.ts';
+// const NODES_FOLDER_GLOBE = 'packages/nodes-base/nodes/Set/v2/SetV2.node.ts';
+// const NODES_FOLDER_GLOBE = 'packages/nodes-base/nodes/TheHiveProject/TheHiveProject.node.ts';
 const TARGET_FILE = 'packages/nodes-base/nodes/generated-nodes-types.ts';
 
 const project = new Project({
@@ -25,29 +30,41 @@ const nodesFiles = project.addSourceFilesAtPaths(NODES_FOLDER_GLOBE);
 project.resolveSourceFileDependencies();
 
 //-------------------------------------------------------------------------------
-const getImports = (sourceFile: SourceFile) => {
+
+const getImport = (specifier: ImportSpecifier) => {
+	const sourceFile = specifier.getSourceFile();
+	let returnValue;
+
 	sourceFile.forEachChild((child) => {
 		if (child.getKind() === SyntaxKind.ImportDeclaration) {
 			const declaration = child.asKindOrThrow(SyntaxKind.ImportDeclaration);
-			const importFile = declaration.getModuleSpecifierSourceFile();
 
-			if (importFile) {
-				const moduleSymbol = importFile.getSymbol();
+			if (declaration.getNamedImports().find((imp) => imp.getName() === specifier.getName())) {
+				const importFile = declaration.getModuleSpecifierSourceFile();
 
-				if (moduleSymbol) {
-					const exportSymbols = moduleSymbol.getExports();
-					exportSymbols.forEach((symbol) => {
-						const value = symbol.getValueDeclaration();
-						if (value && value.getKind() === SyntaxKind.VariableDeclaration) {
-							const variable = value.asKindOrThrow(SyntaxKind.VariableDeclaration).getInitializer();
-							if (!variable) return;
-							console.log(variable.getText());
+				if (importFile) {
+					const moduleSymbol = importFile.getSymbol();
+
+					if (moduleSymbol) {
+						const exportSymbols = moduleSymbol.getExports();
+						for (const symbol of exportSymbols) {
+							if ((symbol.getName(), specifier.getName())) {
+								const value = symbol.getValueDeclaration();
+								if (value && value.getKind() === SyntaxKind.VariableDeclaration) {
+									const variable = value
+										.asKindOrThrow(SyntaxKind.VariableDeclaration)
+										.getInitializer();
+									returnValue = variable;
+								}
+							}
 						}
-					});
+					}
 				}
 			}
 		}
 	});
+
+	return returnValue;
 };
 
 const getClasses = (sourceFiles: SourceFile[]) => {
@@ -55,7 +72,6 @@ const getClasses = (sourceFiles: SourceFile[]) => {
 
 	sourceFiles.forEach((file) => {
 		const classes = file.getClasses();
-		getImports(file);
 
 		classes.forEach((declaration) => {
 			declaration.getImplements().forEach((impl) => {
@@ -69,11 +85,85 @@ const getClasses = (sourceFiles: SourceFile[]) => {
 	return returnData;
 };
 
-const getDescription = (declaration: ClassDeclaration): ObjectLiteralExpression => {
-	const description = declaration.getProperty('description')?.getInitializerOrThrow();
+const resolveSpreadAssignment = (
+	parent: ObjectLiteralExpression,
+	spreadAssignment: SpreadAssignment,
+) => {
+	const spreadExpression = spreadAssignment.getExpression();
+
+	if (spreadExpression.isKind(SyntaxKind.Identifier)) {
+		const referenceName = spreadExpression.getText();
+		const referenceDeclaration = parent.getSourceFile().getVariableDeclaration(referenceName);
+
+		if (referenceDeclaration) {
+			const initializerNode = referenceDeclaration.getInitializer();
+
+			if (initializerNode) {
+				if (initializerNode.isKind(SyntaxKind.ImportSpecifier)) {
+					return getImport(initializerNode);
+				}
+
+				return initializerNode;
+			}
+		}
+	}
+
+	return undefined;
+};
+
+const findProperties = (description: ObjectLiteralExpression): PropertyAssignment | undefined => {
+	const properties = description.getProperty('properties');
+
+	if (properties && properties.isKind(SyntaxKind.PropertyAssignment)) {
+		return properties;
+	}
+
+	const spreadAssignments = description
+		.getProperties()
+		.filter((prop) => prop.isKind(SyntaxKind.SpreadAssignment));
+
+	for (const spreadAssignment of spreadAssignments) {
+		const resolved = resolveSpreadAssignment(description, spreadAssignment);
+		if (resolved && resolved.isKind(SyntaxKind.ObjectLiteralExpression)) {
+			const foundProperties = findProperties(resolved);
+			if (foundProperties) {
+				return foundProperties;
+			}
+		}
+	}
+
+	return undefined;
+};
+
+const getDescription = (declaration: ClassDeclaration): PropertyAssignment | undefined => {
+	const prop = declaration.getProperty('description');
+
+	let description = prop?.getInitializer();
+
+	if (description?.isKind(SyntaxKind.Identifier)) {
+		const variableDeclaration = description.findReferencesAsNodes()[0]?.getParent();
+
+		if (variableDeclaration) {
+			if (variableDeclaration.isKind(SyntaxKind.VariableDeclaration)) {
+				const variableInitializer = variableDeclaration.getInitializer();
+
+				if (variableInitializer?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+					description = variableInitializer;
+				}
+			} else if (variableDeclaration.isKind(SyntaxKind.ImportSpecifier)) {
+				const importValue = getImport(variableDeclaration);
+				if (
+					importValue &&
+					(importValue as ObjectLiteralExpression).isKind(SyntaxKind.ObjectLiteralExpression)
+				) {
+					return findProperties(importValue);
+				}
+			}
+		}
+	}
 
 	if (description && description.isKind(SyntaxKind.ObjectLiteralExpression)) {
-		return description;
+		return findProperties(description);
 	}
 
 	const constructor = declaration.getConstructors()[0];
@@ -95,7 +185,7 @@ const getDescription = (declaration: ClassDeclaration): ObjectLiteralExpression 
 
 				if (expression.getLeft().getText() === 'this.description') {
 					if (value.isKind(SyntaxKind.ObjectLiteralExpression)) {
-						return value;
+						return findProperties(value);
 					}
 
 					throw new Error('Could not get description');
@@ -135,16 +225,35 @@ function evaluateNode(node: any): any {
 		return convertObjectLiteralToJS(node);
 	} else if (node.isKind(SyntaxKind.ArrayLiteralExpression)) {
 		return node.getElements().map((element: any) => evaluateNode(element));
+	} else if (node.isKind(SyntaxKind.SpreadAssignment)) {
+		return evaluateNode(resolveSpreadAssignment(node.getParent(), node));
+	} else if (node.isKind(SyntaxKind.ImportSpecifier)) {
+		return evaluateNode(getImport(node));
 	}
 	// Add more cases as needed for other types of literals
 	return undefined;
 }
 
-const getProperties = (description: ObjectLiteralExpression): Record<string, any>[] => {
-	const properties = description.getProperty('properties');
+const getProperties = (properties: PropertyAssignment | undefined): Record<string, any>[] => {
+	if (properties) {
+		let propertiesValue;
+		const initializer = properties.getInitializer();
 
-	if (properties && properties.isKind(SyntaxKind.PropertyAssignment)) {
-		const propertiesValue = properties.getInitializer();
+		if (initializer?.isKind(SyntaxKind.ArrayLiteralExpression)) {
+			propertiesValue = initializer;
+		}
+
+		if (initializer?.isKind(SyntaxKind.Identifier)) {
+			const variableDeclaration = initializer.findReferencesAsNodes()[0]?.getParent();
+
+			if (variableDeclaration && variableDeclaration.isKind(SyntaxKind.VariableDeclaration)) {
+				const variableInitializer = variableDeclaration.getInitializer();
+
+				if (variableInitializer?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+					propertiesValue = variableInitializer;
+				}
+			}
+		}
 
 		if (propertiesValue && propertiesValue.isKind(SyntaxKind.ArrayLiteralExpression)) {
 			return propertiesValue
