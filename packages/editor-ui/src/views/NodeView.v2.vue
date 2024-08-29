@@ -97,6 +97,7 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { useCollaborationStore } from '@/stores/collaboration.store';
+import { getResourcePermissions } from '@/permissions';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -205,7 +206,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 
 const isCanvasReadOnly = computed(() => {
-	return isDemoRoute.value || isReadOnlyEnvironment.value;
+	return (
+		isDemoRoute.value ||
+		isReadOnlyEnvironment.value ||
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+	);
 });
 
 const fallbackNodes = computed<INodeUi[]>(() =>
@@ -222,6 +227,10 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 				},
 			],
 );
+
+const keyBindingsEnabled = computed(() => {
+	return !ndvStore.activeNode;
+});
 
 /**
  * Initialization
@@ -886,6 +895,21 @@ function onClickConnectionAdd(connection: Connection) {
 }
 
 /**
+ * Permissions
+ */
+
+const workflowPermissions = computed(() => {
+	return getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow;
+});
+
+const projectPermissions = computed(() => {
+	const project = route.query?.projectId
+		? projectsStore.myProjects.find((p) => p.id === route.query.projectId)
+		: projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
+
+/**
  * Executions
  */
 
@@ -1489,6 +1513,7 @@ onDeactivated(() => {
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
+		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
@@ -1517,7 +1542,7 @@ onDeactivated(() => {
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
 	>
-		<div :class="$style.executionButtons">
+		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"
