@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { computed, provide, toRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, toRef, watch } from 'vue';
 import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
+	CanvasNodeEventBusEvents,
+	CanvasEventBusEvents,
 } from '@/types';
 import { CanvasConnectionMode } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -18,9 +20,12 @@ import type { NodeProps, XYPosition } from '@vue-flow/core';
 import { Position } from '@vue-flow/core';
 import { useCanvas } from '@/composables/useCanvas';
 import { createCanvasConnectionHandleString } from '@/utils/canvasUtilsV2';
+import type { EventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
+	eventBus?: EventBus<CanvasEventBusEvents>;
 };
 
 const emit = defineEmits<{
@@ -57,6 +62,18 @@ const isDisabled = computed(() => props.data.disabled);
 const nodeTypeDescription = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
 });
+
+/**
+ * Event bus
+ */
+
+const canvasNodeEventBus = ref(createEventBus<CanvasNodeEventBusEvents>());
+
+function emitCanvasNodeEvent(event: CanvasEventBusEvents['nodes:action']) {
+	if (event.ids.includes(props.id)) {
+		canvasNodeEventBus.value.emit(event.action, event.payload);
+	}
+}
 
 /**
  * Inputs
@@ -208,6 +225,7 @@ provide(CanvasNodeKey, {
 	data,
 	label,
 	selected,
+	eventBus: canvasNodeEventBus,
 });
 
 const showToolbar = computed(() => {
@@ -225,6 +243,14 @@ watch(
 		emit('select', props.id, value);
 	},
 );
+
+onMounted(() => {
+	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
+});
 </script>
 
 <template>
@@ -272,6 +298,7 @@ watch(
 			@delete="onDelete"
 			@toggle="onDisabledToggle"
 			@run="onRun"
+			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromToolbar"
 		/>
 
@@ -296,6 +323,7 @@ watch(
 <style lang="scss" module>
 .canvasNode {
 	&:hover,
+	&:focus-within,
 	&.showToolbar {
 		.canvasNodeToolbar {
 			opacity: 1;
@@ -311,5 +339,10 @@ watch(
 	transform: translate(-50%, -100%);
 	opacity: 0;
 	z-index: 1;
+
+	&:focus-within,
+	&:hover {
+		opacity: 1;
+	}
 }
 </style>
