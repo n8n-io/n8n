@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { appendAttributionOption } from '../../utils/descriptions';
 
 export const webhookPath: INodeProperties = {
 	displayName: 'Form Path',
@@ -315,11 +316,7 @@ export const respondWithOptions: INodeProperties = {
 	],
 };
 
-export const appendAttribution: INodeProperties = {
-	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-	displayName: 'Append n8n Attribution',
-	name: 'appendAttribution',
-	type: 'boolean',
-	default: true,
+export const appendAttributionToForm: INodeProperties = {
+	...appendAttributionOption,
 	description: 'Whether to include the link “Form automated with n8n” at the bottom of the form',
 };

@@ -9,7 +9,7 @@ import type {
 
 import { formWebhook } from '../utils';
 import {
-	appendAttribution,
+	appendAttributionToForm,
 	formDescription,
 	formFields,
 	formRespondMode,
@@ -116,7 +116,7 @@ const descriptionV2: INodeTypeDescription = {
 			placeholder: 'Add option',
 			default: {},
 			options: [
-				appendAttribution,
+				appendAttributionToForm,
 				{
 					...respondWithOptions,
 					displayOptions: {

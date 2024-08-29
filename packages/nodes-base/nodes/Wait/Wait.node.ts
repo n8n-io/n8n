@@ -27,7 +27,7 @@ import {
 	respondWithOptions,
 	formRespondMode,
 	formTitle,
-	appendAttribution,
+	appendAttributionToForm,
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
@@ -437,7 +437,7 @@ export class Wait extends Webhook {
 						responseMode: ['responseNode'],
 					},
 				},
-				options: [appendAttribution, respondWithOptions, webhookSuffix],
+				options: [appendAttributionToForm, respondWithOptions, webhookSuffix],
 			},
 			{
 				displayName: 'Options',
@@ -453,7 +453,7 @@ export class Wait extends Webhook {
 						responseMode: ['onReceived', 'lastNode'],
 					},
 				},
-				options: [appendAttribution, webhookSuffix],
+				options: [appendAttributionToForm, webhookSuffix],
 			},
 		],
 	};
