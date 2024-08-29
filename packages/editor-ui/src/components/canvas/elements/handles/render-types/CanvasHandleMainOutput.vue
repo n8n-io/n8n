@@ -1,23 +1,22 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref } from 'vue';
+import type { CanvasNodeDefaultRender, CanvasNodeStickyNoteRender } from '@/types';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
+const { render } = useCanvasNode();
 const { label, isConnected, isConnecting } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
-
-const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 const isHovered = ref(false);
 
-const labelSize = computed(() => {
-	if (label.value.length <= 2) return 'small';
-	else if (label.value.length <= 6) return 'medium';
-	return 'large';
-});
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
 
 const plusLineSize = computed(
 	() =>
@@ -25,7 +24,7 @@ const plusLineSize = computed(
 			small: 46,
 			medium: 66,
 			large: 80,
-		})[labelSize.value],
+		})[renderOptions.value.outputs?.labelSize ?? 'small'],
 );
 
 function onMouseEnter() {
