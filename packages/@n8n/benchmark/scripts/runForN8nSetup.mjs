@@ -45,7 +45,7 @@ async function main() {
 	});
 
 	try {
-		await dockerComposeClient.$('up', '-d', 'n8n');
+		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
 
 		await dockerComposeClient.$('run', 'benchmark', 'run', `--scenarioNamePrefix=${n8nSetupToUse}`);
 	} catch (error) {
