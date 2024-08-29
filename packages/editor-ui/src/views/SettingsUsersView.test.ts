@@ -17,6 +17,16 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { ProjectTypes } from '@/types/projects.types';
 
+const showToast = vi.fn();
+const showError = vi.fn();
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showToast,
+		showError,
+	}),
+}));
+
 const wrapperComponentWithModal = {
 	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
 	template: `
@@ -71,6 +81,9 @@ describe('SettingsUsersView', () => {
 		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 
 		usersStore.currentUserId = loggedInUser.id;
+
+		showToast.mockReset();
+		showError.mockReset();
 	});
 
 	afterEach(() => {
@@ -158,21 +171,26 @@ describe('SettingsUsersView', () => {
 	});
 
 	it("should show success toast when changing a user's role", async () => {
-		const spy = vi.spyOn(usersStore, 'updateGlobalRole');
+		const updateGlobalRoleSpy = vi.spyOn(usersStore, 'updateGlobalRole').mockResolvedValue();
 
-		const { getByTestId, getByRole } = createComponentRenderer(SettingsUsersView)({ pinia });
+		const { getByTestId, getByRole, getAllByRole } = createComponentRenderer(SettingsUsersView)({
+			pinia,
+		});
 
 		const userListItem = getByTestId(`user-list-item-${users.at(-1)?.email}`);
 		expect(userListItem).toBeInTheDocument();
 
-		const actionToggle = within(userListItem).getByTestId('user-role-select');
+		const roleSelect = within(userListItem).getByTestId('user-role-select');
 
-		const projectSelectDropdownItems = await getDropdownItems(actionToggle);
-		await userEvent.click(projectSelectDropdownItems[0]);
+		const roleDropdownItems = await getDropdownItems(roleSelect);
+		await userEvent.click(roleDropdownItems[0]);
 
-		expect(spy).toHaveBeenCalledWith(expect.objectContaining({ newRoleName: 'global:member' }));
-		const toast = getByRole('alert');
-		expect(toast).toBeInTheDocument();
-		expect(toast.textContent).toContain('toast');
+		expect(updateGlobalRoleSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ newRoleName: 'global:member' }),
+		);
+
+		expect(showToast).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'success', message: expect.stringContaining('Member') }),
+		);
 	});
 });
