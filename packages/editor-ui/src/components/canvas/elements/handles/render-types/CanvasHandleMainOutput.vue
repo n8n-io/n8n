@@ -2,7 +2,7 @@
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref } from 'vue';
-import type { CanvasNodeDefaultRender, CanvasNodeStickyNoteRender } from '@/types';
+import type { CanvasNodeDefaultRender } from '@/types';
 
 const emit = defineEmits<{
 	add: [];
