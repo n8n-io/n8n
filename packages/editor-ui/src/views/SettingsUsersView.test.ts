@@ -173,7 +173,7 @@ describe('SettingsUsersView', () => {
 	it("should show success toast when changing a user's role", async () => {
 		const updateGlobalRoleSpy = vi.spyOn(usersStore, 'updateGlobalRole').mockResolvedValue();
 
-		const { getByTestId, getByRole, getAllByRole } = createComponentRenderer(SettingsUsersView)({
+		const { getByTestId } = createComponentRenderer(SettingsUsersView)({
 			pinia,
 		});
 
