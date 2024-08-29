@@ -44,12 +44,20 @@ export const enum CanvasNodeRenderType {
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
+export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
+		inputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
+		outputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
 	}>;
 };
 

@@ -80,6 +80,12 @@
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-selected: var(--prim-gray-70);
 	--color-canvas-selected-transparent: hsla(var(--prim-gray-h), 47%, 30%, 0.1);
+  --color-canvas-label-background: hsla(
+			var(--color-canvas-background-h),
+			var(--color-canvas-background-s),
+			var(--color-canvas-background-l),
+			0.85
+	);
 
 	// Nodes
 	--color-node-background: var(--color-background-xlight);
