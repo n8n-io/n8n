@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
@@ -27,7 +27,7 @@ export class EventbriteTrigger implements INodeType {
 			name: 'Eventbrite Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'eventbriteApi',

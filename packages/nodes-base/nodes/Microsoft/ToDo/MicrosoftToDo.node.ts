@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
@@ -30,8 +30,8 @@ export class MicrosoftToDo implements INodeType {
 		defaults: {
 			name: 'Microsoft To Do',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'microsoftToDoOAuth2Api',

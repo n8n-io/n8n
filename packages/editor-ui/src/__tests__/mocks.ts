@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	INodeIssues,
 } from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { mock } from 'vitest-mock-extended';
 
@@ -52,8 +52,8 @@ export const mockNodeTypeDescription = ({
 	name,
 	version = 1,
 	credentials = [],
-	inputs = ['main'],
-	outputs = ['main'],
+	inputs = [NodeConnectionType.Main],
+	outputs = [NodeConnectionType.Main],
 }: {
 	name: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
