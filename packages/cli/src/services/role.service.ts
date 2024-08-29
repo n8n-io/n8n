@@ -4,7 +4,7 @@ import type {
 	SharedCredentials,
 } from '@/databases/entities/shared-credentials';
 import type { SharedWorkflow, WorkflowSharingRole } from '@/databases/entities/shared-workflow';
-import type { GlobalRole, User } from '@/databases/entities/User';
+import type { GlobalRole, User } from '@/databases/entities/user';
 import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,

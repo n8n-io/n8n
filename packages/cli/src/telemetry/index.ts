@@ -6,7 +6,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
-import type { IExecutionTrackProperties } from '@/Interfaces';
+import type { IExecutionTrackProperties } from '@/interfaces';
 import { Logger } from '@/logger';
 import { License } from '@/license';
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';

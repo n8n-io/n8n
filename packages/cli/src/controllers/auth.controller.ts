@@ -4,9 +4,9 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
+import type { PublicUser } from '@/interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { PostHogClient } from '@/posthog';
 import {

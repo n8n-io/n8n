@@ -5,7 +5,7 @@ import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workf
 import config from '@/config';
 import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
@@ -14,7 +14,7 @@ import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/wor
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import { makeWorkflow } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';

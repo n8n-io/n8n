@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
 import type { IWebhookData } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { OrchestrationService } from '@/services/orchestration.service';
 

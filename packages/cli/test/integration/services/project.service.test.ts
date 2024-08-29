@@ -1,5 +1,5 @@
 import { ProjectService } from '@/services/project.service';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import Container from 'typedi';
 import { createMember } from '../shared/db/users';
 import { ProjectRepository } from '@/databases/repositories/project.repository';

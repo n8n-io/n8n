@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { RoleService } from '@/services/role.service';
 import type { Scope } from '@n8n/permissions';

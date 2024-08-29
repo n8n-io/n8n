@@ -82,9 +82,11 @@ export const initErrorHandling = async () => {
 			if (tags) event.tags = { ...event.tags, ...tags };
 		}
 
-		const eventHash = createHash('sha1').update(JSON.stringify(originalException)).digest('base64');
-		if (seenErrors.has(eventHash)) return null;
-		seenErrors.add(eventHash);
+		if (originalException instanceof Error && originalException.stack) {
+			const eventHash = createHash('sha1').update(originalException.stack).digest('base64');
+			if (seenErrors.has(eventHash)) return null;
+			seenErrors.add(eventHash);
+		}
 
 		return event;
 	});

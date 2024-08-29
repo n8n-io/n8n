@@ -8,7 +8,7 @@ import { jsonParse, ApplicationError } from 'n8n-workflow';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/interfaces';
 import type { OAuthRequest } from '@/requests';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsHelper } from '@/credentials-helper';

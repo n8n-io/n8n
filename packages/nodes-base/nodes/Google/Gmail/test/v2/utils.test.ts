@@ -1,6 +1,7 @@
-import type { INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { DateTime } from 'luxon';
-import { prepareTimestamp } from '../../GenericFunctions';
+import { mock } from 'jest-mock-extended';
+import { parseRawEmail, prepareTimestamp } from '../../GenericFunctions';
 
 const node: INode = {
 	id: '1',
@@ -106,5 +107,23 @@ describe('Google Gmail v2, prepareTimestamp', () => {
 		expect(() => prepareTimestamp(node, 0, '', dateInput, 'after')).toThrow(
 			"Invalid date/time in 'Received After' field",
 		);
+	});
+});
+
+describe('parseRawEmail', () => {
+	it('should return a date string', async () => {
+		// ARRANGE
+		const executionFunctions = mock<IExecuteFunctions>();
+		const rawEmail = 'Date: Wed, 28 Aug 2024 00:36:37 -0700'.replace(/\n/g, '\r\n');
+
+		// ACT
+		const { json } = await parseRawEmail.call(
+			executionFunctions,
+			{ raw: Buffer.from(rawEmail, 'utf8').toString('base64') },
+			'attachment_',
+		);
+
+		// ASSERT
+		expect(typeof json.date).toBe('string');
 	});
 });

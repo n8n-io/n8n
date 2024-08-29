@@ -6,9 +6,9 @@ import {
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import type { CommunityPackages } from '@/Interfaces';
+import type { CommunityPackages } from '@/interfaces';
 import { Push } from '@/push';
-import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';

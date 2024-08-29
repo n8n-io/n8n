@@ -6,7 +6,7 @@ import { fireEvent, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import AssignmentCollection from '../AssignmentCollection.vue';
 import { STORES } from '@/constants';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -64,8 +64,13 @@ async function dropAssignment({
 }
 
 describe('AssignmentCollection.vue', () => {
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('renders empty state properly', async () => {

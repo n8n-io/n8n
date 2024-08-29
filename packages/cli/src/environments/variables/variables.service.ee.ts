@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import type { Variables } from '@/databases/entities/Variables';
+import type { Variables } from '@/databases/entities/variables';
 import { generateNanoId } from '@/databases/utils/generators';
 import { canCreateNewVariable } from './environment-helpers';
 import { CacheService } from '@/services/cache/cache.service';

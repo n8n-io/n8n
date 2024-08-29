@@ -26,7 +26,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -45,7 +45,7 @@ import { Logger } from './logger';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { OnShutdown } from '@/decorators/on-shutdown';

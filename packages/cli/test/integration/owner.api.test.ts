@@ -2,7 +2,7 @@ import { Container } from 'typedi';
 import validator from 'validator';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
 import {
@@ -11,7 +11,7 @@ import {
 	randomName,
 	randomValidPassword,
 } from './shared/random';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
 

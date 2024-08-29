@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
 
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { ListQuery } from '@/requests';
@@ -17,7 +17,7 @@ import { License } from '@/license';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';

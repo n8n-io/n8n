@@ -20,7 +20,7 @@ import type {
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+} from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logger';

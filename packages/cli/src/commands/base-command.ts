@@ -7,14 +7,14 @@ import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-cor
 import type { AbstractServer } from '@/abstract-server';
 import { Logger } from '@/logger';
 import config from '@/config';
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import * as CrashJournal from '@/crash-journal';
 import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import { initErrorHandling } from '@/error-reporting';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { N8nInstanceType } from '@/Interfaces';
+import type { N8nInstanceType } from '@/interfaces';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/license';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
@@ -116,7 +116,7 @@ export abstract class BaseCommand extends Command {
 
 		const { communityPackages } = this.globalConfig.nodes;
 		if (communityPackages.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			const { CommunityPackagesService } = await import('@/services/community-packages.service');
 			await Container.get(CommunityPackagesService).checkForMissingPackages();
 		}
 

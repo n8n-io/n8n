@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';

@@ -1,4 +1,4 @@
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/Interfaces';
+import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
 import InfisicalClient from 'infisical-node';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
