@@ -38,7 +38,7 @@ import {
 	setAgentOptions,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
-import { HttpSslAuthCredentials } from '../interfaces';
+import { type HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
