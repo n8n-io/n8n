@@ -28,6 +28,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -149,18 +150,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		// TODO: simplify
 		assistantMessages.forEach((msg) => {
 			if (msg.type === 'message') {
-				if (msg.step) {
-					assistantThinkingMessage.value = locale.baseText(`aiAssistant.thinkingSteps.${msg.step}`);
-				} else {
-					messages.push({
-						id,
-						type: 'text',
-						role: 'assistant',
-						content: msg.text,
-						quickReplies: msg.quickReplies,
-						read,
-					});
-				}
+				messages.push({
+					id,
+					type: 'text',
+					role: 'assistant',
+					content: msg.text,
+					quickReplies: msg.quickReplies,
+					read,
+				});
 			} else if (msg.type === 'code-diff') {
 				messages.push({
 					id,
@@ -200,6 +197,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplies: msg.quickReplies,
 					read,
 				});
+			} else if (msg.type === 'intermediate-step') {
+				assistantThinkingMessage.value = locale.baseText(msg.step);
 			}
 		});
 		chatMessages.value = messages;

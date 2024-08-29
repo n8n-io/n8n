@@ -1,4 +1,5 @@
 import type { Schema } from '@/Interface';
+import { BaseTextKey } from '@/plugins/i18n';
 import type { INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
@@ -98,8 +99,21 @@ export namespace ChatRequest {
 		title: string;
 		text: string;
 	}
+
+	interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'intermediate-step';
+		step: BaseTextKey;
+	}
+
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
+		| ((
+				| AssistantChatMessage
+				| CodeDiffMessage
+				| AssistantSummaryMessage
+				| AgentChatMessage
+				| AgentThinkingStep
+		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;
