@@ -35,6 +35,7 @@ interface Props {
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
 	loadingMessage?: string;
+	sessionId?: string;
 }
 
 const emit = defineEmits<{
@@ -58,6 +59,10 @@ const sessionEnded = computed(() => {
 
 const sendDisabled = computed(() => {
 	return !textInputValue.value || props.streaming || sessionEnded.value;
+});
+
+const showPlaceholder = computed(() => {
+	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -227,7 +232,7 @@ function growInput() {
 				<AssistantLoadingMessage :message="loadingMessage" />
 			</div>
 			<div
-				v-else-if="!messages?.length && !loadingMessage"
+				v-else-if="showPlaceholder"
 				:class="$style.placeholder"
 				data-test-id="placeholder-message"
 			>

@@ -87,6 +87,7 @@ function onClose() {
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"
 					:loading-message="loadingMessage"
+					:session-id="assistantStore.currentSessionId"
 					@close="onClose"
 					@message="onUserMessage"
 					@code-replace="onCodeReplace"
