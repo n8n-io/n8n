@@ -155,7 +155,6 @@ export class MemoryRedisChat implements INodeType {
 
 		const memory = new memClass({
 			memoryKey: 'chat_history',
-			//@ts-ignore
 			chatHistory: redisChatHistory,
 			returnMessages: true,
 			inputKey: 'input',
