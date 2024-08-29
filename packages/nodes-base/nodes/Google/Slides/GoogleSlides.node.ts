@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -22,8 +23,8 @@ export class GoogleSlides implements INodeType {
 		defaults: {
 			name: 'Google Slides',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleApi',

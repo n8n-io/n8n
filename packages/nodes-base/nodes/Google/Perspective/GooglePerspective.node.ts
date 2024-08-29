@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import ISO6391 from 'iso-639-1';
 import type {
@@ -31,8 +31,8 @@ export class GooglePerspective implements INodeType {
 		defaults: {
 			name: 'Google Perspective',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googlePerspectiveOAuth2Api',

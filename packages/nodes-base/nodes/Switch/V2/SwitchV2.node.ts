@@ -22,7 +22,7 @@ export class SwitchV2 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: ['main'],
+			inputs: [NodeConnectionType.Main],
 
 			outputs: `={{
 					((parameters) => {

@@ -4,7 +4,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import { sendAt } from 'cron';
 
@@ -28,7 +28,7 @@ export class ScheduleTrigger implements INodeType {
 		},
 
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
