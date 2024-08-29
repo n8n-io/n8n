@@ -37,7 +37,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				switch (message.command) {
 					case 'getStatus':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.redisPublisher.publishResponse({
 							workerId: options.queueModeId,
 							command: 'getStatus',
 							payload: {
@@ -64,7 +64,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						break;
 					case 'getId':
 						if (!debounceMessageReceiver(message, 500)) return;
-						await options.redisPublisher.publishToWorkerChannel({
+						await options.redisPublisher.publishResponse({
 							workerId: options.queueModeId,
 							command: 'getId',
 						});
@@ -73,7 +73,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.redisPublisher.publishResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -81,7 +81,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.redisPublisher.publishResponse({
 								workerId: options.queueModeId,
 								command: 'restartEventBus',
 								payload: {
@@ -95,7 +95,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.redisPublisher.publishResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {
@@ -103,7 +103,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								},
 							});
 						} catch (error) {
-							await options.redisPublisher.publishToWorkerChannel({
+							await options.redisPublisher.publishResponse({
 								workerId: options.queueModeId,
 								command: 'reloadExternalSecretsProviders',
 								payload: {

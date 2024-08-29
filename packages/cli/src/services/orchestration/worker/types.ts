@@ -1,10 +1,10 @@
 import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import type { RedisServicePubSubPublisher } from '../../redis/redis-service-pub-sub-publisher';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { RunningJobSummary } from '@/scaling/scaling.types';
 
 export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
-	redisPublisher: RedisServicePubSubPublisher;
+	redisPublisher: Publisher;
 	getRunningJobIds: () => Array<string | number>;
 	getRunningJobsSummary: () => RunningJobSummary[];
 }

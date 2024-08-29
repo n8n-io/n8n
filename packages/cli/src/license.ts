@@ -13,8 +13,6 @@ import {
 } from './constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
-import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
-import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
@@ -28,8 +26,6 @@ type FeatureReturnType = Partial<
 @Service()
 export class License {
 	private manager: LicenseManager | undefined;
-
-	private redisPublisher: RedisServicePubSubPublisher;
 
 	private isShuttingDown = false;
 
@@ -157,13 +153,8 @@ export class License {
 		}
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			if (!this.redisPublisher) {
-				this.logger.debug('Initializing Redis publisher for License Service');
-				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-			}
-			await this.redisPublisher.publishToCommandChannel({
-				command: 'reloadLicense',
-			});
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			await Container.get(Publisher).publishCommand({ command: 'reloadLicense' });
 		}
 
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';

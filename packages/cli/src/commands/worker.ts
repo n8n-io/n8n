@@ -13,7 +13,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/redis-service-pub-sub-subscriber';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
@@ -46,8 +46,6 @@ export class Worker extends BaseCommand {
 	scalingService: ScalingService;
 
 	jobProcessor: JobProcessor;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
 
 	override needsCommunityPackages = true;
 
@@ -139,7 +137,7 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			redisPublisher: Container.get(Publisher),
 			getRunningJobIds: () => this.jobProcessor.getRunningJobIds(),
 			getRunningJobsSummary: () => this.jobProcessor.getRunningJobsSummary(),
 		});
