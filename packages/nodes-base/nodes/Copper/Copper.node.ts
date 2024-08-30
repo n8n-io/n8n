@@ -619,7 +619,7 @@ export class Copper implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString(), json: {} });
 					continue;
 				}

@@ -482,7 +482,7 @@ export class Git implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems.push({
 						json: {
 							error: error.toString(),

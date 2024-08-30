@@ -218,7 +218,7 @@ export class DateTimeV2 implements INodeType {
 					returnData.push(item);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}
