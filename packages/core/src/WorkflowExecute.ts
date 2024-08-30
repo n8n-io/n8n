@@ -49,7 +49,6 @@ import {
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
-import * as a from 'assert';
 import { recreateNodeExecutionStack } from './PartialExecutionUtils/recreateNodeExecutionStack';
 import {
 	DirectedGraph,
