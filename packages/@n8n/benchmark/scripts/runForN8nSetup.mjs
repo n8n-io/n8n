@@ -30,6 +30,8 @@ async function main() {
 
 	const runDir = path.join(baseRunDir, n8nSetupToUse);
 	fs.emptyDirSync(runDir);
+	// Make sure the n8n container user (node) has write permissions to the run directory
+	await $`chmod 777 ${runDir}`;
 
 	const dockerComposeClient = new DockerComposeClient({
 		$: $({
