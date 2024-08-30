@@ -4,12 +4,10 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
-      - DB_SQLITE_POOL_SIZE=3
-      - DB_SQLITE_ENABLE_WAL=true
     ports:
       - 5678:5678
     volumes:
-      - /n8n:/n8n
+      - ${RUN_DIR}:/n8n
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
     depends_on:
