@@ -6,14 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
-import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
-import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
-
-import { WebhookAuthorizationError } from '../Webhook/error';
-import { validateWebhookAuthentication } from '../Webhook/utils';
-
 import { DateTime } from 'luxon';
 import isbot from 'isbot';
+import { WebhookAuthorizationError } from '../Webhook/error';
+import { validateWebhookAuthentication } from '../Webhook/utils';
+import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
 
 export function prepareFormData({
 	formTitle,

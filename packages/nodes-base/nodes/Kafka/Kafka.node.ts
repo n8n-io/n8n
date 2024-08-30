@@ -14,7 +14,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
@@ -28,8 +28,8 @@ export class Kafka implements INodeType {
 		defaults: {
 			name: 'Kafka',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kafka',

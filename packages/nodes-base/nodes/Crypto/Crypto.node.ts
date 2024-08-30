@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
+import { deepCopy, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
 
 const unsupportedAlgorithms = [
 	'RSA-MD4',
@@ -39,8 +39,8 @@ export class Crypto implements INodeType {
 			name: 'Crypto',
 			color: '#408000',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Action',

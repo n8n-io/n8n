@@ -1,17 +1,31 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref } from 'vue';
+import type { CanvasNodeDefaultRender } from '@/types';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
+const { render } = useCanvasNode();
 const { label, isConnected, isConnecting } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
+const isHovered = ref(false);
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
-const isHovered = ref(false);
+
+const plusLineSize = computed(
+	() =>
+		({
+			small: 46,
+			medium: 66,
+			large: 80,
+		})[renderOptions.value.outputs?.labelSize ?? 'small'],
+);
 
 function onMouseEnter() {
 	isHovered.value = true;
@@ -33,6 +47,7 @@ function onClickAdd() {
 			<CanvasHandlePlus
 				v-if="!isConnected"
 				v-show="isHandlePlusVisible"
+				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
@@ -53,12 +68,16 @@ function onClickAdd() {
 .label {
 	position: absolute;
 	top: 50%;
-	left: var(--spacing-s);
+	left: var(--spacing-m);
 	transform: translate(0, -50%);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	background: var(--color-canvas-label-background);
 	z-index: 1;
+	max-width: calc(100% - var(--spacing-m) - 24px);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 </style>
 

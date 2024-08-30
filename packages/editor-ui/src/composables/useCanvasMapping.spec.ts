@@ -133,6 +133,12 @@ describe('useCanvasMapping', () => {
 								configurable: false,
 								configuration: false,
 								trigger: true,
+								inputs: {
+									labelSize: 'small',
+								},
+								outputs: {
+									labelSize: 'small',
+								},
 							},
 						},
 					},
@@ -264,6 +270,12 @@ describe('useCanvasMapping', () => {
 						configurable: false,
 						configuration: false,
 						trigger: true,
+						inputs: {
+							labelSize: 'small',
+						},
+						outputs: {
+							labelSize: 'small',
+						},
 					},
 				});
 			});

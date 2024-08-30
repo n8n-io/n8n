@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import omit from 'lodash/omit';
 import moment from 'moment-timezone';
@@ -48,8 +49,8 @@ export class Wise implements INodeType {
 		defaults: {
 			name: 'Wise',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wiseApi',

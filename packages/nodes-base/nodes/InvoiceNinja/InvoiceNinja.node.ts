@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { invoiceNinjaApiRequest, invoiceNinjaApiRequestAllItems } from './GenericFunctions';
 
@@ -15,8 +16,6 @@ import { clientFields, clientOperations } from './ClientDescription';
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import type { IClient, IContact } from './ClientInterface';
-
-import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 import type { IInvoice, IItem } from './invoiceInterface';
 
@@ -35,6 +34,7 @@ import type { IExpense } from './ExpenseInterface';
 import { quoteFields, quoteOperations } from './QuoteDescription';
 
 import type { IQuote } from './QuoteInterface';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class InvoiceNinja implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,8 +48,8 @@ export class InvoiceNinja implements INodeType {
 		defaults: {
 			name: 'Invoice Ninja',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'invoiceNinjaApi',
