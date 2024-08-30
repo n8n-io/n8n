@@ -7,7 +7,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED, NodeOperationError } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -27,6 +27,7 @@ import {
 	respondWithOptions,
 	formRespondMode,
 	formTitle,
+	appendAttributionToForm,
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
@@ -234,8 +235,8 @@ export class Wait extends Webhook {
 			name: 'Wait',
 			color: '#804050',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: credentialsProperty(this.authPropertyName),
 		hints: [
 			{
@@ -436,7 +437,7 @@ export class Wait extends Webhook {
 						responseMode: ['responseNode'],
 					},
 				},
-				options: [respondWithOptions, webhookSuffix],
+				options: [appendAttributionToForm, respondWithOptions, webhookSuffix],
 			},
 			{
 				displayName: 'Options',
@@ -452,7 +453,7 @@ export class Wait extends Webhook {
 						responseMode: ['onReceived', 'lastNode'],
 					},
 				},
-				options: [webhookSuffix],
+				options: [appendAttributionToForm, webhookSuffix],
 			},
 		],
 	};

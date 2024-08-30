@@ -68,7 +68,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection } from '@vue-flow/core';
 import type {
-	ConnectionTypes,
 	IConnection,
 	IConnections,
 	INode,
@@ -905,7 +904,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					}
 				}
 
-				let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 				try {
 					// It fails when the outputs are an expression. As those nodes have
 					// normally no outputs by default and the only reason we need the
@@ -1154,7 +1153,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				return false;
 			}
 
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 			if (targetNodeType) {
 				inputs =
 					NodeHelpers.getNodeInputs(editableWorkflowObject.value, workflowNode, targetNodeType) ||

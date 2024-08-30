@@ -1,5 +1,5 @@
 name: Run Nightly Benchmark
-run-name: Benchmark ${{ inputs.n8n_tag }}
+run-name: Benchmark ${{ inputs.n8n_tag || 'nightly' }}
 
 on:
   schedule:
@@ -60,10 +60,10 @@ jobs:
 
       - name: Run the benchmark with debug logging
         if: github.event.inputs.debug == 'true'
-        run: pnpm run-in-cloud --debug
+        run: pnpm benchmark-in-cloud --n8nTag ${{ inputs.n8n_tag || 'nightly' }} --benchmarkTag ${{ inputs.benchmark_tag || 'latest' }} --debug
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
         if: github.event.inputs.debug != 'true'
-        run: pnpm run-in-cloud
+        run: pnpm benchmark-in-cloud --n8nTag ${{ inputs.n8n_tag || 'nightly' }} --benchmarkTag ${{ inputs.benchmark_tag || 'latest' }}
         working-directory: packages/@n8n/benchmark

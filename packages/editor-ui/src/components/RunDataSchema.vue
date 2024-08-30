@@ -9,7 +9,6 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { telemetry } from '@/plugins/telemetry';
 import {
 	NodeConnectionType,
-	type ConnectionTypes,
 	type IConnectedNode,
 	type IDataObject,
 	type INodeTypeDescription,
@@ -33,7 +32,7 @@ type Props = {
 	outputIndex?: number;
 	totalRuns?: number;
 	paneType: 'input' | 'output';
-	connectionType?: ConnectionTypes;
+	connectionType?: NodeConnectionType;
 	search?: string;
 };
 

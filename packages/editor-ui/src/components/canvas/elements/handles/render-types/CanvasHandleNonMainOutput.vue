@@ -27,8 +27,9 @@ const handleClasses = 'source';
 	transform: translate(0%, 0);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	background: var(--color-canvas-label-background);
 	z-index: 0;
+	white-space: nowrap;
 }
 
 :global(.vue-flow__handle:not(.connectionindicator)) .plus {

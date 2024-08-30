@@ -17,6 +17,16 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { ProjectTypes } from '@/types/projects.types';
 
+const showToast = vi.fn();
+const showError = vi.fn();
+
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showToast,
+		showError,
+	}),
+}));
+
 const wrapperComponentWithModal = {
 	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
 	template: `
@@ -71,6 +81,9 @@ describe('SettingsUsersView', () => {
 		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 
 		usersStore.currentUserId = loggedInUser.id;
+
+		showToast.mockReset();
+		showError.mockReset();
 	});
 
 	afterEach(() => {
@@ -155,5 +168,29 @@ describe('SettingsUsersView', () => {
 		expect(deleteUserSpy).toHaveBeenCalledWith({
 			id: users[0].id,
 		});
+	});
+
+	it("should show success toast when changing a user's role", async () => {
+		const updateGlobalRoleSpy = vi.spyOn(usersStore, 'updateGlobalRole').mockResolvedValue();
+
+		const { getByTestId } = createComponentRenderer(SettingsUsersView)({
+			pinia,
+		});
+
+		const userListItem = getByTestId(`user-list-item-${users.at(-1)?.email}`);
+		expect(userListItem).toBeInTheDocument();
+
+		const roleSelect = within(userListItem).getByTestId('user-role-select');
+
+		const roleDropdownItems = await getDropdownItems(roleSelect);
+		await userEvent.click(roleDropdownItems[0]);
+
+		expect(updateGlobalRoleSpy).toHaveBeenCalledWith(
+			expect.objectContaining({ newRoleName: 'global:member' }),
+		);
+
+		expect(showToast).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'success', message: expect.stringContaining('Member') }),
+		);
 	});
 });

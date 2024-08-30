@@ -1,4 +1,5 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { userFields, userOperations } from './UserDescription';
 import { getUsers } from './UserFunctions';
 
@@ -14,8 +15,8 @@ export class Okta implements INodeType {
 		defaults: {
 			name: 'Okta',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'oktaApi',

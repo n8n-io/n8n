@@ -9,8 +9,7 @@ const paths = {
 };
 
 export class TerraformClient {
-	constructor({ privateKeyPath, isVerbose = false }) {
-		this.privateKeyPath = privateKeyPath;
+	constructor({ isVerbose = false }) {
 		this.isVerbose = isVerbose;
 		this.$$ = $({
 			cwd: paths.infraCodeDir,
