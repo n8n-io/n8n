@@ -1,4 +1,4 @@
-// eslint-disable-next-line n8n-nodes-base/node-dirname-against-convention
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -24,13 +24,13 @@ import {
 	teamOperations,
 	unsubscribeFields,
 	unsubscribeOperations,
-} from '././descriptions';
+} from './descriptions';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Lemlist',
 	name: 'lemlist',
 	icon: 'file:lemlist.svg',
 	group: ['transform'],
-	version: 1,
+	version: 2,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Lemlist API',
 	defaults: {
@@ -86,7 +86,7 @@ const versionDescription: INodeTypeDescription = {
 		...unsubscribeFields,
 	],
 };
-export class LemlistV1 implements INodeType {
+export class LemlistV2 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
