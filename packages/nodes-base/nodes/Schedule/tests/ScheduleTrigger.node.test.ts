@@ -1,9 +1,6 @@
 import * as n8nWorkflow from 'n8n-workflow';
-import type { INode, ITriggerFunctions, Workflow } from 'n8n-workflow';
-import { type InstanceSettings, returnJsonArray } from 'n8n-core';
-import { ScheduledTaskManager } from 'n8n-core/dist/ScheduledTaskManager';
-import { mock } from 'jest-mock-extended';
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
+import { createTestTriggerNode } from './TriggerTestUtil';
 
 describe('ScheduleTrigger', () => {
 	Object.defineProperty(n8nWorkflow, 'randomInt', {
@@ -16,49 +13,27 @@ describe('ScheduleTrigger', () => {
 	jest.useFakeTimers();
 	jest.setSystemTime(mockDate);
 
-	const node = mock<INode>({ typeVersion: 1 });
-	const workflow = mock<Workflow>({ timezone });
-	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
-	const scheduledTaskManager = new ScheduledTaskManager(instanceSettings);
-	const helpers = mock<ITriggerFunctions['helpers']>({
-		returnJsonArray,
-		registerCron: (cronExpression, onTick) =>
-			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
-	});
-
-	const triggerFunctions = mock<ITriggerFunctions>({
-		helpers,
-		getTimezone: () => timezone,
-		getNode: () => node,
-		getMode: () => 'trigger',
-	});
-
-	const scheduleTrigger = new ScheduleTrigger();
-
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	describe('trigger', () => {
 		it('should emit on defined schedule', async () => {
-			triggerFunctions.getNodeParameter.calledWith('rule', expect.anything()).mockReturnValueOnce({
-				interval: [{ field: 'hours', hoursInterval: 3 }],
+			const { mocks } = await createTestTriggerNode(ScheduleTrigger).test({
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 3 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
 			});
-			triggerFunctions.getWorkflowStaticData.mockReturnValueOnce({ recurrenceRules: [] });
 
-			const result = await scheduleTrigger.trigger.call(triggerFunctions);
-			// Assert that no manualTriggerFunction is returned
-			expect(result).toEqual({});
-
-			expect(triggerFunctions.emit).not.toHaveBeenCalled();
+			expect(mocks.emit).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(HOUR);
-			expect(triggerFunctions.emit).not.toHaveBeenCalled();
+			expect(mocks.emit).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(2 * HOUR);
-			expect(triggerFunctions.emit).toHaveBeenCalledTimes(1);
+			expect(mocks.emit).toHaveBeenCalledTimes(1);
 
-			const firstTriggerData = triggerFunctions.emit.mock.calls[0][0][0][0];
+			const firstTriggerData = mocks.emit.mock.calls[0][0][0][0];
 			expect(firstTriggerData.json).toEqual({
 				'Day of month': '28',
 				'Day of week': 'Thursday',
@@ -76,9 +51,10 @@ describe('ScheduleTrigger', () => {
 			jest.setSystemTime(new Date(firstTriggerData.json.timestamp as string));
 
 			jest.advanceTimersByTime(2 * HOUR);
-			expect(triggerFunctions.emit).toHaveBeenCalledTimes(1);
+			expect(mocks.emit).toHaveBeenCalledTimes(1);
+
 			jest.advanceTimersByTime(HOUR);
-			expect(triggerFunctions.emit).toHaveBeenCalledTimes(2);
+			expect(mocks.emit).toHaveBeenCalledTimes(2);
 		});
 	});
 });
