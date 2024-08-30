@@ -55,11 +55,11 @@ jobs:
 
       - name: Test
         if: env.N8N_TAG == 'nightly'
-        run: echo "IT IS NIGHTLY!"
+        run: echo "IT IS NIGHTLY! ${{ env.N8N_TAG }}"
 
       - name: Test
         if: env.N8N_TAG != 'nightly'
-        run: echo "IT IS NOT NIGHTLY!"
+        run: echo "IT IS NOT NIGHTLY! ${{ env.N8N_TAG }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
