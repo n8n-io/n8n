@@ -19,14 +19,17 @@ async function main() {
 	const n8nTag = argv.n8nDockerTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = argv.benchmarkDockerTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
-	const runDir = argv.runDir || process.env.RUN_DIR || '/n8n';
+	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
 
-	if (!fs.existsSync(runDir)) {
+	if (!fs.existsSync(baseRunDir)) {
 		console.error(
-			`The run directory "${runDir}" does not exist. Please specify a valid directory using --runDir`,
+			`The run directory "${baseRunDir}" does not exist. Please specify a valid directory using --runDir`,
 		);
 		process.exit(1);
 	}
+
+	const runDir = path.join(baseRunDir, n8nSetupToUse);
+	fs.emptyDirSync(runDir);
 
 	const dockerComposeClient = new DockerComposeClient({
 		$: $({
@@ -42,7 +45,7 @@ async function main() {
 	});
 
 	try {
-		await dockerComposeClient.$('up', '-d', 'n8n');
+		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
 
 		await dockerComposeClient.$('run', 'benchmark', 'run', `--scenarioNamePrefix=${n8nSetupToUse}`);
 	} catch (error) {
