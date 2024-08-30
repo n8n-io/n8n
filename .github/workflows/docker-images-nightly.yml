@@ -53,6 +53,14 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.0.0
 
+      - name: Test
+        if: env.N8N_TAG == 'nightly'
+        run: echo "IT IS NIGHTLY!"
+
+      - name: Test
+        if: env.N8N_TAG != 'nightly'
+        run: echo "IT IS NOT NIGHTLY!"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.0.0
 
