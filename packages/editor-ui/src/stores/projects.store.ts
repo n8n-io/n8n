@@ -18,8 +18,9 @@ import { hasPermission } from '@/utils/rbac/permissions';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { STORES } from '@/constants';
 
-export const useProjectsStore = defineStore('projects', () => {
+export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
