@@ -145,8 +145,6 @@
 	"aiAssistant.feedback.nodeError.no": "No, I don't think you can help",
 	"aiAssistant.thinkingSteps.analyzingError": "Analyzing the error...",
 	"aiAssistant.thinkingSteps.thinking": "Thinking...",
-	"aiAssistant.thinkingSteps.n8n_documentation": "Searching the n8n documentation...",
-	"aiAssistant.thinkingSteps.n8n_forum": "Checking the n8n community for answers...",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",

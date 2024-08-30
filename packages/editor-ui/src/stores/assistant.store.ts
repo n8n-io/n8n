@@ -197,7 +197,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					read,
 				});
 			} else if (msg.type === 'intermediate-step') {
-				assistantThinkingMessage.value = locale.baseText(msg.step);
+				assistantThinkingMessage.value = msg.text;
 			}
 		});
 		chatMessages.value = messages;

@@ -103,7 +103,8 @@ export namespace ChatRequest {
 	interface AgentThinkingStep {
 		role: 'assistant';
 		type: 'intermediate-step';
-		step: BaseTextKey;
+		text: string;
+		step: string;
 	}
 
 	export type MessageResponse =
