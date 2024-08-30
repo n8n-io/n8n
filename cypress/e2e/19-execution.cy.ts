@@ -616,4 +616,45 @@ describe('Execution', () => {
 
 		errorToast().should('contain', 'Problem in node ‘Telegram‘');
 	});
+
+	it('should not show pinned data in production execution', () => {
+		cy.createFixtureWorkflow('Execution-pinned-data-check.json');
+
+		workflowPage.getters.zoomToFitButton().click();
+		cy.intercept('PATCH', '/rest/workflows/*').as('workflowActivate');
+		workflowPage.getters.activatorSwitch().click();
+
+		cy.wait('@workflowActivate');
+		cy.get('body').type('{esc}');
+		workflowPage.actions.openNode('Webhook');
+
+		cy.contains('label', 'Production URL').should('be.visible').click();
+		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
+		cy.get('.webhook-url').click();
+		ndv.getters.backToCanvas().click();
+
+		cy.readClipboard().then((url) => {
+			cy.request({
+				method: 'GET',
+				url,
+			}).then((resp) => {
+				expect(resp.status).to.eq(200);
+			});
+		});
+
+		cy.intercept('GET', '/rest/executions/*').as('getExecution');
+		executionsTab.actions.switchToExecutionsTab();
+
+		cy.wait('@getExecution');
+		executionsTab.getters
+			.workflowExecutionPreviewIframe()
+			.should('be.visible')
+			.its('0.contentDocument.body')
+			.should('not.be.empty')
+
+			.then(cy.wrap)
+			.find('.connection-run-items-label')
+			.filter(':contains("5 items")')
+			.should('have.length', 2);
+	});
 });
