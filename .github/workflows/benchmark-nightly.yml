@@ -58,6 +58,10 @@ jobs:
           tenant-id: ${{ env.ARM_TENANT_ID }}
           subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
 
+      - name: Destroy any existing environment
+        run: pnpm destroy-cloud-env
+        working-directory: packages/@n8n/benchmark
+
       - name: Run the benchmark with debug logging
         if: github.event.inputs.debug == 'true'
         run: pnpm benchmark-in-cloud --n8nTag ${{ inputs.n8n_tag || 'nightly' }} --benchmarkTag ${{ inputs.benchmark_tag || 'latest' }} --debug
