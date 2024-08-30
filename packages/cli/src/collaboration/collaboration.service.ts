@@ -2,7 +2,7 @@ import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { Push } from '../push';
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
-import { isWorkflowClosedMessage, isWorkflowOpenedMessage } from './collaboration.message';
+import { parseWorkflowMessage } from './collaboration.message';
 import type { IActiveWorkflowUsersChanged } from '../interfaces';
 import type { OnPushMessage } from '@/push/types';
 import { UserRepository } from '@/databases/repositories/user.repository';
@@ -45,10 +45,12 @@ export class CollaborationService {
 	}
 
 	async handleUserMessage(userId: User['id'], msg: unknown) {
-		if (isWorkflowOpenedMessage(msg)) {
-			await this.handleWorkflowOpened(userId, msg);
-		} else if (isWorkflowClosedMessage(msg)) {
-			await this.handleWorkflowClosed(userId, msg);
+		const workflowMessage = await parseWorkflowMessage(msg);
+
+		if (workflowMessage.type === 'workflowOpened') {
+			await this.handleWorkflowOpened(userId, workflowMessage);
+		} else if (workflowMessage.type === 'workflowClosed') {
+			await this.handleWorkflowClosed(userId, workflowMessage);
 		}
 	}
 
