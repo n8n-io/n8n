@@ -200,8 +200,6 @@ export class WorkflowRunner {
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
-			// This is the workflow and node specific data that can be saved and
-			// retrieved with the code node.
 			data.workflowData.staticData =
 				await this.workflowStaticDataService.getStaticDataById(workflowId);
 		}
