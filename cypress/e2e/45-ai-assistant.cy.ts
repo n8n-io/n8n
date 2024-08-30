@@ -151,13 +151,11 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
 		cy.get('@chatRequest.all').then((interceptions) => {
 			expect(interceptions).to.have.length(TOTAL_REQUEST_COUNT);
-			console.log('INTERCEPTIONS', interceptions);
 		});
 		// Executing the same node should not send a new message if users haven't responded to quick replies
 		ndv.getters.nodeExecuteButton().click();
 		cy.get('@chatRequest.all').then((interceptions) => {
 			expect(interceptions).to.have.length(TOTAL_REQUEST_COUNT);
-			console.log('INTERCEPTIONS', interceptions);
 		});
 		aiAssistant.getters.chatMessagesAssistant().should('have.length', 2);
 	});
