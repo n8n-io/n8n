@@ -559,7 +559,7 @@ importers:
         version: 8.1.4(@types/react@18.0.27)(encoding@0.1.13)(prettier@3.2.5)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@storybook/addon-interactions':
         specifier: ^8.1.4
-        version: 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
+        version: 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       '@storybook/addon-links':
         specifier: ^8.1.4
         version: 8.1.4(react@18.2.0)
@@ -571,7 +571,7 @@ importers:
         version: 8.1.4(@types/react@18.0.27)(encoding@0.1.13)(prettier@3.2.5)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@storybook/test':
         specifier: ^8.1.4
-        version: 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
+        version: 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       '@storybook/vue3':
         specifier: ^8.1.4
         version: 8.1.4(encoding@0.1.13)(prettier@3.2.5)(vue@3.4.21(typescript@5.5.2))
@@ -741,8 +741,8 @@ importers:
         specifier: 7.1.2
         version: 7.1.2
       express-openapi-validator:
-        specifier: 5.3.1
-        version: 5.3.1(express@4.19.2)
+        specifier: 5.3.3
+        version: 5.3.3(express@4.19.2)
       express-prom-bundle:
         specifier: 6.6.0
         version: 6.6.0(prom-client@13.2.0)
@@ -1820,7 +1820,7 @@ importers:
     devDependencies:
       '@langchain/core':
         specifier: ^0.2.18
-        version: 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
+        version: 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -7973,8 +7973,8 @@ packages:
     resolution: {integrity: sha512-ss9d3mBChOLTEtyfzXCsxlItUxpgS3i4cb/F70G6Q5ohQzmD12XB4x/Y9U6YboeeYBJZt7WQ5yUNu7ZSQ/EGyQ==}
     engines: {node: '>=v16'}
 
-  express-openapi-validator@5.3.1:
-    resolution: {integrity: sha512-Mlo3N1yvaZJlIs/nX0ig4xSu4g1CmLK/InRuqrXPmiqijfHa5qx/5ng92kq2dfTKd77XE7e9sPJqkI79asqNlQ==}
+  express-openapi-validator@5.3.3:
+    resolution: {integrity: sha512-WolpeQTubIlPOjKZiMmFL+pvztAq4bpL/ylvKjs2v7JN/8qC2J2k21MuYcz0o5vQBt4cdIg2cZ2I1Ik2R3FG6w==}
     peerDependencies:
       express: '*'
 
@@ -13130,8 +13130,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.0.29:
-    resolution: {integrity: sha512-58i+ZhUAUpwQ+9h5Hck0D+jr1qbYl4voRt5KffBx8qzELViQ4XdT/Tuo+mzq8u63teAG8K0lLaOiL5ofqW38rg==}
+  vue-component-type-helpers@2.1.2:
+    resolution: {integrity: sha512-URuxnrOhO9lUG4LOAapGWBaa/WOLDzzyAbL+uKZqT7RS+PFy0cdXI2mUSh7GaMts6vtHaeVbGk7trd0FPJi65Q==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -16045,8 +16045,8 @@ snapshots:
       url-join: 4.0.1
       zod: 3.23.8
     optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
-      langchain: 0.2.11(m7otbkpxyspoz5trt2pa3dcs6u)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
     transitivePeerDependencies:
       - encoding
 
@@ -16469,7 +16469,7 @@ snapshots:
   '@langchain/anthropic@0.2.9(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
       '@anthropic-ai/sdk': 0.22.0(encoding@0.1.13)
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       fast-xml-parser: 4.3.5
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
@@ -16481,7 +16481,7 @@ snapshots:
 
   '@langchain/cohere@0.0.10(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       cohere-ai: 7.10.1(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -16559,23 +16559,78 @@ snapshots:
       - pyodide
       - supports-color
 
-  '@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)':
+  '@langchain/community@0.2.20(yatsnfdsa55wls5pvl4axjr4ti)':
     dependencies:
-      ansi-styles: 5.2.0
-      camelcase: 6.3.0
-      decamelize: 1.2.0
-      js-tiktoken: 1.0.12
-      langsmith: 0.1.39(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
-      ml-distance: 4.0.1
-      mustache: 4.2.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))
+      binary-extensions: 2.2.0
+      expr-eval: 2.0.2
+      flat: 5.0.2
+      js-yaml: 4.1.0
+      langchain: 0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
+      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))
       uuid: 10.0.0
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
+    optionalDependencies:
+      '@aws-sdk/client-bedrock-runtime': 3.535.0
+      '@aws-sdk/client-s3': 3.478.0
+      '@aws-sdk/credential-provider-node': 3.535.0
+      '@azure/storage-blob': 12.18.0(encoding@0.1.13)
+      '@getzep/zep-cloud': 1.0.11(@langchain/core@0.2.18)(encoding@0.1.13)(langchain@0.2.11)
+      '@getzep/zep-js': 0.9.0
+      '@google-ai/generativelanguage': 2.5.0(encoding@0.1.13)
+      '@google-cloud/storage': 7.12.1(encoding@0.1.13)
+      '@huggingface/inference': 2.7.0
+      '@mozilla/readability': 0.5.0
+      '@pinecone-database/pinecone': 3.0.0
+      '@qdrant/js-client-rest': 1.9.0(typescript@5.5.2)
+      '@smithy/eventstream-codec': 2.2.0
+      '@smithy/protocol-http': 3.3.0
+      '@smithy/signature-v4': 2.2.1
+      '@smithy/util-utf8': 2.3.0
+      '@supabase/postgrest-js': 1.15.2
+      '@supabase/supabase-js': 2.43.4
+      '@xata.io/client': 0.28.4(typescript@5.5.2)
+      cheerio: 1.0.0-rc.12
+      cohere-ai: 7.10.1(encoding@0.1.13)
+      crypto-js: 4.2.0
+      d3-dsv: 2.0.0
+      epub2: 3.0.2(ts-toolbelt@9.6.0)
+      google-auth-library: 9.10.0(encoding@0.1.13)
+      html-to-text: 9.0.5
+      ignore: 5.2.4
+      ioredis: 5.3.2
+      jsdom: 23.0.1
+      jsonwebtoken: 9.0.2
+      lodash: 4.17.21
+      mammoth: 1.7.2
+      mongodb: 6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
+      mysql2: 3.11.0
+      pdf-parse: 1.1.1
+      pg: 8.12.0
+      redis: 4.6.14
+      ws: 8.17.1
     transitivePeerDependencies:
-      - langchain
+      - '@gomomento/sdk-web'
+      - '@langchain/anthropic'
+      - '@langchain/aws'
+      - '@langchain/cohere'
+      - '@langchain/google-genai'
+      - '@langchain/google-vertexai'
+      - '@langchain/google-vertexai-web'
+      - '@langchain/groq'
+      - '@langchain/mistralai'
+      - '@langchain/ollama'
+      - axios
+      - encoding
+      - fast-xml-parser
+      - handlebars
       - openai
+      - peggy
+      - pyodide
+      - supports-color
+    optional: true
 
   '@langchain/core@0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))':
     dependencies:
@@ -16595,9 +16650,27 @@ snapshots:
       - langchain
       - openai
 
-  '@langchain/google-common@0.0.22(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
+  '@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      ansi-styles: 5.2.0
+      camelcase: 6.3.0
+      decamelize: 1.2.0
+      js-tiktoken: 1.0.12
+      langsmith: 0.1.39(@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))
+      ml-distance: 4.0.1
+      mustache: 4.2.0
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      uuid: 10.0.0
+      zod: 3.23.8
+      zod-to-json-schema: 3.23.0(zod@3.23.8)
+    transitivePeerDependencies:
+      - langchain
+      - openai
+
+  '@langchain/google-common@0.0.22(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
+    dependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       uuid: 10.0.0
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     transitivePeerDependencies:
@@ -16605,10 +16678,10 @@ snapshots:
       - openai
       - zod
 
-  '@langchain/google-gauth@0.0.21(encoding@0.1.13)(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
+  '@langchain/google-gauth@0.0.21(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/google-common': 0.0.22(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/google-common': 0.0.22(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
       google-auth-library: 8.9.0(encoding@0.1.13)
     transitivePeerDependencies:
       - encoding
@@ -16620,7 +16693,7 @@ snapshots:
   '@langchain/google-genai@0.0.23(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
       '@google/generative-ai': 0.7.1
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     transitivePeerDependencies:
       - langchain
@@ -16629,8 +16702,8 @@ snapshots:
 
   '@langchain/google-vertexai@0.0.21(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/google-gauth': 0.0.21(encoding@0.1.13)(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/google-gauth': 0.0.21(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
     transitivePeerDependencies:
       - encoding
       - langchain
@@ -16640,8 +16713,8 @@ snapshots:
 
   '@langchain/groq@0.0.15(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
-      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))
       groq-sdk: 0.3.2(encoding@0.1.13)
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
@@ -16653,7 +16726,7 @@ snapshots:
 
   '@langchain/mistralai@0.0.27(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       '@mistralai/mistralai': 0.4.0(encoding@0.1.13)
       uuid: 10.0.0
       zod: 3.23.8
@@ -16665,12 +16738,24 @@ snapshots:
 
   '@langchain/ollama@0.0.2(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       ollama: 0.5.6
       uuid: 10.0.0
     transitivePeerDependencies:
       - langchain
       - openai
+
+  '@langchain/openai@0.2.5(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))':
+    dependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      js-tiktoken: 1.0.12
+      openai: 4.53.0(encoding@0.1.13)
+      zod: 3.23.8
+      zod-to-json-schema: 3.23.0(zod@3.23.8)
+    transitivePeerDependencies:
+      - encoding
+      - langchain
+      - supports-color
 
   '@langchain/openai@0.2.5(encoding@0.1.13)(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))':
     dependencies:
@@ -16683,19 +16768,6 @@ snapshots:
       - encoding
       - langchain
       - supports-color
-
-  '@langchain/openai@0.2.5(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))':
-    dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
-      js-tiktoken: 1.0.12
-      openai: 4.53.0(encoding@0.1.13)
-      zod: 3.23.8
-      zod-to-json-schema: 3.23.0(zod@3.23.8)
-    transitivePeerDependencies:
-      - encoding
-      - langchain
-      - supports-color
-    optional: true
 
   '@langchain/pinecone@0.0.8(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))':
     dependencies:
@@ -16725,9 +16797,9 @@ snapshots:
       - langchain
       - openai
 
-  '@langchain/textsplitters@0.0.3(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)':
+  '@langchain/textsplitters@0.0.3(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))':
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
       js-tiktoken: 1.0.12
     transitivePeerDependencies:
       - langchain
@@ -18040,11 +18112,11 @@ snapshots:
     dependencies:
       '@storybook/global': 5.0.0
 
-  '@storybook/addon-interactions@8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))':
+  '@storybook/addon-interactions@8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))':
     dependencies:
       '@storybook/global': 5.0.0
       '@storybook/instrumenter': 8.1.4
-      '@storybook/test': 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
+      '@storybook/test': 8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       '@storybook/types': 8.1.4
       polished: 4.2.2
       ts-dedent: 2.2.0
@@ -18492,14 +18564,14 @@ snapshots:
       - prettier
       - supports-color
 
-  '@storybook/test@8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))':
+  '@storybook/test@8.1.4(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))':
     dependencies:
       '@storybook/client-logger': 8.1.4
       '@storybook/core-events': 8.1.4
       '@storybook/instrumenter': 8.1.4
       '@storybook/preview-api': 8.1.4
       '@testing-library/dom': 9.3.4
-      '@testing-library/jest-dom': 6.4.2(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))
+      '@testing-library/jest-dom': 6.4.2(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))
       '@testing-library/user-event': 14.5.2(@testing-library/dom@9.3.4)
       '@vitest/expect': 1.3.1
       '@vitest/spy': 1.3.1
@@ -18562,7 +18634,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.0.29
+      vue-component-type-helpers: 2.1.2
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -18662,7 +18734,7 @@ snapshots:
       jest: 29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2))
       vitest: 1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1)
 
-  '@testing-library/jest-dom@6.4.2(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(sass@1.64.1)(terser@5.16.1))':
+  '@testing-library/jest-dom@6.4.2(@jest/globals@29.6.2)(@types/jest@29.5.3)(jest@29.6.2(@types/node@18.16.16)(ts-node@10.9.2(@types/node@18.16.16)(typescript@5.5.2)))(vitest@1.6.0(@types/node@18.16.16)(jsdom@23.0.1)(sass@1.64.1)(terser@5.16.1))':
     dependencies:
       '@adobe/css-tools': 4.3.2
       '@babel/runtime': 7.23.6
@@ -21613,7 +21685,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.13.1
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -21638,7 +21710,7 @@ snapshots:
 
   eslint-module-utils@2.8.0(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@7.2.0(eslint@8.57.0)(typescript@5.5.2))(eslint-plugin-import@2.29.1)(eslint@8.57.0))(eslint@8.57.0):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 7.2.0(eslint@8.57.0)(typescript@5.5.2)
       eslint: 8.57.0
@@ -21658,7 +21730,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.3
       array.prototype.flat: 1.3.2
       array.prototype.flatmap: 1.3.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 8.57.0
       eslint-import-resolver-node: 0.3.9
@@ -21937,7 +22009,7 @@ snapshots:
       graceful-fs: 4.2.11
       handlebars: 4.7.8
 
-  express-openapi-validator@5.3.1(express@4.19.2):
+  express-openapi-validator@5.3.3(express@4.19.2):
     dependencies:
       '@apidevtools/json-schema-ref-parser': 11.7.0
       '@types/multer': 1.4.11
@@ -22528,7 +22600,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 4.0.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -23879,17 +23951,17 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.2.11(axios@1.7.4)(openai@4.53.0):
+  langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1):
     dependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
-      '@langchain/openai': 0.2.5(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))
-      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/openai': 0.2.5(encoding@0.1.13)(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))
+      '@langchain/textsplitters': 0.0.3(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))
       binary-extensions: 2.2.0
       js-tiktoken: 1.0.12
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
       langchainhub: 0.0.8
-      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
+      langsmith: 0.1.34(@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13))
       ml-distance: 4.0.1
       openapi-types: 12.1.3
       p-retry: 4.6.2
@@ -23898,7 +23970,35 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.23.0(zod@3.23.8)
     optionalDependencies:
+      '@aws-sdk/client-s3': 3.478.0
+      '@aws-sdk/credential-provider-node': 3.535.0
+      '@azure/storage-blob': 12.18.0(encoding@0.1.13)
+      '@langchain/anthropic': 0.2.9(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/cohere': 0.0.10(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/community': 0.2.20(yatsnfdsa55wls5pvl4axjr4ti)
+      '@langchain/google-genai': 0.0.23(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/google-vertexai': 0.0.21(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))(zod@3.23.8)
+      '@langchain/groq': 0.0.15(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/mistralai': 0.0.27(encoding@0.1.13)(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@langchain/ollama': 0.0.2(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      '@pinecone-database/pinecone': 3.0.0
+      '@supabase/supabase-js': 2.43.4
+      '@xata.io/client': 0.28.4(typescript@5.5.2)
       axios: 1.7.4(debug@4.3.6)
+      cheerio: 1.0.0-rc.12
+      d3-dsv: 2.0.0
+      epub2: 3.0.2(ts-toolbelt@9.6.0)
+      fast-xml-parser: 4.4.1
+      handlebars: 4.7.8
+      html-to-text: 9.0.5
+      ignore: 5.2.4
+      ioredis: 5.3.2
+      jsdom: 23.0.1
+      mammoth: 1.7.2
+      mongodb: 6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1)
+      pdf-parse: 1.1.1
+      redis: 4.6.14
+      ws: 8.17.1
     transitivePeerDependencies:
       - encoding
       - openai
@@ -23959,20 +24059,6 @@ snapshots:
 
   langchainhub@0.0.8: {}
 
-  langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0):
-    dependencies:
-      '@types/uuid': 9.0.7
-      commander: 10.0.1
-      lodash.set: 4.3.2
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      uuid: 9.0.1
-    optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
-      langchain: 0.2.11(axios@1.7.4)(openai@4.53.0)
-      openai: 4.53.0(encoding@0.1.13)
-    optional: true
-
   langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13)):
     dependencies:
       '@types/uuid': 9.0.7
@@ -23986,17 +24072,19 @@ snapshots:
       langchain: 0.2.11(m7otbkpxyspoz5trt2pa3dcs6u)
       openai: 4.53.0(encoding@0.1.13)
 
-  langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0))(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0):
+  langsmith@0.1.34(@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13)):
     dependencies:
       '@types/uuid': 9.0.7
       commander: 10.0.1
+      lodash.set: 4.3.2
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.1
     optionalDependencies:
-      '@langchain/core': 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
-      langchain: 0.2.11(axios@1.7.4)(openai@4.53.0)
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
       openai: 4.53.0(encoding@0.1.13)
+    optional: true
 
   langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13)):
     dependencies:
@@ -24008,6 +24096,18 @@ snapshots:
     optionalDependencies:
       '@langchain/core': 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
       langchain: 0.2.11(m7otbkpxyspoz5trt2pa3dcs6u)
+      openai: 4.53.0(encoding@0.1.13)
+
+  langsmith@0.1.39(@langchain/core@0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13)))(langchain@0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1))(openai@4.53.0(encoding@0.1.13)):
+    dependencies:
+      '@types/uuid': 9.0.7
+      commander: 10.0.1
+      p-queue: 6.6.2
+      p-retry: 4.6.2
+      uuid: 9.0.1
+    optionalDependencies:
+      '@langchain/core': 0.2.18(langchain@0.2.11)(openai@4.53.0(encoding@0.1.13))
+      langchain: 0.2.11(@aws-sdk/client-s3@3.478.0)(@aws-sdk/credential-provider-node@3.535.0)(@azure/storage-blob@12.18.0(encoding@0.1.13))(@langchain/anthropic@0.2.9)(@langchain/cohere@0.0.10)(@langchain/community@0.2.20)(@langchain/google-genai@0.0.23)(@langchain/google-vertexai@0.0.21)(@langchain/groq@0.0.15)(@langchain/mistralai@0.0.27)(@langchain/ollama@0.0.2)(@pinecone-database/pinecone@3.0.0)(@supabase/supabase-js@2.43.4)(@xata.io/client@0.28.4(typescript@5.5.2))(axios@1.7.4)(cheerio@1.0.0-rc.12)(d3-dsv@2.0.0)(encoding@0.1.13)(epub2@3.0.2(ts-toolbelt@9.6.0))(fast-xml-parser@4.4.1)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.2.4)(ioredis@5.3.2)(jsdom@23.0.1)(mammoth@1.7.2)(mongodb@6.3.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.7.1))(openai@4.53.0(encoding@0.1.13))(pdf-parse@1.1.1)(redis@4.6.14)(ws@8.17.1)
       openai: 4.53.0(encoding@0.1.13)
 
   lazy-ass@1.6.0: {}
@@ -25549,7 +25649,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -26435,7 +26535,7 @@ snapshots:
 
   rhea@1.0.24:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -28046,7 +28146,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.0.29: {}
+  vue-component-type-helpers@2.1.2: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:
