@@ -37,6 +37,8 @@ describe('WebSocketPush', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		mockWebSocket1.removeAllListeners();
+		mockWebSocket2.removeAllListeners();
 	});
 
 	it('can add a connection', () => {
@@ -44,6 +46,7 @@ describe('WebSocketPush', () => {
 
 		expect(mockWebSocket1.listenerCount('close')).toBe(1);
 		expect(mockWebSocket1.listenerCount('pong')).toBe(1);
+		expect(mockWebSocket1.listenerCount('message')).toBe(1);
 	});
 
 	it('closes a connection', () => {
@@ -51,6 +54,7 @@ describe('WebSocketPush', () => {
 
 		mockWebSocket1.emit('close');
 
+		expect(mockWebSocket1.listenerCount('message')).toBe(0);
 		expect(mockWebSocket1.listenerCount('close')).toBe(0);
 		expect(mockWebSocket1.listenerCount('pong')).toBe(0);
 	});

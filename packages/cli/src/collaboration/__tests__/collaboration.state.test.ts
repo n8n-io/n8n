@@ -71,12 +71,10 @@ describe('CollaborationState', () => {
 			nowMinus16Minutes.setMinutes(nowMinus16Minutes.getMinutes() - 16);
 			const now = new Date().toISOString();
 
-			mockCacheService.getHash.mockReturnValueOnce(
-				Promise.resolve({
-					expiredUserId: nowMinus16Minutes.toISOString(),
-					notExpiredUserId: now,
-				}),
-			);
+			mockCacheService.getHash.mockResolvedValueOnce({
+				expiredUserId: nowMinus16Minutes.toISOString(),
+				notExpiredUserId: now,
+			});
 
 			// Act
 			const users = await collaborationState.getActiveWorkflowUsers(workflowId);
@@ -88,6 +86,11 @@ describe('CollaborationState', () => {
 					userId: 'notExpiredUserId',
 				},
 			]);
+			// removes expired users from the cache
+			expect(mockCacheService.deleteFromHash).toHaveBeenCalledWith(
+				'collaboration:workflow',
+				'expiredUserId',
+			);
 		});
 	});
 });

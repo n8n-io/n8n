@@ -179,7 +179,7 @@ describe('CollaborationService', () => {
 			sendToUsersSpy.mockClear();
 
 			// Act
-			await sendWorkflowClosedMessage(workflow.id, owner.id);
+			await sendWorkflowClosedMessage(workflow.id, memberWithoutAccess.id);
 
 			// Assert
 			expect(sendToUsersSpy).not.toHaveBeenCalled();
