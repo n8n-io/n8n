@@ -1,5 +1,4 @@
 import type { Schema } from '@/Interface';
-import type { BaseTextKey } from '@/plugins/i18n';
 import type { INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
