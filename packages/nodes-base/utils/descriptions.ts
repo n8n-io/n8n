@@ -41,6 +41,14 @@ export const looseTypeValidationProperty: INodeProperties = {
 	default: true,
 };
 
+export const appendAttributionOption: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+};
+
 export const encodeDecodeOptions: INodePropertyOptions[] = [
 	{
 		name: 'armscii8',

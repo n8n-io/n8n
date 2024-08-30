@@ -14,6 +14,7 @@ import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import { updateDisplayOptions } from '@utils/utilities';
+import { appendAttributionOption } from '../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -137,11 +138,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Append n8n Attribution',
-				name: 'appendAttribution',
-				type: 'boolean',
-				default: true,
+				...appendAttributionOption,
 				description:
 					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
 			},
