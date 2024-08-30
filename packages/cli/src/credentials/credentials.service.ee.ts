@@ -1,6 +1,6 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { CredentialsService } from './credentials.service';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';

@@ -7,7 +7,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type * as express from 'express';
 
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import type { IWebhookData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
 import type {
 	TestWebhookRegistrationsService,

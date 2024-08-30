@@ -22,13 +22,14 @@ const handleClasses = 'target';
 
 .label {
 	position: absolute;
-	top: 20px;
-	left: 50%;
-	transform: translate(-50%, 0);
+	top: 50%;
+	left: calc(var(--spacing-xs) * -1);
+	transform: translate(-100%, -50%);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	background: var(--color-canvas-label-background);
 	z-index: 1;
 	text-align: center;
+	white-space: nowrap;
 }
 </style>

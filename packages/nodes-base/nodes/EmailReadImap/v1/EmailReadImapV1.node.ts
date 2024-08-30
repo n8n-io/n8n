@@ -14,7 +14,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
@@ -85,7 +85,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'imap',

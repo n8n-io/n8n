@@ -4,9 +4,9 @@ import { Container } from 'typedi';
 import { validate } from 'jsonschema';
 import { randomString } from 'n8n-workflow';
 
-import * as Db from '@/Db';
+import * as Db from '@/db';
 import config from '@/config';
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import type { AuthProviderSyncHistory } from '@/databases/entities/auth-provider-sync-history';
 

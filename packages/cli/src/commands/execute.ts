@@ -5,7 +5,7 @@ import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRunner } from '@/workflow-runner';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
 import { BaseCommand } from './base-command';
 

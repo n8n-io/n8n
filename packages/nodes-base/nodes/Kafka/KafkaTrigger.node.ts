@@ -11,7 +11,7 @@ import type {
 	ITriggerResponse,
 	IRun,
 } from 'n8n-workflow';
-import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
+import { createDeferredPromise, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +25,7 @@ export class KafkaTrigger implements INodeType {
 			name: 'Kafka Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kafka',

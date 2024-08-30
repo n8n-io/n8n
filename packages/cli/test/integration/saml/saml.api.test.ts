@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { setSamlLoginEnabled } from '@/sso/saml/saml-helpers';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 

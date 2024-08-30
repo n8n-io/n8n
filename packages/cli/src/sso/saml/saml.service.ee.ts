@@ -1,6 +1,6 @@
 import type express from 'express';
 import Container, { Service } from 'typedi';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlUserAttributes } from './types/saml-user-attributes';

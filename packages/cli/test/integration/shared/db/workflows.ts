@@ -2,7 +2,7 @@ import Container from 'typedi';
 import type { DeepPartial } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';

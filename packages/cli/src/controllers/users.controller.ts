@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
@@ -9,7 +9,7 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
+import type { PublicUser } from '@/interfaces';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';

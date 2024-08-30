@@ -11,6 +11,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Segment } from '@/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from './InlineExpressionEditor/ExpressionOutput.vue';
 import RunDataSchema from './RunDataSchema.vue';
@@ -152,7 +153,7 @@ async function onDrop(expression: string, event: MouseEvent) {
 					:nodes="parentNodes"
 					mapping-enabled
 					pane-type="input"
-					connection-type="main"
+					:connection-type="NodeConnectionType.Main"
 				/>
 			</div>
 

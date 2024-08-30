@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 
-import type { Variables } from '@/databases/entities/Variables';
+import type { Variables } from '@/databases/entities/variables';
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { generateNanoId } from '@/databases/utils/generators';
 import { VariablesService } from '@/environments/variables/variables.service.ee';

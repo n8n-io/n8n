@@ -11,7 +11,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type mysql2 from 'mysql2/promise';
 
@@ -30,8 +30,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'MySQL',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'mySql',

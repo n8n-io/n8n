@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
 
@@ -21,7 +22,7 @@ export class FlowTrigger implements INodeType {
 			name: 'Flow Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'flowApi',

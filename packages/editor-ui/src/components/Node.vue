@@ -10,7 +10,6 @@ import {
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import type {
-	ConnectionTypes,
 	ExecutionSummary,
 	INodeOutputConfiguration,
 	ITaskData,
@@ -244,7 +243,7 @@ const nodeWrapperStyles = computed<StyleValue>(() => {
 		const mainInputs = inputTypes.filter((output) => output === NodeConnectionType.Main);
 		styles['--node-main-input-count'] = mainInputs.length;
 
-		let outputs = [] as Array<ConnectionTypes | INodeOutputConfiguration>;
+		let outputs = [] as Array<NodeConnectionType | INodeOutputConfiguration>;
 		if (props.workflow.nodes[node.value.name]) {
 			outputs = NodeHelpers.getNodeOutputs(props.workflow, node.value, nodeType.value);
 		}

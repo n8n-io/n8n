@@ -23,7 +23,7 @@ import {
 import type { APIRequest } from '@/requests';
 import { ControllerRegistry } from '@/decorators';
 import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
-import type { ICredentialsOverwrite } from '@/Interfaces';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import * as ResponseHelper from '@/response-helper';
@@ -59,7 +59,7 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/eventBus.controller';
+import '@/eventbus/event-bus.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';

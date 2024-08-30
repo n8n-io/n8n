@@ -1,5 +1,5 @@
 import type { ActivationErrorsService } from '@/activation-errors.service';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';

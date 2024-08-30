@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 import { apiRequest } from './v2/transport';
@@ -35,7 +35,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleSheetsTriggerOAuth2Api',

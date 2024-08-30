@@ -7,7 +7,7 @@ import type { DateTime } from 'luxon';
 import type { IRun, ITaskData } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
-import type { IExecutionResponse } from '@/Interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { ARTIFICIAL_TASK_DATA } from '@/constants';

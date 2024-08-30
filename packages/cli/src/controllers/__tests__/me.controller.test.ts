@@ -3,8 +3,8 @@ import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
 
-import type { PublicUser } from '@/Interfaces';
-import type { User } from '@/databases/entities/User';
+import type { PublicUser } from '@/interfaces';
+import type { User } from '@/databases/entities/user';
 import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';

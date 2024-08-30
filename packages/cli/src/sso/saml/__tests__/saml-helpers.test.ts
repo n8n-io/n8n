@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/User';
+import { User } from '@/databases/entities/user';
 import { generateNanoId } from '@/databases/utils/generators';
 import * as helpers from '@/sso/saml/saml-helpers';
 import type { SamlUserAttributes } from '@/sso/saml/types/saml-user-attributes';
