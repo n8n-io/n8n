@@ -76,7 +76,7 @@ describe('DeleteUserModal', () => {
 		expect(userStore.deleteUser).toHaveBeenCalledWith({ id: invitedUser.id });
 	});
 
-	it('should transfer workflows and credentials when deleting user', async () => {
+	it('should delete user and transfer workflows and credentials', async () => {
 		const { getByTestId, getAllByRole } = createComponentRenderer(DeleteUserModal)({
 			props: {
 				activeId: user.id,
@@ -109,7 +109,7 @@ describe('DeleteUserModal', () => {
 		});
 	});
 
-	it('should transfer workflows and credentials when deleting user', async () => {
+	it('should delete user without transfer', async () => {
 		const { getByTestId, getAllByRole, getByRole } = createComponentRenderer(DeleteUserModal)({
 			props: {
 				activeId: user.id,
