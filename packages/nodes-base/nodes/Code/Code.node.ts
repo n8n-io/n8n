@@ -135,7 +135,7 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}
@@ -163,7 +163,7 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					set(error, 'node', node);
 					throw error;
 				}

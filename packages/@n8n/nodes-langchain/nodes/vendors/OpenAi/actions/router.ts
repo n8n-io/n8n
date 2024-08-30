@@ -55,7 +55,7 @@ export async function router(this: IExecuteFunctions) {
 
 			returnData.push(...responseData);
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}

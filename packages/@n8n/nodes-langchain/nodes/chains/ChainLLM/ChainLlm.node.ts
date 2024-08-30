@@ -580,7 +580,7 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}
