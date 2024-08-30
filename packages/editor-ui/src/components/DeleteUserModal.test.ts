@@ -57,9 +57,11 @@ const global = {
 	},
 };
 
+const renderModal = createComponentRenderer(DeleteUserModal);
+
 describe('DeleteUserModal', () => {
 	it('should delete invited users', async () => {
-		const { getByTestId } = createComponentRenderer(DeleteUserModal)({
+		const { getByTestId } = renderModal({
 			props: {
 				activeId: invitedUser.id,
 			},
@@ -77,7 +79,7 @@ describe('DeleteUserModal', () => {
 	});
 
 	it('should delete user and transfer workflows and credentials', async () => {
-		const { getByTestId, getAllByRole } = createComponentRenderer(DeleteUserModal)({
+		const { getByTestId, getAllByRole } = renderModal({
 			props: {
 				activeId: user.id,
 			},
@@ -110,7 +112,7 @@ describe('DeleteUserModal', () => {
 	});
 
 	it('should delete user without transfer', async () => {
-		const { getByTestId, getAllByRole, getByRole } = createComponentRenderer(DeleteUserModal)({
+		const { getByTestId, getAllByRole, getByRole } = renderModal({
 			props: {
 				activeId: user.id,
 			},
