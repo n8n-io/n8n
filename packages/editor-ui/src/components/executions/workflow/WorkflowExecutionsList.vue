@@ -2,12 +2,18 @@
 import { computed, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
-import { EXECUTION_ANNOTATION_EXPERIMENT, MAIN_HEADER_TABS, VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTION_ANNOTATION_EXPERIMENT,
+	MAIN_HEADER_TABS,
+	VIEWS,
+} from '@/constants';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -38,9 +44,15 @@ const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 const router = useRouter();
 
 const posthogStore = usePostHog();
+const settingsStore = useSettingsStore();
 
-const isAnnotationEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+const isAdvancedExecutionFilterEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+const isAnnotationEnabled = computed(
+	() =>
+		isAdvancedExecutionFilterEnabled.value &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 
 const temporaryExecution = computed<ExecutionSummary | undefined>(() =>

@@ -48,8 +48,10 @@ const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
-const isAnnotationFiltersEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+const isAnnotationFiltersEnabled = computed(
+	() =>
+		isAdvancedExecutionFilterEnabled.value &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 const showTags = computed(() => false);
 

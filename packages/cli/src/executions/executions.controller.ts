@@ -48,7 +48,10 @@ export class ExecutionsController {
 
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
-		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
+		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
+			delete query.metadata;
+			delete query.annotationTags;
+		}
 
 		const noStatus = !query.status || query.status.length === 0;
 		const noRange = !query.range.lastId || !query.range.firstId;
