@@ -1,5 +1,5 @@
 import { Post, RestController } from '@/decorators';
-import { AiAssistantService } from '@/services/aiAsisstant.service';
+import { AiAssistantService } from '@/services/ai-assistant.service';
 import { AiAssistantRequest } from '@/requests';
 import { Response } from 'express';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';

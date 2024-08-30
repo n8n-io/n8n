@@ -4,9 +4,9 @@ import type {
 	IRun,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
 import type { ProjectRole } from '@/databases/entities/project-relation';
-import type { GlobalRole } from '@/databases/entities/User';
+import type { GlobalRole } from '@/databases/entities/user';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 
 export type UserLike = {

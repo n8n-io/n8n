@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import { agent as testAgent } from 'supertest';
-import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 
 import { AbstractServer } from '@/abstract-server';
 import { ExternalHooks } from '@/external-hooks';
@@ -10,7 +15,7 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 import { mockInstance } from '../shared/mocking';
 import { initActiveWorkflowManager } from './shared/utils';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import type { SuperAgentTest } from './shared/types';
@@ -182,7 +187,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			webhooks: [
 				{
 					name: 'default',

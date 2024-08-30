@@ -3,7 +3,7 @@ import type {
 	ExternalSecretsSettings,
 	SecretsProvider,
 	SecretsProviderSettings,
-} from '@/Interfaces';
+} from '@/interfaces';
 
 import { Cipher } from 'n8n-core';
 import Container, { Service } from 'typedi';

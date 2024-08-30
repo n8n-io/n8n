@@ -67,9 +67,10 @@ function onClickAdd() {
 	transform: translate(-50%, 0);
 	font-size: var(--font-size-2xs);
 	color: var(--color-foreground-xdark);
-	background: var(--color-background-light);
+	background: var(--color-canvas-label-background);
 	z-index: 1;
 	text-align: center;
+	white-space: nowrap;
 }
 </style>
 

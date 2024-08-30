@@ -4,7 +4,7 @@ import { randomString } from 'n8n-workflow';
 
 import config from '@/config';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';

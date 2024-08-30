@@ -1,4 +1,4 @@
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createMember } from '../shared/db/users';
@@ -6,7 +6,7 @@ import { randomCredentialPayload } from '../shared/random';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import Container from 'typedi';
 import { CredentialsService } from '@/credentials/credentials.service';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 const credentialPayload = randomCredentialPayload();

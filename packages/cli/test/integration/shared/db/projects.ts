@@ -3,7 +3,7 @@ import Container from 'typedi';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { randomName } from '../random';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { Project } from '@/databases/entities/project';
 import type { ProjectRelation, ProjectRole } from '@/databases/entities/project-relation';
 

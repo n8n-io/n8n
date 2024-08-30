@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { createMember, createOwner } from '../../shared/db/users';
-import * as testDb from '../../shared/testDb';
+import * as testDb from '../../shared/test-db';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { createTeamProject } from '../../shared/db/projects';

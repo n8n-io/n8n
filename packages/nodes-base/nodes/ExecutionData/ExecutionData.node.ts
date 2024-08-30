@@ -5,6 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export class ExecutionData implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,8 +20,8 @@ export class ExecutionData implements INodeType {
 			name: 'Execution Data',
 			color: '#29A568',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:

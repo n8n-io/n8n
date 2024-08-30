@@ -576,7 +576,7 @@ export const EnterpriseEditionFeature: Record<
 	AdvancedPermissions: 'advancedPermissions',
 };
 
-export const MAIN_NODE_PANEL_WIDTH = 360;
+export const MAIN_NODE_PANEL_WIDTH = 390;
 
 export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
@@ -871,3 +871,5 @@ export const CanvasNodeHandleKey =
 
 /** Auth */
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+
+export const APP_MODALS_ELEMENT_ID = 'app-modals';

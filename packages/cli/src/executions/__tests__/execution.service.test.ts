@@ -5,7 +5,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import type { ActiveExecutions } from '@/active-executions';
-import type { IExecutionResponse } from '@/Interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';

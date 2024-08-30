@@ -3,7 +3,7 @@ import { In } from '@n8n/typeorm';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/project';
@@ -11,7 +11,7 @@ import { ProjectService } from '@/services/project.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { randomCredentialPayload } from '../shared/random';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import type { SaveCredentialFunction } from '../shared/types';
 import * as utils from '../shared/utils';
 import {

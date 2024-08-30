@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 import { workableApiRequest } from './GenericFunctions';
@@ -26,7 +27,7 @@ export class WorkableTrigger implements INodeType {
 			name: 'Workable Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'workableApi',

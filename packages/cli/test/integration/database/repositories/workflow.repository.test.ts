@@ -2,7 +2,7 @@ import Container from 'typedi';
 
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
-import * as testDb from '../../shared/testDb';
+import * as testDb from '../../shared/test-db';
 import {
 	createWorkflowWithTrigger,
 	createWorkflow,

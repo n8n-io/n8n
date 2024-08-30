@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { randomEmail } from './shared/random';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 

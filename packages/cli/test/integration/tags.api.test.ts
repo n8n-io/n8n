@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 
 import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import { createUserShell } from './shared/db/users';
 

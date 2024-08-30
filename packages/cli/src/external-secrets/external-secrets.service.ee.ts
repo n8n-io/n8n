@@ -1,5 +1,5 @@
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { SecretsProvider } from '@/Interfaces';
+import type { SecretsProvider } from '@/interfaces';
 import type { ExternalSecretsRequest } from '@/requests';
 import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';

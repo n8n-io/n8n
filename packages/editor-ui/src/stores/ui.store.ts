@@ -194,6 +194,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const isCreateNodeActive = ref<boolean>(false);
 
+	const appGridWidth = ref<number>(0);
+
 	// Last interacted with - Canvas v2 specific
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
@@ -625,6 +627,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	}
 
 	return {
+		appGridWidth,
 		appliedTheme,
 		logo,
 		contextBasedTranslationKeys,

@@ -199,7 +199,7 @@ describe('NDV', () => {
 					.contains(key)
 					.should('be.visible');
 			});
-			getObjectValueItem().find('label').click();
+			getObjectValueItem().find('label').click({ force: true });
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
 					.outputPanel()

@@ -5,7 +5,7 @@ import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeConnectionType } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -122,8 +122,8 @@ export class Ftp implements INodeType {
 			name: 'FTP',
 			color: '#303050',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// nodelinter-ignore-next-line
@@ -548,7 +548,7 @@ export class Ftp implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const pairedItem = generatePairedItemData(items.length);
 
 					return [[{ json: { error: error.message }, pairedItem }]];
@@ -816,7 +816,7 @@ export class Ftp implements INodeType {
 						}
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnItems.push({ json: { error: error.message }, pairedItem: { item: i } });
 						continue;
 					}
