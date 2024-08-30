@@ -21,8 +21,6 @@ variable "ssh_public_key" {
 
 variable "vm_size" {
   description = "VM Size"
-  # 8 vCPUs, 32 GiB memory
-  default = "Standard_DC8_v2"
 }
 
 variable "tags" {
