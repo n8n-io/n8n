@@ -779,7 +779,7 @@ export class Zoom implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {} as IDataObject,
 						error: error.message,

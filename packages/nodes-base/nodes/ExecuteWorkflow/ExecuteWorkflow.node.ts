@@ -243,7 +243,7 @@ export class ExecuteWorkflow implements INodeType {
 						returnData = [items];
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
@@ -297,7 +297,7 @@ export class ExecuteWorkflow implements INodeType {
 				return workflowResult;
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					return [[{ json: { error: error.message }, pairedItem }]];
 				}
 				throw error;

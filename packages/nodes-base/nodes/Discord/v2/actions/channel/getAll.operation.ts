@@ -85,7 +85,7 @@ export async function execute(
 	} catch (error) {
 		const err = parseDiscordError.call(this, error);
 
-		if (this.continueOnFail(error)) {
+		if (this.continueOnFail()) {
 			returnData.push(...prepareErrorData.call(this, err, 0));
 		}
 

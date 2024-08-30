@@ -353,7 +353,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 			});
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

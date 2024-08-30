@@ -242,7 +242,7 @@ ${fallbackPrompt}`,
 				});
 				if (fallback === 'other' && output.fallback) returnData[returnData.length - 1].push(item);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData[0].push({
 						json: { error: error.message },
 						pairedItem: { item: itemIdx },
