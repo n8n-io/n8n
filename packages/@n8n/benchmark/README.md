@@ -19,13 +19,13 @@ The benchmark suite consists of [benchmark scenarios](#benchmark-scenarios) and 
 ### locally
 
 ```sh
-pnpm run-locally
+pnpm benchmark-locally
 ```
 
 ### In the cloud
 
 ```sh
-pnpm run-in-cloud
+pnpm benchmark-in-cloud
 ```
 
 ## Running the `n8n-benchmark` cli
