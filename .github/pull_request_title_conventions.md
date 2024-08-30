@@ -49,14 +49,13 @@ Must be one of the following:
 The scope should specify the place of the commit change as long as the commit clearly addresses one of the following supported scopes. (Otherwise, omit the scope!)
 
 - `API` - changes to the _public_ API
-- `benchmark` - changes to the benchmarking suite
+- `benchmark` - changes to the benchmark cli
 - `core` - changes to the core / private API / backend of n8n
 - `editor` - changes to the Editor UI
 - `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node name, not its display name), e.g.
   - mattermost → Mattermost Node
   - microsoftToDo → Microsoft To Do Node
   - n8n → n8n Node
-- `benchmark` - changes to the Benchmark cli
 
 ## Summary
 
