@@ -32,6 +32,9 @@ on:
         required: false
         default: ''
 
+env:
+  N8N_TAG: ${{ inputs.tag || 'nightly' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -76,10 +79,10 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ env.N8N_TAG }}
 
       - name: Login to GitHub Container Registry
-        if: github.event.inputs.tag == 'nightly'
+        if: env.N8N_TAG == 'nightly'
         uses: docker/login-action@v3.0.0
         with:
           registry: ghcr.io
@@ -87,7 +90,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push image to GHCR
-        if: github.event.inputs.tag == 'nightly'
+        if: env.N8N_TAG == 'nightly'
         run: |
           docker buildx imagetools create \
             --tag ghcr.io/${{ github.repository_owner }}/n8n:nightly \
