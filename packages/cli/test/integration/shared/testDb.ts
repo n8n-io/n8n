@@ -48,11 +48,13 @@ export async function terminate() {
 
 // Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
 const repositories = [
+	'AnnotationTag',
 	'AuthIdentity',
 	'AuthProviderSyncHistory',
 	'Credentials',
 	'EventDestinations',
 	'Execution',
+	'ExecutionAnnotation',
 	'ExecutionData',
 	'ExecutionMetadata',
 	'InstalledNodes',

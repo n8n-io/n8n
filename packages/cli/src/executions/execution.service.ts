@@ -41,8 +41,8 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { License } from '@/license';
 import type { User } from '@/databases/entities/User';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-import { AnnotationTagMappingRepository } from '@/databases/repositories/annotationTagMapping.repository';
-import { ExecutionAnnotationRepository } from '@/databases/repositories/executionAnnotation.repository';
+import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository';
+import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
