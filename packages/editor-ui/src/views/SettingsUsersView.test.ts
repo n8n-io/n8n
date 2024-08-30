@@ -126,6 +126,7 @@ describe('SettingsUsersView', () => {
 	});
 
 	it('shows the invite modal', async () => {
+		/** */
 		const pinia = createTestingPinia({ initialState: getInitialState() });
 		const { getByTestId } = renderView({ pinia });
 
