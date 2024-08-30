@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 
 import type { User } from '@/databases/entities/user';
@@ -7,19 +6,20 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
-import { randomApiKey, randomEmail, randomName, randomValidPassword } from './shared/random';
+import { randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { addApiKey, createOwner, createUser, createUserShell } from './shared/db/users';
+import { createOwner, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
 import type { IPersonalizationSurveyAnswersV4 } from 'n8n-workflow';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
 beforeEach(async () => {
-	await testDb.truncate(['User']);
+	await testDb.truncate(['ApiKeys', 'User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
 });
 
@@ -28,8 +28,8 @@ describe('When public API is disabled', () => {
 	let authAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		owner = await createOwner();
-		await addApiKey(owner);
+		owner = await createOwner({ withApiKey: true });
+
 		authAgent = testServer.authAgentFor(owner);
 		mockInstance(GlobalConfig, { publicApi: { disabled: true } });
 	});
@@ -53,7 +53,6 @@ describe('Owner shell', () => {
 
 	beforeEach(async () => {
 		ownerShell = await createUserShell('global:owner');
-		await addApiKey(ownerShell);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
@@ -63,17 +62,8 @@ describe('Owner shell', () => {
 
 			expect(response.statusCode).toBe(200);
 
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				role,
-				password,
-				isPending,
-				apiKey,
-			} = response.body.data;
+			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
+				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(validPayload.email.toLowerCase());
@@ -83,7 +73,6 @@ describe('Owner shell', () => {
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(role).toBe('global:owner');
-			expect(apiKey).toBeUndefined();
 
 			const storedOwnerShell = await Container.get(UserRepository).findOneByOrFail({ id });
 
@@ -161,37 +150,37 @@ describe('Owner shell', () => {
 		}
 	});
 
-	test('POST /me/api-key should create an api key', async () => {
-		const response = await authOwnerShellAgent.post('/me/api-key');
+	test('POST /me/api-keys should create an api key', async () => {
+		const newApiKey = await authOwnerShellAgent.post('/me/api-keys');
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).toBeDefined();
-		expect(response.body.data.apiKey).not.toBeNull();
+		expect(newApiKey.statusCode).toBe(200);
+		expect(newApiKey.body.data.apiKey).toBeDefined();
+		expect(newApiKey.body.data.apiKey).not.toBeNull();
 
-		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-			where: { email: IsNull() },
+		const storedMemberApiKey = await Container.get(ApiKeysRepository).findOneByOrFail({
+			userId: ownerShell.id,
 		});
 
-		expect(storedShellOwner.apiKey).toEqual(response.body.data.apiKey);
+		expect(storedMemberApiKey.apiKey).toEqual(newApiKey.body.data.apiKey);
 	});
 
-	test('GET /me/api-key should fetch the api key redacted', async () => {
-		const response = await authOwnerShellAgent.get('/me/api-key');
+	test('GET /me/api-keys should fetch the api key redacted', async () => {
+		const newApiKey = await authOwnerShellAgent.post('/me/api-keys');
+
+		const response = await authOwnerShellAgent.get('/me/api-keys');
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).not.toEqual(ownerShell.apiKey);
+		expect(response.body.data.apiKeys[0].apiKey).not.toEqual(newApiKey.body.apiKey);
 	});
 
-	test('DELETE /me/api-key should delete the api key', async () => {
-		const response = await authOwnerShellAgent.delete('/me/api-key');
+	test('DELETE /me/api-keys/:id should delete the api key', async () => {
+		const newApiKey = await authOwnerShellAgent.post('/me/api-keys');
 
-		expect(response.statusCode).toBe(200);
+		await authOwnerShellAgent.delete(`/me/api-keys/${newApiKey.body.data.id}`);
 
-		const storedShellOwner = await Container.get(UserRepository).findOneOrFail({
-			where: { email: IsNull() },
-		});
+		const response = await authOwnerShellAgent.get('/me/api-keys');
 
-		expect(storedShellOwner.apiKey).toBeNull();
+		expect(response.body.data.apiKeys.length).toBe(0);
 	});
 });
 
@@ -204,10 +193,8 @@ describe('Member', () => {
 		member = await createUser({
 			password: memberPassword,
 			role: 'global:member',
-			apiKey: randomApiKey(),
 		});
 		authMemberAgent = testServer.authAgentFor(member);
-
 		await utils.setInstanceOwnerSetUp(true);
 	});
 
@@ -215,17 +202,8 @@ describe('Member', () => {
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(validPayload).expect(200);
 
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				role,
-				password,
-				isPending,
-				apiKey,
-			} = response.body.data;
+			const { id, email, firstName, lastName, personalizationAnswers, role, password, isPending } =
+				response.body.data;
 
 			expect(validator.isUUID(id)).toBe(true);
 			expect(email).toBe(validPayload.email.toLowerCase());
@@ -235,7 +213,6 @@ describe('Member', () => {
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(role).toBe('global:member');
-			expect(apiKey).toBeUndefined();
 
 			const storedMember = await Container.get(UserRepository).findOneByOrFail({ id });
 
@@ -275,6 +252,7 @@ describe('Member', () => {
 		};
 
 		const response = await authMemberAgent.patch('/me/password').send(validPayload);
+
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
@@ -315,33 +293,38 @@ describe('Member', () => {
 		}
 	});
 
-	test('POST /me/api-key should create an api key', async () => {
-		const response = await testServer.authAgentFor(member).post('/me/api-key');
+	test('POST /me/api-keys should create an api key', async () => {
+		const response = await testServer.authAgentFor(member).post('/me/api-keys');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toBeDefined();
 		expect(response.body.data.apiKey).not.toBeNull();
 
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+		const storedMemberApiKey = await Container.get(ApiKeysRepository).findOneByOrFail({
+			userId: member.id,
+		});
 
-		expect(storedMember.apiKey).toEqual(response.body.data.apiKey);
+		expect(storedMemberApiKey.apiKey).toEqual(response.body.data.apiKey);
 	});
 
-	test('GET /me/api-key should fetch the api key redacted', async () => {
-		const response = await testServer.authAgentFor(member).get('/me/api-key');
+	test('GET /me/api-keys should fetch the api key redacted', async () => {
+		const newApiKey = await testServer.authAgentFor(member).post('/me/api-keys');
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.apiKey).not.toEqual(member.apiKey);
-	});
-
-	test('DELETE /me/api-key should delete the api key', async () => {
-		const response = await testServer.authAgentFor(member).delete('/me/api-key');
+		const response = await testServer.authAgentFor(member).get('/me/api-keys');
 
 		expect(response.statusCode).toBe(200);
 
-		const storedMember = await Container.get(UserRepository).findOneByOrFail({ id: member.id });
+		expect(newApiKey.body.data.apiKey).not.toEqual(response.body.data.apiKeys[0].apiKey);
+	});
 
-		expect(storedMember.apiKey).toBeNull();
+	test('DELETE /me/api-keys/:id should delete the api key', async () => {
+		const newApiKey = await testServer.authAgentFor(member).post('/me/api-keys');
+
+		await testServer.authAgentFor(member).delete(`/me/api-keys/${newApiKey.body.data.id}`);
+
+		const response = await testServer.authAgentFor(member).get('/me/api-keys');
+
+		expect(response.body.data.apiKeys.length).toBe(0);
 	});
 });
 

@@ -20,7 +20,4 @@ export class ApiKeys extends WithStringId {
 
 	@CreateDateColumn(tsColumnOptions)
 	createdAt: Date;
-
-	@CreateDateColumn(tsColumnOptions)
-	lastUsedAt: Date;
 }

@@ -15,7 +15,7 @@ import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { GlobalConfig } from '@n8n/config';
 import { EventService } from '@/events/event.service';
-import { ApiKeysRepository } from '@/databases/repositories/user-api-keys.repository';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 
 async function createApiRouter(
 	version: string,

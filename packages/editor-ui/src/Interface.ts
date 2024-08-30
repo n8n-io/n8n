@@ -1835,9 +1835,8 @@ export interface IN8nPromptResponse {
 }
 
 export type ApiKey = {
+	id: string;
+	label: string;
 	apiKey: string;
 	createdAt: string;
-	id: string;
-	lastUsedAt: string;
-	label: string;
 };

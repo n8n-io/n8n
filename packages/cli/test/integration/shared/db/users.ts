@@ -9,6 +9,8 @@ import { MfaService } from '@/mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
+import { randomString } from 'n8n-workflow';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -78,6 +80,20 @@ export async function createUserWithMfaEnabled(
 	};
 }
 
+const createApiKeyEntity = (user: User) => {
+	const apiKey = randomApiKey();
+	return Container.get(ApiKeysRepository).create({
+		userId: user.id,
+		label: randomString(10),
+		apiKey,
+	});
+};
+
+export const addApiKey = async (user: User) => {
+	await Container.get(ApiKeysRepository).save(createApiKeyEntity(user));
+	return user;
+};
+
 export async function createOwner({ withApiKey } = { withApiKey: false }) {
 	if (withApiKey) {
 		return await addApiKey(await createUser({ role: 'global:owner' }));
@@ -125,11 +141,6 @@ export async function createManyUsers(
 			}),
 	);
 	return result.map((result) => result.user);
-}
-
-export async function addApiKey(user: User): Promise<User> {
-	user.apiKey = randomApiKey();
-	return await Container.get(UserRepository).save(user);
 }
 
 export const getAllUsers = async () =>

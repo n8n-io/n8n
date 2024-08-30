@@ -145,7 +145,7 @@ export class User extends WithTimestamps implements IUser {
 	}
 
 	toJSON() {
-		const { password, apiKey, ...rest } = this;
+		const { password, ...rest } = this;
 		return rest;
 	}
 

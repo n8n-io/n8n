@@ -26,7 +26,7 @@ import { EventService } from '@/events/event.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
-import { ApiKeysRepository } from '@/databases/repositories/user-api-keys.repository';
+import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -239,13 +239,13 @@ export class MeController {
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		const newApiKey = this.apiKeysRepository.create({
-			userId: req.user.id,
-			apiKey,
-			label: 'My API Key',
-		});
-
-		await this.apiKeysRepository.save(newApiKey);
+		const newApiKey = await this.apiKeysRepository.save(
+			this.apiKeysRepository.create({
+				userId: req.user.id,
+				apiKey,
+				label: 'My API Key',
+			}),
+		);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
@@ -256,7 +256,7 @@ export class MeController {
 	 * Get API keys
 	 */
 	@Get('/api-keys', { middlewares: [isApiEnabledMiddleware] })
-	async getAPIKey(req: AuthenticatedRequest) {
+	async getAPIKeys(req: AuthenticatedRequest) {
 		const apiKeys = await this.apiKeysRepository.findBy({ userId: req.user.id });
 		return {
 			apiKeys: apiKeys.map((apiKey) => {

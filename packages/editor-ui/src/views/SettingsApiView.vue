@@ -163,9 +163,10 @@ export default defineComponent({
 						{{ $locale.baseText('generic.delete') }}
 					</n8n-link>
 				</span>
+
 				<div>
 					<CopyInput
-						:label="$locale.baseText('settings.api.view.myKey')"
+						:label="apiKeys[0].label"
 						:value="apiKeys[0].apiKey"
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						:toast-title="$locale.baseText('settings.api.view.copy.toast')"
