@@ -1,24 +1,28 @@
 import {
+	ArrayLiteralExpression,
 	Block,
 	ClassDeclaration,
 	ImportSpecifier,
 	ObjectLiteralExpression,
 	Project,
+	PropertyAccessExpression,
 	PropertyAssignment,
 	ScriptTarget,
 	SourceFile,
 	SpreadAssignment,
+	SpreadElement,
 	SyntaxKind,
 } from 'ts-morph';
 
 import prettier from 'prettier';
 
-// const NODES_FOLDER_GLOBE = './packages/nodes-base/nodes/**/*.node.ts';
-const NODES_FOLDER_GLOBE =
-	'packages/nodes-base/nodes/Google/CloudStorage/GoogleCloudStorage.node.ts';
+const TARGET_FILE = 'packages/nodes-base/nodes/generated-nodes-types.ts';
+
+const NODES_FOLDER_GLOBE = './packages/nodes-base/nodes/**/*.node.ts';
+// const NODES_FOLDER_GLOBE =
+// 	'packages/nodes-base/nodes/Google/CloudStorage/GoogleCloudStorage.node.ts';
 // const NODES_FOLDER_GLOBE = 'packages/nodes-base/nodes/Set/v2/SetV2.node.ts';
 // const NODES_FOLDER_GLOBE = 'packages/nodes-base/nodes/TheHiveProject/TheHiveProject.node.ts';
-const TARGET_FILE = 'packages/nodes-base/nodes/generated-nodes-types.ts';
 
 const project = new Project({
 	compilerOptions: {
@@ -27,7 +31,6 @@ const project = new Project({
 });
 
 const nodesFiles = project.addSourceFilesAtPaths(NODES_FOLDER_GLOBE);
-project.resolveSourceFileDependencies();
 
 //-------------------------------------------------------------------------------
 
@@ -110,6 +113,96 @@ const resolveSpreadAssignment = (
 
 	return undefined;
 };
+
+function arrayLiteralExpressionToObjectLiteralExpression(
+	expression: ArrayLiteralExpression,
+): ObjectLiteralExpression[] {
+	const returnData = expression
+		.asKind(SyntaxKind.ArrayLiteralExpression)!
+		.getElements()
+		.flatMap((el) => {
+			if (el.isKind(SyntaxKind.SpreadElement)) {
+				return resolveSpreadToObjectLiterals(el) || [];
+			} else if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
+				return [el];
+			}
+			return [];
+		});
+
+	return returnData;
+}
+
+function resolveSpreadToObjectLiterals(spreadElement: SpreadElement): ObjectLiteralExpression[] {
+	if (!spreadElement.isKind(SyntaxKind.SpreadElement)) {
+		throw new Error('Node is not a SpreadElement');
+	}
+
+	console.log('SpreadElement', spreadElement.getText());
+
+	const expression = spreadElement.getExpression();
+
+	if (expression.isKind(SyntaxKind.ObjectLiteralExpression)) {
+		return [expression];
+	}
+
+	if (expression.isKind(SyntaxKind.Identifier)) {
+		const variableDeclaration = expression.getSymbol()?.getDeclarations()[0];
+		if (variableDeclaration && variableDeclaration.isKind(SyntaxKind.VariableDeclaration)) {
+			const initializer = variableDeclaration.getInitializer();
+			if (initializer) {
+				if (initializer && initializer.isKind(SyntaxKind.ArrayLiteralExpression)) {
+					return arrayLiteralExpressionToObjectLiteralExpression(initializer);
+				}
+				return resolveSpreadToObjectLiterals(initializer.asKindOrThrow(SyntaxKind.SpreadElement));
+			}
+		}
+		if (variableDeclaration && variableDeclaration.isKind(SyntaxKind.ImportSpecifier)) {
+			const importValue = getImport(variableDeclaration);
+			if (
+				importValue &&
+				(importValue as ObjectLiteralExpression).isKind(SyntaxKind.ObjectLiteralExpression)
+			) {
+				return [importValue];
+			}
+			if (
+				importValue &&
+				(importValue as ArrayLiteralExpression).isKind(SyntaxKind.ArrayLiteralExpression)
+			) {
+				return arrayLiteralExpressionToObjectLiteralExpression(importValue);
+			}
+		}
+	}
+
+	if (expression.isKind(SyntaxKind.PropertyAccessExpression)) {
+		const propAccess = expression as PropertyAccessExpression;
+		const propSymbol = propAccess.getSymbol();
+		if (propSymbol) {
+			const declarations = propSymbol.getDeclarations();
+			if (declarations.length > 0) {
+				const declaration = declarations[0];
+				if (declaration && declaration.isKind(SyntaxKind.PropertyAssignment)) {
+					const initializer = declaration.getInitializer();
+					if (initializer && initializer.isKind(SyntaxKind.ObjectLiteralExpression)) {
+						return [initializer];
+					}
+				} else if (declaration && declaration.isKind(SyntaxKind.VariableDeclaration)) {
+					const initializer = declaration.getInitializer();
+
+					if (initializer && initializer.isKind(SyntaxKind.SpreadElement)) {
+						resolveSpreadToObjectLiterals(initializer);
+					}
+					return [];
+				}
+			}
+		}
+	}
+
+	if (expression.isKind(SyntaxKind.ArrayLiteralExpression)) {
+		return arrayLiteralExpressionToObjectLiteralExpression(expression);
+	}
+
+	return [];
+}
 
 const findProperties = (description: ObjectLiteralExpression): PropertyAssignment | undefined => {
 	const properties = description.getProperty('properties');
@@ -199,15 +292,20 @@ const getDescription = (declaration: ClassDeclaration): PropertyAssignment | und
 
 function convertObjectLiteralToJS(node: any): any {
 	const returnData: any = {};
+	try {
+		const allProperties = node.getProperties();
 
-	node.getProperties().forEach((property: any) => {
-		if (property.isKind(SyntaxKind.PropertyAssignment)) {
-			const key = property.getName();
-			const valueNode = property.getInitializer();
-			const value = evaluateNode(valueNode);
-			returnData[key] = value;
-		}
-	});
+		allProperties.forEach((property: any) => {
+			if (property.isKind(SyntaxKind.PropertyAssignment)) {
+				const key = property.getName();
+				const valueNode = property.getInitializer();
+				const value = evaluateNode(valueNode);
+				returnData[key] = value;
+			}
+		});
+	} catch (error) {
+		// console.log(error);
+	}
 
 	return returnData;
 }
@@ -256,10 +354,29 @@ const getProperties = (properties: PropertyAssignment | undefined): Record<strin
 		}
 
 		if (propertiesValue && propertiesValue.isKind(SyntaxKind.ArrayLiteralExpression)) {
-			return propertiesValue
-				.getElements()
-				.filter((element) => element.isKind(SyntaxKind.ObjectLiteralExpression))
-				.map((node) => convertObjectLiteralToJS(node));
+			const returnData: any[] = [];
+			const nodes = propertiesValue.getElements();
+
+			for (const node of nodes) {
+				if (node.isKind(SyntaxKind.SpreadElement)) {
+					let resolved = resolveSpreadToObjectLiterals(node);
+					returnData.push(...resolved.map(convertObjectLiteralToJS));
+					continue;
+				}
+				if (node.isKind(SyntaxKind.ImportSpecifier)) {
+					const importValue = getImport(node);
+					if (importValue) {
+						returnData.push(convertObjectLiteralToJS(importValue));
+					}
+					continue;
+				}
+				if (node.isKind(SyntaxKind.ObjectLiteralExpression)) {
+					returnData.push(convertObjectLiteralToJS(node));
+					continue;
+				}
+			}
+
+			return returnData;
 		}
 	}
 
@@ -291,4 +408,4 @@ prettier
 	});
 
 // END ------------------------------------------------------------------------------
-console.log('Nodes types generated');
+console.log('Nodes types generated for ' + classes.length + ' nodes');
