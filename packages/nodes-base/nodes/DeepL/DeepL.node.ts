@@ -138,7 +138,7 @@ export class DeepL implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {} as IDataObject,
 						error: error.message,

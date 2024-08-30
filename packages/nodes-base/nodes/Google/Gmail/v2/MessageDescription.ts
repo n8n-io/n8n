@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { appendAttributionOption } from '../../../../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -200,11 +201,7 @@ export const messageFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Append n8n Attribution',
-				name: 'appendAttribution',
-				type: 'boolean',
-				default: true,
+				...appendAttributionOption,
 				description:
 					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
 			},

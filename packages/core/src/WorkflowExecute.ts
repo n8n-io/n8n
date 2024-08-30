@@ -1333,8 +1333,6 @@ export class WorkflowExecute {
 							} else {
 								// Report any unhandled and non-wrapped errors to Sentry
 								toReport = error;
-								// Set obfuscate to true so that the error would be obfuscated in th UI
-								error.obfuscate = true;
 							}
 							if (toReport) {
 								ErrorReporterProxy.error(toReport, {

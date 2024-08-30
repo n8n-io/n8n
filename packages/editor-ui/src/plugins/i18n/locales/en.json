@@ -1135,7 +1135,6 @@
 	"nodeErrorView.itemIndex": "Item Index",
 	"nodeErrorView.runIndex": "Run Index",
 	"nodeErrorView.showMessage.title": "Copied to clipboard",
-	"nodeErrorView.showMessage.obfuscate": "Internal error",
 	"nodeErrorView.stack": "Stack",
 	"nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed",
 	"nodeErrorView.time": "Time",

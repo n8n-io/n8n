@@ -1,0 +1,73 @@
+services:
+  redis:
+    image: redis:6-alpine
+    ports:
+      - 6379:6379
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+  n8n_worker1:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/worker1
+      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PASSWORD=password
+    command: worker
+    volumes:
+      - ${RUN_DIR}:/n8n
+    depends_on:
+      - postgres
+      - redis
+  n8n_worker2:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/worker2
+      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PASSWORD=password
+    command: worker
+    volumes:
+      - ${RUN_DIR}:/n8n
+    depends_on:
+      - postgres
+      - redis
+  n8n:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/main
+      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - EXECUTIONS_MODE=queue
+      - QUEUE_BULL_REDIS_HOST=redis
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PASSWORD=password
+    ports:
+      - 5678:5678
+    volumes:
+      - ${RUN_DIR}:/n8n
+    depends_on:
+      - postgres
+      - redis
+      - n8n_worker1
+      - n8n_worker2
+  benchmark:
+    image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
+    depends_on:
+      - n8n
+    environment:
+      - N8N_BASE_URL=http://n8n:5678
+      - K6_API_TOKEN=${K6_API_TOKEN}
