@@ -9,6 +9,7 @@ import { DELETE_USER_MODAL_KEY } from '@/constants';
 import { ProjectTypes } from '@/types/projects.types';
 import userEvent from '@testing-library/user-event';
 import { useUsersStore } from '@/stores/users.store';
+import { STORES } from '@/constants';
 
 const ModalStub = {
 	template: `
@@ -26,7 +27,7 @@ const invitedUser = createUser({ firstName: undefined });
 const user = createUser();
 
 const initialState = {
-	ui: {
+	[STORES.UI]: {
 		modalsById: {
 			[DELETE_USER_MODAL_KEY]: {
 				open: true,
@@ -34,7 +35,7 @@ const initialState = {
 		},
 		modalStack: [DELETE_USER_MODAL_KEY],
 	},
-	projects: {
+	[STORES.PROJECTS]: {
 		projects: [
 			ProjectTypes.Personal,
 			ProjectTypes.Personal,
@@ -42,7 +43,7 @@ const initialState = {
 			ProjectTypes.Team,
 		].map(createProjectListItem),
 	},
-	users: {
+	[STORES.USERS]: {
 		usersById: {
 			[loggedInUser.id]: loggedInUser,
 			[user.id]: user,
@@ -58,17 +59,20 @@ const global = {
 };
 
 const renderModal = createComponentRenderer(DeleteUserModal);
+let pinia: ReturnType<typeof createTestingPinia>;
 
 describe('DeleteUserModal', () => {
+	beforeEach(() => {
+		pinia = createTestingPinia({ initialState });
+	});
+
 	it('should delete invited users', async () => {
 		const { getByTestId } = renderModal({
 			props: {
 				activeId: invitedUser.id,
 			},
 			global,
-			pinia: createTestingPinia({
-				initialState,
-			}),
+			pinia,
 		});
 
 		const userStore = useUsersStore();
@@ -84,9 +88,7 @@ describe('DeleteUserModal', () => {
 				activeId: user.id,
 			},
 			global,
-			pinia: createTestingPinia({
-				initialState,
-			}),
+			pinia,
 		});
 
 		const confirmButton = getByTestId('confirm-delete-user-button');
@@ -117,9 +119,7 @@ describe('DeleteUserModal', () => {
 				activeId: user.id,
 			},
 			global,
-			pinia: createTestingPinia({
-				initialState,
-			}),
+			pinia,
 		});
 
 		const userStore = useUsersStore();

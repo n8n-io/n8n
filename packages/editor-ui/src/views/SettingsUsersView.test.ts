@@ -11,6 +11,7 @@ import { createTestingPinia, type TestingOptions } from '@pinia/testing';
 import { merge } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
+import { STORES } from '@/constants';
 
 const loggedInUser = createUser();
 const invitedUser = createUser({
@@ -24,7 +25,7 @@ const userWithDisabledSSO = createUser({
 });
 
 const initialState = {
-	users: {
+	[STORES.USERS]: {
 		currentUserId: loggedInUser.id,
 		usersById: {
 			[loggedInUser.id]: loggedInUser,
@@ -33,7 +34,7 @@ const initialState = {
 			[userWithDisabledSSO.id]: userWithDisabledSSO,
 		},
 	},
-	settings: { settings: { enterprise: { advancedPermissions: true } } },
+	[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: true } } },
 };
 
 const getInitialState = (state: TestingOptions['initialState'] = {}) =>
@@ -138,7 +139,7 @@ describe('SettingsUsersView', () => {
 	it('shows warning when advanced permissions are not enabled', async () => {
 		const pinia = createTestingPinia({
 			initialState: getInitialState({
-				settings: { settings: { enterprise: { advancedPermissions: false } } },
+				[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: false } } },
 			}),
 		});
 
