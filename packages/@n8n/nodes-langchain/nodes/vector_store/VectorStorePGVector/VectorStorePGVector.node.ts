@@ -10,6 +10,19 @@ import type pg from 'pg';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
+type CollectionOptions = {
+	useCollection?: boolean;
+	collectionName?: string;
+	collectionTableName?: string;
+};
+
+type ColumnOptions = {
+	idColumnName: string;
+	vectorColumnName: string;
+	contentColumnName: string;
+	metadataColumnName: string;
+};
+
 const sharedFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name',
@@ -199,11 +212,11 @@ export const VectorStorePGVector = createVectorStoreNode({
 			filter,
 		};
 
-		const collectionOptions = context.getNodeParameter('options.collection.values', 0, {}) as {
-			useCollection?: boolean;
-			collectionName?: string;
-			collectionTableName?: string;
-		};
+		const collectionOptions = context.getNodeParameter(
+			'options.collection.values',
+			0,
+			{},
+		) as CollectionOptions;
 
 		if (collectionOptions && collectionOptions.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
@@ -215,12 +228,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 			vectorColumnName: 'embedding',
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
-		}) as {
-			idColumnName: string;
-			vectorColumnName: string;
-			contentColumnName: string;
-			metadataColumnName: string;
-		};
+		}) as ColumnOptions;
 
 		config.distanceStrategy = context.getNodeParameter(
 			'options.distanceStrategy',
@@ -245,11 +253,11 @@ export const VectorStorePGVector = createVectorStoreNode({
 			tableName,
 		};
 
-		const collectionOptions = context.getNodeParameter('options.collection.values', 0, {}) as {
-			useCollection?: boolean;
-			collectionName?: string;
-			collectionTableName?: string;
-		};
+		const collectionOptions = context.getNodeParameter(
+			'options.collection.values',
+			0,
+			{},
+		) as CollectionOptions;
 
 		if (collectionOptions && collectionOptions.useCollection) {
 			config.collectionName = collectionOptions.collectionName;
@@ -261,12 +269,7 @@ export const VectorStorePGVector = createVectorStoreNode({
 			vectorColumnName: 'embedding',
 			contentColumnName: 'text',
 			metadataColumnName: 'metadata',
-		}) as {
-			idColumnName: string;
-			vectorColumnName: string;
-			contentColumnName: string;
-			metadataColumnName: string;
-		};
+		}) as ColumnOptions;
 
 		await PGVectorStore.fromDocuments(documents, embeddings, config);
 	},
