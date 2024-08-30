@@ -276,7 +276,7 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					responseData.push({ error: error.message, json: {}, itemIndex: i });
 					continue;
 				}

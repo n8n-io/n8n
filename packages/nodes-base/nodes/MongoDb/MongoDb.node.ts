@@ -142,7 +142,7 @@ export class MongoDb implements INodeType {
 						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -166,7 +166,7 @@ export class MongoDb implements INodeType {
 						pairedItem: fallbackPairedItems ?? [{ item: i }],
 					});
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -220,7 +220,7 @@ export class MongoDb implements INodeType {
 						returnData.push({ json: entry, pairedItem: fallbackPairedItems ?? [{ item: i }] });
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: (error as JsonObject).message },
 							pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -260,7 +260,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndReplace(filter, item, updateOptions as FindOneAndReplaceOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
@@ -302,7 +302,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.findOneAndUpdate(filter, { $set: item }, updateOptions as FindOneAndUpdateOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}
@@ -341,7 +341,7 @@ export class MongoDb implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					responseData = [{ error: (error as JsonObject).message }];
 				} else {
 					throw error;
@@ -382,7 +382,7 @@ export class MongoDb implements INodeType {
 						.collection(this.getNodeParameter('collection', 0) as string)
 						.updateOne(filter, { $set: item }, updateOptions as UpdateOptions);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						item.json = { error: (error as JsonObject).message };
 						continue;
 					}

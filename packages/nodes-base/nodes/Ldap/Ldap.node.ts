@@ -253,7 +253,7 @@ export class Ldap implements INodeType {
 		} catch (error) {
 			delete error.cert;
 			await client.unbind();
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				return [
 					items.map((x) => {
 						x.json.error = error.reason || 'LDAP connection error occurred';
@@ -418,7 +418,7 @@ export class Ldap implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems.push({ json: items[itemIndex].json, error, pairedItem: itemIndex });
 				} else {
 					await client.unbind();

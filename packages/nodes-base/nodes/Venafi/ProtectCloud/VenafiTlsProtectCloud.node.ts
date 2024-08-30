@@ -458,7 +458,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 					),
 				);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 					continue;
 				}

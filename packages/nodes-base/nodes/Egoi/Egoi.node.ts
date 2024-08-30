@@ -734,7 +734,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (!this.continueOnFail(error)) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					// Return the actual reason as error
