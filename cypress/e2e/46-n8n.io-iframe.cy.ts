@@ -21,7 +21,7 @@ describe('n8n.io iframe', () => {
 
 			const testUserId = Cypress.env('currentUserId');
 
-			const iframeUrl = `https://n8n.io/self-install?instanceId=${testInstanceId}&userId=${testUserId}`;
+			const iframeUrl = `https://n8n.io/self-install/?instanceId=${testInstanceId}&userId=${testUserId}`;
 
 			cy.intercept(iframeUrl, (req) => req.reply(200)).as('iframeRequest');
 
