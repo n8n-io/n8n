@@ -1,7 +1,6 @@
 import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { Push } from '../push';
-import { Logger } from '@/logger';
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
 import { isWorkflowClosedMessage, isWorkflowOpenedMessage } from './collaboration.message';
 import type { IActiveWorkflowUsersChanged } from '../interfaces';
@@ -11,6 +10,7 @@ import type { User } from '@/databases/entities/user';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserService } from '@/services/user.service';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -19,7 +19,6 @@ import { UserService } from '@/services/user.service';
 @Service()
 export class CollaborationService {
 	constructor(
-		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
@@ -32,11 +31,15 @@ export class CollaborationService {
 			try {
 				await this.handleUserMessage(event.userId, event.msg);
 			} catch (error) {
-				this.logger.error('Error handling user message', {
-					error: error as unknown,
-					msg: event.msg,
-					userId: event.userId,
-				});
+				ErrorReporterProxy.error(
+					new ApplicationError('Error handling CollaborationService push message', {
+						extra: {
+							msg: event.msg,
+							userId: event.userId,
+						},
+						cause: error,
+					}),
+				);
 			}
 		});
 	}

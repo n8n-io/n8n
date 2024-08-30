@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import { Logger } from '@/logger';
 import { AbstractPush } from './abstract.push';
 import type { User } from '@/databases/entities/user';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -29,6 +30,15 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 				this.onMessageReceived(pushRef, JSON.parse(buffer.toString('utf8')));
 			} catch (error) {
+				ErrorReporterProxy.error(
+					new ApplicationError('Error parsing push message', {
+						extra: {
+							userId,
+							data,
+						},
+						cause: error,
+					}),
+				);
 				this.logger.error("Couldn't parse message from editor-UI", {
 					error: error as unknown,
 					pushRef,
