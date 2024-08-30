@@ -11,11 +11,11 @@ import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
 import { License } from '@/license';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
 import { GlobalConfig } from '@n8n/config';
 import { EventService } from '@/events/event.service';
+import { ApiKeysRepository } from '@/databases/repositories/user-api-keys.repository';
 
 async function createApiRouter(
 	version: string,
@@ -91,10 +91,13 @@ async function createApiRouter(
 						_scopes: unknown,
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
-						const apiKey = req.headers[schema.name.toLowerCase()] as string;
-						const user = await Container.get(UserRepository).findOne({
-							where: { apiKey },
+						const providedApiKey = req.headers[schema.name.toLowerCase()] as string;
+						const apiKey = await Container.get(ApiKeysRepository).findOne({
+							where: { apiKey: providedApiKey },
+							relations: ['user'],
 						});
+
+						const user = apiKey?.user;
 
 						if (!user) return false;
 

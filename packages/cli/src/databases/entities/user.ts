@@ -105,10 +105,6 @@ export class User extends WithTimestamps implements IUser {
 		this.email = this.email?.toLowerCase() ?? null;
 	}
 
-	@Column({ type: String, nullable: true })
-	@Index({ unique: true })
-	apiKey: string | null;
-
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
 

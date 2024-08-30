@@ -1833,3 +1833,11 @@ export type EnterpriseEditionFeatureValue = keyof Omit<IN8nUISettings['enterpris
 export interface IN8nPromptResponse {
 	updated: boolean;
 }
+
+export type ApiKey = {
+	apiKey: string;
+	createdAt: string;
+	id: string;
+	lastUsedAt: string;
+	label: string;
+};

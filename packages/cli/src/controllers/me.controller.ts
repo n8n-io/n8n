@@ -26,6 +26,7 @@ import { EventService } from '@/events/event.service';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
+import { ApiKeysRepository } from '@/databases/repositories/user-api-keys.repository';
 
 export const API_KEY_PREFIX = 'n8n_api_';
 
@@ -48,6 +49,7 @@ export class MeController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
+		private readonly apiKeysRepository: ApiKeysRepository,
 	) {}
 
 	/**
@@ -231,34 +233,44 @@ export class MeController {
 	}
 
 	/**
-	 * Creates an API Key
+	 * Create an API Key
 	 */
-	@Post('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	@Post('/api-keys', { middlewares: [isApiEnabledMiddleware] })
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		await this.userService.update(req.user.id, { apiKey });
+		const newApiKey = this.apiKeysRepository.create({
+			userId: req.user.id,
+			apiKey,
+			label: 'My API Key',
+		});
+
+		await this.apiKeysRepository.save(newApiKey);
 
 		this.eventService.emit('public-api-key-created', { user: req.user, publicApi: false });
 
-		return { apiKey };
+		return newApiKey;
 	}
 
 	/**
-	 * Get an API Key
+	 * Get API keys
 	 */
-	@Get('/api-key', { middlewares: [isApiEnabledMiddleware] })
+	@Get('/api-keys', { middlewares: [isApiEnabledMiddleware] })
 	async getAPIKey(req: AuthenticatedRequest) {
-		const apiKey = this.redactApiKey(req.user.apiKey);
-		return { apiKey };
+		const apiKeys = await this.apiKeysRepository.findBy({ userId: req.user.id });
+		return {
+			apiKeys: apiKeys.map((apiKey) => {
+				return { ...apiKey, apiKey: this.redactApiKey(apiKey.apiKey) };
+			}),
+		};
 	}
 
 	/**
-	 * Deletes an API Key
+	 * Delete an API Key
 	 */
-	@Delete('/api-key', { middlewares: [isApiEnabledMiddleware] })
-	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userService.update(req.user.id, { apiKey: null });
+	@Delete('/api-keys/:id', { middlewares: [isApiEnabledMiddleware] })
+	async deleteAPIKey(req: MeRequest.DeleteAPIKey) {
+		await this.apiKeysRepository.delete({ userId: req.user.id, id: req.params.id });
 
 		this.eventService.emit('public-api-key-deleted', { user: req.user, publicApi: false });
 

@@ -319,21 +319,20 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		templatesEndpointHealthy.value = true;
 	};
 
-	const getApiKey = async () => {
+	const getApiKeys = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.getApiKey(rootStore.restApiContext);
-		return apiKey;
+		const { apiKeys } = await publicApiApi.getApiKeys(rootStore.restApiContext);
+		return apiKeys;
 	};
 
 	const createApiKey = async () => {
 		const rootStore = useRootStore();
-		const { apiKey } = await publicApiApi.createApiKey(rootStore.restApiContext);
-		return apiKey;
+		return await publicApiApi.createApiKey(rootStore.restApiContext);
 	};
 
-	const deleteApiKey = async () => {
+	const deleteApiKey = async (id: string) => {
 		const rootStore = useRootStore();
-		await publicApiApi.deleteApiKey(rootStore.restApiContext);
+		await publicApiApi.deleteApiKey(rootStore.restApiContext, id);
 	};
 
 	const getLdapConfig = async () => {
@@ -436,7 +435,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		runLdapSync,
 		getTimezones,
 		createApiKey,
-		getApiKey,
+		getApiKeys,
 		deleteApiKey,
 		testTemplatesEndpoint,
 		submitContactInfo,
