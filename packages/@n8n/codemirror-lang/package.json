@@ -24,7 +24,8 @@
     "test": "jest",
     "lint": "eslint . --ext .ts --quiet",
     "lintfix": "eslint . --ext .ts --fix",
-    "format": "prettier --write --ignore-path ../../.prettierignore src test"
+    "format": "prettier --write --ignore-path ../../.prettierignore src test",
+    "nuke": "rimraf .turbo dist node_modules"
   },
   "peerDependencies": {
     "@codemirror/language": "*",

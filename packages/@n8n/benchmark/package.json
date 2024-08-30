@@ -14,7 +14,8 @@
     "benchmark-in-cloud": "pnpm benchmark --env cloud",
     "benchmark-locally": "pnpm benchmark --env local",
     "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
-    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
+    "nuke": "rimraf .turbo dist node_modules tsconfig.tsbuildinfo"
   },
   "engines": {
     "node": ">=20.10"

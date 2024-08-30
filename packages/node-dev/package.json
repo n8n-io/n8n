@@ -17,7 +17,8 @@
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "nuke": "rimraf .turbo dist node_modules"
   },
   "bin": {
     "n8n-node-dev": "./bin/n8n-node-dev"

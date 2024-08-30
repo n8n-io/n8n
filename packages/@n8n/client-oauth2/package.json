@@ -11,7 +11,8 @@
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "nuke": "rimraf .turbo dist node_modules"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

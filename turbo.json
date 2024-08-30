@@ -6,6 +6,9 @@
 		"clean": {
 			"cache": false
 		},
+		"nuke": {
+			"cache": false
+		},
 		"build:backend": {
 			"dependsOn": ["n8n#build"]
 		},

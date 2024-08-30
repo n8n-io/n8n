@@ -23,7 +23,8 @@
     "lintfix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "nuke": "rimraf .turbo dist node_modules"
   },
   "files": [
     "dist/**/*"

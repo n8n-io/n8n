@@ -17,5 +17,8 @@
     "@storybook/vue3-vite": "^8.1.4",
     "chromatic": "^11.4.1",
     "storybook": "^8.1.4"
+  },
+  "scripts": {
+    "nuke": "rimraf node_modules"
   }
 }
