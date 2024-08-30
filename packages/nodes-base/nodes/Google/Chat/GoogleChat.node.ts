@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
@@ -46,8 +46,8 @@ export class GoogleChat implements INodeType {
 		defaults: {
 			name: 'Google Chat',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleApi',

@@ -4,9 +4,8 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import { numberInputsProperty } from '../../helpers/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [numberInputsProperty];
 

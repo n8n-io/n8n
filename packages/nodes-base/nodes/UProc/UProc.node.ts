@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { uprocApiRequest } from './GenericFunctions';
 
@@ -26,8 +27,8 @@ export class UProc implements INodeType {
 		defaults: {
 			name: 'uProc',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'uprocApi',

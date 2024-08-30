@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
@@ -23,8 +23,8 @@ export class Nasa implements INodeType {
 		defaults: {
 			name: 'NASA',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'nasaApi',

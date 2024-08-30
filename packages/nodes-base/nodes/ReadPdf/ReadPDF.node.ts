@@ -1,5 +1,6 @@
 import {
 	NodeOperationError,
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -21,8 +22,8 @@ export class ReadPDF implements INodeType {
 			name: 'Read PDF',
 			color: '#003355',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Input Binary Field',

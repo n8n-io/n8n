@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, BINARY_ENCODING, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import set from 'lodash/set';
 import jwt from 'jsonwebtoken';
 import { formatPrivateKey, generatePairedItemData } from '../../utils/utilities';
@@ -24,8 +24,8 @@ export class RespondToWebhook implements INodeType {
 		defaults: {
 			name: 'Respond to Webhook',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'jwtAuth',
