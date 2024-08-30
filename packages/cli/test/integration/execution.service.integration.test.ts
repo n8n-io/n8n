@@ -492,16 +492,15 @@ describe('ExecutionService', () => {
 
 			const execution1 = await createExecution({ status: 'success' }, workflow);
 			const execution2 = await createExecution({ status: 'success' }, workflow);
-			const executions = [execution1, execution2];
 
 			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
 
 			await annotateExecution(
-				executions[0].id,
+				execution1.id,
 				{ vote: 'up', tags: [annotationTags[0].id, annotationTags[1].id] },
 				[workflow.id],
 			);
-			await annotateExecution(executions[1].id, { vote: 'down', tags: [annotationTags[2].id] }, [
+			await annotateExecution(execution2.id, { vote: 'down', tags: [annotationTags[2].id] }, [
 				workflow.id,
 			]);
 
@@ -516,7 +515,15 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(2);
 			expect(output.estimated).toBe(false);
+			// Executions should be in a reverse chronological order
 			expect(output.results).toEqual([
+				{
+					...summaryShape,
+					annotation: {
+						tags: [expect.objectContaining({ name: 'tag3' })],
+						vote: 'down',
+					},
+				},
 				{
 					...summaryShape,
 					annotation: {
@@ -525,13 +532,6 @@ describe('ExecutionService', () => {
 							expect.objectContaining({ name: 'tag2' }),
 						],
 						vote: 'up',
-					},
-				},
-				{
-					...summaryShape,
-					annotation: {
-						tags: [expect.objectContaining({ name: 'tag3' })],
-						vote: 'down',
 					},
 				},
 			]);
