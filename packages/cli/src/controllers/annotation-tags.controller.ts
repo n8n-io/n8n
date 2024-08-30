@@ -1,5 +1,5 @@
 import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
-import { AnnotationTagService } from '@/services/annotationTag.service';
+import { AnnotationTagService } from '@/services/annotation-tag.service';
 import { AnnotationTagsRequest } from '@/requests';
 
 @RestController('/annotation-tags')

@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { validateEntity } from '@/generic-helpers';
-import type { IAnnotationTagDb, IAnnotationTagWithCountDb } from '@/Interfaces';
+import type { IAnnotationTagDb, IAnnotationTagWithCountDb } from '@/interfaces';
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository';
 
