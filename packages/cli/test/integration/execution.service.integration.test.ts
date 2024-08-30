@@ -490,10 +490,9 @@ describe('ExecutionService', () => {
 		test('should add and retrieve annotation', async () => {
 			const workflow = await createWorkflow();
 
-			const executions = await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-			]);
+			const execution1 = await createExecution({ status: 'success' }, workflow);
+			const execution2 = await createExecution({ status: 'success' }, workflow);
+			const executions = [execution1, execution2];
 
 			const annotationTags = await createAnnotationTags(['tag1', 'tag2', 'tag3']);
 
