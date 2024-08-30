@@ -18,6 +18,8 @@ import {
 	activityOperations,
 	campaignFields,
 	campaignOperations,
+	enrichmentFields,
+	enrichmentOperations,
 	leadFields,
 	leadOperations,
 	teamFields,
@@ -60,6 +62,10 @@ const versionDescription: INodeTypeDescription = {
 					value: 'campaign',
 				},
 				{
+					name: 'Enrichment',
+					value: 'enrich',
+				},
+				{
 					name: 'Lead',
 					value: 'lead',
 				},
@@ -78,6 +84,8 @@ const versionDescription: INodeTypeDescription = {
 		...activityFields,
 		...campaignOperations,
 		...campaignFields,
+		...enrichmentOperations,
+		...enrichmentFields,
 		...leadOperations,
 		...leadFields,
 		...teamOperations,
