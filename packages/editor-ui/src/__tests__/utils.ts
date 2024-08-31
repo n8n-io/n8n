@@ -4,6 +4,9 @@ import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
 import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import type { Mock } from 'vitest';
+import type { Store, StoreDefinition } from 'pinia';
+import type { ComputedRef } from 'vue';
 
 /**
  * Retries the given assertion until it passes or the timeout is reached
@@ -107,4 +110,29 @@ export const createAppModals = () => {
 
 export const cleanupAppModals = () => {
 	document.body.innerHTML = '';
+};
+
+/**
+ * Typescript helper for mocking pinia store actions return value
+ *
+ * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
+ */
+export const mockedStore = <TStoreDef extends () => unknown>(
+	useStore: TStoreDef,
+): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
+	? Store<
+			Id,
+			State,
+			Record<string, never>,
+			{
+				[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
+					? Mock<Args, ReturnT>
+					: Actions[K];
+			}
+		> & {
+			[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
+		}
+	: ReturnType<TStoreDef> => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return useStore() as any;
 };
