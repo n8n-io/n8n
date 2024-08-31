@@ -26,6 +26,7 @@ import {
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 import type { ProjectRelation } from './project-relation';
 import { NoUrl } from '@/validators/no-url.validator';
+import { ApiKeys } from './api-keys';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -86,6 +87,9 @@ export class User extends WithTimestamps implements IUser {
 
 	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
+
+	@OneToMany('ApiKeys', 'user')
+	apiKeys: ApiKeys[];
 
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];

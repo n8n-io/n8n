@@ -206,6 +206,12 @@ export class Start extends BaseCommand {
 			);
 		}
 
+		// const aja = await Container.get(UserRepository).find({ relations: ['apiKeys'] });
+
+		// console.log(aja);s
+
+		// await newUserWithApiKey({ role: 'global:owner' });
+
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await this.initBinaryDataService();

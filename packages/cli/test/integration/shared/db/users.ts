@@ -90,9 +90,20 @@ const createApiKeyEntity = (user: User) => {
 };
 
 export const addApiKey = async (user: User) => {
-	await Container.get(ApiKeysRepository).save(createApiKeyEntity(user));
-	return user;
+	return await Container.get(ApiKeysRepository).save(createApiKeyEntity(user));
 };
+
+export async function createOwnerWithApiKey() {
+	const owner = await createUser({ role: 'global:owner' });
+	const { apiKey } = await addApiKey(owner);
+	return { owner, apiKey };
+}
+
+export async function createMemberWithApiKey() {
+	const member = await createUser({ role: 'global:member' });
+	const { apiKey } = await addApiKey(member);
+	return { member, apiKey };
+}
 
 export async function createOwner({ withApiKey } = { withApiKey: false }) {
 	if (withApiKey) {
