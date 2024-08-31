@@ -22,7 +22,6 @@ import * as testDb from '../test-db';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
-import { ApiKeys } from '@/databases/entities/api-keys';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.

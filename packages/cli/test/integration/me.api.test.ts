@@ -9,7 +9,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { randomEmail, randomName, randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
-import { createOwner, createUser, createUserShell } from './shared/db/users';
+import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
@@ -28,22 +28,22 @@ describe('When public API is disabled', () => {
 	let authAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		owner = await createOwner({ withApiKey: true });
+		({ owner } = await createOwnerWithApiKey());
 
 		authAgent = testServer.authAgentFor(owner);
 		mockInstance(GlobalConfig, { publicApi: { disabled: true } });
 	});
 
-	test('POST /me/api-key should 404', async () => {
-		await authAgent.post('/me/api-key').expect(404);
+	test('POST /me/api-keys should 404', async () => {
+		await authAgent.post('/me/api-keys').expect(404);
 	});
 
-	test('GET /me/api-key should 404', async () => {
-		await authAgent.get('/me/api-key').expect(404);
+	test('GET /me/api-keys should 404', async () => {
+		await authAgent.get('/me/api-keys').expect(404);
 	});
 
-	test('DELETE /me/api-key should 404', async () => {
-		await authAgent.delete('/me/api-key').expect(404);
+	test('DELETE /me/api-key/:id should 404', async () => {
+		await authAgent.delete(`/me/api-keys/${1}`).expect(404);
 	});
 });
 

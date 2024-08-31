@@ -3,7 +3,6 @@ import * as testDb from '../shared/test-db';
 import {
 	createMember,
 	createMemberWithApiKey,
-	createOwner,
 	createOwnerWithApiKey,
 	getUserById,
 } from '@test-integration/db/users';
@@ -70,7 +69,7 @@ describe('Users in Public API', () => {
 			 */
 			testServer.license.enable('feat:advancedPermissions');
 			const { apiKey } = await createOwnerWithApiKey();
-			const owner = await createOwner({ withApiKey: true });
+			await createOwnerWithApiKey();
 			const payload = [{ email: 'test@test.com', role: 'global:admin' }];
 
 			/**

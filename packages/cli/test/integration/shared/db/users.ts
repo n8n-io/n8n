@@ -105,19 +105,11 @@ export async function createMemberWithApiKey() {
 	return { member, apiKey };
 }
 
-export async function createOwner({ withApiKey } = { withApiKey: false }) {
-	if (withApiKey) {
-		return await addApiKey(await createUser({ role: 'global:owner' }));
-	}
-
+export async function createOwner() {
 	return await createUser({ role: 'global:owner' });
 }
 
-export async function createMember({ withApiKey } = { withApiKey: false }) {
-	if (withApiKey) {
-		return await addApiKey(await createUser({ role: 'global:member' }));
-	}
-
+export async function createMember() {
 	return await createUser({ role: 'global:member' });
 }
 

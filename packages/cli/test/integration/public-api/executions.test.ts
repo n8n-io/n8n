@@ -1,10 +1,9 @@
 import type { User } from '@/databases/entities/user';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
-import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/test-db';
-import { createMemberWithApiKey, createOwnerWithApiKey, createUser } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import {
 	createManyWorkflows,
 	createWorkflow,
