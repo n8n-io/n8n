@@ -45,16 +45,13 @@ describe('With license unlimited quota:users', () => {
 			await authOwnerAgent.get('/users').expect(401);
 		});
 
-		test.only('should fail due to member trying to access owner only endpoint', async () => {
-			console.log(createUserShell);
-
-			const { apiKey } = await createOwnerWithApiKey();
-
+		test('should fail due to member trying to access owner only endpoint', async () => {
+			const { apiKey } = await createMemberWithApiKey();
 			const authMemberAgent = testServer.publicApiAgentWithApiKey(apiKey);
 			await authMemberAgent.get('/users').expect(403);
 		});
 
-		test.only('should return all users', async () => {
+		test('should return all users', async () => {
 			const { apiKey } = await createOwnerWithApiKey();
 
 			const authOwnerAgent = testServer.publicApiAgentWithApiKey(apiKey);
