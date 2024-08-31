@@ -22,7 +22,7 @@ import { WorkflowHistory } from './workflow-history';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
 import { InvalidAuthToken } from './invalid-auth-token';
-import { ApiKeys } from './user-api-keys';
+import { ApiKeys } from './api-keys';
 
 export const entities = {
 	AuthIdentity,

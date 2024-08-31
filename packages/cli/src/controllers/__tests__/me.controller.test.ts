@@ -21,7 +21,7 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { ApiKeysRepository } from '@/databases/repositories/api-keys.repository';
-import { ApiKeys } from '@/databases/entities/user-api-keys';
+import { ApiKeys } from '@/databases/entities/api-keys';
 import { randomString } from 'n8n-workflow';
 
 const browserId = 'test-browser-id';

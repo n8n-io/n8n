@@ -12,6 +12,7 @@ export class AddApiKeysTable1724951148974 {
 				"label" VARCHAR(255) NOT NULL,
 				"apiKey" VARCHAR NOT NULL,
 				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
 				FOREIGN KEY ("userId") REFERENCES user(id),
 				UNIQUE ("userId", label),
 				UNIQUE("apiKey")

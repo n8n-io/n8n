@@ -1839,4 +1839,5 @@ export type ApiKey = {
 	label: string;
 	apiKey: string;
 	createdAt: string;
+	updatedAt: string;
 };

@@ -1,10 +1,10 @@
-import { Column, CreateDateColumn, Entity, Index, ManyToOne } from '@n8n/typeorm';
-import { WithStringId, tsColumnOptions } from './abstract-entity';
+import { Column, Entity, Index, ManyToOne } from '@n8n/typeorm';
+import { WithTimestampsAndStringId } from './abstract-entity';
 import { User } from './user';
 
 @Entity('user_api_keys')
 @Index(['userId', 'label'])
-export class ApiKeys extends WithStringId {
+export class ApiKeys extends WithTimestampsAndStringId {
 	@ManyToOne(() => User, (user) => user.id)
 	user: User;
 
@@ -17,7 +17,4 @@ export class ApiKeys extends WithStringId {
 	@Index({ unique: true })
 	@Column({ type: String })
 	apiKey: string;
-
-	@CreateDateColumn(tsColumnOptions)
-	createdAt: Date;
 }
