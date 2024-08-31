@@ -22,7 +22,7 @@ export class AddApiKeysTable1724951148974 {
 		// Move the apiKey from the users table to the new table
 		await queryRunner.query(`
 			INSERT INTO ${tableName} ("userId", "apiKey", label)
-			SELECT id, "apiKey", 'My API Key' FROM user WHERE "apiKey" IS NOT NULL;
+			SELECT id, "apiKey", 'My API Key' FROM ${tablePrefix}user WHERE "apiKey" IS NOT NULL;
 		`);
 
 		// Create temporary table to store the users dropping the api key column
@@ -49,11 +49,11 @@ export class AddApiKeysTable1724951148974 {
 		await queryRunner.query(`
 			INSERT INTO users_new ("id", "email", "firstName", "lastName", "password", "personalizationAnswers", "createdAt", "updatedAt", "settings", "disabled", "mfaEnabled", "mfaSecret", "mfaRecoveryCodes", "role")
 			SELECT "id", "email", "firstName", "lastName", "password", "personalizationAnswers", "createdAt", "updatedAt", "settings", "disabled", "mfaEnabled", "mfaSecret", "mfaRecoveryCodes", "role"
-			FROM user;
+			FROM ${tablePrefix}user;
 		`);
 
 		// Drop table with apiKey column
-		await queryRunner.query('DROP TABLE user;');
+		await queryRunner.query(`DROP TABLE ${tablePrefix}user;`);
 
 		// Rename the temporary table to users
 		await queryRunner.query('ALTER TABLE users_new RENAME TO user;');
