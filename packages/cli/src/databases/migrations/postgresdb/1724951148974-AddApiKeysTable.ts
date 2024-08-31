@@ -1,31 +1,37 @@
 import type { MigrationContext } from '@/databases/types';
 
 export class AddApiKeysTable1724951148974 {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		const tableName = `${tablePrefix}user_api_keys`;
+	async up({ queryRunner, escape, schemaBuilder: { createTable, column } }: MigrationContext) {
+		const userTable = escape.tableName('user');
+		const userApiKeysTable = escape.tableName('user_api_keys');
+		const userIdColumn = escape.columnName('userId');
+		const apiKeyColumn = escape.columnName('apiKey');
+		const labelColumn = escape.columnName('label');
+		const idColumn = escape.columnName('id');
 
-		// Create the table
-		await queryRunner.query(`
-			CREATE TABLE ${tableName} (
-				"id" VARCHAR(36) PRIMARY KEY,
-				"userId" UUID NOT NULL,
-				"label" VARCHAR(255) NOT NULL,
-				"apiKey" VARCHAR NOT NULL,
-				"createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-				"updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-				FOREIGN KEY ("userId") REFERENCES "${tablePrefix}user"("id"),
-				UNIQUE ("userId", label),
-				UNIQUE("apiKey")
-			);
-		`);
+		// Create the new table
+		createTable('user_api_keys')
+			.withColumns(
+				column('id').varchar(36).primary,
+				column('userId').uuid.notNull,
+				column('label').varchar(100).notNull,
+				column('apiKey').varchar().notNull,
+			)
+			.withForeignKey('userId', {
+				tableName: 'user',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withIndexOn(['userId', 'label'], true)
+			.withIndexOn(['apiKey'], true).withTimestamps;
 
 		// Move the apiKey from the users table to the new table
 		await queryRunner.query(`
-			INSERT INTO ${tableName} ("userId", "apiKey", label)
-			SELECT id, "apiKey", 'My API Key' FROM "${tablePrefix}user" WHERE "apiKey" IS NOT NULL;
+			INSERT INTO ${userApiKeysTable} (${userIdColumn}, ${apiKeyColumn}, ${labelColumn})
+			SELECT ${idColumn}, ${apiKeyColumn}, 'My API Key' FROM ${userTable} WHERE ${apiKeyColumn} IS NOT NULL;
 		`);
 
 		//  Drop apiKey column on user's table
-		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" DROP COLUMN "apiKey";`);
+		await queryRunner.query(`ALTER TABLE ${userTable} DROP COLUMN ${apiKeyColumn};`);
 	}
 }
