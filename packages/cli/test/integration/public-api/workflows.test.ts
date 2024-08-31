@@ -41,12 +41,12 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	({ apiKey: ownerApiKey } = await createOwnerWithApiKey());
+	({ apiKey: ownerApiKey, owner } = await createOwnerWithApiKey());
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	({ apiKey: memberApiKey } = await createMemberWithApiKey());
+	({ apiKey: memberApiKey, member } = await createMemberWithApiKey());
 
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
