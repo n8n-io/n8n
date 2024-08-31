@@ -53,9 +53,9 @@ export class AddApiKeysTable1724951148974 {
 		`);
 
 		// Drop table with apiKey column
-		await queryRunner.query(`DROP TABLE user;`);
+		await queryRunner.query('DROP TABLE user;');
 
 		// Rename the temporary table to users
-		await queryRunner.query(`ALTER TABLE users_new RENAME TO user;`);
+		await queryRunner.query('ALTER TABLE users_new RENAME TO user;');
 	}
 }

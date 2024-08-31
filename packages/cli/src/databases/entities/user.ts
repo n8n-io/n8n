@@ -26,7 +26,7 @@ import {
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 import type { ProjectRelation } from './project-relation';
 import { NoUrl } from '@/validators/no-url.validator';
-import { ApiKeys } from './api-keys';
+import type { ApiKeys } from './api-keys';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
