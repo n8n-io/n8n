@@ -10,11 +10,7 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/test-db';
 import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
-import {
-	createMemberWithApiKey,
-	createOwnerShellWithApiKey,
-	createOwnerWithApiKey,
-} from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject } from '@test-integration/db/projects';
 
