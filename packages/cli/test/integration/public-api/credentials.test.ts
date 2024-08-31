@@ -5,12 +5,12 @@ import type { User } from '@/databases/entities/user';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 
-import { randomApiKey, randomName } from '../shared/random';
+import { randomName } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/test-db';
 import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
-import { addApiKey, createUser, createUserShell } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject } from '@test-integration/db/projects';
 
@@ -24,11 +24,13 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	owner = await addApiKey(await createUserShell('global:owner'));
-	member = await createUser({ role: 'global:member', apiKey: randomApiKey() });
+	const ownerData = await createOwnerWithApiKey();
+	owner = ownerData.owner;
+	const memberData = await createMemberWithApiKey();
+	member = memberData.member;
 
-	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	authMemberAgent = testServer.publicApiAgentFor(member);
+	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerData.apiKey);
+	authMemberAgent = testServer.publicApiAgentWithApiKey(memberData.apiKey);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
@@ -156,10 +158,7 @@ describe('DELETE /credentials/:id', () => {
 	});
 
 	test('should delete owned cred for member but leave others untouched', async () => {
-		const anotherMember = await createUser({
-			role: 'global:member',
-			apiKey: randomApiKey(),
-		});
+		const { member: anotherMember } = await createMemberWithApiKey();
 
 		const savedCredential = await saveCredential(dbCredential(), { user: member });
 		const notToBeChangedCredential = await saveCredential(dbCredential(), { user: member });
