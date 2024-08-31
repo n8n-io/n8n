@@ -10,7 +10,11 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/test-db';
 import { affixRoleToSaveCredential, createCredentials } from '../shared/db/credentials';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import {
+	createMemberWithApiKey,
+	createOwnerShellWithApiKey,
+	createOwnerWithApiKey,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject } from '@test-integration/db/projects';
 
@@ -27,7 +31,8 @@ const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
 	({ owner, apiKey: ownerApiKey } = await createOwnerWithApiKey());
-	({ member, apiKey: ownerApiKey } = await createMemberWithApiKey());
+	({ member, apiKey: memberApiKey } = await createMemberWithApiKey());
+
 	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
 	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
 
