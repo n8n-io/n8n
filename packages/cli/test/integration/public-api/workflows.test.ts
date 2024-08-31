@@ -12,10 +12,9 @@ import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-his
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 
-import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/test-db';
-import { createUser } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
@@ -27,8 +26,10 @@ import { createTeamProject } from '@test-integration/db/projects';
 mockInstance(Telemetry);
 
 let owner: User;
+let ownerApiKey: string;
 let ownerPersonalProject: Project;
 let member: User;
+let memberApiKey: string;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -40,18 +41,13 @@ const license = testServer.license;
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	owner = await createUser({
-		role: 'global:owner',
-		apiKey: randomApiKey(),
-	});
+	({ apiKey: ownerApiKey } = await createOwnerWithApiKey());
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
 	);
 
-	member = await createUser({
-		role: 'global:member',
-		apiKey: randomApiKey(),
-	});
+	({ apiKey: memberApiKey } = await createMemberWithApiKey());
+
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
@@ -73,8 +69,8 @@ beforeEach(async () => {
 		'WorkflowHistory',
 	]);
 
-	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	authMemberAgent = testServer.publicApiAgentFor(member);
+	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
+	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
 });
 
 afterEach(async () => {
