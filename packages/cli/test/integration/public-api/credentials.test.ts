@@ -15,7 +15,9 @@ import type { SuperAgentTest } from '../shared/types';
 import { createTeamProject } from '@test-integration/db/projects';
 
 let owner: User;
+let ownerApiKey: string;
 let member: User;
+let memberApiKey: string;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 
@@ -24,13 +26,10 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const ownerData = await createOwnerWithApiKey();
-	owner = ownerData.owner;
-	const memberData = await createMemberWithApiKey();
-	member = memberData.member;
-
-	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerData.apiKey);
-	authMemberAgent = testServer.publicApiAgentWithApiKey(memberData.apiKey);
+	({ owner, apiKey: ownerApiKey } = await createOwnerWithApiKey());
+	({ member, apiKey: ownerApiKey } = await createMemberWithApiKey());
+	authOwnerAgent = testServer.publicApiAgentWithApiKey(ownerApiKey);
+	authMemberAgent = testServer.publicApiAgentWithApiKey(memberApiKey);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 

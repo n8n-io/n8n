@@ -1,5 +1,5 @@
 import { setupTestServer } from '@test-integration/utils';
-import { createMember, createOwner } from '@test-integration/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import * as testDb from '../shared/test-db';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { createTeamProject, getProjectByNameOrFail } from '@test-integration/db/projects';
@@ -15,7 +15,7 @@ describe('Projects in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Project', 'User']);
+		await testDb.truncate(['ApiKeys', 'Project', 'User']);
 	});
 
 	describe('GET /projects', () => {
@@ -25,7 +25,7 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const projects = await Promise.all([
 				createTeamProject(),
 				createTeamProject(),
@@ -35,7 +35,7 @@ describe('Projects in Public API', () => {
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+			const response = await testServer.publicApiAgentWithApiKey(apiKey).get('/projects');
 
 			/**
 			 * Assert
@@ -53,14 +53,9 @@ describe('Projects in Public API', () => {
 
 		it('if not authenticated, should reject', async () => {
 			/**
-			 * Arrange
-			 */
-			const owner = await createOwner({ withApiKey: false });
-
-			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+			const response = await testServer.publicApiAgentWithApiKey('').get('/projects');
 
 			/**
 			 * Assert
@@ -73,12 +68,12 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+			const response = await testServer.publicApiAgentWithApiKey(apiKey).get('/projects');
 
 			/**
 			 * Assert
@@ -96,12 +91,12 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createMember({ withApiKey: true });
+			const { apiKey } = await createMemberWithApiKey();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).get('/projects');
+			const response = await testServer.publicApiAgentWithApiKey(apiKey).get('/projects');
 
 			/**
 			 * Assert
@@ -118,14 +113,14 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const projectPayload = { name: 'some-project' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey(apiKey)
 				.post('/projects')
 				.send(projectPayload);
 
@@ -149,14 +144,13 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: false });
 			const projectPayload = { name: 'some-project' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey('')
 				.post('/projects')
 				.send(projectPayload);
 
@@ -171,14 +165,14 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const projectPayload = { name: 'some-project' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey(apiKey)
 				.post('/projects')
 				.send(projectPayload);
 
@@ -198,14 +192,14 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const member = await createMember({ withApiKey: true });
+			const { apiKey } = await createMemberWithApiKey();
 			const projectPayload = { name: 'some-project' };
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(member)
+				.publicApiAgentWithApiKey(apiKey)
 				.post('/projects')
 				.send(projectPayload);
 
@@ -224,13 +218,15 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).delete(`/projects/${project.id}`);
+			const response = await testServer
+				.publicApiAgentWithApiKey(apiKey)
+				.delete(`/projects/${project.id}`);
 
 			/**
 			 * Assert
@@ -243,13 +239,14 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: false });
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).delete(`/projects/${project.id}`);
+			const response = await testServer
+				.publicApiAgentWithApiKey('')
+				.delete(`/projects/${project.id}`);
 
 			/**
 			 * Assert
@@ -262,13 +259,15 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(owner).delete(`/projects/${project.id}`);
+			const response = await testServer
+				.publicApiAgentWithApiKey(apiKey)
+				.delete(`/projects/${project.id}`);
 
 			/**
 			 * Assert
@@ -286,13 +285,15 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const member = await createMember({ withApiKey: true });
+			const { apiKey } = await createMemberWithApiKey();
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
-			const response = await testServer.publicApiAgentFor(member).delete(`/projects/${project.id}`);
+			const response = await testServer
+				.publicApiAgentWithApiKey(apiKey)
+				.delete(`/projects/${project.id}`);
 
 			/**
 			 * Assert
@@ -309,14 +310,14 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const project = await createTeamProject('old-name');
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey(apiKey)
 				.put(`/projects/${project.id}`)
 				.send({ name: 'new-name' });
 
@@ -331,14 +332,13 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: false });
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey('')
 				.put(`/projects/${project.id}`)
 				.send({ name: 'new-name' });
 
@@ -353,14 +353,14 @@ describe('Projects in Public API', () => {
 			/**
 			 * Arrange
 			 */
-			const owner = await createOwner({ withApiKey: true });
+			const { apiKey } = await createOwnerWithApiKey();
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(owner)
+				.publicApiAgentWithApiKey(apiKey)
 				.put(`/projects/${project.id}`)
 				.send({ name: 'new-name' });
 
@@ -380,14 +380,14 @@ describe('Projects in Public API', () => {
 			 */
 			testServer.license.setQuota('quota:maxTeamProjects', -1);
 			testServer.license.enable('feat:projectRole:admin');
-			const member = await createMember({ withApiKey: true });
+			const { apiKey } = await createMemberWithApiKey();
 			const project = await createTeamProject();
 
 			/**
 			 * Act
 			 */
 			const response = await testServer
-				.publicApiAgentFor(member)
+				.publicApiAgentWithApiKey(apiKey)
 				.put(`/projects/${project.id}`)
 				.send({ name: 'new-name' });
 
