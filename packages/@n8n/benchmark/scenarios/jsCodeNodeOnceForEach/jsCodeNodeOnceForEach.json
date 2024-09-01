@@ -1,0 +1,97 @@
+{
+	"createdAt": "2024-08-06T12:19:51.268Z",
+	"updatedAt": "2024-08-06T12:20:45.000Z",
+	"name": "JS Code Node Once For Each",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "code-node-benchmark",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"id": "849350b3-4212-4416-a462-1cf331157d37",
+			"name": "Webhook",
+			"webhookId": "34ca1895-ccf4-4a4a-8bb8-a042f5edb567"
+		},
+		{
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [660, 0],
+			"id": "f0660aa1-8a65-490f-b5cd-f8d134070c13",
+			"name": "Respond to Webhook"
+		},
+		{
+			"parameters": {
+				"category": "randomData",
+				"randomDataCount": 5
+			},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "50f1efe8-bd2d-4061-9f51-b38c0e3daeb2",
+			"name": "DebugHelper"
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add new field\n$input.item.json.age = 10 + Math.floor(Math.random() * 30);\n// Mutate existing field\n$input.item.json.password = $input.item.json.password.split('').map(() => '*').join(\"\")\n// Remove field\ndelete $input.item.json.lastname\n// New object field\nconst emailParts = $input.item.json.email.split(\"@\")\n$input.item.json.emailData = {\n  user: emailParts[0],\n  domain: emailParts[1]\n}\n\nreturn $input.item;"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 0],
+			"id": "f9f2f865-e228-403d-8e47-72308359e207",
+			"name": "OnceForEachItemJSCode"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "DebugHelper",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"DebugHelper": {
+			"main": [
+				[
+					{
+						"node": "OnceForEachItemJSCode",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OnceForEachItemJSCode": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" },
+	"staticData": null,
+	"meta": { "templateCredsSetupCompleted": true, "responseMode": "lastNode", "options": {} },
+	"pinData": {},
+	"versionId": "840a38a1-ba37-433d-9f20-de73f5131a2b",
+	"triggerCount": 1,
+	"tags": []
+}
