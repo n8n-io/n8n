@@ -11,10 +11,10 @@ import { loadLanguage } from '@/plugins/i18n';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
-import { useAssistantStore } from './stores/assistant.store';
-import { useUIStore } from './stores/ui.store';
-import { useUsersStore } from './stores/users.store';
-import { useSettingsStore } from './stores/settings.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 
 const route = useRoute();
