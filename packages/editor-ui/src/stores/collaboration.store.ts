@@ -33,11 +33,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		pushStoreEventListenerRemovalFn.value = pushStore.addEventListener((event) => {
 			if (event.type === 'activeWorkflowUsersChanged') {
-				console.log('Received event', event);
 				const workflowId = event.data.workflowId;
 				usersForWorkflows.value[workflowId] = event.data.activeUsers;
-
-				console.log('usersForWorkflows is now:', usersForWorkflows.value);
 			}
 		});
 	}
