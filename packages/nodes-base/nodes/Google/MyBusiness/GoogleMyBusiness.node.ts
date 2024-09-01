@@ -88,7 +88,7 @@ export class GoogleMyBusiness implements INodeType {
 				const account = this.getNodeParameter('account') as string;
 				const locations = await googleApiRequestAllItems.call(
 					this,
-					'accounts',
+					'locations',
 					'GET',
 					'',
 					{},
