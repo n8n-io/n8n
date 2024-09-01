@@ -10,7 +10,7 @@ export class AddApiKeysTable1724951148974 {
 		const idColumn = escape.columnName('id');
 
 		// Create the new table
-		createTable(userApiKeysTable)
+		await createTable('user_api_keys')
 			.withColumns(
 				column('id').varchar(36).primary,
 				column('userId').uuid.notNull,
