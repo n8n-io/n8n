@@ -2,12 +2,12 @@ import { Container, Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
-	IWorkflowBase,
 	ExecutionError,
+	ExecutionStatus,
 	INode,
 	IRunExecutionData,
+	IWorkflowBase,
 	WorkflowExecuteMode,
-	ExecutionStatus,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -41,6 +41,8 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { License } from '@/license';
 import type { User } from '@/databases/entities/user';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { AnnotationTagMappingRepository } from '@/databases/repositories/annotation-tag-mapping.repository';
+import { ExecutionAnnotationRepository } from '@/databases/repositories/execution-annotation.repository';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -60,6 +62,8 @@ export const schemaGetExecutionsQueryFilter = {
 		metadata: { type: 'array', items: { $ref: '#/$defs/metadata' } },
 		startedAfter: { type: 'date-time' },
 		startedBefore: { type: 'date-time' },
+		annotationTags: { type: 'array', items: { type: 'string' } },
+		vote: { type: 'string' },
 	},
 	$defs: {
 		metadata: {
@@ -85,6 +89,8 @@ export class ExecutionService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
+		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -96,7 +102,7 @@ export class ExecutionService {
 	) {}
 
 	async findOne(
-		req: ExecutionRequest.GetOne,
+		req: ExecutionRequest.GetOne | ExecutionRequest.Update,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
 		if (!sharedWorkflowIds.length) return undefined;
@@ -493,6 +499,44 @@ export class ExecutionService {
 
 		for (const s of summaries) {
 			s.scopes = scopes[s.workflowId] ?? [];
+		}
+	}
+
+	public async annotate(
+		executionId: string,
+		updateData: ExecutionRequest.ExecutionUpdatePayload,
+		sharedWorkflowIds: string[],
+	) {
+		// Check if user can access the execution
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
+				executionId,
+			});
+
+			throw new NotFoundError('Execution not found');
+		}
+
+		// Create or update execution annotation
+		await this.executionAnnotationRepository.upsert(
+			{ execution: { id: executionId }, vote: updateData.vote },
+			['execution'],
+		);
+
+		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// so we need to fetch the annotation to get the ID
+		const annotation = await this.executionAnnotationRepository.findOneOrFail({
+			where: {
+				execution: { id: executionId },
+			},
+		});
+
+		if (updateData.tags) {
+			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
 	}
 }

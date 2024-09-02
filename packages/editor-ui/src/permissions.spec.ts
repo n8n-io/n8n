@@ -5,6 +5,7 @@ import type { Scope } from '@n8n/permissions';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			annotationTag: {},
 			auditLogs: {},
 			banner: {},
 			communityPackage: {},
@@ -58,6 +59,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			annotationTag: {},
 			auditLogs: {},
 			banner: {},
 			communityPackage: {},
