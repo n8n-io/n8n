@@ -202,8 +202,8 @@ export const VectorStorePGVector = createVectorStoreNode({
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const credentials = (await context.getCredentials('postgres')) as PostgresNodeCredentials;
-		const pgConf = await configurePostgres.call(context, credentials);
+		const credentials = await context.getCredentials('postgres');
+		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
 		const config: PGVectorStoreArgs = {
@@ -244,8 +244,8 @@ export const VectorStorePGVector = createVectorStoreNode({
 		const tableName = context.getNodeParameter('tableName', itemIndex, '', {
 			extractValue: true,
 		}) as string;
-		const credentials = (await context.getCredentials('postgres')) as PostgresNodeCredentials;
-		const pgConf = await configurePostgres.call(context, credentials);
+		const credentials = await context.getCredentials('postgres');
+		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
 		const config: PGVectorStoreArgs = {
