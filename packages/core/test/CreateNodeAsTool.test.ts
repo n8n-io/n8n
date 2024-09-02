@@ -33,10 +33,10 @@ describe('createNodeAsTool', () => {
 		} as unknown as INodeType;
 
 		mockNodeParameters = {
-			param1: "={{ '__PLACEHOLDER: Test parameter' }}",
+			param1: "{{ '__PLACEHOLDER: Test parameter' }}",
 			param2: 'static value',
 			nestedParam: {
-				subParam: "={{ '__PLACEHOLDER: Nested parameter' }}",
+				subParam: "{{ '__PLACEHOLDER: Nested parameter' }}",
 			},
 		};
 		jest.clearAllMocks();
