@@ -6,9 +6,10 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type { DefaultEdge, Node, NodeProps, Position } from '@vue-flow/core';
-import type { INodeUi } from '@/Interface';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import type { PartialBy } from '@/utils/typeHelpers';
+import type { EventBus } from 'n8n-design-system';
 
 export type CanvasConnectionPortType = NodeConnectionType;
 
@@ -43,12 +44,20 @@ export const enum CanvasNodeRenderType {
 	AddNodes = 'n8n-nodes-internal.addNodes',
 }
 
+export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
+
 export type CanvasNodeDefaultRender = {
 	type: CanvasNodeRenderType.Default;
 	options: Partial<{
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
+		inputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
+		outputs: {
+			labelSize: CanvasNodeDefaultRenderLabelSize;
+		};
 	}>;
 };
 
@@ -124,11 +133,29 @@ export interface CanvasInjectionData {
 	connectingHandle: Ref<ConnectStartEvent | undefined>;
 }
 
+export type CanvasNodeEventBusEvents = {
+	'update:sticky:color': never;
+	'update:node:active': never;
+};
+
+export type CanvasEventBusEvents = {
+	fitView: never;
+	'saved:workflow': never;
+	'open:execution': IExecutionResponse;
+	'nodes:select': { ids: string[] };
+	'nodes:action': {
+		ids: string[];
+		action: keyof CanvasNodeEventBusEvents;
+		payload?: CanvasNodeEventBusEvents[keyof CanvasNodeEventBusEvents];
+	};
+};
+
 export interface CanvasNodeInjectionData {
 	id: Ref<string>;
 	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
+	eventBus: Ref<EventBus<CanvasNodeEventBusEvents>>;
 }
 
 export interface CanvasNodeHandleInjectionData {

@@ -5,7 +5,6 @@ import { mapStores } from 'pinia';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
-	ConnectionTypes,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
@@ -183,7 +182,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			connectionType: NodeConnectionType.Main as ConnectionTypes,
+			connectionType: NodeConnectionType.Main as NodeConnectionType,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -997,7 +996,7 @@ export default defineComponent({
 		getRawInputData(
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = NodeConnectionType.Main,
+			connectionType: NodeConnectionType = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			let inputData: INodeExecutionData[] = [];
 
@@ -1042,7 +1041,7 @@ export default defineComponent({
 		getDataCount(
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = NodeConnectionType.Main,
+			connectionType: NodeConnectionType = NodeConnectionType.Main,
 		) {
 			if (!this.node) {
 				return 0;
@@ -1061,7 +1060,7 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
-			let outputTypes: ConnectionTypes[] = [];
+			let outputTypes: NodeConnectionType[] = [];
 			if (this.nodeType !== null && this.node !== null) {
 				const outputs = this.getResolvedNodeOutputs();
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);

@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 import { EventService } from '@/events/event.service';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap } from '@/events/relay-event-map';
 

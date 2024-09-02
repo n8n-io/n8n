@@ -40,6 +40,7 @@ import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils'
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
 import {
+	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
 	HTML_NODE_TYPE,
@@ -1037,7 +1038,7 @@ onUpdated(async () => {
 			>
 				<el-dialog
 					:model-value="codeEditDialogVisible"
-					append-to-body
+					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
 					width="80%"
 					:title="`${i18n.baseText('codeEdit.edit')} ${$locale
 						.nodeText()

@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { NodeConnectionType } from 'n8n-workflow';
 
 /**

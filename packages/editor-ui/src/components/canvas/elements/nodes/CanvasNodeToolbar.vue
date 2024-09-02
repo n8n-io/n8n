@@ -8,6 +8,7 @@ const emit = defineEmits<{
 	delete: [];
 	toggle: [];
 	run: [];
+	update: [parameters: Record<string, unknown>];
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
@@ -46,6 +47,8 @@ const isDisableNodeVisible = computed(() => {
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
+const isStickyNoteNodeType = computed(() => render.value.type === CanvasNodeRenderType.StickyNote);
+
 function executeNode() {
 	emit('run');
 }
@@ -56,6 +59,12 @@ function onToggleNode() {
 
 function onDeleteNode() {
 	emit('delete');
+}
+
+function onChangeStickyColor(color: number) {
+	emit('update', {
+		color,
+	});
 }
 
 function onOpenContextMenu(event: MouseEvent) {
@@ -97,6 +106,7 @@ function onOpenContextMenu(event: MouseEvent) {
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
 			/>
+			<CanvasNodeStickyColorSelector v-if="isStickyNoteNodeType" @update="onChangeStickyColor" />
 			<N8nIconButton
 				data-test-id="overflow-node-button"
 				type="tertiary"

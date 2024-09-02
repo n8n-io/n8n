@@ -27,6 +27,7 @@ import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from './ui.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -42,6 +43,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
+	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
@@ -117,13 +119,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		suggestions.value = {};
 	}
 
-	function closeChat() {
-		chatWindowOpen.value = false;
-	}
-
+	// As assistant sidebar opens and closes, use window width to calculate the container width
+	// This will prevent animation race conditions from making ndv twitchy
 	function openChat() {
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
+		uiStore.appGridWidth = window.innerWidth - chatWidth.value;
+	}
+
+	function closeChat() {
+		chatWindowOpen.value = false;
+		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		setTimeout(() => {
+			uiStore.appGridWidth = window.innerWidth;
+		}, 200);
 	}
 
 	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {

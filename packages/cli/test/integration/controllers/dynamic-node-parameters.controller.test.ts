@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 import { createOwner } from '../shared/db/users';

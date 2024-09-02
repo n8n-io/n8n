@@ -8,6 +8,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { getSites, webflowApiRequest } from '../GenericFunctions';
 
@@ -28,7 +29,7 @@ export class WebflowTriggerV2 implements INodeType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'webflowOAuth2Api',

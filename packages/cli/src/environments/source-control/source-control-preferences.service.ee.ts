@@ -17,7 +17,7 @@ import path from 'path';
 import type { KeyPairType } from './types/key-pair-type';
 import config from '@/config';
 import { Logger } from '@/logger';
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 @Service()
 export class SourceControlPreferencesService {

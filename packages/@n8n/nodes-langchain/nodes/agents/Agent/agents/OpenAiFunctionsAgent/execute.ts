@@ -23,7 +23,7 @@ export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
-	this.logger.verbose('Executing OpenAi Functions Agent');
+	this.logger.debug('Executing OpenAi Functions Agent');
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
@@ -116,7 +116,7 @@ export async function openAiFunctionsAgentExecute(
 
 			returnData.push({ json: response });
 		} catch (error) {
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 				continue;
 			}

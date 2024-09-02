@@ -1,11 +1,10 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { generatePairedItemData } from '../../utils/utilities';
 import { getWorkflowInfo } from './GenericFunctions';
 
@@ -23,8 +22,8 @@ export class ExecuteWorkflow implements INodeType {
 			name: 'Execute Workflow',
 			color: '#ff6d5a',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -244,7 +243,7 @@ export class ExecuteWorkflow implements INodeType {
 						returnData = [items];
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						if (returnData[i] === undefined) {
 							returnData[i] = [];
 						}
@@ -298,7 +297,7 @@ export class ExecuteWorkflow implements INodeType {
 				return workflowResult;
 			} catch (error) {
 				const pairedItem = generatePairedItemData(items.length);
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					return [[{ json: { error: error.message }, pairedItem }]];
 				}
 				throw error;

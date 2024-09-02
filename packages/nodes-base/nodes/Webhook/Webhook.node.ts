@@ -292,10 +292,10 @@ export class Webhook extends Node {
 			const processFiles: MultiPartFormData.File[] = [];
 			let multiFile = false;
 			if (Array.isArray(files[key])) {
-				processFiles.push(...(files[key] as MultiPartFormData.File[]));
+				processFiles.push(...files[key]);
 				multiFile = true;
 			} else {
-				processFiles.push(files[key] as MultiPartFormData.File);
+				processFiles.push(files[key]);
 			}
 
 			let fileCount = 0;

@@ -64,7 +64,7 @@ export class RetrieverContextualCompression implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Contextual Compression Retriever');
+		this.logger.debug('Supplying data for Contextual Compression Retriever');
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
