@@ -10,10 +10,10 @@ import Notice from '../N8nNotice/Notice.vue';
 
 withDefaults(
 	defineProps<{
-		animationType?: 'vertical' | 'horizontal';
+		animationType?: 'slide-vertical' | 'slide-horizontal' | 'fade';
 	}>(),
 	{
-		animationType: 'vertical',
+		animationType: 'slide-vertical',
 	},
 );
 
@@ -31,7 +31,7 @@ const currentMessage = computed(() => {
 const startMessageRotation = () => {
 	setInterval(() => {
 		currentIndex.value = (currentIndex.value + 1) % messages.length;
-	}, 3000);
+	}, 2000);
 };
 
 onMounted(() => {
@@ -42,6 +42,14 @@ onMounted(() => {
 <template>
 	<div>
 		<Notice type="warning" content="This component is for demo purposes only" />
-		<AssistantLoadingMessage :message="currentMessage" :animation-type="animationType" />
+		<div :class="$style['loading-message']">
+			<AssistantLoadingMessage :message="currentMessage" :animation-type="animationType" />
+		</div>
 	</div>
 </template>
+
+<style module lang="scss">
+.loading-message {
+	padding: var(--spacing-3xs);
+}
+</style>

@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { computed, defineProps, withDefaults } from 'vue';
+import { defineProps, withDefaults } from 'vue';
 import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
 
-const props = withDefaults(
+withDefaults(
 	defineProps<{
 		message: string;
-		animationType?: 'vertical' | 'horizontal';
+		animationType?: 'slide-vertical' | 'slide-horizontal' | 'fade';
 	}>(),
 	{
-		animationType: 'vertical',
+		animationType: 'slide-vertical',
 	},
 );
-
-const transitionName = computed(() => {
-	return props.animationType === 'horizontal' ? 'slide-horizontal' : 'slide-vertical';
-});
 </script>
 
 <template>
@@ -22,28 +18,32 @@ const transitionName = computed(() => {
 		<div :class="$style.avatar">
 			<AssistantAvatar size="mini" />
 		</div>
-		<transition :name="transitionName" mode="out-in">
-			<span v-if="message" :key="message" :class="$style.message">{{ message }}</span>
-		</transition>
+		<div :class="$style['message-container']">
+			<transition :name="animationType" mode="out-in">
+				<span v-if="message" :key="message" :class="$style.message">{{ message }}</span>
+			</transition>
+		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .container {
 	display: flex;
-	height: var(--spacing-l);
-	overflow: hidden;
-	align-items: center;
 	gap: var(--spacing-3xs);
-	padding-left: var(--spacing-4xs);
+	align-items: flex-start;
 }
 
 .avatar {
 	animation: pulse 1.5s infinite;
 	position: relative;
-	top: -2px;
 }
 
+.message-container {
+	display: inline-flex;
+	position: relative;
+	overflow: hidden;
+	line-height: 1.4rem;
+}
 .message {
 	margin: 0;
 	padding: 0;
@@ -69,7 +69,7 @@ const transitionName = computed(() => {
 </style>
 
 <style lang="scss" scoped>
-/* Vertical Slide transition */
+// Vertical Slide transition
 .slide-vertical-enter-active,
 .slide-vertical-leave-active {
 	transition:
@@ -87,7 +87,7 @@ const transitionName = computed(() => {
 	opacity: 0;
 }
 
-/* Horizontal Slide transition */
+// Horizontal Slide transition
 .slide-horizontal-enter-active,
 .slide-horizontal-leave-active {
 	transition:
@@ -102,6 +102,20 @@ const transitionName = computed(() => {
 
 .slide-horizontal-leave-to {
 	transform: translateX(-100%);
+	opacity: 0;
+}
+
+// Fade transition
+.fade-enter-active,
+.fade-leave-active {
+	transition: opacity 0.5s ease;
+}
+
+.fade-enter {
+	opacity: 0;
+}
+
+.fade-leave-to /* .fade-leave-active in <2.1.8 */ {
 	opacity: 0;
 }
 </style>

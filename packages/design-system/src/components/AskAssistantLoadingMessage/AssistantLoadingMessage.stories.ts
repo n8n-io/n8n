@@ -13,10 +13,16 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		AssistantLoadingMessage,
 	},
-	template: '<AssistantLoadingMessage v-bind="args" />',
+	template: `<div class="p-xs" style="width: ${args.templateWidth || 'auto'}"><AssistantLoadingMessage v-bind="args" /></div>`,
 });
 
 export const Default = Template.bind({});
 Default.args = {
-	message: 'Thinking...',
+	message: 'Searching n8n documentation for the best possible answer...',
+};
+
+export const NarrowContainer = Template.bind({});
+NarrowContainer.args = {
+	...Default.args,
+	templateWidth: '200px',
 };

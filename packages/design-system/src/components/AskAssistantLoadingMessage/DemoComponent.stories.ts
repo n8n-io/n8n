@@ -21,5 +21,10 @@ Default.args = {};
 
 export const Horizontal = Template.bind({});
 Horizontal.args = {
-	animationType: 'horizontal',
+	animationType: 'slide-horizontal',
+};
+
+export const Fade = Template.bind({});
+Fade.args = {
+	animationType: 'fade',
 };
