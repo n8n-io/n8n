@@ -31,6 +31,7 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -57,9 +58,12 @@ export interface ICredentialsOverwrite {
 //               tags
 // ----------------------------------
 
-export interface ITagToImport {
+export interface ITagBase {
 	id: string;
 	name: string;
+}
+
+export interface ITagToImport extends ITagBase {
 	createdAt?: string;
 	updatedAt?: string;
 }
@@ -68,8 +72,13 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
-	UsageCount;
+export type ITagDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+export type IAnnotationTagDb = Pick<AnnotationTagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // ----------------------------------
 //            workflows
@@ -145,6 +154,9 @@ export interface IExecutionResponse extends IExecutionBase {
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 	customData: Record<string, string>;
+	annotation: {
+		tags: ITagBase[];
+	};
 }
 
 // Flatted data to save memory when saving in database or transferring

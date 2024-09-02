@@ -2,8 +2,10 @@
 import type { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import type { N8nInput } from 'n8n-design-system';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 type TableRef = InstanceType<typeof ElTable>;
 type N8nInputRef = InstanceType<typeof N8nInput>;
@@ -13,7 +15,28 @@ const DELETE_TRANSITION_TIMEOUT = 100;
 
 export default defineComponent({
 	name: 'TagsTable',
-	props: ['rows', 'isLoading', 'newName', 'isSaving'],
+	props: {
+		rows: {
+			type: Array as () => ITagRow[],
+			required: true,
+		},
+		isLoading: {
+			type: Boolean,
+			required: true,
+		},
+		newName: {
+			type: String,
+			required: true,
+		},
+		isSaving: {
+			type: Boolean,
+			required: true,
+		},
+		usageColumnTitleLocaleKey: {
+			type: String as PropType<BaseTextKey>,
+			default: 'tagsTable.usage',
+		},
+	},
 	data() {
 		return {
 			maxLength: MAX_TAG_NAME_LENGTH,
@@ -139,7 +162,7 @@ export default defineComponent({
 				</div>
 			</template>
 		</el-table-column>
-		<el-table-column :label="$locale.baseText('tagsTable.usage')" width="150">
+		<el-table-column :label="$locale.baseText(usageColumnTitleLocaleKey)" width="170">
 			<template #default="scope">
 				<transition name="fade" mode="out-in">
 					<div
