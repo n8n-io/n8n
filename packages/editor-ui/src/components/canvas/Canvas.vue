@@ -57,7 +57,11 @@ const emit = defineEmits<{
 	'create:connection:start': [handle: ConnectStartEvent];
 	'create:connection': [connection: Connection];
 	'create:connection:end': [connection: Connection, event?: MouseEvent];
-	'create:connection:cancelled': [handle: ConnectStartEvent, event?: MouseEvent];
+	'create:connection:cancelled': [
+		handle: ConnectStartEvent,
+		position: XYPosition,
+		event?: MouseEvent,
+	];
 	'click:connection:add': [connection: Connection];
 	'click:pane': [position: XYPosition];
 	'run:workflow': [];
@@ -227,7 +231,7 @@ function onConnectEnd(event?: MouseEvent) {
 	if (connectedHandle.value) {
 		emit('create:connection:end', connectedHandle.value, event);
 	} else if (connectingHandle.value) {
-		emit('create:connection:cancelled', connectingHandle.value, event);
+		emit('create:connection:cancelled', connectingHandle.value, getProjectedPosition(event), event);
 	}
 
 	connectedHandle.value = undefined;
@@ -291,14 +295,19 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 const defaultZoom = 1;
 const zoom = ref(defaultZoom);
 
-function onClickPane(event: MouseEvent) {
+function getProjectedPosition(event?: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
-	const position = project({
-		x: event.offsetX - bounds.left,
-		y: event.offsetY - bounds.top,
-	});
+	const offsetX = event?.clientX ?? 0;
+	const offsetY = event?.clientY ?? 0;
 
-	emit('click:pane', position);
+	return project({
+		x: offsetX - bounds.left,
+		y: offsetY - bounds.top,
+	});
+}
+
+function onClickPane(event: MouseEvent) {
+	emit('click:pane', getProjectedPosition(event));
 }
 
 async function onFitView() {

@@ -103,9 +103,8 @@ export function mapLegacyConnectionToCanvasConnection(
 export function parseCanvasConnectionHandleString(handle: string | null | undefined) {
 	const [mode, type, index] = (handle ?? '').split('/');
 
-	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionType.Main;
 	const resolvedMode = isValidCanvasConnectionMode(mode) ? mode : CanvasConnectionMode.Output;
-
+	const resolvedType = isValidNodeConnectionType(type) ? type : NodeConnectionType.Main;
 	let resolvedIndex = parseInt(index, 10);
 	if (isNaN(resolvedIndex)) {
 		resolvedIndex = 0;
