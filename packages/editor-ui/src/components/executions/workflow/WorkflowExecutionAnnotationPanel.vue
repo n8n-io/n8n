@@ -231,6 +231,8 @@ export default defineComponent({
 	flex-direction: column;
 	overflow: auto;
 
+	background-color: var(--color-background-xlight);
+	border: var(--border-base);
 	border-radius: var(--border-radius-base);
 }
 
