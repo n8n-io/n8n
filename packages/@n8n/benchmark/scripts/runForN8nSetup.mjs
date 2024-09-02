@@ -32,8 +32,12 @@ async function main() {
 	const runDir = path.join(baseRunDir, n8nSetupToUse);
 	fs.emptyDirSync(runDir);
 
-	const currentUserId = process.getuid?.() ?? 0;
+	if (!process.getuid) {
+		console.error('Windows is not supported');
+		process.exit(1);
+	}
 
+	const currentUserId = process.getuid();
 	const dockerComposeClient = new DockerComposeClient({
 		$: $({
 			cwd: composeFilePath,
