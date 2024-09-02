@@ -123,6 +123,7 @@ import {
 	ApplicationError,
 	sleep,
 	OBFUSCATED_ERROR_MESSAGE,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -160,6 +161,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
+import { getNodeAsToll } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2777,12 +2779,6 @@ async function getInputConnectionData(
 				connectedNode.typeVersion,
 			);
 
-			if (!nodeType.supplyData) {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
-					extra: { nodeName: connectedNode.name },
-				});
-			}
-
 			const context = Object.assign({}, this);
 
 			context.getNodeParameter = (
@@ -2850,6 +2846,18 @@ async function getInputConnectionData(
 				}
 			};
 
+			if (!nodeType.supplyData) {
+				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+					nodeType.supplyData = async function (this: IExecuteFunctions) {
+						return await getNodeAsToll(this, nodeType, connectedNode.parameters);
+					};
+				} else {
+					throw new ApplicationError('Node does not have a `supplyData` method defined', {
+						extra: { nodeName: connectedNode.name },
+					});
+				}
+			}
+
 			try {
 				const response = await nodeType.supplyData.call(context, itemIndex);
 				if (response.closeFunction) {
@@ -2882,6 +2890,8 @@ async function getInputConnectionData(
 					runIndex,
 					currentNodeRunIndex,
 				);
+
+				console.log('ERROR...', error);
 
 				// Display on the calling node which node has the error
 				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {

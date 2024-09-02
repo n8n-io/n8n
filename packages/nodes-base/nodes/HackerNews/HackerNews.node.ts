@@ -24,6 +24,7 @@ export class HackerNews implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		usableAsTool: true,
 		properties: [
 			// ----------------------------------
 			//         Resources

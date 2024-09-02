@@ -1655,6 +1655,11 @@ export interface INodeTypeBaseDescription {
 	 * due to deprecation or as a special case (e.g. Start node)
 	 */
 	hidden?: true;
+
+	/**
+	 * Whether the node will be wrapped for tool-use by AI Agents
+	 */
+	usableAsTool?: true;
 }
 
 export interface INodePropertyRouting {

@@ -1008,6 +1008,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@langchain/core':
+        specifier: 0.2.18
+        version: 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1068,6 +1071,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 3.23.8
+        version: 3.23.8
     devDependencies:
       '@types/aws4':
         specifier: ^1.5.1

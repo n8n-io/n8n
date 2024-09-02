@@ -13,6 +13,7 @@ export class Airtable extends VersionedNodeType {
 			group: ['input'],
 			description: 'Read, update, write and delete data from Airtable',
 			defaultVersion: 2.1,
+			usableAsTool: true,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
