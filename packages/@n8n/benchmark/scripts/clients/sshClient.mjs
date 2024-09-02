@@ -4,12 +4,13 @@ import { $ } from 'zx';
 export class SshClient {
 	/**
 	 *
-	 * @param {{ vmName: string; resourceGroupName: string; verbose?: boolean }} param0
+	 * @param {{ privateKeyPath: string; ip: string; username: string; verbose?: boolean }} param0
 	 */
-	constructor({ vmName, resourceGroupName, verbose = false }) {
-		this.vmName = vmName;
-		this.resourceGroupName = resourceGroupName;
+	constructor({ privateKeyPath, ip, username, verbose = false }) {
 		this.verbose = verbose;
+		this.privateKeyPath = privateKeyPath;
+		this.ip = ip;
+		this.username = username;
 
 		this.$$ = $({
 			verbose,
@@ -23,6 +24,14 @@ export class SshClient {
 	async ssh(command, options = {}) {
 		const $$ = options?.verbose ? $({ verbose: true }) : this.$$;
 
-		await $$`az ssh vm -n ${this.vmName} -g ${this.resourceGroupName} --yes -- -o StrictHostKeyChecking=accept-new ${command}`;
+		const target = `${this.username}@${this.ip}`;
+
+		await $$`ssh -i ${this.privateKeyPath} -o StrictHostKeyChecking=accept-new ${target} ${command}`;
+	}
+
+	async scp(source, destination) {
+		const target = `${this.username}@${this.ip}:${destination}`;
+		await this
+			.$$`scp -i ${this.privateKeyPath} -o StrictHostKeyChecking=accept-new ${source} ${target}`;
 	}
 }

@@ -148,4 +148,9 @@ function printUsage() {
 	console.log('');
 }
 
-main().catch(console.error);
+main().catch((error) => {
+	console.error('An error occurred while running the benchmarks:');
+	console.error(error);
+
+	process.exit(1);
+});
