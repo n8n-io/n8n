@@ -843,7 +843,10 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function resolveNodePosition(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
+	function resolveNodePosition(
+		node: INodeUi & { position?: INodeUi['position'] },
+		nodeTypeDescription: INodeTypeDescription,
+	) {
 		let position: XYPosition | undefined = node.position;
 		let pushOffsets: XYPosition = [40, 40];
 
@@ -1420,7 +1423,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// Create a workflow with the new nodes and connections that we can use
 		// the rename method
-		const tempWorkflow: Workflow = workflowHelpers.getWorkflow(createNodes, newConnections);
+		const tempWorkflow: Workflow = workflowsStore.getWorkflow(createNodes, newConnections);
 
 		// Rename all the nodes of which the name changed
 		for (oldName in nodeNameTable) {
@@ -1767,6 +1770,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		copyNodes,
 		cutNodes,
 		duplicateNodes,
+		getNodesToSave,
 		revertDeleteNode,
 		addConnections,
 		createConnection,
