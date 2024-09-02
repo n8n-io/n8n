@@ -372,35 +372,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id),
 		);
 	}
-
-	function addFeedbackAssistantMessage() {
-		const id = getRandomId();
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'text',
-			content: locale.baseText('aiAssistant.feedback.nodeError'),
-			read: false,
-			quickReplies: [
-				{
-					text: locale.baseText('generic.yes'),
-					type: 'new-suggestion',
-				},
-				{
-					text: locale.baseText('aiAssistant.feedback.nodeError.no'),
-					type: 'event:end-session',
-				},
-			],
-		});
-		onDoneStreaming(id);
-	}
-
 	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
 		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
-			addFeedbackAssistantMessage();
+			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
 			telemetry.track('User executed node after assistant suggestion', {
 				task: 'error',
