@@ -74,7 +74,7 @@ export const enrichmentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['enrichLead'],
+				operation: ['enrichLead', 'enrichPerson'],
 			},
 		},
 	},
@@ -86,7 +86,7 @@ export const enrichmentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['enrichLead'],
+				operation: ['enrichLead', 'enrichPerson'],
 			},
 		},
 	},
@@ -98,7 +98,7 @@ export const enrichmentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['enrichLead'],
+				operation: ['enrichLead', 'enrichPerson'],
 			},
 		},
 	},
@@ -110,102 +110,84 @@ export const enrichmentFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['enrichLead'],
+				operation: ['enrichLead', 'enrichPerson'],
+			},
+		},
+	},
+	// ----------------------------------
+	//				enrichment: enrichPerson
+	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		placeholder: 'name@email.com',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['enrich'],
+				operation: ['enrichPerson'],
 			},
 		},
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
+		displayName: 'First Name',
+		name: 'firstName',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['getAll'],
+				operation: ['enrichPerson'],
 			},
 		},
 	},
 	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 5,
-		description: 'Max number of results to return',
-		typeOptions: {
-			minValue: 1,
-			maxValue: 1000,
-		},
+		displayName: 'Last Name',
+		name: 'lastName',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['getAll'],
-				returnAll: [false],
+				operation: ['enrichPerson'],
 			},
 		},
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
+		displayName: 'Linkedin Url',
+		name: 'linkedinUrl',
+		type: 'string',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
-				operation: ['getAll'],
+				operation: ['enrichPerson'],
 			},
 		},
-		options: [
-			{
-				displayName: 'Campaign Name or ID',
-				name: 'campaignId',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getCampaigns',
-				},
-				description:
-					'ID of the campaign to retrieve enrich for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Company Name',
+		name: 'companyName',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['enrich'],
+				operation: ['enrichPerson'],
 			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				default: 'emailsOpened',
-				description: 'Type of enrich to retrieve',
-				options: [
-					{
-						name: 'Emails Bounced',
-						value: 'emailsBounced',
-					},
-					{
-						name: 'Emails Clicked',
-						value: 'emailsClicked',
-					},
-					{
-						name: 'Emails Opened',
-						value: 'emailsOpened',
-					},
-					{
-						name: 'Emails Replied',
-						value: 'emailsReplied',
-					},
-					{
-						name: 'Emails Send Failed',
-						value: 'emailsSendFailed',
-					},
-					{
-						name: 'Emails Sent',
-						value: 'emailsSent',
-					},
-					{
-						name: 'Emails Unsubscribed',
-						value: 'emailsUnsubscribed',
-					},
-				],
+		},
+	},
+	{
+		displayName: 'Company Domain',
+		name: 'companyDomain',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['enrich'],
+				operation: ['enrichPerson'],
 			},
-		],
+		},
 	},
 ];

@@ -303,6 +303,70 @@ export class LemlistV2 implements INodeType {
 							responseData = await lemlistApiRequest.call(this, 'GET', '/unsubscribes', {}, qs);
 						}
 					}
+				} else if (resource === 'enrich') {
+					// *********************************************************************
+					//                             enrichment
+					// *********************************************************************
+
+					if (operation === 'get') {
+						// ----------------------------------
+						//        enrichment: get
+						// ----------------------------------
+
+						// https://developer.lemlist.com
+
+						const enrichId = this.getNodeParameter('enrichId', i);
+
+						responseData = await lemlistApiRequest.call(this, 'GET', `/enrich/${enrichId}`);
+					} else if (operation === 'enrichLead') {
+						// https://developer.lemlist.com
+						const findEmail = this.getNodeParameter('findEmail', i);
+						const verifyEmail = this.getNodeParameter('verifyEmail', i);
+						const linkedinEnrichment = this.getNodeParameter('linkedinEnrichment', i);
+						const findPhone = this.getNodeParameter('findPhone', i);
+						const qs = {} as IDataObject;
+
+						qs.findEmail = findEmail;
+						qs.verifyEmail = verifyEmail;
+						qs.linkedinEnrichment = linkedinEnrichment;
+						qs.findPhone = findPhone;
+
+						const body = {} as IDataObject;
+
+						const leadId = this.getNodeParameter('leadId', i);
+						const endpoint = `/leads/${leadId}/enrich/`;
+
+						responseData = await lemlistApiRequest.call(this, 'POST', endpoint, body, qs);
+					} else if (operation === 'enrichPerson') {
+						// https://developer.lemlist.com
+						const email = this.getNodeParameter('email', i);
+						const linkedinUrl = this.getNodeParameter('linkedinUrl', i);
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
+						const companyDomain = this.getNodeParameter('companyDomain', i);
+						const companyName = this.getNodeParameter('companyName', i);
+						const findEmail = this.getNodeParameter('findEmail', i);
+						const verifyEmail = this.getNodeParameter('verifyEmail', i);
+						const linkedinEnrichment = this.getNodeParameter('linkedinEnrichment', i);
+						const findPhone = this.getNodeParameter('findPhone', i);
+						const qs = {} as IDataObject;
+						qs.email = email;
+						qs.linkedinUrl = linkedinUrl;
+						qs.firstName = firstName;
+						qs.lastName = lastName;
+						qs.companyDomain = companyDomain;
+						qs.companyName = companyName;
+						qs.findEmail = findEmail;
+						qs.verifyEmail = verifyEmail;
+						qs.linkedinEnrichment = linkedinEnrichment;
+						qs.findPhone = findPhone;
+
+						const body = {} as IDataObject;
+
+						const endpoint = '/enrich/';
+
+						responseData = await lemlistApiRequest.call(this, 'POST', endpoint, body, qs);
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
