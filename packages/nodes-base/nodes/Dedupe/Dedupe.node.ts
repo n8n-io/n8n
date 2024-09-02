@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	ProcessedDataContext,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class Dedupe implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +21,8 @@ export class Dedupe implements INodeType {
 			name: 'Dedupe',
 			color: '#0000FF',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',

@@ -30,7 +30,7 @@ import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
-import { getProcessedDataManagers } from '@/ProcessedDataManagers';
+import { getProcessedDataManagers } from '@/processed-data-managers';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 export abstract class BaseCommand extends Command {

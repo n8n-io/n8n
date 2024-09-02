@@ -3,7 +3,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 import pick from 'lodash/pick';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeTypeBaseDescription,
 	IExecuteFunctions,
@@ -25,8 +25,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Remove Duplicates',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		{
 			displayName: 'Compare',

@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-import type { IProcessedDataEntries, IProcessedDataLatest } from '@/Interfaces';
-import { jsonColumnType, WithTimestamps } from './AbstractEntity';
+import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
+import { jsonColumnType, WithTimestamps } from './abstract-entity';
 import { objectRetriever } from '../utils/transformers';
 
 @Entity()

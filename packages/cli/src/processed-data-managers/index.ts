@@ -5,7 +5,7 @@ import {
 	type IProcessedDataManagers,
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
-import { ProcessedDataManagerNativeDatabase } from './NativeDatabase';
+import { ProcessedDataManagerNativeDatabase } from './native-database';
 
 const activeInstances: {
 	[key: string]: IProcessedDataManager;

@@ -1,4 +1,4 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
 
 export class CreateProcessedDataTable1721319360300 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

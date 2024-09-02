@@ -8,7 +8,7 @@ import { NodeTypes } from '@/NodeTypes';
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '@test/mocking';
 import { mockNodeTypesData } from '../../unit/Helpers';
-import { getProcessedDataManagers } from '../../../src/ProcessedDataManagers';
+import { getProcessedDataManagers } from '../../../src/processed-data-managers';
 
 let workflow: Workflow;
 
