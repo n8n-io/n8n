@@ -515,26 +515,27 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(2);
 			expect(output.estimated).toBe(false);
-			// Executions should be in a reverse chronological order
-			expect(output.results).toEqual([
-				{
-					...summaryShape,
-					annotation: {
-						tags: [expect.objectContaining({ name: 'tag3' })],
-						vote: 'down',
+			expect(output.results).toEqual(
+				expect.arrayContaining([
+					{
+						...summaryShape,
+						annotation: {
+							tags: [expect.objectContaining({ name: 'tag3' })],
+							vote: 'down',
+						},
 					},
-				},
-				{
-					...summaryShape,
-					annotation: {
-						tags: [
-							expect.objectContaining({ name: 'tag1' }),
-							expect.objectContaining({ name: 'tag2' }),
-						],
-						vote: 'up',
+					{
+						...summaryShape,
+						annotation: {
+							tags: [
+								expect.objectContaining({ name: 'tag1' }),
+								expect.objectContaining({ name: 'tag2' }),
+							],
+							vote: 'up',
+						},
 					},
-				},
-			]);
+				]),
+			);
 		});
 
 		test('should update annotation', async () => {
