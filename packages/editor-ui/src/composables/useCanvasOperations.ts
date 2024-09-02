@@ -844,7 +844,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 	}
 
 	function resolveNodePosition(
-		node: INodeUi & { position?: INodeUi['position'] },
+		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
 	) {
 		let position: XYPosition | undefined = node.position;

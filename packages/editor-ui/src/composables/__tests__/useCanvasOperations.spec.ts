@@ -1,8 +1,9 @@
 import { setActivePinia } from 'pinia';
-import { IConnection, NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
+import type { IConnection, Workflow } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { useCanvasOperations } from '@/composables/useCanvasOperations';
 import type { CanvasNode } from '@/types';
-import type { ICredentialsResponse, INodeUi, IWorkflowDb, XYPosition } from '@/Interface';
+import type { ICredentialsResponse, INodeUi, IWorkflowDb } from '@/Interface';
 import { RemoveNodeCommand } from '@/models/history';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
