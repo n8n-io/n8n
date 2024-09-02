@@ -713,7 +713,7 @@ export default defineComponent({
 
 						if (expressionInFieldName.length > 0) {
 							nodeHints.push({
-								message: `Expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')} , did you mean to use it in value instead?`,
+								message: `An expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}, did you mean to use it in the value instead?`,
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
@@ -737,7 +737,7 @@ export default defineComponent({
 								const nodeChilds = this.workflow.getChildNodes(node.node) || [];
 								if (!nodeChilds.includes(this.node.name)) {
 									nodeHints.push({
-										message: `The last node in a branch in the <strong>loop</strong> output, that starts with a <strong>${node.node}</strong> node must be connected back to input of this node or looping will not work`,
+										message: `The last node in the branch of the <strong>loop</strong> output (that starts with a <strong>${node.node}</strong> node) must be connected back to input of this node or looping will not work`,
 										whenToDisplay: 'beforeExecution',
 										location: 'outputPane',
 									});
