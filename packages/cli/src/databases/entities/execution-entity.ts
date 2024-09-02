@@ -16,6 +16,7 @@ import { idStringifier } from '../utils/transformers';
 import type { ExecutionData } from './execution-data';
 import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
+import type { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -64,6 +65,9 @@ export class ExecutionEntity {
 
 	@OneToOne('ExecutionData', 'execution')
 	executionData: Relation<ExecutionData>;
+
+	@OneToOne('ExecutionAnnotation', 'execution')
+	annotation?: Relation<ExecutionAnnotation>;
 
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;

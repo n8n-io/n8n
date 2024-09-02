@@ -890,7 +890,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(error?: Error): boolean;
+	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -2435,6 +2435,8 @@ export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
 
+export type AnnotationVote = 'up' | 'down';
+
 export interface ExecutionSummary {
 	id: string;
 	finished?: boolean;
@@ -2451,6 +2453,13 @@ export interface ExecutionSummary {
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
+	};
+	annotation?: {
+		vote: AnnotationVote;
+		tags: Array<{
+			id: string;
+			name: string;
+		}>;
 	};
 }
 

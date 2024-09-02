@@ -528,7 +528,7 @@ export class Wise implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.toString() });
 					continue;
 				}

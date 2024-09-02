@@ -2,7 +2,7 @@ name: Destroy Benchmark Env
 
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: '0 4 * * *'
   workflow_dispatch:
 
 permissions:

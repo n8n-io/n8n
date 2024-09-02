@@ -20,6 +20,9 @@ export class TerraformClient {
 	/**
 	 * @typedef {Object} BenchmarkEnv
 	 * @property {string} vmName
+	 * @property {string} ip
+	 * @property {string} sshUsername
+	 * @property {string} sshPrivateKeyPath
 	 *
 	 * @returns {Promise<BenchmarkEnv>}
 	 */
@@ -29,7 +32,12 @@ export class TerraformClient {
 		await this.$$`terraform init`;
 		await this.$$`terraform apply -input=false -auto-approve`;
 
+		const privateKeyName = await this.extractPrivateKey();
+
 		return {
+			ip: await this.getTerraformOutput('ip'),
+			sshUsername: await this.getTerraformOutput('ssh_username'),
+			sshPrivateKeyPath: path.join(paths.infraCodeDir, privateKeyName),
 			vmName: await this.getTerraformOutput('vm_name'),
 		};
 	}
@@ -48,5 +56,12 @@ export class TerraformClient {
 	async getTerraformOutput(key) {
 		const output = await this.$$`terraform output -raw ${key}`;
 		return output.stdout.trim();
+	}
+
+	async extractPrivateKey() {
+		await this.$$`terraform output -raw ssh_private_key > privatekey.pem`;
+		await this.$$`chmod 600 privatekey.pem`;
+
+		return 'privatekey.pem';
 	}
 }

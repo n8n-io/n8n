@@ -26,6 +26,7 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
 	| 'mfa'

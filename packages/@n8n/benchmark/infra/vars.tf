@@ -15,8 +15,8 @@ variable "host_size_family" {
 
 variable "vm_size" {
   description = "VM Size"
-  # 2 vCPUs, 8 GiB memory
-  default = "Standard_DC2s_v2"
+  # 8 vCPUs, 32 GiB memory
+  default = "Standard_DC8_v2"
 }
 
 variable "number_of_vms" {
@@ -29,6 +29,6 @@ locals {
     Id        = "N8nBenchmark"
     Terraform = "true"
     Owner     = "Catalysts"
-		CreatedAt = timestamp()
+    CreatedAt = timestamp()
   }
 }
