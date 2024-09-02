@@ -237,13 +237,11 @@ export default defineComponent({
 }
 
 .section {
-	padding: var(--spacing-l);
+	padding: var(--spacing-s);
 	display: flex;
 	flex-direction: column;
 
 	&:not(:last-child) {
-		display: flex;
-		padding-bottom: var(--spacing-l);
 		border-bottom: var(--border-base);
 	}
 }
