@@ -1,12 +1,13 @@
-import { Post, RestController } from '@/decorators';
-import { AiAssistantService } from '@/services/ai-assistant.service';
-import { AiAssistantRequest } from '@/requests';
 import type { Response } from 'express';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { WritableStream } from 'node:stream/web';
 import { InternalServerError } from 'express-openapi-validator/dist/openapi.validator';
 import { strict as assert } from 'node:assert';
 import { ErrorReporterProxy } from 'n8n-workflow';
+
+import { Post, RestController } from '@/decorators';
+import { AiAssistantService } from '@/services/ai-assistant.service';
+import { AiAssistantRequest } from '@/requests';
 
 type FlushableResponse = Response & { flush: () => void };
 
