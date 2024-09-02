@@ -20,7 +20,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 export default defineComponent({
-	name: 'WorkflowExecutionAnnotationSidebar',
+	name: 'WorkflowExecutionAnnotationPanel',
 	components: {
 		VoteButtons,
 		AnnotationTagsDropdown,
@@ -129,8 +129,8 @@ export default defineComponent({
 <template>
 	<div
 		ref="container"
-		:class="['execution-annotation-sidebar', $style.container]"
-		data-test-id="execution-annotation-sidebar"
+		:class="['execution-annotation-panel', $style.container]"
+		data-test-id="execution-annotation-panel"
 	>
 		<div :class="$style.section">
 			<div :class="$style.vote">
@@ -219,13 +219,19 @@ export default defineComponent({
 
 <style module lang="scss">
 .container {
-	flex: 250px 0 0;
-	background-color: var(--color-background-xlight);
-	border-left: var(--border-base);
 	z-index: 1;
+	position: absolute;
+	bottom: 0;
+	right: var(--spacing-xl);
+	transform: translate(0, 100%);
+	max-height: calc(100vh - 250px);
+	width: 250px;
+
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
+
+	border-radius: var(--border-radius-base);
 }
 
 .section {
@@ -339,7 +345,7 @@ export default defineComponent({
 </style>
 
 <style lang="scss" scoped>
-.execution-annotation-sidebar {
+.execution-annotation-panel {
 	:deep(.el-skeleton__item) {
 		height: 60px;
 		border-radius: 0;

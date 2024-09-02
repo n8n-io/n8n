@@ -135,10 +135,6 @@ onBeforeRouteLeave(async (to, _, next) => {
 				@stop-execution="onStopExecution"
 			/>
 		</div>
-		<WorkflowExecutionAnnotationSidebar
-			v-if="isAnnotationEnabled && execution"
-			:execution="execution"
-		/>
 	</div>
 </template>
 
