@@ -53,6 +53,7 @@ import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retr
 import { separate } from '@/utils';
 import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
+import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -437,6 +438,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
 
+		// Sub-query to exclude executions having annotations
+		const annotatedExecutionsSubQuery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('annotation.executionId')
+			.from(ExecutionAnnotation, 'annotation');
+
 		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
 		date.setHours(date.getHours() - maxAge);
@@ -447,12 +455,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		];
 
 		if (maxCount > 0) {
-			const executions = await this.find({
-				select: ['id'],
-				skip: maxCount,
-				take: 1,
-				order: { id: 'DESC' },
-			});
+			const executions = await this.createQueryBuilder('execution')
+				.select('execution.id')
+				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+				.skip(maxCount)
+				.take(1)
+				.orderBy('execution.id', 'DESC')
+				.getMany();
 
 			if (executions[0]) {
 				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
@@ -469,6 +478,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				// Only mark executions as deleted if they are in an end state
 				status: Not(In(['new', 'running', 'waiting'])),
 			})
+			// Only mark executions as deleted if they are not annotated
+			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
 			.andWhere(
 				new Brackets((qb) =>
 					countBasedWhere

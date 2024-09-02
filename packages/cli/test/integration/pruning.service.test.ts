@@ -13,7 +13,12 @@ import { Logger } from '@/logger';
 
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
-import { createExecution, createSuccessfulExecution } from './shared/db/executions';
+import {
+	annotateExecution,
+	createAnnotationTags,
+	createExecution,
+	createSuccessfulExecution,
+} from './shared/db/executions';
 import { mock } from 'jest-mock-extended';
 
 describe('softDeleteOnPruningCycle()', () => {
@@ -40,7 +45,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Execution']);
+		await testDb.truncate(['Execution', 'ExecutionAnnotation']);
 	});
 
 	afterAll(async () => {
@@ -138,6 +143,25 @@ describe('softDeleteOnPruningCycle()', () => {
 				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
 			]);
 		});
+
+		test('should not prune annotated executions', async () => {
+			const executions = [
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+			];
+
+			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
+
+			await pruningService.softDeleteOnPruningCycle();
+
+			const result = await findAllExecutions();
+			expect(result).toEqual([
+				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
+				expect.objectContaining({ id: executions[1].id, deletedAt: expect.any(Date) }),
+				expect.objectContaining({ id: executions[2].id, deletedAt: null }),
+			]);
+		});
 	});
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
@@ -224,6 +248,34 @@ describe('softDeleteOnPruningCycle()', () => {
 			expect(result).toEqual([
 				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
 				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
+			]);
+		});
+
+		test('should not prune annotated executions', async () => {
+			const executions = [
+				await createExecution(
+					{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
+					workflow,
+				),
+				await createExecution(
+					{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
+					workflow,
+				),
+				await createExecution(
+					{ finished: true, startedAt: now, stoppedAt: now, status: 'success' },
+					workflow,
+				),
+			];
+
+			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
+
+			await pruningService.softDeleteOnPruningCycle();
+
+			const result = await findAllExecutions();
+			expect(result).toEqual([
+				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
+				expect.objectContaining({ id: executions[1].id, deletedAt: expect.any(Date) }),
+				expect.objectContaining({ id: executions[2].id, deletedAt: null }),
 			]);
 		});
 	});
