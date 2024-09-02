@@ -1,5 +1,4 @@
 import type {
-	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -239,7 +238,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 				);
 			}
 
-			const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
+			const binaryData = items[index].binary[binaryPropertyName];
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				name: binaryData.fileName,

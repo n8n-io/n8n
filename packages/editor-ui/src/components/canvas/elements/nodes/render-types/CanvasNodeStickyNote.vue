@@ -2,7 +2,7 @@
 /* eslint-disable vue/no-multiple-template-root */
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import type { CanvasNodeStickyNoteRender } from '@/types';
-import { ref, computed, useCssModule } from 'vue';
+import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
 import { NodeResizer } from '@vue-flow/node-resizer';
 import type { OnResize } from '@vue-flow/node-resizer/dist/types';
 import type { XYPosition } from '@vue-flow/core';
@@ -15,11 +15,12 @@ const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
 	move: [position: XYPosition];
 	dblclick: [event: MouseEvent];
+	'open:contextmenu': [event: MouseEvent];
 }>();
 
 const $style = useCssModule();
 
-const { id, isSelected, render } = useCanvasNode();
+const { id, isSelected, render, eventBus } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
@@ -63,6 +64,30 @@ function onEdit(edit: boolean) {
 function onDoubleClick(event: MouseEvent) {
 	emit('dblclick', event);
 }
+
+function onActivate() {
+	onEdit(true);
+}
+
+/**
+ * Context menu
+ */
+
+function openContextMenu(event: MouseEvent) {
+	emit('open:contextmenu', event);
+}
+
+/**
+ * Lifecycle
+ */
+
+onMounted(() => {
+	eventBus.value?.on('update:node:active', onActivate);
+});
+
+onBeforeUnmount(() => {
+	eventBus.value?.off('update:node:active', onActivate);
+});
 </script>
 <template>
 	<NodeResizer
@@ -80,11 +105,12 @@ function onDoubleClick(event: MouseEvent) {
 		:height="renderOptions.height"
 		:width="renderOptions.width"
 		:model-value="renderOptions.content"
-		:background="renderOptions.color"
+		:background-color="renderOptions.color"
 		:edit-mode="isActive"
 		@edit="onEdit"
 		@dblclick="onDoubleClick"
 		@update:model-value="onInputChange"
+		@contextmenu="openContextMenu"
 	/>
 </template>
 

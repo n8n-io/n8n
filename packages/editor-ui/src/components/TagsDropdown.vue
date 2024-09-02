@@ -1,61 +1,3 @@
-<template>
-	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
-		<n8n-select
-			ref="selectRef"
-			:teleported="true"
-			:model-value="appliedTags"
-			:loading="isLoading"
-			:placeholder="placeholder"
-			:filter-method="filterOptions"
-			filterable
-			multiple
-			:reserve-keyword="false"
-			loading-text="..."
-			popper-class="tags-dropdown"
-			data-test-id="tags-dropdown"
-			@update:model-value="onTagsUpdated"
-			@visible-change="onVisibleChange"
-			@remove-tag="onRemoveTag"
-		>
-			<n8n-option
-				v-if="options.length === 0 && filter"
-				:key="CREATE_KEY"
-				ref="createRef"
-				:value="CREATE_KEY"
-				class="ops"
-			>
-				<font-awesome-icon icon="plus-circle" />
-				<span>
-					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
-				</span>
-			</n8n-option>
-			<n8n-option v-else-if="options.length === 0" value="message" disabled>
-				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
-				<span v-if="allTags.length > 0">{{
-					i18n.baseText('tagsDropdown.noMatchingTagsExist')
-				}}</span>
-				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
-			</n8n-option>
-
-			<!-- key is id+index for keyboard navigation to work well with filter -->
-			<n8n-option
-				v-for="(tag, i) in options"
-				:key="tag.id + '_' + i"
-				ref="tagRefs"
-				:value="tag.id"
-				:label="tag.name"
-				class="tag"
-				data-test-id="tag"
-			/>
-
-			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
-				<font-awesome-icon icon="cog" />
-				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
-			</n8n-option>
-		</n8n-select>
-	</div>
-</template>
-
 <script lang="ts">
 import { computed, defineComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -285,6 +227,65 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div ref="container" :class="{ 'tags-container': true, focused }" @keydown.stop>
+		<n8n-select
+			ref="selectRef"
+			:teleported="true"
+			:model-value="appliedTags"
+			:loading="isLoading"
+			:placeholder="placeholder"
+			:filter-method="filterOptions"
+			filterable
+			multiple
+			:reserve-keyword="false"
+			loading-text="..."
+			popper-class="tags-dropdown"
+			data-test-id="tags-dropdown"
+			@update:model-value="onTagsUpdated"
+			@visible-change="onVisibleChange"
+			@remove-tag="onRemoveTag"
+		>
+			<n8n-option
+				v-if="options.length === 0 && filter"
+				:key="CREATE_KEY"
+				ref="createRef"
+				:value="CREATE_KEY"
+				class="ops"
+			>
+				<font-awesome-icon icon="plus-circle" />
+				<span>
+					{{ i18n.baseText('tagsDropdown.createTag', { interpolate: { filter } }) }}
+				</span>
+			</n8n-option>
+			<n8n-option v-else-if="options.length === 0" value="message" disabled>
+				<span>{{ i18n.baseText('tagsDropdown.typeToCreateATag') }}</span>
+				<span v-if="allTags.length > 0">{{
+					i18n.baseText('tagsDropdown.noMatchingTagsExist')
+				}}</span>
+				<span v-else-if="filter">{{ i18n.baseText('tagsDropdown.noTagsExist') }}</span>
+			</n8n-option>
+
+			<!-- key is id+index for keyboard navigation to work well with filter -->
+			<n8n-option
+				v-for="(tag, i) in options"
+				:key="tag.id + '_' + i"
+				ref="tagRefs"
+				:value="tag.id"
+				:label="tag.name"
+				class="tag"
+				data-test-id="tag"
+			/>
+
+			<n8n-option :key="MANAGE_KEY" :value="MANAGE_KEY" class="ops manage-tags">
+				<font-awesome-icon icon="cog" />
+				<span>{{ i18n.baseText('tagsDropdown.manageTags') }}</span>
+			</n8n-option>
+		</n8n-select>
+	</div>
+</template>
+
 <style lang="scss">
 .tags-container {
 	$--max-input-height: 60px;

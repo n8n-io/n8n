@@ -1,8 +1,8 @@
-import { EXTERNAL_SECRETS_DB_KEY } from '@/ExternalSecrets/constants';
+import { EXTERNAL_SECRETS_DB_KEY } from '@/external-secrets/constants';
 import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { Settings } from '../entities/Settings';
+import { Settings } from '../entities/settings';
 import config from '@/config';
 
 @Service()

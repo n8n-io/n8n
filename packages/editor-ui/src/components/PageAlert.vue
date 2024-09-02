@@ -1,7 +1,3 @@
-<template>
-	<span v-show="false" />
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { NotificationHandle } from 'element-plus';
@@ -47,3 +43,7 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<span v-show="false" />
+</template>

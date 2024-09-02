@@ -100,9 +100,9 @@ export class EmbeddingsCohere implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply data for embeddings Cohere');
+		this.logger.debug('Supply data for embeddings Cohere');
 		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
-		const credentials = (await this.getCredentials('cohereApi')) as { apiKey: string };
+		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
 		const embeddings = new CohereEmbeddings({
 			apiKey: credentials.apiKey,
 			model: modelName,

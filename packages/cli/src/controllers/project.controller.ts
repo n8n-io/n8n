@@ -1,4 +1,4 @@
-import type { Project } from '@db/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import {
 	Get,
 	Post,

@@ -1,6 +1,6 @@
 import { main } from '@/commands/db/revert';
 import { mockInstance } from '@test/mocking';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
 import type { Migration, MigrationExecutor } from '@n8n/typeorm';
 import { type DataSource } from '@n8n/typeorm';

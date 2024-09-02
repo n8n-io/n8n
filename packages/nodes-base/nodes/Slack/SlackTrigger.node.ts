@@ -1,15 +1,16 @@
-import type {
-	INodeListSearchItems,
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodePropertyOptions,
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	IBinaryKeyData,
+import {
+	type INodeListSearchItems,
+	type ILoadOptionsFunctions,
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	type IBinaryKeyData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
@@ -28,7 +29,7 @@ export class SlackTrigger implements INodeType {
 			name: 'Slack Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		webhooks: [
 			{
 				name: 'default',

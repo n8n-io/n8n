@@ -34,7 +34,7 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.chatInputWrapper().should('not.exist');
 		aiAssistant.getters.closeChatButton().should('be.visible');
 		aiAssistant.getters.closeChatButton().click();
-		aiAssistant.getters.askAssistantChat().should('not.exist');
+		aiAssistant.getters.askAssistantChat().should('not.be.visible');
 	});
 
 	it('should resize assistant chat up', () => {
@@ -162,13 +162,13 @@ describe('AI Assistant::enabled', () => {
 		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
 		wf.actions.openNode('Edit Fields');
 		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
+		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
 		cy.wait('@chatRequest');
 		aiAssistant.getters.closeChatButton().click();
 		ndv.getters.backToCanvas().click();
 		wf.actions.openNode('Stop and Error');
 		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
+		aiAssistant.getters.nodeErrorViewAssistantButton().click({ force: true });
 		// Since we already have an active session, a warning should be shown
 		aiAssistant.getters.newAssistantSessionModal().should('be.visible');
 		aiAssistant.getters

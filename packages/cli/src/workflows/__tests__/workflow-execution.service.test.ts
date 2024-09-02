@@ -1,10 +1,10 @@
 import type { INode } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { IWorkflowDb } from '@/Interfaces';
-import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
-import type { WorkflowRunner } from '@/WorkflowRunner';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { IWorkflowDb } from '@/interfaces';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowRunner } from '@/workflow-runner';
 
 const webhookNode: INode = {
 	name: 'Webhook',

@@ -1,15 +1,15 @@
 import { v4 as uuid } from 'uuid';
 import type { Workflow } from 'n8n-workflow';
 import { SubworkflowOperationError } from 'n8n-workflow';
-import { Project } from '@/databases/entities/Project';
+import { Project } from '@/databases/entities/project';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '@test/mocking';
 import config from '@/config';
 import { mock } from 'jest-mock-extended';
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
 
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { License } from '@/License';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
 
 const toTargetCallErrorMsg = (subworkflowId: string) =>

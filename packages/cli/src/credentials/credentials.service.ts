@@ -14,31 +14,31 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
-import * as Db from '@/Db';
-import type { ICredentialsDb } from '@/Interfaces';
-import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import * as Db from '@/db';
+import type { ICredentialsDb } from '@/interfaces';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
-import { validateEntity } from '@/GenericHelpers';
-import { ExternalHooks } from '@/ExternalHooks';
-import type { User } from '@db/entities/User';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks';
+import type { User } from '@/databases/entities/user';
 import type { CredentialRequest, ListQuery } from '@/requests';
-import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialTypes } from '@/credential-types';
 import { OwnershipService } from '@/services/ownership.service';
-import { Logger } from '@/Logger';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { Logger } from '@/logger';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { Service } from 'typedi';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import type { ProjectRelation } from '@/databases/entities/project-relation';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { userHasScope } from '@/permissions/checkAccess';
+import { userHasScope } from '@/permissions/check-access';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -388,7 +388,7 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		this.logger.verbose('New credential created', {
+		this.logger.debug('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});

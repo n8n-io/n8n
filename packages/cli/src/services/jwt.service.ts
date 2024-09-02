@@ -23,11 +23,15 @@ export class JwtService {
 		}
 	}
 
-	public sign(payload: object, options: jwt.SignOptions = {}): string {
+	sign(payload: object, options: jwt.SignOptions = {}): string {
 		return jwt.sign(payload, this.jwtSecret, options);
 	}
 
-	public verify<T = JwtPayload>(token: string, options: jwt.VerifyOptions = {}) {
+	decode(token: string) {
+		return jwt.decode(token) as JwtPayload;
+	}
+
+	verify<T = JwtPayload>(token: string, options: jwt.VerifyOptions = {}) {
 		return jwt.verify(token, this.jwtSecret, options) as T;
 	}
 }

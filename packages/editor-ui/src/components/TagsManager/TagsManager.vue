@@ -1,33 +1,3 @@
-<template>
-	<Modal
-		id="tags-manager-modal"
-		:title="$locale.baseText('tagsManager.manageTags')"
-		:name="TAGS_MANAGER_MODAL_KEY"
-		:event-bus="modalBus"
-		min-width="620px"
-		min-height="420px"
-		@enter="onEnter"
-	>
-		<template #content>
-			<el-row>
-				<TagsView
-					v-if="hasTags || isCreating"
-					:is-loading="isLoading"
-					:tags="tags"
-					@create="onCreate"
-					@update="onUpdate"
-					@delete="onDelete"
-					@disable-create="onDisableCreate"
-				/>
-				<NoTagsView v-else @enable-create="onEnableCreate" />
-			</el-row>
-		</template>
-		<template #footer="{ close }">
-			<n8n-button :label="$locale.baseText('tagsManager.done')" float="right" @click="close" />
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 
@@ -186,3 +156,33 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		id="tags-manager-modal"
+		:title="$locale.baseText('tagsManager.manageTags')"
+		:name="TAGS_MANAGER_MODAL_KEY"
+		:event-bus="modalBus"
+		min-width="620px"
+		min-height="420px"
+		@enter="onEnter"
+	>
+		<template #content>
+			<el-row>
+				<TagsView
+					v-if="hasTags || isCreating"
+					:is-loading="isLoading"
+					:tags="tags"
+					@create="onCreate"
+					@update="onUpdate"
+					@delete="onDelete"
+					@disable-create="onDisableCreate"
+				/>
+				<NoTagsView v-else @enable-create="onEnableCreate" />
+			</el-row>
+		</template>
+		<template #footer="{ close }">
+			<n8n-button :label="$locale.baseText('tagsManager.done')" float="right" @click="close" />
+		</template>
+	</Modal>
+</template>

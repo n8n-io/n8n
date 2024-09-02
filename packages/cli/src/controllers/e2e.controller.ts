@@ -1,22 +1,22 @@
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { License } from '@/License';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { License } from '@/license';
 import { LICENSE_FEATURES, LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA, inE2ETests } from '@/constants';
 import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/Interfaces';
-import { MfaService } from '@/Mfa/mfa.service';
+import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
+import { MfaService } from '@/mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
-import { Logger } from '@/Logger';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
+import { Logger } from '@/logger';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');

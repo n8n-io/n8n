@@ -17,6 +17,10 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
+	// deepCopy for diff to show plain objects
+	// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
+	const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
 	const defaultConfig: GlobalConfig = {
 		path: '/',
 		host: 'localhost',
@@ -85,10 +89,10 @@ describe('GlobalConfig', () => {
 					},
 				},
 				template: {
-					credentialsShared: '',
-					invite: '',
-					passwordReset: '',
-					workflowShared: '',
+					'credentials-shared': '',
+					'user-invited': '',
+					'password-reset-requested': '',
+					'workflow-shared': '',
 				},
 			},
 		},
@@ -161,6 +165,8 @@ describe('GlobalConfig', () => {
 				includeApiMethodLabel: false,
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
+				includeQueueMetrics: false,
+				queueMetricsInterval: 20,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -181,7 +187,7 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 			redis: {
-				prefix: 'redis',
+				prefix: 'cache',
 				ttl: 3600000,
 			},
 		},
@@ -218,10 +224,6 @@ describe('GlobalConfig', () => {
 		process.env = {};
 		const config = Container.get(GlobalConfig);
 
-		// deepCopy for diff to show plain objects
-		// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
-		const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
-
 		expect(deepCopy(config)).toEqual(defaultConfig);
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
 	});
@@ -233,9 +235,11 @@ describe('GlobalConfig', () => {
 			DB_TABLE_PREFIX: 'test_',
 			NODES_INCLUDE: '["n8n-nodes-base.hackerNews"]',
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
+			N8N_METRICS: 'TRUE',
+			N8N_TEMPLATES_ENABLED: '0',
 		};
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual({
+		expect(deepCopy(config)).toEqual({
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
@@ -249,9 +253,20 @@ describe('GlobalConfig', () => {
 				tablePrefix: 'test_',
 				type: 'sqlite',
 			},
+			endpoints: {
+				...defaultConfig.endpoints,
+				metrics: {
+					...defaultConfig.endpoints.metrics,
+					enable: true,
+				},
+			},
 			nodes: {
 				...defaultConfig.nodes,
 				include: ['n8n-nodes-base.hackerNews'],
+			},
+			templates: {
+				...defaultConfig.templates,
+				enabled: false,
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -265,7 +280,7 @@ describe('GlobalConfig', () => {
 		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
-		expect(config).toEqual({
+		expect(deepCopy(config)).toEqual({
 			...defaultConfig,
 			database: {
 				...defaultConfig.database,

@@ -19,9 +19,7 @@ export async function googleApiRequest(
 	headers: IDataObject = {},
 	uri: string | null = null,
 ): Promise<any> {
-	const { region } = (await this.getCredentials(
-		'googleFirebaseRealtimeDatabaseOAuth2Api',
-	)) as IDataObject;
+	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api');
 
 	const options: IRequestOptions = {
 		headers: {

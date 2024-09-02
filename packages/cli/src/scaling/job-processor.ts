@@ -1,14 +1,14 @@
 import { Service } from 'typedi';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from 'n8n-core';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { NodeTypes } from '@/NodeTypes';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { NodeTypes } from '@/node-types';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './types';
+import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
 import type PCancelable from 'p-cancelable';
 
 /**

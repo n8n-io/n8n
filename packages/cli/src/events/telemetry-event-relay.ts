@@ -4,18 +4,18 @@ import type { RelayEventMap } from '@/events/relay-event-map';
 import { Telemetry } from '../telemetry';
 import config from '@/config';
 import os from 'node:os';
-import { License } from '@/License';
+import { License } from '@/license';
 import { GlobalConfig } from '@n8n/config';
 import { N8N_VERSION } from '@/constants';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import { TelemetryHelpers } from 'n8n-workflow';
-import { NodeTypes } from '@/NodeTypes';
-import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { IExecutionTrackProperties } from '@/Interfaces';
-import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
+import { NodeTypes } from '@/node-types';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import type { IExecutionTrackProperties } from '@/interfaces';
+import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
 import { EventRelay } from './event-relay';
 import { snakeCase } from 'change-case';
 
@@ -768,6 +768,7 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_routes: this.globalConfig.endpoints.metrics.includeApiEndpoints,
 				metrics_category_cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 				metrics_category_logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
+				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 			},
 		};
 

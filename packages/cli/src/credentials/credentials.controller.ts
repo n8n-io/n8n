@@ -5,11 +5,11 @@ import { In } from '@n8n/typeorm';
 
 import { CredentialsService } from './credentials.service';
 import { CredentialRequest } from '@/requests';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
-import { License } from '@/License';
+import { License } from '@/license';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
 	Delete,
@@ -22,13 +22,13 @@ import {
 	ProjectScope,
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserManagementMailer } from '@/UserManagement/email';
-import * as Db from '@/Db';
+import { UserManagementMailer } from '@/user-management/email';
+import * as Db from '@/db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
 import { z } from 'zod';
 import { EventService } from '@/events/event.service';
 
@@ -218,7 +218,7 @@ export class CredentialsController {
 		// Remove the encrypted data as it is not needed in the frontend
 		const { data: _, ...rest } = responseData;
 
-		this.logger.verbose('Credential updated', { credentialId });
+		this.logger.debug('Credential updated', { credentialId });
 
 		this.eventService.emit('credentials-updated', {
 			user: req.user,

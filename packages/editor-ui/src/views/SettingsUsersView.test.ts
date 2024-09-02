@@ -1,153 +1,289 @@
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems } from '@/__tests__/utils';
-import ModalRoot from '@/components/ModalRoot.vue';
-import DeleteUserModal from '@/components/DeleteUserModal.vue';
+import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import SettingsUsersView from '@/views/SettingsUsersView.vue';
-import { useProjectsStore } from '@/stores/projects.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createUser } from '@/__tests__/data/users';
-import { createProjectListItem } from '@/__tests__/data/projects';
 import { useRBACStore } from '@/stores/rbac.store';
-import { DELETE_USER_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import * as usersApi from '@/api/users';
 import { useSettingsStore } from '@/stores/settings.store';
-import { defaultSettings } from '@/__tests__/defaults';
-import { ProjectTypes } from '@/types/projects.types';
-
-const wrapperComponentWithModal = {
-	components: { SettingsUsersView, ModalRoot, DeleteUserModal },
-	template: `
-		<div>
-		<SettingsUsersView />
-		<ModalRoot name="${DELETE_USER_MODAL_KEY}">
-			<template #default="{ modalName, activeId }">
-				<DeleteUserModal :modal-name="modalName" :active-id="activeId" />
-			</template>
-		</ModalRoot>
-		</div>
-	`,
-};
-
-const renderComponent = createComponentRenderer(wrapperComponentWithModal);
+import { createTestingPinia, type TestingOptions } from '@pinia/testing';
+import { merge } from 'lodash-es';
+import { useUIStore } from '@/stores/ui.store';
+import { useSSOStore } from '@/stores/sso.store';
+import { STORES } from '@/constants';
 
 const loggedInUser = createUser();
-const users = Array.from({ length: 3 }, createUser);
-const projects = [
-	ProjectTypes.Personal,
-	ProjectTypes.Personal,
-	ProjectTypes.Team,
-	ProjectTypes.Team,
-].map(createProjectListItem);
+const invitedUser = createUser({
+	firstName: undefined,
+	inviteAcceptUrl: 'dummy',
+	role: 'global:admin',
+});
+const user = createUser();
+const userWithDisabledSSO = createUser({
+	settings: { allowSSOManualLogin: true },
+});
 
-let pinia: ReturnType<typeof createPinia>;
-let projectsStore: ReturnType<typeof useProjectsStore>;
-let usersStore: ReturnType<typeof useUsersStore>;
-let rbacStore: ReturnType<typeof useRBACStore>;
+const initialState = {
+	[STORES.USERS]: {
+		currentUserId: loggedInUser.id,
+		usersById: {
+			[loggedInUser.id]: loggedInUser,
+			[invitedUser.id]: invitedUser,
+			[user.id]: user,
+			[userWithDisabledSSO.id]: userWithDisabledSSO,
+		},
+	},
+	[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: true } } },
+};
+
+const getInitialState = (state: TestingOptions['initialState'] = {}) =>
+	merge({}, initialState, state);
+
+const copy = vi.fn();
+vi.mock('@/composables/useClipboard', () => ({
+	useClipboard: () => ({
+		copy,
+	}),
+}));
+
+const renderView = createComponentRenderer(SettingsUsersView);
+
+const triggerUserAction = async (userListItem: HTMLElement, action: string) => {
+	expect(userListItem).toBeInTheDocument();
+
+	const actionToggle = within(userListItem).getByTestId('action-toggle');
+	const actionToggleButton = within(actionToggle).getByRole('button');
+	expect(actionToggleButton).toBeVisible();
+
+	await userEvent.click(actionToggle);
+	const actionToggleId = actionToggleButton.getAttribute('aria-controls');
+
+	const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
+	await userEvent.click(within(actionDropdown).getByTestId(`action-${action}`));
+};
+
+const showToast = vi.fn();
+const showError = vi.fn();
+vi.mock('@/composables/useToast', () => ({
+	useToast: () => ({
+		showToast,
+		showError,
+	}),
+}));
 
 describe('SettingsUsersView', () => {
-	beforeEach(() => {
-		pinia = createPinia();
-		setActivePinia(pinia);
-		projectsStore = useProjectsStore();
-		usersStore = useUsersStore();
-		rbacStore = useRBACStore();
+	afterEach(() => {
+		copy.mockReset();
+		showToast.mockReset();
+		showError.mockReset();
+	});
 
-		useSettingsStore().settings.enterprise = {
-			...defaultSettings.enterprise,
-			[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-		};
+	it('hides invite button visibility based on user permissions', async () => {
+		const pinia = createTestingPinia({ initialState: getInitialState() });
+		const userStore = useUsersStore(pinia);
+		// @ts-expect-error: mocked getter
+		userStore.currentUser = createUser({ isDefaultUser: true });
 
-		vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
-		vi.spyOn(usersApi, 'getUsers').mockResolvedValue(users);
-		vi.spyOn(usersStore, 'allUsers', 'get').mockReturnValue(users);
-		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
-			async () => await Promise.resolve(),
+		const { queryByTestId } = renderView({ pinia });
+
+		expect(queryByTestId('settings-users-invite-button')).not.toBeInTheDocument();
+	});
+
+	describe('Below quota', () => {
+		const pinia = createTestingPinia({ initialState: getInitialState() });
+
+		const settingsStore = useSettingsStore(pinia);
+		// @ts-expect-error: mocked getter
+		settingsStore.isBelowUserQuota = false;
+
+		it('disables the invite button', async () => {
+			const { getByTestId } = renderView({ pinia });
+
+			expect(getByTestId('settings-users-invite-button')).toBeDisabled();
+		});
+
+		it('allows the user to upgrade', async () => {
+			const { getByTestId } = renderView({ pinia });
+			const uiStore = useUIStore();
+
+			const actionBox = getByTestId('action-box');
+			expect(actionBox).toBeInTheDocument();
+
+			await userEvent.click(await within(actionBox).findByText('View plans'));
+
+			expect(uiStore.goToUpgrade).toHaveBeenCalledWith('settings-users', 'upgrade-users');
+		});
+	});
+
+	it('disables the invite button on SAML login', async () => {
+		const pinia = createTestingPinia({ initialState: getInitialState() });
+		const ssoStore = useSSOStore(pinia);
+		ssoStore.isSamlLoginEnabled = true;
+
+		const { getByTestId } = renderView({ pinia });
+
+		expect(getByTestId('settings-users-invite-button')).toBeDisabled();
+	});
+
+	it('shows the invite modal', async () => {
+		const pinia = createTestingPinia({ initialState: getInitialState() });
+		const { getByTestId } = renderView({ pinia });
+
+		const uiStore = useUIStore();
+		await userEvent.click(getByTestId('settings-users-invite-button'));
+
+		expect(uiStore.openModal).toHaveBeenCalledWith('inviteUser');
+	});
+
+	it('shows warning when advanced permissions are not enabled', async () => {
+		const pinia = createTestingPinia({
+			initialState: getInitialState({
+				[STORES.SETTINGS]: { settings: { enterprise: { advancedPermissions: false } } },
+			}),
+		});
+
+		const { getByText } = renderView({ pinia });
+
+		expect(getByText('to unlock the ability to create additional admin users'));
+	});
+
+	describe('per user actions', () => {
+		it('should copy invite link to clipboard', async () => {
+			const action = 'copyInviteLink';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${invitedUser.email}`), action);
+
+			expect(copy).toHaveBeenCalledWith(invitedUser.inviteAcceptUrl);
+			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should re invite users', async () => {
+			const action = 'reinvite';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const settingsStore = useSettingsStore(pinia);
+			// @ts-expect-error: mocked getter
+			settingsStore.isSmtpSetup = true;
+
+			const userStore = useUsersStore();
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${invitedUser.email}`), action);
+
+			expect(userStore.reinviteUser).toHaveBeenCalled();
+			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should show delete users modal with the right permissions', async () => {
+			const action = 'delete';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const rbacStore = mockedStore(useRBACStore);
+			rbacStore.hasScope.mockReturnValue(true);
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
+
+			const uiStore = useUIStore();
+			expect(uiStore.openDeleteUserModal).toHaveBeenCalledWith(user.id);
+		});
+
+		it('should allow coping reset password link', async () => {
+			const action = 'copyPasswordResetLink';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const rbacStore = mockedStore(useRBACStore);
+			rbacStore.hasScope.mockReturnValue(true);
+
+			const userStore = mockedStore(useUsersStore);
+			userStore.getUserPasswordResetLink.mockResolvedValue({ link: 'dummy-reset-password' });
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
+
+			expect(userStore.getUserPasswordResetLink).toHaveBeenCalledWith(user);
+
+			expect(copy).toHaveBeenCalledWith('dummy-reset-password');
+			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should enable SSO manual login', async () => {
+			const action = 'allowSSOManualLogin';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const settingsStore = useSettingsStore(pinia);
+			// @ts-expect-error: mocked getter
+			settingsStore.isSamlLoginEnabled = true;
+
+			const userStore = useUsersStore();
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${user.email}`), action);
+			expect(userStore.updateOtherUserSettings).toHaveBeenCalledWith(user.id, {
+				allowSSOManualLogin: true,
+			});
+			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+
+		it('should disable SSO manual login', async () => {
+			const action = 'disallowSSOManualLogin';
+
+			const pinia = createTestingPinia({ initialState: getInitialState() });
+
+			const settingsStore = useSettingsStore(pinia);
+			// @ts-expect-error: mocked getter
+			settingsStore.isSamlLoginEnabled = true;
+
+			const userStore = useUsersStore();
+
+			const { getByTestId } = renderView({ pinia });
+
+			await triggerUserAction(getByTestId(`user-list-item-${userWithDisabledSSO.email}`), action);
+
+			expect(userStore.updateOtherUserSettings).toHaveBeenCalledWith(userWithDisabledSSO.id, {
+				allowSSOManualLogin: false,
+			});
+			expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+	});
+
+	it("should show success toast when changing a user's role", async () => {
+		const pinia = createTestingPinia({ initialState: getInitialState() });
+
+		const rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
+
+		const userStore = useUsersStore();
+
+		const { getByTestId } = renderView({ pinia });
+
+		const userListItem = getByTestId(`user-list-item-${invitedUser.email}`);
+		expect(userListItem).toBeInTheDocument();
+
+		const roleSelect = within(userListItem).getByTestId('user-role-select');
+
+		const roleDropdownItems = await getDropdownItems(roleSelect);
+		await userEvent.click(roleDropdownItems[0]);
+
+		expect(userStore.updateGlobalRole).toHaveBeenCalledWith(
+			expect.objectContaining({ newRoleName: 'global:member' }),
 		);
-		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 
-		usersStore.currentUserId = loggedInUser.id;
-	});
-
-	it('should show confirmation modal before deleting user and delete with transfer', async () => {
-		const deleteUserSpy = vi.spyOn(usersStore, 'deleteUser').mockImplementation(async () => {});
-
-		const { getByTestId } = renderComponent({ pinia });
-
-		const userListItem = getByTestId(`user-list-item-${users[0].email}`);
-		expect(userListItem).toBeInTheDocument();
-
-		const actionToggle = within(userListItem).getByTestId('action-toggle');
-		const actionToggleButton = within(actionToggle).getByRole('button');
-		expect(actionToggleButton).toBeVisible();
-
-		await userEvent.click(actionToggle);
-		const actionToggleId = actionToggleButton.getAttribute('aria-controls');
-
-		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
-		const actionDelete = within(actionDropdown).getByTestId('action-delete');
-		await userEvent.click(actionDelete);
-
-		const modal = getByTestId('deleteUser-modal');
-		expect(modal).toBeVisible();
-		const confirmButton = within(modal).getByTestId('confirm-delete-user-button');
-		expect(confirmButton).toBeDisabled();
-
-		await userEvent.click(within(modal).getAllByRole('radio')[0]);
-
-		const projectSelect = getByTestId('project-sharing-select');
-		expect(projectSelect).toBeVisible();
-
-		const projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await userEvent.click(projectSelectDropdownItems[0]);
-
-		expect(confirmButton).toBeEnabled();
-		await userEvent.click(confirmButton);
-		expect(deleteUserSpy).toHaveBeenCalledWith({
-			id: users[0].id,
-			transferId: expect.any(String),
-		});
-	});
-
-	it('should show confirmation modal before deleting user and delete without transfer', async () => {
-		const deleteUserSpy = vi.spyOn(usersStore, 'deleteUser').mockImplementation(async () => {});
-
-		const { getByTestId } = renderComponent({ pinia });
-
-		const userListItem = getByTestId(`user-list-item-${users[0].email}`);
-		expect(userListItem).toBeInTheDocument();
-
-		const actionToggle = within(userListItem).getByTestId('action-toggle');
-		const actionToggleButton = within(actionToggle).getByRole('button');
-		expect(actionToggleButton).toBeVisible();
-
-		await userEvent.click(actionToggle);
-		const actionToggleId = actionToggleButton.getAttribute('aria-controls');
-
-		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
-		const actionDelete = within(actionDropdown).getByTestId('action-delete');
-		await userEvent.click(actionDelete);
-
-		const modal = getByTestId('deleteUser-modal');
-		expect(modal).toBeVisible();
-		const confirmButton = within(modal).getByTestId('confirm-delete-user-button');
-		expect(confirmButton).toBeDisabled();
-
-		await userEvent.click(within(modal).getAllByRole('radio')[1]);
-
-		const input = within(modal).getByRole('textbox');
-
-		await userEvent.type(input, 'delete all ');
-		expect(confirmButton).toBeDisabled();
-
-		await userEvent.type(input, 'data');
-		expect(confirmButton).toBeEnabled();
-
-		await userEvent.click(confirmButton);
-		expect(deleteUserSpy).toHaveBeenCalledWith({
-			id: users[0].id,
-		});
+		expect(showToast).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'success', message: expect.stringContaining('Member') }),
+		);
 	});
 });

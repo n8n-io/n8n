@@ -1,46 +1,3 @@
-<template>
-	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
-		<span :class="$style.iconWrapper">
-			<NodeIcon :node-type="nodeType" :size="18" />
-		</span>
-		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
-			<div
-				:class="$style.editContainer"
-				@keydown.enter="onRename"
-				@keydown.stop
-				@keydown.esc="editName = false"
-			>
-				<n8n-text :bold="true" color="text-base" tag="div">{{
-					$locale.baseText('ndv.title.renameNode')
-				}}</n8n-text>
-				<n8n-input ref="input" v-model="newName" size="small" data-test-id="node-rename-input" />
-				<div :class="$style.editButtons">
-					<n8n-button
-						type="secondary"
-						size="small"
-						:label="$locale.baseText('ndv.title.cancel')"
-						@click="editName = false"
-					/>
-					<n8n-button
-						type="primary"
-						size="small"
-						:label="$locale.baseText('ndv.title.rename')"
-						@click="onRename"
-					/>
-				</div>
-			</div>
-			<template #reference>
-				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
-					{{ modelValue }}
-					<div :class="$style.editIconContainer">
-						<font-awesome-icon v-if="editable" :class="$style.editIcon" icon="pencil-alt" />
-					</div>
-				</div>
-			</template>
-		</n8n-popover>
-	</span>
-</template>
-
 <script setup lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -83,6 +40,49 @@ function onRename() {
 	editName.value = false;
 }
 </script>
+
+<template>
+	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
+		<span :class="$style.iconWrapper">
+			<NodeIcon :node-type="nodeType" :size="18" />
+		</span>
+		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
+			<div
+				:class="$style.editContainer"
+				@keydown.enter="onRename"
+				@keydown.stop
+				@keydown.esc="editName = false"
+			>
+				<n8n-text :bold="true" color="text-base" tag="div">{{
+					$locale.baseText('ndv.title.renameNode')
+				}}</n8n-text>
+				<n8n-input ref="input" v-model="newName" size="small" data-test-id="node-rename-input" />
+				<div :class="$style.editButtons">
+					<n8n-button
+						type="secondary"
+						size="small"
+						:label="$locale.baseText('ndv.title.cancel')"
+						@click="editName = false"
+					/>
+					<n8n-button
+						type="primary"
+						size="small"
+						:label="$locale.baseText('ndv.title.rename')"
+						@click="onRename"
+					/>
+				</div>
+			</div>
+			<template #reference>
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+					{{ modelValue }}
+					<div :class="$style.editIconContainer">
+						<font-awesome-icon v-if="editable" :class="$style.editIcon" icon="pencil-alt" />
+					</div>
+				</div>
+			</template>
+		</n8n-popover>
+	</span>
+</template>
 
 <style lang="scss" module>
 .container {

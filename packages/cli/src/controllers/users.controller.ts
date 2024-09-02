@@ -1,7 +1,7 @@
 import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
-import { User } from '@db/entities/User';
+import { User } from '@/databases/entities/user';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
@@ -9,21 +9,21 @@ import {
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/Interfaces';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { PublicUser } from '@/interfaces';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ExternalHooks } from '@/ExternalHooks';
-import { validateEntity } from '@/GenericHelpers';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/Project';
+import { Project } from '@/databases/entities/project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service';

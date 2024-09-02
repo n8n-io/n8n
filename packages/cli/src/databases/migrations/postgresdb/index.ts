@@ -1,4 +1,4 @@
-import type { Migration } from '@db/types';
+import type { Migration } from '@/databases/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -57,8 +57,10 @@ import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-Move
 import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 import { MakeExecutionStatusNonNullable1714133768521 } from '../common/1714133768521-MakeExecutionStatusNonNullable';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
+import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -121,4 +123,6 @@ export const postgresMigrations: Migration[] = [
 	AddActivatedAtUserSetting1717498465931,
 	AddConstraintToExecutionMetadata1720101653148,
 	FixExecutionMetadataSequence1721377157740,
+	CreateInvalidAuthTokenTable1723627610222,
+	RefactorExecutionIndices1723796243146,
 ];

@@ -1,3 +1,195 @@
+<script setup lang="ts">
+import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { computed, ref, watch } from 'vue';
+import { NodeHelpers } from 'n8n-workflow';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import NodeIcon from '@/components/NodeIcon.vue';
+import TitledList from '@/components/TitledList.vue';
+import type {
+	NodeConnectionType,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { useDebounce } from '@/composables/useDebounce';
+import { OnClickOutside } from '@vueuse/components';
+
+interface Props {
+	rootNode: INodeUi;
+}
+
+const props = defineProps<Props>();
+const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
+const nodeHelpers = useNodeHelpers();
+const { debounce } = useDebounce();
+const emit = defineEmits<{
+	switchSelectedNode: [nodeName: string];
+	openConnectionNodeCreator: [nodeName: string, connectionType: NodeConnectionType];
+}>();
+
+interface NodeConfig {
+	node: INodeUi;
+	nodeType: INodeTypeDescription;
+	issues: string[];
+}
+
+const possibleConnections = ref<INodeInputConfiguration[]>([]);
+
+const expandedGroups = ref<NodeConnectionType[]>([]);
+const shouldShowNodeInputIssues = ref(false);
+
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion),
+);
+
+const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
+
+const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+
+const nodeInputIssues = computed(() => {
+	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflow.value, [
+		'typeUnknown',
+		'parameters',
+		'credentials',
+		'execution',
+	]);
+	return issues?.input ?? {};
+});
+
+const connectedNodes = computed<Record<NodeConnectionType, NodeConfig[]>>(() => {
+	return possibleConnections.value.reduce(
+		(acc, connection) => {
+			const nodes = getINodesFromNames(
+				workflow.value.getParentNodes(props.rootNode.name, connection.type),
+			);
+			return { ...acc, [connection.type]: nodes };
+		},
+		{} as Record<NodeConnectionType, NodeConfig[]>,
+	);
+});
+
+function getConnectionConfig(connectionType: NodeConnectionType) {
+	return possibleConnections.value.find((c) => c.type === connectionType);
+}
+
+function isMultiConnection(connectionType: NodeConnectionType) {
+	const connectionConfig = getConnectionConfig(connectionType);
+	return connectionConfig?.maxConnections !== 1;
+}
+
+function shouldShowConnectionTooltip(connectionType: NodeConnectionType) {
+	return isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType);
+}
+
+function expandConnectionGroup(connectionType: NodeConnectionType, isExpanded: boolean) {
+	// If the connection is a single connection, we don't need to expand the group
+	if (!isMultiConnection(connectionType)) {
+		return;
+	}
+
+	if (isExpanded) {
+		expandedGroups.value = [...expandedGroups.value, connectionType];
+	} else {
+		expandedGroups.value = expandedGroups.value.filter((g) => g !== connectionType);
+	}
+}
+
+function getINodesFromNames(names: string[]): NodeConfig[] {
+	return names
+		.map((name) => {
+			const node = workflowsStore.getNodeByName(name);
+			if (node) {
+				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
+				if (matchedNodeType) {
+					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
+					const stringifiedIssues = issues ? NodeHelpers.nodeIssuesToString(issues, node) : '';
+					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
+				}
+			}
+			return null;
+		})
+		.filter((n): n is NodeConfig => n !== null);
+}
+
+function hasInputIssues(connectionType: NodeConnectionType) {
+	return (
+		shouldShowNodeInputIssues.value && (nodeInputIssues.value[connectionType] ?? []).length > 0
+	);
+}
+
+function isNodeInputConfiguration(
+	connectionConfig: NodeConnectionType | INodeInputConfiguration,
+): connectionConfig is INodeInputConfiguration {
+	if (typeof connectionConfig === 'string') return false;
+
+	return 'type' in connectionConfig;
+}
+
+function getPossibleSubInputConnections(): INodeInputConfiguration[] {
+	if (!nodeType.value || !props.rootNode) return [];
+
+	const inputs = NodeHelpers.getNodeInputs(workflow.value, props.rootNode, nodeType.value);
+
+	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
+		if (!isNodeInputConfiguration(input)) return false;
+
+		return input.type !== 'main';
+	});
+
+	return nonMainInputs;
+}
+
+function onNodeClick(nodeName: string, connectionType: NodeConnectionType) {
+	if (isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType)) {
+		expandConnectionGroup(connectionType, true);
+		return;
+	}
+
+	emit('switchSelectedNode', nodeName);
+}
+
+function onPlusClick(connectionType: NodeConnectionType) {
+	const connectionNodes = connectedNodes.value[connectionType];
+	if (
+		isMultiConnection(connectionType) &&
+		!expandedGroups.value.includes(connectionType) &&
+		connectionNodes.length >= 1
+	) {
+		expandConnectionGroup(connectionType, true);
+		return;
+	}
+
+	emit('openConnectionNodeCreator', props.rootNode.name, connectionType);
+}
+
+function showNodeInputsIssues() {
+	shouldShowNodeInputIssues.value = false;
+	// Reset animation
+	setTimeout(() => {
+		shouldShowNodeInputIssues.value = true;
+	}, 0);
+}
+
+watch(
+	nodeData,
+	debounce(
+		() =>
+			setTimeout(() => {
+				expandedGroups.value = [];
+				possibleConnections.value = getPossibleSubInputConnections();
+			}, 0),
+		{ debounceTime: 1000 },
+	),
+	{ immediate: true },
+);
+
+defineExpose({
+	showNodeInputsIssues,
+});
+</script>
+
 <template>
 	<div :class="$style.container">
 		<div
@@ -121,194 +313,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import type { INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { computed, ref, watch } from 'vue';
-import { NodeHelpers } from 'n8n-workflow';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import NodeIcon from '@/components/NodeIcon.vue';
-import TitledList from '@/components/TitledList.vue';
-import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
-import { useDebounce } from '@/composables/useDebounce';
-import { OnClickOutside } from '@vueuse/components';
-
-interface Props {
-	rootNode: INodeUi;
-}
-
-const props = defineProps<Props>();
-const workflowsStore = useWorkflowsStore();
-const nodeTypesStore = useNodeTypesStore();
-const nodeHelpers = useNodeHelpers();
-const { debounce } = useDebounce();
-const emit = defineEmits<{
-	switchSelectedNode: [nodeName: string];
-	openConnectionNodeCreator: [nodeName: string, connectionType: ConnectionTypes];
-}>();
-
-interface NodeConfig {
-	node: INodeUi;
-	nodeType: INodeTypeDescription;
-	issues: string[];
-}
-
-const possibleConnections = ref<INodeInputConfiguration[]>([]);
-
-const expandedGroups = ref<ConnectionTypes[]>([]);
-const shouldShowNodeInputIssues = ref(false);
-
-const nodeType = computed(() =>
-	nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion),
-);
-
-const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
-
-const workflow = computed(() => workflowsStore.getCurrentWorkflow());
-
-const nodeInputIssues = computed(() => {
-	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflow.value, [
-		'typeUnknown',
-		'parameters',
-		'credentials',
-		'execution',
-	]);
-	return issues?.input ?? {};
-});
-
-const connectedNodes = computed<Record<ConnectionTypes, NodeConfig[]>>(() => {
-	return possibleConnections.value.reduce(
-		(acc, connection) => {
-			const nodes = getINodesFromNames(
-				workflow.value.getParentNodes(props.rootNode.name, connection.type),
-			);
-			return { ...acc, [connection.type]: nodes };
-		},
-		{} as Record<ConnectionTypes, NodeConfig[]>,
-	);
-});
-
-function getConnectionConfig(connectionType: ConnectionTypes) {
-	return possibleConnections.value.find((c) => c.type === connectionType);
-}
-
-function isMultiConnection(connectionType: ConnectionTypes) {
-	const connectionConfig = getConnectionConfig(connectionType);
-	return connectionConfig?.maxConnections !== 1;
-}
-
-function shouldShowConnectionTooltip(connectionType: ConnectionTypes) {
-	return isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType);
-}
-
-function expandConnectionGroup(connectionType: ConnectionTypes, isExpanded: boolean) {
-	// If the connection is a single connection, we don't need to expand the group
-	if (!isMultiConnection(connectionType)) {
-		return;
-	}
-
-	if (isExpanded) {
-		expandedGroups.value = [...expandedGroups.value, connectionType];
-	} else {
-		expandedGroups.value = expandedGroups.value.filter((g) => g !== connectionType);
-	}
-}
-
-function getINodesFromNames(names: string[]): NodeConfig[] {
-	return names
-		.map((name) => {
-			const node = workflowsStore.getNodeByName(name);
-			if (node) {
-				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
-				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflow.value);
-					const stringifiedIssues = issues ? NodeHelpers.nodeIssuesToString(issues, node) : '';
-					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
-				}
-			}
-			return null;
-		})
-		.filter((n): n is NodeConfig => n !== null);
-}
-
-function hasInputIssues(connectionType: ConnectionTypes) {
-	return (
-		shouldShowNodeInputIssues.value && (nodeInputIssues.value[connectionType] ?? []).length > 0
-	);
-}
-
-function isNodeInputConfiguration(
-	connectionConfig: ConnectionTypes | INodeInputConfiguration,
-): connectionConfig is INodeInputConfiguration {
-	if (typeof connectionConfig === 'string') return false;
-
-	return 'type' in connectionConfig;
-}
-
-function getPossibleSubInputConnections(): INodeInputConfiguration[] {
-	if (!nodeType.value || !props.rootNode) return [];
-
-	const inputs = NodeHelpers.getNodeInputs(workflow.value, props.rootNode, nodeType.value);
-
-	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
-		if (!isNodeInputConfiguration(input)) return false;
-
-		return input.type !== 'main';
-	});
-
-	return nonMainInputs;
-}
-
-function onNodeClick(nodeName: string, connectionType: ConnectionTypes) {
-	if (isMultiConnection(connectionType) && !expandedGroups.value.includes(connectionType)) {
-		expandConnectionGroup(connectionType, true);
-		return;
-	}
-
-	emit('switchSelectedNode', nodeName);
-}
-
-function onPlusClick(connectionType: ConnectionTypes) {
-	const connectionNodes = connectedNodes.value[connectionType];
-	if (
-		isMultiConnection(connectionType) &&
-		!expandedGroups.value.includes(connectionType) &&
-		connectionNodes.length >= 1
-	) {
-		expandConnectionGroup(connectionType, true);
-		return;
-	}
-
-	emit('openConnectionNodeCreator', props.rootNode.name, connectionType);
-}
-
-function showNodeInputsIssues() {
-	shouldShowNodeInputIssues.value = false;
-	// Reset animation
-	setTimeout(() => {
-		shouldShowNodeInputIssues.value = true;
-	}, 0);
-}
-
-watch(
-	nodeData,
-	debounce(
-		() =>
-			setTimeout(() => {
-				expandedGroups.value = [];
-				possibleConnections.value = getPossibleSubInputConnections();
-			}, 0),
-		{ debounceTime: 1000 },
-	),
-	{ immediate: true },
-);
-
-defineExpose({
-	showNodeInputsIssues,
-});
-</script>
 
 <style lang="scss" module>
 @keyframes horizontal-shake {

@@ -80,7 +80,7 @@ export class DocumentJsonInputLoader implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		this.logger.verbose('Supply Data for JSON Input Loader');
+		this.logger.debug('Supply Data for JSON Input Loader');
 		const textSplitter = (await this.getInputConnectionData(
 			NodeConnectionType.AiTextSplitter,
 			0,

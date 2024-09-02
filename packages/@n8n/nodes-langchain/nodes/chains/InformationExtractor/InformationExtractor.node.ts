@@ -294,7 +294,7 @@ export class InformationExtractor implements INodeType {
 				const output = await chain.invoke(messages);
 				resultData.push({ json: { output } });
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					resultData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

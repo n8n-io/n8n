@@ -1,12 +1,12 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import set from 'lodash/set';
 import * as alert from './alert';
 import * as report from './report';
 import * as search from './search';
 import * as user from './user';
 
-import set from 'lodash/set';
 import type { SplunkType } from './node.type';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

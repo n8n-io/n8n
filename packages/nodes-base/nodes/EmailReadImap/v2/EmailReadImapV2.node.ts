@@ -14,7 +14,7 @@ import type {
 	ITriggerResponse,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
@@ -89,7 +89,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -598,7 +598,7 @@ export class EmailReadImapV2 implements INodeType {
 					}
 				},
 				onUpdate: async (seqNo: number, info) => {
-					this.logger.verbose(`Email Read Imap:update ${seqNo}`, info);
+					this.logger.debug(`Email Read Imap:update ${seqNo}`, info);
 				},
 			};
 
@@ -631,7 +631,7 @@ export class EmailReadImapV2 implements INodeType {
 				});
 				conn.on('error', async (error) => {
 					const errorCode = ((error as JsonObject).code as string).toUpperCase();
-					this.logger.verbose(`IMAP connection experienced an error: (${errorCode})`, {
+					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});
 					this.emitError(error as Error);
@@ -647,7 +647,7 @@ export class EmailReadImapV2 implements INodeType {
 		let reconnectionInterval: NodeJS.Timeout | undefined;
 
 		const handleReconnect = async () => {
-			this.logger.verbose('Forcing reconnect to IMAP server');
+			this.logger.debug('Forcing reconnect to IMAP server');
 			try {
 				isCurrentlyReconnecting = true;
 				if (connection.closeBox) await connection.closeBox(false);

@@ -295,7 +295,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
-			codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
+			codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'final');
 
 			const workflow = workflowHelpers.getCurrentWorkflow();
 			if (runDataExecuted.waitTill !== undefined) {

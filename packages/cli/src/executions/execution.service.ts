@@ -15,32 +15,32 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { ActiveExecutions } from '@/ActiveExecutions';
+import { ActiveExecutions } from '@/active-executions';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
-import { NodeTypes } from '@/NodeTypes';
+} from '@/interfaces';
+import { NodeTypes } from '@/node-types';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';
-import { WorkflowRunner } from '@/WorkflowRunner';
-import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { Logger } from '@/Logger';
+import { WorkflowRunner } from '@/workflow-runner';
+import type { IGetExecutionsQueryFilter } from '@/databases/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Logger } from '@/logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import config from '@/config';
-import { WaitTracker } from '@/WaitTracker';
+import { WaitTracker } from '@/wait-tracker';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
-import { License } from '@/License';
-import type { User } from '@/databases/entities/User';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { License } from '@/license';
+import type { User } from '@/databases/entities/user';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -361,7 +361,7 @@ export class ExecutionService {
 	/**
 	 * Return:
 	 *
-	 * - the latest summaries of current and completed executions that satisfy a query,
+	 * - the summaries of latest current and completed executions that satisfy a query,
 	 * - the total count of all completed executions that satisfy the query, and
 	 * - whether the total of completed executions is an estimate.
 	 *
@@ -382,7 +382,7 @@ export class ExecutionService {
 			this.findRangeWithCount({
 				...query,
 				status: completedStatuses,
-				order: { stoppedAt: 'DESC' },
+				order: { startedAt: 'DESC' },
 			}),
 		]);
 
