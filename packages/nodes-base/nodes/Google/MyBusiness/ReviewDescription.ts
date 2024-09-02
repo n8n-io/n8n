@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleSimplifyPostReceive } from './GenericFunctions';
+import { handlePagination } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
 	{
@@ -28,10 +28,14 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Get many reviews',
 				description: 'Retrieve multiple reviews',
 				routing: {
-					output: { postReceive: [handleSimplifyPostReceive] },
+					send: { paginate: true },
+					operations: { pagination: handlePagination },
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',
+						qs: {
+							pageSize: '={{$parameter["limit"]<50 ? $parameter["limit"] : 50}}',
+						},
 					},
 				},
 			},
@@ -56,35 +60,41 @@ export const reviewFields: INodeProperties[] = [
 	/*                                 review:get                                 */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		typeOptions: {
 			loadOptionsMethod: 'getLocations',
 			loadOptionsDependsOn: ['account'],
-		 },
+		},
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Review',
 		name: 'review',
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['get'] } },
 		typeOptions: {
@@ -97,22 +107,26 @@ export const reviewFields: INodeProperties[] = [
 	/*                                 review:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
@@ -128,7 +142,6 @@ export const reviewFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 50, // ToDo: Remove after pagination is implemented
 		},
 		default: 20,
 		description: 'Max number of results to return',
@@ -148,22 +161,26 @@ export const reviewFields: INodeProperties[] = [
 	/*                                 review:reply                               */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
@@ -173,10 +190,12 @@ export const reviewFields: INodeProperties[] = [
 		},
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Review Name',
 		name: 'reviewName',
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['review'], operation: ['reply'] } },
 		typeOptions: {

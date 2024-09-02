@@ -7,13 +7,15 @@ import {
 	type JsonObject,
 	type IExecuteSingleFunctions,
 	type INodeExecutionData,
-	type IN8nHttpFullResponse,
+	type IExecutePaginationFunctions,
+	type DeclarativeRestApiSettings,
 	NodeApiError,
 } from 'n8n-workflow';
 
 import type { ITimeInterval } from './Interfaces';
 
 const addOptName = 'additionalOptions';
+const possibleRootProperties = ['localPosts', 'reviews'];
 
 const getAllParams = (execFns: IExecuteSingleFunctions): Record<string, unknown> => {
 	const params = execFns.getNode().parameters;
@@ -72,31 +74,66 @@ export async function handleDatesPresend(
 	return opts;
 }
 
-/* Helper to simplify the response */
-export async function handleSimplifyPostReceive(
-	this: IExecuteSingleFunctions,
-	_: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
+/* Helper to handle pagination and simplification */
+export async function handlePagination(
+	this: IExecutePaginationFunctions,
+	requestOptions: DeclarativeRestApiSettings.ResultOptions,
 ): Promise<INodeExecutionData[]> {
-	// If the response shouldn't be simplified, return the response body as is
+	const aggregatedResult: IDataObject = {};
+	let nextPageToken: string | undefined;
+	let totalFetched = 0;
+	const limit = this.getNodeParameter('limit', 0) as number;
 	const simplify = this.getNodeParameter('simplify', 0) as boolean;
-	if (!simplify) {
-		return [{ json: response.body }] as INodeExecutionData[];
+
+	do {
+		if (nextPageToken) {
+			requestOptions.options.qs = { ...requestOptions.options.qs, pageToken: nextPageToken };
+		}
+
+		const responseData = await this.makeRoutingRequest(requestOptions);
+
+		for (const page of responseData) {
+			for (const prop of possibleRootProperties) {
+				if (page.json[prop]) {
+					if (!aggregatedResult[prop]) aggregatedResult[prop] = [] as IDataObject[];
+					const currentData = page.json[prop] as IDataObject[];
+					const availableSpace = limit - totalFetched;
+					(aggregatedResult[prop] as IDataObject[]).push(...currentData.slice(0, availableSpace));
+					totalFetched = (aggregatedResult[prop] as IDataObject[]).length;
+				}
+			}
+
+			// Merge other properties excluding pagination tokens and dynamic properties
+			for (const key of Object.keys(page.json)) {
+				if (key !== 'nextPageToken' && !possibleRootProperties.includes(key)) {
+					aggregatedResult[key] = page.json[key];
+				}
+			}
+
+			nextPageToken = page.json.nextPageToken as string | undefined;
+			if (totalFetched >= limit) break;
+		}
+
+		if (totalFetched >= limit) break;
+	} while (nextPageToken);
+
+	// Simplify results if simplify is true
+	if (simplify) {
+		const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
+		if (dataKey && aggregatedResult[dataKey]) {
+			const data = (aggregatedResult[dataKey] as IDataObject[]).slice(0, limit);
+			return data.length ? data.map((item: IDataObject) => ({ json: item })) : [{ json: {} }];
+		}
+		return [{ json: aggregatedResult }];
 	}
 
-	const possibleKeys = ['localPosts', 'reviews']; // Keys to search for in the response body
-
-	// Find and return the first available key's data, if present
-	const dataKey = possibleKeys.find((key) => response.body && (response.body as IDataObject)[key]);
-	if (dataKey) {
-		const data = (response.body as IDataObject)[dataKey] as IDataObject[];
-		return data.length
-			? (data.map((item: IDataObject) => ({ json: item })) as INodeExecutionData[])
-			: ([{ json: {} }] as INodeExecutionData[]); // Always return an item
+	// Return aggregated results limiting the items
+	const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
+	if (dataKey && aggregatedResult[dataKey]) {
+		aggregatedResult[dataKey] = (aggregatedResult[dataKey] as IDataObject[]).slice(0, limit);
 	}
 
-	// If no valid key is found, return the response body as is
-	return [{ json: response.body }] as INodeExecutionData[];
+	return [{ json: aggregatedResult }];
 }
 
 /* The following functions are used for the loadOptions as for them there is no support for declarative style pagination */

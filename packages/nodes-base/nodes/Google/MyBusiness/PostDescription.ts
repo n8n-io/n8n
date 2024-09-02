@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { handleDatesPresend, handleSimplifyPostReceive } from './GenericFunctions';
+import { handleDatesPresend, handlePagination } from './GenericFunctions';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -53,12 +53,13 @@ export const postOperations: INodeProperties[] = [
 				action: 'Get many posts',
 				description: 'Retrieve multiple posts',
 				routing: {
-					output: { postReceive: [handleSimplifyPostReceive] },
+					send: { paginate: true },
+					operations: { pagination: handlePagination },
 					request: {
 						method: 'GET',
 						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/localPosts',
 						qs: {
-							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}', // ToDo
+							pageSize: '={{$parameter["limit"]<100 ? $parameter["limit"] : 100}}',
 						},
 					},
 				},
@@ -85,29 +86,33 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['create'] } },
 		typeOptions: {
 			loadOptionsMethod: 'getLocations',
 			loadOptionsDependsOn: ['account'],
-			},
+		},
 	},
 	{
 		displayName: 'Post Type',
@@ -305,22 +310,26 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
@@ -330,38 +339,44 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['delete'] } },
 		typeOptions: {
 			loadOptionsMethod: 'getPosts',
 			loadOptionsDependsOn: ['account', 'location'],
-		 },
+		},
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 post:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
@@ -371,10 +386,12 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['get'] } },
 		typeOptions: {
@@ -387,22 +404,26 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['getAll'] } },
@@ -417,7 +438,6 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100, // ToDo: Remove after pagination is implemented
 		},
 		default: 20,
 		description: 'Max number of results to return',
@@ -437,22 +457,26 @@ export const postFields: INodeProperties[] = [
 	/*                                 post:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Account',
 		name: 'account',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The Google My Business account name',
 		placeholder: 'accounts/012345678901234567890',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		typeOptions: { loadOptionsMethod: 'getAccounts' },
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Location',
 		name: 'location',
 		required: true,
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'The specific location or business associated with the account',
 		placeholder: 'locations/012345678901234567',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
@@ -462,10 +486,12 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Post',
 		name: 'post',
 		type: 'options',
 		default: '',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'Select the post by name or URL to retrieve its details',
 		displayOptions: { show: { resource: ['post'], operation: ['update'] } },
 		typeOptions: {
