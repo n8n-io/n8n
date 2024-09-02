@@ -32,6 +32,7 @@ export namespace ChatUI {
 	export interface QuickReply {
 		type: string;
 		text: string;
+		isFeedback?: boolean;
 	}
 
 	export interface ErrorMessage {

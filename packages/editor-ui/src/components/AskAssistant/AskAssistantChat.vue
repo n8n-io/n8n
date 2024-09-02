@@ -26,7 +26,7 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 }
 
-async function onUserMessage(content: string, quickReplyType?: string) {
+async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	await assistantStore.sendMessage({ text: content, quickReplyType });
 	const task = 'error';
 	const solutionCount =
@@ -35,7 +35,7 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 				).length
 			: null;
-	if (quickReplyType !== undefined) {
+	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			task,
 			chat_session_id: assistantStore.currentSessionId,

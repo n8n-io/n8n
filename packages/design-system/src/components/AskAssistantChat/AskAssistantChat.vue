@@ -40,7 +40,7 @@ interface Props {
 
 const emit = defineEmits<{
 	close: [];
-	message: [string, string | undefined];
+	message: [string, string | undefined, boolean | undefined];
 	codeReplace: [number];
 	codeUndo: [number];
 }>();
@@ -70,12 +70,12 @@ function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
-	emit('message', opt.text, opt.type);
+	emit('message', opt.text, opt.type, opt.isFeedback);
 }
 
 function onSendMessage() {
 	if (sendDisabled.value) return;
-	emit('message', textInputValue.value, undefined);
+	emit('message', textInputValue.value, undefined, undefined);
 	textInputValue.value = '';
 	if (chatInput.value) {
 		chatInput.value.style.height = 'auto';
