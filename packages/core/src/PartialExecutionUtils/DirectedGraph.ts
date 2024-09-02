@@ -21,6 +21,22 @@ export class DirectedGraph {
 		return new Map(this.nodes.entries());
 	}
 
+	getConnections(filter: { to?: INode } = {}) {
+		const filteredCopy: Connection[] = [];
+
+		for (const connection of this.connections.values()) {
+			const toMatches = filter.to ? connection.to === filter.to : true;
+
+			if (toMatches) {
+				filteredCopy.push(connection);
+			}
+		}
+
+		return filteredCopy;
+
+		//return new Map(this.connections.entries());
+	}
+
 	addNode(node: INode) {
 		this.nodes.set(node.name, node);
 		return this;

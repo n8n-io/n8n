@@ -66,6 +66,7 @@ describe('recreateNodeExecutionStack', () => {
 		//
 		// ASSERT
 		//
+		expect(nodeExecutionStack).toHaveLength(1);
 		expect(nodeExecutionStack).toEqual([
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
@@ -294,22 +295,22 @@ describe('recreateNodeExecutionStack', () => {
 					//previousNodeOutput: 0,
 				},
 			},
-			{
-				node: node3,
-				sourceData: {
-					connection: {
-						from: node2,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node3,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: node2,
-					//previousNodeOutput: 0,
-				},
-			},
+			//{
+			//	node: node3,
+			//	sourceData: {
+			//		connection: {
+			//			from: node2,
+			//			outputIndex: 0,
+			//			type: NodeConnectionType.Main,
+			//			inputIndex: 0,
+			//			to: node3,
+			//		},
+			//		previousNodeRun: 0,
+			//		//currentNodeInput: 0,
+			//		//previousNode: node2,
+			//		//previousNodeOutput: 0,
+			//	},
+			//},
 		];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
@@ -322,7 +323,7 @@ describe('recreateNodeExecutionStack', () => {
 		// ACT
 		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-			recreateNodeExecutionStack(graph, startNodes, node2, runData, pinData);
+			recreateNodeExecutionStack(graph, startNodes, node3, runData, pinData);
 
 		//
 		// ASSERT
@@ -362,14 +363,14 @@ describe('recreateNodeExecutionStack', () => {
 		]);
 
 		expect(waitingExecution).toEqual({
-			node2: { '0': { main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]] } },
+			node3: { '0': { main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]] } },
 		});
 		expect(waitingExecutionSource).toEqual({
-			node2: {
+			node3: {
 				'0': {
 					main: [
-						{ previousNode: 'trigger', previousNodeOutput: undefined, previousNodeRun: undefined },
-						{ previousNode: 'trigger', previousNodeOutput: undefined, previousNodeRun: undefined },
+						{ previousNode: 'node1', previousNodeOutput: undefined, previousNodeRun: undefined },
+						{ previousNode: 'node2', previousNodeOutput: undefined, previousNodeRun: undefined },
 					],
 				},
 			},
@@ -393,7 +394,7 @@ describe('recreateNodeExecutionStack', () => {
 	//             └─►│node2├───┘   └─────┘
 	//                └─────┘
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.skip('multiple inputs', () => {
+	test('multiple inputs', () => {
 		//
 		// ARRANGE
 		//
@@ -406,8 +407,8 @@ describe('recreateNodeExecutionStack', () => {
 			.addConnections(
 				{ from: trigger, to: node1 },
 				{ from: trigger, to: node2 },
-				{ from: node1, to: node3, outputIndex: 0 },
-				{ from: node2, to: node3, outputIndex: 1 },
+				{ from: node1, to: node3, inputIndex: 0 },
+				{ from: node2, to: node3, inputIndex: 1 },
 			);
 		const startNodes: StartNodeData[] = [
 			{
@@ -426,22 +427,22 @@ describe('recreateNodeExecutionStack', () => {
 					//previousNodeOutput: 0,
 				},
 			},
-			{
-				node: node3,
-				sourceData: {
-					connection: {
-						from: node2,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 1,
-						to: node3,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: node1,
-					//previousNodeOutput: 0,
-				},
-			},
+			//{
+			//	node: node3,
+			//	sourceData: {
+			//		connection: {
+			//			from: node2,
+			//			outputIndex: 0,
+			//			type: NodeConnectionType.Main,
+			//			inputIndex: 1,
+			//			to: node3,
+			//		},
+			//		previousNodeRun: 0,
+			//		//currentNodeInput: 0,
+			//		//previousNode: node1,
+			//		//previousNodeOutput: 0,
+			//	},
+			//},
 		];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
@@ -462,15 +463,13 @@ describe('recreateNodeExecutionStack', () => {
 		// ASSERT
 		//
 		expect(nodeExecutionStack).toHaveLength(1);
-		expect(nodeExecutionStack).toContainEqual({
+		expect(nodeExecutionStack[0]).toEqual({
 			data: { main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]] },
 			node: node3,
 			source: {
 				main: [
 					{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 },
-					// TODO: this should be node2, but this would only work if I refactor
-					// sourceData to contain multiple sources per node.
-					{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 },
+					{ previousNode: 'node2', previousNodeOutput: 0, previousNodeRun: 0 },
 				],
 			},
 		});
@@ -478,7 +477,7 @@ describe('recreateNodeExecutionStack', () => {
 		expect(waitingExecution).toEqual({
 			node3: {
 				'0': {
-					main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]],
+					main: [[{ json: { value: 1 } }]],
 				},
 			},
 		});
@@ -487,7 +486,7 @@ describe('recreateNodeExecutionStack', () => {
 				'0': {
 					main: [
 						{ previousNode: 'node1', previousNodeOutput: undefined, previousNodeRun: undefined },
-						{ previousNode: 'node2', previousNodeOutput: undefined, previousNodeRun: undefined },
+						{ previousNode: 'node2', previousNodeOutput: 1, previousNodeRun: undefined },
 					],
 				},
 			},
