@@ -104,7 +104,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		type AgentMultiOutputFinish = AgentFinish & {
 			returnValues: { output: Array<{ text: string; type: string; index: number }> };
 		};
-		const agentFinishSteps = steps as AgentMultiOutputFinish | AgentFinish;
+		const agentFinishSteps = structuredClone(steps) as AgentMultiOutputFinish | AgentFinish;
 
 		if (agentFinishSteps.returnValues) {
 			const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
@@ -128,7 +128,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		}
 
 		// If the steps do not contain multiple outputs, return them as is
-		return steps;
+		return agentFinishSteps;
 	}
 	async function agentStepsParser(
 		steps: AgentFinish | AgentAction[],
