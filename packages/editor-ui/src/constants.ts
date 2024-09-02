@@ -641,6 +641,7 @@ export const enum STORES {
 	PUSH = 'push',
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
+	PROJECTS = 'projects',
 }
 
 export const enum SignInType {
