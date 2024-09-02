@@ -38,6 +38,7 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 import '@/controllers/active-workflows.controller';
+import '@/controllers/annotation-tags.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';

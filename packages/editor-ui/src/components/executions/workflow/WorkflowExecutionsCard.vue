@@ -2,13 +2,15 @@
 import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT, VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import type { PermissionsRecord } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 const props = defineProps<{
 	execution: ExecutionSummary;
@@ -27,6 +29,17 @@ const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
+const posthogStore = usePostHog();
+const settingsStore = useSettingsStore();
+
+const isAdvancedExecutionFilterEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
+);
+const isAnnotationEnabled = computed(
+	() =>
+		isAdvancedExecutionFilterEnabled.value &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+);
 
 const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
 const retryExecutionActions = computed(() => [
@@ -109,6 +122,21 @@ function onRetryMenuItemSelect(action: string): void {
 					<N8nText :color="isActive ? 'text-dark' : 'text-base'" size="small">
 						{{ locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</N8nText>
+				</div>
+				<div v-if="isAnnotationEnabled" :class="$style.annotation">
+					<div v-if="execution.annotation?.vote" :class="$style.ratingIcon">
+						<FontAwesomeIcon
+							v-if="execution.annotation.vote == 'up'"
+							:class="$style.up"
+							icon="thumbs-up"
+						/>
+						<FontAwesomeIcon v-else :class="$style.down" icon="thumbs-down" />
+					</div>
+					<N8nTags
+						v-if="executionUIDetails.tags.length > 0"
+						:tags="executionUIDetails.tags"
+						:clickable="false"
+					></N8nTags>
 				</div>
 			</div>
 			<div :class="$style.icons">
@@ -221,6 +249,23 @@ function onRetryMenuItemSelect(action: string): void {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
 		}
 	}
+
+	.annotation {
+		display: flex;
+		flex-direction: row;
+		gap: var(--spacing-3xs);
+		align-items: center;
+		margin: var(--spacing-4xs) 0 0;
+
+		.ratingIcon {
+			.up {
+				color: var(--color-success);
+			}
+			.down {
+				color: var(--color-danger);
+			}
+		}
+	}
 }
 
 .executionLink {
@@ -269,6 +314,7 @@ function onRetryMenuItemSelect(action: string): void {
 		margin-left: var(--spacing-2xs);
 	}
 }
+
 .showGap {
 	margin-bottom: var(--spacing-2xs);
 	.executionLink {
