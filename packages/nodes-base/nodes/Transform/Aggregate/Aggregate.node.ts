@@ -9,6 +9,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IPairedItemData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { prepareFieldsArray } from '../utils/utils';
 import { addBinariesToItem } from './utils';
@@ -25,8 +26,8 @@ export class Aggregate implements INodeType {
 		defaults: {
 			name: 'Aggregate',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Aggregate',

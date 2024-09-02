@@ -90,7 +90,6 @@ export async function changePassword(
 }
 
 export type UpdateCurrentUserParams = {
-	id?: string;
 	firstName?: string;
 	lastName?: string;
 	email: string;

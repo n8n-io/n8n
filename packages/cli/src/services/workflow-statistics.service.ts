@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { StatisticsNames } from '@db/entities/WorkflowStatistics';
-import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
+import { StatisticsNames } from '@/databases/entities/workflow-statistics';
+import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 import { EventService } from '@/events/event.service';
 
 type WorkflowStatisticsEvents = {
@@ -90,7 +90,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				}
 			}
 		} catch (error) {
-			this.logger.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow success telemetry event');
 		}
 	}
 

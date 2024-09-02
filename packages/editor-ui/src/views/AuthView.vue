@@ -1,26 +1,3 @@
-<template>
-	<div :class="$style.container">
-		<div :class="$style.logoContainer">
-			<Logo />
-		</div>
-		<div v-if="subtitle" :class="$style.textContainer">
-			<n8n-text size="large">{{ subtitle }}</n8n-text>
-		</div>
-		<div :class="$style.formContainer">
-			<n8n-form-box
-				v-bind="form"
-				data-test-id="auth-form"
-				:button-loading="formLoading"
-				@secondary-click="onSecondaryClick"
-				@submit="onSubmit"
-				@update="onUpdate"
-			>
-				<SSOLogin v-if="withSso" />
-			</n8n-form-box>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { type PropType, defineComponent } from 'vue';
 
@@ -63,6 +40,29 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div :class="$style.logoContainer">
+			<Logo />
+		</div>
+		<div v-if="subtitle" :class="$style.textContainer">
+			<n8n-text size="large">{{ subtitle }}</n8n-text>
+		</div>
+		<div :class="$style.formContainer">
+			<n8n-form-box
+				v-bind="form"
+				data-test-id="auth-form"
+				:button-loading="formLoading"
+				@secondary-click="onSecondaryClick"
+				@submit="onSubmit"
+				@update="onUpdate"
+			>
+				<SSOLogin v-if="withSso" />
+			</n8n-form-box>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 body {

@@ -3,12 +3,12 @@ import { v4 as uuid } from 'uuid';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@db/entities/User';
-import { ProjectRepository } from '@db/repositories/project.repository';
-import { ProjectRelationRepository } from '@db/repositories/projectRelation.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { CacheService } from '@/services/cache/cache.service';
 import { ExecutionService } from '@/executions/execution.service';
 
@@ -23,7 +23,7 @@ import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { validateUser } from './shared/utils/users';
 import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';

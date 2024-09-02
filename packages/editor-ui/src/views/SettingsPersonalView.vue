@@ -173,7 +173,6 @@ async function updateUserBasicInfo(userBasicInfo: UserBasicDetailsWithMfa) {
 	}
 
 	await usersStore.updateUser({
-		id: usersStore.currentUserId,
 		firstName: userBasicInfo.firstName,
 		lastName: userBasicInfo.lastName,
 		email: userBasicInfo.email,

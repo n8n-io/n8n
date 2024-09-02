@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from 'vue';
+import { onClickOutside } from '@vueuse/core';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
@@ -21,6 +22,7 @@ const segments = ref<Segment[]>([]);
 const editorState = ref<EditorState>();
 const selection = ref<SelectionRange>();
 const inlineInput = ref<InstanceType<typeof InlineExpressionEditorInput>>();
+const container = ref<HTMLDivElement>();
 
 type Props = {
 	path: string;
@@ -156,15 +158,13 @@ watch(isDragging, (newIsDragging) => {
 	}
 });
 
+onClickOutside(container, (event) => onBlur(event));
+
 defineExpose({ focus });
 </script>
 
 <template>
-	<div
-		v-on-click-outside="onBlur"
-		:class="$style['expression-parameter-input']"
-		@keydown.tab="onBlur"
-	>
+	<div ref="container" :class="$style['expression-parameter-input']" @keydown.tab="onBlur">
 		<div
 			:class="[
 				$style['all-sections'],

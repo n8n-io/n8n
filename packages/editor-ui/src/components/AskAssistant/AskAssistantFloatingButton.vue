@@ -28,16 +28,12 @@ const lastUnread = computed(() => {
 
 const onClick = () => {
 	assistantStore.openChat();
-	telemetry.track(
-		'User opened assistant',
-		{
-			source: 'canvas',
-			task: 'placeholder',
-			has_existing_session: !assistantStore.isSessionEnded,
-			workflow_id: workflowStore.workflowId,
-		},
-		{ withPostHog: true },
-	);
+	telemetry.track('User opened assistant', {
+		source: 'canvas',
+		task: 'placeholder',
+		has_existing_session: !assistantStore.isSessionEnded,
+		workflow_id: workflowStore.workflowId,
+	});
 };
 </script>
 
@@ -45,6 +41,7 @@ const onClick = () => {
 	<div
 		v-if="assistantStore.canShowAssistantButtons && !assistantStore.isAssistantOpen"
 		:class="$style.container"
+		data-test-id="ask-assistant-floating-button"
 	>
 		<n8n-tooltip
 			:z-index="4000"

@@ -10,7 +10,7 @@ catalog:
   '@types/lodash': ^4.14.195
   '@types/uuid': ^8.3.2
   '@types/xml2js': ^0.4.14
-  axios: 1.7.3
+  axios: 1.7.4
   basic-auth: 2.0.1
   fast-glob: 3.2.12
   form-data: 4.0.0
@@ -20,6 +20,7 @@ catalog:
   typedi: 0.10.0
   uuid: 8.3.2
   xml2js: 0.6.2
+  zod: 3.23.8
 
 catalogs:
   frontend:

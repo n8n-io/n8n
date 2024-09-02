@@ -3,9 +3,9 @@ import { Flags, type Config } from '@oclif/core';
 import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { WebhookServer } from '@/webhooks/WebhookServer';
-import { BaseCommand } from './BaseCommand';
+import { ActiveExecutions } from '@/active-executions';
+import { WebhookServer } from '@/webhooks/webhook-server';
+import { BaseCommand } from './base-command';
 
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';

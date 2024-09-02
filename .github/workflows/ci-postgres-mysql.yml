@@ -8,6 +8,10 @@ on:
     paths:
       - packages/cli/src/databases/**
       - .github/workflows/ci-postgres-mysql.yml
+  pull_request_review:
+    types: [submitted]
+    branches:
+      - 'release/*'
 
 concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}

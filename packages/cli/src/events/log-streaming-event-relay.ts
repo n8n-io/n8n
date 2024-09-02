@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { Redactable } from '@/decorators/Redactable';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { Redactable } from '@/decorators/redactable';
 import { EventRelay } from '@/events/event-relay';
 import type { RelayEventMap } from '@/events/relay-event-map';
 import type { IWorkflowBase } from 'n8n-workflow';

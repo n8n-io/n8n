@@ -1,8 +1,8 @@
-import { License } from '@/License';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ClearLicenseCommand } from '@/commands/license/clear';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 import { mockInstance } from '../../shared/mocking';
 
 mockInstance(LoadNodesAndCredentials);

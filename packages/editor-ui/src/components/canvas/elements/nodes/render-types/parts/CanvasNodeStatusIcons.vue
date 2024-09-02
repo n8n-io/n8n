@@ -88,7 +88,13 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 }
 
 .running {
-	color: var(--color-primary);
+	width: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	height: calc(100% - 2 * var(--canvas-node--status-icons-offset));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 3.75em;
+	color: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.7);
 }
 
 .issues {

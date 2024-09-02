@@ -68,16 +68,6 @@ function getPath(parameter: string) {
 	return (props.path ? `${props.path}.` : '') + parameter;
 }
 
-function createPrompt(prompt: string) {
-	return `
-Important! The original input must remain unchanged. If there is a risk of modifying the original input, create a copy of it before making any changes. Use appropriate methods to ensure that the properties of objects are not directly altered.
-
-Always return an array
-
-${prompt}
-`;
-}
-
 async function onSubmit() {
 	const { activeNode } = useNDVStore();
 	const { showMessage } = useToast();
@@ -111,7 +101,7 @@ async function onSubmit() {
 				: 'gpt-3.5-turbo-16k';
 
 		const payload = {
-			question: createPrompt(prompt.value),
+			question: prompt.value,
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,

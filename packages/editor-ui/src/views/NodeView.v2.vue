@@ -3,8 +3,10 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
+	onActivated,
 	onBeforeMount,
 	onBeforeUnmount,
+	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -18,6 +20,7 @@ import CanvasRunWorkflowButton from '@/components/canvas/elements/buttons/Canvas
 import { useI18n } from '@/composables/useI18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
 	IExecutionResponse,
@@ -33,6 +36,7 @@ import type {
 import type { Connection, ViewportTransform } from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
+	CanvasEventBusEvents,
 	CanvasNode,
 	CanvasNodeMoveEvent,
 	ConnectStartEvent,
@@ -91,6 +95,8 @@ import { useTemplatesStore } from '@/stores/templates.store';
 import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import { getResourcePermissions } from '@/permissions';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -133,8 +139,12 @@ const pushConnectionStore = usePushConnectionStore();
 const ndvStore = useNDVStore();
 const templatesStore = useTemplatesStore();
 
-const canvasEventBus = createEventBus();
+const canvasEventBus = createEventBus<CanvasEventBusEvents>();
 
+const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+	route,
+});
+const { registerCustomAction } = useGlobalLinkActions();
 const { runWorkflow, stopCurrentExecution, stopWaitingForWebhook } = useRunWorkflow({ router });
 const {
 	updateNodePosition,
@@ -194,7 +204,11 @@ const isReadOnlyEnvironment = computed(() => {
 });
 
 const isCanvasReadOnly = computed(() => {
-	return isDemoRoute.value || isReadOnlyEnvironment.value;
+	return (
+		isDemoRoute.value ||
+		isReadOnlyEnvironment.value ||
+		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update)
+	);
 });
 
 const fallbackNodes = computed<INodeUi[]>(() =>
@@ -211,6 +225,10 @@ const fallbackNodes = computed<INodeUi[]>(() =>
 				},
 			],
 );
+
+const keyBindingsEnabled = computed(() => {
+	return !ndvStore.activeNode;
+});
 
 /**
  * Initialization
@@ -718,7 +736,12 @@ function onRevertCreateConnection({ connection }: { connection: [IConnection, IC
 	revertCreateConnection(connection);
 }
 
-function onCreateConnectionCancelled(event: ConnectStartEvent) {
+function onCreateConnectionCancelled(event: ConnectStartEvent, mouseEvent?: MouseEvent) {
+	const preventDefault = (mouseEvent?.target as HTMLElement).classList?.contains('clickable');
+	if (preventDefault) {
+		return;
+	}
+
 	setTimeout(() => {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			connection: {
@@ -801,7 +824,7 @@ async function onAddNodesAndConnections(
 		return;
 	}
 
-	await addNodes(nodes, { dragAndDrop, position, trackHistory: true });
+	await addNodes(nodes, { dragAndDrop, position, trackHistory: true, telemetry: true });
 	await nextTick();
 
 	const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
@@ -844,6 +867,10 @@ async function onOpenSelectiveNodeCreator(node: string, connectionType: NodeConn
 	nodeCreatorStore.openSelectiveNodeCreator({ node, connectionType });
 }
 
+async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
+	nodeCreatorStore.openNodeCreatorForTriggerNodes(source);
+}
+
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
 	onOpenNodeCreator({ createNodeActive: true, source });
 }
@@ -862,6 +889,21 @@ function onClickConnectionAdd(connection: Connection) {
 		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
 	});
 }
+
+/**
+ * Permissions
+ */
+
+const workflowPermissions = computed(() => {
+	return getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow;
+});
+
+const projectPermissions = computed(() => {
+	const project = route.query?.projectId
+		? projectsStore.myProjects.find((p) => p.id === route.query.projectId)
+		: projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
 
 /**
  * Executions
@@ -1329,7 +1371,7 @@ function fitView() {
 }
 
 function selectNodes(ids: string[]) {
-	setTimeout(() => canvasEventBus.emit('selectNodes', ids));
+	setTimeout(() => canvasEventBus.emit('nodes:select', { ids }));
 }
 
 /**
@@ -1347,29 +1389,36 @@ function onClickPane(position: CanvasNode['position']) {
  */
 
 function registerCustomActions() {
-	// @TODO Implement these
-	// this.registerCustomAction({
-	// 	key: 'openNodeDetail',
-	// 	action: ({ node }: { node: string }) => {
-	// 		this.nodeSelectedByName(node, true);
-	// 	},
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'openSelectiveNodeCreator',
-	// 	action: this.openSelectiveNodeCreator,
-	// });
-	//
-	// this.registerCustomAction({
-	// 	key: 'showNodeCreator',
-	// 	action: () => {
-	// 		this.ndvStore.activeNodeName = null;
-	//
-	// 		void this.$nextTick(() => {
-	// 			this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TAB);
-	// 		});
-	// 	},
-	// });
+	registerCustomAction({
+		key: 'openNodeDetail',
+		action: ({ node }: { node: string }) => {
+			setNodeActiveByName(node);
+		},
+	});
+
+	registerCustomAction({
+		key: 'openSelectiveNodeCreator',
+		action: ({
+			connectiontype: connectionType,
+			node,
+		}: {
+			connectiontype: NodeConnectionType;
+			node: string;
+		}) => {
+			void onOpenSelectiveNodeCreator(node, connectionType);
+		},
+	});
+
+	registerCustomAction({
+		key: 'showNodeCreator',
+		action: () => {
+			ndvStore.activeNodeName = null;
+
+			void nextTick(() => {
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+			});
+		},
+	});
 }
 
 /**
@@ -1432,6 +1481,10 @@ onMounted(async () => {
 	void externalHooks.run('nodeView.mount').catch(() => {});
 });
 
+onActivated(() => {
+	addBeforeUnloadEventBindings();
+});
+
 onBeforeUnmount(() => {
 	removeUndoRedoEventBindings();
 	removePostMessageEventBindings();
@@ -1439,6 +1492,10 @@ onBeforeUnmount(() => {
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
 	removeWorkflowSavedEventBindings();
+});
+
+onDeactivated(() => {
+	removeBeforeUnloadEventBindings();
 });
 </script>
 
@@ -1450,6 +1507,7 @@ onBeforeUnmount(() => {
 		:fallback-nodes="fallbackNodes"
 		:event-bus="canvasEventBus"
 		:read-only="isCanvasReadOnly"
+		:key-bindings="keyBindingsEnabled"
 		@update:nodes:position="onUpdateNodesPosition"
 		@update:node:position="onUpdateNodePosition"
 		@update:node:active="onSetNodeActive"
@@ -1478,7 +1536,7 @@ onBeforeUnmount(() => {
 		@create:workflow="onCreateWorkflow"
 		@viewport-change="onViewportChange"
 	>
-		<div :class="$style.executionButtons">
+		<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
 			<CanvasRunWorkflowButton
 				:waiting-for-webhook="isExecutionWaitingForWebhook"
 				:disabled="isExecutionDisabled"

@@ -1,6 +1,6 @@
 import type { IUpdateUserSettingsReqPayload, UpdateGlobalRolePayload } from '@/api/users';
 import * as usersApi from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
+import { BROWSER_ID_STORAGE_KEY, PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
 	Cloud,
 	IPersonalizationLatestVersion,
@@ -180,6 +180,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		postHogStore.reset();
 		uiStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
+
+		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
 	};
 
 	const createOwner = async (params: {

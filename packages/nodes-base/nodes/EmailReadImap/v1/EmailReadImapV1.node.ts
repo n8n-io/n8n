@@ -14,7 +14,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
@@ -85,7 +85,7 @@ const versionDescription: INodeTypeDescription = {
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: [],
-	outputs: ['main'],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'imap',
@@ -589,7 +589,7 @@ export class EmailReadImapV1 implements INodeType {
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					if (['ECONNRESET', 'EPIPE'].includes(errorCode as string)) {
-						this.logger.verbose(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
+						this.logger.debug(`IMAP connection was reset (${errorCode}) - reconnecting.`, {
 							error,
 						});
 						try {
@@ -618,7 +618,7 @@ export class EmailReadImapV1 implements INodeType {
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(
 				async () => {
-					this.logger.verbose('Forcing reconnection of IMAP node.');
+					this.logger.debug('Forcing reconnection of IMAP node.');
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);

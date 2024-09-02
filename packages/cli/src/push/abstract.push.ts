@@ -1,6 +1,6 @@
 import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/Interfaces';
-import type { Logger } from '@/Logger';
+import type { IPushDataType } from '@/interfaces';
+import type { Logger } from '@/logger';
 
 /**
  * Abstract class for two-way push communication.

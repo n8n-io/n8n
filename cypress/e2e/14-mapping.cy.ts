@@ -40,6 +40,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapDataFromHeader(1, 'value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.timestamp }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
+		ndv.getters.parameterExpressionPreview('value').should('include.text', '2024');
 
 		ndv.actions.mapDataFromHeader(2, 'value');
 		ndv.getters
@@ -133,6 +135,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '0');
 
 		ndv.getters
@@ -146,6 +149,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', '{{ $json.input }}{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.actions.validateExpressionPreview('value', '[object Object]0');
 	});
 
@@ -163,6 +167,7 @@ describe('Data mapping', () => {
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
@@ -192,6 +197,7 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.selectInputNode(SCHEDULE_TRIGGER_NODE_NAME);
@@ -271,12 +277,12 @@ describe('Data mapping', () => {
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param
-		cy.wait(300);
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
 
 		ndv.actions.mapToParameter('value');
 		ndv.getters.inlineExpressionEditorInput().should('have.text', '{{ $json.input[0].count }}');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 		ndv.actions.validateExpressionPreview('value', '0');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
@@ -350,19 +356,23 @@ describe('Data mapping', () => {
 		workflowPage.actions.zoomToFit();
 
 		workflowPage.actions.openNode('Set');
-		ndv.actions.clearParameterInput('value');
 		ndv.actions.typeIntoParameterInput('value', '=');
-		ndv.actions.typeIntoParameterInput('value', 'hello world{enter}{enter}newline');
+		ndv.getters.inlineExpressionEditorInput().find('.cm-content').paste('hello world\n\nnewline');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
 
 		ndv.getters.inputDataContainer().should('exist').find('span').contains('count').realMouseDown();
-
 		ndv.actions.mapToParameter('value');
+		ndv.getters
+			.inlineExpressionEditorInput()
+			.should('have.text', '{{ $json.input[0].count }}hello worldnewline');
+		ndv.getters.inlineExpressionEditorInput().type('{esc}');
+		ndv.actions.validateExpressionPreview('value', '0hello world\n\nnewline');
 
 		ndv.getters.inputDataContainer().find('span').contains('input').realMouseDown();
-		ndv.actions.mapToParameter('value', 'bottom');
+		ndv.actions.mapToParameter('value', 'center');
 
 		ndv.getters
 			.inlineExpressionEditorInput()
-			.should('have.text', '{{ $json.input[0].count }}hello worldnewline{{ $json.input }}');
+			.should('have.text', '{{ $json.input[0].count }}hello world{{ $json.input }}newline');
 	});
 });

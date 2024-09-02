@@ -32,7 +32,7 @@ export default {
 	'askAssistantButton.askAssistant': 'Ask Assistant',
 	'assistantChat.errorParsingMarkdown': 'Error parsing markdown content',
 	'assistantChat.aiAssistantLabel': 'AI Assistant',
-	'assistantChat.aiAssistantName': 'Ava',
+	'assistantChat.aiAssistantName': 'Assistant',
 	'assistantChat.sessionEndMessage.1':
 		'This Assistant session has ended. To start a new session with the Assistant, click an',
 	'assistantChat.sessionEndMessage.2': 'button in n8n',

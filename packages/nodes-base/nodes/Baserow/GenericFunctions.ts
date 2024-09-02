@@ -21,7 +21,7 @@ export async function baserowApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
+	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
 	const options: IRequestOptions = {
 		headers: {

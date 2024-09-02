@@ -517,7 +517,7 @@ export class ChainLlm implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing LLM Chain');
+		this.logger.debug('Executing LLM Chain');
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -580,7 +580,7 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

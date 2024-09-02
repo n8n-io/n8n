@@ -1,11 +1,11 @@
 import nock from 'nock';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { User } from '@db/entities/User';
-import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { License } from '@/License';
+import type { User } from '@/databases/entities/user';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/interfaces';
+import { License } from '@/license';
 
-import * as testDb from './shared/testDb';
+import * as testDb from './shared/test-db';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';

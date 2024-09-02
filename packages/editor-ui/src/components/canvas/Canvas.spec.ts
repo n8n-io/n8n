@@ -8,15 +8,15 @@ import { createCanvasConnection, createCanvasNodeElement } from '@/__tests__/dat
 import { NodeConnectionType } from 'n8n-workflow';
 import type { useDeviceSupport } from 'n8n-design-system';
 
+const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
 global.window = jsdom.window as unknown as Window & typeof globalThis;
+global.window.matchMedia = matchMedia;
 
 vi.mock('n8n-design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof useDeviceSupport>();
 	return { ...actual, useDeviceSupport: vi.fn(() => ({ isCtrlKeyPressed: vi.fn() })) };
 });
-
-vi.mock('@/composables/useDeviceSupport');
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 beforeEach(() => {
@@ -85,7 +85,7 @@ describe('Canvas', () => {
 		expect(container.querySelector(`[data-id="${connections[0].id}"]`)).toBeInTheDocument();
 	});
 
-	it('should handle node drag stop event', async () => {
+	it('should handle `update:nodes:position` event', async () => {
 		const nodes = [createCanvasNodeElement()];
 		const { container, emitted } = renderComponent({
 			props: {
@@ -99,14 +99,47 @@ describe('Canvas', () => {
 		await fireEvent.mouseDown(node, { view: window });
 		await fireEvent.mouseMove(node, {
 			view: window,
-			clientX: 96,
-			clientY: 96,
+			clientX: 20,
+			clientY: 20,
+		});
+		await fireEvent.mouseMove(node, {
+			view: window,
+			clientX: 40,
+			clientY: 40,
 		});
 		await fireEvent.mouseUp(node, { view: window });
 
-		// Snap to 20px grid: 96 -> 100
 		expect(emitted()['update:nodes:position']).toEqual([
-			[[{ id: '1', position: { x: 100, y: 100 } }]],
+			[
+				[
+					{
+						id: '1',
+						type: 'position',
+						dragging: true,
+						from: {
+							x: 100,
+							y: 100,
+							z: 0,
+						},
+						position: { x: 80, y: 80 },
+					},
+				],
+			],
+			[
+				[
+					{
+						id: '1',
+						type: 'position',
+						dragging: true,
+						from: {
+							x: 100,
+							y: 100,
+							z: 0,
+						},
+						position: { x: 120, y: 120 },
+					},
+				],
+			],
 		]);
 	});
 });

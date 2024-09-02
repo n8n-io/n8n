@@ -14,13 +14,14 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
-import TagsContainer from '@/components/TagsContainer.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
+import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -214,19 +215,6 @@ const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
-
-const workflowHistoryRoute = computed<{ name: string; params: { workflowId: string } }>(() => {
-	return {
-		name: VIEWS.WORKFLOW_HISTORY,
-		params: {
-			workflowId: props.workflow.id,
-		},
-	};
-});
-
-const isWorkflowHistoryButtonDisabled = computed(() => {
-	return isNewWorkflow.value;
 });
 
 const workflowTagIds = computed(() => {
@@ -588,6 +576,10 @@ function goToUpgrade() {
 	void uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
+function goToWorkflowHistoryUpgrade() {
+	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+}
+
 function showCreateWorkflowSuccessToast(id?: string) {
 	if (!id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id)) {
 		let toastTitle = locale.baseText('workflows.create.personal.toast.title');
@@ -639,7 +631,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<TagsDropdown
+			<WorkflowTagsDropdown
 				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
@@ -661,7 +653,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
-			<TagsContainer
+			<WorkflowTagsContainer
 				v-else
 				:key="workflow.id"
 				:tag-ids="workflowTagIds"
@@ -732,20 +724,12 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<RouterLink
-					v-if="isWorkflowHistoryFeatureEnabled"
-					:to="workflowHistoryRoute"
-					:class="$style.workflowHistoryButton"
-				>
-					<N8nIconButton
-						:disabled="isWorkflowHistoryButtonDisabled"
-						data-test-id="workflow-history-button"
-						type="tertiary"
-						icon="history"
-						size="medium"
-						text
-					/>
-				</RouterLink>
+				<WorkflowHistoryButton
+					:workflow-id="props.workflow.id"
+					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
+					:is-new-workflow="isNewWorkflow"
+					@upgrade="goToWorkflowHistoryUpgrade"
+				/>
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
@@ -847,22 +831,5 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
-}
-
-.workflowHistoryButton {
-	width: 30px;
-	height: 30px;
-	color: var(--color-text-dark);
-	border-radius: var(--border-radius-base);
-
-	&:hover {
-		background-color: var(--color-background-base);
-	}
-
-	:disabled {
-		background: transparent;
-		border: none;
-		opacity: 0.5;
-	}
 }
 </style>

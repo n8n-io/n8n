@@ -27,20 +27,23 @@ import { usePostHog } from './posthog.store';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
+import { useUIStore } from './ui.store';
 
-const MAX_CHAT_WIDTH = 425;
-const MIN_CHAT_WIDTH = 250;
-const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+export const MAX_CHAT_WIDTH = 425;
+export const MIN_CHAT_WIDTH = 250;
+export const DEFAULT_CHAT_WIDTH = 325;
+export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
-	const chatWidth = ref<number>(325);
+	const chatWidth = ref<number>(DEFAULT_CHAT_WIDTH);
 
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const chatWindowOpen = ref<boolean>(false);
 	const usersStore = useUsersStore();
+	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
 	const route = useRoute();
 	const streaming = ref<boolean>();
@@ -116,13 +119,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		suggestions.value = {};
 	}
 
-	function closeChat() {
-		chatWindowOpen.value = false;
-	}
-
+	// As assistant sidebar opens and closes, use window width to calculate the container width
+	// This will prevent animation race conditions from making ndv twitchy
 	function openChat() {
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
+		uiStore.appGridWidth = window.innerWidth - chatWidth.value;
+	}
+
+	function closeChat() {
+		chatWindowOpen.value = false;
+		// Looks smoother if we wait for slide animation to finish before updating the grid width
+		setTimeout(() => {
+			uiStore.appGridWidth = window.innerWidth;
+		}, 200);
 	}
 
 	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
@@ -245,10 +255,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function onEachStreamingMessage(response: ChatRequest.ResponsePayload, id: string) {
 		if (response.sessionId && !currentSessionId.value) {
 			currentSessionId.value = response.sessionId;
-			telemetry.track('Assistant session started', {
-				chat_session_id: currentSessionId.value,
-				task: 'error',
-			});
+			telemetry.track(
+				'Assistant session started',
+				{
+					chat_session_id: currentSessionId.value,
+					task: 'error',
+				},
+				{ withPostHog: true },
+			);
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
 		}
@@ -550,5 +564,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		applyCodeDiff,
 		undoCodeDiff,
 		resetAssistantChat,
+		chatWindowOpen,
+		addAssistantMessages,
 	};
 });

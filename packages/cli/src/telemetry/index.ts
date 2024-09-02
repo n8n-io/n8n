@@ -6,16 +6,16 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
-import type { IExecutionTrackProperties } from '@/Interfaces';
-import { Logger } from '@/Logger';
-import { License } from '@/License';
+import type { IExecutionTrackProperties } from '@/interfaces';
+import { Logger } from '@/logger';
+import { License } from '@/license';
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
-import { UserRepository } from '@db/repositories/user.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { SourceControlPreferencesService } from '../environments/source-control/source-control-preferences.service.ee';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { OnShutdown } from '@/decorators/OnShutdown';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 

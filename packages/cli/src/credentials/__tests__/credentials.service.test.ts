@@ -1,8 +1,8 @@
 import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { CredentialTypes } from '@/CredentialTypes';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 describe('CredentialsService', () => {

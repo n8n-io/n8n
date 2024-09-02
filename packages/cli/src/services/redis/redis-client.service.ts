@@ -1,12 +1,10 @@
 import { Service } from 'typedi';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import type { RedisClientType } from './redis.types';
-
-import { OnShutdown } from '@/decorators/OnShutdown';
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { GlobalConfig } from '@n8n/config';
+
+import type { RedisClientType } from './redis.types';
 
 @Service()
 export class RedisClientService {
@@ -26,13 +24,6 @@ export class RedisClientService {
 		this.clients.add(client);
 
 		return client;
-	}
-
-	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
-	disconnectClients() {
-		for (const client of this.clients) {
-			client.disconnect();
-		}
 	}
 
 	/**

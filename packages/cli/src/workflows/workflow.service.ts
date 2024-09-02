@@ -6,25 +6,25 @@ import { v4 as uuid } from 'uuid';
 import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { validateEntity } from '@/GenericHelpers';
-import { ExternalHooks } from '@/ExternalHooks';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import * as WorkflowHelpers from '@/workflow-helpers';
+import { validateEntity } from '@/generic-helpers';
+import { ExternalHooks } from '@/external-hooks';
 import { hasSharing, type ListQuery } from '@/requests';
 import { TagService } from '@/services/tag.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
-import { Logger } from '@/Logger';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service.ee';
+import { Logger } from '@/logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
-import { WorkflowSharingService } from './workflowSharing.service';
+import { WorkflowSharingService } from './workflow-sharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { Scope } from '@n8n/permissions';
@@ -32,7 +32,7 @@ import type { Scope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { EventService } from '@/events/event.service';
 
 @Service()
@@ -96,7 +96,7 @@ export class WorkflowService {
 		]);
 
 		if (!workflow) {
-			this.logger.verbose('User attempted to update a workflow without permissions', {
+			this.logger.warn('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -120,7 +120,7 @@ export class WorkflowService {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			workflowUpdateData.versionId = uuid();
-			this.logger.verbose(
+			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: workflow.versionId,

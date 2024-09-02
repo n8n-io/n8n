@@ -85,6 +85,7 @@ export const paymentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
+				apiVersion: ['v4'],
 				operation: ['create'],
 				resource: ['payment'],
 			},
@@ -94,11 +95,6 @@ export const paymentFields: INodeProperties[] = [
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v4'],
-					},
-				},
 				options: [
 					{
 						name: 'ACH',
@@ -232,14 +228,37 @@ export const paymentFields: INodeProperties[] = [
 				default: 1,
 			},
 			{
+				displayName: 'Transfer Reference',
+				name: 'transferReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['create'],
+				resource: ['payment'],
+			},
+		},
+		options: [
+			{
 				displayName: 'Payment Type',
 				name: 'paymentType',
 				type: 'options',
-				displayOptions: {
-					show: {
-						apiVersion: ['v5'],
-					},
-				},
 				options: [
 					{
 						name: 'Bank Transfer',

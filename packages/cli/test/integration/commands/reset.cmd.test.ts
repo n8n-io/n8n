@@ -1,18 +1,18 @@
 import { Container } from 'typedi';
 
 import { Reset } from '@/commands/user-management/reset';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
-import { setupTestCommand } from '@test-integration/utils/testCommand';
+import { setupTestCommand } from '@test-integration/utils/test-command';
 import { mockInstance } from '../../shared/mocking';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { createMember, createUser } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { getPersonalProject } from '../shared/db/projects';

@@ -2,12 +2,12 @@ import type SuperAgentTest from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 
-import { AbstractServer } from '@/AbstractServer';
-import { LiveWebhooks } from '@/webhooks/LiveWebhooks';
-import { ExternalHooks } from '@/ExternalHooks';
-import { TestWebhooks } from '@/webhooks/TestWebhooks';
-import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
-import { WaitingForms } from '@/WaitingForms';
+import { AbstractServer } from '@/abstract-server';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { ExternalHooks } from '@/external-hooks';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { WaitingForms } from '@/waiting-forms';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 
 import { mockInstance } from '@test/mocking';

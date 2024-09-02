@@ -17,11 +17,11 @@ export async function msGraphSecurityApiRequest(
 ) {
 	const {
 		oauthTokenData: { access_token },
-	} = (await this.getCredentials('microsoftGraphSecurityOAuth2Api')) as {
+	} = await this.getCredentials<{
 		oauthTokenData: {
 			access_token: string;
 		};
-	};
+	}>('microsoftGraphSecurityOAuth2Api');
 
 	const options: IRequestOptions = {
 		headers: {

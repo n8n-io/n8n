@@ -1,222 +1,3 @@
-<template>
-	<div ref="nodeViewRootRef" :class="$style['content']">
-		<div
-			id="node-view-root"
-			class="node-view-root do-not-select"
-			data-test-id="node-view-root"
-			@dragover="onDragOver"
-			@drop="onDrop"
-		>
-			<div
-				v-touch:tap="touchTap"
-				class="node-view-wrapper"
-				:class="workflowClasses"
-				data-test-id="node-view-wrapper"
-				@touchstart="mouseDown"
-				@touchend="mouseUp"
-				@touchmove="canvasPanning.onMouseMove"
-				@mousedown="mouseDown"
-				@mouseup="mouseUp"
-				@contextmenu="onContextMenu"
-				@wheel="canvasStore.wheelScroll"
-			>
-				<div
-					id="node-view-background"
-					class="node-view-background"
-					:style="backgroundStyle"
-					data-test-id="node-view-background"
-				/>
-				<div
-					id="node-view"
-					ref="nodeViewRef"
-					class="node-view"
-					:style="workflowStyle"
-					data-test-id="node-view"
-				>
-					<CanvasAddButton
-						v-show="showCanvasAddButton"
-						ref="canvasAddButton"
-						:style="canvasAddButtonStyle"
-						:show-tooltip="!containsTrigger && showTriggerMissingTooltip"
-						:position="canvasStore.canvasAddButtonPosition"
-						data-test-id="canvas-add-button"
-						@click="onCanvasAddButtonCLick"
-						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
-					/>
-					<Node
-						v-for="nodeData in nodesToRender"
-						:key="`${nodeData.id}_node`"
-						:name="nodeData.name"
-						:is-read-only="
-							isReadOnlyRoute ||
-							readOnlyEnv ||
-							!(workflowPermissions.update ?? projectPermissions.workflow.update)
-						"
-						:instance="instance"
-						:is-active="!!activeNode && activeNode.name === nodeData.name"
-						:hide-actions="pullConnActive"
-						:is-production-execution-preview="isProductionExecutionPreview"
-						:workflow="currentWorkflowObject"
-						:disable-pointer-events="!canOpenNDV"
-						:hide-node-issues="hideNodeIssues"
-						@deselect-all-nodes="deselectAllNodes"
-						@deselect-node="nodeDeselectedByName"
-						@node-selected="nodeSelectedByName"
-						@run-workflow="onRunNode"
-						@moved="onNodeMoved"
-						@run="onNodeRun"
-						@remove-node="(name) => removeNode(name, true)"
-						@toggle-disable-node="(node) => toggleActivationNodes([node])"
-					>
-						<template #custom-tooltip>
-							<span
-								v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
-							/>
-						</template>
-					</Node>
-					<Sticky
-						v-for="stickyData in stickiesToRender"
-						:key="`${stickyData.id}_sticky`"
-						:name="stickyData.name"
-						:workflow="currentWorkflowObject"
-						:is-read-only="
-							isReadOnlyRoute ||
-							readOnlyEnv ||
-							!(workflowPermissions.update ?? projectPermissions.workflow.update)
-						"
-						:instance="instance"
-						:is-active="!!activeNode && activeNode.name === stickyData.name"
-						:node-view-scale="nodeViewScale"
-						:grid-size="GRID_SIZE"
-						:hide-actions="pullConnActive"
-						@deselect-all-nodes="deselectAllNodes"
-						@deselect-node="nodeDeselectedByName"
-						@node-selected="nodeSelectedByName"
-						@remove-node="(name) => removeNode(name, true)"
-					/>
-				</div>
-			</div>
-			<NodeDetailsView
-				:workflow-object="currentWorkflowObject"
-				:read-only="
-					isReadOnlyRoute ||
-					readOnlyEnv ||
-					!(workflowPermissions.update ?? projectPermissions.workflow.update)
-				"
-				:renaming="renamingActive"
-				:is-production-execution-preview="isProductionExecutionPreview"
-				@redraw-node="redrawNode"
-				@switch-selected-node="onSwitchSelectedNode"
-				@open-connection-node-creator="onOpenConnectionNodeCreator"
-				@value-changed="valueChanged"
-				@stop-execution="stopExecution"
-				@save-keyboard-shortcut="onSaveKeyboardShortcut"
-			/>
-			<Suspense>
-				<div :class="$style.setupCredentialsButtonWrapper">
-					<LazySetupWorkflowCredentialsButton />
-				</div>
-			</Suspense>
-			<Suspense>
-				<LazyNodeCreation
-					v-if="
-						!isReadOnlyRoute &&
-						!readOnlyEnv &&
-						(workflowPermissions.update ?? projectPermissions.workflow.update)
-					"
-					:create-node-active="createNodeActive"
-					:node-view-scale="nodeViewScale"
-					@toggle-node-creator="onToggleNodeCreator"
-					@add-nodes="onAddNodes"
-				/>
-			</Suspense>
-			<Suspense>
-				<LazyCanvasControls />
-			</Suspense>
-			<Suspense>
-				<ContextMenu @action="onContextMenuAction" />
-			</Suspense>
-			<div
-				v-if="
-					!isReadOnlyRoute &&
-					!readOnlyEnv &&
-					(workflowPermissions.update ?? projectPermissions.workflow.update)
-				"
-				class="workflow-execute-wrapper"
-			>
-				<span
-					v-if="!isManualChatOnly"
-					@mouseenter="showTriggerMissingToltip(true)"
-					@mouseleave="showTriggerMissingToltip(false)"
-					@click="onRunContainerClick"
-				>
-					<KeyboardShortcutTooltip
-						:label="runButtonText"
-						:shortcut="{ metaKey: true, keys: ['↵'] }"
-					>
-						<n8n-button
-							:loading="workflowRunning"
-							:label="runButtonText"
-							size="large"
-							icon="flask"
-							type="primary"
-							:disabled="isExecutionDisabled"
-							data-test-id="execute-workflow-button"
-							@click.stop="onRunWorkflow"
-						/>
-					</KeyboardShortcutTooltip>
-				</span>
-
-				<n8n-button
-					v-if="containsChatNodes"
-					label="Chat"
-					size="large"
-					icon="comment"
-					type="primary"
-					data-test-id="workflow-chat-button"
-					@click.stop="onOpenChat"
-				/>
-
-				<n8n-icon-button
-					v-if="workflowRunning === true && !executionWaitingForWebhook"
-					icon="stop"
-					size="large"
-					class="stop-execution"
-					type="secondary"
-					:title="
-						stopExecutionInProgress
-							? $locale.baseText('nodeView.stoppingCurrentExecution')
-							: $locale.baseText('nodeView.stopCurrentExecution')
-					"
-					:loading="stopExecutionInProgress"
-					data-test-id="stop-execution-button"
-					@click.stop="stopExecution"
-				/>
-
-				<n8n-icon-button
-					v-if="workflowRunning === true && executionWaitingForWebhook === true"
-					class="stop-execution"
-					icon="stop"
-					size="large"
-					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
-					type="secondary"
-					data-test-id="stop-execution-waiting-for-webhook-button"
-					@click.stop="stopWaitingForWebhook"
-				/>
-
-				<n8n-icon-button
-					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
-					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
-					icon="trash"
-					size="large"
-					data-test-id="clear-execution-data-button"
-					@click.stop="clearExecutionData"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
@@ -261,7 +42,7 @@ import {
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
 } from '@/constants';
 
-import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { useGlobalLinkActions } from '@/composables/useGlobalLinkActions';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import useCanvasMouseSelect from '@/composables/useCanvasMouseSelect';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
@@ -293,7 +74,6 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
-	ConnectionTypes,
 	INodeOutputConfiguration,
 	IRun,
 } from 'n8n-workflow';
@@ -327,7 +107,7 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 
-import { type RouteLocation, useRouter } from 'vue-router';
+import { type RouteLocation, useRoute, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -401,6 +181,7 @@ import { isJSPlumbEndpointElement, isJSPlumbConnection } from '@/utils/typeGuard
 import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -437,6 +218,7 @@ export default defineComponent({
 		const nodeViewRef = ref<HTMLElement | null>(null);
 		const onMouseMoveEnd = ref<((e: MouseEvent | TouchEvent) => void) | null>(null);
 		const router = useRouter();
+		const route = useRoute();
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
@@ -452,6 +234,9 @@ export default defineComponent({
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
 		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+		const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
+			route,
+		});
 
 		return {
 			locale,
@@ -477,6 +262,8 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
+			addBeforeUnloadEventBindings,
+			removeBeforeUnloadEventBindings,
 		};
 	},
 	data() {
@@ -510,7 +297,6 @@ export default defineComponent({
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
 			eventsAttached: false,
-			unloadTimeout: undefined as undefined | ReturnType<typeof setTimeout>,
 			canOpenNDV: true,
 			hideNodeIssues: false,
 		};
@@ -926,13 +712,14 @@ export default defineComponent({
 		nodeViewEventBus.on('saveWorkflow', this.saveCurrentWorkflowExternal);
 
 		this.canvasStore.isDemo = this.isDemo;
+
+		this.addBeforeUnloadEventBindings();
 	},
 	deactivated() {
 		this.unbindCanvasEvents();
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		window.removeEventListener('message', this.onPostMessageReceived);
-		window.removeEventListener('beforeunload', this.onBeforeUnload);
 		window.removeEventListener('pageshow', this.onPageShow);
 
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
@@ -950,6 +737,8 @@ export default defineComponent({
 		dataPinningEventBus.off('pin-data', this.nodeHelpers.addPinDataConnections);
 		dataPinningEventBus.off('unpin-data', this.nodeHelpers.removePinDataConnections);
 		nodeViewEventBus.off('saveWorkflow', this.saveCurrentWorkflowExternal);
+
+		this.removeBeforeUnloadEventBindings();
 	},
 	beforeMount() {
 		if (!this.isDemo) {
@@ -1208,7 +997,7 @@ export default defineComponent({
 			});
 			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 			this.workflowsStore.setWorkflowExecutionData(data);
-			if (data.workflowData.pinData) {
+			if (data.workflowData.pinData && data.mode === 'manual') {
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
@@ -2499,7 +2288,7 @@ export default defineComponent({
 						}
 					}
 
-					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+					let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 					try {
 						// It fails when the outputs are an expression. As those nodes have
 						// normally no outputs by default and the only reason we need the
@@ -2634,7 +2423,7 @@ export default defineComponent({
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
-			type: ConnectionTypes,
+			type: NodeConnectionType,
 		): IConnection | undefined {
 			const nodeConnections =
 				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName)[type];
@@ -2741,7 +2530,7 @@ export default defineComponent({
 						lastSelectedEndpoint.scope as NodeConnectionType,
 					)
 				) {
-					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
+					const connectionType = lastSelectedEndpoint.scope as NodeConnectionType;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
 					const viableConnection = newNodeConnections.find((conn) => {
@@ -2922,7 +2711,7 @@ export default defineComponent({
 			if (targetNodeType?.inputs?.length) {
 				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				const workflowNode = workflow.getNode(targetNode.name);
-				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 				if (targetNodeType && workflowNode) {
 					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
 				}
@@ -3316,7 +3105,7 @@ export default defineComponent({
 				NodeViewUtils.hideConnectionActions(connection);
 				NodeViewUtils.resetConnection(connection);
 
-				const scope = connection.scope as ConnectionTypes;
+				const scope = connection.scope as NodeConnectionType;
 				const scopedEndpoints = Array.from(
 					document.querySelectorAll(`[data-jtk-scope-${scope}=true]`),
 				);
@@ -3524,22 +3313,6 @@ export default defineComponent({
 
 			this.eventsAttached = false;
 		},
-		onBeforeUnload(e: BeforeUnloadEvent) {
-			if (this.isDemo || window.preventNodeViewBeforeUnload) {
-				return;
-			} else if (this.uiStore.stateIsDirty) {
-				e.returnValue = true; //Gecko + IE
-				return true; //Gecko + Webkit, Safari, Chrome etc.
-			} else {
-				this.canvasStore.startLoading(this.$locale.baseText('nodeView.redirecting'));
-				return;
-			}
-		},
-		onUnload() {
-			// This will fire if users decides to leave the page after prompted
-			// Clear the interval to prevent the notification from being sent
-			clearTimeout(this.unloadTimeout);
-		},
 		makeNewWorkflowShareable() {
 			const { currentProject, personalProject } = this.projectsStore;
 			const homeProject = currentProject ?? personalProject ?? {};
@@ -3674,8 +3447,6 @@ export default defineComponent({
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 
-			window.addEventListener('beforeunload', this.onBeforeUnload);
-			window.addEventListener('unload', this.onUnload);
 			// Once view is initialized, pick up all toast notifications
 			// waiting in the store and display them
 			this.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
@@ -3837,8 +3608,8 @@ export default defineComponent({
 
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(node.name);
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
-			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+			let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
+			let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 			if (nodeType && workflowNode) {
 				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, nodeType);
@@ -4693,6 +4464,225 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div ref="nodeViewRootRef" :class="$style['content']">
+		<div
+			id="node-view-root"
+			class="node-view-root do-not-select"
+			data-test-id="node-view-root"
+			@dragover="onDragOver"
+			@drop="onDrop"
+		>
+			<div
+				v-touch:tap="touchTap"
+				class="node-view-wrapper"
+				:class="workflowClasses"
+				data-test-id="node-view-wrapper"
+				@touchstart="mouseDown"
+				@touchend="mouseUp"
+				@touchmove="canvasPanning.onMouseMove"
+				@mousedown="mouseDown"
+				@mouseup="mouseUp"
+				@contextmenu="onContextMenu"
+				@wheel="canvasStore.wheelScroll"
+			>
+				<div
+					id="node-view-background"
+					class="node-view-background"
+					:style="backgroundStyle"
+					data-test-id="node-view-background"
+				/>
+				<div
+					id="node-view"
+					ref="nodeViewRef"
+					class="node-view"
+					:style="workflowStyle"
+					data-test-id="node-view"
+				>
+					<CanvasAddButton
+						v-show="showCanvasAddButton"
+						ref="canvasAddButton"
+						:style="canvasAddButtonStyle"
+						:show-tooltip="!containsTrigger && showTriggerMissingTooltip"
+						:position="canvasStore.canvasAddButtonPosition"
+						data-test-id="canvas-add-button"
+						@click="onCanvasAddButtonCLick"
+						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
+					/>
+					<Node
+						v-for="nodeData in nodesToRender"
+						:key="`${nodeData.id}_node`"
+						:name="nodeData.name"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
+						"
+						:instance="instance"
+						:is-active="!!activeNode && activeNode.name === nodeData.name"
+						:hide-actions="pullConnActive"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:workflow="currentWorkflowObject"
+						:disable-pointer-events="!canOpenNDV"
+						:hide-node-issues="hideNodeIssues"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@run-workflow="onRunNode"
+						@moved="onNodeMoved"
+						@run="onNodeRun"
+						@remove-node="(name) => removeNode(name, true)"
+						@toggle-disable-node="(node) => toggleActivationNodes([node])"
+					>
+						<template #custom-tooltip>
+							<span
+								v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')"
+							/>
+						</template>
+					</Node>
+					<Sticky
+						v-for="stickyData in stickiesToRender"
+						:key="`${stickyData.id}_sticky`"
+						:name="stickyData.name"
+						:workflow="currentWorkflowObject"
+						:is-read-only="
+							isReadOnlyRoute ||
+							readOnlyEnv ||
+							!(workflowPermissions.update ?? projectPermissions.workflow.update)
+						"
+						:instance="instance"
+						:is-active="!!activeNode && activeNode.name === stickyData.name"
+						:node-view-scale="nodeViewScale"
+						:grid-size="GRID_SIZE"
+						:hide-actions="pullConnActive"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@remove-node="(name) => removeNode(name, true)"
+					/>
+				</div>
+			</div>
+			<NodeDetailsView
+				:workflow-object="currentWorkflowObject"
+				:read-only="
+					isReadOnlyRoute ||
+					readOnlyEnv ||
+					!(workflowPermissions.update ?? projectPermissions.workflow.update)
+				"
+				:renaming="renamingActive"
+				:is-production-execution-preview="isProductionExecutionPreview"
+				@redraw-node="redrawNode"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@value-changed="valueChanged"
+				@stop-execution="stopExecution"
+				@save-keyboard-shortcut="onSaveKeyboardShortcut"
+			/>
+			<Suspense>
+				<div :class="$style.setupCredentialsButtonWrapper">
+					<LazySetupWorkflowCredentialsButton />
+				</div>
+			</Suspense>
+			<Suspense>
+				<LazyNodeCreation
+					v-if="
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						(workflowPermissions.update ?? projectPermissions.workflow.update)
+					"
+					:create-node-active="createNodeActive"
+					:node-view-scale="nodeViewScale"
+					@toggle-node-creator="onToggleNodeCreator"
+					@add-nodes="onAddNodes"
+				/>
+			</Suspense>
+			<Suspense>
+				<LazyCanvasControls />
+			</Suspense>
+			<Suspense>
+				<ContextMenu @action="onContextMenuAction" />
+			</Suspense>
+			<div
+				v-if="
+					!isReadOnlyRoute &&
+					!readOnlyEnv &&
+					(workflowPermissions.update ?? projectPermissions.workflow.update)
+				"
+				class="workflow-execute-wrapper"
+			>
+				<span
+					v-if="!isManualChatOnly"
+					@mouseenter="showTriggerMissingToltip(true)"
+					@mouseleave="showTriggerMissingToltip(false)"
+					@click="onRunContainerClick"
+				>
+					<KeyboardShortcutTooltip
+						:label="runButtonText"
+						:shortcut="{ metaKey: true, keys: ['↵'] }"
+					>
+						<n8n-button
+							:loading="workflowRunning"
+							:label="runButtonText"
+							size="large"
+							icon="flask"
+							type="primary"
+							:disabled="isExecutionDisabled"
+							data-test-id="execute-workflow-button"
+							@click.stop="onRunWorkflow"
+						/>
+					</KeyboardShortcutTooltip>
+				</span>
+
+				<n8n-button
+					v-if="containsChatNodes"
+					label="Chat"
+					size="large"
+					icon="comment"
+					type="primary"
+					data-test-id="workflow-chat-button"
+					@click.stop="onOpenChat"
+				/>
+
+				<n8n-icon-button
+					v-if="workflowRunning === true && !executionWaitingForWebhook"
+					icon="stop"
+					size="large"
+					class="stop-execution"
+					type="secondary"
+					:title="
+						stopExecutionInProgress
+							? $locale.baseText('nodeView.stoppingCurrentExecution')
+							: $locale.baseText('nodeView.stopCurrentExecution')
+					"
+					:loading="stopExecutionInProgress"
+					data-test-id="stop-execution-button"
+					@click.stop="stopExecution"
+				/>
+
+				<n8n-icon-button
+					v-if="workflowRunning === true && executionWaitingForWebhook === true"
+					class="stop-execution"
+					icon="stop"
+					size="large"
+					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
+					type="secondary"
+					data-test-id="stop-execution-waiting-for-webhook-button"
+					@click.stop="stopWaitingForWebhook"
+				/>
+
+				<n8n-icon-button
+					v-if="workflowExecution && !workflowRunning && !allTriggersDisabled"
+					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
+					icon="trash"
+					size="large"
+					data-test-id="clear-execution-data-button"
+					@click.stop="clearExecutionData"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style scoped lang="scss">
 .node-view-root {

@@ -233,9 +233,11 @@ const createMockExecutions = () => {
 	executionsTab.actions.createManualExecutions(5);
 	// Make some failed executions by enabling Code node with syntax error
 	executionsTab.actions.toggleNodeEnabled('Error');
+	workflowPage.getters.disabledNodes().should('have.length', 0);
 	executionsTab.actions.createManualExecutions(2);
 	// Then add some more successful ones
 	executionsTab.actions.toggleNodeEnabled('Error');
+	workflowPage.getters.disabledNodes().should('have.length', 1);
 	executionsTab.actions.createManualExecutions(4);
 };
 

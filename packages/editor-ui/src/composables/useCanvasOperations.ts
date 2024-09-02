@@ -68,7 +68,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { isValidNodeConnectionType } from '@/utils/typeGuards';
 import type { Connection } from '@vue-flow/core';
 import type {
-	ConnectionTypes,
 	IConnection,
 	IConnections,
 	INode,
@@ -105,6 +104,7 @@ type AddNodeOptions = {
 	openNDV?: boolean;
 	trackHistory?: boolean;
 	isAutoAdd?: boolean;
+	telemetry?: boolean;
 };
 
 export function useCanvasOperations({ router }: { router: ReturnType<typeof useRouter> }) {
@@ -434,6 +434,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 			trackHistory?: boolean;
 			trackBulk?: boolean;
 			keepPristine?: boolean;
+			telemetry?: boolean;
 		} = {},
 	) {
 		let insertPosition = options.position;
@@ -474,7 +475,6 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 						...options,
 						openNDV,
 						isAutoAdd,
-						trackHistory: options.trackHistory,
 					},
 				);
 			} catch (error) {
@@ -555,7 +555,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				createConnectionToLastInteractedWithNode(nodeData, options);
 			}
 
-			runAddNodeHooks(nodeData, options);
+			if (options.telemetry) {
+				trackAddNode(nodeData, options);
+			}
+
+			if (nodeData.type !== STICKY_NODE_TYPE) {
+				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
+			}
 
 			if (options.openNDV && !preventOpeningNDV) {
 				ndvStore.setActiveNodeName(nodeData.name);
@@ -652,13 +658,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		}
 	}
 
-	function runAddNodeHooks(nodeData: INodeUi, options: AddNodeOptions) {
+	function trackAddNode(nodeData: INodeUi, options: AddNodeOptions) {
 		switch (nodeData.type) {
 			case STICKY_NODE_TYPE:
 				trackAddStickyNoteNode();
 				break;
 			default:
-				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 				trackAddDefaultNode(nodeData, options);
 		}
 	}
@@ -899,7 +904,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					}
 				}
 
-				let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 				try {
 					// It fails when the outputs are an expression. As those nodes have
 					// normally no outputs by default and the only reason we need the
@@ -974,11 +979,12 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 
 		// If added node is a trigger and it's the first one added to the canvas
 		// we place it at canvasAddButtonPosition to replace the canvas add button
-		const position =
+		const position = (
 			nodeTypesStore.isTriggerNode(node.type) && triggerNodes.value.length === 0
-				? canvasStore.canvasAddButtonPosition
+				? [0, 0]
 				: // If no node is active find a free spot
-					(lastClickPosition.value as XYPosition);
+					lastClickPosition.value
+		) as XYPosition;
 
 		return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position);
 	}
@@ -1147,7 +1153,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 				return false;
 			}
 
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 			if (targetNodeType) {
 				inputs =
 					NodeHelpers.getNodeInputs(editableWorkflowObject.value, workflowNode, targetNodeType) ||
