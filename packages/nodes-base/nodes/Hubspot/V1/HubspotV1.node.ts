@@ -977,7 +977,7 @@ export class HubspotV1 implements INodeType {
 					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
 				} else {
 					throw error;
@@ -2724,7 +2724,7 @@ export class HubspotV1 implements INodeType {
 					);
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: (error as JsonObject).message } });
 						continue;
 					}

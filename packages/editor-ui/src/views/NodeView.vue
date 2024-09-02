@@ -997,7 +997,7 @@ export default defineComponent({
 			});
 			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 			this.workflowsStore.setWorkflowExecutionData(data);
-			if (data.workflowData.pinData) {
+			if (data.workflowData.pinData && data.mode === 'manual') {
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 

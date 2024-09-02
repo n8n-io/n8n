@@ -9,8 +9,6 @@ import { ApplicationError } from './application.error';
 export class NodeOperationError extends NodeError {
 	type: string | undefined;
 
-	obfuscate: boolean = false;
-
 	constructor(
 		node: INode,
 		error: Error | string | JsonObject,
@@ -20,13 +18,8 @@ export class NodeOperationError extends NodeError {
 			return error;
 		}
 
-		let obfuscateErrorMessage = false;
-
 		if (typeof error === 'string') {
 			error = new ApplicationError(error);
-		} else if (!(error instanceof ApplicationError)) {
-			// this error was no processed by n8n, obfuscate error message
-			obfuscateErrorMessage = true;
 		}
 
 		super(node, error);
@@ -35,11 +28,6 @@ export class NodeOperationError extends NodeError {
 			error.messages.forEach((message) => this.addToMessages(message));
 		}
 
-		if (obfuscateErrorMessage && !options.description) {
-			const originalMessage = typeof error === 'string' ? error : (error.message as string);
-			this.addToMessages(originalMessage);
-			this.obfuscate = true;
-		}
 		if (options.message) this.message = options.message;
 		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;

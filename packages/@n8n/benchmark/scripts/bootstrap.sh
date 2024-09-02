@@ -8,6 +8,22 @@ set -euo pipefail;
 CURRENT_USER=$(whoami)
 
 # Mount the data disk
+# First wait for the disk to become available
+WAIT_TIME=0
+MAX_WAIT_TIME=60
+
+while [ ! -e /dev/sdc ]; do
+    if [ $WAIT_TIME -ge $MAX_WAIT_TIME ]; then
+        echo "Error: /dev/sdc did not become available within $MAX_WAIT_TIME seconds."
+        exit 1
+    fi
+
+    echo "Waiting for /dev/sdc to be available... ($WAIT_TIME/$MAX_WAIT_TIME)"
+    sleep 1
+    WAIT_TIME=$((WAIT_TIME + 1))
+done
+
+# Then mount it
 if [ -d "/n8n" ]; then
 	echo "Data disk already mounted. Clearing it..."
 	sudo rm -rf /n8n/*
@@ -28,8 +44,8 @@ curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
 sudo -E bash nodesource_setup.sh
 
 # Install docker, docker compose and nodejs
-sudo DEBIAN_FRONTEND=noninteractive apt-get update
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose nodejs
+sudo DEBIAN_FRONTEND=noninteractive apt-get update -yq
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose nodejs
 
 # Add the current user to the docker group
 sudo usermod -aG docker "$CURRENT_USER"

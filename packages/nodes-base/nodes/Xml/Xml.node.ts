@@ -280,7 +280,7 @@ export class Xml implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					items[itemIndex] = {
 						json: {
 							error: error.message,

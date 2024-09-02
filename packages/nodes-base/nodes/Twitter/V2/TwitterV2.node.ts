@@ -348,7 +348,7 @@ export class TwitterV2 implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = {
 						json: {
 							error: (error as JsonObject).message,
