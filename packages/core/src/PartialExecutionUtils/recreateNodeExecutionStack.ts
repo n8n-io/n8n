@@ -18,7 +18,6 @@ import { getIncomingData } from './getIncomingData';
 
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
-	// TODO: turn this into StartNodeData from utils
 	startNodes: StartNodeData[],
 	destinationNode: INode,
 	runData: IRunData,
@@ -47,9 +46,9 @@ export function recreateNodeExecutionStack(
 	for (const startNode of startNodes) {
 		if (startNode.sourceData) {
 			a.ok(
-				runData[startNode.sourceData.previousNode.name] ||
-					pinData[startNode.sourceData.previousNode.name],
-				`Start nodes have sources that don't have run data. That is not supported. Make sure to get the start nodes by calling "findStartNodes". The node in question is "${startNode.node.name}" and their source is "${startNode.sourceData.previousNode.name}".`,
+				runData[startNode.sourceData.connection.from.name] ||
+					pinData[startNode.sourceData.connection.from.name],
+				`Start nodes have sources that don't have run data. That is not supported. Make sure to get the start nodes by calling "findStartNodes". The node in question is "${startNode.node.name}" and their source is "${startNode.sourceData.connection.from.name}".`,
 			);
 		}
 	}
@@ -80,45 +79,53 @@ export function recreateNodeExecutionStack(
 			// stack should exist in sourceData. The only thing that is currently
 			// missing is the inputIndex and that's the sole reason why we iterate
 			// over all incoming connections.
-			for (const connection of incomingStartNodeConnections) {
-				// TODO: do not skip connections that don't match the source data, this
-				// causes problems with nodes that have multiple inputs.
-				// The proper fix would be to remodel source data to contain all sources
-				// not just the first one it finds.
-				if (connection.from.name !== startNode.sourceData?.previousNode.name) {
-					continue;
-				}
+			//for (const connection of incomingStartNodeConnections) {
+			// TODO: do not skip connections that don't match the source data, this
+			// causes problems with nodes that have multiple inputs.
+			// The proper fix would be to remodel source data to contain all sources
+			// not just the first one it finds.
+			//if (connection.from.name !== startNode.sourceData?.previousNode.name) {
+			//	continue;
+			//}
 
-				const node = connection.from;
-
-				a.equal(startNode.sourceData.previousNode, node);
-
-				if (pinData[node.name]) {
-					incomingData.push(pinData[node.name]);
-				} else {
-					a.ok(
-						runData[connection.from.name],
-						`Start node(${startNode.node.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${connection.from.name}->${connection.to.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
-					);
-
-					const nodeIncomingData = getIncomingData(
-						runData,
-						connection.from.name,
-						runIndex,
-						connection.type,
-						connection.inputIndex,
-					);
-
-					if (nodeIncomingData) {
-						incomingData.push(nodeIncomingData);
-					}
-				}
-
-				incomingSourceData.main.push({
-					...startNode.sourceData,
-					previousNode: startNode.sourceData.previousNode.name,
-				});
+			if (startNode.sourceData === undefined) {
+				continue;
 			}
+
+			//const node = connection.from;
+			const node = startNode.sourceData.connection.from;
+
+			//a.equal(startNode.sourceData.previousNode, node);
+
+			if (pinData[node.name]) {
+				incomingData.push(pinData[node.name]);
+			} else {
+				a.ok(
+					runData[node.name],
+					`Start node(${startNode.node.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${node.name}->${startNode.node.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+				);
+
+				const nodeIncomingData = getIncomingData(
+					runData,
+					node.name,
+					runIndex,
+					startNode.sourceData.connection.type,
+					startNode.sourceData.connection.outputIndex,
+				);
+
+				if (nodeIncomingData) {
+					incomingData.push(nodeIncomingData);
+				}
+			}
+
+			incomingSourceData.main.push({
+				//...startNode.sourceData,
+				previousNode: startNode.sourceData.connection.from.name,
+				//currentNodeInput: startNode.sourceData.connection.inputIndex,
+				previousNodeOutput: startNode.sourceData.connection.outputIndex,
+				previousNodeRun: 0,
+			});
+			//}
 		}
 
 		const executeData: IExecuteData = {

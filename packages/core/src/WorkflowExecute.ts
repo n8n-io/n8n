@@ -989,6 +989,16 @@ export class WorkflowExecute {
 				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
+					console.log('---------------------------------------------------');
+					console.log(
+						'nodeExecutionStack',
+						this.runExecutionData.executionData?.nodeExecutionStack.map((v) => ({
+							nodeName: v.node.name,
+							sourceName: v.source?.main.map((v) => v?.previousNode),
+						})),
+					);
+					console.log('waitingExecution', this.runExecutionData.executionData?.waitingExecution);
+
 					if (
 						this.additionalData.executionTimeoutTimestamp !== undefined &&
 						Date.now() >= this.additionalData.executionTimeoutTimestamp

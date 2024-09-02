@@ -1,25 +1,20 @@
 import type { INode, IPinData, IRunData } from 'n8n-workflow';
-import type { DirectedGraph } from './DirectedGraph';
+import type { Connection, DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
 
-interface ISourceData {
-	previousNode: INode;
-	previousNodeOutput: number; // If undefined "0" gets used
-	previousNodeRun: number; // If undefined "0" gets used
-}
 // TODO: This is how ISourceData should look like.
-//interface NewSourceData {
-//	connection: Connection;
-//	previousNodeRun: number; // If undefined "0" gets used
-//}
+type NewSourceData = {
+	connection: Connection;
+	previousNodeRun: number; // If undefined "0" gets used
+};
 
 // TODO: rename to something more general, like path segment
 export interface StartNodeData {
 	node: INode;
-	sourceData?: ISourceData;
+	sourceData: NewSourceData[];
 }
 
-type Key = `${string}-${number}-${string}`;
+type Key = `${number}-${string}`;
 
 // TODO: implement dirty checking for options and properties and parent nodes
 // being disabled
@@ -63,8 +58,8 @@ export function isDirty(node: INode, runData: IRunData = {}, pinData: IPinData =
 	return true;
 }
 
-function makeKey(from: ISourceData | undefined, to: INode): Key {
-	return `${from?.previousNode.name ?? 'start'}-${from?.previousNodeOutput ?? 0}-${to.name}`;
+function makeKey(sourceConnection: Connection | undefined, to: INode): Key {
+	return `${sourceConnection?.outputIndex ?? 0}-${to.name}`;
 }
 
 function findStartNodesRecursive(
@@ -73,26 +68,43 @@ function findStartNodesRecursive(
 	destination: INode,
 	runData: IRunData,
 	pinData: IPinData,
-	startNodes: Map<Key, StartNodeData>,
+	startNodes: Map<Connection | 'Trigger', StartNodeData>,
 	seen: Set<INode>,
-	source?: ISourceData,
+	source?: NewSourceData,
 ) {
 	const nodeIsDirty = isDirty(current, runData, pinData);
 
 	// If the current node is dirty stop following this branch, we found a start
 	// node.
 	if (nodeIsDirty) {
-		startNodes.set(makeKey(source, current), {
+		const key = source ? source.connection : 'Trigger'; // makeKey(source?.connection, current);
+		const value = startNodes.get(key) ?? {
 			node: current,
-			sourceData: source,
-		});
+			sourceData: [],
+		};
+
+		if (source) {
+			value.sourceData.push(source);
+		}
+
+		startNodes.set(key, value);
 		return startNodes;
 	}
 
 	// If the current node is the destination node stop following this branch, we
 	// found a start node.
 	if (current === destination) {
-		startNodes.set(makeKey(source, current), { node: current, sourceData: source });
+		const key = source ? source.connection : 'Trigger'; // makeKey(source?.connection, current);
+		const value = startNodes.get(key) ?? {
+			node: current,
+			sourceData: [],
+		};
+
+		if (source) {
+			value.sourceData.push(source);
+		}
+
+		startNodes.set(key, value);
 		return startNodes;
 	}
 
@@ -131,11 +143,10 @@ function findStartNodesRecursive(
 			startNodes,
 			new Set(seen).add(current),
 			{
-				previousNode: current,
+				connection: outGoingConnection,
 				// NOTE: It's always 0 until I fix the bug that removes the run data for
 				// old runs. The FE only sends data for one run for each node.
 				previousNodeRun: 0,
-				previousNodeOutput: outGoingConnection.outputIndex,
 			},
 		);
 	}
@@ -156,8 +167,17 @@ export function findStartNodes(
 		destination,
 		runData,
 		pinData,
+		// start nodes and their sources
 		new Map(),
+		// seen
 		new Set(),
 	);
-	return [...startNodes.values()];
+
+	const startNodesData: StartNodeData[] = [];
+
+	for (const [_node, value] of startNodes) {
+		startNodesData.push(value);
+	}
+
+	return startNodesData;
 }

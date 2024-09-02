@@ -10,7 +10,7 @@
 // PD denotes that the node has pinned data
 
 import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import { NodeConnectionType, type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
@@ -38,9 +38,17 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				node,
 				sourceData: {
-					previousNode: trigger,
+					connection: {
+						from: trigger,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node,
+					},
 					previousNodeRun: 0,
-					previousNodeOutput: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
 				},
 			},
 		];
@@ -62,7 +70,17 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
 				node,
-				source: { main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }] },
+				source: {
+					main: [
+						{
+							// TODO: not part of IScourceDate, but maybe it should be?
+							//currentNodeInput: 0,
+							previousNode: 'trigger',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
 			},
 		]);
 
@@ -135,7 +153,19 @@ describe('recreateNodeExecutionStack', () => {
 		const startNodes: StartNodeData[] = [
 			{
 				node,
-				sourceData: { previousNode: trigger, previousNodeRun: 0, previousNodeOutput: 0 },
+				sourceData: {
+					connection: {
+						from: trigger,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
+				},
 			},
 		];
 		const runData: IRunData = {};
@@ -158,7 +188,15 @@ describe('recreateNodeExecutionStack', () => {
 				data: { main: [[{ json: { value: 1 } }]] },
 				node,
 				source: {
-					main: [{ previousNode: trigger.name, previousNodeRun: 0, previousNodeOutput: 0 }],
+					main: [
+						{
+							// TODO: not part of IScourceDate, but maybe it should be?
+							//currentNodeInput: 0,
+							previousNode: trigger.name,
+							previousNodeRun: 0,
+							previousNodeOutput: 0,
+						},
+					],
 				},
 			},
 		]);
@@ -187,9 +225,17 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				node: node2,
 				sourceData: {
-					previousNode: node1,
+					connection: {
+						from: node1,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node2,
+					},
 					previousNodeRun: 0,
-					previousNodeOutput: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 0,
 				},
 			},
 		];
@@ -235,17 +281,33 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				node: node3,
 				sourceData: {
-					previousNode: node1,
+					connection: {
+						from: node1,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node3,
+					},
 					previousNodeRun: 0,
-					previousNodeOutput: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 0,
 				},
 			},
 			{
 				node: node3,
 				sourceData: {
-					previousNode: node2,
+					connection: {
+						from: node2,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node3,
+					},
 					previousNodeRun: 0,
-					previousNodeOutput: 0,
+					//currentNodeInput: 0,
+					//previousNode: node2,
+					//previousNodeOutput: 0,
 				},
 			},
 		];
@@ -270,12 +332,32 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
 				node: node3,
-				source: { main: [{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 }] },
+				source: {
+					main: [
+						{
+							// TODO: not part of IScourceDate, but maybe it should be?
+							//currentNodeInput: 0,
+							previousNode: 'node1',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
 			},
 			{
 				data: { main: [[{ json: { value: 1 } }]] },
 				node: node3,
-				source: { main: [{ previousNode: 'node2', previousNodeOutput: 0, previousNodeRun: 0 }] },
+				source: {
+					main: [
+						{
+							// TODO: not part of IScourceDate, but maybe it should be?
+							//currentNodeInput: 0,
+							previousNode: 'node2',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					],
+				},
 			},
 		]);
 
@@ -331,9 +413,33 @@ describe('recreateNodeExecutionStack', () => {
 			{
 				node: node3,
 				sourceData: {
-					previousNode: node1,
+					connection: {
+						from: node1,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node3,
+					},
 					previousNodeRun: 0,
-					previousNodeOutput: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 0,
+				},
+			},
+			{
+				node: node3,
+				sourceData: {
+					connection: {
+						from: node2,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 1,
+						to: node3,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 0,
 				},
 			},
 		];

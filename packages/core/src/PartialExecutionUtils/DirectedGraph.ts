@@ -15,7 +15,7 @@ type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${s
 export class DirectedGraph {
 	private nodes: Map<string, INode> = new Map();
 
-	private connections: Map<string, Connection> = new Map();
+	private connections: Map<DirectedGraphKey, Connection> = new Map();
 
 	getNodes() {
 		return new Map(this.nodes.entries());
@@ -125,6 +125,24 @@ export class DirectedGraph {
 		}
 
 		return directParents;
+	}
+
+	getConnection(
+		from: INode,
+		outputIndex: number,
+		type: NodeConnectionType,
+		inputIndex: number,
+		to: INode,
+	): Connection | undefined {
+		return this.connections.get(
+			this.makeKey({
+				from,
+				outputIndex,
+				type,
+				inputIndex,
+				to,
+			}),
+		);
 	}
 
 	toWorkflow(parameters: Omit<WorkflowParameters, 'nodes' | 'connections'>): Workflow {

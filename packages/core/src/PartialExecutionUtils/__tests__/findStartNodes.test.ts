@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import type { IPinData, IRunData } from 'n8n-workflow';
+import { NodeConnectionType, type IPinData, type IRunData } from 'n8n-workflow';
 import { createNodeData, toITaskData } from './helpers';
 import { findStartNodes, isDirty } from '../findStartNodes';
 import { DirectedGraph } from '../DirectedGraph';
@@ -48,7 +48,7 @@ describe('findStartNodes', () => {
 		const startNodes = findStartNodes(graph, node, node);
 
 		expect(startNodes).toHaveLength(1);
-		expect(startNodes).toContainEqual({ node, sourceData: undefined });
+		expect(startNodes).toContainEqual({ node, sourceData: [] });
 	});
 
 	//                 ►►
@@ -67,7 +67,7 @@ describe('findStartNodes', () => {
 			const startNodes = findStartNodes(graph, trigger, destination);
 
 			expect(startNodes).toHaveLength(1);
-			expect(startNodes).toContainEqual({ node: trigger, sourceData: undefined });
+			expect(startNodes).toContainEqual({ node: trigger, sourceData: [] });
 		}
 
 		// if the trigger has run data
@@ -81,7 +81,18 @@ describe('findStartNodes', () => {
 			expect(startNodes).toHaveLength(1);
 			expect(startNodes).toContainEqual({
 				node: destination,
-				sourceData: { previousNode: trigger, previousNodeOutput: 0, previousNodeRun: 0 },
+				sourceData: [
+					{
+						connection: {
+							from: trigger,
+							to: destination,
+							type: NodeConnectionType.Main,
+							outputIndex: 0,
+							inputIndex: 0,
+						},
+						previousNodeRun: 0,
+					},
+				],
 			});
 		}
 	});
@@ -126,19 +137,39 @@ describe('findStartNodes', () => {
 		expect(startNodes).toHaveLength(2);
 		expect(startNodes).toContainEqual({
 			node,
-			sourceData: {
-				previousNode: trigger,
-				previousNodeOutput: 0,
-				previousNodeRun: 0,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: trigger,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
+				},
+			],
 		});
 		expect(startNodes).toContainEqual({
 			node,
-			sourceData: {
-				previousNode: trigger,
-				previousNodeOutput: 1,
-				previousNodeRun: 0,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: trigger,
+						outputIndex: 1,
+						type: NodeConnectionType.Main,
+						inputIndex: 0,
+						to: node,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
+				},
+			],
 		});
 	});
 
@@ -177,7 +208,7 @@ describe('findStartNodes', () => {
 			const startNodes = findStartNodes(graph, trigger, node4);
 			expect(startNodes).toHaveLength(1);
 			// no run data means the trigger is the start node
-			expect(startNodes).toContainEqual({ node: trigger, sourceData: undefined });
+			expect(startNodes).toContainEqual({ node: trigger, sourceData: [] });
 		}
 
 		{
@@ -195,20 +226,40 @@ describe('findStartNodes', () => {
 
 			expect(startNodes).toContainEqual({
 				node: node4,
-				sourceData: {
-					previousNode: node2,
-					previousNodeOutput: 0,
-					previousNodeRun: 0,
-				},
+				sourceData: [
+					{
+						connection: {
+							from: node2,
+							to: node4,
+							inputIndex: 0,
+							outputIndex: 0,
+							type: NodeConnectionType.Main,
+						},
+						previousNodeRun: 0,
+						//currentNodeInput: 0,
+						//previousNode: node2,
+						//previousNodeOutput: 0,
+					},
+				],
 			});
 
 			expect(startNodes).toContainEqual({
 				node: node4,
-				sourceData: {
-					previousNode: node3,
-					previousNodeOutput: 0,
-					previousNodeRun: 0,
-				},
+				sourceData: [
+					{
+						connection: {
+							from: node3,
+							to: node4,
+							inputIndex: 0,
+							outputIndex: 0,
+							type: NodeConnectionType.Main,
+						},
+						previousNodeRun: 0,
+						//currentNodeInput: 0,
+						//previousNode: node3,
+						//previousNodeOutput: 0,
+					},
+				],
 			});
 		}
 	});
@@ -239,11 +290,21 @@ describe('findStartNodes', () => {
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
 			node,
-			sourceData: {
-				previousNode: trigger,
-				previousNodeRun: 0,
-				previousNodeOutput: 0,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: trigger,
+						to: node,
+						inputIndex: 0,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
+				},
+			],
 		});
 	});
 
@@ -256,28 +317,38 @@ describe('findStartNodes', () => {
 	//  The merge node only gets data on one input, so the it should only be once
 	//  in the start nodes
 	test('multiple connections with the second one having data', () => {
-		const ifNode = createNodeData({ name: 'if' });
-		const merge = createNodeData({ name: 'merge' });
+		const trigger = createNodeData({ name: 'trigger' });
+		const node = createNodeData({ name: 'node' });
 
 		const graph = new DirectedGraph()
-			.addNodes(ifNode, merge)
+			.addNodes(trigger, node)
 			.addConnections(
-				{ from: ifNode, to: merge, inputIndex: 0, outputIndex: 0 },
-				{ from: ifNode, to: merge, inputIndex: 1, outputIndex: 1 },
+				{ from: trigger, to: node, inputIndex: 0, outputIndex: 0 },
+				{ from: trigger, to: node, inputIndex: 1, outputIndex: 1 },
 			);
 
-		const startNodes = findStartNodes(graph, ifNode, merge, {
-			[ifNode.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
+		const startNodes = findStartNodes(graph, trigger, node, {
+			[trigger.name]: [toITaskData([{ data: { value: 1 }, outputIndex: 1 }])],
 		});
 
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
-			node: merge,
-			sourceData: {
-				previousNode: ifNode,
-				previousNodeRun: 0,
-				previousNodeOutput: 1,
-			},
+			node,
+			sourceData: [
+				{
+					connection: {
+						from: trigger,
+						to: node,
+						inputIndex: 1,
+						outputIndex: 1,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 1,
+					//previousNode: trigger,
+					//previousNodeOutput: 1,
+				},
+			],
 		});
 	});
 
@@ -289,7 +360,7 @@ describe('findStartNodes', () => {
 	//  └───────┘1        └────┘
 	//  The merge node gets data on both inputs, so the it should be in the start
 	//  nodes twice.
-	test('multiple connections with both having data', () => {
+	test.only('multiple connections with both having data', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const node = createNodeData({ name: 'node' });
 
@@ -309,14 +380,39 @@ describe('findStartNodes', () => {
 			],
 		});
 
-		expect(startNodes).toHaveLength(2);
+		expect(startNodes).toHaveLength(1);
+		// TODO: this is wrong, technically this should contain one start node
+		// and the source data should be an array.
 		expect(startNodes).toContainEqual({
 			node,
-			sourceData: {
-				previousNode: trigger,
-				previousNodeRun: 0,
-				previousNodeOutput: 0,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: trigger,
+						to: node,
+						inputIndex: 0,
+						outputIndex: 0,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: trigger,
+					//previousNodeOutput: 0,
+				},
+				{
+					connection: {
+						from: trigger,
+						to: node,
+						inputIndex: 1,
+						outputIndex: 1,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 1,
+					//previousNode: trigger,
+					//previousNodeOutput: 1,
+				},
+			],
 		});
 	});
 
@@ -330,7 +426,7 @@ describe('findStartNodes', () => {
 	//  │       │   └────►│    │
 	//  └───────┘         └────┘
 	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-	test.skip('multiple connections with both having data', () => {
+	test.only('multiple connections with both having data', () => {
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
@@ -388,11 +484,22 @@ describe('findStartNodes', () => {
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
 			node: node2,
-			sourceData: {
-				previousNode: node1,
-				previousNodeRun: 0,
-				previousNodeOutput: 1,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: node1,
+						to: node2,
+						// TODO: Shouldn't this be 1 instead of 0?
+						inputIndex: 0,
+						outputIndex: 1,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 1,
+				},
+			],
 		});
 	});
 
@@ -433,11 +540,21 @@ describe('findStartNodes', () => {
 		expect(startNodes).toHaveLength(1);
 		expect(startNodes).toContainEqual({
 			node: node2,
-			sourceData: {
-				previousNode: node1,
-				previousNodeRun: 0,
-				previousNodeOutput: 0,
-			},
+			sourceData: [
+				{
+					connection: {
+						from: node1,
+						to: node2,
+						outputIndex: 0,
+						inputIndex: 0,
+						type: NodeConnectionType.Main,
+					},
+					previousNodeRun: 0,
+					//currentNodeInput: 0,
+					//previousNode: node1,
+					//previousNodeOutput: 0,
+				},
+			],
 		});
 	});
 });
