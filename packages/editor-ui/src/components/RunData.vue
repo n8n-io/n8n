@@ -42,6 +42,7 @@ import {
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
 	SET_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -716,6 +717,32 @@ export default defineComponent({
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
+						}
+					}
+
+					// Split In Batches setup hints
+					if (this.node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
+						const { connectionsBySourceNode } = this.workflow;
+
+						const firstNodesInLoop = connectionsBySourceNode[this.node.name]?.main[1] || [];
+
+						if (!firstNodesInLoop.length) {
+							nodeHints.push({
+								message: 'No nodes connected to <strong>loop</strong> output of this node',
+								whenToDisplay: 'beforeExecution',
+								location: 'outputPane',
+							});
+						} else {
+							for (const node of firstNodesInLoop || []) {
+								const nodeChilds = this.workflow.getChildNodes(node.node) || [];
+								if (!nodeChilds.includes(this.node.name)) {
+									nodeHints.push({
+										message: `The last node in a branch in the <strong>loop</strong> output, that starts with a <strong>${node.node}</strong> node must be connected back to input of this node or looping will not work`,
+										whenToDisplay: 'beforeExecution',
+										location: 'outputPane',
+									});
+								}
+							}
 						}
 					}
 
