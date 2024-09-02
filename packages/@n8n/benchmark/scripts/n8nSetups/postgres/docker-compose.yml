@@ -2,12 +2,23 @@ services:
   postgres:
     image: postgres:16
     restart: always
+    user: ${RUN_USER_AND_GROUP}
     environment:
       - POSTGRES_DB=n8n
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ${RUN_DIR}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   n8n:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: ${RUN_USER_AND_GROUP}
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
@@ -17,13 +28,21 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - ${RUN_DIR}:/n8n
+      - ${RUN_DIR}/n8n:/n8n
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
     depends_on:
-      - n8n
+      n8n:
+        condition: service_healthy
     environment:
       - N8N_BASE_URL=http://n8n:5678
       - K6_API_TOKEN=${K6_API_TOKEN}
