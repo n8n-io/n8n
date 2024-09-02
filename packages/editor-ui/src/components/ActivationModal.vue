@@ -1,39 +1,3 @@
-<template>
-	<Modal
-		:name="WORKFLOW_ACTIVE_MODAL_KEY"
-		:title="$locale.baseText('activationModal.workflowActivated')"
-		width="460px"
-	>
-		<template #content>
-			<div>
-				<n8n-text>{{ triggerContent }}</n8n-text>
-			</div>
-			<div :class="$style.spaced">
-				<n8n-text>
-					<n8n-text :bold="true">
-						{{ $locale.baseText('activationModal.theseExecutionsWillNotShowUp') }}
-					</n8n-text>
-					{{ $locale.baseText('activationModal.butYouCanSeeThem') }}
-					<a @click="showExecutionsList">
-						{{ $locale.baseText('activationModal.executionList') }}
-					</a>
-					{{ $locale.baseText('activationModal.ifYouChooseTo') }}
-					<a @click="showSettings">{{ $locale.baseText('activationModal.saveExecutions') }}</a>
-				</n8n-text>
-			</div>
-		</template>
-
-		<template #footer="{ close }">
-			<div :class="$style.footer">
-				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
-					$locale.baseText('generic.dontShowAgain')
-				}}</el-checkbox>
-				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />
-			</div>
-		</template>
-	</Modal>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -133,6 +97,42 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		:name="WORKFLOW_ACTIVE_MODAL_KEY"
+		:title="$locale.baseText('activationModal.workflowActivated')"
+		width="460px"
+	>
+		<template #content>
+			<div>
+				<n8n-text>{{ triggerContent }}</n8n-text>
+			</div>
+			<div :class="$style.spaced">
+				<n8n-text>
+					<n8n-text :bold="true">
+						{{ $locale.baseText('activationModal.theseExecutionsWillNotShowUp') }}
+					</n8n-text>
+					{{ $locale.baseText('activationModal.butYouCanSeeThem') }}
+					<a @click="showExecutionsList">
+						{{ $locale.baseText('activationModal.executionList') }}
+					</a>
+					{{ $locale.baseText('activationModal.ifYouChooseTo') }}
+					<a @click="showSettings">{{ $locale.baseText('activationModal.saveExecutions') }}</a>
+				</n8n-text>
+			</div>
+		</template>
+
+		<template #footer="{ close }">
+			<div :class="$style.footer">
+				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
+					$locale.baseText('generic.dontShowAgain')
+				}}</el-checkbox>
+				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />
+			</div>
+		</template>
+	</Modal>
+</template>
 
 <style lang="scss" module>
 .spaced {

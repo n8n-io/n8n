@@ -1,10 +1,11 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeTypeBaseDescription,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeTypeBaseDescription,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -29,8 +30,8 @@ export class WebflowV1 implements INodeType {
 			defaults: {
 				name: 'Webflow',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'webflowApi',

@@ -4,7 +4,6 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeType,
-	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 } from '@/Interfaces';
 import type { Workflow } from '@/Workflow';
@@ -3576,9 +3575,9 @@ describe('NodeHelpers', () => {
 			[false, null],
 			[false, { outputs: '={{random_expression}}' }],
 			[false, { outputs: [] }],
-			[false, { outputs: ['main'] }],
-			[true, { outputs: ['ai_agent'] }],
-			[true, { outputs: ['main', 'ai_agent'] }],
+			[false, { outputs: [NodeConnectionType.Main] }],
+			[true, { outputs: [NodeConnectionType.AiAgent] }],
+			[true, { outputs: [NodeConnectionType.Main, NodeConnectionType.AiAgent] }],
 		];
 		test.each(tests)('should return %p for %o', (expected, nodeType) => {
 			expect(isSubNodeType(nodeType)).toBe(expected);

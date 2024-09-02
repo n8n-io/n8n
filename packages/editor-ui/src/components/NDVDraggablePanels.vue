@@ -11,11 +11,12 @@ import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
 import { useDebounce } from '@/composables/useDebounce';
 import type { XYPosition } from '@/Interface';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { useUIStore } from '@/stores/ui.store';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
-const MIN_PANEL_WIDTH = 280;
-const PANEL_WIDTH = 320;
+const MIN_PANEL_WIDTH = 310;
+const PANEL_WIDTH = 350;
 const PANEL_WIDTH_LARGE = 420;
 const MIN_WINDOW_WIDTH = 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 
@@ -35,10 +36,10 @@ interface Props {
 
 const { callDebounced } = useDebounce();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
 
 const props = defineProps<Props>();
 
-const windowWidth = ref<number>(1);
 const isDragging = ref<boolean>(false);
 const initialized = ref<boolean>(false);
 
@@ -57,8 +58,6 @@ const slots = defineSlots<{
 }>();
 
 onMounted(() => {
-	setTotalWidth();
-
 	/*
 		Only set(or restore) initial position if `mainPanelDimensions`
 		is at the default state({relativeLeft:1, relativeRight: 1, relativeWidth: 1}) to make sure we use store values if they are set
@@ -72,7 +71,6 @@ onMounted(() => {
 		restorePositionData();
 	}
 
-	window.addEventListener('resize', setTotalWidth);
 	emit('init', { position: mainPanelDimensions.value.relativeLeft });
 	setTimeout(() => {
 		initialized.value = true;
@@ -82,11 +80,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	window.removeEventListener('resize', setTotalWidth);
 	ndvEventBus.off('setPositionByName', setPositionByName);
 });
 
-watch(windowWidth, (width) => {
+const containerWidth = computed(() => uiStore.appGridWidth);
+
+watch(containerWidth, (width) => {
 	const minRelativeWidth = pxToRelativeWidth(MIN_PANEL_WIDTH);
 	const isBelowMinWidthMainPanel = mainPanelDimensions.value.relativeWidth < minRelativeWidth;
 
@@ -161,14 +160,14 @@ const hasInputSlot = computed((): boolean => {
 const inputPanelMargin = computed(() => pxToRelativeWidth(SIDE_PANELS_MARGIN));
 
 const minimumLeftPosition = computed((): number => {
-	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+	if (containerWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	if (!hasInputSlot.value) return pxToRelativeWidth(SIDE_MARGIN);
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
 
 const maximumRightPosition = computed((): number => {
-	if (windowWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
+	if (containerWidth.value < MIN_WINDOW_WIDTH) return pxToRelativeWidth(1);
 
 	return pxToRelativeWidth(SIDE_MARGIN + 20) + inputPanelMargin.value;
 });
@@ -208,7 +207,7 @@ const hasDoubleWidth = computed((): boolean => {
 const fixedPanelWidth = computed((): number => {
 	const multiplier = hasDoubleWidth.value ? 2 : 1;
 
-	if (windowWidth.value > 1700) {
+	if (containerWidth.value > 1700) {
 		return PANEL_WIDTH_LARGE * multiplier;
 	}
 
@@ -288,15 +287,11 @@ function setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
 }
 
 function pxToRelativeWidth(px: number): number {
-	return px / windowWidth.value;
+	return px / containerWidth.value;
 }
 
 function relativeWidthToPx(relativeWidth: number) {
-	return relativeWidth * windowWidth.value;
-}
-
-function onResizeStart() {
-	setTotalWidth();
+	return relativeWidth * containerWidth.value;
 }
 
 function onResizeEnd() {
@@ -357,15 +352,11 @@ function onDragEnd() {
 	setTimeout(() => {
 		isDragging.value = false;
 		emit('dragend', {
-			windowWidth: windowWidth.value,
+			windowWidth: containerWidth.value,
 			position: mainPanelDimensions.value.relativeLeft,
 		});
 	}, 0);
 	storePositionData();
-}
-
-function setTotalWidth() {
-	windowWidth.value = window.innerWidth;
 }
 </script>
 
@@ -390,7 +381,6 @@ function setTotalWidth() {
 				:grid-size="20"
 				:supported-directions="supportedResizeDirections"
 				@resize="onResizeDebounced"
-				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
 			>
 				<div :class="$style.dragButtonContainer">

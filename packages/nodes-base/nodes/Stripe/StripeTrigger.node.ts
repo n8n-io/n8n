@@ -8,7 +8,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
 
@@ -24,7 +24,7 @@ export class StripeTrigger implements INodeType {
 			name: 'Stripe Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'stripeApi',

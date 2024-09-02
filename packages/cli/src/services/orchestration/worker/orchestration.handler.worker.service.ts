@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
-import { getWorkerCommandReceivedHandler } from './handleCommandMessageWorker';
+import { getWorkerCommandReceivedHandler } from './handle-command-message-worker';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 
 @Service()

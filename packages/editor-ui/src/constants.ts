@@ -4,7 +4,11 @@ import type {
 	NodeCreatorOpenSource,
 } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
-import type { CanvasNodeHandleInjectionData, CanvasNodeInjectionData } from '@/types';
+import type {
+	CanvasInjectionData,
+	CanvasNodeHandleInjectionData,
+	CanvasNodeInjectionData,
+} from '@/types';
 import type { InjectionKey } from 'vue';
 
 export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
@@ -571,7 +575,7 @@ export const EnterpriseEditionFeature: Record<
 	AdvancedPermissions: 'advancedPermissions',
 };
 
-export const MAIN_NODE_PANEL_WIDTH = 360;
+export const MAIN_NODE_PANEL_WIDTH = 390;
 
 export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
@@ -635,6 +639,7 @@ export const enum STORES {
 	PUSH = 'push',
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
+	PROJECTS = 'projects',
 }
 
 export const enum SignInType {
@@ -856,9 +861,12 @@ export const INSECURE_CONNECTION_WARNING = `
  * Injection Keys
  */
 
+export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
 export const CanvasNodeKey = 'canvasNode' as unknown as InjectionKey<CanvasNodeInjectionData>;
 export const CanvasNodeHandleKey =
 	'canvasNodeHandle' as unknown as InjectionKey<CanvasNodeHandleInjectionData>;
 
 /** Auth */
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+
+export const APP_MODALS_ELEMENT_ID = 'app-modals';

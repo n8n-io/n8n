@@ -22,17 +22,17 @@ import { License } from '@/license';
 import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
 import { getLdapLoginLabel } from '@/ldap/helpers.ee';
 import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper.ee';
 import { UserManagementMailer } from '@/user-management/email';
-import type { CommunityPackagesService } from '@/services/communityPackages.service';
+import type { CommunityPackagesService } from '@/services/community-packages.service';
 import { Logger } from '@/logger';
 import { UrlService } from './url.service';
 import { EventService } from '@/events/event.service';
-import { isApiEnabled } from '@/PublicApi';
+import { isApiEnabled } from '@/public-api';
 
 @Service()
 export class FrontendService {
@@ -58,7 +58,7 @@ export class FrontendService {
 		this.initSettings();
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
 		}

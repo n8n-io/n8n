@@ -32,7 +32,7 @@ export async function apiRequest(
 		baseUrl: string;
 	};
 
-	const credentials = (await this.getCredentials('n8nApi')) as N8nApiCredentials;
+	const credentials = await this.getCredentials<N8nApiCredentials>('n8nApi');
 	const baseUrl = credentials.baseUrl;
 
 	const options: IRequestOptions = {

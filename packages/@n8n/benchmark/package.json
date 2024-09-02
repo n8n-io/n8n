@@ -1,13 +1,19 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix",
     "start": "./bin/n8n-benchmark",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typecheck": "tsc --noEmit",
+    "benchmark": "zx scripts/run.mjs",
+    "benchmark-in-cloud": "pnpm benchmark --env cloud",
+    "benchmark-locally": "pnpm benchmark --env local",
+    "destroy-cloud-env": "zx scripts/destroyCloudEnv.mjs",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
   },
   "engines": {

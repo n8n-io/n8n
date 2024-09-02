@@ -1,39 +1,3 @@
-<template>
-	<div>
-		<div
-			v-for="(user, i) in sortedUsers"
-			:key="user.id"
-			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
-			:data-test-id="`user-list-item-${user.email}`"
-		>
-			<N8nUserInfo
-				v-bind="user"
-				:is-current-user="currentUserId === user.id"
-				:is-saml-login-enabled="isSamlLoginEnabled"
-			/>
-			<div :class="$style.badgeContainer">
-				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>
-					{{ t('nds.auth.roles.owner') }}
-				</N8nBadge>
-				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
-				<N8nActionToggle
-					v-if="
-						!user.isOwner &&
-						user.signInType !== 'ldap' &&
-						!readonly &&
-						getActions(user).length > 0 &&
-						actions.length > 0
-					"
-					placement="bottom"
-					:actions="getActions(user)"
-					theme="dark"
-					@action="(action: string) => onUserAction(user, action)"
-				/>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import { computed } from 'vue';
 import N8nActionToggle from '../N8nActionToggle';
@@ -114,6 +78,42 @@ const onUserAction = (user: IUser, action: string) =>
 		userId: user.id,
 	});
 </script>
+
+<template>
+	<div>
+		<div
+			v-for="(user, i) in sortedUsers"
+			:key="user.id"
+			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
+			:data-test-id="`user-list-item-${user.email}`"
+		>
+			<N8nUserInfo
+				v-bind="user"
+				:is-current-user="currentUserId === user.id"
+				:is-saml-login-enabled="isSamlLoginEnabled"
+			/>
+			<div :class="$style.badgeContainer">
+				<N8nBadge v-if="user.isOwner" theme="tertiary" bold>
+					{{ t('nds.auth.roles.owner') }}
+				</N8nBadge>
+				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
+				<N8nActionToggle
+					v-if="
+						!user.isOwner &&
+						user.signInType !== 'ldap' &&
+						!readonly &&
+						getActions(user).length > 0 &&
+						actions.length > 0
+					"
+					placement="bottom"
+					:actions="getActions(user)"
+					theme="dark"
+					@action="(action: string) => onUserAction(user, action)"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .itemContainer {

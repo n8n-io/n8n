@@ -1,4 +1,4 @@
-import type { InsertResult, MigrationContext, ReversibleMigration } from '@db/types';
+import type { InsertResult, MigrationContext, ReversibleMigration } from '@/databases/types';
 import { v4 as uuid } from 'uuid';
 
 export class CreateUserManagement1646992772331 implements ReversibleMigration {

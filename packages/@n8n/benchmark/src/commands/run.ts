@@ -16,24 +16,44 @@ export default class RunCommand extends Command {
 			description: 'Comma-separated list of test scenarios to run',
 			required: false,
 		}),
+		scenarioNamePrefix: Flags.string({
+			description: 'Prefix for the scenario name. Defaults to Unnamed',
+			required: false,
+		}),
 	};
 
 	async run() {
-		const config = loadConfig();
+		const config = await this.loadConfigAndMergeWithFlags();
 		const scenarioLoader = new ScenarioLoader();
 
 		const scenarioRunner = new ScenarioRunner(
 			new N8nApiClient(config.get('n8n.baseUrl')),
 			new ScenarioDataFileLoader(),
-			new K6Executor(config.get('k6ExecutablePath'), config.get('n8n.baseUrl')),
+			new K6Executor({
+				k6ExecutablePath: config.get('k6.executablePath'),
+				k6ApiToken: config.get('k6.apiToken'),
+				n8nApiBaseUrl: config.get('n8n.baseUrl'),
+			}),
 			{
 				email: config.get('n8n.user.email'),
 				password: config.get('n8n.user.password'),
 			},
+			config.get('scenarioNamePrefix'),
 		);
 
 		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
 
 		await scenarioRunner.runManyScenarios(allScenarios);
+	}
+
+	private async loadConfigAndMergeWithFlags() {
+		const config = loadConfig();
+		const { flags } = await this.parse(RunCommand);
+
+		if (flags.scenarioNamePrefix) {
+			config.set('scenarioNamePrefix', flags.scenarioNamePrefix);
+		}
+
+		return config;
 	}
 }
