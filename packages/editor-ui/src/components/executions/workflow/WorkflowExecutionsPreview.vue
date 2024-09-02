@@ -130,7 +130,10 @@ function onRetryButtonBlur(event: FocusEvent) {
 			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
-			<WorkflowExecutionAnnotationPanel v-if="execution" :execution="execution" />
+			<WorkflowExecutionAnnotationPanel
+				v-if="isAnnotationEnabled && execution"
+				:execution="execution"
+			/>
 			<div>
 				<N8nText size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
 					executionUIDetails?.startTime
