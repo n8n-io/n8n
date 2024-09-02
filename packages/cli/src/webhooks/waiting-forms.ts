@@ -8,7 +8,7 @@ import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webh
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse } from '@/Interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import axios from 'axios';
 
 @Service()

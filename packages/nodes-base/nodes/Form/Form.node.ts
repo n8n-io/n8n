@@ -14,6 +14,7 @@ import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	tryToParseFormFields,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
@@ -166,8 +167,8 @@ export class Form extends Node {
 		defaults: {
 			name: 'Form',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		webhooks: [
 			{
 				name: 'default',
