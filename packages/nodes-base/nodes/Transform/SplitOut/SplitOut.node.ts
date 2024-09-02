@@ -1,5 +1,6 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
+
 import {
 	NodeOperationError,
 	deepCopy,
@@ -147,6 +148,7 @@ export class SplitOut implements INodeType {
 			const multiSplit = fieldsToSplitOut.length > 1;
 
 			const item = { ...items[i].json };
+
 			const splited: INodeExecutionData[] = [];
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
@@ -274,7 +276,7 @@ export class SplitOut implements INodeType {
 			for (const [field, values] of Object.entries(notFoundedFields)) {
 				if (values.every((value) => !value)) {
 					hints.push({
-						message: `The field '${field}' wasn't found in any input item`,
+						message: `The field <strong>${field}</strong> wasn't found in any input item`,
 						location: 'outputPane',
 					});
 				}
