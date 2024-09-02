@@ -30,7 +30,7 @@ export class TerraformClient {
 		console.log('Provisioning cloud environment...');
 
 		await this.$$`terraform init`;
-		// await this.$$`terraform apply -input=false -auto-approve`;
+		await this.$$`terraform apply -input=false -auto-approve`;
 
 		const privateKeyName = await this.extractPrivateKey();
 
@@ -50,7 +50,7 @@ export class TerraformClient {
 
 		console.log('Destroying cloud environment...');
 
-		// await this.$$`terraform destroy -input=false -auto-approve`;
+		await this.$$`terraform destroy -input=false -auto-approve`;
 	}
 
 	async getTerraformOutput(key) {
