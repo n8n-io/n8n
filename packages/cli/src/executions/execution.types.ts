@@ -1,4 +1,4 @@
-import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
 import type { AuthenticatedRequest } from '@/requests';
 import type { Scope } from '@n8n/permissions';
 import type {
@@ -86,7 +86,7 @@ export namespace ExecutionSummaries {
 	type OrderFields = {
 		order?: {
 			top?: ExecutionStatus;
-			stoppedAt?: 'DESC';
+			startedAt?: 'DESC';
 		};
 	};
 

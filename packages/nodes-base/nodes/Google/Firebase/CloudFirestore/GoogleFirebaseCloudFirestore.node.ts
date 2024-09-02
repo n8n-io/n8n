@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../../../utils/utilities';
 import {
@@ -34,8 +34,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		defaults: {
 			name: 'Google Cloud Firestore',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleFirebaseCloudFirestoreOAuth2Api',
@@ -269,7 +269,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],
@@ -433,7 +433,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({
 								json: { error: error.message },
 								pairedItem: fallbackPairedItems ?? [{ item: i }],

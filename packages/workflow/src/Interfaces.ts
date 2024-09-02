@@ -90,7 +90,7 @@ export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
 }
 
-export abstract class ICredentials {
+export abstract class ICredentials<T extends object = ICredentialDataDecryptedObject> {
 	id?: string;
 
 	name: string;
@@ -106,11 +106,11 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getData(nodeType?: string): T;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: ICredentialDataDecryptedObject): void;
+	abstract setData(data: T): void;
 }
 
 export interface IUser {
@@ -128,11 +128,11 @@ export type ProjectSharingData = {
 	updatedAt: string;
 };
 
-export interface ICredentialsDecrypted {
+export interface ICredentialsDecrypted<T extends object = ICredentialDataDecryptedObject> {
 	id: string;
 	name: string;
 	type: string;
-	data?: ICredentialDataDecryptedObject;
+	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 }
@@ -718,7 +718,7 @@ export interface IExecuteWorkflowInfo {
 
 export type ICredentialTestFunction = (
 	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
+	credential: ICredentialsDecrypted<ICredentialDataDecryptedObject>,
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {
@@ -860,7 +860,10 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
-	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+		itemIndex?: number,
+	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
 	getNode(): INode;
@@ -887,7 +890,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(error?: Error): boolean;
+	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -907,7 +910,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			parentCallbackManager?: CallbackManager,
 		): Promise<any>;
 		getInputConnectionData(
-			inputName: ConnectionTypes,
+			inputName: NodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -920,12 +923,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionType,
 			data: INodeExecutionData[][] | ExecutionError,
 			runIndex?: number,
 		): { index: number };
 		addOutputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
@@ -1046,7 +1049,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		inputName: ConnectionTypes,
+		inputName: NodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1205,7 +1208,8 @@ export type NodePropertyTypes =
 	| 'resourceMapper'
 	| 'filter'
 	| 'assignmentCollection'
-	| 'credentials';
+	| 'credentials'
+	| 'workflowSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1755,21 +1759,6 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes =
-	| 'ai_agent'
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_tool'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore'
-	| 'main';
-
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
 
@@ -1822,7 +1811,7 @@ export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionType;
 	filter?: INodeInputFilter;
 	maxConnections?: number;
 }
@@ -1832,7 +1821,7 @@ export interface INodeOutputConfiguration {
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionType;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -1850,10 +1839,10 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
+	inputs: Array<NodeConnectionType | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
+	outputs: Array<NodeConnectionType | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];

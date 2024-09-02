@@ -1,66 +1,3 @@
-<template>
-	<div :class="$style.block">
-		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
-			<button :class="$style.blockToggle">
-				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
-			</button>
-			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
-			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch
-				v-if="contentParsed"
-				v-model="isShowRaw"
-				:class="$style.rawSwitch"
-				active-text="RAW JSON"
-				@click.stop
-			/>
-		</header>
-		<main
-			:class="{
-				[$style.blockContent]: true,
-				[$style.blockContentExpanded]: isExpanded,
-			}"
-		>
-			<div
-				v-for="({ parsedContent, raw }, index) in parsedRun"
-				:key="index"
-				:class="$style.contentText"
-				:data-content-type="parsedContent?.type"
-			>
-				<template v-if="parsedContent && !isShowRaw">
-					<template v-if="parsedContent.type === 'json'">
-						<VueMarkdown
-							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
-							:class="$style.markdown"
-						/>
-					</template>
-					<template v-if="parsedContent.type === 'markdown'">
-						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
-					</template>
-					<p
-						v-if="parsedContent.type === 'text'"
-						:class="$style.runText"
-						v-text="parsedContent.data"
-					/>
-				</template>
-				<!-- We weren't able to parse text or raw switch -->
-				<template v-else>
-					<div :class="$style.rawContent">
-						<n8n-icon-button
-							size="small"
-							:class="$style.copyToClipboard"
-							type="secondary"
-							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
-							icon="copy"
-							@click="onCopyToClipboard(raw)"
-						/>
-						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
-					</div>
-				</template>
-			</div>
-		</main>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
@@ -174,6 +111,69 @@ onMounted(() => {
 	}
 });
 </script>
+
+<template>
+	<div :class="$style.block">
+		<header :class="$style.blockHeader" @click="onBlockHeaderClick">
+			<button :class="$style.blockToggle">
+				<font-awesome-icon :icon="isExpanded ? 'angle-down' : 'angle-up'" size="lg" />
+			</button>
+			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
+			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
+			<el-switch
+				v-if="contentParsed"
+				v-model="isShowRaw"
+				:class="$style.rawSwitch"
+				active-text="RAW JSON"
+				@click.stop
+			/>
+		</header>
+		<main
+			:class="{
+				[$style.blockContent]: true,
+				[$style.blockContentExpanded]: isExpanded,
+			}"
+		>
+			<div
+				v-for="({ parsedContent, raw }, index) in parsedRun"
+				:key="index"
+				:class="$style.contentText"
+				:data-content-type="parsedContent?.type"
+			>
+				<template v-if="parsedContent && !isShowRaw">
+					<template v-if="parsedContent.type === 'json'">
+						<VueMarkdown
+							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
+							:class="$style.markdown"
+						/>
+					</template>
+					<template v-if="parsedContent.type === 'markdown'">
+						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
+					</template>
+					<p
+						v-if="parsedContent.type === 'text'"
+						:class="$style.runText"
+						v-text="parsedContent.data"
+					/>
+				</template>
+				<!-- We weren't able to parse text or raw switch -->
+				<template v-else>
+					<div :class="$style.rawContent">
+						<n8n-icon-button
+							size="small"
+							:class="$style.copyToClipboard"
+							type="secondary"
+							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+							icon="copy"
+							@click="onCopyToClipboard(raw)"
+						/>
+						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+					</div>
+				</template>
+			</div>
+		</main>
+	</div>
+</template>
 
 <style lang="scss" module>
 .copyToClipboard {

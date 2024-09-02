@@ -1,59 +1,3 @@
-<template>
-	<n8n-input-label
-		:label="$locale.credText().inputLabelDisplayName(parameter)"
-		:tooltip-text="$locale.credText().inputLabelDescription(parameter)"
-		:required="parameter.required"
-		:show-tooltip="focused"
-		:show-options="menuExpanded"
-		:data-test-id="parameter.name"
-		:size="label.size"
-	>
-		<template #options>
-			<ParameterOptions
-				:parameter="parameter"
-				:value="value"
-				:is-read-only="false"
-				:show-options="true"
-				:is-value-expression="isValueExpression"
-				@update:model-value="optionSelected"
-				@menu-expanded="onMenuExpanded"
-			/>
-		</template>
-		<ParameterInputWrapper
-			ref="param"
-			input-size="large"
-			:parameter="parameter"
-			:model-value="value"
-			:path="parameter.name"
-			:hide-issues="true"
-			:documentation-url="documentationUrl"
-			:error-highlight="showRequiredErrors"
-			:is-for-credential="true"
-			:event-source="eventSource"
-			:hint="!showRequiredErrors && hint ? hint : ''"
-			:event-bus="eventBus"
-			@focus="onFocus"
-			@blur="onBlur"
-			@text-input="valueChanged"
-			@update="valueChanged"
-		/>
-		<div v-if="showRequiredErrors" :class="$style.errors">
-			<n8n-text color="danger" size="small">
-				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<n8n-link
-					v-if="documentationUrl"
-					:to="documentationUrl"
-					size="small"
-					:underline="true"
-					@click="onDocumentationUrlClick"
-				>
-					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
-				</n8n-link>
-			</n8n-text>
-		</div>
-	</n8n-input-label>
-</template>
-
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -163,6 +107,62 @@ function onDocumentationUrlClick(): void {
 	});
 }
 </script>
+
+<template>
+	<n8n-input-label
+		:label="$locale.credText().inputLabelDisplayName(parameter)"
+		:tooltip-text="$locale.credText().inputLabelDescription(parameter)"
+		:required="parameter.required"
+		:show-tooltip="focused"
+		:show-options="menuExpanded"
+		:data-test-id="parameter.name"
+		:size="label.size"
+	>
+		<template #options>
+			<ParameterOptions
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="false"
+				:show-options="true"
+				:is-value-expression="isValueExpression"
+				@update:model-value="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</template>
+		<ParameterInputWrapper
+			ref="param"
+			input-size="large"
+			:parameter="parameter"
+			:model-value="value"
+			:path="parameter.name"
+			:hide-issues="true"
+			:documentation-url="documentationUrl"
+			:error-highlight="showRequiredErrors"
+			:is-for-credential="true"
+			:event-source="eventSource"
+			:hint="!showRequiredErrors && hint ? hint : ''"
+			:event-bus="eventBus"
+			@focus="onFocus"
+			@blur="onBlur"
+			@text-input="valueChanged"
+			@update="valueChanged"
+		/>
+		<div v-if="showRequiredErrors" :class="$style.errors">
+			<n8n-text color="danger" size="small">
+				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+				<n8n-link
+					v-if="documentationUrl"
+					:to="documentationUrl"
+					size="small"
+					:underline="true"
+					@click="onDocumentationUrlClick"
+				>
+					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+				</n8n-link>
+			</n8n-text>
+		</div>
+	</n8n-input-label>
+</template>
 
 <style lang="scss" module>
 .errors {

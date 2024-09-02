@@ -31,11 +31,25 @@ const configSchema = {
 			},
 		},
 	},
-	k6ExecutablePath: {
-		doc: 'The path to the k6 binary',
+	scenarioNamePrefix: {
+		doc: 'Prefix for the scenario name',
 		format: String,
-		default: 'k6',
-		env: 'K6_PATH',
+		default: 'Unnamed',
+		env: 'N8N_BENCHMARK_SCENARIO_NAME_PREFIX',
+	},
+	k6: {
+		executablePath: {
+			doc: 'The path to the k6 binary',
+			format: String,
+			default: 'k6',
+			env: 'K6_PATH',
+		},
+		apiToken: {
+			doc: 'The API token for k6 cloud',
+			format: String,
+			default: undefined,
+			env: 'K6_API_TOKEN',
+		},
 	},
 };
 

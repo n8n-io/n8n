@@ -1,7 +1,7 @@
-import { Scenario } from '@/types/scenario';
-import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
-import { K6Executor } from './k6Executor';
+import type { K6Executor } from './k6Executor';
+import type { Scenario } from '@/types/scenario';
+import type { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
+import type { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
 import { ScenarioDataImporter } from '@/testExecution/scenarioDataImporter';
 import { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
 
@@ -17,6 +17,7 @@ export class ScenarioRunner {
 			email: string;
 			password: string;
 		},
+		private readonly scenarioPrefix: string,
 	) {}
 
 	async runManyScenarios(scenarios: Scenario[]) {
@@ -38,13 +39,25 @@ export class ScenarioRunner {
 	}
 
 	private async runSingleTestScenario(testDataImporter: ScenarioDataImporter, scenario: Scenario) {
-		console.log('Running scenario:', scenario.name);
+		const scenarioRunName = this.formTestScenarioRunName(scenario);
+		console.log('Running scenario:', scenarioRunName);
 
 		console.log('Loading and importing data');
 		const testData = await this.dataLoader.loadDataForScenario(scenario);
 		await testDataImporter.importTestScenarioData(testData.workflows);
 
 		console.log('Executing scenario script');
-		await this.k6Executor.executeTestScenario(scenario);
+		await this.k6Executor.executeTestScenario(scenario, {
+			scenarioRunName,
+		});
+	}
+
+	/**
+	 * Forms a name for the scenario by combining prefix and scenario name.
+	 * The benchmarks are ran against different n8n setups, so we use the
+	 * prefix to differentiate between them.
+	 */
+	private formTestScenarioRunName(scenario: Scenario) {
+		return `${this.scenarioPrefix}-${scenario.name}`;
 	}
 }

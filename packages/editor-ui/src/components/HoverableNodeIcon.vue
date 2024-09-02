@@ -1,44 +1,3 @@
-<template>
-	<div
-		:class="$style.wrapper"
-		:style="iconStyleData"
-		@click="() => $emit('click')"
-		@mouseover="showTooltip = true"
-		@mouseleave="showTooltip = false"
-	>
-		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" :visible="showTooltip">
-				<template #content>
-					<div v-text="nodeType.displayName"></div>
-				</template>
-				<span />
-			</n8n-tooltip>
-		</div>
-		<div v-if="nodeIconData !== null" :class="$style.icon" title="">
-			<div :class="$style.iconWrapper" :style="iconStyleData">
-				<div v-if="nodeIconData !== null" :class="$style.icon">
-					<img
-						v-if="nodeIconData.type === 'file'"
-						:src="nodeIconData.fileBuffer || nodeIconData.path"
-						:style="imageStyleData"
-					/>
-					<font-awesome-icon
-						v-else
-						:icon="nodeIconData.icon || nodeIconData.path"
-						:style="fontStyleData"
-					/>
-				</div>
-				<div v-else class="node-icon-placeholder">
-					{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
-				</div>
-			</div>
-		</div>
-		<div v-else :class="$style.placeholder">
-			{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { type StyleValue, defineComponent, type PropType } from 'vue';
 
@@ -150,6 +109,47 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div
+		:class="$style.wrapper"
+		:style="iconStyleData"
+		@click="() => $emit('click')"
+		@mouseover="showTooltip = true"
+		@mouseleave="showTooltip = false"
+	>
+		<div :class="$style.tooltip">
+			<n8n-tooltip placement="top" :visible="showTooltip">
+				<template #content>
+					<div v-text="nodeType.displayName"></div>
+				</template>
+				<span />
+			</n8n-tooltip>
+		</div>
+		<div v-if="nodeIconData !== null" :class="$style.icon" title="">
+			<div :class="$style.iconWrapper" :style="iconStyleData">
+				<div v-if="nodeIconData !== null" :class="$style.icon">
+					<img
+						v-if="nodeIconData.type === 'file'"
+						:src="nodeIconData.fileBuffer || nodeIconData.path"
+						:style="imageStyleData"
+					/>
+					<font-awesome-icon
+						v-else
+						:icon="nodeIconData.icon || nodeIconData.path"
+						:style="fontStyleData"
+					/>
+				</div>
+				<div v-else class="node-icon-placeholder">
+					{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
+				</div>
+			</div>
+		</div>
+		<div v-else :class="$style.placeholder">
+			{{ nodeType !== null ? nodeType.displayName.charAt(0) : '?' }}
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .wrapper {

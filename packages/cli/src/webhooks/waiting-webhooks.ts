@@ -10,11 +10,11 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logger';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { IExecutionResponse, IWorkflowDb } from '@/Interfaces';
+import type { IExecutionResponse, IWorkflowDb } from '@/interfaces';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the

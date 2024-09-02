@@ -1,29 +1,3 @@
-<template>
-	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
-		<SlideTransition>
-			<div
-				v-if="active"
-				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true }"
-				:style="nodeCreatorInlineStyle"
-				data-test-id="node-creator"
-				@dragover="onDragOver"
-				@drop="onDrop"
-				@mousedown="onMouseDown"
-				@mouseup="onMouseUp"
-			>
-				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
-			</div>
-		</SlideTransition>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
@@ -162,6 +136,32 @@ onBeforeUnmount(() => {
 	unBindOnMouseUpOutside();
 });
 </script>
+
+<template>
+	<div>
+		<aside
+			:class="{
+				[$style.nodeCreatorScrim]: true,
+				[$style.active]: showScrim,
+			}"
+		/>
+		<SlideTransition>
+			<div
+				v-if="active"
+				ref="nodeCreator"
+				:class="{ [$style.nodeCreator]: true }"
+				:style="nodeCreatorInlineStyle"
+				data-test-id="node-creator"
+				@dragover="onDragOver"
+				@drop="onDrop"
+				@mousedown="onMouseDown"
+				@mouseup="onMouseUp"
+			>
+				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
+			</div>
+		</SlideTransition>
+	</div>
+</template>
 
 <style module lang="scss">
 :global(strong) {

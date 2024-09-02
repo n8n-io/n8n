@@ -36,8 +36,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { INodeInputFilter, NodeConnectionType, Themed } from 'n8n-workflow';
+import {
+	AI_TRANSFORM_NODE_TYPE,
+	type INodeInputFilter,
+	type NodeConnectionType,
+	type Themed,
+} from 'n8n-workflow';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { usePostHog } from '../../../../stores/posthog.store';
 
 interface ViewStack {
 	uuid?: string;
@@ -350,7 +356,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			const itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			let itemsInSubcategory = itemsBySubcategory.value[subcategory];
+
+			const aiEnabled = usePostHog().isAiEnabled();
+			if (!aiEnabled) {
+				itemsInSubcategory = itemsInSubcategory.filter(
+					(item) => item.key !== AI_TRANSFORM_NODE_TYPE,
+				);
+			}
 			const sections = stack.sections;
 
 			if (sections) {

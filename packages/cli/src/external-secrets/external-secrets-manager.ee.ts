@@ -1,9 +1,9 @@
-import { SettingsRepository } from '@db/repositories/settings.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type {
 	ExternalSecretsSettings,
 	SecretsProvider,
 	SecretsProviderSettings,
-} from '@/Interfaces';
+} from '@/interfaces';
 
 import { Cipher } from 'n8n-core';
 import Container, { Service } from 'typedi';

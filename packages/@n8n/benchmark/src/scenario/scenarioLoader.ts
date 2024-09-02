@@ -48,7 +48,11 @@ export class ScenarioLoader {
 	private loadAndValidateScenarioManifest(
 		scenarioManifestPath: string,
 	): [ScenarioManifest, null] | [null, string[]] {
-		const scenario = JSON.parse(fs.readFileSync(scenarioManifestPath, 'utf8'));
+		const [scenario, error] = this.loadScenarioManifest(scenarioManifestPath);
+		if (!scenario) {
+			return [null, [error]];
+		}
+
 		const validationErrors: string[] = [];
 
 		if (!scenario.name) {
@@ -59,6 +63,21 @@ export class ScenarioLoader {
 		}
 
 		return validationErrors.length === 0 ? [scenario, null] : [null, validationErrors];
+	}
+
+	private loadScenarioManifest(
+		scenarioManifestPath: string,
+	): [ScenarioManifest, null] | [null, string] {
+		try {
+			const scenario = JSON.parse(
+				fs.readFileSync(scenarioManifestPath, 'utf8'),
+			) as ScenarioManifest;
+
+			return [scenario, null];
+		} catch (error) {
+			const message = error instanceof Error ? error.message : JSON.stringify(error);
+			return [null, `Failed to parse manifest ${scenarioManifestPath}: ${message}`];
+		}
 	}
 
 	private formScenarioId(scenarioPath: string): string {

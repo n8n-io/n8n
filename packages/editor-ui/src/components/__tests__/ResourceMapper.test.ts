@@ -4,7 +4,7 @@ import {
 	UPDATED_SCHEMA,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { waitAllPromises } from '@/__tests__/utils';
+import { cleanupAppModals, createAppModals, waitAllPromises } from '@/__tests__/utils';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -23,8 +23,13 @@ describe('ResourceMapper.vue', () => {
 			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
 	});
 
+	beforeEach(() => {
+		createAppModals();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		cleanupAppModals();
 	});
 
 	it('renders default configuration properly', async () => {

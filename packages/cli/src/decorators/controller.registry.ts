@@ -6,7 +6,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { inProduction, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/response-helper'; // TODO: move `ResponseHelper.send` to this file
