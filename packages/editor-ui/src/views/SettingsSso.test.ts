@@ -111,7 +111,7 @@ describe('SettingsSso View', () => {
 		const ssoStore = mockedStore(useSSOStore);
 		ssoStore.isEnterpriseSamlEnabled = true;
 
-		const { getByTestId, getByRole } = renderView({ pinia });
+		const { getByTestId } = renderView({ pinia });
 
 		const saveButton = getByTestId('sso-save');
 		expect(saveButton).toBeDisabled();
