@@ -29,6 +29,6 @@ locals {
     Id        = "N8nBenchmark"
     Terraform = "true"
     Owner     = "Catalysts"
-		CreatedAt = timestamp()
+    CreatedAt = timestamp()
   }
 }
