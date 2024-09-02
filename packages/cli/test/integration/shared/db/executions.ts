@@ -5,6 +5,13 @@ import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import type { AnnotationVote } from 'n8n-workflow';
+import { mockInstance } from '@test/mocking';
+import { Telemetry } from '@/telemetry';
+import { AnnotationTagRepository } from '@/databases/repositories/annotation-tag.repository';
+
+mockInstance(Telemetry);
 
 export async function createManyExecutions(
 	amount: number,
@@ -85,6 +92,19 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 	);
 }
 
+export async function annotateExecution(
+	executionId: string,
+	annotation: { vote?: AnnotationVote | null; tags?: string[] },
+	sharedWorkflowIds: string[],
+) {
+	await Container.get(ExecutionService).annotate(executionId, annotation, sharedWorkflowIds);
+}
+
 export async function getAllExecutions() {
 	return await Container.get(ExecutionRepository).find();
+}
+
+export async function createAnnotationTags(annotationTags: string[]) {
+	const tagRepository = Container.get(AnnotationTagRepository);
+	return await tagRepository.save(annotationTags.map((name) => tagRepository.create({ name })));
 }
