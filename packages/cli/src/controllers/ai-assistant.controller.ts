@@ -1,13 +1,13 @@
 import type { Response } from 'express';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { WritableStream } from 'node:stream/web';
-import { InternalServerError } from 'express-openapi-validator/dist/openapi.validator';
 import { strict as assert } from 'node:assert';
 import { ErrorReporterProxy } from 'n8n-workflow';
 
 import { Post, RestController } from '@/decorators';
-import { AiAssistantService } from '@/services/ai-assistant.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AiAssistantRequest } from '@/requests';
+import { AiAssistantService } from '@/services/ai-assistant.service';
 
 type FlushableResponse = Response & { flush: () => void };
 
@@ -34,7 +34,7 @@ export class AiAssistantController {
 		} catch (e) {
 			assert(e instanceof Error);
 			ErrorReporterProxy.error(e);
-			throw new InternalServerError({ message: `Something went wrong: ${e.message}` });
+			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
 
@@ -47,7 +47,7 @@ export class AiAssistantController {
 		} catch (e) {
 			assert(e instanceof Error);
 			ErrorReporterProxy.error(e);
-			throw new InternalServerError({ message: `Something went wrong: ${e.message}` });
+			throw new InternalServerError(`Something went wrong: ${e.message}`);
 		}
 	}
 }
