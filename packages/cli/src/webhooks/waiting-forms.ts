@@ -53,11 +53,11 @@ export class WaitingForms extends WaitingWebhooks {
 		const execution = await this.getExecution(executionId);
 
 		if (!execution) {
-			throw new NotFoundError(`The execution "${executionId} does not exist.`);
+			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
 
 		if (execution.data.resultData.error) {
-			throw new ConflictError(`The execution "${executionId} has finished with error.`);
+			throw new ConflictError(`The execution "${executionId}" has finished with error.`);
 		}
 
 		if (execution.status === 'running') {
@@ -85,7 +85,7 @@ export class WaitingForms extends WaitingWebhooks {
 					};
 				}
 			}
-			throw new ConflictError(`The execution "${executionId} is running already.`);
+			throw new ConflictError(`The execution "${executionId}" is running already.`);
 		}
 
 		let completionPage;
@@ -118,7 +118,15 @@ export class WaitingForms extends WaitingWebhooks {
 			}
 
 			if (!completionPage) {
-				throw new ConflictError(`The execution "${executionId} has finished already.`);
+				res.render('form-trigger-completion', {
+					title: 'Form Submitted',
+					message: 'Your response has been recorded',
+					formTitle: 'Form Submitted',
+				});
+
+				return {
+					noWebhookResponse: true,
+				};
 			}
 		}
 
