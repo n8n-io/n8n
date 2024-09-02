@@ -3650,8 +3650,8 @@ describe('NodeHelpers', () => {
 					description: 'A test node',
 					version: 1,
 					defaults: {},
-					inputs: ['main'],
-					outputs: ['main'],
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
 					properties: [],
 				},
 			};
