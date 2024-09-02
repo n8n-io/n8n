@@ -177,4 +177,27 @@ describe('SettingsSso View', () => {
 
 		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
 	});
+
+	it('PAY-1812: allows user to disable SSO even if config request failed', async () => {
+		const pinia = createTestingPinia();
+
+		const ssoStore = mockedStore(useSSOStore);
+		ssoStore.isEnterpriseSamlEnabled = true;
+		ssoStore.isSamlLoginEnabled = true;
+
+		const error = new Error('Request failed with status code 404');
+		ssoStore.getSamlConfig.mockRejectedValue(error);
+
+		const { getByTestId } = renderView({ pinia });
+
+		expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(1);
+
+		await waitFor(async () => {
+			expect(showError).toHaveBeenCalledWith(error, 'error');
+			const toggle = getByTestId('sso-toggle');
+			expect(toggle.textContent).toContain('Activated');
+			await userEvent.click(toggle);
+			expect(toggle.textContent).toContain('Deactivated');
+		});
+	});
 });
