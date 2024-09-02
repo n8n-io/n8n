@@ -118,9 +118,9 @@ resource "azurerm_linux_virtual_machine" "main" {
     version   = "latest"
   }
 
-	identity {
-		type = "SystemAssigned"
-	}
+  identity {
+    type = "SystemAssigned"
+  }
 
   tags = var.tags
 }

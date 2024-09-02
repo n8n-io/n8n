@@ -3,7 +3,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import Modal from '@/components/Modal.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'DuplicateWorkflow',
-	components: { TagsDropdown, Modal },
+	components: { WorkflowTagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
 		const router = useRouter();
@@ -167,7 +167,7 @@ export default defineComponent({
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.enterWorkflowName')"
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
-				<TagsDropdown
+				<WorkflowTagsDropdown
 					v-if="settingsStore.areTagsEnabled"
 					ref="dropdown"
 					v-model="currentTagIds"
