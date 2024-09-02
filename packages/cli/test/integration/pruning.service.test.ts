@@ -15,7 +15,6 @@ import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import {
 	annotateExecution,
-	createAnnotationTags,
 	createExecution,
 	createSuccessfulExecution,
 } from './shared/db/executions';
