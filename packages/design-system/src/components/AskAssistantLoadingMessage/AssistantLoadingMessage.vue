@@ -31,6 +31,7 @@ withDefaults(
 	display: flex;
 	gap: var(--spacing-3xs);
 	align-items: flex-start;
+	user-select: none;
 }
 
 .avatar {
