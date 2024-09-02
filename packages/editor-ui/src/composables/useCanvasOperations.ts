@@ -946,6 +946,8 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					lastInteractedWithNode.name,
 				);
 
+				pushOffsets = [100, 0];
+
 				if (
 					outputTypes.length > 0 &&
 					outputTypes.every((outputName) => outputName !== NodeConnectionType.Main) &&
@@ -977,15 +979,13 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					position = [
 						lastInteractedWithNode.position[0] +
 							(CONFIGURABLE_NODE_SIZE[0] / lastInteractedWithNodeWidthDivisions) *
-								(scopedConnectionIndex + 1) +
-							nodeSize[0],
+								(scopedConnectionIndex + 1) -
+							nodeSize[0] / 2,
 						lastInteractedWithNode.position[1] + PUSH_NODES_OFFSET,
 					];
 				} else {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
-
-					pushOffsets = [100, 0];
 
 					const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
 						editableWorkflowObject.value,
@@ -1748,6 +1748,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 		requireNodeTypeDescription,
 		addNodes,
 		addNode,
+		resolveNodePosition,
 		revertAddNode,
 		updateNodesPosition,
 		updateNodePosition,

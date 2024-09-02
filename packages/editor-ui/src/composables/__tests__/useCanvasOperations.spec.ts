@@ -217,6 +217,89 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('resolveNodePosition', () => {
+		it('should return the node position if it is already set', () => {
+			const node = createTestNode({ position: [100, 100] });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+
+			expect(position).toEqual([100, 100]);
+		});
+
+		it('should place the node at the last cancelled connection position', () => {
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			vi.spyOn(uiStore, 'lastInteractedWithNode', 'get').mockReturnValue(node);
+
+			uiStore.lastInteractedWithNodeHandle = 'inputs/main/0';
+			uiStore.lastCancelledConnectionPosition = [200, 200];
+
+			const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+
+			expect(position).toEqual([200, 160]);
+			expect(uiStore.lastCancelledConnectionPosition).toBeNull();
+		});
+
+		// it('should place the node to the right of the last interacted with node', () => {
+		// 	const node: INodeUi = {} as INodeUi;
+		// 	const nodeTypeDescription: INodeTypeDescription = {} as INodeTypeDescription;
+		// 	const lastInteractedWithNode = {
+		// 		position: [100, 100],
+		// 		type: 'test',
+		// 		typeVersion: 1,
+		// 	} as INodeUi;
+		// 	uiStore.lastInteractedWithNode = lastInteractedWithNode;
+		// 	nodeTypesStore.getNodeType = vi.fn().mockReturnValue({} as INodeTypeDescription);
+		//
+		// 	const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+		//
+		// 	expect(position).toEqual([200, 100]);
+		// });
+		//
+		// it('should place the node below the last interacted with node if it has non-main outputs', () => {
+		// 	const node: INodeUi = {} as INodeUi;
+		// 	const nodeTypeDescription: INodeTypeDescription = {} as INodeTypeDescription;
+		// 	const lastInteractedWithNode = {
+		// 		position: [100, 100],
+		// 		type: 'test',
+		// 		typeVersion: 1,
+		// 	} as INodeUi;
+		// 	uiStore.lastInteractedWithNode = lastInteractedWithNode;
+		// 	nodeTypesStore.getNodeType = vi.fn().mockReturnValue({} as INodeTypeDescription);
+		// 	NodeHelpers.getNodeOutputs = vi.fn().mockReturnValue([{ type: 'non-main' }]);
+		// 	NodeHelpers.getConnectionTypes = vi.fn().mockReturnValue(['non-main']);
+		// 	editableWorkflowObject.value.getNode = vi.fn().mockReturnValue(lastInteractedWithNode);
+		//
+		// 	const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+		//
+		// 	expect(position).toEqual([100, 140]);
+		// });
+		//
+		// it('should place the node at the last clicked position if no other position is set', () => {
+		// 	const node: INodeUi = {} as INodeUi;
+		// 	const nodeTypeDescription: INodeTypeDescription = {} as INodeTypeDescription;
+		// 	uiStore.lastClickPosition = [300, 300];
+		//
+		// 	const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+		//
+		// 	expect(position).toEqual([300, 300]);
+		// });
+		//
+		// it('should place the trigger node at the root if it is the first trigger node', () => {
+		// 	const node: INodeUi = { type: 'trigger' } as INodeUi;
+		// 	const nodeTypeDescription: INodeTypeDescription = {} as INodeTypeDescription;
+		// 	nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+		// 	const triggerNodes = { value: [] };
+		// 	Object.defineProperty(triggerNodes, 'value', { value: [] });
+		//
+		// 	const position = canvasOperations.resolveNodePosition(node, nodeTypeDescription);
+		//
+		// 	expect(position).toEqual([0, 0]);
+		// });
+	});
+
 	describe('updateNodesPosition', () => {
 		it('records history for multiple node position updates when tracking is enabled', () => {
 			const events = [
