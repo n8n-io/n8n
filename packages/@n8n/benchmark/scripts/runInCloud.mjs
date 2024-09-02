@@ -9,7 +9,7 @@
  * NOTE: Must be run in the root of the package.
  */
 // @ts-check
-import { sleep, which } from 'zx';
+import { sleep, which, $, tmpdir } from 'zx';
 import path from 'path';
 import { SshClient } from './clients/sshClient.mjs';
 import { TerraformClient } from './clients/terraformClient.mjs';
@@ -17,9 +17,10 @@ import { TerraformClient } from './clients/terraformClient.mjs';
 /**
  * @typedef {Object} BenchmarkEnv
  * @property {string} vmName
+ * @property {string} ip
+ * @property {string} sshUsername
+ * @property {string} sshPrivateKeyPath
  */
-
-const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
 
 /**
  * @typedef {Object} Config
@@ -63,14 +64,15 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	console.log(`Setting up the environment...`);
 
 	const sshClient = new SshClient({
-		vmName: benchmarkEnv.vmName,
-		resourceGroupName: RESOURCE_GROUP_NAME,
+		ip: benchmarkEnv.ip,
+		username: benchmarkEnv.sshUsername,
+		privateKeyPath: benchmarkEnv.sshPrivateKeyPath,
 		verbose: config.isVerbose,
 	});
 
 	await ensureVmIsReachable(sshClient);
 
-	const scriptsDir = await transferScriptsToVm(sshClient);
+	const scriptsDir = await transferScriptsToVm(sshClient, config);
 
 	// Bootstrap the environment with dependencies
 	console.log('Running bootstrap script...');
@@ -121,8 +123,22 @@ async function ensureVmIsReachable(sshClient) {
 /**
  * @returns Path where the scripts are located on the VM
  */
-async function transferScriptsToVm(sshClient) {
-	await sshClient.ssh('rm -rf ~/n8n && git clone --depth=1 https://github.com/n8n-io/n8n.git');
+async function transferScriptsToVm(sshClient, config) {
+	const cwd = process.cwd();
+	const scriptsDir = path.resolve(cwd, './scripts');
+	const tarFilename = 'scripts.tar.gz';
+	const scriptsTarPath = path.join(tmpdir('n8n-benchmark'), tarFilename);
 
-	return '~/n8n/packages/@n8n/benchmark/scripts';
+	const $$ = $({ verbose: config.isVerbose });
+
+	// Compress the scripts folder
+	await $$`tar -czf ${scriptsTarPath} ${scriptsDir} -C ${cwd} ./scripts`;
+
+	// Transfer the scripts to the VM
+	await sshClient.scp(scriptsTarPath, `~/${tarFilename}`);
+
+	// Extract the scripts on the VM
+	await sshClient.ssh(`tar -xzf ~/${tarFilename}`);
+
+	return '~/scripts';
 }
