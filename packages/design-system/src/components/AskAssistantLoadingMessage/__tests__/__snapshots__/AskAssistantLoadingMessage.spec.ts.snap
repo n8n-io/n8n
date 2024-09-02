@@ -51,16 +51,21 @@ exports[`AssistantLoadingMessage > renders loading message correctly 1`] = `
         </svg>
       </div>
     </div>
-    <transition-stub
-      appear="false"
-      css="true"
+    <div
+      class="message-container"
       data-v-4e90e01e=""
-      mode="out-in"
-      name="slide-vertical"
-      persisted="false"
     >
-      <!--v-if-->
-    </transition-stub>
+      <transition-stub
+        appear="false"
+        css="true"
+        data-v-4e90e01e=""
+        mode="out-in"
+        name="slide-vertical"
+        persisted="false"
+      >
+        <!--v-if-->
+      </transition-stub>
+    </div>
   </div>
 </div>
 `;
