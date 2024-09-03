@@ -331,7 +331,7 @@ export default defineComponent({
 .add-tag {
 	font-size: var(--font-size-2xs);
 	color: $custom-font-very-light;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	&:hover {
 		color: $color-primary;
