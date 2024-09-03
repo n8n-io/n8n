@@ -11,6 +11,7 @@ import {
 	ref,
 	useCssModule,
 	watch,
+	h,
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -97,6 +98,7 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
 import { getResourcePermissions } from '@/permissions';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -1062,11 +1064,7 @@ function onExecutionOpenedWithWaitTill(data: IExecutionResponse) {
 	if ((data as ExecutionSummary).waitTill) {
 		toast.showMessage({
 			title: i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
-			message: `<a data-action="reload">${i18n.baseText('nodeView.refresh')}</a> ${i18n.baseText(
-				'nodeView.toSeeTheLatestStatus',
-			)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${i18n.baseText(
-				'nodeView.moreInfo',
-			)}</a>`,
+			message: h(NodeViewUnfinishedWorkflowMessage),
 			type: 'warning',
 			duration: 0,
 		});
