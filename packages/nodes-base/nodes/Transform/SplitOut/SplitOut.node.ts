@@ -276,7 +276,7 @@ export class SplitOut implements INodeType {
 			for (const [field, values] of Object.entries(notFoundedFields)) {
 				if (values.every((value) => !value)) {
 					hints.push({
-						message: `The field <strong>${field}</strong> wasn't found in any input item`,
+						message: `The field '${field}' wasn't found in any input item`,
 						location: 'outputPane',
 					});
 				}

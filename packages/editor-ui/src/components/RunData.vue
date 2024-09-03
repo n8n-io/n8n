@@ -661,7 +661,7 @@ export default defineComponent({
 							this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0];
 						if (nodeOutputData && nodeOutputData.length === workflowNode.parameters.limit) {
 							nodeHints.push({
-								message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned`,
+								message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
 								location: 'outputPane',
 								whenToDisplay: 'afterExecution',
 							});
@@ -682,7 +682,7 @@ export default defineComponent({
 						if (!executeOnce) {
 							nodeHints.push({
 								message:
-									"Operation would be performed for each input item, you may want to use the 'Execute Once' setting to only execute once for the first input item",
+									"The operation is performed for each input item. Use the 'Execute Once' setting to only execute it only once for the first input item.",
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
@@ -728,7 +728,7 @@ export default defineComponent({
 
 						if (!firstNodesInLoop.length) {
 							nodeHints.push({
-								message: 'No nodes connected to <strong>loop</strong> output of this node',
+								message: `No nodes connected to the 'loop' output of this node`,
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
@@ -737,7 +737,7 @@ export default defineComponent({
 								const nodeChilds = this.workflow.getChildNodes(node.node) || [];
 								if (!nodeChilds.includes(this.node.name)) {
 									nodeHints.push({
-										message: `The last node in the branch of the <strong>loop</strong> output (that starts with a <strong>${node.node}</strong> node) must be connected back to input of this node or looping will not work`,
+										message: `The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly`,
 										whenToDisplay: 'beforeExecution',
 										location: 'outputPane',
 									});
