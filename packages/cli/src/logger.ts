@@ -10,7 +10,6 @@ import config from '@/config';
 import debugModule from 'debug';
 import { GlobalConfig } from '@n8n/config';
 import { InvalidLogScopeError } from './errors/invalid-log-scope.error';
-import { MissingScopedLoggerError } from './errors/missing-scoped-logger.error';
 
 const noOp = () => {};
 
@@ -165,9 +164,12 @@ export class Logger {
 	scopedDebugLog(scope: LogScope, message: string, meta?: object) {
 		this.log('debug', message, meta);
 
-		const scopedLogger = this.scopedLoggers.get(scope);
+		let scopedLogger = this.scopedLoggers.get(scope);
 
-		if (!scopedLogger) throw new MissingScopedLoggerError(scope);
+		if (!scopedLogger) {
+			scopedLogger = debugModule(scope);
+			this.scopedLoggers.set(scope, scopedLogger);
+		}
 
 		if (meta) scopedLogger(message, meta);
 		else scopedLogger(message);
