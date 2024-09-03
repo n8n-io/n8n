@@ -10,11 +10,10 @@
 // PD denotes that the node has pinned data
 
 import { recreateNodeExecutionStack } from '@/PartialExecutionUtils/recreateNodeExecutionStack';
-import { NodeConnectionType, type IPinData, type IRunData } from 'n8n-workflow';
+import { type IPinData, type IRunData } from 'n8n-workflow';
 import { AssertionError } from 'assert';
 import { DirectedGraph } from '../DirectedGraph';
 import { findSubgraph } from '../findSubgraph';
-import type { StartNodeData } from '../findStartNodes';
 import { createNodeData, toITaskData } from './helpers';
 
 describe('recreateNodeExecutionStack', () => {
@@ -34,24 +33,7 @@ describe('recreateNodeExecutionStack', () => {
 			.addConnections({ from: trigger, to: node });
 
 		const workflow = findSubgraph(graph, node, trigger);
-		const startNodes: StartNodeData[] = [
-			{
-				node,
-				sourceData: {
-					connection: {
-						from: trigger,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: trigger,
-					//previousNodeOutput: 0,
-				},
-			},
-		];
+		const startNodes = [node];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
@@ -74,7 +56,7 @@ describe('recreateNodeExecutionStack', () => {
 				source: {
 					main: [
 						{
-							// TODO: not part of IScourceDate, but maybe it should be?
+							// TODO: not part of ISourceDate, but maybe it should be?
 							//currentNodeInput: 0,
 							previousNode: 'trigger',
 							previousNodeOutput: 0,
@@ -111,7 +93,7 @@ describe('recreateNodeExecutionStack', () => {
 		const workflow = new DirectedGraph()
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
-		const startNodes: StartNodeData[] = [{ node: trigger }];
+		const startNodes = [trigger];
 		const runData: IRunData = {};
 		const pinData: IPinData = {};
 
@@ -151,24 +133,7 @@ describe('recreateNodeExecutionStack', () => {
 		const workflow = new DirectedGraph()
 			.addNodes(trigger, node)
 			.addConnections({ from: trigger, to: node });
-		const startNodes: StartNodeData[] = [
-			{
-				node,
-				sourceData: {
-					connection: {
-						from: trigger,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: trigger,
-					//previousNodeOutput: 0,
-				},
-			},
-		];
+		const startNodes = [node];
 		const runData: IRunData = {};
 		const pinData: IPinData = {
 			[trigger.name]: [{ json: { value: 1 } }],
@@ -191,7 +156,7 @@ describe('recreateNodeExecutionStack', () => {
 				source: {
 					main: [
 						{
-							// TODO: not part of IScourceDate, but maybe it should be?
+							// TODO: not part of ISourceDate, but maybe it should be?
 							//currentNodeInput: 0,
 							previousNode: trigger.name,
 							previousNodeRun: 0,
@@ -222,24 +187,7 @@ describe('recreateNodeExecutionStack', () => {
 			.addNodes(trigger, node1, node2)
 			.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 });
 
-		const startNodes: StartNodeData[] = [
-			{
-				node: node2,
-				sourceData: {
-					connection: {
-						from: node1,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node2,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: node1,
-					//previousNodeOutput: 0,
-				},
-			},
-		];
+		const startNodes = [node2];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
@@ -278,40 +226,7 @@ describe('recreateNodeExecutionStack', () => {
 				{ from: node2, to: node3 },
 			);
 
-		const startNodes: StartNodeData[] = [
-			{
-				node: node3,
-				sourceData: {
-					connection: {
-						from: node1,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node3,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: node1,
-					//previousNodeOutput: 0,
-				},
-			},
-			//{
-			//	node: node3,
-			//	sourceData: {
-			//		connection: {
-			//			from: node2,
-			//			outputIndex: 0,
-			//			type: NodeConnectionType.Main,
-			//			inputIndex: 0,
-			//			to: node3,
-			//		},
-			//		previousNodeRun: 0,
-			//		//currentNodeInput: 0,
-			//		//previousNode: node2,
-			//		//previousNodeOutput: 0,
-			//	},
-			//},
-		];
+		const startNodes = [node3];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],
@@ -336,7 +251,7 @@ describe('recreateNodeExecutionStack', () => {
 				source: {
 					main: [
 						{
-							// TODO: not part of IScourceDate, but maybe it should be?
+							// TODO: not part of ISourceDate, but maybe it should be?
 							//currentNodeInput: 0,
 							previousNode: 'node1',
 							previousNodeOutput: 0,
@@ -351,7 +266,7 @@ describe('recreateNodeExecutionStack', () => {
 				source: {
 					main: [
 						{
-							// TODO: not part of IScourceDate, but maybe it should be?
+							// TODO: not part of ISourceDate, but maybe it should be?
 							//currentNodeInput: 0,
 							previousNode: 'node2',
 							previousNodeOutput: 0,
@@ -410,40 +325,7 @@ describe('recreateNodeExecutionStack', () => {
 				{ from: node1, to: node3, inputIndex: 0 },
 				{ from: node2, to: node3, inputIndex: 1 },
 			);
-		const startNodes: StartNodeData[] = [
-			{
-				node: node3,
-				sourceData: {
-					connection: {
-						from: node1,
-						outputIndex: 0,
-						type: NodeConnectionType.Main,
-						inputIndex: 0,
-						to: node3,
-					},
-					previousNodeRun: 0,
-					//currentNodeInput: 0,
-					//previousNode: node1,
-					//previousNodeOutput: 0,
-				},
-			},
-			//{
-			//	node: node3,
-			//	sourceData: {
-			//		connection: {
-			//			from: node2,
-			//			outputIndex: 0,
-			//			type: NodeConnectionType.Main,
-			//			inputIndex: 1,
-			//			to: node3,
-			//		},
-			//		previousNodeRun: 0,
-			//		//currentNodeInput: 0,
-			//		//previousNode: node1,
-			//		//previousNodeOutput: 0,
-			//	},
-			//},
-		];
+		const startNodes = [node3];
 		const runData: IRunData = {
 			[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
 			[node1.name]: [toITaskData([{ data: { value: 1 } }])],

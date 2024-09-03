@@ -13,7 +13,6 @@ import {
 
 import * as a from 'assert/strict';
 import type { Connection, DirectedGraph } from './DirectedGraph';
-import type { StartNodeData } from './findStartNodes';
 import { getIncomingData } from './getIncomingData';
 
 function sortByInputIndexThenByName(connection1: Connection, connection2: Connection): number {
@@ -90,37 +89,27 @@ export function getSourceDataGroups(
 	const connections = graph.getConnections({ to: node });
 
 	const sortedConnectionsWithData = [];
-	const sortedConnectionsWithoutData = [];
 
 	for (const connection of connections) {
 		const hasData = runData[connection.from.name] || pinnedData[connection.from.name];
 
 		if (hasData) {
 			sortedConnectionsWithData.push(connection);
-		} else {
-			sortedConnectionsWithoutData.push(connection);
 		}
 	}
 
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
-	sortedConnectionsWithoutData.sort(sortByInputIndexThenByName);
 
 	const groups: Connection[][] = [];
 	let currentGroup: Connection[] = [];
 	let currentInputIndex = -1;
 
-	while (sortedConnectionsWithData.length > 0 || sortedConnectionsWithoutData.length > 0) {
+	while (sortedConnectionsWithData.length > 0) {
 		const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			(c) => c.inputIndex > currentInputIndex,
 		);
-		const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			(c) => c.inputIndex > currentInputIndex,
-		);
-		const connection: Connection | undefined =
-			sortedConnectionsWithData[connectionWithDataIndex] ??
-			sortedConnectionsWithoutData[connectionWithoutDataIndex];
+		const connection: Connection | undefined = sortedConnectionsWithData[connectionWithDataIndex];
 
 		if (connection === undefined) {
 			groups.push(currentGroup);
@@ -134,8 +123,6 @@ export function getSourceDataGroups(
 
 		if (connectionWithDataIndex >= 0) {
 			sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
-		} else if (connectionWithoutDataIndex >= 0) {
-			sortedConnectionsWithoutData.splice(connectionWithoutDataIndex, 1);
 		}
 	}
 
@@ -146,7 +133,7 @@ export function getSourceDataGroups(
 
 export function recreateNodeExecutionStack(
 	graph: DirectedGraph,
-	startNodes: StartNodeData[],
+	startNodes: INode[],
 	destinationNode: INode,
 	runData: IRunData,
 	pinData: IPinData,
@@ -167,20 +154,6 @@ export function recreateNodeExecutionStack(
 		);
 	}
 
-	// The start nodes's sources need to have run data or pinned data. If they
-	// don't then they should not be the start nodes, but some node before them
-	// should be. Probably they are not coming from findStartNodes, make sure to
-	// use that function to get the start nodes.
-	//for (const startNode of startNodes) {
-	//	if (startNode.sourceData) {
-	//		a.ok(
-	//			runData[startNode.sourceData.connection.from.name] ||
-	//				pinData[startNode.sourceData.connection.from.name],
-	//			`Start nodes have sources that don't have run data. That is not supported. Make sure to get the start nodes by calling "findStartNodes". The node in question is "${startNode.node.name}" and their source is "${startNode.sourceData.connection.from.name}".`,
-	//		);
-	//	}
-	//}
-
 	// Initialize the nodeExecutionStack and waitingExecution with
 	// the data from runData
 	const nodeExecutionStack: IExecuteData[] = [];
@@ -192,7 +165,7 @@ export function recreateNodeExecutionStack(
 
 	for (const startNode of startNodes) {
 		const incomingStartNodeConnections = graph
-			.getDirectParents(startNode.node)
+			.getDirectParents(startNode)
 			.filter((c) => c.type === NodeConnectionType.Main);
 
 		let incomingData: INodeExecutionData[][] = [];
@@ -202,14 +175,14 @@ export function recreateNodeExecutionStack(
 			incomingData.push([{ json: {} }]);
 
 			const executeData: IExecuteData = {
-				node: startNode.node,
+				node: startNode,
 				data: { main: incomingData },
 				source: incomingSourceData,
 			};
 
 			nodeExecutionStack.push(executeData);
 		} else {
-			const sourceDataSets = getSourceDataGroups(graph, startNode.node, runData, pinData);
+			const sourceDataSets = getSourceDataGroups(graph, startNode, runData, pinData);
 
 			for (const sourceData of sourceDataSets) {
 				incomingData = [];
@@ -224,7 +197,7 @@ export function recreateNodeExecutionStack(
 					} else {
 						a.ok(
 							runData[node.name],
-							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${node.name}->${startNode.node.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${node.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
 						);
 
 						const nodeIncomingData = getIncomingData(
@@ -248,7 +221,7 @@ export function recreateNodeExecutionStack(
 				}
 
 				const executeData: IExecuteData = {
-					node: startNode.node,
+					node: startNode,
 					data: { main: incomingData },
 					source: incomingSourceData,
 				};
@@ -257,7 +230,7 @@ export function recreateNodeExecutionStack(
 			}
 		}
 
-		// NOTE: Do we need this?
+		// TODO: Do we need this?
 		if (destinationNode) {
 			const destinationNodeName = destinationNode.name;
 			// Check if the destinationNode has to be added as waiting

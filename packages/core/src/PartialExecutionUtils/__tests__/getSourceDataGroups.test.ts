@@ -7,6 +7,7 @@
 // 1  means the output has run data
 // PD denotes that the node has pinned data
 
+import type { IPinData } from 'n8n-workflow';
 import { NodeConnectionType, type IRunData } from 'n8n-workflow';
 import { DirectedGraph } from '../DirectedGraph';
 import { createNodeData, toITaskData } from './helpers';
@@ -23,6 +24,7 @@ describe('getSourceDataGroups', () => {
 	//│source3├────┘
 	//└───────┘
 	it('groups sources into possibly complete sets if all of them have data', () => {
+		// ARRANGE
 		const source1 = createNodeData({ name: 'source1' });
 		const source2 = createNodeData({ name: 'source2' });
 		const source3 = createNodeData({ name: 'source3' });
@@ -40,10 +42,12 @@ describe('getSourceDataGroups', () => {
 			[source2.name]: [toITaskData([{ data: { value: 1 } }])],
 			[source3.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
-		const pinnedData: IRunData = {};
+		const pinnedData: IPinData = {};
 
+		// ACT
 		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
 
+		// ASSERT
 		expect(groups).toHaveLength(2);
 
 		const group1 = groups[0];
@@ -84,6 +88,7 @@ describe('getSourceDataGroups', () => {
 	//│source3├────┘
 	//└───────┘
 	it('groups sources into possibly complete sets if all of them have data', () => {
+		// ARRANGE
 		const source1 = createNodeData({ name: 'source1' });
 		const source2 = createNodeData({ name: 'source2' });
 		const source3 = createNodeData({ name: 'source3' });
@@ -97,14 +102,16 @@ describe('getSourceDataGroups', () => {
 				{ from: source3, to: node, inputIndex: 1 },
 			);
 		const runData: IRunData = {};
-		const pinnedData: IRunData = {
-			[source1.name]: [toITaskData([{ data: { value: 1 } }])],
-			[source2.name]: [toITaskData([{ data: { value: 1 } }])],
-			[source3.name]: [toITaskData([{ data: { value: 1 } }])],
+		const pinnedData: IPinData = {
+			[source1.name]: [{ json: { value: 1 } }],
+			[source2.name]: [{ json: { value: 2 } }],
+			[source3.name]: [{ json: { value: 3 } }],
 		};
 
+		// ACT
 		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
 
+		// ASSERT
 		expect(groups).toHaveLength(2);
 
 		const group1 = groups[0];
@@ -145,6 +152,7 @@ describe('getSourceDataGroups', () => {
 	//│source3├────┘
 	//└───────┘
 	it('groups sources into possibly complete sets if all of them have data', () => {
+		// ARRANGE
 		const source1 = createNodeData({ name: 'source1' });
 		const source2 = createNodeData({ name: 'source2' });
 		const source3 = createNodeData({ name: 'source3' });
@@ -161,11 +169,13 @@ describe('getSourceDataGroups', () => {
 			[source2.name]: [toITaskData([{ data: { value: 1 } }])],
 			[source3.name]: [toITaskData([{ data: { value: 1 } }])],
 		};
-		const pinnedData: IRunData = {};
+		const pinnedData: IPinData = {};
 
+		// ACT
 		const groups = getSourceDataGroups(graph, node, runData, pinnedData);
 
-		expect(groups).toHaveLength(2);
+		// ASSERT
+		expect(groups).toHaveLength(1);
 
 		const group1 = groups[0];
 		expect(group1).toHaveLength(2);
@@ -181,16 +191,6 @@ describe('getSourceDataGroups', () => {
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
 			inputIndex: 1,
-			to: node,
-		});
-
-		const group2 = groups[1];
-		expect(group2).toHaveLength(1);
-		expect(group2[0]).toEqual({
-			from: source1,
-			outputIndex: 0,
-			type: NodeConnectionType.Main,
-			inputIndex: 0,
 			to: node,
 		});
 	});
