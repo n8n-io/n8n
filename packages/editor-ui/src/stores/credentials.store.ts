@@ -428,6 +428,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	// #endregion
 
 	return {
+		state,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,
