@@ -128,7 +128,7 @@ async function fetchWorkflow() {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}
 	}
-	workflow.value = workflowsStore.getWorkflowById(workflowId.value) ?? workflowsStore.workflow
+	workflow.value = workflowsStore.getWorkflowById(workflowId.value) ?? workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {
