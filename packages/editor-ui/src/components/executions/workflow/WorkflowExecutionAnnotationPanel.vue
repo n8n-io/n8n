@@ -208,7 +208,7 @@ export default defineComponent({
 					</n8n-text>
 				</div>
 			</div>
-			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
+			<div v-else :class="$style.noResultsContainer" data-test-id="execution-annotation-data-empty">
 				<n8n-text color="text-base" size="small" align="center">
 					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
 				</n8n-text>
@@ -302,45 +302,9 @@ export default defineComponent({
 	}
 }
 
-.executionList {
-	flex: 1;
-	overflow: auto;
-	margin-bottom: var(--spacing-m);
-	background-color: var(--color-background-xlight) !important;
-
-	// Scrolling fader
-	&::before {
-		position: absolute;
-		display: block;
-		width: 270px;
-		height: 6px;
-		background: linear-gradient(to bottom, rgba(251, 251, 251, 1) 0%, rgba(251, 251, 251, 0) 100%);
-		z-index: 999;
-	}
-
-	// Lower first execution card so fader is not visible when not scrolled
-	& > div:first-child {
-		margin-top: 3px;
-	}
-}
-
-.infoAccordion {
-	position: absolute;
-	bottom: 0;
-	margin-left: calc(-1 * var(--spacing-l));
-	border-top: var(--border-base);
-
-	& > div {
-		width: 309px;
-		background-color: var(--color-background-light);
-		margin-top: 0 !important;
-	}
-}
-
 .noResultsContainer {
 	width: 100%;
 	margin-top: var(--spacing-s);
-	//text-align: center;
 }
 </style>
 
