@@ -137,7 +137,7 @@ export default defineComponent({
 				<div>{{ $locale.baseText('generic.rating') }}</div>
 				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
 			</div>
-			<span class="tags" data-test-id="annotation-tags-container">
+			<span :class="$style.tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
 					v-if="isTagsEditEnabled"
 					v-model="appliedTagIds"
@@ -152,7 +152,7 @@ export default defineComponent({
 				/>
 				<div v-else-if="tagIds.length === 0">
 					<span
-						class="add-tag add-tag-standalone clickable"
+						:class="[$style.addTag, $style.addTagStandalone, 'clickable']"
 						data-test-id="new-tag-link"
 						@click="onTagsEditEnable"
 					>
@@ -162,7 +162,10 @@ export default defineComponent({
 
 				<span
 					v-else
-					class="tags-container"
+					:class="[
+						'tags-container', // FIXME: There are some global styles for tags relying on this classname
+						$style.tagsContainer,
+					]"
 					data-test-id="execution-annotation-tags"
 					@click="onTagsEditEnable"
 				>
@@ -171,9 +174,9 @@ export default defineComponent({
 							{{ tag.name }}
 						</el-tag>
 					</span>
-					<span class="add-tag-wrapper">
+					<span :class="$style.addTagWrapper">
 						<n8n-button
-							class="add-tag"
+							:class="$style.addTag"
 							:label="`+ ` + $locale.baseText('executionAnnotationView.addTag')"
 							type="secondary"
 							size="mini"
@@ -306,9 +309,7 @@ export default defineComponent({
 	width: 100%;
 	margin-top: var(--spacing-s);
 }
-</style>
 
-<style lang="scss" scoped>
 .execution-annotation-panel {
 	:deep(.el-skeleton__item) {
 		height: 60px;
@@ -316,7 +317,7 @@ export default defineComponent({
 	}
 }
 
-.tags-container {
+.tagsContainer {
 	display: inline-flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -328,7 +329,7 @@ export default defineComponent({
 	}
 }
 
-.add-tag {
+.addTag {
 	font-size: var(--font-size-2xs);
 	color: $custom-font-very-light;
 	font-weight: var(--font-weight-bold);
@@ -339,11 +340,11 @@ export default defineComponent({
 	}
 }
 
-.add-tag-standalone {
+.addTagStandalone {
 	padding: var(--spacing-m) 0; // to be more clickable
 }
 
-.add-tag-wrapper {
+.addTagWrapper {
 	margin-left: calc(var(--spacing-2xs) * -1); // Cancel out right margin of last tag
 }
 </style>
