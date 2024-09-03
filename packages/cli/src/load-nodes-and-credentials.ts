@@ -280,7 +280,7 @@ export class LoadNodesAndCredentials {
 			const wrapped = NodeHelpers.convertNodeToAiTool({ description }).description;
 
 			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = this.known.nodes[usableNode.name];
+			this.known.nodes[wrapped.name] = structuredClone(this.known.nodes[usableNode.name]);
 
 			const credentialNames = Object.entries(this.known.credentials)
 				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))

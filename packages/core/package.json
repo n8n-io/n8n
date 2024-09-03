@@ -56,6 +56,6 @@
     "typedi": "catalog:",
     "uuid": "catalog:",
     "xml2js": "catalog:",
-    "zod": "3.23.8"
+    "zod": "catalog:"
   }
 }

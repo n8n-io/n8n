@@ -1,8 +1,42 @@
 /**
  * @module NodeAsTool
- * @description This module provides functionality to convert n8n nodes into LangChain tools.
- * It includes utility functions for traversing complex objects, encoding/decoding dot notation,
- * and creating dynamic structured tools from n8n nodes.
+ * @description This module converts n8n nodes into LangChain tools by analyzing node parameters,
+ * identifying placeholders, and generating a Zod schema. It then creates a DynamicStructuredTool
+ * that can be used in LangChain workflows.
+ *
+ * General approach:
+ * 1. Recursively traverse node parameters to find placeholders, including in nested structures
+ * 2. Generate a Zod schema based on these placeholders, preserving the nested structure
+ * 3. Create a DynamicStructuredTool with the schema and a function that executes the n8n node
+ *
+ * Example:
+ * - Node parameters:
+ *   {
+ *     "inputText": "{{ '__PLACEHOLDER: Enter main text to process' }}",
+ *     "options": {
+ *       "language": "{{ '__PLACEHOLDER: Specify language' }}",
+ *       "advanced": {
+ *         "maxLength": "{{ '__PLACEHOLDER: Enter maximum length' }}"
+ *       }
+ *     }
+ *   }
+ *
+ * - Generated Zod schema:
+ *   z.object({
+ *     "inputText": z.string().describe("Enter main text to process"),
+ *     "options__language": z.string().describe("Specify language"),
+ *     "options__advanced__maxLength": z.string().describe("Enter maximum length")
+ *   }).required()
+ *
+ * - Resulting tool can be called with:
+ *   {
+ *     "inputText": "Hello, world!",
+ *     "options__language": "en",
+ *     "options__advanced__maxLength": "100"
+ *   }
+ *
+ * Note: Nested properties are flattened with double underscores in the schema,
+ * but the tool reconstructs the original nested structure when executing the node.
  */
 
 import { DynamicStructuredTool } from '@langchain/core/tools';
@@ -166,7 +200,7 @@ export function createNodeAsTool(
 		const description = extractPlaceholderDescription(value);
 		schemaObj[key] = z.string().describe(description);
 	}
-	const schema = z.object(schemaObj);
+	const schema = z.object(schemaObj).required();
 
 	// Get the tool description from node parameters or use the default
 	const toolDescription = ctx.getNodeParameter(

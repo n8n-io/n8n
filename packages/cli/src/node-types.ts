@@ -43,7 +43,15 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
+		const versionedNodeType = NodeHelpers.getVersionedNodeType(
+			this.getNode(nodeType).type,
+			version,
+		);
+		if (versionedNodeType.description.usableAsTool) {
+			return NodeHelpers.convertNodeToAiTool(versionedNodeType);
+		}
+
+		return versionedNodeType;
 	}
 
 	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
@@ -70,18 +78,6 @@ export class NodeTypes implements INodeTypes {
 			if (NodeHelpers.isINodeType(loaded)) NodeHelpers.applySpecialNodeParameters(loaded);
 
 			loadedNodes[type] = { sourcePath, type: loaded };
-
-			if (loaded.description.usableAsTool) {
-				const wrappedNode = NodeHelpers.convertNodeToAiTool(loaded);
-				if (!NodeHelpers.isINodeType(loaded) && !NodeHelpers.isINodeType(wrappedNode)) {
-					Object.entries(loaded.nodeVersions).forEach(([key, node]) => {
-						wrappedNode.nodeVersions[key as unknown as number] =
-							NodeHelpers.convertNodeToAiTool(node);
-					});
-				}
-				loadedNodes[type + 'Tool'] = { sourcePath, type: wrappedNode };
-			}
-
 			return loadedNodes[type];
 		}
 

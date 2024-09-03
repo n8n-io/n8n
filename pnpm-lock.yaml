@@ -1078,7 +1078,7 @@ importers:
         specifier: 'catalog:'
         version: 0.6.2
       zod:
-        specifier: 3.23.8
+        specifier: 'catalog:'
         version: 3.23.8
     devDependencies:
       '@types/aws4':
