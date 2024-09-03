@@ -83,7 +83,7 @@ export function handleSummary(data) {
 
 		const augmentedTestScript = `${testScript}\n\n${summaryScript}`;
 
-		const tempFilePath = tmpfile(`${scenarioRunName}.ts`, augmentedTestScript);
+		const tempFilePath = tmpfile(`${scenarioRunName}.js`, augmentedTestScript);
 
 		return tempFilePath;
 	}
