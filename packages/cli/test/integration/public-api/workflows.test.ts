@@ -1534,7 +1534,9 @@ describe('PUT /workflows/:id/transfer', () => {
 		 */
 		expect(response.statusCode).toBe(204);
 
-		const workflowsInProjectResponse = await authMemberAgent.get(`/workflows?projectId=${secondProject.id}`).send();
+		const workflowsInProjectResponse = await authMemberAgent.get(`/workflows?projectId=${secondProject.id}`)
+			.send();
+
 		expect(workflowsInProjectResponse.statusCode).toBe(200);
 		expect(workflowsInProjectResponse.body.data[0].id).toBe(workflow.id);
 	});
