@@ -179,12 +179,12 @@ describe('WebhookService', () => {
 	});
 
 	describe('createWebhook()', () => {
-		test('should create the webhook', async () => {
+		test('should store webhook in DB', async () => {
 			const mockWebhook = createWebhook('GET', 'user/:id');
 
 			await webhookService.storeWebhook(mockWebhook);
 
-			expect(webhookRepository.insert).toHaveBeenCalledWith(mockWebhook);
+			expect(webhookRepository.upsert).toHaveBeenCalledWith(mockWebhook, ['method', 'webhookPath']);
 		});
 	});
 });
