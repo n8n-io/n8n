@@ -145,8 +145,8 @@ function openContextMenu(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		--canvas-node--width: 76px;
-		--canvas-node--height: 76px;
+		--canvas-node--width: 80px;
+		--canvas-node--height: 80px;
 
 		background: var(--canvas-node--background, var(--node-type-supplemental-background));
 		border: var(--canvas-node-border-width) solid
