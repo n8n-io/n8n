@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import { type IDataObject, type Workflow, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { Logger } from '@/logger';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { isWorkflowIdValid } from '@/utils';
 
 @Service()

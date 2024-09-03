@@ -6,7 +6,7 @@ import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error
 import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
-import type { IExecutingWorkflowData } from '@/Interfaces';
+import type { IExecutingWorkflowData } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 import { EventService } from '@/events/event.service';
 

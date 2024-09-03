@@ -16,6 +16,8 @@ const user = computed(() => ({
 	lastName: usersStore.currentUser?.lastName ?? '',
 }));
 
+const loadingMessage = computed(() => assistantStore.assistantThinkingMessage);
+
 function onResize(data: { direction: string; x: number; width: number }) {
 	assistantStore.updateWindowWidth(data.width);
 }
@@ -24,7 +26,7 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 	void useDebounce().callDebounced(onResize, { debounceTime: 10, trailing: true }, data);
 }
 
-async function onUserMessage(content: string, quickReplyType?: string) {
+async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
 	await assistantStore.sendMessage({ text: content, quickReplyType });
 	const task = 'error';
 	const solutionCount =
@@ -33,9 +35,10 @@ async function onUserMessage(content: string, quickReplyType?: string) {
 					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 				).length
 			: null;
-	if (quickReplyType === 'all-good' || quickReplyType === 'still-stuck') {
+	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			task,
+			chat_session_id: assistantStore.currentSessionId,
 			is_quick_reply: !!quickReplyType,
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
@@ -67,7 +70,7 @@ function onClose() {
 <template>
 	<SlideTransition>
 		<n8n-resize-wrapper
-			v-if="assistantStore.isAssistantOpen"
+			v-show="assistantStore.isAssistantOpen"
 			:supported-directions="['left']"
 			:width="assistantStore.chatWidth"
 			:class="$style.container"
@@ -83,6 +86,8 @@ function onClose() {
 					:user="user"
 					:messages="assistantStore.chatMessages"
 					:streaming="assistantStore.streaming"
+					:loading-message="loadingMessage"
+					:session-id="assistantStore.currentSessionId"
 					@close="onClose"
 					@message="onUserMessage"
 					@code-replace="onCodeReplace"
@@ -95,9 +100,9 @@ function onClose() {
 
 <style module>
 .container {
-	grid-area: rightsidebar;
 	height: 100%;
-	z-index: 99999; /* Needs to be high enough so it doesn't get covered by element-ui dialogs */
+	flex-basis: content;
+	z-index: 300;
 }
 
 .wrapper {

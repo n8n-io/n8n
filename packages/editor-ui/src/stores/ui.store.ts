@@ -19,6 +19,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
@@ -108,6 +109,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PERSONALIZATION_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
+				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 				NPS_SURVEY_MODAL_KEY,
 				VERSIONS_MODAL_KEY,
 				WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -191,6 +193,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const bannerStack = ref<BannerName[]>([]);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const isCreateNodeActive = ref<boolean>(false);
+
+	const appGridWidth = ref<number>(0);
 
 	// Last interacted with - Canvas v2 specific
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
@@ -623,6 +627,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	}
 
 	return {
+		appGridWidth,
 		appliedTheme,
 		logo,
 		contextBasedTranslationKeys,

@@ -1,4 +1,4 @@
-import type { Migration } from '@db/types';
+import type { Migration } from '@/databases/types';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -61,6 +61,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
+import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -125,4 +126,5 @@ export const mysqlMigrations: Migration[] = [
 	AddConstraintToExecutionMetadata1720101653148,
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
+	CreateAnnotationTables1724753530828,
 ];

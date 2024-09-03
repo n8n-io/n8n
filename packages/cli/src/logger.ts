@@ -48,7 +48,7 @@ export class Logger {
 
 		if (output.includes('console')) {
 			let format: winston.Logform.Format;
-			if (['debug', 'verbose'].includes(level)) {
+			if (level === 'debug') {
 				format = winston.format.combine(
 					winston.format.metadata(),
 					winston.format.timestamp(),
@@ -160,10 +160,6 @@ export class Logger {
 
 	debug(message: string, meta: object = {}): void {
 		this.log('debug', message, meta);
-	}
-
-	verbose(message: string, meta: object = {}): void {
-		this.log('verbose', message, meta);
 	}
 
 	scopedDebugLog(scope: LogScope, message: string, meta?: object) {

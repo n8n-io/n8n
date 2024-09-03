@@ -1,8 +1,38 @@
 # n8n benchmarking tool
 
-Tool for executing benchmarks against an n8n instance.
+Tool for executing benchmarks against an n8n instance. The tool consists of these components:
 
-## Running locally with Docker
+## Directory structure
+
+```text
+packages/@n8n/benchmark
+├── scenarios        Benchmark scenarios
+├── src              Source code for the n8n-benchmark cli
+├── Dockerfile       Dockerfile for the n8n-benchmark cli
+├── scripts          Orchestration scripts
+```
+
+## Running the entire benchmark suite
+
+The benchmark suite consists of [benchmark scenarios](#benchmark-scenarios) and different [n8n setups](#n8n-setups).
+
+### locally
+
+```sh
+pnpm benchmark-locally
+```
+
+### In the cloud
+
+```sh
+pnpm benchmark-in-cloud
+```
+
+## Running the `n8n-benchmark` cli
+
+The `n8n-benchmark` cli is a node.js program that runs one or more scenarios against a single n8n instance.
+
+### Locally with Docker
 
 Build the Docker image:
 
@@ -23,7 +53,7 @@ docker run \
   n8n-benchmark
 ```
 
-## Running locally without Docker
+### Locally without Docker
 
 Requirements:
 
@@ -35,22 +65,7 @@ pnpm build
 
 # Run tests against http://localhost:5678 with specified email and password
 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=password ./bin/n8n-benchmark run
-
-# If you installed k6 using brew, you might have to specify it explicitly
-K6_PATH=/opt/homebrew/bin/k6 N8N_USER_EMAIL=user@n8n.io N8N_USER_PASSWORD=password ./bin/n8n-benchmark run
 ```
-
-## Running in the cloud
-
-There's a script to run the performance tests in a cloud environment. The script provisions a cloud environment, sets up n8n in the environment, runs the tests and destroys the environment.
-
-```sh
-pnpm run-in-cloud
-```
-
-## Configuration
-
-The configuration options the cli accepts can be seen from [config.ts](./src/config/config.ts)
 
 ## Benchmark scenarios
 
@@ -61,3 +76,7 @@ A benchmark scenario defines one or multiple steps to execute and measure. It co
 - A [`k6`](https://grafana.com/docs/k6/latest/using-k6/http-requests/) script which executes the steps and receives `API_BASE_URL` environment variable in runtime.
 
 Available scenarios are located in [`./scenarios`](./scenarios/).
+
+## n8n setups
+
+A n8n setup defines a single n8n runtime configuration using Docker compose. Different n8n setups are located in [`./scripts/n8nSetups`](./scripts/n8nSetups).

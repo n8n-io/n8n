@@ -100,6 +100,7 @@ defineExpose({
 	focus,
 	blur,
 	focusOnInput,
+	innerSelect,
 });
 </script>
 

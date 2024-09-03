@@ -3,8 +3,8 @@ import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
 
-import type { PublicUser } from '@/Interfaces';
-import type { User } from '@db/entities/User';
+import type { PublicUser } from '@/interfaces';
+import type { User } from '@/databases/entities/user';
 import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
@@ -13,11 +13,11 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
-import { badPasswords } from '@test/testData';
+import { badPasswords } from '@test/test-data';
 import { mockInstance } from '@test/mocking';
-import { AuthUserRepository } from '@/databases/repositories/authUser.repository';
-import { InvalidAuthTokenRepository } from '@db/repositories/invalidAuthToken.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
+import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 
@@ -350,6 +350,26 @@ describe('MeController', () => {
 			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(
 				new BadRequestError('Personalization answers are mandatory'),
 			);
+		});
+
+		it('should not flag XSS attempt for `<` sign in company size', async () => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_submitted_at: '2024-08-06T12:19:51.268Z',
+				personalization_survey_n8n_version: '1.0.0',
+				companySize: '<20',
+				otherCompanyIndustryExtended: ['test'],
+				automationGoalSm: ['test'],
+				usageModes: ['test'],
+				email: 'test@email.com',
+				role: 'test',
+				roleOther: 'test',
+				reportedSource: 'test',
+				reportedSourceOther: 'test',
+			};
+
+			await expect(controller.storeSurveyAnswers(req)).resolves.toEqual({ success: true });
 		});
 
 		test.each([

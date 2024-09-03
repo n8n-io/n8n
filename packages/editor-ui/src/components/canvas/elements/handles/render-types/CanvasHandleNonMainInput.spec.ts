@@ -15,7 +15,7 @@ describe('CanvasHandleNonMainInput', () => {
 			},
 		});
 
-		expect(container.querySelector('.canvas-node-handle-non-main')).toBeInTheDocument();
+		expect(container.querySelector('.canvas-node-handle-non-main-input')).toBeInTheDocument();
 		expect(getByText(label)).toBeInTheDocument();
 	});
 });

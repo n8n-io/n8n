@@ -5,6 +5,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';
@@ -54,8 +55,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'HighLevel',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'highLevelOAuth2Api',

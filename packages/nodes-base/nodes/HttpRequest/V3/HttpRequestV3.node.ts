@@ -18,6 +18,7 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
+	NodeConnectionType,
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
@@ -36,8 +37,8 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import type { HttpSslAuthCredentials } from '../interfaces';
 import { keysToLowercase } from '@utils/utilities';
+import { type HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -57,8 +58,8 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'httpSslAuth',

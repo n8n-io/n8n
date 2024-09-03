@@ -1,4 +1,4 @@
-import { sleep, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { sleep, jsonParse, NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -29,8 +29,8 @@ export class Simulate implements INodeType {
 			name: 'Simulate',
 			color: '#b0b0b0',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			iconSelector,
 			subtitleProperty,

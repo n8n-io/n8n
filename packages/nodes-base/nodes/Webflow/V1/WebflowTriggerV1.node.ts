@@ -1,12 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IHookFunctions,
-	IWebhookFunctions,
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	INodeTypeBaseDescription,
+import {
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	type INodeTypeBaseDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { getSites, webflowApiRequest } from '../GenericFunctions';
@@ -28,7 +29,7 @@ export class WebflowTriggerV1 implements INodeType {
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'webflowApi',

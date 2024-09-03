@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
-import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/RedisConstants';
-import { handleWorkerResponseMessageMain } from './handleWorkerResponseMessageMain';
-import { handleCommandMessageMain } from './handleCommandMessageMain';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/redis-constants';
+import { handleWorkerResponseMessageMain } from './handle-worker-response-message-main';
+import { handleCommandMessageMain } from './handle-command-message-main';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
 import type { MainResponseReceivedHandlerOptions } from './types';
 

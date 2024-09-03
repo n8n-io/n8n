@@ -4,7 +4,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
@@ -71,8 +71,12 @@ const connectedNodes = computed<
 		[FloatingNodePosition.top]: getINodesFromNames(
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
-		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
+		[FloatingNodePosition.right]: getINodesFromNames(
+			workflow.getChildNodes(rootName, NodeConnectionType.Main, 1),
+		),
+		[FloatingNodePosition.left]: getINodesFromNames(
+			workflow.getParentNodes(rootName, NodeConnectionType.Main, 1),
+		),
 	};
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.56.0",
+  "version": "1.57.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -108,6 +108,7 @@
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",
+      "dist/nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.js",
       "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js",
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",

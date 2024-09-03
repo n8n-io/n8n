@@ -11,9 +11,9 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
-import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
+import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OnShutdown } from '@/decorators/on-shutdown';
@@ -133,6 +133,8 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		this.debug('License feature change detected', _features);
+
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
 				| boolean
@@ -199,14 +201,15 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
+		this.debug('License activated');
 	}
 
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		this.debug('Reloading license');
 		await this.manager.reload();
+		this.debug('License reloaded');
 	}
 
 	async renew() {
@@ -215,6 +218,7 @@ export class License {
 		}
 
 		await this.manager.renew();
+		this.debug('License renewed');
 	}
 
 	@OnShutdown()
@@ -228,6 +232,7 @@ export class License {
 		}
 
 		await this.manager.shutdown();
+		this.debug('License shut down');
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
@@ -393,6 +398,7 @@ export class License {
 	async reinit() {
 		this.manager?.reset();
 		await this.init('main', true);
+		this.logger.debug('License reinitialized');
 	}
 
 	private debug(message: string, meta?: object) {

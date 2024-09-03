@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { clientFields, clientOperations } from './ClientDescription';
 
@@ -45,8 +45,8 @@ export class Harvest implements INodeType {
 		defaults: {
 			name: 'Harvest',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'harvestApi',
@@ -1333,7 +1333,7 @@ export class Harvest implements INodeType {
 					});
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },

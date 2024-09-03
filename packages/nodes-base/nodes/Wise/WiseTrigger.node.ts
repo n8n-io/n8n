@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import type { Profile } from './GenericFunctions';
 import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';
@@ -25,7 +26,7 @@ export class WiseTrigger implements INodeType {
 			name: 'Wise Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wiseApi',

@@ -1,14 +1,15 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodeListSearchResult,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodeListSearchResult,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeBaseDescription,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { todoistApiRequest } from '../GenericFunctions';
@@ -42,8 +43,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Todoist',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'todoistApi',
@@ -731,7 +732,7 @@ export class TodoistV2 implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
