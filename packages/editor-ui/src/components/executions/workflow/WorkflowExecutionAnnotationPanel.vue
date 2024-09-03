@@ -329,7 +329,7 @@ export default defineComponent({
 }
 
 .add-tag {
-	font-size: 12px;
+	font-size: var(--font-size-2xs);
 	color: $custom-font-very-light;
 	font-weight: 600;
 	white-space: nowrap;
