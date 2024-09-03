@@ -256,7 +256,6 @@ function growInput() {
 			</div>
 		</div>
 		<div
-			v-if="messages?.length"
 			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
 			data-test-id="chat-input-wrapper"
 		>

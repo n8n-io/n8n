@@ -32,6 +32,15 @@ export namespace ChatRequest {
 		authType?: { name: string; value: string };
 	}
 
+	export interface InitSupportChat {
+		role: 'user';
+		type: 'init-support-chat';
+		user: {
+			firstName: string;
+		};
+		question: string;
+	}
+
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
 
 	interface EventRequestPayload {
@@ -50,7 +59,7 @@ export namespace ChatRequest {
 
 	export type RequestPayload =
 		| {
-				payload: InitErrorHelper;
+				payload: InitErrorHelper | InitSupportChat;
 		  }
 		| {
 				payload: EventRequestPayload | UserChatMessage;

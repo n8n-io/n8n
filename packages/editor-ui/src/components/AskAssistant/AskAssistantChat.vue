@@ -27,8 +27,14 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 }
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
-	await assistantStore.sendMessage({ text: content, quickReplyType });
-	const task = 'error';
+	// If there is no current session running, initialize the support chat session
+	if (!assistantStore.currentSessionId) {
+		await assistantStore.initSupportChat(content);
+	} else {
+		await assistantStore.sendMessage({ text: content, quickReplyType });
+	}
+	// TODO: Check what would be the correct value for 'support' task
+	const task = assistantStore.chatSessionError ? 'error' : 'support';
 	const solutionCount =
 		task === 'error'
 			? assistantStore.chatMessages.filter(
@@ -43,6 +49,12 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
 			response: content,
+		});
+	} else if (task === 'support') {
+		telemetry.track('User sent message in Assistant', {
+			message: content,
+			is_quick_reply: false,
+			message_number: 1,
 		});
 	}
 }

@@ -289,6 +289,32 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
+	async function initSupportChat(userMessage: string) {
+		const id = getRandomId();
+		resetAssistantChat();
+		chatSessionError.value = undefined;
+		currentSessionActiveExecutionId.value = undefined;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		streaming.value = true;
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				payload: {
+					role: 'user',
+					type: 'init-support-chat',
+					user: {
+						firstName: usersStore.currentUser?.firstName ?? '',
+					},
+					question: userMessage,
+				},
+			},
+			(msg) => onEachStreamingMessage(msg, id),
+			() => onDoneStreaming(id),
+			(e) => handleServiceError(e, id),
+		);
+	}
+
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
 		const id = getRandomId();
 		if (chatSessionError.value) {
@@ -584,6 +610,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,
+		initSupportChat,
 		sendMessage,
 		applyCodeDiff,
 		undoCodeDiff,
@@ -591,5 +618,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen,
 		addAssistantMessages,
 		assistantThinkingMessage,
+		chatSessionError,
 	};
 });
