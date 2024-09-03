@@ -22,6 +22,7 @@ import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -675,6 +676,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
+					<CollaborationPane />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"
