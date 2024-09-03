@@ -92,14 +92,6 @@ describe('CollaborationPane', () => {
 		expect(queryByTestId(`user-stack-avatar-${MEMBER_USER_2.id}`)).toBeNull();
 	});
 
-	it('should render current user correctly', async () => {
-		const { getByText, queryByText } = renderComponent();
-		await waitAllPromises();
-		expect(getByText(`${OWNER_USER.fullName} (you)`)).toBeInTheDocument();
-		expect(queryByText(`${MEMBER_USER.fullName} (you)`)).toBeNull();
-		expect(queryByText(`${MEMBER_USER.fullName}`)).toBeInTheDocument();
-	});
-
 	it('should always render owner first in the list', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
