@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 import AssistantAvatar from '../AskAssistantAvatar/AssistantAvatar.vue';
+import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import CodeDiff from '../CodeDiff/CodeDiff.vue';
 import type { ChatUI } from '../../types/assistant';
 import BlinkingCursor from '../BlinkingCursor/BlinkingCursor.vue';
@@ -33,11 +34,13 @@ interface Props {
 	};
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
+	loadingMessage?: string;
+	sessionId?: string;
 }
 
 const emit = defineEmits<{
 	close: [];
-	message: [string, string | undefined];
+	message: [string, string?, boolean?];
 	codeReplace: [number];
 	codeUndo: [number];
 }>();
@@ -58,17 +61,21 @@ const sendDisabled = computed(() => {
 	return !textInputValue.value || props.streaming || sessionEnded.value;
 });
 
+const showPlaceholder = computed(() => {
+	return !props.messages?.length && !props.loadingMessage && !props.sessionId;
+});
+
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
 	return event?.type === 'event' && event?.eventName === 'end-session';
 }
 
 function onQuickReply(opt: ChatUI.QuickReply) {
-	emit('message', opt.text, opt.type);
+	emit('message', opt.text, opt.type, opt.isFeedback);
 }
 
 function onSendMessage() {
 	if (sendDisabled.value) return;
-	emit('message', textInputValue.value, undefined);
+	emit('message', textInputValue.value);
 	textInputValue.value = '';
 	if (chatInput.value) {
 		chatInput.value.style.height = 'auto';
@@ -221,25 +228,29 @@ function growInput() {
 					</div>
 				</div>
 			</div>
-
-			<div v-else :class="$style.placeholder" data-test-id="placeholder-message">
+			<div v-if="loadingMessage" :class="$style.messages">
+				<AssistantLoadingMessage :message="loadingMessage" />
+			</div>
+			<div
+				v-else-if="showPlaceholder"
+				:class="$style.placeholder"
+				data-test-id="placeholder-message"
+			>
 				<div :class="$style.greeting">Hi {{ user?.firstName }} 👋</div>
 				<div :class="$style.info">
 					<p>
-						{{
-							t('assistantChat.placeholder.1', [
-								`${user?.firstName}`,
-								t('assistantChat.aiAssistantName'),
-							])
-						}}
+						{{ t('assistantChat.placeholder.1') }}
 					</p>
 					<p>
 						{{ t('assistantChat.placeholder.2') }}
-						<InlineAskAssistantButton size="small" :static="true" />
-						{{ t('assistantChat.placeholder.3') }}
 					</p>
 					<p>
+						{{ t('assistantChat.placeholder.3') }}
+						<InlineAskAssistantButton size="small" :static="true" />
 						{{ t('assistantChat.placeholder.4') }}
+					</p>
+					<p>
+						{{ t('assistantChat.placeholder.5') }}
 					</p>
 				</div>
 			</div>
@@ -325,6 +336,10 @@ p {
 
 .messages {
 	padding: var(--spacing-xs);
+
+	& + & {
+		padding-top: 0;
+	}
 }
 
 .message {
@@ -391,6 +406,8 @@ p {
 }
 
 .textMessage {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size-2xs);
 }
 
