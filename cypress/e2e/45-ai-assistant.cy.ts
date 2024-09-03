@@ -161,9 +161,16 @@ describe('AI Assistant::enabled', () => {
 	});
 
 	it('should show quick replies when node is executed after new suggestion', () => {
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
-			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
+		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+			req.reply((res) => {
+				if (['init-error-helper', 'message'].includes(req.body.payload.type)) {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/simple_message_response.json' });
+				} else if (req.body.payload.type === 'event') {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/node_execution_error_response.json' });
+				} else {
+					res.send({ statusCode: 500 });
+				}
+			});
 		}).as('chatRequest');
 		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
 		wf.actions.openNode('Edit Fields');
@@ -172,6 +179,7 @@ describe('AI Assistant::enabled', () => {
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
 		ndv.getters.nodeExecuteButton().click();
+		cy.wait('@chatRequest');
 		// Respond 'Yes' to the quick reply (request new suggestion)
 		aiAssistant.getters.quickReplies().contains('Yes').click();
 		cy.wait('@chatRequest');
