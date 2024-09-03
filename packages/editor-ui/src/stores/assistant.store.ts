@@ -295,6 +295,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		// TODO: Maybe use a function for this
+		chatMessages.value.push({
+			id,
+			type: 'text',
+			role: 'user',
+			content: userMessage,
+			read: true,
+		});
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 		chatWithAssistant(
