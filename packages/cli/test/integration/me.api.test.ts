@@ -400,7 +400,7 @@ const SURVEY: IPersonalizationSurveyAnswersV4 = {
 	automationGoalDevopsOther: 'test',
 	companyIndustryExtended: ['test'],
 	otherCompanyIndustryExtended: ['test'],
-	companySize: 'test',
+	companySize: '20-99',
 	companyType: 'test',
 	automationGoalSm: ['test'],
 	automationGoalSmOther: 'test',
