@@ -15,8 +15,7 @@
     "chromatic": "chromatic",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
-    "lintfix": "eslint src --ext .js,.ts,.vue --fix",
-    "nuke": "rimraf .turbo dist node_modules"
+    "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "devDependencies": {
     "@n8n/storybook": "workspace:*",

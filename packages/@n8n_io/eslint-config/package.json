@@ -23,7 +23,6 @@
   },
   "scripts": {
     "clean": "rimraf .turbo",
-    "test": "jest",
-    "nuke": "rimraf .turbo node_modules"
+    "test": "jest"
   }
 }
