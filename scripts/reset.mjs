@@ -2,6 +2,7 @@
 import { $, echo, fs } from 'zx';
 
 $.verbose = true;
+process.env.FORCE_COLOR = '1';
 
 const excludePatterns = ['/.vscode/', '/.idea/', '.env'];
 const excludeFlags = excludePatterns.map((exclude) => ['-e', exclude]).flat();
