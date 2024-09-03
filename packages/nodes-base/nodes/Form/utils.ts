@@ -5,7 +5,7 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { FORM_TRIGGER_NODE_TYPE, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
@@ -269,7 +269,10 @@ export function renderForm({
 
 	const useResponseData = responseMode === 'responseNode';
 
-	const query = context.getRequestObject().query as IDataObject;
+	let query: IDataObject = {};
+	if (context.getNode().type === FORM_TRIGGER_NODE_TYPE) {
+		query = context.getRequestObject().query as IDataObject;
+	}
 
 	const data = prepareFormData({
 		formTitle,
