@@ -13,6 +13,11 @@ export const teamOperations: INodeProperties[] = [
 				value: 'get',
 				action: 'Get a team',
 			},
+			{
+				name: 'Get Credits',
+				value: 'getCredits',
+				action: 'Get a team',
+			},
 		],
 		displayOptions: {
 			show: {

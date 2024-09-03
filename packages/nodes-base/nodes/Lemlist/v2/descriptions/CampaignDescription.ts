@@ -13,6 +13,11 @@ export const campaignOperations: INodeProperties[] = [
 				value: 'getAll',
 				action: 'Get many campaigns',
 			},
+			{
+				name: 'Get Stats',
+				value: 'getStats',
+				action: 'Get campaign stats',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -54,6 +59,90 @@ export const campaignFields: INodeProperties[] = [
 				resource: ['campaign'],
 				operation: ['getAll'],
 				returnAll: [false],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['campaign'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Version',
+				name: 'version',
+				type: 'string',
+				default: 'v2',
+			},
+		],
+	},
+	// ----------------------------------
+	//        campaign: getStats
+	// ----------------------------------
+	{
+		displayName: 'Campaign Name or ID',
+		name: 'campaignId',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getCampaigns',
+		},
+		description:
+			'ID of the campaign to get stats for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['campaign'],
+				operation: ['getStats'],
+			},
+		},
+	},
+	{
+		displayName: 'Start Date',
+		name: 'startDate',
+		type: 'dateTime',
+		default: '',
+		required: true,
+		placeholder: 'e.g. 2024-09-03 00:00:00Z',
+		displayOptions: {
+			show: {
+				resource: ['campaign'],
+				operation: ['getStats'],
+			},
+		},
+	},
+	{
+		displayName: 'End Date',
+		name: 'endDate',
+		type: 'dateTime',
+		default: '',
+		placeholder: 'e.g. 2024-09-03 00:00:00Z',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['campaign'],
+				operation: ['getStats'],
+			},
+		},
+	},
+	{
+		displayName: 'Timezone',
+		name: 'timezone',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: 'e.g. Europe/Paris',
+		displayOptions: {
+			show: {
+				resource: ['campaign'],
+				operation: ['getStats'],
 			},
 		},
 	},

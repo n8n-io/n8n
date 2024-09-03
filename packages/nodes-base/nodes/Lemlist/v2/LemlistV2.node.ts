@@ -165,18 +165,41 @@ export class LemlistV2 implements INodeType {
 						//        campaign: getAll
 						// ----------------------------------
 
-						// https://developer.lemlist.com/#list-all-campaigns
+						// https://developer.lemlist.com/#32ab1bf9-9b2f-40ed-9bbd-0b8370fed3d9
+						const qs = {} as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
+						if (!isEmpty(filters)) {
+							Object.assign(qs, filters);
+						}
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/campaigns', {});
 						} else {
-							const qs = {
-								limit: this.getNodeParameter('limit', i),
-							};
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await lemlistApiRequest.call(this, 'GET', '/campaigns', {}, qs);
 						}
+					} else if (operation === 'getStats') {
+						// ----------------------------------
+						//        campaign: getStats
+						// ----------------------------------
+
+						// https://developer.lemlist.com/#0b5cc72c-c1c8-47d0-a086-32b1b63522e3
+						const qs = {} as IDataObject;
+
+						const campaignId = this.getNodeParameter('campaignId', i);
+
+						qs.startDate = this.getNodeParameter('startDate', i);
+						qs.endDate = this.getNodeParameter('endDate', i);
+						qs.timezone = this.getNodeParameter('timezone', i);
+						responseData = await lemlistApiRequest.call(
+							this,
+							'GET',
+							`/campaigns/${campaignId}/stats`,
+							{},
+							qs,
+						);
 					}
 				} else if (resource === 'lead') {
 					// *********************************************************************
@@ -261,6 +284,14 @@ export class LemlistV2 implements INodeType {
 						// https://developer.lemlist.com/#team
 
 						responseData = await lemlistApiRequest.call(this, 'GET', '/team');
+					} else if (operation === 'getCredits') {
+						// ----------------------------------
+						//         team: getCredits
+						// ----------------------------------
+
+						// https://developer.lemlist.com/#c9af1cf3-8d3d-469e-a548-268b579d2cb3
+
+						responseData = await lemlistApiRequest.call(this, 'GET', '/team/credits');
 					}
 				} else if (resource === 'unsubscribe') {
 					// *********************************************************************
@@ -313,13 +344,13 @@ export class LemlistV2 implements INodeType {
 						//        enrichment: get
 						// ----------------------------------
 
-						// https://developer.lemlist.com
+						// https://developer.lemlist.com/#71b74cc3-8098-4389-b3c2-67a027df9407
 
 						const enrichId = this.getNodeParameter('enrichId', i);
 
 						responseData = await lemlistApiRequest.call(this, 'GET', `/enrich/${enrichId}`);
 					} else if (operation === 'enrichLead') {
-						// https://developer.lemlist.com
+						// https://developer.lemlist.com/#fe2a52fc-fa73-46d0-8b7d-395d9653bfd5
 						const findEmail = this.getNodeParameter('findEmail', i);
 						const verifyEmail = this.getNodeParameter('verifyEmail', i);
 						const linkedinEnrichment = this.getNodeParameter('linkedinEnrichment', i);
@@ -338,24 +369,16 @@ export class LemlistV2 implements INodeType {
 
 						responseData = await lemlistApiRequest.call(this, 'POST', endpoint, body, qs);
 					} else if (operation === 'enrichPerson') {
-						// https://developer.lemlist.com
-						const email = this.getNodeParameter('email', i);
-						const linkedinUrl = this.getNodeParameter('linkedinUrl', i);
-						const firstName = this.getNodeParameter('firstName', i);
-						const lastName = this.getNodeParameter('lastName', i);
-						const companyDomain = this.getNodeParameter('companyDomain', i);
-						const companyName = this.getNodeParameter('companyName', i);
+						// https://developer.lemlist.com/#4ba3d505-0bfa-4f36-8549-f3cb343786bf
 						const findEmail = this.getNodeParameter('findEmail', i);
 						const verifyEmail = this.getNodeParameter('verifyEmail', i);
 						const linkedinEnrichment = this.getNodeParameter('linkedinEnrichment', i);
 						const findPhone = this.getNodeParameter('findPhone', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs = {} as IDataObject;
-						qs.email = email;
-						qs.linkedinUrl = linkedinUrl;
-						qs.firstName = firstName;
-						qs.lastName = lastName;
-						qs.companyDomain = companyDomain;
-						qs.companyName = companyName;
+						if (!isEmpty(additionalFields)) {
+							Object.assign(qs, additionalFields);
+						}
 						qs.findEmail = findEmail;
 						qs.verifyEmail = verifyEmail;
 						qs.linkedinEnrichment = linkedinEnrichment;

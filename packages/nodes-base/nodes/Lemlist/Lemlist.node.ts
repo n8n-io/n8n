@@ -11,7 +11,7 @@ export class Lemlist extends VersionedNodeType {
 			name: 'lemlist',
 			icon: 'file:lemlist.svg',
 			group: ['transform'],
-			defaultVersion: 1,
+			defaultVersion: 2,
 			description: 'Consume the Lemlist API',
 		};
 

@@ -82,6 +82,18 @@ export const activityFields: INodeProperties[] = [
 					'ID of the campaign to retrieve activity for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
+				displayName: 'Is First',
+				name: 'isFirst',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Lead ID',
+				name: 'leadId',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
@@ -89,12 +101,76 @@ export const activityFields: INodeProperties[] = [
 				description: 'Type of activity to retrieve',
 				options: [
 					{
+						name: 'Aircall Created',
+						value: 'aircallCreated',
+					},
+					{
+						name: 'Aircall Done',
+						value: 'aircallDone',
+					},
+					{
+						name: 'Aircall Ended',
+						value: 'aircallEnded',
+					},
+					{
+						name: 'Aircall Interested',
+						value: 'aircallInterested',
+					},
+					{
+						name: 'Aircall Not Interested',
+						value: 'aircallNotInterested',
+					},
+					{
+						name: 'Api Done',
+						value: 'apiDone',
+					},
+					{
+						name: 'Api Failed',
+						value: 'apiFailed',
+					},
+					{
+						name: 'Api Interested',
+						value: 'apiInterested',
+					},
+					{
+						name: 'Api Not Interested',
+						value: 'apiNotInterested',
+					},
+					{
+						name: 'Attracted',
+						value: 'attracted',
+					},
+					{
+						name: 'Connection Issue',
+						value: 'connectionIssue',
+					},
+					{
+						name: 'Contacted',
+						value: 'contacted',
+					},
+					{
+						name: 'Custom Domain Errors',
+						value: 'customDomainErrors',
+					},
+					{
 						name: 'Emails Bounced',
 						value: 'emailsBounced',
 					},
 					{
 						name: 'Emails Clicked',
 						value: 'emailsClicked',
+					},
+					{
+						name: 'Emails Failed',
+						value: 'emailsFailed',
+					},
+					{
+						name: 'Emails Interested',
+						value: 'emailsInterested',
+					},
+					{
+						name: 'Emails Not Interested',
+						value: 'emailsNotInterested',
 					},
 					{
 						name: 'Emails Opened',
@@ -116,7 +192,109 @@ export const activityFields: INodeProperties[] = [
 						name: 'Emails Unsubscribed',
 						value: 'emailsUnsubscribed',
 					},
+					{
+						name: 'Hooked',
+						value: 'hooked',
+					},
+					{
+						name: 'Interested',
+						value: 'interested',
+					},
+					{
+						name: 'Lemwarm Paused',
+						value: 'lemwarmPaused',
+					},
+					{
+						name: 'LinkedIn Interested',
+						value: 'linkedinInterested',
+					},
+					{
+						name: 'LinkedIn Invite Accepted',
+						value: 'linkedinInviteAccepted',
+					},
+					{
+						name: 'LinkedIn Invite Done',
+						value: 'linkedinInviteDone',
+					},
+					{
+						name: 'LinkedIn Invite Failed',
+						value: 'linkedinInviteFailed',
+					},
+					{
+						name: 'LinkedIn Not Interested',
+						value: 'linkedinNotInterested',
+					},
+					{
+						name: 'LinkedIn Replied',
+						value: 'linkedinReplied',
+					},
+					{
+						name: 'LinkedIn Send Failed',
+						value: 'linkedinSendFailed',
+					},
+					{
+						name: 'LinkedIn Sent',
+						value: 'linkedinSent',
+					},
+					{
+						name: 'LinkedIn Visit Done',
+						value: 'linkedinVisitDone',
+					},
+					{
+						name: 'LinkedIn Visit Failed',
+						value: 'linkedinVisitFailed',
+					},
+					{
+						name: 'LinkedIn Voice Note Done',
+						value: 'linkedinVoiceNoteDone',
+					},
+					{
+						name: 'LinkedIn Voice Note Failed',
+						value: 'linkedinVoiceNoteFailed',
+					},
+					{
+						name: 'Manual Interested',
+						value: 'manualInterested',
+					},
+					{
+						name: 'Manual Not Interested',
+						value: 'manualNotInterested',
+					},
+					{
+						name: 'Not Interested',
+						value: 'notInterested',
+					},
+					{
+						name: 'Opportunities Done',
+						value: 'opportunitiesDone',
+					},
+					{
+						name: 'Paused',
+						value: 'paused',
+					},
+					{
+						name: 'Resumed',
+						value: 'resumed',
+					},
+					{
+						name: 'Send Limit Reached',
+						value: 'sendLimitReached',
+					},
+					{
+						name: 'Skipped',
+						value: 'skipped',
+					},
+					{
+						name: 'Warmed',
+						value: 'warmed',
+					},
 				],
+			},
+			{
+				displayName: 'Version',
+				name: 'version',
+				type: 'string',
+				default: 'v2',
 			},
 		],
 	},

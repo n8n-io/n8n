@@ -118,76 +118,55 @@ export const enrichmentFields: INodeProperties[] = [
 	//				enrichment: enrichPerson
 	// ----------------------------------
 	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		placeholder: 'name@email.com',
-		default: '',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['enrich'],
 				operation: ['enrichPerson'],
 			},
 		},
-	},
-	{
-		displayName: 'First Name',
-		name: 'firstName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['enrich'],
-				operation: ['enrichPerson'],
+		options: [
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				placeholder: 'name@email.com',
+				default: '',
 			},
-		},
-	},
-	{
-		displayName: 'Last Name',
-		name: 'lastName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['enrich'],
-				operation: ['enrichPerson'],
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
 			},
-		},
-	},
-	{
-		displayName: 'Linkedin Url',
-		name: 'linkedinUrl',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['enrich'],
-				operation: ['enrichPerson'],
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
 			},
-		},
-	},
-	{
-		displayName: 'Company Name',
-		name: 'companyName',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['enrich'],
-				operation: ['enrichPerson'],
+			{
+				displayName: 'Linkedin Url',
+				name: 'linkedinUrl',
+				type: 'string',
+				default: '',
 			},
-		},
-	},
-	{
-		displayName: 'Company Domain',
-		name: 'companyDomain',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['enrich'],
-				operation: ['enrichPerson'],
+			{
+				displayName: 'Company Name',
+				name: 'companyName',
+				type: 'string',
+				default: '',
 			},
-		},
+			{
+				displayName: 'Company Domain',
+				name: 'companyDomain',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 ];
