@@ -2893,8 +2893,6 @@ async function getInputConnectionData(
 					currentNodeRunIndex,
 				);
 
-				console.log('ERROR...', error);
-
 				// Display on the calling node which node has the error
 				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {
 					itemIndex,
