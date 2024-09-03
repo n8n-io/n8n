@@ -109,6 +109,7 @@ export class License {
 			});
 
 			await this.manager.initialize();
+			this.logger.debug('License initialized');
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				this.logger.error('Could not initialize license manager sdk', e);
@@ -132,6 +133,8 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		this.logger.debug('License feature change detected', _features);
+
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
 				| boolean
@@ -198,14 +201,15 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
+		this.logger.debug('License activated');
 	}
 
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		this.logger.debug('Reloading license');
 		await this.manager.reload();
+		this.logger.debug('License reloaded');
 	}
 
 	async renew() {
@@ -214,6 +218,7 @@ export class License {
 		}
 
 		await this.manager.renew();
+		this.logger.debug('License renewed');
 	}
 
 	@OnShutdown()
@@ -227,6 +232,7 @@ export class License {
 		}
 
 		await this.manager.shutdown();
+		this.logger.debug('License shut down');
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
@@ -392,5 +398,6 @@ export class License {
 	async reinit() {
 		this.manager?.reset();
 		await this.init('main', true);
+		this.logger.debug('License reinitialized');
 	}
 }
