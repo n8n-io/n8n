@@ -200,6 +200,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
 	const lastInteractedWithNodeId = ref<string | null>(null);
+	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -624,6 +625,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection.value = null;
 		lastInteractedWithNodeHandle.value = null;
 		lastInteractedWithNodeId.value = null;
+		lastCancelledConnectionPosition.value = null;
 	}
 
 	return {
@@ -652,6 +654,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
 		lastInteractedWithNode,
+		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
 		nodeViewInitialized,
