@@ -940,7 +940,7 @@ export function useCanvasOperations({ router }: { router: ReturnType<typeof useR
 					// with only "main" outputs.
 					outputs = NodeHelpers.getNodeOutputs(
 						editableWorkflowObject.value,
-						node,
+						node as INode,
 						nodeTypeDescription,
 					);
 				} catch (e) {}
