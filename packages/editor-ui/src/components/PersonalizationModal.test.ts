@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import { createUser } from '@/__tests__/data/users';
 import { useSettingsStore } from '@/stores/settings.store';
-import PersonalizationModal from './PersonalizationModal.vue';
+import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { useUsersStore } from '@/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import {
