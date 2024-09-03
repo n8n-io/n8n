@@ -12,6 +12,8 @@ const paths = {
 	mockApiDataPath: path.join(__dirname, 'mockApi'),
 };
 
+const N8N_ENCRYPTION_KEY = 'very-secret-encryption-key';
+
 async function main() {
 	const [n8nSetupToUse] = argv._;
 	validateN8nSetup(n8nSetupToUse);
@@ -41,6 +43,7 @@ async function main() {
 			env: {
 				N8N_VERSION: n8nTag,
 				N8N_LICENSE_CERT: n8nLicenseCert,
+				N8N_ENCRYPTION_KEY,
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
 				RUN_DIR: runDir,

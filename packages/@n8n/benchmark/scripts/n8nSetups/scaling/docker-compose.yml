@@ -32,7 +32,7 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker1
-      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       # Scaling mode config
       - EXECUTIONS_MODE=queue
@@ -62,7 +62,7 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n/worker2
-      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       # Scaling mode config
       - EXECUTIONS_MODE=queue
@@ -94,7 +94,7 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
-      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       # Scaling mode config
       - EXECUTIONS_MODE=queue
@@ -126,7 +126,7 @@ services:
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
-      - N8N_ENCRYPTION_KEY=very-secret-encryption-key
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_LICENSE_CERT=${N8N_LICENSE_CERT}
       # Scaling mode config
       - EXECUTIONS_MODE=queue
