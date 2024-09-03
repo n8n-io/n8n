@@ -263,8 +263,6 @@ async function initializeData() {
 
 	try {
 		await Promise.all(loadPromises);
-
-		collaborationStore.notifyWorkflowOpened(workflowId.value);
 	} catch (error) {
 		toast.showError(
 			error,
@@ -336,6 +334,8 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
+
+		collaborationStore.notifyWorkflowOpened(id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
