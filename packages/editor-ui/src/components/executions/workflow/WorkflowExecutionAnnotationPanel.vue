@@ -340,7 +340,7 @@ export default defineComponent({
 }
 
 .add-tag-standalone {
-	padding: 20px 0; // to be more clickable
+	padding: var(--spacing-m) 0; // to be more clickable
 }
 
 .add-tag-wrapper {
