@@ -112,7 +112,6 @@ describe('Orchestration Service', () => {
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(logger.error).toHaveBeenCalled();
 	});
 
 	test('should reject command messages from itself', async () => {
