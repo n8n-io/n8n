@@ -227,7 +227,6 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: string) {
-		console.log('========== clearWebhooks');
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 		});
