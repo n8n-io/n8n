@@ -17,7 +17,7 @@
     "dev": "turbo run dev --parallel --env-mode=loose --filter=!n8n-design-system --filter=!@n8n/chat",
     "dev:ai": "turbo run dev --parallel --env-mode=loose --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
-    "reset": "zx scripts/reset.mjs",
+    "reset": "node scripts/ensure-zx.mjs && zx scripts/reset.mjs",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
