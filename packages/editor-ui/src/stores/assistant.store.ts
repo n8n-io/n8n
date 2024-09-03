@@ -31,7 +31,7 @@ import { useUIStore } from './ui.store';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
-export const DEFAULT_CHAT_WIDTH = 325;
+export const DEFAULT_CHAT_WIDTH = 330;
 export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
@@ -63,6 +63,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const currentSessionActiveExecutionId = ref<string | undefined>();
 	const currentSessionWorkflowId = ref<string | undefined>();
 	const lastUnread = ref<ChatUI.AssistantMessage | undefined>();
+	const nodeExecutionStatus = ref<'not_executed' | 'success' | 'error'>('not_executed');
+	// This is used to show a message when the assistant is performing intermediate steps
+	// We use streaming for assistants that support it, and this for agents
+	const assistantThinkingMessage = ref<string | undefined>();
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -117,6 +121,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
+		nodeExecutionStatus.value = 'not_executed';
 	}
 
 	// As assistant sidebar opens and closes, use window width to calculate the container width
@@ -140,6 +145,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
+		assistantThinkingMessage.value = undefined;
 		// TODO: simplify
 		assistantMessages.forEach((msg) => {
 			if (msg.type === 'message') {
@@ -190,6 +196,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					quickReplies: msg.quickReplies,
 					read,
 				});
+			} else if (msg.type === 'intermediate-step') {
+				assistantThinkingMessage.value = msg.text;
 			}
 		});
 		chatMessages.value = messages;
@@ -226,14 +234,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	function addEmptyAssistantMessage(id: string) {
-		chatMessages.value.push({
-			id,
-			role: 'assistant',
-			type: 'text',
-			content: '',
-			read: false,
-		});
+	function addLoadingAssistantMessage(message: string) {
+		assistantThinkingMessage.value = message;
 	}
 
 	function addUserMessage(content: string, id: string) {
@@ -249,6 +251,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	function handleServiceError(e: unknown, id: string) {
 		assert(e instanceof Error);
 		stopStreaming();
+		assistantThinkingMessage.value = undefined;
 		addAssistantError(`${locale.baseText('aiAssistant.serviceError.message')}: (${e.message})`, id);
 	}
 
@@ -316,7 +319,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		addEmptyAssistantMessage(id);
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
 		streaming.value = true;
@@ -351,7 +354,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assert(currentSessionId.value);
 
 		const id = getRandomId();
-		addEmptyAssistantMessage(id);
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 		chatWithAssistant(
 			rootStore.restApiContext,
@@ -369,21 +372,30 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(e) => handleServiceError(e, id),
 		);
 	}
-
 	async function onNodeExecution(pushEvent: IPushDataNodeExecuteAfter) {
 		if (!chatSessionError.value || pushEvent.nodeName !== chatSessionError.value.node.name) {
 			return;
 		}
-		if (pushEvent.data.error) {
+		if (pushEvent.data.error && nodeExecutionStatus.value !== 'error') {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
-		} else if (pushEvent.data.executionStatus === 'success') {
+			nodeExecutionStatus.value = 'error';
+			telemetry.track('User executed node after assistant suggestion', {
+				task: 'error',
+				chat_session_id: currentSessionId.value,
+				success: false,
+			});
+		} else if (
+			pushEvent.data.executionStatus === 'success' &&
+			nodeExecutionStatus.value !== 'success'
+		) {
 			await sendEvent('node-execution-succeeded');
+			nodeExecutionStatus.value = 'success';
+			telemetry.track('User executed node after assistant suggestion', {
+				task: 'error',
+				chat_session_id: currentSessionId.value,
+				success: true,
+			});
 		}
-		telemetry.track('User executed node after assistant suggestion', {
-			task: 'error',
-			chat_session_id: currentSessionId.value,
-			success: pushEvent.data.executionStatus === 'success',
-		});
 	}
 
 	async function sendMessage(
@@ -396,10 +408,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const id = getRandomId();
 		try {
 			addUserMessage(chatMessage.text, id);
-			addEmptyAssistantMessage(id);
+			addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 
 			streaming.value = true;
 			assert(currentSessionId.value);
+			if (
+				chatMessage.quickReplyType === 'new-suggestion' &&
+				nodeExecutionStatus.value !== 'not_executed'
+			) {
+				nodeExecutionStatus.value = 'not_executed';
+			}
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
@@ -415,6 +433,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
+			telemetry.track('User sent message in Assistant', {
+				message: chatMessage.text,
+				is_quick_reply: !!chatMessage.quickReplyType,
+				chat_session_id: currentSessionId.value,
+				message_number: chatMessages.value.filter((msg) => msg.role === 'user').length,
+			});
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id);
@@ -566,5 +590,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat,
 		chatWindowOpen,
 		addAssistantMessages,
+		assistantThinkingMessage,
 	};
 });
