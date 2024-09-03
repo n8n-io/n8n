@@ -4,8 +4,14 @@ import type {
 	IDataObject,
 	IWebhookFunctions,
 	FormFieldsParameter,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { FORM_TRIGGER_NODE_TYPE, NodeOperationError, jsonParse } from 'n8n-workflow';
+import {
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	NodeOperationError,
+	jsonParse,
+} from 'n8n-workflow';
 
 import type { FormTriggerData, FormTriggerInput } from './interfaces';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from './interfaces';
@@ -236,6 +242,14 @@ export async function prepareFormReturnItem(
 
 	returnItem.json.formMode = mode;
 
+	const workflowStaticData = context.getWorkflowStaticData('node');
+	if (
+		Object.keys(workflowStaticData || {}).length &&
+		context.getNode().type === FORM_TRIGGER_NODE_TYPE
+	) {
+		returnItem.json.formQueryParameters = workflowStaticData;
+	}
+
 	return returnItem;
 }
 
@@ -270,8 +284,27 @@ export function renderForm({
 	const useResponseData = responseMode === 'responseNode';
 
 	let query: IDataObject = {};
+
 	if (context.getNode().type === FORM_TRIGGER_NODE_TYPE) {
 		query = context.getRequestObject().query as IDataObject;
+		const workflowStaticData = context.getWorkflowStaticData('node');
+		for (const key of Object.keys(query)) {
+			workflowStaticData[key] = query[key];
+		}
+	} else if (context.getNode().type === FORM_NODE_TYPE) {
+		const parentNodes = context.getParentNodes(context.getNode().name);
+		const trigger = parentNodes.find(
+			(node) => node.type === FORM_TRIGGER_NODE_TYPE,
+		) as NodeTypeAndVersion;
+		try {
+			const triggerQueryParameters = context.evaluateExpression(
+				`{{ $('${trigger?.name}').first().json.formQueryParameters }}`,
+			) as IDataObject;
+
+			if (triggerQueryParameters) {
+				query = triggerQueryParameters;
+			}
+		} catch (error) {}
 	}
 
 	const data = prepareFormData({
