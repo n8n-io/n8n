@@ -85,7 +85,7 @@ export declare namespace WorkflowRequest {
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<
-		{ workflowId: string },
+		{ id: string },
 		{},
 		{ destinationProjectId: string }
 	>;
