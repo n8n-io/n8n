@@ -29,6 +29,7 @@ import { TerraformClient } from './clients/terraformClient.mjs';
  * @property {string} n8nTag
  * @property {string} benchmarkTag
  * @property {string} [k6ApiToken]
+ * @property {string} [n8nLicenseCert]
  *
  * @param {Config} config
  */
@@ -96,6 +97,7 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 		n8nDockerTag: config.n8nTag,
 		benchmarkDockerTag: config.benchmarkTag,
 		k6ApiToken: config.k6ApiToken,
+		n8nLicenseCert: config.n8nLicenseCert,
 	};
 
 	const flagsString = Object.entries(flags)

@@ -22,6 +22,7 @@ async function main() {
 	const benchmarkTag = argv.benchmarkDockerTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
 	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
+	const n8nLicenseCert = argv.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
 
 	if (!fs.existsSync(baseRunDir)) {
 		console.error(
@@ -39,6 +40,7 @@ async function main() {
 			verbose: true,
 			env: {
 				N8N_VERSION: n8nTag,
+				N8N_LICENSE_CERT: n8nLicenseCert,
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
 				RUN_DIR: runDir,
@@ -59,17 +61,24 @@ async function main() {
 		await dockerComposeClient.$('run', 'benchmark', 'run', `--scenarioNamePrefix=${n8nSetupToUse}`);
 	} catch (error) {
 		console.error('An error occurred while running the benchmarks:');
-		console.error(error);
+		console.error(error.message);
 		console.error('');
-		await dumpN8nInstanceLogs(dockerComposeClient);
+		await printContainerStatus(dockerComposeClient);
+		console.error('');
+		await dumpLogs(dockerComposeClient);
 	} finally {
 		await dockerComposeClient.$('down');
 	}
 }
 
-async function dumpN8nInstanceLogs(dockerComposeClient) {
-	console.error('n8n instance logs:');
-	await dockerComposeClient.$('logs', 'n8n');
+async function printContainerStatus(dockerComposeClient) {
+	console.error('Container statuses:');
+	await dockerComposeClient.$('ps', '-a');
+}
+
+async function dumpLogs(dockerComposeClient) {
+	console.error('Container logs:');
+	await dockerComposeClient.$('logs');
 }
 
 function printUsage() {

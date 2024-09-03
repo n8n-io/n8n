@@ -29,6 +29,7 @@ const paths = {
  * @property {string} benchmarkTag
  * @property {string} [runDir]
  * @property {string} [k6ApiToken]
+ * @property {string} [n8nLicenseCert]
  *
  * @param {Config} config
  */
@@ -51,6 +52,7 @@ export async function runLocally(config) {
 				env: {
 					...process.env,
 					K6_API_TOKEN: config.k6ApiToken,
+					N8N_LICENSE_CERT: config.n8nLicenseCert,
 				},
 			})`npx ${runScriptPath} ${flags} ${n8nSetup}`;
 		}
