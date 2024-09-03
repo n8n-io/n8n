@@ -352,6 +352,26 @@ describe('MeController', () => {
 			);
 		});
 
+		it('should not flag XSS attempt for `<` sign in company size', async () => {
+			const req = mock<MeRequest.SurveyAnswers>();
+			req.body = {
+				version: 'v4',
+				personalization_survey_submitted_at: '2024-08-06T12:19:51.268Z',
+				personalization_survey_n8n_version: '1.0.0',
+				companySize: '<20',
+				otherCompanyIndustryExtended: ['test'],
+				automationGoalSm: ['test'],
+				usageModes: ['test'],
+				email: 'test@email.com',
+				role: 'test',
+				roleOther: 'test',
+				reportedSource: 'test',
+				reportedSourceOther: 'test',
+			};
+
+			await expect(controller.storeSurveyAnswers(req)).resolves.toEqual({ success: true });
+		});
+
 		test.each([
 			'automationGoalDevops',
 			'companyIndustryExtended',
