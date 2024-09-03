@@ -244,6 +244,8 @@ export class Wait extends Webhook {
 					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the Wait node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results there.",
 				location: 'outputPane',
 				whenToDisplay: 'beforeExecution',
+				displayCondition:
+					'={{$parameter["resume"] === "webhook" || $parameter["resume"] === "form"}}',
 			},
 		],
 		webhooks: [

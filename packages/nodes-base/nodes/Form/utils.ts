@@ -16,6 +16,7 @@ import { validateWebhookAuthentication } from '../Webhook/utils';
 import { DateTime } from 'luxon';
 import isbot from 'isbot';
 import type { Response } from 'express';
+import { getResolvables } from '../../utils/utilities';
 
 export function prepareFormData({
 	formTitle,
@@ -394,4 +395,28 @@ export async function formWebhook(
 		webhookResponse: { status: 200 },
 		workflowData: [[returnItem]],
 	};
+}
+
+export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	const resolvables = getResolvables(rawData);
+	let returnData: string = rawData;
+
+	if (returnData.startsWith('=')) {
+		returnData = returnData.replace(/^=+/, '');
+	} else {
+		return returnData;
+	}
+
+	if (resolvables.length) {
+		for (const resolvable of resolvables) {
+			const resolvedValue = context.evaluateExpression(`${resolvable}`);
+
+			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
+				returnData = returnData.replace(resolvable, JSON.stringify(resolvedValue));
+			} else {
+				returnData = returnData.replace(resolvable, resolvedValue as string);
+			}
+		}
+	}
+	return returnData;
 }

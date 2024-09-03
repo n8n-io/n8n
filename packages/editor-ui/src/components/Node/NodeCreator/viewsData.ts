@@ -55,6 +55,7 @@ import {
 	COMPRESSION_NODE_TYPE,
 	AI_CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	FORM_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -427,8 +428,28 @@ export function TriggerView() {
 	return view;
 }
 
-export function RegularView(nodes: SimplifiedNodeType[]) {
+export function RegularView(nodes: SimplifiedNodeType[], options?: { showForm?: boolean }) {
 	const i18n = useI18n();
+	const formPage: NodeViewItem[] = [];
+
+	if (options?.showForm) {
+		formPage.push({
+			key: FORM_NODE_TYPE,
+			type: 'node',
+			category: [CORE_NODES_CATEGORY],
+			properties: {
+				group: [],
+				name: FORM_NODE_TYPE,
+				displayName: i18n.baseText('nodeCreator.triggerHelperPanel.formDisplayName'),
+				description: i18n.baseText('nodeCreator.triggerHelperPanel.formDescription'),
+				iconData: {
+					type: 'file',
+					icon: 'form',
+					fileBuffer: '/static/form-grey.svg',
+				},
+			},
+		});
+	}
 
 	const popularItemsSubcategory = [
 		SET_NODE_TYPE,
@@ -441,6 +462,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
+			...formPage,
 			{
 				key: DEFAULT_SUBCATEGORY,
 				type: 'subcategory',

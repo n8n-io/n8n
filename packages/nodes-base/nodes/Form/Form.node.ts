@@ -18,7 +18,7 @@ import {
 } from 'n8n-workflow';
 
 import { formDescription, formFields, formTitle } from '../Form/common.descriptions';
-import { prepareFormReturnItem, renderForm } from '../Form/utils';
+import { prepareFormReturnItem, renderForm, resolveRawData } from '../Form/utils';
 
 const pageProperties = updateDisplayOptions(
 	{
@@ -189,6 +189,14 @@ export class Form extends Node {
 				isForm: true,
 			},
 		],
+		hints: [
+			{
+				message:
+					"When testing your workflow using the Editor UI, you can't see the rest of the execution following the n8n Form node. To inspect the execution results, enable Save Manual Executions in your Workflow settings so you can review the execution results in the Executions tab.",
+				location: 'outputPane',
+				whenToDisplay: 'beforeExecution',
+			},
+		],
 		properties: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -238,9 +246,11 @@ export class Form extends Node {
 		let fields: FormFieldsParameter = [];
 		if (useJson) {
 			try {
-				const jsonOutput = context.getNodeParameter('jsonOutput', '') as string;
+				const jsonOutput = context.getNodeParameter('jsonOutput', '', {
+					rawExpressions: true,
+				}) as string;
 
-				fields = tryToParseFormFields(jsonOutput);
+				fields = tryToParseFormFields(resolveRawData(context, jsonOutput));
 			} catch (error) {
 				throw new NodeOperationError(context.getNode(), error.message, {
 					description: error.message,

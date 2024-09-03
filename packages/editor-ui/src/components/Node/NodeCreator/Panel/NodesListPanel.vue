@@ -6,9 +6,11 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
+	FORM_TRIGGER_NODE_TYPE,
 } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
@@ -92,7 +94,15 @@ watch(
 			console.warn(`No view found for ${itemKey}`);
 			return;
 		}
-		const view = matchedView(mergedNodes);
+		let view;
+		if (itemKey === REGULAR_NODE_CREATOR_VIEW) {
+			const hasFormTrigger = useWorkflowsStore()
+				.getNodes()
+				.some((n) => n.type === FORM_TRIGGER_NODE_TYPE && !n.disabled);
+			view = matchedView(mergedNodes, { showForm: hasFormTrigger });
+		} else {
+			view = matchedView(mergedNodes);
+		}
 
 		pushViewStack({
 			title: view.title,
