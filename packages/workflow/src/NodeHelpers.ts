@@ -379,7 +379,6 @@ export function convertNodeToAiTool<
 		item.description.displayName += ' Tool (wrapped)';
 		delete item.description.usableAsTool;
 		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-			console.log('adding tool description');
 			const descProp: INodeProperties = {
 				displayName: 'Description',
 				name: 'toolDescription',
