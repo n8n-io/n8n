@@ -1,13 +1,13 @@
 // Resets the repository by deleting all untracked files except for few exceptions.
-import { $, echo } from 'zx';
+import { $, echo, fs } from 'zx';
 
 $.verbose = true;
 
-const excludePatterns = ['.vscode/settings.json', '.env'];
+const excludePatterns = ['/.vscode/', '/.idea/', '.env'];
 const excludeFlags = excludePatterns.map((exclude) => ['-e', exclude]).flat();
 
 echo(
-	`This will delete all untracked files except for ${excludePatterns.map((x) => `"${x}"`).join(', ')}.`,
+	`This will delete all untracked files except for those matching the following patterns: ${excludePatterns.map((x) => `"${x}"`).join(', ')}.`,
 );
 
 const answer = await question('❓ Do you want to continue? (y/n) ');
@@ -19,6 +19,8 @@ if (!['y', 'Y', ''].includes(answer)) {
 
 echo('🧹 Cleaning untracked files...');
 await $({ verbose: false })`git clean -fxd ${excludeFlags}`;
+// In case node_modules is not removed by git clean
+fs.removeSync('node_modules');
 
 echo('⏬ Running pnpm install...');
 await $`pnpm install`;
