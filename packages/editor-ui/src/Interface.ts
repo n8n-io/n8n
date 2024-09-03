@@ -1805,6 +1805,7 @@ export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
+	hasAddedNodes?: boolean;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';
