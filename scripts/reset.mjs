@@ -24,4 +24,4 @@ echo('⏬ Running pnpm install...');
 await $`pnpm install`;
 
 echo('🏗️ Running pnpm build...');
-await $`pnpm install`;
+await $`pnpm build`;
