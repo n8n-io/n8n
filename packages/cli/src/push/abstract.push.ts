@@ -1,6 +1,13 @@
 import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/interfaces';
 import type { Logger } from '@/logger';
+import type { User } from '@/databases/entities/user';
+import { TypedEmitter } from '@/typed-emitter';
+import type { OnPushMessage } from '@/push/types';
+
+export interface AbstractPushEvents {
+	message: OnPushMessage;
+}
 
 /**
  * Abstract class for two-way push communication.
@@ -8,16 +15,20 @@ import type { Logger } from '@/logger';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> {
+export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 	protected connections: Record<string, T> = {};
+
+	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOneConnection(connection: T, data: string): void;
 
-	constructor(protected readonly logger: Logger) {}
+	constructor(protected readonly logger: Logger) {
+		super();
+	}
 
-	protected add(pushRef: string, connection: T) {
-		const { connections } = this;
+	protected add(pushRef: string, userId: User['id'], connection: T) {
+		const { connections, userIdByPushRef } = this;
 		this.logger.debug('Add editor-UI session', { pushRef });
 
 		const existingConnection = connections[pushRef];
@@ -28,6 +39,15 @@ export abstract class AbstractPush<T> {
 		}
 
 		connections[pushRef] = connection;
+		userIdByPushRef[pushRef] = userId;
+	}
+
+	protected onMessageReceived(pushRef: string, msg: unknown) {
+		this.logger.debug('Received message from editor-UI', { pushRef, msg });
+
+		const userId = this.userIdByPushRef[pushRef];
+
+		this.emit('message', { pushRef, userId, msg });
 	}
 
 	protected remove(pushRef?: string) {
@@ -36,6 +56,7 @@ export abstract class AbstractPush<T> {
 		this.logger.debug('Removed editor-UI session', { pushRef });
 
 		delete this.connections[pushRef];
+		delete this.userIdByPushRef[pushRef];
 	}
 
 	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
@@ -64,6 +85,15 @@ export abstract class AbstractPush<T> {
 		}
 
 		this.sendTo(type, data, [pushRef]);
+	}
+
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+		const { connections } = this;
+		const userPushRefs = Object.keys(connections).filter((pushRef) =>
+			userIds.includes(this.userIdByPushRef[pushRef]),
+		);
+
+		this.sendTo(type, data, userPushRefs);
 	}
 
 	closeAllConnections() {
