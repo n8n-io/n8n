@@ -1,16 +1,32 @@
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed } from 'vue';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
 
-const hasChanged = (prev: string[], curr: string[]) => {
+const executionsStore = useExecutionsStore();
+
+const { showError } = useToast();
+
+const tagsEventBus = createEventBus();
+const isTagsEditEnabled = ref(false);
+const appliedTagIds = ref<string[]>([]);
+const tagsSaving = ref(false);
+
+const activeExecution = computed(() => {
+	return executionsStore.activeExecution as ExecutionSummary & {
+		customData?: Record<string, string>;
+	};
+});
+
+const vote = computed(() => activeExecution.value?.annotation?.vote || null);
+const tagIds = computed(() => activeExecution.value?.annotation?.tags.map((tag) => tag.id) ?? []);
+const tags = computed(() => activeExecution.value?.annotation?.tags);
+
+const tagsHasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
 		return true;
 	}
@@ -19,111 +35,61 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((acc, val) => acc || !set.has(val), false);
 };
 
-export default defineComponent({
-	name: 'WorkflowExecutionAnnotationPanel',
-	components: {
-		VoteButtons,
-		AnnotationTagsDropdown,
-	},
-	props: {
-		execution: {
-			type: Object as PropType<ExecutionSummary>,
-			default: null,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-	},
+const onVoteClick = async (voteValue: AnnotationVote) => {
+	if (!activeExecution.value) {
+		return;
+	}
 
-	computed: {
-		...mapStores(useExecutionsStore, useWorkflowsStore),
-		vote() {
-			return this.activeExecution?.annotation?.vote || null;
-		},
-		activeExecution() {
-			// FIXME: this is a temporary workaround to make TS happy. activeExecution may contain customData, but it is type-casted to ExecutionSummary after fetching from the backend
-			return this.executionsStore.activeExecution as ExecutionSummary & {
-				customData?: Record<string, string>;
-			};
-		},
-		tagIds() {
-			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];
-		},
-		tags() {
-			return this.activeExecution?.annotation?.tags;
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			tagsEventBus: createEventBus(),
-			isTagsEditEnabled: false,
-			appliedTagIds: [] as string[],
-			tagsSaving: false,
-		};
-	},
-	methods: {
-		async onVoteClick(vote: AnnotationVote) {
-			if (!this.activeExecution) {
-				return;
-			}
+	const voteToSet = voteValue === vote.value ? null : voteValue;
 
-			// If user clicked on the same vote, remove it
-			// so that vote buttons act as toggle buttons
-			const voteToSet = vote === this.vote ? null : vote;
+	try {
+		await executionsStore.annotateExecution(activeExecution.value.id, { vote: voteToSet });
+	} catch (e) {
+		showError(e, 'executionAnnotationView.vote.error');
+	}
+};
 
-			try {
-				await this.executionsStore.annotateExecution(this.activeExecution.id, { vote: voteToSet });
-			} catch (e) {
-				this.showError(e, this.$locale.baseText('executionAnnotationView.vote.error'));
-			}
-		},
-		onTagsEditEnable() {
-			this.appliedTagIds = this.tagIds;
-			this.isTagsEditEnabled = true;
+const onTagsEditEnable = () => {
+	appliedTagIds.value = tagIds.value;
+	isTagsEditEnabled.value = true;
 
-			setTimeout(() => {
-				this.tagsEventBus.emit('focus');
-			}, 0);
-		},
-		async onTagsBlur() {
-			if (!this.activeExecution) {
-				return;
-			}
+	setTimeout(() => {
+		tagsEventBus.emit('focus');
+	}, 0);
+};
 
-			const current = (this.tagIds ?? []) as string[];
-			const tags = this.appliedTagIds;
+const onTagsBlur = async () => {
+	if (!activeExecution.value) {
+		return;
+	}
 
-			if (!hasChanged(current, tags)) {
-				this.isTagsEditEnabled = false;
-				return;
-			}
+	const current = (tagIds.value ?? []) as string[];
+	const tags = appliedTagIds.value;
 
-			if (this.tagsSaving) {
-				return;
-			}
+	if (!tagsHasChanged(current, tags)) {
+		isTagsEditEnabled.value = false;
+		return;
+	}
 
-			this.tagsSaving = true;
+	if (tagsSaving.value) {
+		return;
+	}
 
-			try {
-				await this.executionsStore.annotateExecution(this.activeExecution.id, { tags });
-			} catch (e) {
-				this.showError(e, this.$locale.baseText('executionAnnotationView.tag.error'));
-			}
+	tagsSaving.value = true;
 
-			this.tagsSaving = false;
-			this.isTagsEditEnabled = false;
-		},
-		onTagsEditEsc() {
-			this.isTagsEditEnabled = false;
-		},
-	},
-});
+	try {
+		await executionsStore.annotateExecution(activeExecution.value.id, { tags });
+	} catch (e) {
+		showError(e, 'executionAnnotationView.tag.error');
+	}
+
+	tagsSaving.value = false;
+	isTagsEditEnabled.value = false;
+};
+
+const onTagsEditEsc = () => {
+	isTagsEditEnabled.value = false;
+};
 </script>
 
 <template>
