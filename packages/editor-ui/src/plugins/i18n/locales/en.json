@@ -147,6 +147,8 @@
 	"aiAssistant.serviceError.message": "Unable to connect to n8n's AI service",
 	"aiAssistant.codeUpdated.message.title": "Assistant modified workflow",
 	"aiAssistant.codeUpdated.message.body": "Open the <a data-action='openNodeDetail' data-action-parameter-node='{nodeName}'>{nodeName}</a> node to see the changes",
+	"aiAssistant.thinkingSteps.analyzingError": "Analyzing the error...",
+	"aiAssistant.thinkingSteps.thinking": "Thinking...",
 	"banners.confirmEmail.message.1": "To secure your account and prevent future access issues, please confirm your",
 	"banners.confirmEmail.message.2": "email address.",
 	"banners.confirmEmail.button": "Confirm email",
