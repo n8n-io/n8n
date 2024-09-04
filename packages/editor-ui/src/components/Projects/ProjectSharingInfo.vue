@@ -9,7 +9,16 @@ type Props = {
 
 const props = defineProps<Props>();
 
-const processedName = computed(() => splitName(props.project.name ?? ''));
+const processedName = computed(() => {
+	const { name, email } = splitName(props.project.name ?? '');
+	const firstName = name?.split(' ');
+	const lastName = firstName?.pop() ?? '';
+	return {
+		firstName,
+		lastName,
+		email,
+	};
+});
 </script>
 <template>
 	<div :class="$style.projectInfo" data-test-id="project-sharing-info">
