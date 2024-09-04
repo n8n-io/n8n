@@ -12,7 +12,7 @@ function sortByInputIndexThenByName(connection1: Connection, connection2: Connec
 
 /**
  * Groups incoming connections to the node. The groups contain one connection
- * per input, if possible, with run data or pinned data, if possible.
+ * per input, if possible, with run data or pinned data.
  *
  * The purpose of this is to get as many complete sets of data for executing
  * nodes with multiple inputs.
@@ -42,7 +42,7 @@ function sortByInputIndexThenByName(connection1: Connection, connection2: Connec
  * 1. source1 and source3
  * 2. source2
  *
- * # Example 1:
+ * # Example 2:
  * ┌───────┐0
  * │source1├────┐
  * └───────┘    │   ┌────┐
@@ -56,9 +56,8 @@ function sortByInputIndexThenByName(connection1: Connection, connection2: Connec
  * Since `source1` has no run data and no pinned data it's skipped in favor of
  * `source2` for the for input.
  *
- * So this will return 2 groups:
+ * So this will return 1 group:
  * 1. source2 and source3
- * 2. source1
  */
 export function getSourceDataGroups(
 	graph: DirectedGraph,
