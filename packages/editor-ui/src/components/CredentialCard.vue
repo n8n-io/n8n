@@ -131,23 +131,29 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick">
+	<n8n-card
+		:class="{ [$style.cardLink]: true, [$style.cardLinkReadonly]: readOnly }"
+		@click="onClick"
+	>
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
+				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('credentials.item.readonly') }}
+				</N8nBadge>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</n8n-text>
 		</div>
@@ -180,6 +186,11 @@ function moveResource() {
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
+}
+
+.cardLinkReadonly {
+	background-color: var(--color-background-light);
+	border-style: dashed;
 }
 
 .cardHeading {

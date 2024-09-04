@@ -599,6 +599,7 @@
 	"credentials.item.updated": "Last updated",
 	"credentials.item.created": "Created",
 	"credentials.item.owner": "Owner",
+	"credentials.item.readonly": "Read only",
 	"credentials.search.placeholder": "Search credentials...",
 	"credentials.filters.type": "Type",
 	"credentials.filters.active": "Some credentials may be hidden since filters are applied.",
