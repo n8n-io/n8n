@@ -10,7 +10,7 @@ function findSubgraphRecursive(
 	newGraph: DirectedGraph,
 	currentBranch: Connection[],
 ) {
-	// If the current node is the chosen ‘trigger keep this branch.
+	// If the current node is the chosen trigger keep this branch.
 	if (current === trigger) {
 		for (const connection of currentBranch) {
 			newGraph.addNodes(connection.from, connection.to);
