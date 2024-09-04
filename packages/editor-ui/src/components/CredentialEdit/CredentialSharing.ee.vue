@@ -46,7 +46,7 @@ const isSharingEnabled = computed(
 );
 const credentialOwnerName = computed(() => {
 	const { name, email } = splitName(props.credential?.homeProject?.name ?? '');
-	return name ?? email;
+	return name ?? email ?? '';
 });
 
 const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() => {

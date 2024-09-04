@@ -60,7 +60,7 @@ const badgeText = computed(() => {
 		return i18n.baseText('generic.ownedByMe');
 	} else {
 		const { name, email } = splitName(props.resource.homeProject?.name ?? '');
-		return name ?? email;
+		return name ?? email ?? '';
 	}
 });
 const badgeIcon = computed(() => {
