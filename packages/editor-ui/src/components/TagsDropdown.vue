@@ -199,7 +199,7 @@ onClickOutside(
 			multiple
 			:reserve-keyword="false"
 			loading-text="..."
-			:popper-class="['tags-dropdown', 'tags-dropdown-' + dropdownId]"
+			:popper-class="['tags-dropdown', 'tags-dropdown-' + dropdownId].join(' ')"
 			data-test-id="tags-dropdown"
 			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
