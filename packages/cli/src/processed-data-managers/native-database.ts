@@ -3,69 +3,67 @@ import {
 	type IProcessedDataManager,
 	type ICheckProcessedOptions,
 	type ICheckProcessedOutput,
-	type IWorkflowBase,
 	type ProcessedDataContext,
 	type ProcessedDataItemTypes,
 	ApplicationError,
 } from 'n8n-workflow';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Not } from '@n8n/typeorm';
 import { createHash } from 'crypto';
 
 import type {
-	IExternalHooksFileData,
+	// IExternalHooksFileData,
 	IProcessedDataEntries,
 	IProcessedDataLatest,
 } from '@/interfaces';
-import type { DatabaseType } from '@/databases/types';
-import { ExternalHooks } from '@/external-hooks';
+// import type { DatabaseType } from '@/databases/types';
+// import { ExternalHooks } from '@/external-hooks';
 import { Container } from 'typedi';
-import { ProcessedDataRepository } from '@/databases/repositories/processedData.repository';
-import { GlobalConfig } from '@n8n/config';
+import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
+// import { GlobalConfig } from '@n8n/config';
 
 export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
-	private static dbType: string;
+	async init(): Promise<void> {}
+	// private static dbType: string;
 
-	async init(): Promise<void> {
-		const globalConfig = Container.get(GlobalConfig);
-		ProcessedDataManagerNativeDatabase.dbType = globalConfig.database.type as DatabaseType;
+	// async init(): Promise<void> {
+	// 	const globalConfig = Container.get(GlobalConfig);
+	// 	// ProcessedDataManagerNativeDatabase.dbType = globalConfig.database.type as DatabaseType;
 
-		const externalHooks = Container.get(ExternalHooks);
-		const hookFileData: IExternalHooksFileData = {
-			workflow: {
-				afterUpdate: [
-					async (workflow: IWorkflowBase) => {
-						// Clean up all the data of no longer existing node
-						const contexts = workflow.nodes.map((node) =>
-							ProcessedDataManagerNativeDatabase.createContext('node', {
-								workflow,
-								node,
-							}),
-						);
+	// 	// const hookFileData: IExternalHooksFileData = {
+	// 	// 	workflow: {
+	// 	// 		afterUpdate: [
+	// 	// 			async (workflow: IWorkflowBase) => {
+	// 	// 				// Clean up all the data of no longer existing node
+	// 	// 				const contexts = workflow.nodes.map((node) =>
+	// 	// 					ProcessedDataManagerNativeDatabase.createContext('node', {
+	// 	// 						workflow,
+	// 	// 						node,
+	// 	// 					}),
+	// 	// 				);
 
-						// Add also empty else it will delete all the ones with context 'workflow'.
-						// It is not possible to make 'context' nullable as it is a PrimaryColumn.
-						contexts.push('');
+	// 	// 				// Add also empty else it will delete all the ones with context 'workflow'.
+	// 	// 				// It is not possible to make 'context' nullable as it is a PrimaryColumn.
+	// 	// 				contexts.push('');
 
-						await Container.get(ProcessedDataRepository).delete({
-							workflowId: workflow.id,
-							context: Not(In(contexts)),
-						});
-					},
-				],
-				afterDelete: [
-					async (workflowId: string) => {
-						// Clean up all the data of deleted workflows
-						await Container.get(ProcessedDataRepository).delete({
-							workflowId,
-						});
-					},
-				],
-			},
-		};
+	// 	// 				await Container.get(ProcessedDataRepository).delete({
+	// 	// 					workflowId: workflow.id,
+	// 	// 					context: Not(In(contexts)),
+	// 	// 				});
+	// 	// 			},
+	// 	// 		],
+	// 	// 		afterDelete: [
+	// 	// 			async (workflowId: string) => {
+	// 	// 				// Clean up all the data of deleted workflows
+	// 	// 				await Container.get(ProcessedDataRepository).delete({
+	// 	// 					workflowId,
+	// 	// 				});
+	// 	// 			},
+	// 	// 		],
+	// 	// 	},
+	// 	// };
 
-		// externalHooks.loadHooks(hookFileData);
-	}
+	// 	// externalHooks.loadHooks(hookFileData);
+	// }
 
 	private static sortEntries(items: ProcessedDataItemTypes[]) {
 		return [...items].sort();

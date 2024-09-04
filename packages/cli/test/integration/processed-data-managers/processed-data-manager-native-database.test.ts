@@ -1,13 +1,12 @@
-import type { ICheckProcessedContextData } from 'n8n-workflow';
+import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
 import { ProcessedDataManager } from 'n8n-core';
 import type { ICheckProcessedOutput, INode, ProcessedDataItemTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import * as testDb from '../shared/testDb';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import * as testDb from '../shared/test-db';
 import { mockInstance } from '@test/mocking';
-import { mockNodeTypesData } from '../../unit/Helpers';
 import { getProcessedDataManagers } from '../../../src/processed-data-managers';
 
 let workflow: Workflow;
@@ -20,46 +19,44 @@ mockInstance(LoadNodesAndCredentials, {
 		nodes: MOCK_NODE_TYPES_DATA,
 		credentials: {},
 	},
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
 });
-
-const node: INode = mockInstance(LoadNodesAndCredentials, {
-	loadedNodes: {
-		'test.set': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Sets a value',
-					defaults: {
-						name: 'Set',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
+function mockNodeTypesData(
+	nodeNames: string[],
+	options?: {
+		addTrigger?: boolean;
 	},
-});
+) {
+	return nodeNames.reduce<INodeTypeData>((acc, nodeName) => {
+		return (
+			(acc[`n8n-nodes-base.${nodeName}`] = {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: nodeName,
+						name: nodeName,
+						group: [],
+						description: '',
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+					},
+					trigger: options?.addTrigger ? async () => undefined : undefined,
+				},
+			}),
+			acc
+		);
+	}, {});
+}
+const node: INode = {
+	id: 'uuid-1234',
+	parameters: {},
+	name: 'test',
+	type: 'test.set',
+	typeVersion: 1,
+	position: [0, 0],
+};
 
 beforeAll(async () => {
 	await testDb.init();

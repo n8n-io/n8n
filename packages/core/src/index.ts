@@ -14,7 +14,7 @@ export { InstanceSettings, InstanceType } from './InstanceSettings';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions };
-export * from './ProcessedDataManager';
+export * from './processed-data-manager';
 export * from './errors';
 export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
 export { BinaryData } from './BinaryData/types';

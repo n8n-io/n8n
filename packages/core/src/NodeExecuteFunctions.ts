@@ -155,7 +155,7 @@ import {
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
 import { extractValue } from './ExtractValue';
-import { ProcessedDataManager } from './ProcessedDataManager';
+import { ProcessedDataManager } from './processed-data-manager';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 import { getNodeAsTool } from './CreateNodeAsTool';
 import {
