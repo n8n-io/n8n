@@ -122,13 +122,14 @@ const classes = computed(() => ({
 
 const disableKeyBindings = computed(() => !props.keyBindings);
 
+const panningKeyCode = 'Shift';
 const isPanningEnabled = ref(false);
 
-onKeyDown('Shift', () => {
+onKeyDown(panningKeyCode, () => {
 	isPanningEnabled.value = true;
 });
 
-onKeyUp('Shift', () => {
+onKeyUp(panningKeyCode, () => {
 	isPanningEnabled.value = false;
 });
 
@@ -161,6 +162,7 @@ useKeybindings(
  * Nodes
  */
 
+const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
 const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
 const hasSelection = computed(() => selectedNodes.value.length > 0);
 const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
@@ -460,9 +462,8 @@ provide(CanvasKey, {
 		:min-zoom="0.2"
 		:max-zoom="4"
 		:class="classes"
-		:selection-key-code="isPanningEnabled ? null : true"
-		:select-nodes-on-drag="true"
-		pan-activation-key-code="Shift"
+		:selection-key-code="selectionKeyCode"
+		:pan-activation-key-code="panningKeyCode"
 		data-test-id="canvas"
 		@edge-mouse-enter="onMouseEnterEdge"
 		@edge-mouse-leave="onMouseLeaveEdge"
