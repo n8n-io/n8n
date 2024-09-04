@@ -11,10 +11,10 @@ const props = defineProps<Props>();
 
 const processedName = computed(() => {
 	const { name, email } = splitName(props.project.name ?? '');
-	const firstName = name?.split(' ');
-	const lastName = firstName?.pop() ?? '';
+	const nameArray = name?.split(' ');
+	const lastName = nameArray?.pop() ?? '';
 	return {
-		firstName,
+		firstName: nameArray?.join(' ') ?? '',
 		lastName,
 		email,
 	};
