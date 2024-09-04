@@ -14,7 +14,6 @@ import { handleCommandMessageMain } from '@/services/orchestration/main/handle-c
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { Logger } from '@/logger';
 import { Push } from '@/push';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { mockInstance } from '@test/mocking';
@@ -47,7 +46,6 @@ const workerRestartEventBusResponse: RedisServiceWorkerResponseObject = {
 };
 
 describe('Orchestration Service', () => {
-	const logger = mockInstance(Logger);
 	mockInstance(Push);
 	mockInstance(RedisService);
 	mockInstance(ExternalSecretsManager);
@@ -112,7 +110,6 @@ describe('Orchestration Service', () => {
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(logger.error).toHaveBeenCalled();
 	});
 
 	test('should reject command messages from itself', async () => {

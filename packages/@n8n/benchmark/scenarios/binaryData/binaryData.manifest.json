@@ -1,0 +1,7 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "BinaryData",
+	"description": "Send a binary file to a webhook, write it to FS, read it from FS and receive it back",
+	"scenarioData": { "workflowFiles": ["binaryData.json"] },
+	"scriptPath": "binaryData.script.js"
+}

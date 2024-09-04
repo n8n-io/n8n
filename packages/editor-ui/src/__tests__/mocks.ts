@@ -49,18 +49,18 @@ export const mockNode = ({
 }) => mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters });
 
 export const mockNodeTypeDescription = ({
-	name,
+	name = SET_NODE_TYPE,
 	version = 1,
 	credentials = [],
 	inputs = [NodeConnectionType.Main],
 	outputs = [NodeConnectionType.Main],
 }: {
-	name: INodeTypeDescription['name'];
+	name?: INodeTypeDescription['name'];
 	version?: INodeTypeDescription['version'];
 	credentials?: INodeTypeDescription['credentials'];
 	inputs?: INodeTypeDescription['inputs'];
 	outputs?: INodeTypeDescription['outputs'];
-}) =>
+} = {}) =>
 	mock<INodeTypeDescription>({
 		name,
 		displayName: name,

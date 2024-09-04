@@ -93,7 +93,7 @@ export class WebhookService {
 	async storeWebhook(webhook: WebhookEntity) {
 		void this.cacheService.set(webhook.cacheKey, webhook);
 
-		return await this.webhookRepository.insert(webhook);
+		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}
 
 	createWebhook(data: Partial<WebhookEntity>) {
