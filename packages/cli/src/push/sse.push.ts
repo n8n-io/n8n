@@ -5,6 +5,7 @@ import { Logger } from '@/logger';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
+import type { User } from '@/databases/entities/user';
 
 type Connection = { req: PushRequest; res: PushResponse };
 
@@ -22,8 +23,8 @@ export class SSEPush extends AbstractPush<Connection> {
 		});
 	}
 
-	add(pushRef: string, connection: Connection) {
-		super.add(pushRef, connection);
+	add(pushRef: string, userId: User['id'], connection: Connection) {
+		super.add(pushRef, userId, connection);
 		this.channel.addClient(connection.req, connection.res);
 	}
 
