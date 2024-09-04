@@ -7,6 +7,7 @@ export class WorkflowExecutionsTab extends BasePage {
 	getters = {
 		executionsTabButton: () => cy.getByTestId('radio-button-executions'),
 		executionsSidebar: () => cy.getByTestId('executions-sidebar'),
+		executionsEmptyList: () => cy.getByTestId('execution-list-empty'),
 		autoRefreshCheckBox: () => cy.getByTestId('auto-refresh-checkbox'),
 		executionsList: () => cy.getByTestId('current-executions-list'),
 		executionListItems: () => this.getters.executionsList().find('div.execution-card'),
