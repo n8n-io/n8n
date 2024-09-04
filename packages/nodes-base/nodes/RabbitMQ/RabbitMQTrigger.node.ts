@@ -1,10 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { Message } from 'amqplib';
 import type {
-	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	INodeExecutionData,
 	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
@@ -12,11 +10,12 @@ import type {
 	ITriggerFunctions,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
-import { MessageTracker, rabbitmqConnectQueue } from './GenericFunctions';
+import { MessageTracker, rabbitmqConnectQueue, parseMessage } from './GenericFunctions';
+import type { TriggerOptions } from './types';
 
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -206,34 +205,7 @@ export class RabbitMQTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-
-		const parseMessage = async (message: Message): Promise<INodeExecutionData> => {
-			if (options.contentIsBinary === true) {
-				const { content } = message;
-				message.content = undefined as unknown as Buffer;
-				return {
-					binary: {
-						data: await this.helpers.prepareBinaryData(content),
-					},
-					json: message as unknown as IDataObject,
-				};
-			} else {
-				const item: INodeExecutionData = { json: {} };
-				let content: IDataObject | string = message.content.toString();
-				if (options.jsonParseBody === true) {
-					content = jsonParse(content);
-				}
-				if (options.onlyContent === true) {
-					item.json = content as IDataObject;
-				} else {
-					message.content = content as unknown as Buffer;
-					item.json = message as unknown as IDataObject;
-				}
-				return item;
-			}
-		};
-
+		const options = this.getNodeParameter('options', {}) as TriggerOptions;
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
 		if (this.getMode() === 'manual') {
@@ -243,11 +215,11 @@ export class RabbitMQTrigger implements INodeType {
 
 				const processMessage = async (message: Message | null) => {
 					if (message !== null) {
-						const item = await parseMessage(message);
+						const item = await parseMessage(message, options, this.helpers);
 						channel.ack(message);
 						this.emit([[item]]);
 					} else {
-						// TODO: throw an error saying that rabbitmq closed the consumer
+						this.emitError(new Error('Connection got closed unexpectedly'));
 					}
 				};
 
@@ -268,19 +240,15 @@ export class RabbitMQTrigger implements INodeType {
 			};
 		}
 
-		const parallelMessages =
-			options.parallelMessages !== undefined && options.parallelMessages !== -1
-				? parseInt(options.parallelMessages as string, 10)
-				: -1;
-
-		if (parallelMessages === 0 || parallelMessages < -1) {
+		const parallelMessages = options.parallelMessages ?? -1;
+		if (isNaN(parallelMessages) || parallelMessages === 0 || parallelMessages < -1) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Parallel message processing limit must be greater than zero (or -1 for no limit)',
+				'Parallel message processing limit must be a number greater than zero (or -1 for no limit)',
 			);
 		}
 
-		let acknowledgeMode = options.acknowledge ? options.acknowledge : 'immediately';
+		let acknowledgeMode = options.acknowledge ?? 'immediately';
 
 		if (parallelMessages !== -1 && acknowledgeMode === 'immediately') {
 			// If parallel message limit is set, then the default mode is "executionFinishes"
@@ -309,7 +277,7 @@ export class RabbitMQTrigger implements INodeType {
 						messageTracker.received(message);
 					}
 
-					const item = await parseMessage(message);
+					const item = await parseMessage(message, options, this.helpers);
 
 					let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
 					let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined =
