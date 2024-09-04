@@ -129,6 +129,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	 *
 	 * Examples:
 	 * 1. Anthropic model output:
+	 * ```json
 	 *    {
 	 *      "output": [
 	 *        {
@@ -138,11 +139,13 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	 *        }
 	 *      ]
 	 *    }
-	 *
+	 *```
 	 * 2. OpenAI model output:
+	 * ```json
 	 *    {
 	 *      "output": "The result of the calculation is approximately 1001.82..."
 	 *    }
+	 * ```
 	 *
 	 * This method ensures consistent handling of outputs regardless of the model used.
 	 *
