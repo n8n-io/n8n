@@ -1,18 +1,6 @@
 import type { INode, IPinData, IRunData } from 'n8n-workflow';
-import type { Connection, DirectedGraph } from './DirectedGraph';
+import type { DirectedGraph } from './DirectedGraph';
 import { getIncomingData } from './getIncomingData';
-
-// TODO: This is how ISourceData should look like.
-type NewSourceData = {
-	connection: Connection;
-	previousNodeRun: number; // If undefined "0" gets used
-};
-
-// TODO: rename to something more general, like path segment
-export interface StartNodeData {
-	node: INode;
-	sourceData: NewSourceData[];
-}
 
 // TODO: implement dirty checking for options and properties and parent nodes
 // being disabled
@@ -135,7 +123,7 @@ export function findStartNodes(
 		destination,
 		runData,
 		pinData,
-		// found start nodes
+		// start nodes found
 		new Set(),
 		// seen
 		new Set(),
