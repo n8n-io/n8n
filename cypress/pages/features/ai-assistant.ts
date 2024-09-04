@@ -56,6 +56,6 @@ export class AIAssistant extends BasePage {
 		openChat: () => {
 			this.getters.askAssistantFloatingButton().click();
 			this.getters.askAssistantChat().should('be.visible');
-		}
+		},
 	};
 }
