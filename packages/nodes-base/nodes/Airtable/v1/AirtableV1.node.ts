@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
 import { generatePairedItemData } from '../../../utils/utilities';
@@ -25,8 +25,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Airtable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'airtableApi',
@@ -653,7 +653,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -696,7 +696,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -757,7 +757,7 @@ export class AirtableV1 implements INodeType {
 					}),
 				];
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });
 				} else {
 					throw error;
@@ -792,7 +792,7 @@ export class AirtableV1 implements INodeType {
 
 					returnData.push(...executionData);
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}
@@ -880,7 +880,7 @@ export class AirtableV1 implements INodeType {
 						rows.length = 0;
 					}
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						returnData.push({ json: { error: error.message } });
 						continue;
 					}

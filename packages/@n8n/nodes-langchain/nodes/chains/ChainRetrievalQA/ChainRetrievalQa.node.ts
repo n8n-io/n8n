@@ -141,7 +141,7 @@ export class ChainRetrievalQa implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Retrieval QA Chain');
+		this.logger.debug('Executing Retrieval QA Chain');
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
@@ -181,7 +181,7 @@ export class ChainRetrievalQa implements INodeType {
 				const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
 				returnData.push({ json: { response } });
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

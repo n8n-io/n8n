@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, ref, h } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -74,7 +74,6 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
-	ConnectionTypes,
 	INodeOutputConfiguration,
 	IRun,
 } from 'n8n-workflow';
@@ -183,6 +182,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -998,7 +998,7 @@ export default defineComponent({
 			});
 			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 			this.workflowsStore.setWorkflowExecutionData(data);
-			if (data.workflowData.pinData) {
+			if (data.workflowData.pinData && data.mode === 'manual') {
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
@@ -1064,13 +1064,7 @@ export default defineComponent({
 			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-					message: `<a data-action="reload">${this.$locale.baseText(
-						'nodeView.refresh',
-					)}</a> ${this.$locale.baseText(
-						'nodeView.toSeeTheLatestStatus',
-					)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText(
-						'nodeView.moreInfo',
-					)}</a>`,
+					message: h(NodeViewUnfinishedWorkflowMessage),
 					type: 'warning',
 					duration: 0,
 				});
@@ -2289,7 +2283,7 @@ export default defineComponent({
 						}
 					}
 
-					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+					let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 					try {
 						// It fails when the outputs are an expression. As those nodes have
 						// normally no outputs by default and the only reason we need the
@@ -2424,7 +2418,7 @@ export default defineComponent({
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
-			type: ConnectionTypes,
+			type: NodeConnectionType,
 		): IConnection | undefined {
 			const nodeConnections =
 				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName)[type];
@@ -2531,7 +2525,7 @@ export default defineComponent({
 						lastSelectedEndpoint.scope as NodeConnectionType,
 					)
 				) {
-					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
+					const connectionType = lastSelectedEndpoint.scope as NodeConnectionType;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
 					const viableConnection = newNodeConnections.find((conn) => {
@@ -2712,7 +2706,7 @@ export default defineComponent({
 			if (targetNodeType?.inputs?.length) {
 				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				const workflowNode = workflow.getNode(targetNode.name);
-				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
 				if (targetNodeType && workflowNode) {
 					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
 				}
@@ -3106,7 +3100,7 @@ export default defineComponent({
 				NodeViewUtils.hideConnectionActions(connection);
 				NodeViewUtils.resetConnection(connection);
 
-				const scope = connection.scope as ConnectionTypes;
+				const scope = connection.scope as NodeConnectionType;
 				const scopedEndpoints = Array.from(
 					document.querySelectorAll(`[data-jtk-scope-${scope}=true]`),
 				);
@@ -3609,8 +3603,8 @@ export default defineComponent({
 
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(node.name);
-			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
-			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+			let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
+			let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
 			if (nodeType && workflowNode) {
 				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, nodeType);

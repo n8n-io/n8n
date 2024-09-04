@@ -16,6 +16,7 @@ import type {
 	CanvasNodeAddNodesRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
+	CanvasNodeDefaultRenderLabelSize,
 	CanvasNodeStickyNoteRender,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
@@ -31,7 +32,7 @@ import type {
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { CUSTOM_API_CALL_KEY, STICKY_NODE_TYPE, WAIT_TIME_UNLIMITED } from '@/constants';
 import { sanitizeHtml } from '@/utils/htmlUtils';
@@ -78,6 +79,12 @@ export function useCanvasMapping({
 				trigger: nodeTypesStore.isTriggerNode(node.type),
 				configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
 				configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+				inputs: {
+					labelSize: nodeInputLabelSizeById.value[node.id],
+				},
+				outputs: {
+					labelSize: nodeOutputLabelSizeById.value[node.id],
+				},
 			},
 		};
 	}
@@ -138,6 +145,48 @@ export function useCanvasMapping({
 						)
 					: [];
 
+			return acc;
+		}, {}),
+	);
+
+	function getLabelSize(label: string = ''): number {
+		if (label.length <= 2) {
+			return 0;
+		} else if (label.length <= 6) {
+			return 1;
+		} else {
+			return 2;
+		}
+	}
+
+	function getMaxNodePortsLabelSize(
+		ports: CanvasConnectionPort[],
+	): CanvasNodeDefaultRenderLabelSize {
+		const labelSizes: CanvasNodeDefaultRenderLabelSize[] = ['small', 'medium', 'large'];
+		const labelSizeIndexes = ports.reduce<number[]>(
+			(sizeAcc, input) => {
+				if (input.type === NodeConnectionType.Main) {
+					sizeAcc.push(getLabelSize(input.label ?? ''));
+				}
+
+				return sizeAcc;
+			},
+			[0],
+		);
+
+		return labelSizes[Math.max(...labelSizeIndexes)];
+	}
+
+	const nodeInputLabelSizeById = computed(() =>
+		nodes.value.reduce<Record<string, CanvasNodeDefaultRenderLabelSize>>((acc, node) => {
+			acc[node.id] = getMaxNodePortsLabelSize(nodeInputsById.value[node.id]);
+			return acc;
+		}, {}),
+	);
+
+	const nodeOutputLabelSizeById = computed(() =>
+		nodes.value.reduce<Record<string, CanvasNodeDefaultRenderLabelSize>>((acc, node) => {
+			acc[node.id] = getMaxNodePortsLabelSize(nodeOutputsById.value[node.id]);
 			return acc;
 		}, {}),
 	);

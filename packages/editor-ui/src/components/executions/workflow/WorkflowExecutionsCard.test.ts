@@ -1,6 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
-import { createPinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { STORES } from '@/constants';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -8,6 +10,24 @@ vi.mock('vue-router', () => ({
 	}),
 	RouterLink: vi.fn(),
 }));
+
+const initialState = {
+	[STORES.SETTINGS]: {
+		settings: {
+			templates: {
+				enabled: true,
+				host: 'https://api.n8n.io/api/',
+			},
+			license: {
+				environment: 'development',
+			},
+			deployment: {
+				type: 'default',
+			},
+			enterprise: {},
+		},
+	},
+};
 
 const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
 	global: {
@@ -26,7 +46,7 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
 
 describe('WorkflowExecutionsCard', () => {
 	beforeEach(() => {
-		setActivePinia(createPinia());
+		setActivePinia(createTestingPinia({ initialState }));
 	});
 
 	test.each([

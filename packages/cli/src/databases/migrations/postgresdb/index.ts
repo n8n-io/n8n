@@ -1,4 +1,4 @@
-import type { Migration } from '@db/types';
+import type { Migration } from '@/databases/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -61,6 +61,7 @@ import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-R
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { FixExecutionMetadataSequence1721377157740 } from './1721377157740-FixExecutionMetadataSequence';
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
+import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -125,4 +126,5 @@ export const postgresMigrations: Migration[] = [
 	FixExecutionMetadataSequence1721377157740,
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
+	CreateAnnotationTables1724753530828,
 ];

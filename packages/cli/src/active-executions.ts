@@ -20,9 +20,9 @@ import type {
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+} from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logger';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';

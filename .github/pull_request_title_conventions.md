@@ -4,16 +4,16 @@ We have very precise rules over how Pull Requests (to the `master` branch) must 
 
 A PR title consists of these elements:
 
-```
+```text
 <type>(<scope>): <summary>
   │       │          │
   │       │          └─⫸ Summary: In imperative present tense.
   |       |                        Capitalized
   |       |                        No period at the end.
   │       │
-  │       └─⫸ Scope: API|core|editor|* Node|benchmark
+  │       └─⫸ Scope: API | benchmark | core | editor | * Node
   │
-  └─⫸ Type: build|ci|docs|feat|fix|perf|refactor|test
+  └─⫸ Type: build | ci | docs | feat | fix | perf | refactor | test
 ```
 
 - PR title
@@ -27,35 +27,37 @@ A PR title consists of these elements:
 
 The structure looks like this:
 
-### **Type**
+## Type
 
 Must be one of the following:
 
-- `feat` - A new feature
-- `fix` - A bug fix
-- `perf` - A code change that improves performance
-- `test` - Adding missing tests or correcting existing tests
-- `docs` - Documentation only changes
-- `refactor` - A code change that neither fixes a bug nor adds a feature
-- `build` - Changes that affect the build system or external dependencies (example scopes: broccoli, npm)
-- `ci` - Changes to our CI configuration files and scripts (e.g. Github actions)
+| type | description | appears in changelog |
+| --- | --- | --- |
+| `feat` | A new feature | ✅ |
+| `fix` | A bug fix | ✅ |
+| `perf` | A code change that improves performance | ✅ |
+| `test` | Adding missing tests or correcting existing tests | ❌ |
+| `docs` | Documentation only changes | ❌ |
+| `refactor` | A behavior-neutral code change that neither fixes a bug nor adds a feature | ❌ |
+| `build` | Changes that affect the build system or external dependencies (TypeScript, Jest, pnpm, etc.) | ❌ |
+| `ci` | Changes to CI configuration files and scripts (e.g. Github actions) | ❌ |
 
-If the prefix is `feat`, `fix` or `perf`, it will appear in the changelog. However if there is any BREAKING CHANGE (see Footer section below), the commit will always appear in the changelog.
+> BREAKING CHANGES (see Footer section below), will **always** appear in the changelog unless suffixed with `no-changelog`.
 
-### **Scope (optional)**
+## Scope (optional)
 
 The scope should specify the place of the commit change as long as the commit clearly addresses one of the following supported scopes. (Otherwise, omit the scope!)
 
 - `API` - changes to the _public_ API
+- `benchmark` - changes to the benchmark cli
 - `core` - changes to the core / private API / backend of n8n
 - `editor` - changes to the Editor UI
 - `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node name, not its display name), e.g.
   - mattermost → Mattermost Node
   - microsoftToDo → Microsoft To Do Node
   - n8n → n8n Node
-- `benchmark` - changes to the Benchmark cli
 
-### **Summary**
+## Summary
 
 The summary contains succinct description of the change:
 
@@ -65,15 +67,15 @@ The summary contains succinct description of the change:
 - do _not_ include Linear ticket IDs etc. (e.g. N8N-1234)
 - suffix with “(no-changelog)” for commits / PRs that should not get mentioned in the changelog.
 
-### **Body (optional)**
+## Body (optional)
 
 Just as in the **summary**, use the imperative, present tense: "change" not "changed" nor "changes". The body should include the motivation for the change and contrast this with previous behavior.
 
-### **Footer (optional)**
+## Footer (optional)
 
 The footer can contain information about breaking changes and deprecations and is also the place to [reference GitHub issues](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword), Linear tickets, and other PRs that this commit closes or is related to. For example:
 
-```
+```text
 BREAKING CHANGE: <breaking change summary>
 <BLANK LINE>
 <breaking change description + migration instructions>
@@ -84,7 +86,7 @@ Fixes #<issue number>
 
 or
 
-```
+```text
 DEPRECATED: <what is deprecated>
 <BLANK LINE>
 <deprecation description + recommended update path>
@@ -103,7 +105,7 @@ A Breaking Change section should start with the phrase "`BREAKING CHANGE:` " fol
 
 Similarly, a Deprecation section should start with "`DEPRECATED:` " followed by a short description of what is deprecated, a blank line, and a detailed description of the deprecation that also mentions the recommended update path.
 
-### **Revert commits**
+### Revert commits
 
 If the commit reverts a previous commit, it should begin with `revert:` , followed by the header of the reverted commit.
 

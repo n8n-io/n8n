@@ -5,21 +5,22 @@
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-import type {
-	IDataObject,
-	IExecuteData,
-	INodeExecutionData,
-	INodeParameters,
-	IPairedItemData,
-	IRunExecutionData,
-	ISourceData,
-	ITaskData,
-	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowDataProxyData,
-	INodeParameterResourceLocator,
-	NodeParameterValueType,
-	WorkflowExecuteMode,
-	ProxyInput,
+import {
+	type IDataObject,
+	type IExecuteData,
+	type INodeExecutionData,
+	type INodeParameters,
+	type IPairedItemData,
+	type IRunExecutionData,
+	type ISourceData,
+	type ITaskData,
+	type IWorkflowDataProxyAdditionalKeys,
+	type IWorkflowDataProxyData,
+	type INodeParameterResourceLocator,
+	type NodeParameterValueType,
+	type WorkflowExecuteMode,
+	type ProxyInput,
+	NodeConnectionType,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
@@ -346,7 +347,7 @@ export class WorkflowDataProxy {
 				const nodeConnection = that.workflow.getNodeConnectionIndexes(
 					that.contextNodeName,
 					nodeName,
-					'main',
+					NodeConnectionType.Main,
 				);
 
 				if (nodeConnection === undefined) {

@@ -31,6 +31,12 @@ const configSchema = {
 			},
 		},
 	},
+	scenarioNamePrefix: {
+		doc: 'Prefix for the scenario name',
+		format: String,
+		default: 'Unnamed',
+		env: 'N8N_BENCHMARK_SCENARIO_NAME_PREFIX',
+	},
 	k6: {
 		executablePath: {
 			doc: 'The path to the k6 binary',

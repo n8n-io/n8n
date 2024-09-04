@@ -48,6 +48,7 @@ export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
+export const ANNOTATION_TAGS_MANAGER_MODAL_KEY = 'annotationTagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
@@ -575,7 +576,7 @@ export const EnterpriseEditionFeature: Record<
 	AdvancedPermissions: 'advancedPermissions',
 };
 
-export const MAIN_NODE_PANEL_WIDTH = 360;
+export const MAIN_NODE_PANEL_WIDTH = 390;
 
 export const enum MAIN_HEADER_TABS {
 	WORKFLOW = 'workflow',
@@ -630,6 +631,7 @@ export const enum STORES {
 	NODE_TYPES = 'nodeTypes',
 	CREDENTIALS = 'credentials',
 	TAGS = 'tags',
+	ANNOTATION_TAGS = 'annotationTags',
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
@@ -637,8 +639,10 @@ export const enum STORES {
 	CLOUD_PLAN = 'cloudPlan',
 	RBAC = 'rbac',
 	PUSH = 'push',
+	COLLABORATION = 'collaboration',
 	ASSISTANT = 'assistant',
 	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
+	PROJECTS = 'projects',
 }
 
 export const enum SignInType {
@@ -689,6 +693,8 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 	control: 'control',
 	variant: 'variant',
 };
+
+export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
 
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
@@ -867,3 +873,5 @@ export const CanvasNodeHandleKey =
 
 /** Auth */
 export const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+
+export const APP_MODALS_ELEMENT_ID = 'app-modals';

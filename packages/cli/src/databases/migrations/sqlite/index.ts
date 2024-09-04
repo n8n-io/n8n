@@ -1,4 +1,4 @@
-import type { Migration } from '@db/types';
+import type { Migration } from '@/databases/types';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -58,6 +58,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { RefactorExecutionIndices1723796243146 } from '../common/1723796243146-RefactorExecutionIndices';
 import { AddConstraintToExecutionMetadata1720101653148 } from '../common/1720101653148-AddConstraintToExecutionMetadata';
 import { CreateInvalidAuthTokenTable1723627610222 } from '../common/1723627610222-CreateInvalidAuthTokenTable';
+import { CreateAnnotationTables1724753530828 } from '../common/1724753530828-CreateExecutionAnnotationTables';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -119,6 +120,7 @@ const sqliteMigrations: Migration[] = [
 	AddConstraintToExecutionMetadata1720101653148,
 	CreateInvalidAuthTokenTable1723627610222,
 	RefactorExecutionIndices1723796243146,
+	CreateAnnotationTables1724753530828,
 ];
 
 export { sqliteMigrations };

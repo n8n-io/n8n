@@ -76,6 +76,7 @@ export namespace ChatRequest {
 		role: 'assistant';
 		type: 'message';
 		text: string;
+		step?: 'n8n_documentation' | 'n8n_forum';
 	}
 
 	interface AssistantSummaryMessage {
@@ -98,8 +99,21 @@ export namespace ChatRequest {
 		text: string;
 	}
 
+	interface AgentThinkingStep {
+		role: 'assistant';
+		type: 'intermediate-step';
+		text: string;
+		step: string;
+	}
+
 	export type MessageResponse =
-		| ((AssistantChatMessage | CodeDiffMessage | AssistantSummaryMessage | AgentChatMessage) & {
+		| ((
+				| AssistantChatMessage
+				| CodeDiffMessage
+				| AssistantSummaryMessage
+				| AgentChatMessage
+				| AgentThinkingStep
+		  ) & {
 				quickReplies?: QuickReplyOption[];
 		  })
 		| EndSessionMessage;

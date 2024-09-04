@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { deepCopy, jsonParse } from 'n8n-workflow';
-import type { ICredentialsOverwrite } from '@/Interfaces';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialTypes } from '@/credential-types';
 import { Logger } from '@/logger';
 

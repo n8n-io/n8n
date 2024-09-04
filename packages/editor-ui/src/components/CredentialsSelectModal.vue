@@ -1,69 +1,59 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import Modal from './Modal.vue';
-import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
-import { mapStores } from 'pinia';
+<script setup lang="ts">
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
+import { N8nButton, N8nSelect } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { onMounted, ref } from 'vue';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
+import Modal from './Modal.vue';
 
-export default defineComponent({
-	name: 'CredentialsSelectModal',
-	components: {
-		Modal,
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-		return {
-			externalHooks,
-		};
-	},
-	data() {
-		return {
-			modalBus: createEventBus(),
-			selected: '',
-			loading: true,
-			CREDENTIAL_SELECT_MODAL_KEY,
-		};
-	},
-	async mounted() {
-		try {
-			await this.credentialsStore.fetchCredentialTypes(false);
-		} catch (e) {}
-		this.loading = false;
+const externalHooks = useExternalHooks();
+const telemetry = useTelemetry();
 
-		setTimeout(() => {
-			const elementRef = this.$refs.select as HTMLSelectElement | undefined;
-			if (elementRef) {
-				elementRef.focus();
-			}
-		}, 0);
-	},
-	computed: {
-		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),
-	},
-	methods: {
-		onSelect(type: string) {
-			this.selected = type;
-		},
-		openCredentialType() {
-			this.modalBus.emit('close');
-			this.uiStore.openNewCredential(this.selected);
+const modalBus = ref(createEventBus());
+const selected = ref('');
+const loading = ref(true);
+const selectRef = ref<HTMLSelectElement>();
 
-			const telemetryPayload = {
-				credential_type: this.selected,
-				source: 'primary_menu',
-				new_credential: true,
-				workflow_id: this.workflowsStore.workflowId,
-			};
+const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 
-			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			void this.externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
-		},
-	},
+onMounted(async () => {
+	try {
+		await credentialsStore.fetchCredentialTypes(false);
+	} catch (e) {}
+
+	loading.value = false;
+
+	setTimeout(() => {
+		if (selectRef.value) {
+			selectRef.value.focus();
+		}
+	}, 0);
 });
+
+function onSelect(type: string) {
+	selected.value = type;
+}
+
+function openCredentialType() {
+	modalBus.value.emit('close');
+	uiStore.openNewCredential(selected.value);
+
+	const telemetryPayload = {
+		credential_type: selected.value,
+		source: 'primary_menu',
+		new_credential: true,
+		workflow_id: workflowsStore.workflowId,
+	};
+
+	telemetry.track('User opened Credential modal', telemetryPayload);
+	void externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
+}
 </script>
 
 <template>
@@ -86,8 +76,8 @@ export default defineComponent({
 				<div :class="$style.subtitle">
 					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
 				</div>
-				<n8n-select
-					ref="select"
+				<N8nSelect
+					ref="selectRef"
 					filterable
 					default-first-option
 					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
@@ -99,7 +89,7 @@ export default defineComponent({
 					<template #prefix>
 						<font-awesome-icon icon="search" />
 					</template>
-					<n8n-option
+					<N8nOption
 						v-for="credential in credentialsStore.allCredentialTypes"
 						:key="credential.name"
 						:value="credential.name"
@@ -107,12 +97,12 @@ export default defineComponent({
 						filterable
 						data-test-id="new-credential-type-select-option"
 					/>
-				</n8n-select>
+				</N8nSelect>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<n8n-button
+				<N8nButton
 					:label="$locale.baseText('credentialSelectModal.continue')"
 					float="right"
 					size="large"

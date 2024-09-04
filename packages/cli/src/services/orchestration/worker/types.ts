@@ -1,5 +1,5 @@
 import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-import type { RedisServicePubSubPublisher } from '../../redis/RedisServicePubSubPublisher';
+import type { RedisServicePubSubPublisher } from '../../redis/redis-service-pub-sub-publisher';
 import type { RunningJobSummary } from '@/scaling/scaling.types';
 
 export interface WorkerCommandReceivedHandlerOptions {

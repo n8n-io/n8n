@@ -22,12 +22,12 @@ import {
 } from '@/constants';
 import type { APIRequest } from '@/requests';
 import { ControllerRegistry } from '@/decorators';
-import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
-import type { ICredentialsOverwrite } from '@/Interfaces';
+import { isApiEnabled, loadPublicApiVersions } from '@/public-api';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import * as ResponseHelper from '@/response-helper';
-import { setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler, Push } from '@/push';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { AbstractServer } from '@/abstract-server';
 import { PostHogClient } from '@/posthog';
@@ -37,29 +37,30 @@ import type { FrontendService } from '@/services/frontend.service';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
-import '@/controllers/activeWorkflows.controller';
+import '@/controllers/active-workflows.controller';
+import '@/controllers/annotation-tags.controller';
 import '@/controllers/auth.controller';
-import '@/controllers/binaryData.controller';
+import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
-import '@/controllers/aiAssistant.controller';
-import '@/controllers/dynamicNodeParameters.controller';
+import '@/controllers/ai-assistant.controller';
+import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
-import '@/controllers/nodeTypes.controller';
-import '@/controllers/oauth/oAuth1Credential.controller';
-import '@/controllers/oauth/oAuth2Credential.controller';
+import '@/controllers/node-types.controller';
+import '@/controllers/oauth/oauth1-credential.controller';
+import '@/controllers/oauth/oauth2-credential.controller';
 import '@/controllers/orchestration.controller';
 import '@/controllers/owner.controller';
-import '@/controllers/passwordReset.controller';
+import '@/controllers/password-reset.controller';
 import '@/controllers/project.controller';
 import '@/controllers/role.controller';
 import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
 import '@/controllers/users.controller';
-import '@/controllers/userSettings.controller';
-import '@/controllers/workflowStatistics.controller';
+import '@/controllers/user-settings.controller';
+import '@/controllers/workflow-statistics.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/eventBus.controller';
+import '@/eventbus/event-bus.controller';
 import '@/executions/executions.controller';
 import '@/external-secrets/external-secrets.controller.ee';
 import '@/license/license.controller';
@@ -122,7 +123,7 @@ export class Server extends AbstractServer {
 		}
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			await import('@/controllers/communityPackages.controller');
+			await import('@/controllers/community-packages.controller');
 		}
 
 		if (inE2ETests) {
@@ -214,6 +215,18 @@ export class Server extends AbstractServer {
 
 		if (!this.globalConfig.agents.disabled) {
 			setupAgentHandler(restEndpoint, app);
+		}
+
+		const push = Container.get(Push);
+		if (push.isBidirectional) {
+			const { CollaborationService } = await import('@/collaboration/collaboration.service');
+
+			const collaborationService = Container.get(CollaborationService);
+			collaborationService.init();
+		} else {
+			this.logger.warn(
+				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',
+			);
 		}
 
 		if (config.getEnv('executions.mode') === 'queue') {

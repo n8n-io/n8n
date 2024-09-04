@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { mockInstance } from '@test/mocking';
 import { createWorkflow } from '@test-integration/db/workflows';
 import { createExecution } from '@test-integration/db/executions';
-import * as testDb from '@test-integration/testDb';
+import * as testDb from '@test-integration/test-db';
 
 import { mock } from 'jest-mock-extended';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';

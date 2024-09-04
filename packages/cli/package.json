@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.56.0",
+  "version": "1.57.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -78,6 +78,7 @@
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
     "ioredis-mock": "^8.8.1",
+    "mjml": "^4.15.3",
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
@@ -114,7 +115,7 @@
     "express": "4.19.2",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
-    "express-openapi-validator": "5.3.1",
+    "express-openapi-validator": "5.3.3",
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "catalog:",

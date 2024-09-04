@@ -10,7 +10,7 @@ import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit
 import { ConcurrencyQueue } from '../concurrency-queue';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import type { IExecutingWorkflowData } from '@/Interfaces';
+import type { IExecutingWorkflowData } from '@/interfaces';
 import type { Telemetry } from '@/telemetry';
 import type { EventService } from '@/events/event.service';
 

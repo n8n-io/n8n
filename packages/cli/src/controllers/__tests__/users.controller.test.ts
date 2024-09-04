@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { UsersController } from '../users.controller';
 import type { UserRequest } from '@/requests';
 import type { EventService } from '@/events/event.service';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@/databases/entities/user';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { ProjectService } from '@/services/project.service';
 

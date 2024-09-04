@@ -1,7 +1,7 @@
-import { WebhookRepository } from '@db/repositories/webhook.repository';
+import { WebhookRepository } from '@/databases/repositories/webhook.repository';
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import type { WebhookEntity } from '@db/entities/WebhookEntity';
+import type { WebhookEntity } from '@/databases/entities/webhook-entity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 type Method = NonNullable<IHttpRequestMethods>;
@@ -93,7 +93,7 @@ export class WebhookService {
 	async storeWebhook(webhook: WebhookEntity) {
 		void this.cacheService.set(webhook.cacheKey, webhook);
 
-		return await this.webhookRepository.insert(webhook);
+		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}
 
 	createWebhook(data: Partial<WebhookEntity>) {
