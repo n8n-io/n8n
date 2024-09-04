@@ -1,52 +1,43 @@
 #!/usr/bin/env zx
 /**
- * Script that deletes all resources created by the benchmark environment
- * and that are older than 2 hours.
+ * Script that deletes all resources created by the benchmark environment.
  *
- * Even tho the environment is provisioned using terraform, the terraform
- * state is not persisted. Hence we can't use terraform to delete the resources.
- * We could store the state to a storage account, but then we wouldn't be able
- * to spin up new envs on-demand. Hence this design.
- *
- * Usage:
- * 	 zx scripts/deleteCloudEnv.mjs
+ * This scripts tries to delete resources created by Terraform. If Terraform
+ * state file is not found, it will try to delete resources using Azure CLI.
+ * The terraform state is not persisted, so we want to support both cases.
  */
 // @ts-check
-import { $ } from 'zx';
+import { $, minimist } from 'zx';
+import { TerraformClient } from './clients/terraformClient.mjs';
 
-const EXPIRE_TIME_IN_H = 2;
-const EXPIRE_TIME_IN_MS = EXPIRE_TIME_IN_H * 60 * 60 * 1000;
 const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
 
+const args = minimist(process.argv.slice(3), {
+	boolean: ['debug'],
+});
+
+const isVerbose = !!args.debug;
+
 async function main() {
+	const terraformClient = new TerraformClient({ isVerbose });
+
+	if (terraformClient.hasTerraformState()) {
+		await terraformClient.destroyEnvironment();
+	} else {
+		await destroyUsingAz();
+	}
+}
+
+async function destroyUsingAz() {
 	const resourcesResult =
 		await $`az resource list --resource-group ${RESOURCE_GROUP_NAME} --query "[?tags.Id == 'N8nBenchmark'].{id:id, createdAt:tags.CreatedAt}" -o json`;
 
 	const resources = JSON.parse(resourcesResult.stdout);
 
-	const now = Date.now();
-
-	const resourcesToDelete = resources
-		.filter((resource) => {
-			if (resource.createdAt === undefined) {
-				return true;
-			}
-
-			const createdAt = new Date(resource.createdAt);
-			const resourceExpiredAt = createdAt.getTime() + EXPIRE_TIME_IN_MS;
-
-			return now > resourceExpiredAt;
-		})
-		.map((resource) => resource.id);
+	const resourcesToDelete = resources.map((resource) => resource.id);
 
 	if (resourcesToDelete.length === 0) {
-		if (resources.length === 0) {
-			console.log('No resources found in the resource group.');
-		} else {
-			console.log(
-				`Found ${resources.length} resources in the resource group, but none are older than ${EXPIRE_TIME_IN_H} hours.`,
-			);
-		}
+		console.log('No resources found in the resource group.');
 
 		return;
 	}
@@ -87,4 +78,9 @@ async function deleteById(id) {
 	}
 }
 
-main();
+main().catch((error) => {
+	console.error('An error occurred destroying cloud env:');
+	console.error(error);
+
+	process.exit(1);
+});
