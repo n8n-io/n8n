@@ -111,11 +111,11 @@ function onDocumentVisibilityChange() {
 }
 
 async function initializeRoute() {
-	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflowId.value) {
+	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflow.value) {
 		await router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId.value, executionId: executions.value[0].id },
+				params: { name: workflow.value.id, executionId: executions.value[0].id },
 			})
 			.catch(() => {});
 	}
