@@ -43,6 +43,7 @@ import {
 	HTML_NODE_TYPE,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
+	LIST_LIKE_NODE_OPERATIONS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -519,6 +520,10 @@ export default defineComponent({
 
 			return parentNodeData;
 		},
+		parentNodePinnedData(): INodeExecutionData[] {
+			const parentNode = this.workflow.getParentNodesByDepth(this.node?.name ?? '')[0];
+			return this.workflow.pinData?.[parentNode?.name || ''] || [];
+		},
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
@@ -670,12 +675,8 @@ export default defineComponent({
 
 					// add Execute Once hint
 					if (
-						this.parentNodeOutputData &&
-						this.parentNodeOutputData.length > 1 &&
-						(workflowNode.parameters.operation === 'getAll' ||
-							this.nodeType.properties.find(
-								(property) => property.name === 'operation' && property.default === 'getAll',
-							))
+						(this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1) &&
+						LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
 					) {
 						const executeOnce = this.workflow.getNode(this.node.name)?.executeOnce;
 
@@ -683,7 +684,6 @@ export default defineComponent({
 							nodeHints.push({
 								message:
 									"The operation is performed for each input item. Use the 'Execute Once' setting to only execute it only once for the first input item.",
-								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
 						}
@@ -728,7 +728,7 @@ export default defineComponent({
 
 						if (!firstNodesInLoop.length) {
 							nodeHints.push({
-								message: `No nodes connected to the 'loop' output of this node`,
+								message: "No nodes connected to the 'loop' output of this node",
 								whenToDisplay: 'beforeExecution',
 								location: 'outputPane',
 							});
@@ -737,7 +737,8 @@ export default defineComponent({
 								const nodeChilds = this.workflow.getChildNodes(node.node) || [];
 								if (!nodeChilds.includes(this.node.name)) {
 									nodeHints.push({
-										message: `The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly`,
+										message:
+											"The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly",
 										whenToDisplay: 'beforeExecution',
 										location: 'outputPane',
 									});
