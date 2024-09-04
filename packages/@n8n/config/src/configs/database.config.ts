@@ -77,7 +77,7 @@ class PostgresConfig {
 
 	/** Postgres connection timeout (ms) */
 	@Env('DB_POSTGRESDB_CONNECTION_TIMEOUT')
-	connectionTimeoutMs: number = 5000;
+	connectionTimeoutMs: number = 1000;
 
 	@Nested
 	ssl: PostgresSSLConfig;
