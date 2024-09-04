@@ -9,7 +9,9 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		startDate: '',
 		endDate: '',
 		tags: [],
+		annotationTags: [],
 		metadata: [],
+		vote: 'all',
 	};
 }
 
@@ -23,6 +25,14 @@ export const executionFilterToQueryFilter = (
 
 	if (!isEmpty(filter.tags)) {
 		queryFilter.tags = filter.tags;
+	}
+
+	if (!isEmpty(filter.annotationTags)) {
+		queryFilter.annotationTags = filter.annotationTags;
+	}
+
+	if (filter.vote !== 'all') {
+		queryFilter.vote = filter.vote;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -54,6 +64,7 @@ export const executionFilterToQueryFilter = (
 			queryFilter.status = ['canceled'];
 			break;
 	}
+
 	return queryFilter;
 };
 

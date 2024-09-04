@@ -7,14 +7,15 @@ import type {
 	IWorkflowDb,
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
-import TagsDropdown from '@/components/TagsDropdown.vue';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, EXECUTION_ANNOTATION_EXPERIMENT } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { usePostHog } from '@/stores/posthog.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
+import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 
 export type ExecutionFilterProps = {
 	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
@@ -26,6 +27,7 @@ const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const posthogStore = usePostHog();
 const { debounce } = useDebounce();
 
 const telemetry = useTelemetry();
@@ -46,15 +48,22 @@ const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
 );
+const isAnnotationFiltersEnabled = computed(
+	() =>
+		isAdvancedExecutionFilterEnabled.value &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
+);
 const showTags = computed(() => false);
 
 const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
 	workflowId: 'all',
 	tags: [],
+	annotationTags: [],
 	startDate: '',
 	endDate: '',
 	metadata: [{ key: '', value: '' }],
+	vote: 'all',
 });
 const filter = reactive(getDefaultFilter());
 
@@ -90,27 +99,25 @@ const statuses = computed(() => [
 	{ id: 'waiting', name: locale.baseText('executionsList.waiting') },
 ]);
 
+const voteFilterOptions = computed(() => [
+	{ id: 'all', name: locale.baseText('executionsFilter.annotation.rating.all') },
+	{ id: 'up', name: locale.baseText('executionsFilter.annotation.rating.good') },
+	{ id: 'down', name: locale.baseText('executionsFilter.annotation.rating.bad') },
+]);
+
 const countSelectedFilterProps = computed(() => {
-	let count = 0;
-	if (filter.status !== 'all') {
-		count++;
-	}
-	if (filter.workflowId !== 'all' && props.workflows.length) {
-		count++;
-	}
-	if (!isEmpty(filter.tags)) {
-		count++;
-	}
-	if (!isEmpty(filter.metadata)) {
-		count++;
-	}
-	if (!!filter.startDate) {
-		count++;
-	}
-	if (!!filter.endDate) {
-		count++;
-	}
-	return count;
+	const nonDefaultFilters = [
+		filter.status !== 'all',
+		filter.workflowId !== 'all' && props.workflows.length,
+		!isEmpty(filter.tags),
+		!isEmpty(filter.annotationTags),
+		filter.vote !== 'all',
+		!isEmpty(filter.metadata),
+		!!filter.startDate,
+		!!filter.endDate,
+	].filter(Boolean);
+
+	return nonDefaultFilters.length;
 });
 
 // vModel.metadata is a text input and needs a debounced emit to avoid too many requests
@@ -134,8 +141,11 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 
 // Can't use v-model on TagsDropdown component and thus vModel.tags is useless
 // We just emit the updated filter
-const onTagsChange = (tags: string[]) => {
-	filter.tags = tags;
+const onTagsChange = () => {
+	emit('filterChanged', filter);
+};
+
+const onAnnotationTagsChange = () => {
 	emit('filterChanged', filter);
 };
 
@@ -194,10 +204,10 @@ onBeforeMount(() => {
 			</div>
 			<div v-if="showTags" :class="$style.group">
 				<label for="execution-filter-tags">{{ locale.baseText('workflows.filters.tags') }}</label>
-				<TagsDropdown
+				<WorkflowTagsDropdown
 					id="execution-filter-tags"
+					v-model="filter.tags"
 					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-					:model-value="filter.tags"
 					:create-enabled="false"
 					data-test-id="executions-filter-tags-select"
 					@update:model-value="onTagsChange"
@@ -247,19 +257,43 @@ onBeforeMount(() => {
 					/>
 				</div>
 			</div>
+			<div v-if="isAnnotationFiltersEnabled" :class="$style.group">
+				<label for="execution-filter-annotation-tags">{{
+					locale.baseText('executionsFilter.annotation.tags')
+				}}</label>
+				<AnnotationTagsDropdown
+					id="execution-filter-annotation-tags"
+					:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+					v-model="filter.annotationTags"
+					:create-enabled="false"
+					data-test-id="executions-filter-annotation-tags-select"
+					@update:model-value="onAnnotationTagsChange"
+				/>
+			</div>
+			<div v-if="isAnnotationFiltersEnabled" :class="$style.group">
+				<label for="execution-filter-annotation-vote">{{
+					locale.baseText('executionsFilter.annotation.rating')
+				}}</label>
+				<n8n-select
+					id="execution-filter-annotation-vote"
+					v-model="vModel.vote"
+					:placeholder="locale.baseText('executionsFilter.annotation.selectVoteFilter')"
+					filterable
+					data-test-id="executions-filter-annotation-vote-select"
+					:teleported="teleported"
+				>
+					<n8n-option
+						v-for="(item, idx) in voteFilterOptions"
+						:key="idx"
+						:label="item.name"
+						:value="item.id"
+					/>
+				</n8n-select>
+			</div>
 			<div :class="$style.group">
 				<n8n-tooltip placement="right">
 					<template #content>
-						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip">
-							<template #link>
-								<a
-									target="_blank"
-									href="https://docs.n8n.io/workflows/executions/custom-executions-data/"
-								>
-									{{ locale.baseText('executionsFilter.customData.docsTooltip.link') }}
-								</a>
-							</template>
-						</i18n-t>
+						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip" />
 					</template>
 					<span :class="$style.label">
 						{{ locale.baseText('executionsFilter.savedData') }}

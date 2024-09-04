@@ -238,3 +238,12 @@ EndOfSessionChat.args = {
 		},
 	]),
 };
+
+export const AssistantThinkingChat = Template.bind({});
+AssistantThinkingChat.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	loadingMessage: 'Thinking...',
+};

@@ -49,6 +49,7 @@ import type {
 	INodeCredentialsDetails,
 	StartNodeData,
 	IPersonalizationSurveyAnswersV4,
+	AnnotationVote,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -421,6 +422,16 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
+export type PushDataUsersForWorkflow = {
+	workflowId: string;
+	activeUsers: Array<{ user: IUser; lastSeen: string }>;
+};
+
+type PushDataWorkflowUsersChanged = {
+	data: PushDataUsersForWorkflow;
+	type: 'activeWorkflowUsersChanged';
+};
+
 export type IPushData =
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
@@ -435,6 +446,7 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowUsersChanged
 	| PushDataWorkflowFailedToActivate;
 
 export type PushDataActiveWorkflowAdded = {
@@ -1554,12 +1566,16 @@ export type ExecutionFilterMetadata = {
 	value: string;
 };
 
+export type ExecutionFilterVote = AnnotationVote | 'all';
+
 export type ExecutionFilterType = {
 	status: string;
 	workflowId: string;
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];
+	annotationTags: string[];
+	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
 };
 
@@ -1571,6 +1587,8 @@ export type ExecutionsQueryFilter = {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	annotationTags?: string[];
+	vote?: ExecutionFilterVote;
 };
 
 export type SamlAttributeMapping = {
@@ -1798,6 +1816,7 @@ export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
+	hasAddedNodes?: boolean;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';

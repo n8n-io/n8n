@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineAsyncComponent, defineComponent, nextTick, ref } from 'vue';
+import { defineAsyncComponent, defineComponent, nextTick, ref, h } from 'vue';
 import { mapStores, storeToRefs } from 'pinia';
 
 import type {
@@ -182,6 +182,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import { getResourcePermissions } from '@/permissions';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1063,13 +1064,7 @@ export default defineComponent({
 			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
-					message: `<a data-action="reload">${this.$locale.baseText(
-						'nodeView.refresh',
-					)}</a> ${this.$locale.baseText(
-						'nodeView.toSeeTheLatestStatus',
-					)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${this.$locale.baseText(
-						'nodeView.moreInfo',
-					)}</a>`,
+					message: h(NodeViewUnfinishedWorkflowMessage),
 					type: 'warning',
 					duration: 0,
 				});

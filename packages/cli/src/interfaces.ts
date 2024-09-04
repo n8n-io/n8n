@@ -31,6 +31,7 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
+import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import type { TagEntity } from '@/databases/entities/tag-entity';
@@ -57,9 +58,12 @@ export interface ICredentialsOverwrite {
 //               tags
 // ----------------------------------
 
-export interface ITagToImport {
+export interface ITagBase {
 	id: string;
 	name: string;
+}
+
+export interface ITagToImport extends ITagBase {
 	createdAt?: string;
 	updatedAt?: string;
 }
@@ -68,8 +72,13 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
-	UsageCount;
+export type ITagDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type ITagWithCountDb = ITagDb & UsageCount;
+
+export type IAnnotationTagDb = Pick<AnnotationTagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type IAnnotationTagWithCountDb = IAnnotationTagDb & UsageCount;
 
 // ----------------------------------
 //            workflows
@@ -145,6 +154,9 @@ export interface IExecutionResponse extends IExecutionBase {
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 	customData: Record<string, string>;
+	annotation: {
+		tags: ITagBase[];
+	};
 }
 
 // Flatted data to save memory when saving in database or transferring
@@ -278,7 +290,13 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
-	| PushDataWorkflowFailedToActivate;
+	| PushDataWorkflowFailedToActivate
+	| PushDataActiveWorkflowUsersChanged;
+
+type PushDataActiveWorkflowUsersChanged = {
+	data: IActiveWorkflowUsersChanged;
+	type: 'activeWorkflowUsersChanged';
+};
 
 type PushDataWorkflowFailedToActivate = {
 	data: IWorkflowFailedToActivate;
@@ -349,6 +367,19 @@ export type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+/** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
+export type Iso8601DateTimeString = string;
+
+export interface IActiveWorkflowUser {
+	user: PublicUser;
+	lastSeen: Iso8601DateTimeString;
+}
+
+export interface IActiveWorkflowUsersChanged {
+	workflowId: Workflow['id'];
+	activeUsers: IActiveWorkflowUser[];
+}
 
 export interface IActiveWorkflowAdded {
 	workflowId: Workflow['id'];

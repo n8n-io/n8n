@@ -14,14 +14,15 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import ShortenName from '@/components/ShortenName.vue';
-import TagsContainer from '@/components/TagsContainer.vue';
+import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import SaveButton from '@/components/SaveButton.vue';
-import TagsDropdown from '@/components/TagsDropdown.vue';
+import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
 import WorkflowHistoryButton from '@/components/MainHeader/WorkflowHistoryButton.vue';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
 
 import { useRootStore } from '@/stores/root.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -631,7 +632,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 		</BreakpointsObserver>
 
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
-			<TagsDropdown
+			<WorkflowTagsDropdown
 				v-if="isTagsEditEnabled && !readOnly && (isNewWorkflow || workflowPermissions.update)"
 				ref="dropdown"
 				v-model="appliedTagIds"
@@ -653,7 +654,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
 				</span>
 			</div>
-			<TagsContainer
+			<WorkflowTagsContainer
 				v-else
 				:key="workflow.id"
 				:tag-ids="workflowTagIds"
@@ -675,6 +676,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
+					<CollaborationPane />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"

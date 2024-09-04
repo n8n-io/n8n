@@ -22,7 +22,7 @@ const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	position: 'bottom-right',
 	zIndex: 1900, // above NDV and below the modals
 	offset: 64,
-	appendTo: '#node-view-root',
+	appendTo: '#app-grid',
 	customClass: 'content-toast',
 };
 

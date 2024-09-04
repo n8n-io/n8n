@@ -45,7 +45,7 @@ export class PersonalizationSurveyAnswersV4 implements IPersonalizationSurveyAns
 	@IsString({ each: true })
 	otherCompanyIndustryExtended?: string[] | null;
 
-	@NoXss()
+	@IsEnum(['<20', '20-99', '100-499', '500-999', '1000+', 'personalUser'])
 	@Expose()
 	@IsOptional()
 	@IsString()

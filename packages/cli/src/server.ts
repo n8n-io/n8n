@@ -27,7 +27,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import * as ResponseHelper from '@/response-helper';
-import { setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler, Push } from '@/push';
 import { isLdapEnabled } from '@/ldap/helpers.ee';
 import { AbstractServer } from '@/abstract-server';
 import { PostHogClient } from '@/posthog';
@@ -38,6 +38,7 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import { LogStreamingEventRelay } from '@/events/log-streaming-event-relay';
 
 import '@/controllers/active-workflows.controller';
+import '@/controllers/annotation-tags.controller';
 import '@/controllers/auth.controller';
 import '@/controllers/binary-data.controller';
 import '@/controllers/curl.controller';
@@ -210,6 +211,18 @@ export class Server extends AbstractServer {
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
+
+		const push = Container.get(Push);
+		if (push.isBidirectional) {
+			const { CollaborationService } = await import('@/collaboration/collaboration.service');
+
+			const collaborationService = Container.get(CollaborationService);
+			collaborationService.init();
+		} else {
+			this.logger.warn(
+				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',
+			);
+		}
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');

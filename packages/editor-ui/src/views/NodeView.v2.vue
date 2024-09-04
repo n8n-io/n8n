@@ -11,6 +11,7 @@ import {
 	ref,
 	useCssModule,
 	watch,
+	h,
 } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/components/canvas/WorkflowCanvas.vue';
@@ -33,7 +34,11 @@ import type {
 	ToggleNodeCreatorOptions,
 	XYPosition,
 } from '@/Interface';
-import type { Connection, ViewportTransform } from '@vue-flow/core';
+import type {
+	Connection,
+	ViewportTransform,
+	XYPosition as VueFlowXYPosition,
+} from '@vue-flow/core';
 import type {
 	CanvasConnectionCreateData,
 	CanvasEventBusEvents,
@@ -96,7 +101,9 @@ import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import { useCollaborationStore } from '@/stores/collaboration.store';
 import { getResourcePermissions } from '@/permissions';
+import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 
 const LazyNodeCreation = defineAsyncComponent(
 	async () => await import('@/components/Node/NodeCreation.vue'),
@@ -128,6 +135,7 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
+const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -332,6 +340,8 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		}
 
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflow.value.homeProject);
+
+		collaborationStore.notifyWorkflowOpened(id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -736,11 +746,19 @@ function onRevertCreateConnection({ connection }: { connection: [IConnection, IC
 	revertCreateConnection(connection);
 }
 
-function onCreateConnectionCancelled(event: ConnectStartEvent, mouseEvent?: MouseEvent) {
+function onCreateConnectionCancelled(
+	event: ConnectStartEvent,
+	position: VueFlowXYPosition,
+	mouseEvent?: MouseEvent,
+) {
 	const preventDefault = (mouseEvent?.target as HTMLElement).classList?.contains('clickable');
 	if (preventDefault) {
 		return;
 	}
+
+	uiStore.lastInteractedWithNodeId = event.nodeId;
+	uiStore.lastInteractedWithNodeHandle = event.handleId;
+	uiStore.lastCancelledConnectionPosition = [position.x, position.y];
 
 	setTimeout(() => {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
@@ -872,11 +890,15 @@ async function onOpenNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
 }
 
 function onOpenNodeCreatorFromCanvas(source: NodeCreatorOpenSource) {
-	onOpenNodeCreator({ createNodeActive: true, source });
+	onToggleNodeCreator({ createNodeActive: true, source });
 }
 
-function onOpenNodeCreator(options: ToggleNodeCreatorOptions) {
-	nodeCreatorStore.openNodeCreator(options);
+function onToggleNodeCreator(options: ToggleNodeCreatorOptions) {
+	nodeCreatorStore.setNodeCreatorState(options);
+
+	if (!options.createNodeActive && !options.hasAddedNodes) {
+		uiStore.resetLastInteractedWith();
+	}
 }
 
 function onCreateSticky() {
@@ -1062,11 +1084,7 @@ function onExecutionOpenedWithWaitTill(data: IExecutionResponse) {
 	if ((data as ExecutionSummary).waitTill) {
 		toast.showMessage({
 			title: i18n.baseText('nodeView.thisExecutionHasntFinishedYet'),
-			message: `<a data-action="reload">${i18n.baseText('nodeView.refresh')}</a> ${i18n.baseText(
-				'nodeView.toSeeTheLatestStatus',
-			)}.<br/> <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">${i18n.baseText(
-				'nodeView.moreInfo',
-			)}</a>`,
+			message: h(NodeViewUnfinishedWorkflowMessage),
 			type: 'warning',
 			duration: 0,
 		});
@@ -1380,7 +1398,6 @@ function selectNodes(ids: string[]) {
 
 function onClickPane(position: CanvasNode['position']) {
 	lastClickPosition.value = [position.x, position.y];
-	canvasStore.newNodeInsertPosition = [position.x, position.y];
 	uiStore.isCreateNodeActive = false;
 }
 
@@ -1443,6 +1460,7 @@ watch(
 onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
+		collaborationStore.initialize();
 	}
 });
 
@@ -1496,6 +1514,7 @@ onBeforeUnmount(() => {
 
 onDeactivated(() => {
 	removeBeforeUnloadEventBindings();
+	collaborationStore.terminate();
 });
 </script>
 
@@ -1565,7 +1584,7 @@ onDeactivated(() => {
 				v-if="!isCanvasReadOnly"
 				:create-node-active="uiStore.isCreateNodeActive"
 				:node-view-scale="viewportTransform.zoom"
-				@toggle-node-creator="onOpenNodeCreator"
+				@toggle-node-creator="onToggleNodeCreator"
 				@add-nodes="onAddNodesAndConnections"
 			/>
 		</Suspense>

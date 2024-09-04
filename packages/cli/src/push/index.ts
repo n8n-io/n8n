@@ -15,11 +15,13 @@ import { OrchestrationService } from '@/services/orchestration.service';
 
 import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
-import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import { TypedEmitter } from '@/typed-emitter';
+import type { User } from '@/databases/entities/user';
 
 type PushEvents = {
 	editorUiConnected: string;
+	message: OnPushMessage;
 };
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
@@ -33,16 +35,21 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends TypedEmitter<PushEvents> {
+	public isBidirectional = useWebSockets;
+
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	constructor(private readonly orchestrationService: OrchestrationService) {
 		super();
+
+		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			ws,
 			query: { pushRef },
+			user,
 		} = req;
 
 		if (!pushRef) {
@@ -55,9 +62,9 @@ export class Push extends TypedEmitter<PushEvents> {
 		}
 
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(pushRef, req.ws);
+			(this.backend as WebSocketPush).add(pushRef, user.id, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(pushRef, { req, res });
+			(this.backend as SSEPush).add(pushRef, user.id, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
 			return;
@@ -88,6 +95,10 @@ export class Push extends TypedEmitter<PushEvents> {
 
 	getBackend() {
 		return this.backend;
+	}
+
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(type, data, userIds);
 	}
 
 	@OnShutdown()
