@@ -247,3 +247,23 @@ AssistantThinkingChat.args = {
 	},
 	loadingMessage: 'Thinking...',
 };
+
+export const WithCodeSnippet = Template.bind({});
+WithCodeSnippet.args = {
+	user: {
+		firstName: 'Max',
+		lastName: 'Test',
+	},
+	messages: getMessages([
+		{
+			id: '58575953',
+			type: 'text',
+			role: 'assistant',
+			content:
+				'To filter every other item in the Code node, you can use the following JavaScript code snippet. This code will iterate through the incoming items and only pass through every other item.',
+			codeSnippet:
+				'```javascript\nconst filteredItems = items.filter((item, index) => index % 2 === 0);\nreturn filteredItems;\n```',
+			read: true,
+		},
+	]),
+};

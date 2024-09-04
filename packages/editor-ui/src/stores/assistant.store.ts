@@ -155,6 +155,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					role: 'assistant',
 					content: msg.text,
 					quickReplies: msg.quickReplies,
+					codeSnippet: msg.codeSnippet,
 					read,
 				});
 			} else if (msg.type === 'code-diff') {

@@ -163,11 +163,16 @@ function growInput() {
 						<!-- eslint-disable-next-line vue/no-v-html -->
 						<span v-if="message.role === 'user'" v-html="renderMarkdown(message.content)"></span>
 						<!-- eslint-disable-next-line vue/no-v-html -->
-						<span
+						<div
 							v-else
 							:class="$style.assistantText"
 							v-html="renderMarkdown(message.content)"
-						></span>
+						></div>
+						<div
+							v-if="message?.codeSnippet"
+							:class="$style['code-snippet']"
+							v-html="renderMarkdown(message.codeSnippet).trim()"
+						></div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"
 						/>
@@ -406,8 +411,28 @@ p {
 
 .textMessage {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	gap: var(--spacing-xs);
 	font-size: var(--font-size-2xs);
+	word-break: break-word;
+}
+
+.code-snippet {
+	border: var(--border-base);
+	background-color: var(--color-foreground-xlight);
+	border-radius: var(--border-radius-base);
+	padding: var(--spacing-2xs);
+	max-height: 218px; // 12 lines
+	font-family: var(--font-family-monospace);
+
+	pre {
+		white-space-collapse: collapse;
+	}
+
+	code {
+		background-color: transparent;
+		font-size: var(--font-size-3xs);
+	}
 }
 
 .block {

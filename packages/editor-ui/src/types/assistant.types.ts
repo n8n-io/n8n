@@ -86,6 +86,7 @@ export namespace ChatRequest {
 		type: 'message';
 		text: string;
 		step?: 'n8n_documentation' | 'n8n_forum';
+		codeSnippet?: string;
 	}
 
 	interface AssistantSummaryMessage {
