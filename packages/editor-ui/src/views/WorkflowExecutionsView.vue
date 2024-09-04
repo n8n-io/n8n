@@ -321,6 +321,7 @@ async function loadMore(): Promise<void> {
 </script>
 <template>
 	<WorkflowExecutionsList
+		v-if="workflow"
 		:executions="executions"
 		:execution="execution"
 		:workflow="workflow"
