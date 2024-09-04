@@ -14,6 +14,7 @@ import { CacheConfig } from './configs/cache.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { AgentsConfig } from './configs/agents.config';
+export { AgentsConfig } from './configs/agents.config';
 
 @Config
 export class GlobalConfig {

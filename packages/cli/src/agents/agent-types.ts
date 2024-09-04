@@ -30,7 +30,29 @@ export namespace N8nMessage {
 			settings: unknown;
 		}
 
-		export type All = InfoRequest | JobOfferAccept | JobCancel | JobSettings | AgentRegistered;
+		export interface RPCResponse {
+			type: 'n8n:rpcresponse';
+			callId: string;
+			jobId: Job['id'];
+			status: 'success' | 'error';
+			data: unknown;
+		}
+
+		export interface JobDataResponse {
+			type: 'n8n:jobdataresponse';
+			jobId: Job['id'];
+			requestId: string;
+			data: unknown;
+		}
+
+		export type All =
+			| InfoRequest
+			| JobOfferAccept
+			| JobCancel
+			| JobSettings
+			| AgentRegistered
+			| RPCResponse
+			| JobDataResponse;
 	}
 
 	export namespace ToWorker {
@@ -60,7 +82,15 @@ export namespace N8nMessage {
 			param?: string;
 		}
 
-		export type All = JobReady | JobDone | JobError | JobDataRequest;
+		export interface RPC {
+			type: 'n8n:rpc';
+			callId: string;
+			jobId: Job['id'];
+			name: string;
+			params: unknown[];
+		}
+
+		export type All = JobReady | JobDone | JobError | JobDataRequest | RPC;
 	}
 }
 
@@ -78,7 +108,21 @@ export namespace WorkerMessage {
 			reason: string;
 		}
 
-		export type All = JobSettings | JobCancel;
+		export interface JobDataResponse {
+			type: 'worker:jobdataresponse';
+			jobId: Job['id'];
+			requestId: string;
+			data: unknown;
+		}
+
+		export interface RPCResponse {
+			type: 'worker:rpcresponse';
+			callId: string;
+			status: 'success' | 'error';
+			data: unknown;
+		}
+
+		export type All = JobSettings | JobCancel | RPCResponse | JobDataResponse;
 	}
 }
 
@@ -89,32 +133,62 @@ export namespace AgentMessage {
 			name: string;
 			types: string[];
 		}
+
 		export interface JobAccepted {
 			type: 'agent:jobaccepted';
 			jobId: string;
 		}
+
 		export interface JobRejected {
 			type: 'agent:jobrejected';
 			jobId: string;
 			reason: string;
 		}
+
 		export interface JobDone {
 			type: 'agent:jobdone';
 			jobId: string;
 			data: INodeExecutionData[];
 		}
+
 		export interface JobError {
 			type: 'agent:joberror';
 			jobId: string;
 			error: unknown;
 		}
+
 		export interface JobOffer {
 			type: 'agent:joboffer';
 			offerId: string;
 			jobType: string;
 			validFor: number;
 		}
-		export type All = Info | JobDone | JobError | JobAccepted | JobRejected | JobOffer;
+
+		export interface JobDataRequest {
+			type: 'agent:jobdatarequest';
+			jobId: Job['id'];
+			requestId: string;
+			requestType: DataRequestType;
+			param?: string;
+		}
+
+		export interface RPC {
+			type: 'agent:rpc';
+			callId: string;
+			jobId: Job['id'];
+			name: string;
+			params: unknown[];
+		}
+
+		export type All =
+			| Info
+			| JobDone
+			| JobError
+			| JobAccepted
+			| JobRejected
+			| JobOffer
+			| RPC
+			| JobDataRequest;
 	}
 }
 

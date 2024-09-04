@@ -119,10 +119,56 @@ export class AgentManager {
 			case 'agent:joberror':
 				await this.jobErrorHandler(message.jobId, message.error);
 				break;
+			case 'agent:jobdatarequest':
+				await this.handleDataRequest(
+					message.jobId,
+					message.requestId,
+					message.requestType,
+					message.param,
+				);
+				break;
+
+			// case 'agent:rpc':
 			// Already handled
 			case 'agent:info':
 				break;
 		}
+	}
+
+	async handleDataRequest(
+		jobId: Job['id'],
+		requestId: AgentMessage.ToN8n.JobDataRequest['requestId'],
+		requestType: AgentMessage.ToN8n.JobDataRequest['requestType'],
+		param?: string,
+	) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		await this.messageWorker(job.workerId, {
+			type: 'n8n:jobdatarequest',
+			jobId,
+			requestId,
+			requestType,
+			param,
+		});
+	}
+
+	async handleResponse(
+		jobId: Job['id'],
+		requestId: AgentMessage.ToN8n.JobDataRequest['requestId'],
+		data: unknown,
+	) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		await this.messageAgent(job.workerId, {
+			type: 'n8n:jobdataresponse',
+			jobId,
+			requestId,
+			data,
+		});
 	}
 
 	async onWorkerMessage(_workerId: string, message: WorkerMessage.ToN8n.All) {
@@ -265,7 +311,6 @@ export class AgentManager {
 		}
 		this.pendingJobRequests.splice(requestIndex, 1);
 
-		console.log('AAAAAAAA', { request, offer });
 		await this.messageWorker(request.workerId, {
 			type: 'n8n:jobready',
 			requestId: request.requestId,
@@ -275,6 +320,12 @@ export class AgentManager {
 
 	// Find matching job offers and requests, then let the agent
 	// know that an offer has been accepted
+	//
+	// *DO NOT MAKE THIS FUNCTION ASYNC*
+	// This function relies on never yielding.
+	// If you need to make this function async, you'll need to
+	// implement some kind of locking for the requests and job
+	// lists
 	settleJobs() {
 		for (const request of this.pendingJobRequests) {
 			if (request.acceptInProgress) {

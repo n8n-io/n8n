@@ -1,6 +1,21 @@
 import { nanoid } from 'nanoid';
 import type { AgentManager } from './agent-manager.service';
 import type { Job, JobRequest, N8nMessage, WorkerMessage } from './agent-types';
+import type { INodeExecutionData } from 'n8n-workflow';
+
+const code = `
+// Loop over input items and add a new field called 'myNewField' to the JSON of each one
+for (const item of $input.all()) {
+  item.json.myNewField = 1;
+}
+
+return $input.all();
+`;
+
+const inputData: INodeExecutionData[] = [
+	{ json: { something: 'haha' } },
+	{ json: { something: 'haha2' } },
+];
 
 export class TestClient {
 	id: string;
@@ -62,11 +77,51 @@ export class TestClient {
 				console.log(message);
 				break;
 			case 'n8n:jobdatarequest':
+				await this.processDataRequest(
+					message.jobId,
+					message.requestId,
+					message.requestType,
+					message.param,
+				);
+				break;
 			default:
 				// eslint-disable-next-line n8n-local-rules/no-plain-errors
 				throw new Error('Unimplemented: ' + message.type);
 		}
 	};
+
+	async processDataRequest(
+		jobId: Job['id'],
+		requestId: string,
+		requestType: N8nMessage.ToWorker.JobDataRequest['requestType'],
+		_param?: string,
+	) {
+		if (requestType === 'input') {
+			await this.messageManager({
+				type: 'worker:jobdataresponse',
+				jobId,
+				requestId,
+				data: inputData,
+			});
+		} else if (requestType === 'node') {
+			await this.messageManager({
+				type: 'worker:jobdataresponse',
+				jobId,
+				requestId,
+				data: [],
+			});
+		} else if (requestType === 'all') {
+			await this.messageManager({
+				type: 'worker:jobdataresponse',
+				jobId,
+				requestId,
+				data: {
+					input: inputData,
+					node: [],
+				},
+			});
+		}
+	}
 
 	async sendCancelJob(jobId: string, reason: string) {
 		await this.messageManager({
@@ -83,7 +138,7 @@ export class TestClient {
 		this.runningJobs[jobId] = {
 			id: jobId,
 			jobType: request.jobType,
-			settings: { code: '1 + 1' },
+			settings: { code },
 		};
 		await this.messageManager({
 			type: 'worker:jobsettings',
