@@ -18,6 +18,16 @@ export class TerraformClient {
 	}
 
 	/**
+	 * Provisions the environment
+	 */
+	async provisionEnvironment() {
+		console.log('Provisioning cloud environment...');
+
+		await this.$$`terraform init`;
+		await this.$$`terraform apply -input=false -auto-approve`;
+	}
+
+	/**
 	 * @typedef {Object} BenchmarkEnv
 	 * @property {string} vmName
 	 * @property {string} ip
@@ -26,12 +36,7 @@ export class TerraformClient {
 	 *
 	 * @returns {Promise<BenchmarkEnv>}
 	 */
-	async provisionEnvironment() {
-		console.log('Provisioning cloud environment...');
-
-		await this.$$`terraform init`;
-		await this.$$`terraform apply -input=false -auto-approve`;
-
+	async getTerraformOutputs() {
 		const privateKeyName = await this.extractPrivateKey();
 
 		return {
@@ -42,12 +47,11 @@ export class TerraformClient {
 		};
 	}
 
-	async destroyEnvironment() {
-		if (!fs.existsSync(paths.terraformStateFile)) {
-			console.log('No cloud environment to destroy. Skipping...');
-			return;
-		}
+	hasTerraformState() {
+		return fs.existsSync(paths.terraformStateFile);
+	}
 
+	async destroyEnvironment() {
 		console.log('Destroying cloud environment...');
 
 		await this.$$`terraform destroy -input=false -auto-approve`;
