@@ -116,12 +116,12 @@ function openContextMenu(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--vertical-handles: max(
+	--canvas-node--max-vertical-handles: max(
 		var(--canvas-node--main-input-count),
 		var(--canvas-node--main-output-count),
 		1
 	);
-	--canvas-node--height: calc(100px + max(0, var(--canvas-node--vertical-handles) - 3) * 42px);
+	--canvas-node--height: calc(100px + max(0, var(--canvas-node--max-vertical-handles) - 3) * 42px);
 	--canvas-node--width: 100px;
 	--canvas-node-border-width: 2px;
 	--configurable-node--min-input-count: 4;
