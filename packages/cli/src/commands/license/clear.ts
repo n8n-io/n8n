@@ -13,9 +13,9 @@ export class ClearLicenseCommand extends BaseCommand {
 		this.logger.info('Clearing license from database.');
 
 		// Attempt to invoke shutdown() to force any floating entitlements to be released
+		const license = Container.get(License);
+		await license.init();
 		try {
-			const license = Container.get(License);
-			await license.init();
 			await license.shutdown();
 		} catch {}
 
