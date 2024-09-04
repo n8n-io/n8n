@@ -55,6 +55,7 @@ import {
 	MODAL_CONFIRM,
 	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -203,9 +204,12 @@ const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
 
 const initializedWorkflowId = ref<string | undefined>();
-const workflowId = computed(() =>
-	route.params.name === NEW_WORKFLOW_ID ? undefined : (route.params.name as string),
-);
+const workflowId = computed(() => {
+	const workflowIdParam = route.params.name as string;
+	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
+		? undefined
+		: workflowIdParam;
+});
 
 const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView);
