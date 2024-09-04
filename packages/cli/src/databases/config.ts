@@ -104,6 +104,7 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 		schema: postgresConfig.schema,
 		poolSize: postgresConfig.poolSize,
 		migrations: postgresMigrations,
+		connectTimeoutMS: postgresConfig.connectionTimeoutMs,
 		ssl,
 	};
 };
