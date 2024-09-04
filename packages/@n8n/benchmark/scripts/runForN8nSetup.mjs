@@ -32,12 +32,6 @@ async function main() {
 	const runDir = path.join(baseRunDir, n8nSetupToUse);
 	fs.emptyDirSync(runDir);
 
-	if (!process.getuid) {
-		console.error('Windows is not supported');
-		process.exit(1);
-	}
-
-	const currentUserId = process.getuid();
 	const dockerComposeClient = new DockerComposeClient({
 		$: $({
 			cwd: composeFilePath,
@@ -47,7 +41,6 @@ async function main() {
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
 				RUN_DIR: runDir,
-				RUN_USER_AND_GROUP: `${currentUserId}:${currentUserId}`,
 			},
 		}),
 	});
