@@ -683,7 +683,7 @@ export default defineComponent({
 						if (!executeOnce) {
 							nodeHints.push({
 								message:
-									"The operation is performed for each input item. Use the 'Execute Once' setting to only execute it only once for the first input item.",
+									"The operation is performed for each input item. Use the 'Execute Once' setting to execute it only once for the first input item.",
 								location: 'outputPane',
 							});
 						}
