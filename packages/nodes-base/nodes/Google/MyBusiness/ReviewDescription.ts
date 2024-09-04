@@ -147,15 +147,6 @@ export const reviewFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
 	},
-	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether the response to include only the name, URL, and call-to-action button fields',
-		displayOptions: { show: { resource: ['review'], operation: ['getAll'] } },
-	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 review:reply                               */

@@ -74,7 +74,7 @@ export async function handleDatesPresend(
 	return opts;
 }
 
-/* Helper to handle pagination and simplification */
+/* Helper to handle pagination */
 export async function handlePagination(
 	this: IExecutePaginationFunctions,
 	requestOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -83,7 +83,6 @@ export async function handlePagination(
 	let nextPageToken: string | undefined;
 	let totalFetched = 0;
 	const limit = this.getNodeParameter('limit', 0) as number;
-	const simplify = this.getNodeParameter('simplify', 0) as boolean;
 
 	do {
 		if (nextPageToken) {
@@ -116,16 +115,6 @@ export async function handlePagination(
 
 		if (totalFetched >= limit) break;
 	} while (nextPageToken);
-
-	// Simplify results if simplify is true
-	if (simplify) {
-		const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
-		if (dataKey && aggregatedResult[dataKey]) {
-			const data = (aggregatedResult[dataKey] as IDataObject[]).slice(0, limit);
-			return data.length ? data.map((item: IDataObject) => ({ json: item })) : [{ json: {} }];
-		}
-		return [{ json: aggregatedResult }];
-	}
 
 	// Return aggregated results limiting the items
 	const dataKey = possibleRootProperties.find((key) => aggregatedResult[key]);
