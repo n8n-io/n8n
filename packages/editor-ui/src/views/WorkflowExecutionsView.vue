@@ -8,7 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { NEW_WORKFLOW_ID, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
@@ -33,16 +33,20 @@ const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = computed(() => {
-	return (route.params.name as string) || workflowsStore.workflowId;
-});
+const workflowId = computed(() =>
+	route.params.name === NEW_WORKFLOW_ID ? undefined : (route.params.name as string),
+);
 
 const executionId = computed(() => route.params.executionId as string);
 
-const executions = computed(() => [
-	...(executionsStore.currentExecutionsByWorkflowId[workflowId.value] ?? []),
-	...(executionsStore.executionsByWorkflowId[workflowId.value] ?? []),
-]);
+const executions = computed(() =>
+	workflowId.value
+		? [
+				...(executionsStore.currentExecutionsByWorkflowId[workflowId.value] ?? []),
+				...(executionsStore.executionsByWorkflowId[workflowId.value] ?? []),
+			]
+		: [],
+);
 
 const execution = computed(() => {
 	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
@@ -66,11 +70,11 @@ watch(
 
 onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	await Promise.all([
-		nodeTypesStore.loadNodeTypesIfNotLoaded(),
-		fetchWorkflow(),
-		executionsStore.initialize(workflowId.value),
-	]);
+
+	if (workflowId.value) {
+		await Promise.all([fetchWorkflow(), executionsStore.initialize(workflowId.value)]);
+	}
+
 	await fetchExecution();
 	await initializeRoute();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
@@ -116,6 +120,10 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
+	if (!workflowId.value) {
+		return;
+	}
+
 	// Check if the workflow already has an ID
 	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
 	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {

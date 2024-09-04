@@ -328,6 +328,7 @@ export const routes: RouteRecordRaw[] = [
 			default: NodeView,
 		},
 		meta: {
+			nodeView: true,
 			middleware: ['authenticated'],
 			middlewareOptions: {
 				authenticated: {
