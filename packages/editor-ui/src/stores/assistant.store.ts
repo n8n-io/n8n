@@ -79,9 +79,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
+	const assistantMessages = computed(() =>
+		chatMessages.value.filter((msg) => msg.role === 'assistant'),
+	);
+	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
+
 	const isSessionEnded = computed(() => {
-		const assistantMessages = chatMessages.value.filter((msg) => msg.role === 'assistant');
-		const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+		const lastAssistantMessage = assistantMessages.value[assistantMessages.value.length - 1];
 
 		const sessionExplicitlyEnded =
 			lastAssistantMessage?.type === 'event' && lastAssistantMessage?.eventName === 'end-session';
@@ -105,6 +109,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read,
 			).length,
 	);
+
+	const isSupportChatSessionInProgress = computed(() => {
+		return currentSessionId.value !== undefined && chatSessionError.value === undefined;
+	});
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
@@ -267,6 +275,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				},
 				{ withPostHog: true },
 			);
+			// Track first user message in support chat now that we have a session id
+			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
+				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
+				telemetry.track('User sent message in Assistant', {
+					message: firstUserMessage.content,
+					is_quick_reply: false,
+					chat_session_id: currentSessionId.value,
+					message_number: 1,
+				});
+			}
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
 		}
@@ -296,14 +314,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
-		// TODO: Maybe use a function for this
-		chatMessages.value.push({
-			id,
-			type: 'text',
-			role: 'user',
-			content: userMessage,
-			read: true,
-		});
+		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
 		chatWithAssistant(
@@ -468,12 +479,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
-			telemetry.track('User sent message in Assistant', {
-				message: chatMessage.text,
-				is_quick_reply: !!chatMessage.quickReplyType,
-				chat_session_id: currentSessionId.value,
-				message_number: chatMessages.value.filter((msg) => msg.role === 'user').length,
-			});
+			if (currentSessionId.value) {
+				telemetry.track('User sent message in Assistant', {
+					message: chatMessage.text,
+					is_quick_reply: !!chatMessage.quickReplyType,
+					chat_session_id: currentSessionId.value,
+					message_number: usersMessages.value.length,
+				});
+			}
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id);
