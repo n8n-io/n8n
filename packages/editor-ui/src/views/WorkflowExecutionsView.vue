@@ -116,19 +116,19 @@ async function initializeRoute() {
 }
 
 async function fetchWorkflow() {
-	// Check if the workflow already has an ID
-	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
 	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 		try {
 			await workflowsStore.fetchActiveWorkflows();
 			const data = await workflowsStore.fetchWorkflow(workflowId.value);
 			workflowHelpers.initState(data);
 			await nodeHelpers.addNodes(data.nodes, data.connections);
+			workflow.value = workflowsStore.workflow;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 		}
+	} else {
+		workflow.value = workflowsStore.getWorkflowById(workflowId.value);
 	}
-	workflow.value = workflowsStore.getWorkflowById(workflowId.value) ?? workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {
