@@ -148,7 +148,6 @@ export class SplitOut implements INodeType {
 			const multiSplit = fieldsToSplitOut.length > 1;
 
 			const item = { ...items[i].json };
-
 			const splited: INodeExecutionData[] = [];
 			for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 				const destinationFieldName = destinationFields[entryIndex] || '';
