@@ -138,10 +138,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
 		uiStore.appGridWidth = window.innerWidth - chatWidth.value;
-		// If previous session is ended, start a new one
-		if (isSessionEnded.value) {
-			resetAssistantChat();
-		}
 	}
 
 	function closeChat() {
@@ -149,17 +145,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
 		setTimeout(() => {
 			uiStore.appGridWidth = window.innerWidth;
+			// If session has ended, reset the chat
+			if (isSessionEnded.value) {
+				resetAssistantChat();
+			}
 		}, 200);
 	}
 
-	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
+	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
 		const read = chatWindowOpen.value;
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
 		// TODO: simplify
-		assistantMessages.forEach((msg) => {
+		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
 					id,
