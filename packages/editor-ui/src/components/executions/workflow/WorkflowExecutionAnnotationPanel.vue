@@ -63,10 +63,10 @@ const onTagsBlur = async () => {
 		return;
 	}
 
-	const current = (tagIds.value ?? []) as string[];
-	const tags = appliedTagIds.value;
+	const currentTagIds = tagIds.value ?? [];
+	const newTagIds = appliedTagIds.value;
 
-	if (!tagsHasChanged(current, tags)) {
+	if (!tagsHasChanged(currentTagIds, newTagIds)) {
 		isTagsEditEnabled.value = false;
 		return;
 	}
@@ -78,7 +78,7 @@ const onTagsBlur = async () => {
 	tagsSaving.value = true;
 
 	try {
-		await executionsStore.annotateExecution(activeExecution.value.id, { tags });
+		await executionsStore.annotateExecution(activeExecution.value.id, { tags: newTagIds });
 	} catch (e) {
 		showError(e, 'executionAnnotationView.tag.error');
 	}
@@ -106,8 +106,8 @@ const onTagsEditEsc = () => {
 			<span :class="$style.tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
 					v-if="isTagsEditEnabled"
-					v-model="appliedTagIds"
 					ref="dropdown"
+					v-model="appliedTagIds"
 					:create-enabled="true"
 					:event-bus="tagsEventBus"
 					:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
