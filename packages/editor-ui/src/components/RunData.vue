@@ -17,7 +17,6 @@ import type {
 	NodeError,
 	Workflow,
 	IConnectedNode,
-	AssignmentCollectionValue,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -41,9 +40,6 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
-	SET_NODE_TYPE,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-	LIST_LIKE_NODE_OPERATIONS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -66,6 +62,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
+import { getGenericHints } from '@/utils/nodeViewUtils';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -660,94 +657,23 @@ export default defineComponent({
 						connectionInputData: this.parentNodeOutputData,
 					});
 
-					// add limit reached hint
-					if (this.hasNodeRun && workflowNode.parameters.limit) {
-						const nodeOutputData =
-							this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0];
-						if (nodeOutputData && nodeOutputData.length === workflowNode.parameters.limit) {
-							nodeHints.push({
-								message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
-								location: 'outputPane',
-								whenToDisplay: 'afterExecution',
-							});
-						}
-					}
+					const hasMultipleInputItems =
+						this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
 
-					// add Execute Once hint
-					if (
-						(this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1) &&
-						LIST_LIKE_NODE_OPERATIONS.includes((workflowNode.parameters.operation as string) || '')
-					) {
-						const executeOnce = this.workflow.getNode(this.node.name)?.executeOnce;
+					const nodeOutputData =
+						this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0] || [];
 
-						if (!executeOnce) {
-							nodeHints.push({
-								message:
-									"The operation is performed for each input item. Use the 'Execute Once' setting to execute it only once for the first input item.",
-								location: 'outputPane',
-							});
-						}
-					}
+					const genericHints = getGenericHints({
+						workflowNode,
+						node: this.node,
+						nodeType: this.nodeType,
+						nodeOutputData,
+						workflow: this.workflow,
+						hasNodeRun: this.hasNodeRun,
+						hasMultipleInputItems,
+					});
 
-					// add expression in field name hint for Set node
-					if (this.node.type === SET_NODE_TYPE && this.node.parameters.mode === 'manual') {
-						const rawParameters = NodeHelpers.getNodeParameters(
-							this.nodeType.properties,
-							this.node.parameters,
-							true,
-							false,
-							this.node,
-							undefined,
-							false,
-						);
-
-						const assignments =
-							((rawParameters?.assignments as AssignmentCollectionValue) || {})?.assignments || [];
-						const expressionInFieldName: number[] = [];
-
-						for (const [index, assignment] of assignments.entries()) {
-							if (assignment.name.startsWith('=')) {
-								expressionInFieldName.push(index + 1);
-							}
-						}
-
-						if (expressionInFieldName.length > 0) {
-							nodeHints.push({
-								message: `An expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}, did you mean to use it in the value instead?`,
-								whenToDisplay: 'beforeExecution',
-								location: 'outputPane',
-							});
-						}
-					}
-
-					// Split In Batches setup hints
-					if (this.node.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-						const { connectionsBySourceNode } = this.workflow;
-
-						const firstNodesInLoop = connectionsBySourceNode[this.node.name]?.main[1] || [];
-
-						if (!firstNodesInLoop.length) {
-							nodeHints.push({
-								message: "No nodes connected to the 'loop' output of this node",
-								whenToDisplay: 'beforeExecution',
-								location: 'outputPane',
-							});
-						} else {
-							for (const node of firstNodesInLoop || []) {
-								const nodeChilds = this.workflow.getChildNodes(node.node) || [];
-								if (!nodeChilds.includes(this.node.name)) {
-									nodeHints.push({
-										message:
-											"The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly",
-										whenToDisplay: 'beforeExecution',
-										location: 'outputPane',
-									});
-								}
-							}
-						}
-					}
-
-					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
+					return executionHints.concat(nodeHints, genericHints).filter(this.shouldHintBeDisplayed);
 				}
 			}
 			return [];
