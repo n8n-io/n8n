@@ -33,9 +33,12 @@ const loadingMore = ref(false);
 
 const workflow = ref<IWorkflowDb | undefined>();
 
-const workflowId = computed(() =>
-	route.params.name === NEW_WORKFLOW_ID ? undefined : (route.params.name as string),
-);
+const workflowId = computed(() => {
+	const workflowIdParam = route.params.name as string;
+	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
+		? undefined
+		: workflowIdParam;
+});
 
 const executionId = computed(() => route.params.executionId as string);
 
@@ -69,13 +72,12 @@ watch(
 );
 
 onMounted(async () => {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded(), fetchWorkflow()]);
 
 	if (workflowId.value) {
-		await Promise.all([fetchWorkflow(), executionsStore.initialize(workflowId.value)]);
+		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
 	}
 
-	await fetchExecution();
 	await initializeRoute();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
@@ -109,34 +111,34 @@ function onDocumentVisibilityChange() {
 }
 
 async function initializeRoute() {
-	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflow.value) {
+	if (route.name === VIEWS.EXECUTION_HOME && executions.value.length > 0 && workflowId.value) {
 		await router
 			.push({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				params: { name: workflowId.value, executionId: executions.value[0].id },
 			})
 			.catch(() => {});
 	}
 }
 
 async function fetchWorkflow() {
-	if (!workflowId.value) {
-		return;
-	}
-
-	// Check if the workflow already has an ID
-	// In other words: are we coming from the Editor tab or browser loaded the Executions tab directly
-	if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		try {
-			await workflowsStore.fetchActiveWorkflows();
-			const data = await workflowsStore.fetchWorkflow(workflowId.value);
-			workflowHelpers.initState(data);
-			await nodeHelpers.addNodes(data.nodes, data.connections);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+	if (workflowId.value) {
+		// Check if we are loading the Executions tab directly, without having loaded the workflow
+		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			try {
+				await workflowsStore.fetchActiveWorkflows();
+				const data = await workflowsStore.fetchWorkflow(workflowId.value);
+				workflowHelpers.initState(data);
+				await nodeHelpers.addNodes(data.nodes, data.connections);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
+			}
 		}
+
+		workflow.value = workflowsStore.getWorkflowById(workflowId.value);
+	} else {
+		workflow.value = workflowsStore.workflow;
 	}
-	workflow.value = workflowsStore.getWorkflowById(workflowId.value);
 }
 
 async function onAutoRefreshToggle(value: boolean) {
@@ -319,7 +321,6 @@ async function loadMore(): Promise<void> {
 </script>
 <template>
 	<WorkflowExecutionsList
-		v-if="workflow"
 		:executions="executions"
 		:execution="execution"
 		:workflow="workflow"
