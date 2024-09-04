@@ -22,9 +22,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('all nodes except destination node have data', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node = createNodeData({ name: 'node' });
 
@@ -39,15 +37,11 @@ describe('recreateNodeExecutionStack', () => {
 		};
 		const pinData = {};
 
-		//
 		// ACT
-		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
-		//
 		// ASSERT
-		//
 		expect(nodeExecutionStack).toHaveLength(1);
 		expect(nodeExecutionStack).toEqual([
 			{
@@ -84,9 +78,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('no nodes have data', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node = createNodeData({ name: 'node' });
 
@@ -97,15 +89,11 @@ describe('recreateNodeExecutionStack', () => {
 		const runData: IRunData = {};
 		const pinData: IPinData = {};
 
-		//
 		// ACT
-		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
-		//
 		// ASSERT
-		//
 		expect(nodeExecutionStack).toHaveLength(1);
 		expect(nodeExecutionStack).toEqual([
 			{
@@ -124,9 +112,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  │Trigger├──────►│Node│
 	//  └───────┘       └────┘
 	test('node before destination node has pinned data', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node = createNodeData({ name: 'node' });
 
@@ -139,15 +125,11 @@ describe('recreateNodeExecutionStack', () => {
 			[trigger.name]: [{ json: { value: 1 } }],
 		};
 
-		//
 		// ACT
-		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(workflow, startNodes, node, runData, pinData);
 
-		//
 		// ASSERT
-		//
 		expect(nodeExecutionStack).toHaveLength(1);
 		expect(nodeExecutionStack).toEqual([
 			{
@@ -176,9 +158,7 @@ describe('recreateNodeExecutionStack', () => {
 	//  │Trigger├─────►│Node1├──────►│Node2│
 	//  └───────┘      └─────┘       └─────┘
 	test('throws if a disabled node is found', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1', disabled: true });
 		const node2 = createNodeData({ name: 'node2' });
@@ -193,9 +173,7 @@ describe('recreateNodeExecutionStack', () => {
 		};
 		const pinData = {};
 
-		//
 		// ACT & ASSERT
-		//
 		expect(() =>
 			recreateNodeExecutionStack(graph, startNodes, node2, runData, pinData),
 		).toThrowError(AssertionError);
@@ -210,9 +188,7 @@ describe('recreateNodeExecutionStack', () => {
 	//             └──►│Node2├──┘
 	//                 └─────┘
 	test('multiple incoming connections', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
@@ -234,15 +210,11 @@ describe('recreateNodeExecutionStack', () => {
 		};
 		const pinData = {};
 
-		//
 		// ACT
-		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(graph, startNodes, node3, runData, pinData);
 
-		//
 		// ASSERT
-		//
 
 		expect(nodeExecutionStack).toEqual([
 			{
@@ -292,15 +264,6 @@ describe('recreateNodeExecutionStack', () => {
 		});
 	});
 
-	// TODO: This does not work as expected right now. The node execution stack
-	// will contain node3, but only with data from input 1, instead of data from
-	// input 1 and 2.
-	// I need to spent time to understand the node execution stack, waiting
-	// executions and waiting execution sources and write a spec for this and
-	// then re-implement it from the spec.
-	// Changing `StartNodeData.sourceData` to contain sources from multiple nodes
-	// could be helpful:
-	// { name: string, sourceData: ISourceData[] }
 	//                ┌─────┐1       ►►
 	//             ┌─►│node1├───┐   ┌─────┐
 	//  ┌───────┐1 │  └─────┘   └──►│     │
@@ -308,11 +271,8 @@ describe('recreateNodeExecutionStack', () => {
 	//  └───────┘  │  ┌─────┐1  ┌──►│     │
 	//             └─►│node2├───┘   └─────┘
 	//                └─────┘
-	// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 	test('multiple inputs', () => {
-		//
 		// ARRANGE
-		//
 		const trigger = createNodeData({ name: 'trigger' });
 		const node1 = createNodeData({ name: 'node1' });
 		const node2 = createNodeData({ name: 'node2' });
@@ -335,15 +295,11 @@ describe('recreateNodeExecutionStack', () => {
 			[trigger.name]: [{ json: { value: 1 } }],
 		};
 
-		//
 		// ACT
-		//
 		const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
 			recreateNodeExecutionStack(graph, startNodes, node3, runData, pinData);
 
-		//
 		// ASSERT
-		//
 		expect(nodeExecutionStack).toHaveLength(1);
 		expect(nodeExecutionStack[0]).toEqual({
 			data: { main: [[{ json: { value: 1 } }], [{ json: { value: 1 } }]] },
