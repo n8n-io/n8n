@@ -182,7 +182,7 @@ onClickOutside(
 	() => {
 		emit('blur');
 	},
-	{ ignore: [`.tags-dropdown-${dropdownId}`, '#tags-manager-modal'] },
+	{ ignore: [`.tags-dropdown-${dropdownId}`, '#tags-manager-modal'], detectIframe: true },
 );
 </script>
 
