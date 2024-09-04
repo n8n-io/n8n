@@ -179,9 +179,6 @@ export class DirectedGraph {
 			a.ok(from);
 
 			for (const [outputType, outputs] of Object.entries(iConnection)) {
-				// TODO: parse
-				//const type = outputType as NodeConnectionType
-
 				for (const [outputIndex, conns] of outputs.entries()) {
 					for (const conn of conns) {
 						// TODO: What's with the input type?
@@ -192,6 +189,7 @@ export class DirectedGraph {
 						graph.addConnection({
 							from,
 							to,
+							// TODO: parse outputType instead of casting it
 							type: outputType as NodeConnectionType,
 							outputIndex,
 							inputIndex,
