@@ -30,6 +30,7 @@ import type { PinDataSource } from '@/composables/usePinnedData';
 import { isPresent } from '@/utils/typesUtils';
 import { GRID_SIZE } from '@/utils/nodeViewUtils';
 import { CanvasKey } from '@/constants';
+import { onKeyDown, onKeyUp } from '@vueuse/core';
 
 const $style = useCssModule();
 
@@ -107,11 +108,30 @@ const {
 	findNode,
 } = useVueFlow({ id: props.id, deleteKeyCode: null });
 
+const isPaneReady = ref(false);
+
+const classes = computed(() => ({
+	[$style.canvas]: true,
+	[$style.ready]: isPaneReady.value,
+	[$style.draggable]: isPanningEnabled.value,
+}));
+
 /**
  * Key bindings
  */
 
 const disableKeyBindings = computed(() => !props.keyBindings);
+
+const panningKeyCode = 'Shift';
+const isPanningEnabled = ref(false);
+
+onKeyDown(panningKeyCode, () => {
+	isPanningEnabled.value = true;
+});
+
+onKeyUp(panningKeyCode, () => {
+	isPanningEnabled.value = false;
+});
 
 useKeybindings(
 	{
@@ -138,19 +158,14 @@ useKeybindings(
 	{ disabled: disableKeyBindings },
 );
 
-const contextMenu = useContextMenu();
-
-const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
-
-const hasSelection = computed(() => selectedNodes.value.length > 0);
-
-const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
-
-const paneReady = ref(false);
-
 /**
  * Nodes
  */
+
+const selectionKeyCode = computed(() => (isPanningEnabled.value ? null : true));
+const lastSelectedNode = computed(() => selectedNodes.value[selectedNodes.value.length - 1]);
+const hasSelection = computed(() => selectedNodes.value.length > 0);
+const selectedNodeIds = computed(() => selectedNodes.value.map((node) => node.id));
 
 function onClickNodeAdd(id: string, handle: string) {
 	emit('click:node:add', id, handle);
@@ -343,6 +358,8 @@ function setReadonly(value: boolean) {
  * Context menu
  */
 
+const contextMenu = useContextMenu();
+
 function onOpenContextMenu(event: MouseEvent) {
 	contextMenu.open(event, {
 		source: 'canvas',
@@ -417,7 +434,7 @@ onUnmounted(() => {
 
 onPaneReady(async () => {
 	await onFitView();
-	paneReady.value = true;
+	isPaneReady.value = true;
 });
 
 watch(() => props.readOnly, setReadonly, {
@@ -444,7 +461,9 @@ provide(CanvasKey, {
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
 		:min-zoom="0.2"
 		:max-zoom="4"
-		:class="[$style.canvas, { [$style.visible]: paneReady }]"
+		:class="classes"
+		:selection-key-code="selectionKeyCode"
+		:pan-activation-key-code="panningKeyCode"
 		data-test-id="canvas"
 		@edge-mouse-enter="onMouseEnterEdge"
 		@edge-mouse-leave="onMouseLeaveEdge"
@@ -524,8 +543,16 @@ provide(CanvasKey, {
 .canvas {
 	opacity: 0;
 
-	&.visible {
+	&.ready {
 		opacity: 1;
+	}
+
+	&.draggable :global(.vue-flow__pane) {
+		cursor: grab;
+	}
+
+	:global(.vue-flow__pane.dragging) {
+		cursor: grabbing;
 	}
 }
 </style>
