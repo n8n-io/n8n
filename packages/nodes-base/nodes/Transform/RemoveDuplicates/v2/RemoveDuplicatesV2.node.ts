@@ -618,6 +618,16 @@ export class RemoveDuplicatesV2 implements INodeType {
 				return [items];
 			}
 		} else if (operation === 'ManageKeyValuesInDatabase') {
+			const mode = this.getNodeParameter('mode', 0) as string;
+			if (mode === 'updateKeyValuesInDatabase') {
+			} else if (mode === 'deleteKeyValuesFromDatabase') {
+			} else if (mode === 'cleanDatabase') {
+				const context = 'workflow';
+				await this.helpers.clearAllProcessedItems(context as ProcessedDataContext, {
+					mode: 'entries',
+				});
+			}
+
 			return [items];
 		} else {
 			return [items];

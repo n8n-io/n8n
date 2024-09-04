@@ -119,4 +119,16 @@ export class ProcessedDataManager {
 
 		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
 	}
+
+	async clearAllProcessedItems(
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		if (this.managers[this.mode]) {
+			return await this.managers[this.mode].clearAllProcessedItems(context, contextData, options);
+		}
+
+		throw new ApplicationError(`There is no manager for the defined mode "${this.mode}"`);
+	}
 }

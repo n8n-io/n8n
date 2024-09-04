@@ -315,4 +315,15 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 
 		await Container.get(ProcessedDataRepository).save(processedData);
 	}
+
+	async clearAllProcessedItems(
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void> {
+		await Container.get(ProcessedDataRepository).delete({
+			workflowId: contextData.workflow.id as string,
+			context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),
+		});
+	}
 }

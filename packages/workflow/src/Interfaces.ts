@@ -806,6 +806,10 @@ export interface CheckProcessedHelperFunctions {
 		context: ProcessedDataContext,
 		options: ICheckProcessedOptions,
 	): Promise<void>;
+	clearAllProcessedItems(
+		context: ProcessedDataContext,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
 }
 export interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
@@ -2687,6 +2691,12 @@ export interface IProcessedDataManager {
 
 	removeProcessed(
 		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
+		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
+	): Promise<void>;
+
+	clearAllProcessedItems(
 		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
