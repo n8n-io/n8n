@@ -1,6 +1,5 @@
 import get from 'lodash/get';
 import unset from 'lodash/unset';
-
 import {
 	NodeOperationError,
 	deepCopy,
