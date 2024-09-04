@@ -33,14 +33,10 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 	} else {
 		await assistantStore.sendMessage({ text: content, quickReplyType });
 	}
-	// TODO: Check what would be the correct value for 'support' task
-	const task = assistantStore.chatSessionError ? 'error' : 'support';
-	const solutionCount =
-		task === 'error'
-			? assistantStore.chatMessages.filter(
-					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
-				).length
-			: null;
+	const task = assistantStore.isSupportChatSessionInProgress ? 'support' : 'error';
+	const solutionCount = assistantStore.chatMessages.filter(
+		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
+	).length;
 	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			task,
@@ -49,12 +45,6 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 			is_positive: quickReplyType === 'all-good',
 			solution_count: solutionCount,
 			response: content,
-		});
-	} else if (task === 'support') {
-		telemetry.track('User sent message in Assistant', {
-			message: content,
-			is_quick_reply: false,
-			message_number: 1,
 		});
 	}
 }

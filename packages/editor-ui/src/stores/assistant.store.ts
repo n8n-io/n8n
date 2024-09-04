@@ -641,5 +641,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addAssistantMessages,
 		assistantThinkingMessage,
 		chatSessionError,
+		isSupportChatSessionInProgress,
 	};
 });
