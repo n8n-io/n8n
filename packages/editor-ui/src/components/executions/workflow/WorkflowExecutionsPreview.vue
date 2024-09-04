@@ -120,11 +120,18 @@ function onRetryButtonBlur(event: FocusEvent) {
 		<N8nText :class="$style.runningMessage" color="text-light">
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
-		<N8nButton class="mt-l" type="tertiary" @click="handleStopClick">
+		<N8nButton
+			v-if="workflowPermissions.execute"
+			class="mt-l"
+			type="tertiary"
+			@click="handleStopClick"
+			data-test-id="stop-execution"
+		>
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
 	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
+		{{ executionUIDetails }}
 		<div
 			v-if="execution"
 			:class="$style.executionDetails"
