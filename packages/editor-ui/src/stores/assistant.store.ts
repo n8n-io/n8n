@@ -138,6 +138,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen.value = true;
 		chatMessages.value = chatMessages.value.map((msg) => ({ ...msg, read: true }));
 		uiStore.appGridWidth = window.innerWidth - chatWidth.value;
+		// If previous session is ended, start a new one
+		if (isSessionEnded.value) {
+			resetAssistantChat();
+		}
 	}
 
 	function closeChat() {
