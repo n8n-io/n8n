@@ -47,17 +47,8 @@ export function toITaskData(taskData: TaskData[]): ITaskData {
 
 	for (const [type, dataConnection] of Object.entries(result.data)) {
 		for (const [index, maybe] of dataConnection.entries()) {
-			//result.data[type][index] =
-			//	maybe ?? randomInt(2) === 0
-			//		? null
-			//		: // NOTE: The FE sends an empty array instead of null. I have yet to
-			//			// figure out if there is a different when executing a workflow.
-			//			[];
 			result.data[type][index] = maybe ?? null;
 		}
-		//result.data[type] = dataConnection.map((maybe) =>
-		//	maybe ? maybe.map((maybe) => maybe ?? null) : null,
-		//);
 	}
 
 	return result;
