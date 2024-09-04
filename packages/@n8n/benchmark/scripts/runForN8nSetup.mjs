@@ -9,6 +9,7 @@ import { DockerComposeClient } from './clients/dockerComposeClient.mjs';
 
 const paths = {
 	n8nSetupsDir: path.join(__dirname, 'n8nSetups'),
+	mockApiDataPath: path.join(__dirname, 'mockApi'),
 };
 
 async function main() {
@@ -41,6 +42,7 @@ async function main() {
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
 				RUN_DIR: runDir,
+				MOCK_API_DATA_PATH: paths.mockApiDataPath,
 			},
 		}),
 	});

@@ -1,4 +1,11 @@
 services:
+  mockapi:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
+
   redis:
     image: redis:6-alpine
     ports:
@@ -49,7 +56,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_worker1:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -81,7 +88,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_worker2:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -113,8 +120,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mockapi:
+        condition: service_started
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10

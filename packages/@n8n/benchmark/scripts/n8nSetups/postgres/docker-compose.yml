@@ -1,4 +1,11 @@
 services:
+  mockapi:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
+
   postgres:
     image: postgres:16
     restart: always
@@ -32,8 +39,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mockapi:
+        condition: service_started
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
