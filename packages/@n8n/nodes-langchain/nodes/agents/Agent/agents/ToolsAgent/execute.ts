@@ -96,6 +96,56 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 	/**
 	 * Handles the agent text output and transforms it in case of multi-output.
 	 *
+	 * This method is necessary to handle different output formats from various language models.
+	 * Specifically, it checks if the agent step is the final step (contains returnValues) and determines
+	 * if the output is a simple string (e.g., from OpenAI models) or an array of outputs (e.g., from Anthropic models).
+	 *
+	 * If the output is an array of text outputs, this method will concatenate them into a single string,
+	 * ensuring compatibility with downstream processes that expect a single output string.
+	 *
+	 * Examples:
+	 * 1. Anthropic model output:
+	 *    {
+	 *      "output": [
+	 *        {
+	 *          "index": 0,
+	 *          "type": "text",
+	 *          "text": "The result of the calculation is approximately 1001.8166..."
+	 *        }
+	 *      ]
+	 *    }
+	 *
+	 * 2. OpenAI model output:
+	 *    {
+	 *      "output": "The result of the calculation is approximately 1001.82..."
+	 *    }
+	 *
+	 * This method ensures consistent handling of outputs regardless of the model used,
+	 * providing a unified output format for further processing.
+	 *
+	 * This method is necessary to handle different output formats from various language models.
+	 * Specifically, it checks if the agent step is the final step (contains returnValues) and determines
+	 * if the output is a simple string (e.g., from OpenAI models) or an array of outputs (e.g., from Anthropic models).
+	 *
+	 * Examples:
+	 * 1. Anthropic model output:
+	 *    {
+	 *      "output": [
+	 *        {
+	 *          "index": 0,
+	 *          "type": "text",
+	 *          "text": "The result of the calculation is approximately 1001.8166..."
+	 *        }
+	 *      ]
+	 *    }
+	 *
+	 * 2. OpenAI model output:
+	 *    {
+	 *      "output": "The result of the calculation is approximately 1001.82..."
+	 *    }
+	 *
+	 * This method ensures consistent handling of outputs regardless of the model used.
+	 *
 	 * @param steps - The agent finish or agent action steps.
 	 * @returns The modified agent finish steps or the original steps.
 	 */
@@ -104,17 +154,18 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 		type AgentMultiOutputFinish = AgentFinish & {
 			returnValues: { output: Array<{ text: string; type: string; index: number }> };
 		};
-		const agentFinishSteps = structuredClone(steps) as AgentMultiOutputFinish | AgentFinish;
+		const agentFinishSteps = steps as AgentMultiOutputFinish | AgentFinish;
 
 		if (agentFinishSteps.returnValues) {
 			const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
+
 			if (isMultiOutput) {
 				// Define the type for each item in the multi-output array
 				type MultiOutputItem = { index: number; type: string; text: string };
 				const multiOutputSteps = agentFinishSteps.returnValues.output as MultiOutputItem[];
 
 				// Check if all items in the multi-output array are of type 'text'
-				const isTextOnly = (multiOutputSteps ?? []).every((output) => output.type === 'text');
+				const isTextOnly = (multiOutputSteps ?? []).every((output) => 'text' in output);
 
 				if (isTextOnly) {
 					// If all items are of type 'text', merge them into a single string
