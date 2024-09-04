@@ -248,10 +248,10 @@ function growInput() {
 					</p>
 					<p>
 						{{ t('assistantChat.placeholder.2') }}
+						<InlineAskAssistantButton size="small" :static="true" />
+						{{ t('assistantChat.placeholder.3') }}
 					</p>
 					<p>
-						{{ t('assistantChat.placeholder.3') }}
-						<InlineAskAssistantButton size="small" :static="true" />
 						{{ t('assistantChat.placeholder.4') }}
 					</p>
 					<p>

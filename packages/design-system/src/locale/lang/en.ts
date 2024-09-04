@@ -39,13 +39,12 @@ export default {
 	'assistantChat.you': 'You',
 	'assistantChat.quickRepliesTitle': 'Quick reply 👇',
 	'assistantChat.placeholder.1': () =>
-		"I'm your Assistant, here to guide you through your journey with n8n.",
-	'assistantChat.placeholder.2':
-		"While I'm still learning, I'm already equipped to help you solve your n8n issues.",
-	'assistantChat.placeholder.3': "If you run into an issue with a node, you'll see the",
-	'assistantChat.placeholder.4': 'button and start chatting with me.',
-	'assistantChat.placeholder.5':
-		'Or you can always ask any n8n-related question you might have in this chat.',
+		'I can answer most questions about building workflows in n8n.',
+	'assistantChat.placeholder.2': 'For specific tasks, you’ll see the',
+	'assistantChat.placeholder.3': 'button in the UI.',
+	'assistantChat.placeholder.4':
+		'Clicking it starts a context-aware session, often leading to better results with less effort for you.',
+	'assistantChat.placeholder.5': 'How can I help?',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;
