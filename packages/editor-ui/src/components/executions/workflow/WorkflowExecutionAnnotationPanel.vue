@@ -1,16 +1,32 @@
-<script lang="ts">
+<script setup lang="ts">
+import { ref, computed } from 'vue';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import { useExecutionsStore } from '@/stores/executions.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import AnnotationTagsDropdown from '@/components/AnnotationTagsDropdown.vue';
 import { createEventBus } from 'n8n-design-system';
 import VoteButtons from '@/components/executions/workflow/VoteButtons.vue';
 import { useToast } from '@/composables/useToast';
 
-const hasChanged = (prev: string[], curr: string[]) => {
+const executionsStore = useExecutionsStore();
+
+const { showError } = useToast();
+
+const tagsEventBus = createEventBus();
+const isTagsEditEnabled = ref(false);
+const appliedTagIds = ref<string[]>([]);
+const tagsSaving = ref(false);
+
+const activeExecution = computed(() => {
+	return executionsStore.activeExecution as ExecutionSummary & {
+		customData?: Record<string, string>;
+	};
+});
+
+const vote = computed(() => activeExecution.value?.annotation?.vote || null);
+const tagIds = computed(() => activeExecution.value?.annotation?.tags.map((tag) => tag.id) ?? []);
+const tags = computed(() => activeExecution.value?.annotation?.tags);
+
+const tagsHasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
 		return true;
 	}
@@ -19,129 +35,79 @@ const hasChanged = (prev: string[], curr: string[]) => {
 	return curr.reduce((acc, val) => acc || !set.has(val), false);
 };
 
-export default defineComponent({
-	name: 'WorkflowExecutionAnnotationSidebar',
-	components: {
-		VoteButtons,
-		AnnotationTagsDropdown,
-	},
-	props: {
-		execution: {
-			type: Object as PropType<ExecutionSummary>,
-			default: null,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-	},
+const onVoteClick = async (voteValue: AnnotationVote) => {
+	if (!activeExecution.value) {
+		return;
+	}
 
-	computed: {
-		...mapStores(useExecutionsStore, useWorkflowsStore),
-		vote() {
-			return this.activeExecution?.annotation?.vote || null;
-		},
-		activeExecution() {
-			// FIXME: this is a temporary workaround to make TS happy. activeExecution may contain customData, but it is type-casted to ExecutionSummary after fetching from the backend
-			return this.executionsStore.activeExecution as ExecutionSummary & {
-				customData?: Record<string, string>;
-			};
-		},
-		tagIds() {
-			return this.activeExecution?.annotation?.tags.map((tag) => tag.id) ?? [];
-		},
-		tags() {
-			return this.activeExecution?.annotation?.tags;
-		},
-	},
-	setup() {
-		return {
-			...useToast(),
-		};
-	},
-	data() {
-		return {
-			tagsEventBus: createEventBus(),
-			isTagsEditEnabled: false,
-			appliedTagIds: [] as string[],
-			tagsSaving: false,
-		};
-	},
-	methods: {
-		async onVoteClick(vote: AnnotationVote) {
-			if (!this.activeExecution) {
-				return;
-			}
+	const voteToSet = voteValue === vote.value ? null : voteValue;
 
-			// If user clicked on the same vote, remove it
-			// so that vote buttons act as toggle buttons
-			const voteToSet = vote === this.vote ? null : vote;
+	try {
+		await executionsStore.annotateExecution(activeExecution.value.id, { vote: voteToSet });
+	} catch (e) {
+		showError(e, 'executionAnnotationView.vote.error');
+	}
+};
 
-			try {
-				await this.executionsStore.annotateExecution(this.activeExecution.id, { vote: voteToSet });
-			} catch (e) {
-				this.showError(e, this.$locale.baseText('executionAnnotationView.vote.error'));
-			}
-		},
-		onTagsEditEnable() {
-			this.appliedTagIds = this.tagIds;
-			this.isTagsEditEnabled = true;
+const onTagsEditEnable = () => {
+	appliedTagIds.value = tagIds.value;
+	isTagsEditEnabled.value = true;
 
-			setTimeout(() => {
-				this.tagsEventBus.emit('focus');
-			}, 0);
-		},
-		async onTagsBlur() {
-			if (!this.activeExecution) {
-				return;
-			}
+	setTimeout(() => {
+		tagsEventBus.emit('focus');
+	}, 0);
+};
 
-			const current = (this.tagIds ?? []) as string[];
-			const tags = this.appliedTagIds;
+const onTagsBlur = async () => {
+	if (!activeExecution.value) {
+		return;
+	}
 
-			if (!hasChanged(current, tags)) {
-				this.isTagsEditEnabled = false;
-				return;
-			}
+	const currentTagIds = tagIds.value ?? [];
+	const newTagIds = appliedTagIds.value;
 
-			if (this.tagsSaving) {
-				return;
-			}
+	if (!tagsHasChanged(currentTagIds, newTagIds)) {
+		isTagsEditEnabled.value = false;
+		return;
+	}
 
-			this.tagsSaving = true;
+	if (tagsSaving.value) {
+		return;
+	}
 
-			try {
-				await this.executionsStore.annotateExecution(this.activeExecution.id, { tags });
-			} catch (e) {
-				this.showError(e, this.$locale.baseText('executionAnnotationView.tag.error'));
-			}
+	tagsSaving.value = true;
 
-			this.tagsSaving = false;
-			this.isTagsEditEnabled = false;
-		},
-		onTagsEditEsc() {
-			this.isTagsEditEnabled = false;
-		},
-	},
-});
+	try {
+		await executionsStore.annotateExecution(activeExecution.value.id, { tags: newTagIds });
+	} catch (e) {
+		showError(e, 'executionAnnotationView.tag.error');
+	}
+
+	tagsSaving.value = false;
+	isTagsEditEnabled.value = false;
+};
+
+const onTagsEditEsc = () => {
+	isTagsEditEnabled.value = false;
+};
 </script>
 
 <template>
 	<div
 		ref="container"
-		:class="['execution-annotation-sidebar', $style.container]"
-		data-test-id="execution-annotation-sidebar"
+		:class="['execution-annotation-panel', $style.container]"
+		data-test-id="execution-annotation-panel"
 	>
 		<div :class="$style.section">
 			<div :class="$style.vote">
 				<div>{{ $locale.baseText('generic.rating') }}</div>
 				<VoteButtons :vote="vote" @vote-click="onVoteClick" />
 			</div>
-			<span class="tags" data-test-id="annotation-tags-container">
+			<span :class="$style.tags" data-test-id="annotation-tags-container">
 				<AnnotationTagsDropdown
 					v-if="isTagsEditEnabled"
-					v-model="appliedTagIds"
 					ref="dropdown"
+					v-model="appliedTagIds"
 					:create-enabled="true"
 					:event-bus="tagsEventBus"
 					:placeholder="$locale.baseText('executionAnnotationView.chooseOrCreateATag')"
@@ -152,7 +118,7 @@ export default defineComponent({
 				/>
 				<div v-else-if="tagIds.length === 0">
 					<span
-						class="add-tag add-tag-standalone clickable"
+						:class="[$style.addTag, $style.addTagStandalone, 'clickable']"
 						data-test-id="new-tag-link"
 						@click="onTagsEditEnable"
 					>
@@ -162,7 +128,10 @@ export default defineComponent({
 
 				<span
 					v-else
-					class="tags-container"
+					:class="[
+						'tags-container', // FIXME: There are some global styles for tags relying on this classname
+						$style.tagsContainer,
+					]"
 					data-test-id="execution-annotation-tags"
 					@click="onTagsEditEnable"
 				>
@@ -171,9 +140,9 @@ export default defineComponent({
 							{{ tag.name }}
 						</el-tag>
 					</span>
-					<span class="add-tag-wrapper">
+					<span :class="$style.addTagWrapper">
 						<n8n-button
-							class="add-tag"
+							:class="$style.addTag"
 							:label="`+ ` + $locale.baseText('executionAnnotationView.addTag')"
 							type="secondary"
 							size="mini"
@@ -208,7 +177,7 @@ export default defineComponent({
 					</n8n-text>
 				</div>
 			</div>
-			<div v-else :class="$style.noResultsContainer" data-test-id="execution-list-empty">
+			<div v-else :class="$style.noResultsContainer" data-test-id="execution-annotation-data-empty">
 				<n8n-text color="text-base" size="small" align="center">
 					<span v-html="$locale.baseText('executionAnnotationView.data.notFound')" />
 				</n8n-text>
@@ -219,23 +188,29 @@ export default defineComponent({
 
 <style module lang="scss">
 .container {
-	flex: 250px 0 0;
-	background-color: var(--color-background-xlight);
-	border-left: var(--border-base);
 	z-index: 1;
+	position: absolute;
+	bottom: 0;
+	right: var(--spacing-xl);
+	transform: translate(0, 100%);
+	max-height: calc(100vh - 250px);
+	width: 250px;
+
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
+
+	background-color: var(--color-background-xlight);
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
 }
 
 .section {
-	padding: var(--spacing-l);
+	padding: var(--spacing-s);
 	display: flex;
 	flex-direction: column;
 
 	&:not(:last-child) {
-		display: flex;
-		padding-bottom: var(--spacing-l);
 		border-bottom: var(--border-base);
 	}
 }
@@ -296,57 +271,19 @@ export default defineComponent({
 	}
 }
 
-.executionList {
-	flex: 1;
-	overflow: auto;
-	margin-bottom: var(--spacing-m);
-	background-color: var(--color-background-xlight) !important;
-
-	// Scrolling fader
-	&::before {
-		position: absolute;
-		display: block;
-		width: 270px;
-		height: 6px;
-		background: linear-gradient(to bottom, rgba(251, 251, 251, 1) 0%, rgba(251, 251, 251, 0) 100%);
-		z-index: 999;
-	}
-
-	// Lower first execution card so fader is not visible when not scrolled
-	& > div:first-child {
-		margin-top: 3px;
-	}
-}
-
-.infoAccordion {
-	position: absolute;
-	bottom: 0;
-	margin-left: calc(-1 * var(--spacing-l));
-	border-top: var(--border-base);
-
-	& > div {
-		width: 309px;
-		background-color: var(--color-background-light);
-		margin-top: 0 !important;
-	}
-}
-
 .noResultsContainer {
 	width: 100%;
 	margin-top: var(--spacing-s);
-	//text-align: center;
 }
-</style>
 
-<style lang="scss" scoped>
-.execution-annotation-sidebar {
+.execution-annotation-panel {
 	:deep(.el-skeleton__item) {
 		height: 60px;
 		border-radius: 0;
 	}
 }
 
-.tags-container {
+.tagsContainer {
 	display: inline-flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -358,10 +295,10 @@ export default defineComponent({
 	}
 }
 
-.add-tag {
-	font-size: 12px;
+.addTag {
+	font-size: var(--font-size-2xs);
 	color: $custom-font-very-light;
-	font-weight: 600;
+	font-weight: var(--font-weight-bold);
 	white-space: nowrap;
 	&:hover {
 		color: $color-primary;
@@ -369,11 +306,11 @@ export default defineComponent({
 	}
 }
 
-.add-tag-standalone {
-	padding: 20px 0; // to be more clickable
+.addTagStandalone {
+	padding: var(--spacing-m) 0; // to be more clickable
 }
 
-.add-tag-wrapper {
+.addTagWrapper {
 	margin-left: calc(var(--spacing-2xs) * -1); // Cancel out right margin of last tag
 }
 </style>
