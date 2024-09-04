@@ -29,10 +29,6 @@
 	&.draggable {
 		cursor: default;
 	}
-
-	&.dragging {
-		cursor: grabbing;
-	}
 }
 
 .vue-flow__node {
