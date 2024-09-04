@@ -230,6 +230,8 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	CHAT_TRIGGER_NODE_TYPE,
 ];
 
+export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
+
 export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
 
 // Node creator
