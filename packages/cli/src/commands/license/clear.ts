@@ -17,7 +17,9 @@ export class ClearLicenseCommand extends BaseCommand {
 		await license.init();
 		try {
 			await license.shutdown();
-		} catch {}
+		} catch {
+			this.logger.info('License shutdown failed. Continuing with clearing license from database.');
+		}
 
 		await Container.get(SettingsRepository).delete({
 			key: SETTINGS_LICENSE_CERT_KEY,
