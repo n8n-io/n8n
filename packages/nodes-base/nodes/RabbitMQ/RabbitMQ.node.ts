@@ -466,12 +466,11 @@ export class RabbitMQ implements INodeType {
 				await channel.connection.close();
 			} else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
-				const type = this.getNodeParameter('exchangeType', 0) as string;
 				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
 				const options = this.getNodeParameter('options', 0, {}) as Options;
 
-				channel = await rabbitmqConnectExchange.call(this, exchange, type, options);
+				channel = await rabbitmqConnectExchange.call(this, exchange, options);
 
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 

@@ -7,7 +7,7 @@ import type {
 import { jsonParse, sleep } from 'n8n-workflow';
 import * as amqplib from 'amqplib';
 import { formatPrivateKey } from '@utils/utilities';
-import type { Options, RabbitMQCredentials, TriggerOptions } from './types';
+import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
 
 const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'] as const;
 
@@ -88,15 +88,15 @@ export async function rabbitmqConnectQueue(
 export async function rabbitmqConnectExchange(
 	this: IExecuteFunctions | ITriggerFunctions,
 	exchange: string,
-	type: string,
 	options: Options | TriggerOptions,
 ): Promise<amqplib.Channel> {
+	const exchangeType = this.getNodeParameter('exchangeType', 0) as ExchangeType;
 	const channel = await rabbitmqCreateChannel.call(this);
 
 	return await new Promise(async (resolve, reject) => {
 		try {
 			if (options.assertExchange) {
-				await channel.assertExchange(exchange, type, options);
+				await channel.assertExchange(exchange, exchangeType, options);
 			} else {
 				await channel.checkExchange(exchange);
 			}

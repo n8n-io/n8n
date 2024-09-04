@@ -67,3 +67,5 @@ export type RabbitMQCredentials = {
 			  }
 	  ))
 );
+
+export type ExchangeType = 'direct' | 'topic' | 'headers' | 'fanout';
