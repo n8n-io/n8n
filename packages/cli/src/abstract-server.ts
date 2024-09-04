@@ -119,9 +119,15 @@ export abstract class AbstractServer {
 	protected setupPushServer() {}
 
 	private async setupHealthCheck() {
-		// health check should not care about DB connections
+		// main health check should not care about DB connections
 		this.app.get('/healthz', async (_req, res) => {
 			res.send({ status: 'ok' });
+		});
+
+		this.app.get('/healthz/db', async (_req, res) => {
+			return Db.connectionState.connected && Db.connectionState.migrated
+				? res.status(200).send({ status: 'ok' })
+				: res.status(500).send({ status: 'error' });
 		});
 
 		const { connectionState } = Db;
