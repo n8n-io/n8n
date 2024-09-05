@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { PROJECT_MOVE_RESOURCE_CONFIRM_MODAL } from '@/constants';
+import { PROJECT_MOVE_RESOURCE_MODAL } from '@/constants';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
 import { useTelemetry } from '@/composables/useTelemetry';
 
@@ -27,7 +27,7 @@ describe('ProjectMoveResourceModal', () => {
 		const telemetryTrackSpy = vi.spyOn(telemetry, 'track');
 
 		const props = {
-			modalName: PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
 			data: {
 				resourceType: 'workflow',
 				resource: {

@@ -28,8 +28,8 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
 const projectId = ref<string | null>(null);
-const processedName = computed(() =>
-	processProjectName(props.data.resource.homeProject?.name ?? ''),
+const processedName = computed(
+	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 const availableProjects = computed(() =>
 	projectsStore.projects
@@ -38,10 +38,6 @@ const availableProjects = computed(() =>
 );
 
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
-
-const selectedProject = computed(() =>
-	availableProjects.value.find((p) => p.id === projectId.value),
-);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
