@@ -269,14 +269,9 @@ export class GmailV2 implements INodeType {
 					'" target="_blank">Approve</a>',
 			};
 
-			await googleApiRequest.call(
-				this,
-				'POST',
-				'/gmail/v1/users/me/messages/send?result=approved',
-				{
-					raw: await encodeEmail(email),
-				},
-			);
+			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
+				raw: await encodeEmail(email),
+			});
 
 			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
 			return [this.getInputData()];
