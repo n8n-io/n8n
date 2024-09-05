@@ -237,7 +237,7 @@ onMounted(() => {
 		}
 
 		pre {
-			background-color: var(--color-foreground-light);
+			background: var(--chat--message--pre--background);
 			border-radius: var(--border-radius-base);
 			line-height: var(--font-line-height-xloose);
 			padding: var(--spacing-s);
