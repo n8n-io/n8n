@@ -219,12 +219,14 @@ const id = toRef(props, 'id');
 const data = toRef(props, 'data');
 const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
+const readOnly = toRef(props, 'readOnly');
 
 provide(CanvasNodeKey, {
 	id,
 	data,
 	label,
 	selected,
+	readOnly,
 	eventBus: canvasNodeEventBus,
 });
 

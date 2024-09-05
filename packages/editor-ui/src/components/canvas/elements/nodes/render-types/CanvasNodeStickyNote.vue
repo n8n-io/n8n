@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { id, isSelected, render, eventBus } = useCanvasNode();
+const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
@@ -95,6 +95,7 @@ onBeforeUnmount(() => {
 		:min-width="150"
 		:height="renderOptions.height"
 		:width="renderOptions.width"
+		:is-visible="!isReadOnly"
 		@resize="onResize"
 	/>
 	<N8nSticky
