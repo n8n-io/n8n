@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, h } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { VIEWS } from '@/constants';
@@ -23,7 +22,6 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
-const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
@@ -53,10 +51,6 @@ const processProjectName = (projectName: string) => {
 
 const updateProject = (value: string) => {
 	projectId.value = value;
-};
-
-const closeModal = () => {
-	uiStore.closeModal(props.modalName);
 };
 
 const moveResource = async () => {

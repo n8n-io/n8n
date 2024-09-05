@@ -31,7 +31,6 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	PROJECT_MOVE_RESOURCE_MODAL,
-	PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
 	PROMPT_MFA_CODE_MODAL_KEY,
 } from '@/constants';
 
@@ -66,7 +65,6 @@ import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 import ProjectMoveResourceModal from '@/components/Projects/ProjectMoveResourceModal.vue';
-import ProjectMoveResourceConfirmModal from '@/components/Projects/ProjectMoveResourceConfirmModal.vue';
 import NewAssistantSessionModal from '@/components/AskAssistant/NewAssistantSessionModal.vue';
 import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 </script>
@@ -244,15 +242,6 @@ import PromptMfaCodeModal from './PromptMfaCodeModal/PromptMfaCodeModal.vue';
 			<template #default="{ modalName, data }">
 				<ProjectMoveResourceModal
 					data-test-id="project-move-resource-modal"
-					:modal-name="modalName"
-					:data="data"
-				/>
-			</template>
-		</ModalRoot>
-		<ModalRoot :name="PROJECT_MOVE_RESOURCE_CONFIRM_MODAL">
-			<template #default="{ modalName, data }">
-				<ProjectMoveResourceConfirmModal
-					data-test-id="project-move-resource-confirm-modal"
 					:modal-name="modalName"
 					:data="data"
 				/>
