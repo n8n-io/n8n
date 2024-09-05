@@ -47,6 +47,7 @@ describe('GlobalConfig', () => {
 				poolSize: 2,
 				port: 5432,
 				schema: 'public',
+				connectionTimeoutMs: 1000,
 				ssl: {
 					ca: '',
 					cert: '',
