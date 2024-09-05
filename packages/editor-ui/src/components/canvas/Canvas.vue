@@ -459,7 +459,7 @@ provide(CanvasKey, {
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
-		:min-zoom="0.2"
+		:min-zoom="0"
 		:max-zoom="4"
 		:class="classes"
 		:selection-key-code="selectionKeyCode"
