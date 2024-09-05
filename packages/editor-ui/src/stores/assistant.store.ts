@@ -275,19 +275,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: 'error',
+					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
 				},
 				{ withPostHog: true },
 			);
 			// Track first user message in support chat now that we have a session id
 			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
-				telemetry.track('User sent message in Assistant', {
-					message: firstUserMessage.content,
-					is_quick_reply: false,
-					chat_session_id: currentSessionId.value,
-					message_number: 1,
-				});
+				trackUserMessage(firstUserMessage.content, false);
 			}
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
@@ -483,18 +478,24 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
-			if (currentSessionId.value) {
-				telemetry.track('User sent message in Assistant', {
-					message: chatMessage.text,
-					is_quick_reply: !!chatMessage.quickReplyType,
-					chat_session_id: currentSessionId.value,
-					message_number: usersMessages.value.length,
-				});
-			}
+			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id);
 		}
+	}
+
+	function trackUserMessage(message: string, isQuickReply: boolean) {
+		if (!currentSessionId.value) {
+			return;
+		}
+		telemetry.track('User sent message in Assistant', {
+			message,
+			is_quick_reply: isQuickReply,
+			chat_session_id: currentSessionId.value,
+			message_number: usersMessages.value.length,
+			task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+		});
 	}
 
 	function updateParameters(nodeName: string, parameters: INodeParameters) {

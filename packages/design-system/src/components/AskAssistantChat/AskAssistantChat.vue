@@ -254,9 +254,6 @@ function growInput() {
 					<p>
 						{{ t('assistantChat.placeholder.4') }}
 					</p>
-					<p>
-						{{ t('assistantChat.placeholder.5') }}
-					</p>
 				</div>
 			</div>
 		</div>
@@ -422,8 +419,9 @@ p {
 	background-color: var(--color-foreground-xlight);
 	border-radius: var(--border-radius-base);
 	padding: var(--spacing-2xs);
-	max-height: 218px; // 12 lines
 	font-family: var(--font-family-monospace);
+	max-height: 218px; // 12 lines
+	overflow: auto;
 
 	pre {
 		white-space-collapse: collapse;

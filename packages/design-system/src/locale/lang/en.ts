@@ -42,9 +42,7 @@ export default {
 		'I can answer most questions about building workflows in n8n.',
 	'assistantChat.placeholder.2': 'For specific tasks, you’ll see the',
 	'assistantChat.placeholder.3': 'button in the UI.',
-	'assistantChat.placeholder.4':
-		'Clicking it starts a context-aware session, often leading to better results with less effort for you.',
-	'assistantChat.placeholder.5': 'How can I help?',
+	'assistantChat.placeholder.4': 'How can I help?',
 	'assistantChat.inputPlaceholder': 'Enter your response...',
 	'inlineAskAssistantButton.asked': 'Asked',
 } as N8nLocale;
