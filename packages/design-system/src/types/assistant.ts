@@ -3,6 +3,7 @@ export namespace ChatUI {
 		role: 'assistant' | 'user';
 		type: 'text';
 		content: string;
+		codeSnippet?: string;
 	}
 
 	export interface SummaryBlock {
