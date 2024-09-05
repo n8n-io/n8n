@@ -8,10 +8,12 @@ import VueMarkdown from 'vue-markdown-render';
 import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { NodeError, IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
+	error?: NodeError;
 }>();
 
 const i18n = useI18n();
@@ -121,7 +123,7 @@ onMounted(() => {
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
 			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
 			<el-switch
-				v-if="contentParsed"
+				v-if="contentParsed && !error"
 				v-model="isShowRaw"
 				:class="$style.rawSwitch"
 				active-text="RAW JSON"
@@ -134,8 +136,10 @@ onMounted(() => {
 				[$style.blockContentExpanded]: isExpanded,
 			}"
 		>
+			<NodeErrorView v-if="error" :error="error" :class="$style.error" />
 			<div
 				v-for="({ parsedContent, raw }, index) in parsedRun"
+				v-else
 				:key="index"
 				:class="$style.contentText"
 				:data-content-type="parsedContent?.type"
@@ -265,5 +269,8 @@ onMounted(() => {
 	background: none;
 	padding: 0;
 	color: var(--color-text-base);
+}
+.error {
+	padding: var(--spacing-s) 0;
 }
 </style>
