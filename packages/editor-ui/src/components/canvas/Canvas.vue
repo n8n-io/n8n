@@ -123,7 +123,6 @@ const classes = computed(() => ({
 const disableKeyBindings = computed(() => !props.keyBindings);
 
 const panningKeyCode = 'Shift';
-const isPanning = ref(false);
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {
@@ -158,14 +157,6 @@ useKeybindings(
 	},
 	{ disabled: disableKeyBindings },
 );
-
-function onPanStart() {
-	isPanning.value = true;
-}
-
-function onPanEnd() {
-	isPanning.value = false;
-}
 
 /**
  * Nodes
@@ -318,6 +309,7 @@ function emitWithLastSelectedNode(emitFn: (id: string) => void) {
 
 const defaultZoom = 1;
 const zoom = ref(defaultZoom);
+const isPaneMoving = ref(false);
 
 function getProjectedPosition(event?: MouseEvent) {
 	const bounds = viewportRef.value?.getBoundingClientRect() ?? { left: 0, top: 0 };
@@ -361,6 +353,14 @@ function onViewportChange(viewport: ViewportTransform) {
 function setReadonly(value: boolean) {
 	setInteractive(!value);
 	elementsSelectable.value = true;
+}
+
+function onPaneMoveStart() {
+	isPaneMoving.value = true;
+}
+
+function onPaneMoveEnd() {
+	isPaneMoving.value = false;
 }
 
 /**
@@ -431,7 +431,7 @@ function minimapNodeClassnameFn(node: CanvasNode) {
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
 }
 
-watch(isPanning, (value) => {
+watch(isPaneMoving, (value) => {
 	if (value) {
 		showMinimap();
 	} else {
@@ -518,8 +518,8 @@ provide(CanvasKey, {
 		@contextmenu="onOpenContextMenu"
 		@viewport-change="onViewportChange"
 		@nodes-change="onNodesChange"
-		@move-start="onPanStart"
-		@move-end="onPanEnd"
+		@move-start="onPaneMoveStart"
+		@move-end="onPaneMoveEnd"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
