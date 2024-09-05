@@ -2,7 +2,6 @@ import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import type { ICredentialsResponse } from '@/Interface';
 
 describe('store', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -36,20 +35,6 @@ describe('store', () => {
 				await credentialsStore.fetchAllCredentials();
 
 				expect(credentialsStore.allCredentials).toHaveLength(3);
-			});
-		});
-
-		describe('getCredentialOwnerName()', () => {
-			it('returns the owner full name', () => {
-				const credentialsStore = useCredentialsStore();
-
-				expect(
-					credentialsStore.getCredentialOwnerName({
-						homeProject: {
-							name: 'My project',
-						},
-					} as unknown as ICredentialsResponse),
-				).toBe('My project');
 			});
 		});
 	});

@@ -189,7 +189,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 				if (lastName && email) {
 					return `${firstName} ${lastName} (${email})`;
 				} else {
-					return [firstName, lastName].filter(Boolean).join(' ');
+					return firstName;
 				}
 			} else {
 				return i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
