@@ -56,9 +56,9 @@ const classes = computed(() => {
 const styles = computed(() => {
 	const stylesObject: Record<string, string | number> = {};
 
-	if (renderOptions.value.configurable && requiredNonMainInputs.value.length > 0) {
+	if (renderOptions.value.configurable) {
 		let spacerCount = 0;
-		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+		if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS && requiredNonMainInputs.value.length > 0) {
 			const requiredNonMainInputsCount = requiredNonMainInputs.value.length;
 			const optionalNonMainInputsCount = nonMainInputs.value.length - requiredNonMainInputsCount;
 			spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
@@ -167,7 +167,7 @@ function openContextMenu(event: MouseEvent) {
 	&.configurable {
 		--canvas-node--height: 100px;
 		--canvas-node--width: calc(
-			max(var(--configurable-node--input-count, 5), var(--configurable-node--min-input-count)) *
+			max(var(--configurable-node--input-count, 4), var(--configurable-node--min-input-count)) *
 				var(--configurable-node--input-width)
 		);
 
