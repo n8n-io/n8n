@@ -57,7 +57,7 @@ describe('WorkflowCard', () => {
 	it('should render a card with the workflow name and open workflow clicking on it', async () => {
 		const data = createWorkflow();
 		const { getByRole } = renderComponent({ props: { data } });
-		const cardTitle = getByRole('heading', { level: 2, name: data.name });
+		const cardTitle = getByRole('heading', { level: 2, name: new RegExp(data.name) });
 
 		expect(cardTitle).toBeInTheDocument();
 
@@ -165,5 +165,14 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).toHaveTextContent('Move');
+	});
+
+	it('should show Read only mode', async () => {
+		const data = createWorkflow();
+		const { getByRole, container } = renderComponent({ props: { data } });
+
+		expect((container.firstChild as Element).classList.contains('cardLinkReadonly')).toBeTruthy();
+		const heading = getByRole('heading');
+		expect(heading).toHaveTextContent('Read only');
 	});
 });
