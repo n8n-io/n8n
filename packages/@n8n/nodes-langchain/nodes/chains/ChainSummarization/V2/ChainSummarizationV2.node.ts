@@ -416,7 +416,7 @@ export class ChainSummarizationV2 implements INodeType {
 					returnData.push({ json: { response } });
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
 				}

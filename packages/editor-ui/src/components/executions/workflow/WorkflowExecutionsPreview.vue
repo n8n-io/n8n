@@ -5,13 +5,20 @@ import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTION_ANNOTATION_EXPERIMENT,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from '@/composables/useI18n';
 import { getResourcePermissions } from '@/permissions';
+import { usePostHog } from '@/stores/posthog.store';
+import { useSettingsStore } from '@/stores/settings.store';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
@@ -32,6 +39,8 @@ const executionHelpers = useExecutionHelpers();
 const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
+const posthogStore = usePostHog();
+const settingsStore = useSettingsStore();
 
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = computed(() => route.params.name as string);
@@ -55,6 +64,12 @@ const debugButtonData = computed(() =>
 );
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
+);
+
+const isAnnotationEnabled = computed(
+	() =>
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters] &&
+		posthogStore.isFeatureEnabled(EXECUTION_ANNOTATION_EXPERIMENT),
 );
 
 async function onDeleteExecution(): Promise<void> {
@@ -115,6 +130,7 @@ function onRetryButtonBlur(event: FocusEvent) {
 			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
+			<WorkflowExecutionAnnotationPanel v-if="isAnnotationEnabled && execution" />
 			<div>
 				<N8nText size="large" color="text-base" :bold="true" data-test-id="execution-time">{{
 					executionUIDetails?.startTime

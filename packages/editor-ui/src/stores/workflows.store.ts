@@ -55,7 +55,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
@@ -428,9 +428,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
-		const workflow = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
-		addWorkflow(workflow);
-		return workflow;
+		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
+		addWorkflow(workflowData);
+		return workflowData;
 	}
 
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
@@ -500,8 +500,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executingNode.value = executingNode.value.filter((name) => name !== nodeName);
 	}
 
-	function setWorkflowId(id: string) {
-		workflow.value.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+	function setWorkflowId(id?: string) {
+		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -1502,7 +1502,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, 'main');
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;

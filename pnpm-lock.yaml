@@ -174,6 +174,9 @@ importers:
       typescript:
         specifier: ^5.5.2
         version: 5.5.2
+      zx:
+        specifier: ^8.1.4
+        version: 8.1.4
 
   cypress:
     dependencies:
@@ -741,8 +744,8 @@ importers:
         specifier: 7.1.2
         version: 7.1.2
       express-openapi-validator:
-        specifier: 5.3.1
-        version: 5.3.1(express@4.19.2)
+        specifier: 5.3.3
+        version: 5.3.3(express@4.19.2)
       express-prom-bundle:
         specifier: 6.6.0
         version: 6.6.0(prom-client@13.2.0)
@@ -1014,6 +1017,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@langchain/core':
+        specifier: 0.2.18
+        version: 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1074,6 +1080,9 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
+      zod:
+        specifier: 'catalog:'
+        version: 3.23.8
     devDependencies:
       '@types/aws4':
         specifier: ^1.5.1
@@ -7973,8 +7982,8 @@ packages:
     resolution: {integrity: sha512-ss9d3mBChOLTEtyfzXCsxlItUxpgS3i4cb/F70G6Q5ohQzmD12XB4x/Y9U6YboeeYBJZt7WQ5yUNu7ZSQ/EGyQ==}
     engines: {node: '>=v16'}
 
-  express-openapi-validator@5.3.1:
-    resolution: {integrity: sha512-Mlo3N1yvaZJlIs/nX0ig4xSu4g1CmLK/InRuqrXPmiqijfHa5qx/5ng92kq2dfTKd77XE7e9sPJqkI79asqNlQ==}
+  express-openapi-validator@5.3.3:
+    resolution: {integrity: sha512-WolpeQTubIlPOjKZiMmFL+pvztAq4bpL/ylvKjs2v7JN/8qC2J2k21MuYcz0o5vQBt4cdIg2cZ2I1Ik2R3FG6w==}
     peerDependencies:
       express: '*'
 
@@ -13130,8 +13139,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.0.29:
-    resolution: {integrity: sha512-58i+ZhUAUpwQ+9h5Hck0D+jr1qbYl4voRt5KffBx8qzELViQ4XdT/Tuo+mzq8u63teAG8K0lLaOiL5ofqW38rg==}
+  vue-component-type-helpers@2.1.4:
+    resolution: {integrity: sha512-aVqB3KxwpM76cYRkpnezl1J62E/1omzHQfx1yuz7zcbxmzmP/PeSgI20NEmkdeGnjZPVzm0V9fB4ZyRu5BBj4A==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -18562,7 +18571,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.0.29
+      vue-component-type-helpers: 2.1.4
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -21937,7 +21946,7 @@ snapshots:
       graceful-fs: 4.2.11
       handlebars: 4.7.8
 
-  express-openapi-validator@5.3.1(express@4.19.2):
+  express-openapi-validator@5.3.3(express@4.19.2):
     dependencies:
       '@apidevtools/json-schema-ref-parser': 11.7.0
       '@types/multer': 1.4.11
@@ -28046,7 +28055,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.0.29: {}
+  vue-component-type-helpers@2.1.4: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:

@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import Parser from 'rss-parser';
 import moment from 'moment-timezone';
 
@@ -25,7 +25,7 @@ export class RssFeedReadTrigger implements INodeType {
 		},
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Feed URL',

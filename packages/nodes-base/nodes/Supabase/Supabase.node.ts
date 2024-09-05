@@ -11,7 +11,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildGetQuery,
@@ -41,8 +41,8 @@ export class Supabase implements INodeType {
 		defaults: {
 			name: 'Supabase',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'supabaseApi',
@@ -171,7 +171,7 @@ export class Supabase implements INodeType {
 						returnData.push(...executionData);
 					});
 				} catch (error) {
-					if (this.continueOnFail(error)) {
+					if (this.continueOnFail()) {
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.description }),
 							{ itemData: mapPairedItemsFrom(records) },
@@ -220,7 +220,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -260,7 +260,7 @@ export class Supabase implements INodeType {
 					try {
 						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
@@ -326,7 +326,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },
@@ -402,7 +402,7 @@ export class Supabase implements INodeType {
 						);
 						returnData.push(...executionData);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
 								this.helpers.returnJsonArray({ error: error.description }),
 								{ itemData: { item: i } },

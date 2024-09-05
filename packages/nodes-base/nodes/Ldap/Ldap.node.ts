@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { Attribute, Change } from 'ldapts';
 import { ldapFields } from './LdapDescription';
@@ -28,8 +28,8 @@ export class Ldap implements INodeType {
 		defaults: {
 			name: 'LDAP',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -253,7 +253,7 @@ export class Ldap implements INodeType {
 		} catch (error) {
 			delete error.cert;
 			await client.unbind();
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				return [
 					items.map((x) => {
 						x.json.error = error.reason || 'LDAP connection error occurred';
@@ -418,7 +418,7 @@ export class Ldap implements INodeType {
 					);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnItems.push({ json: items[itemIndex].json, error, pairedItem: itemIndex });
 				} else {
 					await client.unbind();

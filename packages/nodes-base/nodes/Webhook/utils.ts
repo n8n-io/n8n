@@ -5,13 +5,13 @@ import type {
 	IDataObject,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { WebhookAuthorizationError } from './error';
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
 import { formatPrivateKey } from '../../utils/utilities';
+import { WebhookAuthorizationError } from './error';
 
-type WebhookParameters = {
-	httpMethod: string;
+export type WebhookParameters = {
+	httpMethod: string | string[];
 	responseMode: string;
 	responseData: string;
 	responseCode?: number; //typeVersion <= 1.1

@@ -75,11 +75,11 @@ export class N8nApiClient {
 		}
 	}
 
-	protected getRestEndpointUrl(endpoint: string) {
-		return `${this.apiBaseUrl}/rest${endpoint}`;
+	async delay(ms: number): Promise<void> {
+		return await new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
-	private async delay(ms: number): Promise<void> {
-		return await new Promise((resolve) => setTimeout(resolve, ms));
+	protected getRestEndpointUrl(endpoint: string) {
+		return `${this.apiBaseUrl}/rest${endpoint}`;
 	}
 }

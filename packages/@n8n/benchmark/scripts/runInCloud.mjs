@@ -7,52 +7,41 @@
  * 	3. Destroy the cloud environment.
  *
  * NOTE: Must be run in the root of the package.
- *
- * Usage:
- * 	 zx scripts/runBenchmarksOnCloud.mjs [--debug] <n8n setup to use>
- *
  */
 // @ts-check
-import fs from 'fs';
-import minimist from 'minimist';
-import { sleep, which } from 'zx';
+import { sleep, which, $, tmpdir } from 'zx';
 import path from 'path';
-import { SshClient } from './sshClient.mjs';
-import { TerraformClient } from './terraformClient.mjs';
+import { SshClient } from './clients/sshClient.mjs';
+import { TerraformClient } from './clients/terraformClient.mjs';
 
 /**
  * @typedef {Object} BenchmarkEnv
  * @property {string} vmName
+ * @property {string} ip
+ * @property {string} sshUsername
+ * @property {string} sshPrivateKeyPath
  */
 
-const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
-
-const paths = {
-	n8nSetupsDir: path.join(path.resolve('scripts'), 'runOnVm', 'n8nSetups'),
-};
-
-async function main() {
-	const config = await parseAndValidateConfig();
+/**
+ * @typedef {Object} Config
+ * @property {boolean} isVerbose
+ * @property {string[]} n8nSetupsToUse
+ * @property {string} n8nTag
+ * @property {string} benchmarkTag
+ * @property {string} [k6ApiToken]
+ *
+ * @param {Config} config
+ */
+export async function runInCloud(config) {
 	await ensureDependencies();
 
-	console.log('Using n8n tag', config.n8nTag);
-	console.log('Using benchmark cli tag', config.benchmarkTag);
-
 	const terraformClient = new TerraformClient({
-		privateKeyPath: paths.privateKeyPath,
 		isVerbose: config.isVerbose,
 	});
 
-	try {
-		const benchmarkEnv = await terraformClient.provisionEnvironment();
+	const benchmarkEnv = await terraformClient.getTerraformOutputs();
 
-		await runBenchmarksOnVm(config, benchmarkEnv);
-	} catch (error) {
-		console.error('An error occurred while running the benchmarks:');
-		console.error(error);
-	} finally {
-		await terraformClient.destroyEnvironment();
-	}
+	await runBenchmarksOnVm(config, benchmarkEnv);
 }
 
 async function ensureDependencies() {
@@ -65,17 +54,18 @@ async function ensureDependencies() {
  * @param {BenchmarkEnv} benchmarkEnv
  */
 async function runBenchmarksOnVm(config, benchmarkEnv) {
-	console.log(`Setting up the environment for ${config.n8nSetupToUse}...`);
+	console.log(`Setting up the environment...`);
 
 	const sshClient = new SshClient({
-		vmName: benchmarkEnv.vmName,
-		resourceGroupName: RESOURCE_GROUP_NAME,
+		ip: benchmarkEnv.ip,
+		username: benchmarkEnv.sshUsername,
+		privateKeyPath: benchmarkEnv.sshPrivateKeyPath,
 		verbose: config.isVerbose,
 	});
 
 	await ensureVmIsReachable(sshClient);
 
-	const scriptsDir = await transferScriptsToVm(sshClient);
+	const scriptsDir = await transferScriptsToVm(sshClient, config);
 
 	// Bootstrap the environment with dependencies
 	console.log('Running bootstrap script...');
@@ -85,23 +75,12 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
 	// Give some time for the VM to be ready
 	await sleep(1000);
 
-	if (config.n8nSetupToUse === 'all') {
-		const availableSetups = readAvailableN8nSetups();
-
-		for (const n8nSetup of availableSetups) {
-			await runBenchmarkForN8nSetup({
-				config,
-				sshClient,
-				scriptsDir,
-				n8nSetup,
-			});
-		}
-	} else {
+	for (const n8nSetup of config.n8nSetupsToUse) {
 		await runBenchmarkForN8nSetup({
 			config,
 			sshClient,
 			scriptsDir,
-			n8nSetup: config.n8nSetupToUse,
+			n8nSetup,
 		});
 	}
 }
@@ -111,7 +90,7 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
  */
 async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup }) {
 	console.log(`Running benchmarks for ${n8nSetup}...`);
-	const runScriptPath = path.join(scriptsDir, 'runOnVm.mjs');
+	const runScriptPath = path.join(scriptsDir, 'runForN8nSetup.mjs');
 
 	const flags = {
 		n8nDockerTag: config.n8nTag,
@@ -131,98 +110,36 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 }
 
 async function ensureVmIsReachable(sshClient) {
-	await sshClient.ssh('echo "VM is reachable"');
+	try {
+		await sshClient.ssh('echo "VM is reachable"');
+	} catch (error) {
+		console.error(`VM is not reachable: ${error.message}`);
+		console.error(
+			`Did you provision the cloud environment first with 'pnpm provision-cloud-env'? You can also run the benchmarks locally with 'pnpm run benchmark-locally'.`,
+		);
+		process.exit(1);
+	}
 }
 
 /**
  * @returns Path where the scripts are located on the VM
  */
-async function transferScriptsToVm(sshClient) {
-	await sshClient.ssh('rm -rf ~/n8n');
+async function transferScriptsToVm(sshClient, config) {
+	const cwd = process.cwd();
+	const scriptsDir = path.resolve(cwd, './scripts');
+	const tarFilename = 'scripts.tar.gz';
+	const scriptsTarPath = path.join(tmpdir('n8n-benchmark'), tarFilename);
 
-	await sshClient.ssh('git clone --depth=1 https://github.com/n8n-io/n8n.git');
+	const $$ = $({ verbose: config.isVerbose });
 
-	return '~/n8n/packages/@n8n/benchmark/scripts/runOnVm';
+	// Compress the scripts folder
+	await $$`tar -czf ${scriptsTarPath} ${scriptsDir} -C ${cwd} ./scripts`;
+
+	// Transfer the scripts to the VM
+	await sshClient.scp(scriptsTarPath, `~/${tarFilename}`);
+
+	// Extract the scripts on the VM
+	await sshClient.ssh(`tar -xzf ~/${tarFilename}`);
+
+	return '~/scripts';
 }
-
-function readAvailableN8nSetups() {
-	const setups = fs.readdirSync(paths.n8nSetupsDir);
-
-	return setups;
-}
-
-/**
- * @typedef {Object} Config
- * @property {boolean} isVerbose
- * @property {string} n8nSetupToUse
- * @property {string} n8nTag
- * @property {string} benchmarkTag
- * @property {string} [k6ApiToken]
- *
- * @returns {Promise<Config>}
- */
-async function parseAndValidateConfig() {
-	const args = minimist(process.argv.slice(3), {
-		boolean: ['debug', 'help'],
-	});
-
-	if (args.help) {
-		printUsage();
-		process.exit(0);
-	}
-
-	const n8nSetupToUse = await getAndValidateN8nSetup(args);
-	const isVerbose = args.debug || false;
-	const n8nTag = args.n8nTag || process.env.N8N_DOCKER_TAG || 'latest';
-	const benchmarkTag = args.benchmarkTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
-	const k6ApiToken = args.k6ApiToken || process.env.K6_API_TOKEN || undefined;
-
-	return {
-		isVerbose,
-		n8nSetupToUse,
-		n8nTag,
-		benchmarkTag,
-		k6ApiToken,
-	};
-}
-
-/**
- * @param {minimist.ParsedArgs} args
- */
-async function getAndValidateN8nSetup(args) {
-	// Last parameter is the n8n setup to use
-	const n8nSetupToUse = args._[args._.length - 1];
-	if (!n8nSetupToUse || n8nSetupToUse === 'all') {
-		return 'all';
-	}
-
-	const availableSetups = readAvailableN8nSetups();
-
-	if (!availableSetups.includes(n8nSetupToUse)) {
-		printUsage();
-		process.exit(1);
-	}
-
-	return n8nSetupToUse;
-}
-
-function printUsage() {
-	const availableSetups = readAvailableN8nSetups();
-
-	console.log('Usage: zx scripts/runInCloud.mjs [n8n setup name]');
-	console.log('   eg: zx scripts/runInCloud.mjs');
-	console.log('');
-	console.log('Options:');
-	console.log(
-		`  [n8n setup name]     Against which n8n setup to run the benchmarks. One of: ${['all', ...availableSetups].join(', ')}. Default is all`,
-	);
-	console.log('  --debug              Enable verbose output');
-	console.log('  --n8nTag             Docker tag for n8n image. Default is latest');
-	console.log('  --benchmarkTag       Docker tag for benchmark cli image. Default is latest');
-	console.log(
-		'  --k6ApiToken         API token for k6 cloud. Default is read from K6_API_TOKEN env var. If omitted, k6 cloud will not be used',
-	);
-	console.log('');
-}
-
-main().catch(console.error);

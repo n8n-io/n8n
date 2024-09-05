@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	getFields,
@@ -37,8 +37,8 @@ export class FileMaker implements INodeType {
 		defaults: {
 			name: 'FileMaker',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'fileMaker',
@@ -809,7 +809,7 @@ export class FileMaker implements INodeType {
 				}
 				returnData.push({ json: response, pairedItem: { item: i } });
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: { error: error.message },
 						pairedItem: { item: i },

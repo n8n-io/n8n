@@ -36,7 +36,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 <template>
 	<div :class="['workflow-executions-container', $style.container]">
 		<div v-if="executionCount === 0" :class="[$style.messageContainer, $style.noExecutionsMessage]">
-			<div v-if="!containsTrigger">
+			<div v-if="!containsTrigger" data-test-id="workflow-execution-no-trigger-content">
 				<N8nHeading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.heading') }}
 				</N8nHeading>
@@ -47,7 +47,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
 				</N8nButton>
 			</div>
-			<div v-else>
+			<div v-else data-test-id="workflow-execution-no-content">
 				<N8nHeading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</N8nHeading>

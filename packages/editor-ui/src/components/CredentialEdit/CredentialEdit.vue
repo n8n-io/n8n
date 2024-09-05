@@ -1130,10 +1130,7 @@ function resetCredentialData(): void {
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-					<CredentialInfo
-						:current-credential="currentCredential"
-						:credential-permissions="credentialPermissions"
-					/>
+					<CredentialInfo :current-credential="currentCredential" />
 				</div>
 				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
 					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>

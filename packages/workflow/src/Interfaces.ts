@@ -890,7 +890,7 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 export type ContextType = 'flow' | 'node';
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
-	continueOnFail(error?: Error): boolean;
+	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
@@ -910,7 +910,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			parentCallbackManager?: CallbackManager,
 		): Promise<any>;
 		getInputConnectionData(
-			inputName: ConnectionTypes,
+			inputName: NodeConnectionType,
 			itemIndex: number,
 			inputIndex?: number,
 		): Promise<unknown>;
@@ -923,12 +923,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionType,
 			data: INodeExecutionData[][] | ExecutionError,
 			runIndex?: number,
 		): { index: number };
 		addOutputData(
-			connectionType: ConnectionTypes,
+			connectionType: NodeConnectionType,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
@@ -1049,7 +1049,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
-		inputName: ConnectionTypes,
+		inputName: NodeConnectionType,
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
@@ -1658,6 +1658,11 @@ export interface INodeTypeBaseDescription {
 	 * due to deprecation or as a special case (e.g. Start node)
 	 */
 	hidden?: true;
+
+	/**
+	 * Whether the node will be wrapped for tool-use by AI Agents
+	 */
+	usableAsTool?: true;
 }
 
 export interface INodePropertyRouting {
@@ -1758,21 +1763,6 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes =
-	| 'ai_agent'
-	| 'ai_chain'
-	| 'ai_document'
-	| 'ai_embedding'
-	| 'ai_languageModel'
-	| 'ai_memory'
-	| 'ai_outputParser'
-	| 'ai_retriever'
-	| 'ai_textSplitter'
-	| 'ai_tool'
-	| 'ai_vectorRetriever'
-	| 'ai_vectorStore'
-	| 'main';
-
 export const enum NodeConnectionType {
 	AiAgent = 'ai_agent',
 
@@ -1825,7 +1815,7 @@ export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionType;
 	filter?: INodeInputFilter;
 	maxConnections?: number;
 }
@@ -1835,7 +1825,7 @@ export interface INodeOutputConfiguration {
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
-	type: ConnectionTypes;
+	type: NodeConnectionType;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -1853,10 +1843,10 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	defaults: NodeDefaults;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration> | ExpressionString;
+	inputs: Array<NodeConnectionType | INodeInputConfiguration> | ExpressionString;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: Array<ConnectionTypes | INodeOutputConfiguration> | ExpressionString;
+	outputs: Array<NodeConnectionType | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -2450,6 +2440,8 @@ export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
 
+export type AnnotationVote = 'up' | 'down';
+
 export interface ExecutionSummary {
 	id: string;
 	finished?: boolean;
@@ -2466,6 +2458,13 @@ export interface ExecutionSummary {
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
+	};
+	annotation?: {
+		vote: AnnotationVote;
+		tags: Array<{
+			id: string;
+			name: string;
+		}>;
 	};
 }
 

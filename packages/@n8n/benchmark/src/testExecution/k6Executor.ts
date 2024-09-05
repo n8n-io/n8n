@@ -45,7 +45,7 @@ export function handleSummary(data) {
 		const augmentedTestScriptPath = this.augmentSummaryScript(scenario, scenarioRunName);
 		const runDirPath = path.dirname(augmentedTestScriptPath);
 
-		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '1m'], ['--vus', '5']];
+		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '3m'], ['--vus', '5']];
 
 		if (this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
@@ -60,6 +60,7 @@ export function handleSummary(data) {
 			env: {
 				API_BASE_URL: this.opts.n8nApiBaseUrl,
 				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
+				SCRIPT_FILE_PATH: augmentedTestScriptPath,
 			},
 		})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;
 
@@ -82,7 +83,7 @@ export function handleSummary(data) {
 
 		const augmentedTestScript = `${testScript}\n\n${summaryScript}`;
 
-		const tempFilePath = tmpfile(`${scenarioRunName}.ts`, augmentedTestScript);
+		const tempFilePath = tmpfile(`${scenarioRunName}.js`, augmentedTestScript);
 
 		return tempFilePath;
 	}

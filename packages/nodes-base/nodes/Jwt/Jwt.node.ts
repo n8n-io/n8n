@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import jwt from 'jsonwebtoken';
 
@@ -53,8 +53,8 @@ export class Jwt implements INodeType {
 		defaults: {
 			name: 'JWT',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -452,7 +452,7 @@ export class Jwt implements INodeType {
 							'Be sure that the provided JWT token is correctly encoded and matches the selected credentials',
 					});
 				}
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({
 						json: this.getInputData(itemIndex)[0].json,
 						error,

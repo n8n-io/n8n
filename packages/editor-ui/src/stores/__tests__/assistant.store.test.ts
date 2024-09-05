@@ -311,7 +311,6 @@ describe('AI Assistant store', () => {
 		};
 		const assistantStore = useAssistantStore();
 		await assistantStore.initErrorHelper(context);
-		expect(assistantStore.chatMessages.length).toBe(2);
 		expect(apiSpy).toHaveBeenCalled();
 	});
 });

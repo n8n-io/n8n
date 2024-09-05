@@ -18,6 +18,8 @@ import type {
 import {
 	BINARY_ENCODING,
 	NodeApiError,
+	NodeExecutionOutput,
+	NodeConnectionType,
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
@@ -36,8 +38,8 @@ import {
 	sanitizeUiMessage,
 	setAgentOptions,
 } from '../GenericFunctions';
-import type { HttpSslAuthCredentials } from '../interfaces';
 import { keysToLowercase } from '@utils/utilities';
+import { type HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -57,8 +59,8 @@ export class HttpRequestV3 implements INodeType {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'httpSslAuth',
@@ -2136,6 +2138,23 @@ export class HttpRequestV3 implements INodeType {
 		}
 
 		returnItems = returnItems.map(replaceNullValues);
+
+		if (
+			returnItems.length === 1 &&
+			returnItems[0].json.data &&
+			Array.isArray(returnItems[0].json.data)
+		) {
+			return new NodeExecutionOutput(
+				[returnItems],
+				[
+					{
+						message:
+							"The result has a 'data' property which contains an array of items, you can split this array into separate items by using the 'Split Out' node",
+						location: 'outputPane',
+					},
+				],
+			);
+		}
 
 		return [returnItems];
 	}

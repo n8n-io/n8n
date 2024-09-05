@@ -19,6 +19,7 @@ import {
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
 	TAGS_MANAGER_MODAL_KEY,
+	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
@@ -108,6 +109,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PERSONALIZATION_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
+				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
 				NPS_SURVEY_MODAL_KEY,
 				VERSIONS_MODAL_KEY,
 				WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -198,6 +200,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastInteractedWithNodeConnection = ref<Connection | null>(null);
 	const lastInteractedWithNodeHandle = ref<string | null>(null);
 	const lastInteractedWithNodeId = ref<string | null>(null);
+	const lastCancelledConnectionPosition = ref<XYPosition | null>(null);
 
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -622,6 +625,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection.value = null;
 		lastInteractedWithNodeHandle.value = null;
 		lastInteractedWithNodeId.value = null;
+		lastCancelledConnectionPosition.value = null;
 	}
 
 	return {
@@ -650,6 +654,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
 		lastInteractedWithNode,
+		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewMoveInProgress,
 		nodeViewInitialized,

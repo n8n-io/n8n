@@ -623,7 +623,11 @@ export class WorkflowExecute {
 
 						// Check if any of the parent nodes does not have any inputs. That
 						// would mean that it has to get added to the list of nodes to process.
-						const parentNodes = workflow.getParentNodes(inputData.node, 'main', -1);
+						const parentNodes = workflow.getParentNodes(
+							inputData.node,
+							NodeConnectionType.Main,
+							-1,
+						);
 						let nodeToAdd: string | undefined = inputData.node;
 						parentNodes.push(inputData.node);
 						parentNodes.reverse();
@@ -988,7 +992,11 @@ export class WorkflowExecute {
 								connectionIndex++
 							) {
 								if (
-									workflow.getHighestNode(executionNode.name, 'main', connectionIndex).length === 0
+									workflow.getHighestNode(
+										executionNode.name,
+										NodeConnectionType.Main,
+										connectionIndex,
+									).length === 0
 								) {
 									// If there is no valid incoming node (if all are disabled)
 									// then ignore that it has inputs and simply execute it as it is without
@@ -1325,8 +1333,6 @@ export class WorkflowExecute {
 							} else {
 								// Report any unhandled and non-wrapped errors to Sentry
 								toReport = error;
-								// Set obfuscate to true so that the error would be obfuscated in th UI
-								error.obfuscate = true;
 							}
 							if (toReport) {
 								ErrorReporterProxy.error(toReport, {

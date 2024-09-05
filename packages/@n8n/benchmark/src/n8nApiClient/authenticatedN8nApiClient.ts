@@ -1,4 +1,3 @@
-import { strict as assert } from 'node:assert';
 import type { AxiosRequestConfig } from 'axios';
 import { N8nApiClient } from './n8nApiClient';
 
@@ -16,15 +15,33 @@ export class AuthenticatedN8nApiClient extends N8nApiClient {
 			email: string;
 			password: string;
 		},
-	) {
+	): Promise<AuthenticatedN8nApiClient> {
 		const response = await apiClient.restApiRequest('/login', {
 			method: 'POST',
 			data: loginDetails,
 		});
 
+		if (response.data === 'n8n is starting up. Please wait') {
+			await apiClient.delay(1000);
+			return await this.createUsingUsernameAndPassword(apiClient, loginDetails);
+		}
+
 		const cookieHeader = response.headers['set-cookie'];
 		const authCookie = Array.isArray(cookieHeader) ? cookieHeader.join('; ') : cookieHeader;
-		assert(authCookie);
+		if (!authCookie) {
+			throw new Error(
+				'Did not receive authentication cookie even tho login succeeded: ' +
+					JSON.stringify(
+						{
+							status: response.status,
+							headers: response.headers,
+							data: response.data,
+						},
+						null,
+						2,
+					),
+			);
+		}
 
 		return new AuthenticatedN8nApiClient(apiClient.apiBaseUrl, authCookie);
 	}
