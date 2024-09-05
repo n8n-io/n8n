@@ -41,6 +41,7 @@ async function main() {
 			cwd: composeFilePath,
 			verbose: true,
 			env: {
+				PATH: process.env.PATH,
 				N8N_VERSION: n8nTag,
 				N8N_LICENSE_CERT: n8nLicenseCert,
 				N8N_ENCRYPTION_KEY,
