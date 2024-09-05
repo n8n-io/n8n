@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 import { appendAttributionOption } from '../../../../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
@@ -56,6 +56,11 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send a message',
+			},
+			{
+				name: 'Send and Wait for Approval',
+				value: 'sendAndWait',
 				action: 'Send a message',
 			},
 		],
@@ -551,3 +556,90 @@ export const messageFields: INodeProperties[] = [
 			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 ];
+
+/* -------------------------------------------------------------------------- */
+/*                      message: sendAndWait                                  */
+/* -------------------------------------------------------------------------- */
+export const sendAndWait: INodeProperties[] = [
+	{
+		displayName: 'To',
+		name: 'sendTo',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: 'e.g. info@example.com',
+	},
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: 'e.g. n8n AUTOMATED: Approval required',
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		default: '',
+		required: true,
+		typeOptions: {
+			rows: 5,
+		},
+	},
+	{
+		displayName: 'Type of Approval',
+		name: 'approvalType',
+		type: 'options',
+		placeholder: 'Add option',
+		default: 'single',
+		options: [
+			{
+				name: 'Add an Approval Button',
+				value: 'single',
+			},
+			{
+				name: 'Add Approval and Disapproval Button',
+				value: 'double',
+			},
+			{
+				name: 'Add Selection of Options',
+				value: 'options',
+			},
+		],
+	},
+	{
+		displayName: 'Aproove Button Label',
+		name: 'approveLabel',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				approvalType: ['single', 'double'],
+			},
+		},
+	},
+	{
+		displayName: 'Disapprove Button Label',
+		name: 'disapproveLabel',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				approvalType: ['double'],
+			},
+		},
+	},
+];
+
+export const sendAndWaitProperties = updateDisplayOptions(
+	{
+		show: {
+			resource: ['message'],
+			operation: ['sendAndWait'],
+		},
+	},
+	sendAndWait,
+);
