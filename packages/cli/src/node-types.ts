@@ -74,8 +74,8 @@ export class NodeTypes implements INodeTypes {
 
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
-			const loaded: INodeType | IVersionedNodeType = loadClassInIsolation(sourcePath, className);
-			if (NodeHelpers.isINodeType(loaded)) NodeHelpers.applySpecialNodeParameters(loaded);
+			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
+			NodeHelpers.applySpecialNodeParameters(loaded);
 
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
