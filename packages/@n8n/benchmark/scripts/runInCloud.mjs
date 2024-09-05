@@ -39,16 +39,9 @@ export async function runInCloud(config) {
 		isVerbose: config.isVerbose,
 	});
 
-	try {
-		const benchmarkEnv = await terraformClient.provisionEnvironment();
+	const benchmarkEnv = await terraformClient.getTerraformOutputs();
 
-		await runBenchmarksOnVm(config, benchmarkEnv);
-	} catch (error) {
-		console.error('An error occurred while running the benchmarks:');
-		console.error(error);
-	} finally {
-		await terraformClient.destroyEnvironment();
-	}
+	await runBenchmarksOnVm(config, benchmarkEnv);
 }
 
 async function ensureDependencies() {
@@ -117,7 +110,15 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 }
 
 async function ensureVmIsReachable(sshClient) {
-	await sshClient.ssh('echo "VM is reachable"');
+	try {
+		await sshClient.ssh('echo "VM is reachable"');
+	} catch (error) {
+		console.error(`VM is not reachable: ${error.message}`);
+		console.error(
+			`Did you provision the cloud environment first with 'pnpm provision-cloud-env'? You can also run the benchmarks locally with 'pnpm run benchmark-locally'.`,
+		);
+		process.exit(1);
+	}
 }
 
 /**

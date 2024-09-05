@@ -62,6 +62,7 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useRootStore } from '@/stores/root.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
+import { getGenericHints } from '@/utils/nodeViewUtils';
 
 const LazyRunDataTable = defineAsyncComponent(
 	async () => await import('@/components/RunDataTable.vue'),
@@ -516,6 +517,10 @@ export default defineComponent({
 
 			return parentNodeData;
 		},
+		parentNodePinnedData(): INodeExecutionData[] {
+			const parentNode = this.workflow.getParentNodesByDepth(this.node?.name ?? '')[0];
+			return this.workflow.pinData?.[parentNode?.name || ''] || [];
+		},
 	},
 	watch: {
 		node(newNode: INodeUi, prevNode: INodeUi) {
@@ -645,13 +650,30 @@ export default defineComponent({
 
 				if (workflowNode) {
 					const executionHints = this.executionHints;
+
 					const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
 						runExecutionData: this.workflowExecution?.data ?? null,
 						runIndex: this.runIndex,
 						connectionInputData: this.parentNodeOutputData,
 					});
 
-					return executionHints.concat(nodeHints).filter(this.shouldHintBeDisplayed);
+					const hasMultipleInputItems =
+						this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
+
+					const nodeOutputData =
+						this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0] || [];
+
+					const genericHints = getGenericHints({
+						workflowNode,
+						node: this.node,
+						nodeType: this.nodeType,
+						nodeOutputData,
+						workflow: this.workflow,
+						hasNodeRun: this.hasNodeRun,
+						hasMultipleInputItems,
+					});
+
+					return executionHints.concat(nodeHints, genericHints).filter(this.shouldHintBeDisplayed);
 				}
 			}
 			return [];

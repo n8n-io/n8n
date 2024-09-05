@@ -24,6 +24,9 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
   K6_API_TOKEN: ${{ secrets.K6_API_TOKEN }}
+  N8N_TAG: ${{ inputs.n8n_tag || 'nightly' }}
+  N8N_BENCHMARK_TAG: ${{ inputs.benchmark_tag || 'latest' }}
+  DEBUG: ${{ inputs.debug == 'true' && '--debug' || '' }}
 
 permissions:
   id-token: write
@@ -62,12 +65,23 @@ jobs:
         run: pnpm destroy-cloud-env
         working-directory: packages/@n8n/benchmark
 
-      - name: Run the benchmark with debug logging
-        if: github.event.inputs.debug == 'true'
-        run: pnpm benchmark-in-cloud --n8nTag ${{ inputs.n8n_tag || 'nightly' }} --benchmarkTag ${{ inputs.benchmark_tag || 'latest' }} --debug
+      - name: Provision the environment
+        run: pnpm provision-cloud-env ${{ env.DEBUG }}
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
-        if: github.event.inputs.debug != 'true'
-        run: pnpm benchmark-in-cloud --n8nTag ${{ inputs.n8n_tag || 'nightly' }} --benchmarkTag ${{ inputs.benchmark_tag || 'latest' }}
+        run: pnpm benchmark-in-cloud --n8nTag ${{ env.N8N_TAG }} --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} ${{ env.DEBUG }}
+        working-directory: packages/@n8n/benchmark
+
+        # We need to login again because the access token expires
+      - name: Azure login
+        uses: azure/login@v2.1.1
+        with:
+          client-id: ${{ env.ARM_CLIENT_ID }}
+          tenant-id: ${{ env.ARM_TENANT_ID }}
+          subscription-id: ${{ env.ARM_SUBSCRIPTION_ID }}
+
+      - name: Destroy the environment
+        if: always()
+        run: pnpm destroy-cloud-env ${{ env.DEBUG }}
         working-directory: packages/@n8n/benchmark
