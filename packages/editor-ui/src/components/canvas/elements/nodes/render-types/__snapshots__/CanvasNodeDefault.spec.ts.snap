@@ -4,7 +4,7 @@ exports[`CanvasNodeDefault > configurable > should render configurable node corr
 <div
   class="node configurable"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
@@ -33,7 +33,7 @@ exports[`CanvasNodeDefault > configuration > should render configurable configur
 <div
   class="node configurable configuration"
   data-test-id="canvas-configurable-node"
-  style="--canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
+  style="--configurable-node--input-count: 0; --canvas-node--main-input-count: 0; --canvas-node--main-output-count: 0;"
 >
   
   
