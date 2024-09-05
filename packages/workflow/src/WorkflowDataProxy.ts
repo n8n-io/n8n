@@ -759,7 +759,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			pairedItem: IPairedItemData,
-		): INodeExecutionData | null => {
+		): INodeExecutionData | null | undefined => {
 			let taskData: ITaskData | undefined;
 
 			let sourceData: ISourceData | null = incomingSourceData;
@@ -842,22 +842,24 @@ export class WorkflowDataProxy {
 						if (results.every((result) => result === firstResult)) {
 							// All results are the same so return the first one
 							return firstResult;
+						} else {
+							return undefined;
 						}
 
-						throw createExpressionError('Invalid expression', {
-							messageTemplate: `Multiple matching items for expression [item ${
-								currentPairedItem.item || 0
-							}]`,
-							functionality: 'pairedItem',
-							functionOverrides: {
-								message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
-							},
-							nodeCause: destinationNodeName,
-							descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
-								? 'pairedItemMultipleMatchesCodeNode'
-								: 'pairedItemMultipleMatches',
-							type: 'paired_item_multiple_matches',
-						});
+						// throw createExpressionError('Invalid expression', {
+						// 	messageTemplate: `Multiple matching items for expression [item ${
+						// 		currentPairedItem.item || 0
+						// 	}]`,
+						// 	functionality: 'pairedItem',
+						// 	functionOverrides: {
+						// 		message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
+						// 	},
+						// 	nodeCause: destinationNodeName,
+						// 	descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
+						// 		? 'pairedItemMultipleMatchesCodeNode'
+						// 		: 'pairedItemMultipleMatches',
+						// 	type: 'paired_item_multiple_matches',
+						// });
 					}
 
 					return results[0];
