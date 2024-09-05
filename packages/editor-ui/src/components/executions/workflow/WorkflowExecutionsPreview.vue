@@ -124,8 +124,8 @@ function onRetryButtonBlur(event: FocusEvent) {
 			data-test-id="stop-execution"
 			class="mt-l"
 			type="tertiary"
-			@click="handleStopClick"
 			:disabled="!workflowPermissions.execute"
+			@click="handleStopClick"
 		>
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
