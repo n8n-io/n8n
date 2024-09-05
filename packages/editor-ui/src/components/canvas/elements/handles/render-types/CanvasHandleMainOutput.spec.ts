@@ -18,4 +18,37 @@ describe('CanvasHandleMainOutput', () => {
 		expect(container.querySelector('.canvas-node-handle-main-output')).toBeInTheDocument();
 		expect(getByText(label)).toBeInTheDocument();
 	});
+
+	it('should render run data label', async () => {
+		const runData = {
+			total: 1,
+			iterations: 1,
+		};
+		const { getByText } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({ label: '', runData }),
+				},
+			},
+		});
+
+		expect(getByText('1 item')).toBeInTheDocument();
+	});
+
+	it('should not render run data label if output label is available', async () => {
+		const runData = {
+			total: 1,
+			iterations: 1,
+		};
+		const { getByText } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasHandleProvide({ label: 'Output', runData }),
+				},
+			},
+		});
+
+		expect(() => getByText('1 item')).toThrow();
+		expect(getByText('Output')).toBeInTheDocument();
+	});
 });

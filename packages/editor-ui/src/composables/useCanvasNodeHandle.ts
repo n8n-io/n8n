@@ -16,6 +16,8 @@ export function useCanvasNodeHandle() {
 	const isConnecting = computed(() => handle?.isConnecting.value ?? false);
 	const type = computed(() => handle?.type.value ?? NodeConnectionType.Main);
 	const mode = computed(() => handle?.mode.value ?? CanvasConnectionMode.Input);
+	const index = computed(() => handle?.index.value ?? 0);
+	const runData = computed(() => handle?.runData.value);
 
 	return {
 		label,
@@ -23,5 +25,7 @@ export function useCanvasNodeHandle() {
 		isConnecting,
 		type,
 		mode,
+		index,
+		runData,
 	};
 }
