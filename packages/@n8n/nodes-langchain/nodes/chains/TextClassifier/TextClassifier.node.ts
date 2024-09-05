@@ -156,7 +156,8 @@ export class TextClassifier implements INodeType {
 						name: 'enableAutoFixing',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to enable auto-fixing for the output parser',
+						description:
+							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
 					},
 				],
 			},
