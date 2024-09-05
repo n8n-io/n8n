@@ -1,7 +1,14 @@
 services:
+  mockapi:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
+
   n8n:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
-    user: ${RUN_USER_AND_GROUP}
+    user: root:root
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
@@ -10,10 +17,13 @@ services:
     volumes:
       - ${RUN_DIR}:/n8n
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
+    depends_on:
+      mockapi:
+        condition: service_started
 
   benchmark:
     image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}

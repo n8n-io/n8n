@@ -1,8 +1,15 @@
 services:
+  mockapi:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
+
   postgres:
     image: postgres:16
     restart: always
-    user: ${RUN_USER_AND_GROUP}
+    user: root:root
     environment:
       - POSTGRES_DB=n8n
       - POSTGRES_USER=postgres
@@ -18,7 +25,7 @@ services:
 
   n8n:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
-    user: ${RUN_USER_AND_GROUP}
+    user: root:root
     environment:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
@@ -32,8 +39,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mockapi:
+        condition: service_started
     healthcheck:
-      test: ['CMD-SHELL', 'wget --spider -q http://localhost:5678/healthz || exit 1']
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
       interval: 5s
       timeout: 5s
       retries: 10
