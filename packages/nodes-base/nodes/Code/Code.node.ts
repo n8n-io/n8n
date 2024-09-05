@@ -95,7 +95,7 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const _agentsConfig = Container.get(AgentsConfig);
+		const agentsConfig = Container.get(AgentsConfig);
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
@@ -106,6 +106,23 @@ export class Code implements INodeType {
 				? (this.getNodeParameter('language', 0) as CodeNodeEditorLanguage)
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
+
+		if (!agentsConfig.disabled) {
+			// TODO: once per item
+			const code = this.getNodeParameter(codeParameterName, 0) as string;
+			const items = (await this.startJob(
+				{ javaScript: 'javascript', python: 'python' }[language] ?? language,
+				{
+					code,
+					nodeMode,
+					workflowMode,
+				},
+				0,
+			)) as INodeExecutionData[];
+			console.log('node', items);
+
+			return [items];
+		}
 
 		const getSandbox = (index = 0) => {
 			const code = this.getNodeParameter(codeParameterName, index) as string;

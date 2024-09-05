@@ -159,6 +159,7 @@ import { InstanceSettings } from './InstanceSettings';
 import { ScheduledTaskManager } from './ScheduledTaskManager';
 import { SSHClientsManager } from './SSHClientsManager';
 import { binaryToBuffer } from './BinaryData/utils';
+import { createAgentStartJob } from './Agent';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -3892,6 +3893,19 @@ export function getExecuteFunctions(
 				});
 			},
 			getParentCallbackManager: () => additionalData.parentCallbackManager,
+			startJob: createAgentStartJob(
+				additionalData,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				node.name,
+				connectionInputData,
+				{},
+				mode,
+				executeData,
+			),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

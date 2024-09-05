@@ -122,7 +122,13 @@ export namespace WorkerMessage {
 			data: unknown;
 		}
 
-		export type All = JobSettings | JobCancel | RPCResponse | JobDataResponse;
+		export interface JobRequest {
+			type: 'worker:jobrequest';
+			requestId: string;
+			jobType: string;
+		}
+
+		export type All = JobSettings | JobCancel | RPCResponse | JobDataResponse | JobRequest;
 	}
 }
 
@@ -218,8 +224,6 @@ export interface JobRequest {
 	requestId: string;
 	workerId: string;
 	jobType: string;
-	validFor: number;
-	validUntil: bigint;
 
 	acceptInProgress?: boolean;
 }

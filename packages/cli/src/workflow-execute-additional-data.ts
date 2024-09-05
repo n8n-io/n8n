@@ -25,6 +25,8 @@ import type {
 	ExecutionError,
 	EventNamesAiNodesType,
 	CallbackManager,
+	IExecuteFunctions,
+	ITaskDataConnections,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -73,6 +75,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from './events/event.service';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
+import { AbstractEngine } from './agents/worker-engines/abstract.engine';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -1024,6 +1027,45 @@ export async function getBase(
 				eventName,
 				payload,
 			});
+		},
+		async startAgentJob(
+			jobType: string,
+			settings: unknown,
+			executeFunctions: IExecuteFunctions,
+			inputData: ITaskDataConnections,
+			node: INode,
+			workflow: Workflow,
+			runExecutionData: IRunExecutionData,
+			runIndex: number,
+			itemIndex: number,
+			activeNodeName: string,
+			connectionInputData: INodeExecutionData[],
+			siblingParameters: INodeParameters,
+			mode: WorkflowExecuteMode,
+			executeData?: IExecuteData,
+			defaultReturnRunIndex?: number,
+			selfData?: IDataObject,
+			contextNodeName?: string,
+		) {
+			return await Container.get(AbstractEngine).startJob(
+				jobType,
+				settings,
+				executeFunctions,
+				inputData,
+				node,
+				workflow,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				siblingParameters,
+				mode,
+				executeData,
+				defaultReturnRunIndex,
+				selfData,
+				contextNodeName,
+			);
 		},
 	};
 }

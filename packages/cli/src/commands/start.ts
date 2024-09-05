@@ -31,6 +31,8 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { EventService } from '@/events/event.service';
+import { SingleMainEngine } from '@/agents/worker-engines/single-main.engine';
+import { AbstractEngine } from '@/agents/worker-engines/abstract.engine';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -219,6 +221,10 @@ export class Start extends BaseCommand {
 
 		if (!this.globalConfig.endpoints.disableUi) {
 			await this.generateStaticAssets();
+		}
+
+		if (!this.globalConfig.agents.disabled) {
+			Container.set(AbstractEngine, new SingleMainEngine());
 		}
 	}
 

@@ -11,7 +11,6 @@ import type {
 import { nanoid } from 'nanoid';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { Logger } from '@/logger';
-import { TestClient } from './test-client';
 
 class JobRejectError {
 	constructor(public reason: string) {}
@@ -20,7 +19,8 @@ class JobRejectError {
 export type MessageCallback = (message: N8nMessage.ToAgent.All) => Promise<void> | void;
 export type WorkerMessageCallback = (message: N8nMessage.ToWorker.All) => Promise<void> | void;
 
-type JobAcceptCallback = () => void;
+type AgentAcceptCallback = () => void;
+type WorkerAcceptCallback = (settings: WorkerMessage.ToN8n.JobSettings['settings']) => void;
 type JobRejectCallback = (reason: JobRejectError) => void;
 
 @Service()
@@ -31,18 +31,21 @@ export class AgentManager {
 
 	private jobs: Record<Job['id'], Job> = {};
 
-	private jobAcceptRejects: Record<
+	private agentAcceptRejects: Record<
 		Job['id'],
-		{ accept: JobAcceptCallback; reject: JobRejectCallback }
+		{ accept: AgentAcceptCallback; reject: JobRejectCallback }
+	> = {};
+
+	private workerAcceptRejects: Record<
+		Job['id'],
+		{ accept: WorkerAcceptCallback; reject: JobRejectCallback }
 	> = {};
 
 	private pendingJobOffers: JobOffer[] = [];
 
 	private pendingJobRequests: JobRequest[] = [];
 
-	constructor(private readonly logger: Logger) {
-		new TestClient(this);
-	}
+	constructor(private readonly logger: Logger) {}
 
 	expireJobs() {
 		const now = process.hrtime.bigint();
@@ -52,16 +55,9 @@ export class AgentManager {
 				invalidOffers.push(i);
 			}
 		}
-		const invalidRequests: number[] = [];
-		for (let i = 0; i < this.pendingJobRequests.length; i++) {
-			if (this.pendingJobRequests[i].validUntil < now) {
-				invalidRequests.push(i);
-			}
-		}
 
 		// We reverse the list so the later indexes are valid after deleting earlier ones
 		invalidOffers.reverse().forEach((i) => this.pendingJobOffers.splice(i, 1));
-		invalidRequests.reverse().forEach((i) => this.pendingJobRequests.splice(i, 1));
 	}
 
 	registerAgent(agent: Agent, messageCallback: MessageCallback) {
@@ -99,10 +95,10 @@ export class AgentManager {
 		}
 		switch (message.type) {
 			case 'agent:jobaccepted':
-				this.jobAcceptRejects[message.jobId]?.accept?.();
+				this.handleAgentAccept(message.jobId);
 				break;
 			case 'agent:jobrejected':
-				this.jobAcceptRejects[message.jobId]?.reject?.(new JobRejectError(message.reason));
+				this.handleAgentReject(message.jobId, message.reason);
 				break;
 			case 'agent:joboffer':
 				this.jobOffered({
@@ -132,6 +128,20 @@ export class AgentManager {
 			// Already handled
 			case 'agent:info':
 				break;
+		}
+	}
+
+	handleAgentAccept(jobId: Job['id']) {
+		if (this.agentAcceptRejects[jobId]) {
+			this.agentAcceptRejects[jobId].accept();
+			delete this.agentAcceptRejects[jobId];
+		}
+	}
+
+	handleAgentReject(jobId: Job['id'], reason: string) {
+		if (this.agentAcceptRejects[jobId]) {
+			this.agentAcceptRejects[jobId].reject(new JobRejectError(reason));
+			delete this.agentAcceptRejects[jobId];
 		}
 	}
 
@@ -171,14 +181,49 @@ export class AgentManager {
 		});
 	}
 
-	async onWorkerMessage(_workerId: string, message: WorkerMessage.ToN8n.All) {
+	async onWorkerMessage(workerId: string, message: WorkerMessage.ToN8n.All) {
 		switch (message.type) {
 			case 'worker:jobsettings':
-				await this.sendJobSettings(message.jobId, message.settings);
+				this.handleWorkerAccept(message.jobId, message.settings);
 				break;
 			case 'worker:jobcancel':
 				await this.cancelJob(message.jobId, message.reason);
 				break;
+			case 'worker:jobrequest':
+				this.jobRequested({
+					jobType: message.jobType,
+					requestId: message.requestId,
+					workerId,
+				});
+				break;
+			case 'worker:jobdataresponse':
+				await this.handleWorkerDataResponse(message.jobId, message.requestId, message.data);
+				break;
+		}
+	}
+
+	async handleWorkerDataResponse(jobId: Job['id'], requestId: string, data: unknown) {
+		const agent = await this.getAgentOrFailJob(jobId);
+
+		await this.messageAgent(agent.id, {
+			type: 'n8n:jobdataresponse',
+			jobId,
+			requestId,
+			data,
+		});
+	}
+
+	handleWorkerAccept(jobId: Job['id'], settings: WorkerMessage.ToN8n.JobSettings['settings']) {
+		if (this.workerAcceptRejects[jobId]) {
+			this.workerAcceptRejects[jobId].accept(settings);
+			delete this.workerAcceptRejects[jobId];
+		}
+	}
+
+	handleWorkerReject(jobId: Job['id'], reason: string) {
+		if (this.workerAcceptRejects[jobId]) {
+			this.workerAcceptRejects[jobId].reject(new JobRejectError(reason));
+			delete this.workerAcceptRejects[jobId];
 		}
 	}
 
@@ -268,7 +313,7 @@ export class AgentManager {
 
 		try {
 			const acceptPromise = new Promise((resolve, reject) => {
-				this.jobAcceptRejects[jobId] = { accept: resolve as () => void, reject };
+				this.agentAcceptRejects[jobId] = { accept: resolve as () => void, reject };
 
 				// TODO: customisable timeout
 				setTimeout(() => {
@@ -286,7 +331,7 @@ export class AgentManager {
 		} catch (e) {
 			request.acceptInProgress = false;
 			if (e instanceof JobRejectError) {
-				this.logger.warn(`Job (${jobId}) rejected with reason "${e.reason}"`);
+				this.logger.info(`Job (${jobId}) rejected by Agent with reason "${e.reason}"`);
 				return;
 			}
 			throw e;
@@ -303,7 +348,7 @@ export class AgentManager {
 		const requestIndex = this.pendingJobRequests.findIndex(
 			(r) => r.requestId === request.requestId,
 		);
-		if (!requestIndex) {
+		if (requestIndex === -1) {
 			this.logger.error(
 				`Failed to find job request (${request.requestId}) after a job was accepted. This shouldn't happen, and might be a race condition.`,
 			);
@@ -311,11 +356,38 @@ export class AgentManager {
 		}
 		this.pendingJobRequests.splice(requestIndex, 1);
 
-		await this.messageWorker(request.workerId, {
-			type: 'n8n:jobready',
-			requestId: request.requestId,
-			jobId,
-		});
+		try {
+			const acceptPromise = new Promise<WorkerMessage.ToN8n.JobSettings['settings']>(
+				(resolve, reject) => {
+					this.workerAcceptRejects[jobId] = {
+						accept: resolve as (settings: WorkerMessage.ToN8n.JobSettings['settings']) => void,
+						reject,
+					};
+
+					// TODO: customisable timeout
+					setTimeout(() => {
+						reject('Worker timed out');
+					}, 2000);
+				},
+			);
+
+			await this.messageWorker(request.workerId, {
+				type: 'n8n:jobready',
+				requestId: request.requestId,
+				jobId,
+			});
+
+			const settings = await acceptPromise;
+			await this.sendJobSettings(job.id, settings);
+		} catch (e) {
+			if (e instanceof JobRejectError) {
+				await this.cancelJob(job.id, e.reason);
+				this.logger.info(`Job (${jobId}) rejected by Worker with reason "${e.reason}"`);
+				return;
+			}
+			await this.cancelJob(job.id, 'Unknown reason');
+			throw e;
+		}
 	}
 
 	// Find matching job offers and requests, then let the agent
@@ -327,6 +399,8 @@ export class AgentManager {
 	// implement some kind of locking for the requests and job
 	// lists
 	settleJobs() {
+		this.expireJobs();
+
 		for (const request of this.pendingJobRequests) {
 			if (request.acceptInProgress) {
 				continue;
