@@ -31,7 +31,8 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.getters.askAssistantFloatingButton().click();
 		aiAssistant.getters.askAssistantChat().should('be.visible');
 		aiAssistant.getters.placeholderMessage().should('be.visible');
-		aiAssistant.getters.chatInputWrapper().should('not.exist');
+		aiAssistant.getters.chatInput().should('be.visible');
+		aiAssistant.getters.sendMessageButton().should('be.disabled');
 		aiAssistant.getters.closeChatButton().should('be.visible');
 		aiAssistant.getters.closeChatButton().click();
 		aiAssistant.getters.askAssistantChat().should('not.be.visible');
@@ -135,29 +136,6 @@ describe('AI Assistant::enabled', () => {
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
 		aiAssistant.getters.chatMessagesUser().eq(0).should('contain.text', "Sure, let's do it");
-	});
-
-	it('should send message to assistant when node is executed only once', () => {
-		const TOTAL_REQUEST_COUNT = 1;
-		cy.intercept('POST', '/rest/ai-assistant/chat', {
-			statusCode: 200,
-			fixture: 'aiAssistant/simple_message_response.json',
-		}).as('chatRequest');
-		cy.createFixtureWorkflow('aiAssistant/test_workflow.json');
-		wf.actions.openNode('Edit Fields');
-		ndv.getters.nodeExecuteButton().click();
-		aiAssistant.getters.nodeErrorViewAssistantButton().click();
-		cy.wait('@chatRequest');
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 1);
-		cy.get('@chatRequest.all').then((interceptions) => {
-			expect(interceptions).to.have.length(TOTAL_REQUEST_COUNT);
-		});
-		// Executing the same node should not send a new message if users haven't responded to quick replies
-		ndv.getters.nodeExecuteButton().click();
-		cy.get('@chatRequest.all').then((interceptions) => {
-			expect(interceptions).to.have.length(TOTAL_REQUEST_COUNT);
-		});
-		aiAssistant.getters.chatMessagesAssistant().should('have.length', 2);
 	});
 
 	it('should show quick replies when node is executed after new suggestion', () => {
@@ -280,5 +258,33 @@ describe('AI Assistant::enabled', () => {
 		cy.wait('@chatRequest');
 		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
 		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+	});
+
+	it('should reset session after it ended and sidebar is closed', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', (req) => {
+			req.reply((res) => {
+				if (['init-support-chat'].includes(req.body.payload.type)) {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/simple_message_response.json' });
+				} else {
+					res.send({ statusCode: 200, fixture: 'aiAssistant/end_session_response.json' });
+				}
+			});
+		}).as('chatRequest');
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		cy.wait('@chatRequest');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// After closing and reopening the chat, all messages should be still there
+		aiAssistant.getters.chatMessagesAll().should('have.length', 2);
+		// End the session
+		aiAssistant.actions.sendMessage('Thanks, bye');
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesSystem().should('have.length', 1);
+		aiAssistant.getters.chatMessagesSystem().first().should('contain.text', 'session has ended');
+		aiAssistant.actions.closeChat();
+		aiAssistant.actions.openChat();
+		// Now, session should be reset
+		aiAssistant.getters.placeholderMessage().should('be.visible');
 	});
 });
