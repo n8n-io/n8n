@@ -131,7 +131,6 @@ function onRetryButtonBlur(event: FocusEvent) {
 		</N8nButton>
 	</div>
 	<div v-else-if="executionUIDetails" :class="$style.previewContainer">
-		{{ executionUIDetails }}
 		<div
 			v-if="execution"
 			:class="$style.executionDetails"
