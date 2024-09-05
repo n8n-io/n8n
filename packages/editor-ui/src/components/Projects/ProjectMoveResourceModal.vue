@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, h } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
+import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
 import { VIEWS } from '@/constants';
@@ -21,6 +22,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 const toast = useToast();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
@@ -53,6 +55,10 @@ const updateProject = (value: string) => {
 	projectId.value = value;
 };
 
+const closeModal = () => {
+	uiStore.closeModal(props.modalName);
+};
+
 const moveResource = async () => {
 	if (!projectId.value) return;
 	try {
@@ -78,6 +84,7 @@ const moveResource = async () => {
 						? VIEWS.PROJECTS_WORKFLOWS
 						: VIEWS.PROJECTS_CREDENTIALS,
 				resource: props.data.resource,
+				resourceType: props.data.resourceType,
 				resourceTypeLabel: props.data.resourceTypeLabel,
 				projectId: projectId.value,
 				projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
