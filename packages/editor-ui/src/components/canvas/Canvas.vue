@@ -123,6 +123,7 @@ const classes = computed(() => ({
 const disableKeyBindings = computed(() => !props.keyBindings);
 
 const panningKeyCode = 'Shift';
+const isPanning = ref(false);
 const isPanningEnabled = ref(false);
 
 onKeyDown(panningKeyCode, () => {
@@ -157,6 +158,14 @@ useKeybindings(
 	},
 	{ disabled: disableKeyBindings },
 );
+
+function onPanStart() {
+	isPanning.value = true;
+}
+
+function onPanEnd() {
+	isPanning.value = false;
+}
 
 /**
  * Nodes
@@ -414,8 +423,43 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
  * Minimap
  */
 
+const minimapVisibilityDelay = 1000;
+const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
+const isMinimapVisible = ref(false);
+
 function minimapNodeClassnameFn(node: CanvasNode) {
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
+}
+
+watch(isPanning, (value) => {
+	if (value) {
+		showMinimap();
+	} else {
+		hideMinimap();
+	}
+});
+
+function showMinimap() {
+	if (minimapHideTimeout.value) {
+		clearTimeout(minimapHideTimeout.value);
+		minimapHideTimeout.value = null;
+	}
+
+	isMinimapVisible.value = true;
+}
+
+function hideMinimap() {
+	minimapHideTimeout.value = setTimeout(() => {
+		isMinimapVisible.value = false;
+	}, minimapVisibilityDelay);
+}
+
+function onMinimapMouseEnter() {
+	showMinimap();
+}
+
+function onMinimapMouseLeave() {
+	hideMinimap();
 }
 
 /**
@@ -474,6 +518,8 @@ provide(CanvasKey, {
 		@contextmenu="onOpenContextMenu"
 		@viewport-change="onViewportChange"
 		@nodes-change="onNodesChange"
+		@move-start="onPanStart"
+		@move-end="onPanEnd"
 	>
 		<template #node-canvas-node="canvasNodeProps">
 			<Node
@@ -508,18 +554,23 @@ provide(CanvasKey, {
 
 		<Background data-test-id="canvas-background" pattern-color="#aaa" :gap="GRID_SIZE" />
 
-		<MiniMap
-			data-test-id="canvas-minimap"
-			aria-label="n8n Minimap"
-			:height="120"
-			:width="200"
-			:position="PanelPosition.BottomLeft"
-			pannable
-			zoomable
-			:node-class-name="minimapNodeClassnameFn"
-			mask-color="var(--color-background-base)"
-			:node-border-radius="16"
-		/>
+		<Transition name="minimap">
+			<MiniMap
+				v-show="isMinimapVisible"
+				data-test-id="canvas-minimap"
+				aria-label="n8n Minimap"
+				:height="120"
+				:width="200"
+				:position="PanelPosition.BottomLeft"
+				pannable
+				zoomable
+				:node-class-name="minimapNodeClassnameFn"
+				mask-color="var(--color-background-base)"
+				:node-border-radius="16"
+				@mouseenter="onMinimapMouseEnter"
+				@mouseleave="onMinimapMouseLeave"
+			/>
+		</Transition>
 
 		<CanvasControlButtons
 			data-test-id="canvas-controls"
@@ -554,5 +605,17 @@ provide(CanvasKey, {
 	:global(.vue-flow__pane.dragging) {
 		cursor: grabbing;
 	}
+}
+</style>
+
+<style lang="scss" scoped>
+.minimap-enter-active,
+.minimap-leave-active {
+	transition: opacity 0.3s ease;
+}
+
+.minimap-enter-from,
+.minimap-leave-to {
+	opacity: 0;
 }
 </style>
