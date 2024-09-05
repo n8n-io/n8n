@@ -903,9 +903,6 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
              button in the UI.
           </p>
           <p>
-            Clicking it starts a context-aware session, often leading to better results with less effort for you.
-          </p>
-          <p>
             How can I help?
           </p>
         </div>
