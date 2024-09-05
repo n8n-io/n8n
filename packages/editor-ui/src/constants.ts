@@ -230,6 +230,8 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	CHAT_TRIGGER_NODE_TYPE,
 ];
 
+export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
+
 export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
 
 // Node creator
@@ -695,13 +697,18 @@ export const MORE_ONBOARDING_OPTIONS_EXPERIMENT = {
 };
 
 export const EXECUTION_ANNOTATION_EXPERIMENT = '023_execution_annotation';
-
+export const CREDENTIAL_DOCS_EXPERIMENT = {
+	name: '024_credential_docs',
+	control: 'control',
+	variant: 'variant',
+};
 export const EXPERIMENTS_TO_TRACK = [
 	ASK_AI_EXPERIMENT.name,
 	TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT,
 	CANVAS_AUTO_ADD_MANUAL_TRIGGER_EXPERIMENT.name,
 	AI_ASSISTANT_EXPERIMENT.name,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT.name,
+	CREDENTIAL_DOCS_EXPERIMENT.name,
 ];
 
 export const MFA_FORM = {

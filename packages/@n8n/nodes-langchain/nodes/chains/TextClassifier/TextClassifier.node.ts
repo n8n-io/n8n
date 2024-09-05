@@ -12,7 +12,7 @@ import { NodeConnectionType } from 'n8n-workflow';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { SystemMessagePromptTemplate, ChatPromptTemplate } from '@langchain/core/prompts';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
 import { z } from 'zod';
 import { getTracingConfig } from '../../../utils/tracing';
 
@@ -151,6 +151,14 @@ export class TextClassifier implements INodeType {
 							rows: 6,
 						},
 					},
+					{
+						displayName: 'Enable Auto-Fixing',
+						name: 'enableAutoFixing',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to enable auto-fixing (may trigger an additional LLM call if output is broken)',
+					},
 				],
 			},
 		],
@@ -173,6 +181,7 @@ export class TextClassifier implements INodeType {
 			multiClass: boolean;
 			fallback?: string;
 			systemPromptTemplate?: string;
+			enableAutoFixing: boolean;
 		};
 		const multiClass = options?.multiClass ?? false;
 		const fallback = options?.fallback ?? 'discard';
@@ -192,7 +201,11 @@ export class TextClassifier implements INodeType {
 			]);
 		const schema = z.object(Object.fromEntries(schemaEntries));
 
-		const parser = StructuredOutputParser.fromZodSchema(schema);
+		const structuredParser = StructuredOutputParser.fromZodSchema(schema);
+
+		const parser = options.enableAutoFixing
+			? OutputFixingParser.fromLLM(llm, structuredParser)
+			: structuredParser;
 
 		const multiClassPrompt = multiClass
 			? 'Categories are not mutually exclusive, and multiple can be true'
