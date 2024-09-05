@@ -79,9 +79,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
+	const assistantMessages = computed(() =>
+		chatMessages.value.filter((msg) => msg.role === 'assistant'),
+	);
+	const usersMessages = computed(() => chatMessages.value.filter((msg) => msg.role === 'user'));
+
 	const isSessionEnded = computed(() => {
-		const assistantMessages = chatMessages.value.filter((msg) => msg.role === 'assistant');
-		const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+		const lastAssistantMessage = assistantMessages.value[assistantMessages.value.length - 1];
 
 		const sessionExplicitlyEnded =
 			lastAssistantMessage?.type === 'event' && lastAssistantMessage?.eventName === 'end-session';
@@ -105,6 +109,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read,
 			).length,
 	);
+
+	const isSupportChatSessionInProgress = computed(() => {
+		return currentSessionId.value !== undefined && chatSessionError.value === undefined;
+	});
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
@@ -137,17 +145,21 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		// Looks smoother if we wait for slide animation to finish before updating the grid width
 		setTimeout(() => {
 			uiStore.appGridWidth = window.innerWidth;
+			// If session has ended, reset the chat
+			if (isSessionEnded.value) {
+				resetAssistantChat();
+			}
 		}, 200);
 	}
 
-	function addAssistantMessages(assistantMessages: ChatRequest.MessageResponse[], id: string) {
+	function addAssistantMessages(newMessages: ChatRequest.MessageResponse[], id: string) {
 		const read = chatWindowOpen.value;
 		const messages = [...chatMessages.value].filter(
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
 		// TODO: simplify
-		assistantMessages.forEach((msg) => {
+		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
 					id,
@@ -155,6 +167,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					role: 'assistant',
 					content: msg.text,
 					quickReplies: msg.quickReplies,
+					codeSnippet: msg.codeSnippet,
 					read,
 				});
 			} else if (msg.type === 'code-diff') {
@@ -262,10 +275,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: 'error',
+					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
 				},
 				{ withPostHog: true },
 			);
+			// Track first user message in support chat now that we have a session id
+			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
+				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
+				trackUserMessage(firstUserMessage.content, false);
+			}
 		} else if (currentSessionId.value !== response.sessionId) {
 			return;
 		}
@@ -287,6 +305,33 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				lastUnread.value = undefined;
 			}
 		}, 4000);
+	}
+
+	async function initSupportChat(userMessage: string) {
+		const id = getRandomId();
+		resetAssistantChat();
+		chatSessionError.value = undefined;
+		currentSessionActiveExecutionId.value = undefined;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		addUserMessage(userMessage, id);
+		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
+		streaming.value = true;
+		chatWithAssistant(
+			rootStore.restApiContext,
+			{
+				payload: {
+					role: 'user',
+					type: 'init-support-chat',
+					user: {
+						firstName: usersStore.currentUser?.firstName ?? '',
+					},
+					question: userMessage,
+				},
+			},
+			(msg) => onEachStreamingMessage(msg, id),
+			() => onDoneStreaming(id),
+			(e) => handleServiceError(e, id),
+		);
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
@@ -433,16 +478,24 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				() => onDoneStreaming(id),
 				(e) => handleServiceError(e, id),
 			);
-			telemetry.track('User sent message in Assistant', {
-				message: chatMessage.text,
-				is_quick_reply: !!chatMessage.quickReplyType,
-				chat_session_id: currentSessionId.value,
-				message_number: chatMessages.value.filter((msg) => msg.role === 'user').length,
-			});
+			trackUserMessage(chatMessage.text, !!chatMessage.quickReplyType);
 		} catch (e: unknown) {
 			// in case of assert
 			handleServiceError(e, id);
 		}
+	}
+
+	function trackUserMessage(message: string, isQuickReply: boolean) {
+		if (!currentSessionId.value) {
+			return;
+		}
+		telemetry.track('User sent message in Assistant', {
+			message,
+			is_quick_reply: isQuickReply,
+			chat_session_id: currentSessionId.value,
+			message_number: usersMessages.value.length,
+			task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+		});
 	}
 
 	function updateParameters(nodeName: string, parameters: INodeParameters) {
@@ -584,6 +637,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		updateWindowWidth,
 		isNodeErrorActive,
 		initErrorHelper,
+		initSupportChat,
 		sendMessage,
 		applyCodeDiff,
 		undoCodeDiff,
@@ -591,5 +645,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatWindowOpen,
 		addAssistantMessages,
 		assistantThinkingMessage,
+		chatSessionError,
+		isSupportChatSessionInProgress,
 	};
 });

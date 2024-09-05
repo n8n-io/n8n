@@ -27,14 +27,16 @@ function onResizeDebounced(data: { direction: string; x: number; width: number }
 }
 
 async function onUserMessage(content: string, quickReplyType?: string, isFeedback = false) {
-	await assistantStore.sendMessage({ text: content, quickReplyType });
-	const task = 'error';
-	const solutionCount =
-		task === 'error'
-			? assistantStore.chatMessages.filter(
-					(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
-				).length
-			: null;
+	// If there is no current session running, initialize the support chat session
+	if (!assistantStore.currentSessionId) {
+		await assistantStore.initSupportChat(content);
+	} else {
+		await assistantStore.sendMessage({ text: content, quickReplyType });
+	}
+	const task = assistantStore.isSupportChatSessionInProgress ? 'support' : 'error';
+	const solutionCount = assistantStore.chatMessages.filter(
+		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
+	).length;
 	if (isFeedback) {
 		telemetry.track('User gave feedback', {
 			task,
