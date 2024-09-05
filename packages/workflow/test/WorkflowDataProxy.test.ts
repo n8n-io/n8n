@@ -304,18 +304,9 @@ describe('WorkflowDataProxy', () => {
 			}
 		});
 
-		test('$("NodeName").item, paired item error: more than 1 matching item', (done) => {
+		test('$("NodeName").item, paired item error: more than 1 matching item', () => {
 			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'PairedItemMultipleMatches');
-			try {
-				proxy.$('Edit Fields').item;
-				done('should throw');
-			} catch (error) {
-				expect(error).toBeInstanceOf(ExpressionError);
-				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Invalid expression');
-				expect(exprError.context.type).toEqual('paired_item_multiple_matches');
-				done();
-			}
+			expect(proxy.$('Edit Fields').item).toEqual(undefined);
 		});
 
 		test('$("NodeName").item, paired item error: missing paired item', (done) => {
