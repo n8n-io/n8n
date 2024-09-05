@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@langchain/core':
+      specifier: 0.2.18
+      version: 0.2.18
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -393,7 +396,7 @@ importers:
         specifier: 0.2.20
         version: 0.2.20(a4iyb3banmlkrbqqp5ye37i4cm)
       '@langchain/core':
-        specifier: 0.2.18
+        specifier: 'catalog:'
         version: 0.2.18(langchain@0.2.11(m7otbkpxyspoz5trt2pa3dcs6u))(openai@4.53.0(encoding@0.1.13))
       '@langchain/google-genai':
         specifier: 0.0.23
@@ -1018,7 +1021,7 @@ importers:
   packages/core:
     dependencies:
       '@langchain/core':
-        specifier: 0.2.18
+        specifier: 'catalog:'
         version: 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
       '@n8n/client-oauth2':
         specifier: workspace:*
@@ -1828,7 +1831,7 @@ importers:
         version: 0.6.2
     devDependencies:
       '@langchain/core':
-        specifier: ^0.2.18
+        specifier: 'catalog:'
         version: 0.2.18(langchain@0.2.11(axios@1.7.4)(openai@4.53.0))(openai@4.53.0)
       '@types/deep-equal':
         specifier: ^1.0.1
@@ -13139,8 +13142,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.1.4:
-    resolution: {integrity: sha512-aVqB3KxwpM76cYRkpnezl1J62E/1omzHQfx1yuz7zcbxmzmP/PeSgI20NEmkdeGnjZPVzm0V9fB4ZyRu5BBj4A==}
+  vue-component-type-helpers@2.1.6:
+    resolution: {integrity: sha512-ng11B8B/ZADUMMOsRbqv0arc442q7lifSubD0v8oDXIFoMg/mXwAPUunrroIDkY+mcD0dHKccdaznSVp8EoX3w==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -18571,7 +18574,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.1.4
+      vue-component-type-helpers: 2.1.6
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -28055,7 +28058,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.1.4: {}
+  vue-component-type-helpers@2.1.6: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:
