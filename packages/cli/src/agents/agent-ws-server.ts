@@ -7,9 +7,9 @@ import { Server as WSServer } from 'ws';
 import type WebSocket from 'ws';
 import type { AuthlessRequest } from '@/requests';
 import { Logger } from '@/logger';
-import type { Agent, AgentMessage, N8nMessage } from './agent-types';
+import type { AgentMessage, N8nMessage } from './agent-types';
 import { GlobalConfig } from '@n8n/config';
-import { AgentManager, type MessageCallback } from './agent-manager.service';
+import { AgentManager, type MessageCallback, type Agent } from './agent-manager.service';
 
 export type AgentServerRequest = AuthlessRequest<{}, {}, {}, { id: Agent['id'] }> & {
 	ws: WebSocket;

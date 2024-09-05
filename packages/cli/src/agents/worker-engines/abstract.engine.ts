@@ -9,12 +9,11 @@ import {
 	type WorkflowParameters,
 	INodeParameters,
 	WorkflowExecuteMode,
-	IWorkflowDataProxyAdditionalKeys,
 	IExecuteData,
 	IDataObject,
 } from 'n8n-workflow';
 
-import type { N8nMessage, WorkerMessage } from '../agent-types';
+import { RPC_ALLOW_LIST, type N8nMessage, type WorkerMessage } from '../agent-types';
 import { nanoid } from 'nanoid';
 
 export type EngineRequestAccept = (jobId: string) => void;
@@ -198,7 +197,7 @@ export class AbstractEngine {
 	sendMessage(_message: WorkerMessage.ToN8n.All) {}
 
 	onMessage(message: N8nMessage.ToWorker.All) {
-		console.log(message);
+		console.log({ message });
 		switch (message.type) {
 			case 'n8n:jobready':
 				this.jobReady(message.requestId, message.jobId);
@@ -211,6 +210,9 @@ export class AbstractEngine {
 				break;
 			case 'n8n:jobdatarequest':
 				this.sendJobData(message.jobId, message.requestId, message.requestType);
+				break;
+			case 'n8n:rpc':
+				void this.handleRpc(message.jobId, message.callId, message.name, message.params);
 				break;
 		}
 	}
@@ -278,13 +280,77 @@ export class AbstractEngine {
 			// TODO remove
 			// eslint-disable-next-line
 			delete (data as any)['executeFunctions'];
-			console.log(data);
-			// debugger;
 			this.sendMessage({
 				type: 'worker:jobdataresponse',
 				jobId,
 				requestId,
 				data,
+			});
+		}
+	}
+
+	async handleRpc(
+		jobId: string,
+		callId: string,
+		name: N8nMessage.ToWorker.RPC['name'],
+		params: unknown[],
+	) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			// TODO: logging
+			return;
+		}
+
+		try {
+			if (!RPC_ALLOW_LIST.includes(name)) {
+				this.sendMessage({
+					type: 'worker:rpcresponse',
+					jobId,
+					callId,
+					status: 'error',
+					data: 'Method not allowed',
+				});
+				return;
+			}
+			const splitPath = name.split('.');
+
+			const funcs = job.data.executeFunctions;
+
+			let func: ((...args: unknown[]) => Promise<unknown>) | undefined = undefined;
+			let funcObj: any = funcs;
+			for (const part of splitPath) {
+				funcObj = funcObj[part] ?? undefined;
+				if (!funcObj) {
+					break;
+				}
+			}
+			func = funcObj;
+			if (!func) {
+				this.sendMessage({
+					type: 'worker:rpcresponse',
+					jobId,
+					callId,
+					status: 'error',
+					data: 'Could not find method',
+				});
+				return;
+			}
+			const data = await func.call(funcs, ...params);
+
+			this.sendMessage({
+				type: 'worker:rpcresponse',
+				jobId,
+				callId,
+				status: 'success',
+				data,
+			});
+		} catch (e) {
+			this.sendMessage({
+				type: 'worker:rpcresponse',
+				jobId,
+				callId,
+				status: 'error',
+				data: e,
 			});
 		}
 	}

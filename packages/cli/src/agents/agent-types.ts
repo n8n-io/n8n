@@ -26,21 +26,21 @@ export namespace N8nMessage {
 
 		export interface JobSettings {
 			type: 'n8n:jobsettings';
-			jobId: Job['id'];
+			jobId: string;
 			settings: unknown;
 		}
 
 		export interface RPCResponse {
 			type: 'n8n:rpcresponse';
 			callId: string;
-			jobId: Job['id'];
+			jobId: string;
 			status: 'success' | 'error';
 			data: unknown;
 		}
 
 		export interface JobDataResponse {
 			type: 'n8n:jobdataresponse';
-			jobId: Job['id'];
+			jobId: string;
 			requestId: string;
 			data: unknown;
 		}
@@ -58,25 +58,25 @@ export namespace N8nMessage {
 	export namespace ToWorker {
 		export interface JobReady {
 			type: 'n8n:jobready';
-			requestId: JobRequest['requestId'];
-			jobId: Job['id'];
+			requestId: string;
+			jobId: string;
 		}
 
 		export interface JobDone {
 			type: 'n8n:jobdone';
-			jobId: Job['id'];
+			jobId: string;
 			data: INodeExecutionData[];
 		}
 
 		export interface JobError {
 			type: 'n8n:joberror';
-			jobId: Job['id'];
+			jobId: string;
 			error: unknown;
 		}
 
 		export interface JobDataRequest {
 			type: 'n8n:jobdatarequest';
-			jobId: Job['id'];
+			jobId: string;
 			requestId: string;
 			requestType: DataRequestType;
 			param?: string;
@@ -85,8 +85,8 @@ export namespace N8nMessage {
 		export interface RPC {
 			type: 'n8n:rpc';
 			callId: string;
-			jobId: Job['id'];
-			name: string;
+			jobId: string;
+			name: (typeof RPC_ALLOW_LIST)[number];
 			params: unknown[];
 		}
 
@@ -98,25 +98,26 @@ export namespace WorkerMessage {
 	export namespace ToN8n {
 		export interface JobSettings {
 			type: 'worker:jobsettings';
-			jobId: Job['id'];
+			jobId: string;
 			settings: unknown;
 		}
 
 		export interface JobCancel {
 			type: 'worker:jobcancel';
-			jobId: Job['id'];
+			jobId: string;
 			reason: string;
 		}
 
 		export interface JobDataResponse {
 			type: 'worker:jobdataresponse';
-			jobId: Job['id'];
+			jobId: string;
 			requestId: string;
 			data: unknown;
 		}
 
 		export interface RPCResponse {
 			type: 'worker:rpcresponse';
+			jobId: string;
 			callId: string;
 			status: 'success' | 'error';
 			data: unknown;
@@ -172,7 +173,7 @@ export namespace AgentMessage {
 
 		export interface JobDataRequest {
 			type: 'agent:jobdatarequest';
-			jobId: Job['id'];
+			jobId: string;
 			requestId: string;
 			requestType: DataRequestType;
 			param?: string;
@@ -181,8 +182,8 @@ export namespace AgentMessage {
 		export interface RPC {
 			type: 'agent:rpc';
 			callId: string;
-			jobId: Job['id'];
-			name: string;
+			jobId: string;
+			name: (typeof RPC_ALLOW_LIST)[number];
 			params: unknown[];
 		}
 
@@ -198,32 +199,27 @@ export namespace AgentMessage {
 	}
 }
 
-export interface Agent {
-	id: string;
-	name?: string;
-	jobTypes: string[];
-	lastSeen: Date;
-}
-
-export interface Job {
-	id: string;
-	agentId: Agent['id'];
-	workerId: string;
-	jobType: string;
-}
-
-export interface JobOffer {
-	offerId: string;
-	agentId: Agent['id'];
-	jobType: string;
-	validFor: number;
-	validUntil: bigint;
-}
-
-export interface JobRequest {
-	requestId: string;
-	workerId: string;
-	jobType: string;
-
-	acceptInProgress?: boolean;
-}
+export const RPC_ALLOW_LIST = [
+	'helpers.httpRequestWithAuthentication',
+	'helpers.requestWithAuthenticationPaginated',
+	// "helpers.normalizeItems"
+	// "helpers.constructExecutionMetaData"
+	// "helpers.assertBinaryData"
+	'helpers.getBinaryDataBuffer',
+	// "helpers.copyInputItems"
+	// "helpers.returnJsonArray"
+	'helpers.getSSHClient',
+	'helpers.createReadStream',
+	// "helpers.getStoragePath"
+	'helpers.writeContentToFile',
+	'helpers.prepareBinaryData',
+	'helpers.setBinaryDataBuffer',
+	'helpers.copyBinaryFile',
+	'helpers.binaryToBuffer',
+	// "helpers.binaryToString"
+	// "helpers.getBinaryPath"
+	'helpers.getBinaryStream',
+	'helpers.getBinaryMetadata',
+	'helpers.createDeferredPromise',
+	'helpers.httpRequest',
+] as const;

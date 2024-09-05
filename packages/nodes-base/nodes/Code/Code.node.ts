@@ -119,7 +119,6 @@ export class Code implements INodeType {
 				},
 				0,
 			)) as INodeExecutionData[];
-			console.log('node', items);
 
 			return [items];
 		}

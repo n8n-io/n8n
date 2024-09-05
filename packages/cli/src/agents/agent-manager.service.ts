@@ -1,19 +1,41 @@
 import { Service } from 'typedi';
-import type {
-	Agent,
-	N8nMessage,
-	AgentMessage,
-	Job,
-	JobOffer,
-	JobRequest,
-	WorkerMessage,
-} from './agent-types';
+import type { N8nMessage, AgentMessage, WorkerMessage } from './agent-types';
 import { nanoid } from 'nanoid';
 import { ApplicationError, type INodeExecutionData } from 'n8n-workflow';
 import { Logger } from '@/logger';
 
-class JobRejectError {
+export class JobRejectError {
 	constructor(public reason: string) {}
+}
+
+export interface Agent {
+	id: string;
+	name?: string;
+	jobTypes: string[];
+	lastSeen: Date;
+}
+
+export interface Job {
+	id: string;
+	agentId: Agent['id'];
+	workerId: string;
+	jobType: string;
+}
+
+export interface JobOffer {
+	offerId: string;
+	agentId: Agent['id'];
+	jobType: string;
+	validFor: number;
+	validUntil: bigint;
+}
+
+export interface JobRequest {
+	requestId: string;
+	workerId: string;
+	jobType: string;
+
+	acceptInProgress?: boolean;
 }
 
 export type MessageCallback = (message: N8nMessage.ToAgent.All) => Promise<void> | void;
@@ -124,11 +146,32 @@ export class AgentManager {
 				);
 				break;
 
-			// case 'agent:rpc':
+			case 'agent:rpc':
+				await this.handleRpcRequest(message.jobId, message.callId, message.name, message.params);
+				break;
 			// Already handled
 			case 'agent:info':
 				break;
 		}
+	}
+
+	async handleRpcRequest(
+		jobId: Job['id'],
+		callId: string,
+		name: AgentMessage.ToN8n.RPC['name'],
+		params: unknown[],
+	) {
+		const job = this.jobs[jobId];
+		if (!job) {
+			return;
+		}
+		await this.messageWorker(job.workerId, {
+			type: 'n8n:rpc',
+			jobId,
+			callId,
+			name,
+			params,
+		});
 	}
 
 	handleAgentAccept(jobId: Job['id']) {
@@ -199,7 +242,30 @@ export class AgentManager {
 			case 'worker:jobdataresponse':
 				await this.handleWorkerDataResponse(message.jobId, message.requestId, message.data);
 				break;
+			case 'worker:rpcresponse':
+				await this.handleWorkerRpcResponse(
+					message.jobId,
+					message.callId,
+					message.status,
+					message.data,
+				);
+				break;
 		}
+	}
+	async handleWorkerRpcResponse(
+		jobId: string,
+		callId: string,
+		status: WorkerMessage.ToN8n.RPCResponse['status'],
+		data: unknown,
+	) {
+		const agent = await this.getAgentOrFailJob(jobId);
+		await this.messageAgent(agent.id, {
+			type: 'n8n:rpcresponse',
+			jobId,
+			callId,
+			status,
+			data,
+		});
 	}
 
 	async handleWorkerDataResponse(jobId: Job['id'], requestId: string, data: unknown) {
