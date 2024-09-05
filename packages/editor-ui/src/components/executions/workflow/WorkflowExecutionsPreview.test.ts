@@ -120,65 +120,33 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		},
 	);
 
-	describe('stop execution, permissions based conditional render', () => {
-		it('renders the button', () => {
-			settingsStore.settings.enterprise = {
-				...(settingsStore.settings.enterprise ?? {}),
-			};
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
-				scopes: ['workflow:execute'],
-			} as IWorkflowDb);
-			const { getByTestId } = render(WorkflowExecutionsPreview, {
-				props: {
-					execution: { ...executionData, status: 'running' },
+	it('disables teh stop execution button when the user cannot update', () => {
+		settingsStore.settings.enterprise = {
+			...(settingsStore.settings.enterprise ?? {}),
+		};
+		vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
+			scopes: undefined,
+		} as IWorkflowDb);
+		const { getByTestId } = render(WorkflowExecutionsPreview, {
+			props: {
+				execution: { ...executionData, status: 'running' },
+			},
+			global: {
+				plugins: [
+					I18nPlugin,
+					i18nInstance,
+					PiniaVuePlugin,
+					FontAwesomePlugin,
+					GlobalComponentsPlugin,
+					pinia,
+					router,
+				],
+				mocks: {
+					$route,
 				},
-				global: {
-					plugins: [
-						I18nPlugin,
-						i18nInstance,
-						PiniaVuePlugin,
-						FontAwesomePlugin,
-						GlobalComponentsPlugin,
-						pinia,
-						router,
-					],
-					mocks: {
-						$route,
-					},
-				},
-			});
-
-			expect(getByTestId('stop-execution')).toBeInTheDocument();
+			},
 		});
 
-		it("doesn't render the button", () => {
-			settingsStore.settings.enterprise = {
-				...(settingsStore.settings.enterprise ?? {}),
-			};
-			vi.spyOn(workflowsStore, 'getWorkflowById').mockReturnValue({
-				scopes: undefined,
-			} as IWorkflowDb);
-			const { queryByTestId } = render(WorkflowExecutionsPreview, {
-				props: {
-					execution: { ...executionData, status: 'running' },
-				},
-				global: {
-					plugins: [
-						I18nPlugin,
-						i18nInstance,
-						PiniaVuePlugin,
-						FontAwesomePlugin,
-						GlobalComponentsPlugin,
-						pinia,
-						router,
-					],
-					mocks: {
-						$route,
-					},
-				},
-			});
-
-			expect(queryByTestId('stop-execution')).not.toBeInTheDocument();
-		});
+		expect(getByTestId('stop-execution')).toBeDisabled();
 	});
 });

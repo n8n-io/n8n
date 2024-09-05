@@ -121,11 +121,11 @@ function onRetryButtonBlur(event: FocusEvent) {
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
 		<N8nButton
-			v-if="workflowPermissions.execute"
+			data-test-id="stop-execution"
 			class="mt-l"
 			type="tertiary"
 			@click="handleStopClick"
-			data-test-id="stop-execution"
+			:disabled="!workflowPermissions.execute"
 		>
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
