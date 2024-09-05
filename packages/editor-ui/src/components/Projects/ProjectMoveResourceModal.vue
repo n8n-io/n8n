@@ -1,14 +1,16 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, h } from 'vue';
 import type { ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useProjectsStore } from '@/stores/projects.store';
 import Modal from '@/components/Modal.vue';
-import { PROJECT_MOVE_RESOURCE_CONFIRM_MODAL } from '@/constants';
-import type { ResourceType } from '@/utils/projects.utils';
-import { splitName } from '@/utils/projects.utils';
+import { VIEWS } from '@/constants';
+import { ResourceType, splitName } from '@/utils/projects.utils';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { ProjectTypes } from '@/types/projects.types';
+import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
+import { useToast } from '@/composables/useToast';
 
 const props = defineProps<{
 	modalName: string;
@@ -20,18 +22,34 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 
 const projectId = ref<string | null>(null);
-const processedName = computed(() => {
-	const { name, email } = splitName(props.data.resource.homeProject?.name ?? '');
+const processedName = computed(() =>
+	processProjectName(props.data.resource.homeProject?.name ?? ''),
+);
+const availableProjects = computed(() =>
+	projectsStore.projects
+		.filter((p) => p.id !== props.data.resource.homeProject?.id)
+		.sort((a, b) => a.name?.localeCompare(b.name ?? '') ?? 0),
+);
+
+const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
+
+const selectedProject = computed(() =>
+	availableProjects.value.find((p) => p.id === projectId.value),
+);
+
+const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
+	resource.homeProject?.type === ProjectTypes.Team;
+
+const processProjectName = (projectName: string) => {
+	const { name, email } = splitName(projectName);
 	return name ?? email;
-});
-const availableProjects = computed(() => {
-	return projectsStore.teamProjects.filter((p) => p.id !== props.data.resource.homeProject?.id);
-});
+};
 
 const updateProject = (value: string) => {
 	projectId.value = value;
@@ -41,18 +59,48 @@ const closeModal = () => {
 	uiStore.closeModal(props.modalName);
 };
 
-const next = () => {
-	closeModal();
-	uiStore.openModalWithData({
-		name: PROJECT_MOVE_RESOURCE_CONFIRM_MODAL,
-		data: {
-			resource: props.data.resource,
-			resourceType: props.data.resourceType,
-			resourceTypeLabel: props.data.resourceTypeLabel,
-			projectId: projectId.value,
-			projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
-		},
-	});
+const moveResource = async () => {
+	if (!projectId.value) return;
+	try {
+		await projectsStore.moveResourceToProject(
+			props.data.resourceType,
+			props.data.resource.id,
+			projectId.value,
+		);
+		closeModal();
+		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
+			[`${props.data.resourceType}_id`]: props.data.resource.id,
+			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
+		});
+		toast.showToast({
+			title: i18n.baseText('projects.move.resource.success.title', {
+				interpolate: {
+					resourceTypeLabel: props.data.resourceTypeLabel,
+				},
+			}),
+			message: h(ProjectMoveSuccessToastMessage, {
+				routeName:
+					props.data.resourceType === ResourceType.Workflow
+						? VIEWS.PROJECTS_WORKFLOWS
+						: VIEWS.PROJECTS_CREDENTIALS,
+				resource: props.data.resource,
+				resourceTypeLabel: props.data.resourceTypeLabel,
+				projectId: projectId.value,
+				projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error.message,
+			i18n.baseText('projects.move.resource.error.title', {
+				interpolate: {
+					resourceTypeLabel: props.data.resourceTypeLabel,
+					resourceName: props.data.resource.name,
+				},
+			}),
+		);
+	}
 };
 
 onMounted(() => {
@@ -65,7 +113,7 @@ onMounted(() => {
 <template>
 	<Modal width="500px" :name="props.modalName" data-test-id="project-move-resource-modal">
 		<template #header>
-			<N8nHeading tag="h2" size="xlarge" class="mb-m">
+			<N8nHeading tag="h2" size="xlarge" class="mb-m pr-s">
 				{{
 					i18n.baseText('projects.move.resource.modal.title', {
 						interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
@@ -77,15 +125,31 @@ onMounted(() => {
 					<template #resourceName
 						><strong>{{ props.data.resource.name }}</strong></template
 					>
-					<template #resourceHomeProjectName>{{ processedName }}</template>
-					<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
+					<template v-if="isResourceInTeamProject" #inTeamProject>
+						{{
+							i18n.baseText('projects.move.resource.modal.message.team', {
+								interpolate: {
+									resourceHomeProjectName: processedName,
+								},
+							})
+						}}
+					</template>
+					<template v-else #inPersonalProject>
+						{{
+							i18n.baseText('projects.move.resource.modal.message.personal', {
+								interpolate: {
+									resourceHomeProjectName: processedName,
+								},
+							})
+						}}
+					</template>
 				</i18n-t>
 			</N8nText>
 		</template>
 		<template #content>
 			<div>
 				<N8nSelect
-					class="mr-2xs"
+					class="mr-2xs mb-xs"
 					:model-value="projectId"
 					size="small"
 					data-test-id="project-move-resource-modal-select"
@@ -98,6 +162,27 @@ onMounted(() => {
 						:label="p.name"
 					></N8nOption>
 				</N8nSelect>
+				<N8nText>
+					<i18n-t keypath="projects.move.resource.modal.message.sharingNote">
+						<template #note
+							><strong>{{
+								i18n.baseText('projects.move.resource.modal.message.note')
+							}}</strong></template
+						>
+						<template #resourceTypeLabel>{{ props.data.resourceTypeLabel }}</template>
+					</i18n-t>
+					<span v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0">
+						<br />
+						{{
+							i18n.baseText('projects.move.resource.modal.message.sharingInfo', {
+								adjustToNumber: props.data.resource.sharedWithProjects?.length,
+								interpolate: {
+									numberOfProjects: props.data.resource.sharedWithProjects?.length ?? 0,
+								},
+							})
+						}}</span
+					>
+				</N8nText>
 			</div>
 		</template>
 		<template #footer>
@@ -105,8 +190,12 @@ onMounted(() => {
 				<N8nButton type="secondary" text class="mr-2xs" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton :disabled="!projectId" type="primary" @click="next">
-					{{ i18n.baseText('generic.next') }}
+				<N8nButton :disabled="!projectId" type="primary" @click="moveResource">
+					{{
+						i18n.baseText('projects.move.resource.modal.button', {
+							interpolate: { resourceTypeLabel: props.data.resourceTypeLabel },
+						})
+					}}
 				</N8nButton>
 			</div>
 		</template>
