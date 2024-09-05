@@ -47,7 +47,9 @@ const isDisableNodeVisible = computed(() => {
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);
 
-const isStickyNoteNodeType = computed(() => render.value.type === CanvasNodeRenderType.StickyNote);
+const isStickyNoteChangeColorVisible = computed(
+	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
+);
 
 function executeNode() {
 	emit('run');
@@ -106,7 +108,10 @@ function onOpenContextMenu(event: MouseEvent) {
 				:title="i18n.baseText('node.delete')"
 				@click="onDeleteNode"
 			/>
-			<CanvasNodeStickyColorSelector v-if="isStickyNoteNodeType" @update="onChangeStickyColor" />
+			<CanvasNodeStickyColorSelector
+				v-if="isStickyNoteChangeColorVisible"
+				@update="onChangeStickyColor"
+			/>
 			<N8nIconButton
 				data-test-id="overflow-node-button"
 				type="tertiary"

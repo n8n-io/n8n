@@ -45,7 +45,7 @@ export function useCanvasNode() {
 	const connections = computed(() => data.value.connections);
 
 	const isDisabled = computed(() => data.value.disabled);
-
+	const isReadOnly = computed(() => node?.readOnly.value);
 	const isSelected = computed(() => node?.selected.value);
 
 	const pinnedDataCount = computed(() => data.value.pinnedData.count);
@@ -75,6 +75,7 @@ export function useCanvasNode() {
 		outputs,
 		connections,
 		isDisabled,
+		isReadOnly,
 		isSelected,
 		pinnedDataCount,
 		hasPinnedData,
