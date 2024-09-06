@@ -5,7 +5,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { isFormWithEmail } from '@/utils/typeGuards';
 import { computed, ref } from 'vue';
 
 const toast = useToast();
@@ -59,6 +58,10 @@ const formConfig = computed(() => {
 		inputs: NO_SMTP_INPUTS,
 	};
 });
+
+const isFormWithEmail = (values: { [key: string]: string }): values is { email: string } => {
+	return 'email' in values;
+};
 
 const onSubmit = async (values: { [key: string]: string }) => {
 	if (!isFormWithEmail(values)) {

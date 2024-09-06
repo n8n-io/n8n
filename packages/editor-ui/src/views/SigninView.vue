@@ -12,9 +12,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useUIStore } from '@/stores/ui.store';
-
-import { isFormWithEmailAndPassword } from '@/utils/typeGuards';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
@@ -95,6 +92,12 @@ const onMFASubmitted = async (form: { token?: string; recoveryCode?: string }) =
 		recoveryCode: form.recoveryCode,
 	});
 };
+
+const isFormWithEmailAndPassword = (values: {
+	[key: string]: string;
+}): values is { email: string; password: string } => {
+	return 'email' in values && 'password' in values;
+}
 
 const onEmailPasswordSubmitted = async (form: { [key: string]: string }) => {
 	if (!isFormWithEmailAndPassword(form)) return;

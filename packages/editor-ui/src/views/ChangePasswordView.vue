@@ -10,7 +10,6 @@ import { useUsersStore } from '@/stores/users.store';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
-import { isFormWithMFAToken } from '@/utils/typeGuards';
 
 const locale = useI18n();
 const toast = useToast();
@@ -123,6 +122,10 @@ const getResetToken = () => {
 const getMfaEnabled = () => {
 	if (!router.currentRoute.value.query.mfaEnabled) return null;
 	return router.currentRoute.value.query.mfaEnabled === 'true' ? true : false;
+};
+
+const isFormWithMFAToken = (values: { [key: string]: string }): values is { mfaToken: string } => {
+	return 'mfaToken' in values;
 };
 
 const onSubmit = async (values: { [key: string]: string }) => {

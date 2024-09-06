@@ -1,13 +1,11 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElNotification as Notification } from 'element-plus';
 import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useSSOStore } from '@/stores/sso.store';
 import { VIEWS } from '@/constants';
-import { isFormWithFirstAndLastName } from '@/utils/typeGuards';
 
 const router = useRouter();
 const ssoStore = useSSOStore();
@@ -42,6 +40,13 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 		},
 	],
 });
+
+const isFormWithFirstAndLastName = (values: {
+	[key: string]: string;
+}): values is { firstName: string; lastName: string } => {
+	return 'firstName' in values && 'lastName' in values;
+}
+
 const onSubmit = async (values: { [key: string]: string }) => {
 	if (!isFormWithFirstAndLastName(values)) return;
 	try {
