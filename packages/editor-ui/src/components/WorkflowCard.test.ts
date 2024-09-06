@@ -169,9 +169,8 @@ describe('WorkflowCard', () => {
 
 	it('should show Read only mode', async () => {
 		const data = createWorkflow();
-		const { getByRole, container } = renderComponent({ props: { data } });
+		const { getByRole } = renderComponent({ props: { data } });
 
-		expect((container.firstChild as Element).classList.contains('cardLinkReadonly')).toBeTruthy();
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
 	});

@@ -131,10 +131,7 @@ function moveResource() {
 </script>
 
 <template>
-	<n8n-card
-		:class="{ [$style.cardLink]: true, [$style.cardLinkReadonly]: readOnly }"
-		@click="onClick"
-	>
+	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #prepend>
 			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
 		</template>
@@ -186,11 +183,6 @@ function moveResource() {
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
-}
-
-.cardLinkReadonly {
-	background-color: var(--color-background-light);
-	border-style: dashed;
 }
 
 .cardHeading {

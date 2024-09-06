@@ -87,8 +87,7 @@ describe('CredentialCard', () => {
 	});
 
 	it('should set readOnly variant based on prop', () => {
-		const { getByRole, container } = renderComponent({ props: { readOnly: true } });
-		expect((container.firstChild as Element).classList.contains('cardLinkReadonly')).toBeTruthy();
+		const { getByRole } = renderComponent({ props: { readOnly: true } });
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
 	});
