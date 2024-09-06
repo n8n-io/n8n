@@ -31,7 +31,9 @@ describe('CanvasNodeStatusIcons', () => {
 	it('should render correctly for a node that ran successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {
-				provide: createCanvasNodeProvide({ data: { runData: { count: 15, visible: true } } }),
+				provide: createCanvasNodeProvide({
+					data: { runData: { outputMap: {}, iterations: 15, visible: true } },
+				}),
 			},
 		});
 
