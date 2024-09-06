@@ -129,24 +129,26 @@ export async function getTimezones(
 	return { results };
 }
 
-type RecurentEvent = {
+export type RecurentEvent = {
 	start: {
-		dateTime: string;
-		timeZone: string;
+		date?: string;
+		dateTime?: string;
+		timeZone?: string;
 	};
 	end: {
-		dateTime: string;
-		timeZone: string;
+		date?: string;
+		dateTime?: string;
+		timeZone?: string;
 	};
 	recurrence: string[];
 	nextOccurrence?: {
 		start: {
 			dateTime: string;
-			timeZone: string;
+			timeZone?: string;
 		};
 		end: {
 			dateTime: string;
-			timeZone: string;
+			timeZone?: string;
 		};
 	};
 };
@@ -157,30 +159,45 @@ export function addNextOccurrence(items: RecurentEvent[]) {
 			let eventRecurrence;
 			try {
 				eventRecurrence = item.recurrence.find((r) => r.toUpperCase().startsWith('RRULE'));
+
 				if (!eventRecurrence) continue;
 
-				const rrule = RRule.fromString(eventRecurrence);
+				const start = moment(item.start.dateTime || item.end.date).utc();
+				const end = moment(item.end.dateTime || item.end.date).utc();
+
+				const rruleWithStartDate = `DTSTART:${start.format(
+					'YYYYMMDDTHHmmss',
+				)}Z\n${eventRecurrence}`;
+
+				const rrule = RRule.fromString(rruleWithStartDate);
+
 				const until = rrule.options?.until;
 
-				const now = new Date();
-				if (until && until < now) {
+				const now = moment().utc();
+
+				if (until && moment(until).isBefore(now)) {
 					continue;
 				}
 
-				const nextOccurrence = rrule.after(new Date());
+				const nextDate = rrule.after(now.toDate(), false);
 
-				item.nextOccurrence = {
-					start: {
-						dateTime: moment(nextOccurrence).format(),
-						timeZone: item.start.timeZone,
-					},
-					end: {
-						dateTime: moment(nextOccurrence)
-							.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
-							.format(),
-						timeZone: item.end.timeZone,
-					},
-				};
+				if (nextDate) {
+					const nextStart = moment(nextDate);
+
+					const duration = moment.duration(moment(end).diff(moment(start)));
+					const nextEnd = moment(nextStart).add(duration);
+
+					item.nextOccurrence = {
+						start: {
+							dateTime: nextStart.format(),
+							timeZone: item.start.timeZone,
+						},
+						end: {
+							dateTime: nextEnd.format(),
+							timeZone: item.end.timeZone,
+						},
+					};
+				}
 			} catch (error) {
 				console.log(`Error adding next occurrence ${eventRecurrence}`);
 			}
