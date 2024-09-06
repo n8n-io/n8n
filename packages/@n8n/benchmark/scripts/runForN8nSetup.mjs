@@ -25,6 +25,8 @@ async function main() {
 	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
 	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
 	const n8nLicenseCert = argv.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
+	const n8nLicenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY || '';
+	const n8nLicenseTenantId = argv.n8nLicenseTenantId || process.env.N8N_LICENSE_TENANT_ID || '';
 
 	if (!fs.existsSync(baseRunDir)) {
 		console.error(
@@ -44,6 +46,8 @@ async function main() {
 				PATH: process.env.PATH,
 				N8N_VERSION: n8nTag,
 				N8N_LICENSE_CERT: n8nLicenseCert,
+				N8N_LICENSE_ACTIVATION_KEY: n8nLicenseActivationKey,
+				N8N_LICENSE_TENANT_ID: n8nLicenseTenantId,
 				N8N_ENCRYPTION_KEY,
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
