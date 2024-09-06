@@ -172,6 +172,12 @@ export class Worker extends BaseCommand {
 
 		const server = http.createServer(app);
 
+		app.get('/healthz/readiness', async (_req, res) => {
+			return Db.connectionState.connected && Db.connectionState.migrated
+				? res.status(200).send({ status: 'ok' })
+				: res.status(503).send({ status: 'error' });
+		});
+
 		app.get(
 			'/healthz',
 

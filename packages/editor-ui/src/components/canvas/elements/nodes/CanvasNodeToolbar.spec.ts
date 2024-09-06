@@ -93,4 +93,26 @@ describe('CanvasNodeToolbar', () => {
 
 		expect(emitted('open:contextmenu')[0]).toEqual([expect.any(MouseEvent)]);
 	});
+
+	it('should emit "update" when sticky note color is changed', async () => {
+		const { getAllByTestId, getByTestId, emitted } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.StickyNote,
+								options: { color: 3 },
+							},
+						},
+					}),
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('change-sticky-color'));
+		await fireEvent.click(getAllByTestId('color')[0]);
+
+		expect(emitted('update')[0]).toEqual([{ color: 1 }]);
+	});
 });

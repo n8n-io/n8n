@@ -353,13 +353,6 @@ const declarativeNodeOptionParameters: INodeProperties = {
 };
 
 /**
- * Determines if the node is of INodeType
- */
-export function isINodeType(obj: unknown): obj is INodeType {
-	return typeof obj === 'object' && obj !== null && 'execute' in obj;
-}
-
-/**
  * Modifies the description of the passed in object, such that it can be used
  * as an AI Agent Tool.
  * Returns the modified item (not copied)
