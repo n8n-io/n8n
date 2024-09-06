@@ -4,13 +4,14 @@ import { useRouter } from 'vue-router';
 import { ElNotification as Notification } from 'element-plus';
 import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
-import { i18n as locale } from '@/plugins/i18n';
+import { useI18n } from '@/composables/useI18n';
 import { useSSOStore } from '@/stores/sso.store';
 import { VIEWS } from '@/constants';
 import { isFormWithFirstAndLastName } from '@/utils/typeGuards';
 
 const router = useRouter();
 const ssoStore = useSSOStore();
+const locale = useI18n();
 
 const loading = ref(false);
 const FORM_CONFIG: IFormBoxConfig = reactive({
