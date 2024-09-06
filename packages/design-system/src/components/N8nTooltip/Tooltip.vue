@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PropType } from 'vue';
 import { ElTooltip } from 'element-plus';
 import type { IN8nButton } from 'n8n-design-system/types';
 import N8nButton from '../N8nButton';
@@ -15,37 +16,49 @@ export type Justify =
 	| 'space-around'
 	| 'space-evenly';
 
-const props = defineProps({
+// eslint-disable-next-line vue/valid-define-props, vue/require-macro-variable-name
+const elTooltipProps = defineProps({
 	...ElTooltip.props,
+});
+
+// eslint-disable-next-line vue/valid-define-props
+defineProps({
 	content: {
 		type: String,
 		default: '',
 	},
 	justifyButtons: {
-		type: String as () => Justify,
+		type: String as PropType<Justify>,
 		default: 'flex-end',
 	},
 	buttons: {
-		type: Array as () => IN8nButton[],
+		type: Array as PropType<IN8nButton[]>,
 		default: () => [],
 	},
+});
+
+defineOptions({
+	inheritAttrs: false,
 });
 </script>
 
 <template>
-	<ElTooltip v-bind="{ ...$props, ...$attrs }" :popper-class="$props.popperClass ?? 'n8n-tooltip'">
+	<ElTooltip
+		v-bind="{ ...elTooltipProps, ...$attrs }"
+		:popper-class="elTooltipProps.popperClass ?? 'n8n-tooltip'"
+	>
 		<slot />
 		<template #content>
 			<slot name="content">
-				<div v-html="props.content"></div>
+				<div v-html="content"></div>
 			</slot>
 			<div
-				v-if="props.buttons.length"
+				v-if="buttons.length"
 				:class="$style.buttons"
-				:style="{ justifyContent: props.justifyButtons }"
+				:style="{ justifyContent: justifyButtons }"
 			>
 				<N8nButton
-					v-for="button in props.buttons"
+					v-for="button in buttons"
 					:key="button.attrs.label"
 					v-bind="{ ...button.attrs, ...button.listeners }"
 				/>
