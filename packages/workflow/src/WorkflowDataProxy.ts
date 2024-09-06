@@ -255,11 +255,11 @@ export class WorkflowDataProxy {
 		shortSyntax?: boolean;
 	}) {
 		try {
-			return this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex);
+			return deepCopy(this.getNodeExecutionData(nodeName, shortSyntax, branchIndex, runIndex));
 		} catch (e) {
 			const pinData = getPinDataIfManualExecution(this.workflow, nodeName, this.mode);
 			if (pinData) {
-				return pinData;
+				return deepCopy(pinData);
 			}
 
 			throw e;
@@ -412,7 +412,6 @@ export class WorkflowDataProxy {
 							nodeName,
 							shortSyntax,
 						});
-
 						if (executionData.length === 0) {
 							if (that.workflow.getParentNodes(nodeName).length === 0) {
 								throw new ExpressionError('No execution data available', {
@@ -958,7 +957,7 @@ export class WorkflowDataProxy {
 				});
 			}
 
-			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
+			return deepCopy(taskData.data!.main[previousNodeOutput]![pairedItem.item]);
 		};
 
 		const base = {
@@ -1228,7 +1227,7 @@ export class WorkflowDataProxy {
 						return () => {
 							const result = that.connectionInputData;
 							if (result.length) {
-								return result;
+								return deepCopy(result);
 							}
 							return [];
 						};

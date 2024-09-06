@@ -208,6 +208,20 @@ describe('WorkflowDataProxy', () => {
 				name: 'test workflow',
 			});
 		});
+
+		test('should not be able to modify previous node data', () => {
+			proxy.$json.data = 'updated!';
+			expect(proxy.$json.data).toEqual(105);
+
+			proxy.$('Function').item.json.initialName = 'updated!';
+			expect(proxy.$('Function').item.json.initialName).toEqual(105);
+
+			proxy.$input.all()[1].json.data = 'updated!';
+			expect(proxy.$input.all()[1].json.data).toEqual(160);
+
+			proxy.$('Rename').first().json.data = 'updated!';
+			expect(proxy.$('Rename').first().json.data).toEqual(105);
+		});
 	});
 
 	describe('Errors', () => {
