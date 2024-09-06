@@ -16,13 +16,8 @@ export type Justify =
 	| 'space-around'
 	| 'space-evenly';
 
-// eslint-disable-next-line vue/valid-define-props, vue/require-macro-variable-name
-const elTooltipProps = defineProps({
+const props = defineProps({
 	...ElTooltip.props,
-});
-
-// eslint-disable-next-line vue/valid-define-props
-defineProps({
 	content: {
 		type: String,
 		default: '',
@@ -43,22 +38,19 @@ defineOptions({
 </script>
 
 <template>
-	<ElTooltip
-		v-bind="{ ...elTooltipProps, ...$attrs }"
-		:popper-class="elTooltipProps.popperClass ?? 'n8n-tooltip'"
-	>
+	<ElTooltip v-bind="{ ...props, ...$attrs }" :popper-class="props.popperClass ?? 'n8n-tooltip'">
 		<slot />
 		<template #content>
 			<slot name="content">
-				<div v-html="content"></div>
+				<div v-html="props.content"></div>
 			</slot>
 			<div
-				v-if="buttons.length"
+				v-if="props.buttons.length"
 				:class="$style.buttons"
-				:style="{ justifyContent: justifyButtons }"
+				:style="{ justifyContent: props.justifyButtons }"
 			>
 				<N8nButton
-					v-for="button in buttons"
+					v-for="button in props.buttons"
 					:key="button.attrs.label"
 					v-bind="{ ...button.attrs, ...button.listeners }"
 				/>
