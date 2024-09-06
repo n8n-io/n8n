@@ -7,6 +7,7 @@ import AuthView from '@/views/AuthView.vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useSSOStore } from '@/stores/sso.store';
 import { VIEWS } from '@/constants';
+import { isFormWithFirstAndLastName } from '@/utils/typeGuards';
 
 const router = useRouter();
 const ssoStore = useSSOStore();
@@ -40,7 +41,8 @@ const FORM_CONFIG: IFormBoxConfig = reactive({
 		},
 	],
 });
-const onSubmit = async (values: { firstName: string; lastName: string }) => {
+const onSubmit = async (values: { [key: string]: string }) => {
+	if (!isFormWithFirstAndLastName(values)) return;
 	try {
 		loading.value = true;
 		await ssoStore.updateUser(values);

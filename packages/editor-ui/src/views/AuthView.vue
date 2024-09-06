@@ -18,7 +18,7 @@ withDefaults(
 
 const emit = defineEmits<{
 	update: [{ name: string; value: string }];
-	submit: [{ [key: string]: string }];
+	submit: [values: { [key: string]: string }];
 	secondaryClick: [];
 }>();
 

@@ -7,6 +7,7 @@ import type { IFormBoxConfig } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { isFormWithEmail } from '@/utils/typeGuards';
 
 export default defineComponent({
 	name: 'ForgotMyPasswordView',
@@ -70,7 +71,10 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onSubmit(values: { email: string }) {
+		async onSubmit(values: { [key: string]: string }) {
+			if (!isFormWithEmail(values)) {
+				return;
+			}
 			try {
 				this.loading = true;
 				await this.usersStore.sendForgotPasswordEmail(values);

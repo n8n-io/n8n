@@ -7,6 +7,7 @@ import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
+import { isFormWithMFAToken } from '@/utils/typeGuards';
 
 export default defineComponent({
 	name: 'ChangePasswordView',
@@ -125,7 +126,10 @@ export default defineComponent({
 			if (!this.$route.query.mfaEnabled) return null;
 			return this.$route.query.mfaEnabled === 'true' ? true : false;
 		},
-		async onSubmit(values: { mfaToken: string }) {
+		async onSubmit(values: { [key: string]: string }) {
+			if (!isFormWithMFAToken(values)) {
+				return;
+			}
 			try {
 				this.loading = true;
 				const token = this.getResetToken();

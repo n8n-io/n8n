@@ -108,3 +108,25 @@ export function isRouteLocationRaw(value: unknown): value is RouteLocationRaw {
 export function isComponentPublicInstance(value: unknown): value is ComponentPublicInstance {
 	return value !== null && typeof value === 'object' && '$props' in value;
 }
+
+export function isFormWithMFAToken(values: {
+	[key: string]: string;
+}): values is { mfaToken: string } {
+	return 'mfaToken' in values;
+}
+
+export function isFormWithEmail(values: { [key: string]: string }): values is { email: string } {
+	return 'email' in values;
+}
+
+export function isFormWithFirstAndLastName(values: {
+	[key: string]: string;
+}): values is { firstName: string; lastName: string } {
+	return 'firstName' in values && 'lastName' in values;
+}
+
+export function isFormWithEmailAndPassword(values: {
+	[key: string]: string;
+}): values is { email: string; password: string } {
+	return 'email' in values && 'password' in values;
+}

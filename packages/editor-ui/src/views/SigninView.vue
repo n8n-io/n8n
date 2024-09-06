@@ -10,6 +10,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useUIStore } from '@/stores/ui.store';
+import { isFormWithEmailAndPassword } from '@/utils/typeGuards';
 
 export default defineComponent({
 	name: 'SigninView',
@@ -91,7 +92,8 @@ export default defineComponent({
 				recoveryCode: form.recoveryCode,
 			});
 		},
-		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
+		async onEmailPasswordSubmitted(form: { [key: string]: string } ) {
+			if (!isFormWithEmailAndPassword(form)) return;
 			await this.login(form);
 		},
 		isRedirectSafe() {
