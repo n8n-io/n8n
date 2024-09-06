@@ -97,7 +97,7 @@ const isFormWithEmailAndPassword = (values: {
 	[key: string]: string;
 }): values is { email: string; password: string } => {
 	return 'email' in values && 'password' in values;
-}
+};
 
 const onEmailPasswordSubmitted = async (form: { [key: string]: string }) => {
 	if (!isFormWithEmailAndPassword(form)) return;

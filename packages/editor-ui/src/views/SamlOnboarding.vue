@@ -48,7 +48,7 @@ const isFormWithFirstAndLastName = (values: {
 	[key: string]: string;
 }): values is { firstName: string; lastName: string } => {
 	return 'firstName' in values && 'lastName' in values;
-}
+};
 
 const onSubmit = async (values: { [key: string]: string }) => {
 	if (!isFormWithFirstAndLastName(values)) return;
