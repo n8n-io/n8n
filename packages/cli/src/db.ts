@@ -72,6 +72,7 @@ export async function init(): Promise<void> {
 			});
 		}
 
+		ErrorReporter.error(error);
 		throw error;
 	}
 
