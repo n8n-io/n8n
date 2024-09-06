@@ -212,9 +212,7 @@ const workflowId = computed(() => {
 });
 
 const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
-const isWorkflowRoute = computed(
-	() => !!route?.meta?.nodeView || [VIEWS.DEMO].includes(route.name),
-);
+const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
