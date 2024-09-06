@@ -2149,7 +2149,7 @@ export class HttpRequestV3 implements INodeType {
 				[
 					{
 						message:
-							"The result has a 'data' property which contains an array of items, you can split this array into separate items by using the 'Split Out' node",
+							'To split the contents of ‘data’ into separate items for easier processing, add a ‘Spilt Out’ node after this one',
 						location: 'outputPane',
 					},
 				],
