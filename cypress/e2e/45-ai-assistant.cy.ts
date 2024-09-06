@@ -1,3 +1,4 @@
+import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
 
@@ -286,5 +287,19 @@ describe('AI Assistant::enabled', () => {
 		aiAssistant.actions.openChat();
 		// Now, session should be reset
 		aiAssistant.getters.placeholderMessage().should('be.visible');
+	});
+
+	it('Should not reset assistant session when workflow is saved', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addInitialNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		aiAssistant.actions.openChat();
+		aiAssistant.actions.sendMessage('Hello');
+		wf.actions.openNode(SCHEDULE_TRIGGER_NODE_NAME);
+		ndv.getters.nodeExecuteButton().click();
+		wf.getters.isWorkflowSaved();
+		aiAssistant.getters.placeholderMessage().should('not.exist');
 	});
 });
