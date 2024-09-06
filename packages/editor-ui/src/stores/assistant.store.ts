@@ -1,5 +1,11 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
-import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES, AI_ASSISTANT_EXPERIMENT } from '@/constants';
+import {
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	STORES,
+	AI_ASSISTANT_EXPERIMENT,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
@@ -116,7 +122,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
-		if (!currentSessionId.value || currentSessionWorkflowId.value === activeWorkflowId) {
+		if (
+			!currentSessionId.value ||
+			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			currentSessionWorkflowId.value === activeWorkflowId
+		) {
 			return;
 		}
 		resetAssistantChat();
@@ -276,6 +286,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				{
 					chat_session_id: currentSessionId.value,
 					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+					node_type: chatSessionError.value?.node.type,
 				},
 				{ withPostHog: true },
 			);
