@@ -132,3 +132,9 @@ export function getConnectionOptions(): DataSourceOptions {
 			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
 }
+
+export function arePostgresOptions(
+	options: DataSourceOptions,
+): options is PostgresConnectionOptions {
+	return options.type === 'postgres';
+}
