@@ -37,6 +37,8 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 	const items = reactive<DestinationSettingsStore>({});
 	const eventNames = ref(new Set<string>());
 
+	const rootStore = useRootStore();
+
 	const addDestination = (destination: MessageEventBusDestinationOptions) => {
 		if (destination.id && items[destination.id]) {
 			items[destination.id].destination = destination;
@@ -188,7 +190,6 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 			return false;
 		}
 
-		const rootStore = useRootStore();
 		const selectedEvents = getSelectedEvents(destination.id);
 		try {
 			await saveDestinationToDb(rootStore.restApiContext, destination, selectedEvents);
@@ -206,23 +207,19 @@ export const useLogStreamingStore = defineStore('logStreaming', () => {
 			return false;
 		}
 
-		const rootStore = useRootStore();
 		const testResult = await sendTestMessageToDestination(rootStore.restApiContext, destination);
 		return testResult;
 	};
 
 	const fetchEventNames = async () => {
-		const rootStore = useRootStore();
 		return await getEventNamesFromBackend(rootStore.restApiContext);
 	};
 
 	const fetchDestinations = async (): Promise<MessageEventBusDestinationOptions[]> => {
-		const rootStore = useRootStore();
 		return await getDestinationsFromBackend(rootStore.restApiContext);
 	};
 
 	const deleteDestination = async (destinationId: string) => {
-		const rootStore = useRootStore();
 		await deleteDestinationFromDb(rootStore.restApiContext, destinationId);
 		removeDestination(destinationId);
 	};
