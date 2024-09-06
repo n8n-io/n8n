@@ -121,12 +121,14 @@ export function createCanvasHandleProvide({
 	type = NodeConnectionType.Main,
 	isConnected = false,
 	isConnecting = false,
+	isReadOnly = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
 	type?: NodeConnectionType;
 	isConnected?: boolean;
 	isConnecting?: boolean;
+	isReadOnly?: boolean;
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
@@ -135,6 +137,7 @@ export function createCanvasHandleProvide({
 			type: ref(type),
 			isConnected: ref(isConnected),
 			isConnecting: ref(isConnecting),
+			isReadOnly: ref(isReadOnly),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }
