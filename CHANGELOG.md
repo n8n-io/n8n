@@ -1,3 +1,15 @@
+## [1.58.1](https://github.com/n8n-io/n8n/compare/n8n@1.58.0...n8n@1.58.1) (2024-09-06)
+
+
+### Bug Fixes
+
+* **Email Trigger (IMAP) Node:** Ensure connection close does not block deactivation ([#10689](https://github.com/n8n-io/n8n/issues/10689)) ([fbcf529](https://github.com/n8n-io/n8n/commit/fbcf5292518d55569cbb3c26ede05391f5921cf9))
+* Fix the issue in Trigger Nodes where poll time was not loaded ([#10695](https://github.com/n8n-io/n8n/issues/10695)) ([ef2b056](https://github.com/n8n-io/n8n/commit/ef2b0562834712c83bb0eff89c1cc05f9a7e3003))
+* Prevent AI assistant session reset when workflow is saved ([#10707](https://github.com/n8n-io/n8n/issues/10707)) ([02d3873](https://github.com/n8n-io/n8n/commit/02d387334997227b88ac10d6964fe4c6d5b9c7da))
+* Show a more user friendly error message if initial Db connection times out ([#10682](https://github.com/n8n-io/n8n/issues/10682)) ([9f6875a](https://github.com/n8n-io/n8n/commit/9f6875aed65d0b061d83135ef9cb1ffe890546fa))
+
+
+
 # [1.58.0](https://github.com/n8n-io/n8n/compare/n8n@1.57.0...n8n@1.58.0) (2024-09-05)
 
 
