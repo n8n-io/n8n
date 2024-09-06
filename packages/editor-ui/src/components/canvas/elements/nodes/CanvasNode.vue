@@ -271,6 +271,7 @@ onBeforeUnmount(() => {
 				:offset="source.offset"
 				:is-connected="source.isConnected"
 				:is-connecting="source.isConnecting"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>
@@ -287,6 +288,7 @@ onBeforeUnmount(() => {
 				:offset="target.offset"
 				:is-connected="target.isConnected"
 				:is-connecting="target.isConnecting"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>
