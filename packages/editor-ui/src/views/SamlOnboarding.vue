@@ -3,13 +3,16 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
-import { useI18n } from '@/composables/useI18n';
-import { useSSOStore } from '@/stores/sso.store';
 import { VIEWS } from '@/constants';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+import { useSSOStore } from '@/stores/sso.store';
 
 const router = useRouter();
-const ssoStore = useSSOStore();
 const locale = useI18n();
+const toast = useToast();
+
+const ssoStore = useSSOStore();
 
 const loading = ref(false);
 const FORM_CONFIG: IFormBoxConfig = reactive({
@@ -55,11 +58,7 @@ const onSubmit = async (values: { [key: string]: string }) => {
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		loading.value = false;
-		Notification.error({
-			title: 'Error',
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, 'Error', error.message);
 	}
 };
 </script>
