@@ -18,6 +18,18 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
+	it('should not render pinned icon when disabled', () => {
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: createCanvasNodeProvide({
+					data: { disabled: true, pinnedData: { count: 5, visible: true } },
+				}),
+			},
+		});
+
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
+	});
+
 	it('should render correctly for a running node', () => {
 		const { getByTestId } = renderComponent({
 			global: {
