@@ -14,7 +14,7 @@ const {
 	executionWaiting,
 	executionRunning,
 	hasRunData,
-	runDataCount,
+	runDataIterations,
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -67,7 +67,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		:class="[$style.status, $style.runData]"
 	>
 		<FontAwesomeIcon icon="check" />
-		<span v-if="runDataCount > 1" :class="$style.count"> {{ runDataCount }}</span>
+		<span v-if="runDataIterations > 1" :class="$style.count"> {{ runDataIterations }}</span>
 	</div>
 </template>
 
