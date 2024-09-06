@@ -31,3 +31,4 @@ catalogs:
     vue: ^3.4.21
     vue-tsc: ^2.0.19
     vue-markdown-render: ^2.2.1
+    highlight.js: ^11.8.0
