@@ -18,11 +18,13 @@ import type {
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
 	CanvasNodeStickyNoteRender,
+	ExecutionOutputMap,
 } from '@/types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '@/types';
 import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
+	parseCanvasConnectionHandleString,
 } from '@/utils/canvasUtilsV2';
 import type {
 	ExecutionStatus,
@@ -241,6 +243,39 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	const nodeExecutionRunDataOutputMapById = computed(() =>
+		Object.keys(nodeExecutionRunDataById.value).reduce<Record<string, ExecutionOutputMap>>(
+			(acc, nodeId) => {
+				acc[nodeId] = {};
+
+				const outputData = { iterations: 0, total: 0 };
+				for (const runIteration of nodeExecutionRunDataById.value[nodeId] ?? []) {
+					const data = runIteration.data ?? {};
+
+					for (const connectionType of Object.keys(data)) {
+						const connectionTypeData = data[connectionType] ?? {};
+						acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
+
+						for (const outputIndex of Object.keys(connectionTypeData)) {
+							const parsedOutputIndex = parseInt(outputIndex, 10);
+							const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? [];
+
+							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
+								outputIndex
+							] ?? { ...outputData };
+							acc[nodeId][connectionType][outputIndex].iterations += 1;
+							acc[nodeId][connectionType][outputIndex].total +=
+								connectionTypeOutputIndexData.length;
+						}
+					}
+				}
+
+				return acc;
+			},
+			{},
+		),
+	);
+
 	const nodeIssuesById = computed(() =>
 		nodes.value.reduce<Record<string, string[]>>((acc, node) => {
 			const issues: string[] = [];
@@ -359,7 +394,8 @@ export function useCanvasMapping({
 					running: nodeExecutionRunningById.value[node.id],
 				},
 				runData: {
-					count: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
+					outputMap: nodeExecutionRunDataOutputMapById.value[node.id],
+					iterations: nodeExecutionRunDataById.value[node.id]?.length ?? 0,
 					visible: !!nodeExecutionRunDataById.value[node.id],
 				},
 				render: renderTypeByNodeId.value[node.id] ?? { type: 'default', options: {} },
@@ -426,7 +462,6 @@ export function useCanvasMapping({
 
 	function getConnectionLabel(connection: CanvasConnection): string {
 		const fromNode = nodes.value.find((node) => node.name === connection.data?.fromNodeName);
-
 		if (!fromNode) {
 			return '';
 		}
@@ -438,10 +473,13 @@ export function useCanvasMapping({
 				interpolate: { count: String(pinnedDataCount) },
 			});
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
-			const runDataCount = nodeExecutionRunDataById.value[fromNode.id]?.length ?? 0;
+			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
+			const runDataTotal =
+				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
+
 			return i18n.baseText('ndv.output.items', {
-				adjustToNumber: runDataCount,
-				interpolate: { count: String(runDataCount) },
+				adjustToNumber: runDataTotal,
+				interpolate: { count: String(runDataTotal) },
 			});
 		}
 
@@ -449,6 +487,7 @@ export function useCanvasMapping({
 	}
 
 	return {
+		nodeExecutionRunDataOutputMapById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
 	};
