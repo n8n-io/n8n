@@ -17,7 +17,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 
 const props = defineProps<{
 	node: INodeUi;
-	nodeType?: INodeTypeDescription;
+	nodeTypeDescription: INodeTypeDescription | null;
 }>();
 
 const router = useRouter();
@@ -28,12 +28,16 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const isMinimized = ref(
-	props.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeType.name),
+	props.nodeTypeDescription &&
+		!OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeTypeDescription.name),
 );
 const showUrlFor = ref('test');
 
 const isProductionOnly = computed(() => {
-	return props.nodeType && PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(props.nodeType.name);
+	return (
+		props.nodeTypeDescription &&
+		PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(props.nodeTypeDescription.name)
+	);
 });
 
 const urlOptions = computed(() => [
@@ -55,15 +59,17 @@ const visibleWebhookUrls = computed(() => {
 });
 
 const webhooksNode = computed(() => {
-	if (props.nodeType?.webhooks === undefined) {
+	if (props.nodeTypeDescription?.webhooks === undefined) {
 		return [];
 	}
 
-	return props.nodeType.webhooks.filter((webhookData) => webhookData.restartWebhook !== true);
+	return props.nodeTypeDescription.webhooks.filter(
+		(webhookData) => webhookData.restartWebhook !== true,
+	);
 });
 
 const baseText = computed(() => {
-	const nodeType = props.nodeType?.name;
+	const nodeType = props.nodeTypeDescription?.name;
 	switch (nodeType) {
 		case CHAT_TRIGGER_NODE_TYPE:
 			return {
@@ -157,7 +163,8 @@ watch(
 	() => props.node,
 	() => {
 		isMinimized.value =
-			props.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeType.name);
+			props.nodeTypeDescription &&
+			!OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeTypeDescription.name);
 	},
 );
 </script>
