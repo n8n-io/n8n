@@ -103,14 +103,6 @@ const baseText = computed(() => {
 	}
 });
 
-watch(
-	() => props.node,
-	() => {
-		isMinimized.value =
-			props.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeType.name);
-	},
-);
-
 function copyWebhookUrl(webhookData: IWebhookDescription): void {
 	const webhookUrl = getWebhookUrlDisplay(webhookData);
 	void clipboard.copy(webhookUrl);
@@ -120,6 +112,7 @@ function copyWebhookUrl(webhookData: IWebhookDescription): void {
 		message: baseText.value.copyMessage,
 		type: 'success',
 	});
+
 	telemetry.track('User copied webhook URL', {
 		pane: 'parameters',
 		type: `${showUrlFor.value} url`,
@@ -159,6 +152,14 @@ function getWebhookHttpMethod(webhook: IWebhookDescription): string {
 	}
 	return method;
 }
+
+watch(
+	() => props.node,
+	() => {
+		isMinimized.value =
+			props.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(props.nodeType.name);
+	},
+);
 </script>
 
 <template>
