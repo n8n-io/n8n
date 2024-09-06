@@ -13,7 +13,12 @@ import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
+import {
+	BUILTIN_CREDENTIALS_DOCS_URL,
+	CREDENTIAL_DOCS_EXPERIMENT,
+	DOCS_DOMAIN,
+	EnterpriseEditionFeature,
+} from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
@@ -28,6 +33,7 @@ import GoogleAuthButton from './GoogleAuthButton.vue';
 import OauthButton from './OauthButton.vue';
 import CredentialDocs from './CredentialDocs.vue';
 import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
+import { usePostHog } from '@/stores/posthog.store';
 
 type Props = {
 	mode: string;
@@ -162,6 +168,11 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
 const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
+const showCredentialDocs = computed(
+	() =>
+		usePostHog().getVariant(CREDENTIAL_DOCS_EXPERIMENT.name) ===
+			CREDENTIAL_DOCS_EXPERIMENT.variant && docs.value,
+);
 
 function onDataChange(event: IUpdateInformation): void {
 	emit('update', event);
@@ -335,7 +346,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</EnterpriseEdition>
 		</div>
 		<CredentialDocs
-			v-if="docs"
+			v-if="showCredentialDocs"
 			:credential-type="credentialType"
 			:documentation-url="documentationUrl"
 			:docs="docs"

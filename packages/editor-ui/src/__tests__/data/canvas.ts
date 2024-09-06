@@ -92,21 +92,24 @@ export function createCanvasNodeProvide({
 	id = 'node',
 	label = 'Test Node',
 	selected = false,
+	readOnly = false,
 	data = {},
 	eventBus = createEventBus<CanvasNodeEventBusEvents>(),
 }: {
 	id?: string;
 	label?: string;
 	selected?: boolean;
+	readOnly?: boolean;
 	data?: Partial<CanvasNodeData>;
 	eventBus?: EventBus<CanvasNodeEventBusEvents>;
 } = {}) {
-	const props = createCanvasNodeProps({ id, label, selected, data });
+	const props = createCanvasNodeProps({ id, label, selected, readOnly, data });
 	return {
 		[`${CanvasNodeKey}`]: {
 			id: ref(props.id),
 			label: ref(props.label),
 			selected: ref(props.selected),
+			readOnly: ref(props.readOnly),
 			data: ref(props.data),
 			eventBus: ref(eventBus),
 		} satisfies CanvasNodeInjectionData,
@@ -121,6 +124,7 @@ export function createCanvasHandleProvide({
 	runData,
 	isConnected = false,
 	isConnecting = false,
+	isReadOnly = false,
 }: {
 	label?: string;
 	mode?: CanvasConnectionMode;
@@ -129,6 +133,7 @@ export function createCanvasHandleProvide({
 	runData?: ExecutionOutputMapData;
 	isConnected?: boolean;
 	isConnecting?: boolean;
+	isReadOnly?: boolean;
 } = {}) {
 	return {
 		[`${CanvasNodeHandleKey}`]: {
@@ -139,6 +144,7 @@ export function createCanvasHandleProvide({
 			isConnected: ref(isConnected),
 			isConnecting: ref(isConnecting),
 			runData: ref(runData),
+			isReadOnly: ref(isReadOnly),
 		} satisfies CanvasNodeHandleInjectionData,
 	};
 }

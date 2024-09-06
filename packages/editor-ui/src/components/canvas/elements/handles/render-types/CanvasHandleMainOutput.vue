@@ -11,7 +11,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { render } = useCanvasNode();
-const { label, isConnected, isConnecting, runData } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isReadOnly, runData } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
 const isHovered = ref(false);
@@ -59,8 +59,9 @@ function onClickAdd() {
 		<CanvasHandleDot :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
-				v-if="!isConnected"
+				v-if="!isConnected && !isReadOnly"
 				v-show="isHandlePlusVisible"
+				data-test-id="canvas-handle-plus"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
 				:state="plusState"

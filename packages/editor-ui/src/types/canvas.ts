@@ -156,6 +156,7 @@ export interface CanvasNodeInjectionData {
 	data: Ref<CanvasNodeData>;
 	label: Ref<NodeProps['label']>;
 	selected: Ref<NodeProps['selected']>;
+	readOnly: Ref<boolean>;
 	eventBus: Ref<EventBus<CanvasNodeEventBusEvents>>;
 }
 
@@ -166,6 +167,7 @@ export interface CanvasNodeHandleInjectionData {
 	index: Ref<number>;
 	isConnected: Ref<boolean | undefined>;
 	isConnecting: Ref<boolean | undefined>;
+	isReadOnly: Ref<boolean | undefined>;
 	runData: Ref<ExecutionOutputMapData | undefined>;
 }
 

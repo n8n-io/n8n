@@ -58,6 +58,9 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: ^1.6.0
       version: 1.6.0
+    highlight.js:
+      specifier: ^11.8.0
+      version: 11.9.0
     vite:
       specifier: ^5.2.12
       version: 5.2.12
@@ -255,7 +258,7 @@ importers:
         specifier: ^10.11.0
         version: 10.11.0(vue@3.4.21(typescript@5.5.2))
       highlight.js:
-        specifier: ^11.8.0
+        specifier: catalog:frontend
         version: 11.9.0
       markdown-it-link-attributes:
         specifier: ^4.0.1
@@ -1340,6 +1343,9 @@ importers:
       flatted:
         specifier: ^3.2.4
         version: 3.2.7
+      highlight.js:
+        specifier: catalog:frontend
+        version: 11.9.0
       humanize-duration:
         specifier: ^3.27.2
         version: 3.27.3
@@ -13139,8 +13145,8 @@ packages:
   vue-component-type-helpers@2.0.19:
     resolution: {integrity: sha512-cN3f1aTxxKo4lzNeQAkVopswuImUrb5Iurll9Gaw5cqpnbTAxtEMM1mgi6ou4X79OCyqYv1U1mzBHJkzmiK82w==}
 
-  vue-component-type-helpers@2.1.4:
-    resolution: {integrity: sha512-aVqB3KxwpM76cYRkpnezl1J62E/1omzHQfx1yuz7zcbxmzmP/PeSgI20NEmkdeGnjZPVzm0V9fB4ZyRu5BBj4A==}
+  vue-component-type-helpers@2.1.6:
+    resolution: {integrity: sha512-ng11B8B/ZADUMMOsRbqv0arc442q7lifSubD0v8oDXIFoMg/mXwAPUunrroIDkY+mcD0dHKccdaznSVp8EoX3w==}
 
   vue-demi@0.14.5:
     resolution: {integrity: sha512-o9NUVpl/YlsGJ7t+xuqJKx8EBGf1quRhCiT6D/J0pfwmk9zUwYkC7yrF4SZCe6fETvSM3UNL2edcbYrSyc4QHA==}
@@ -18571,7 +18577,7 @@ snapshots:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.5.2)
-      vue-component-type-helpers: 2.1.4
+      vue-component-type-helpers: 2.1.6
     transitivePeerDependencies:
       - encoding
       - prettier
@@ -28055,7 +28061,7 @@ snapshots:
 
   vue-component-type-helpers@2.0.19: {}
 
-  vue-component-type-helpers@2.1.4: {}
+  vue-component-type-helpers@2.1.6: {}
 
   vue-demi@0.14.5(vue@3.4.21(typescript@5.5.2)):
     dependencies:

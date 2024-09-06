@@ -28,6 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.useRealTimers();
 });
 
 describe('Canvas', () => {
@@ -36,8 +37,8 @@ describe('Canvas', () => {
 
 		expect(getByTestId('canvas')).toBeVisible();
 		expect(getByTestId('canvas-background')).toBeVisible();
-		expect(getByTestId('canvas-minimap')).toBeVisible();
 		expect(getByTestId('canvas-controls')).toBeVisible();
+		expect(getByTestId('canvas-minimap')).toBeInTheDocument();
 	});
 
 	it('should render nodes and edges', async () => {
@@ -141,5 +142,80 @@ describe('Canvas', () => {
 				],
 			],
 		]);
+	});
+
+	describe('minimap', () => {
+		const minimapVisibilityDelay = 1000;
+		const minimapTransitionDuration = 300;
+
+		it('should show minimap for 1sec after panning', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [createCanvasNodeElement()];
+			const { getByTestId, container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const canvas = getByTestId('canvas');
+			const pane = canvas.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.mouseDown(pane, { view: window });
+			await fireEvent.mouseMove(pane, {
+				view: window,
+				clientX: 100,
+				clientY: 100,
+			});
+			await fireEvent.mouseUp(pane, { view: window });
+			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+
+			vi.advanceTimersByTime(minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
+		});
+
+		it('should keep minimap visible when hovered', async () => {
+			vi.useFakeTimers();
+
+			const nodes = [createCanvasNodeElement()];
+			const { getByTestId, container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const canvas = getByTestId('canvas');
+			const pane = canvas.querySelector('.vue-flow__pane');
+			if (!pane) throw new Error('VueFlow pane not found');
+
+			await fireEvent.keyDown(pane, { view: window, key: 'Shift' });
+			await fireEvent.mouseDown(pane, { view: window });
+			await fireEvent.mouseMove(pane, {
+				view: window,
+				clientX: 100,
+				clientY: 100,
+			});
+			await fireEvent.mouseUp(pane, { view: window });
+			await fireEvent.keyUp(pane, { view: window, key: 'Shift' });
+
+			vi.advanceTimersByTime(minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+
+			await fireEvent.mouseEnter(getByTestId('canvas-minimap'));
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).toBeVisible());
+
+			await fireEvent.mouseLeave(getByTestId('canvas-minimap'));
+			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
+			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
+		});
 	});
 });
