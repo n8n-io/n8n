@@ -2,8 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { $, which, tmpfile } from 'zx';
 import type { Scenario } from '@/types/scenario';
-import { type K6Tag } from '@/testExecution/testReport';
-export type { K6Tag };
+
+export type K6Tag = {
+	name: string;
+	value: string;
+};
 
 export type K6ExecutorOpts = {
 	k6ExecutablePath: string;

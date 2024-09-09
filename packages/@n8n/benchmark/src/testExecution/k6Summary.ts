@@ -243,7 +243,7 @@ interface RootGroup {
 	name: string;
 	path: string;
 	id: string;
-	groups: any[];
+	groups: unknown[];
 	checks: Check[];
 }
 
