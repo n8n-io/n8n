@@ -19,7 +19,7 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'If',
 				color: '#408000',
@@ -39,6 +39,7 @@ export class IfV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
+							version: '={{ $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
 					},
 				},
