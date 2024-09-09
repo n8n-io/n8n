@@ -34,6 +34,7 @@ export interface Command {
 	uuid: string;
 	temp_id?: string;
 	args: {
+		parent_id?: string;
 		id?: number;
 		section_id?: number;
 		project_id?: number | string;
@@ -251,7 +252,10 @@ export class MoveHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://api.todoist.com/sync/v9/sync
 		const taskId = ctx.getNodeParameter('taskId', itemIndex) as number;
-		const section = ctx.getNodeParameter('section', itemIndex) as number;
+		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
+			extractValue: true,
+		}) as number;
+		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
 
 		const body: SyncRequest = {
 			commands: [
@@ -260,11 +264,19 @@ export class MoveHandler implements OperationHandler {
 					uuid: uuid(),
 					args: {
 						id: taskId,
-						section_id: section,
+						project_id: projectId,
 					},
 				},
 			],
 		};
+
+		if (options.section) {
+			body.commands[0].args.section_id = options.section as number;
+		}
+
+		if (options.parent) {
+			body.commands[0].args.parent_id = options.parent as string;
+		}
 
 		await todoistSyncRequest.call(ctx, body);
 
