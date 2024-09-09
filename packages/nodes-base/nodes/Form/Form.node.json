@@ -11,5 +11,8 @@
 			}
 		],
 		"generic": []
+	},
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
 	}
 }

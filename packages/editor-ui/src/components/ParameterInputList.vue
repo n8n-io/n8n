@@ -5,7 +5,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, ADD_FORM_NOTICE } from 'n8n-workflow';
 import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
@@ -181,9 +181,13 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 					type: 'notice',
 					default: '',
 				});
-			} else {
-				triggerParameters.push(parameter);
+
+				continue;
 			}
+
+			if (parameter.name === ADD_FORM_NOTICE) continue;
+
+			triggerParameters.push(parameter);
 		}
 		return triggerParameters;
 	}

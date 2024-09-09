@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
+	ADD_FORM_NOTICE,
 	NodeConnectionType,
 	type INodeProperties,
 	type INodeType,
@@ -108,6 +109,13 @@ const descriptionV2: INodeTypeDescription = {
 			displayOptions: {
 				show: { responseMode: ['responseNode'] },
 			},
+			default: '',
+		},
+		// notice would be shown if no Form node was connected to trigger
+		{
+			displayName: 'Add an n8n Form page to the workflow to build a multi-step form',
+			name: ADD_FORM_NOTICE,
+			type: 'notice',
 			default: '',
 		},
 		{

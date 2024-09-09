@@ -258,10 +258,12 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 
 			const getTestUrl = (() => {
 				return (node: INode) => {
-					const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					if (nodeType?.webhooks?.length) {
-						return workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
-					}
+					try {
+						const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+						if (nodeType?.webhooks?.length) {
+							return workflowHelpers.getWebhookUrl(nodeType.webhooks[0], node, 'test');
+						}
+					} catch (error) {}
 					return '';
 				};
 			})();

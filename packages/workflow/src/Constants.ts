@@ -55,6 +55,8 @@ export const SCRIPTING_NODE_TYPES = [
 	AI_TRANSFORM_NODE_TYPE,
 ];
 
+export const ADD_FORM_NOTICE = 'addFormPage';
+
 /**
  * Nodes whose parameter values may refer to other nodes without expressions.
  * Their content may need to be updated when the referenced node is renamed.

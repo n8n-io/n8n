@@ -1,7 +1,7 @@
 import type { ExecutionStatus, IDataObject, INode, IPinData, IRunData } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '../constants';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '../constants';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
@@ -135,7 +135,12 @@ export function displayForm({
 				testUrl = getTestUrl(node);
 			}
 
-			if (node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form' && executionId) {
+			if (
+				[WAIT_NODE_TYPE, FORM_NODE_TYPE].includes(node.type) &&
+				// for Wait node we need to check if 'resume' is set to form
+				(node.parameters.resume === 'form' || node.type === FORM_NODE_TYPE) &&
+				executionId
+			) {
 				if (!shouldShowForm(node)) continue;
 
 				const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
