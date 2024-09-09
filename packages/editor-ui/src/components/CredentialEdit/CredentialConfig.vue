@@ -18,6 +18,7 @@ import {
 	CREDENTIAL_DOCS_EXPERIMENT,
 	DOCS_DOMAIN,
 	EnterpriseEditionFeature,
+	NEW_ASSISTANT_SESSION_MODAL,
 } from '@/constants';
 import type { PermissionsRecord } from '@/permissions';
 import { addCredentialTranslation } from '@/plugins/i18n';
@@ -34,6 +35,8 @@ import OauthButton from './OauthButton.vue';
 import CredentialDocs from './CredentialDocs.vue';
 import { CREDENTIAL_MARKDOWN_DOCS } from './docs';
 import { usePostHog } from '@/stores/posthog.store';
+import { useAssistantStore } from '@/stores/assistant.store';
+import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 
 type Props = {
 	mode: string;
@@ -74,6 +77,7 @@ const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const assistantStore = useAssistantStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -167,6 +171,19 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
+const isAskAssistantAvailable = computed(() => {
+	if (!documentationUrl.value || !props.credentialProperties.length) {
+		return false;
+	}
+	// todo custom nodes? community nodes?
+	return assistantStore.canShowAssistantButtons;
+});
+
+const assistantAlreadyAsked = computed(() => {
+	// todo
+	return false;
+});
+
 const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
 const showCredentialDocs = computed(
 	() =>
@@ -189,6 +206,35 @@ function onDocumentationUrlClick(): void {
 
 function onAuthTypeChange(newType: string): void {
 	emit('authTypeChanged', newType);
+}
+
+async function onAskAssistantClick() {
+	const sessionInProgress = !assistantStore.isSessionEnded;
+	const credentialName = props.credentialType.displayName;
+	const question = `How do I connect to ${credentialName}?`;
+	if (sessionInProgress) {
+		uiStore.openModalWithData({
+			name: NEW_ASSISTANT_SESSION_MODAL,
+			data: {
+				context: {
+					credHelp: {
+						question,
+					},
+				},
+			},
+		});
+		return;
+	}
+	await assistantStore.initSupportChat(question);
+	// todo move into above
+	telemetry.track('User opened assistant', {
+		source: 'cred', // todo
+		task: 'cred-help', // todo
+		has_existing_session: false,
+		workflow_id: workflowsStore.workflowId,
+		// node_type: node.value.type,
+		// todo cred_type?
+	});
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {
@@ -280,6 +326,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:credential-type="credentialType"
 					@auth-type-changed="onAuthTypeChange"
 				/>
+
+				<div
+					v-if="isAskAssistantAvailable"
+					:class="$style.askAssistantButton"
+					data-test-id="credentail-edit-ask-assistant-button"
+				>
+					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+				</div>
 
 				<CopyInput
 					v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"

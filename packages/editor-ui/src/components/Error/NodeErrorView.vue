@@ -411,7 +411,7 @@ function copySuccess() {
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
-	const errorPayload: ChatRequest.ErrorContext = {
+	const errorHelp: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
 			message,
@@ -424,11 +424,12 @@ async function onAskAssistantClick() {
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
 			name: NEW_ASSISTANT_SESSION_MODAL,
-			data: { context: errorPayload },
+			data: { context: { errorHelp } },
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorPayload);
+	await assistantStore.initErrorHelper(errorH);
+	// todo move into above
 	telemetry.track('User opened assistant', {
 		source: 'error',
 		task: 'error',

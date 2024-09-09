@@ -19,7 +19,7 @@ const telemetry = useTelemetry();
 const props = defineProps<{
 	name: string;
 	data: {
-		context: ChatRequest.ErrorContext;
+		context: { errorHelp: ChatRequest.ErrorContext } | { credHelp: { question: string } };
 	};
 }>();
 
@@ -28,16 +28,30 @@ const close = () => {
 };
 
 const startNewSession = async () => {
-	await assistantStore.initErrorHelper(props.data.context);
-	telemetry.track('User opened assistant', {
-		source: 'error',
-		task: 'error',
-		has_existing_session: true,
-		workflow_id: workflowsStore.workflowId,
-		node_type: props.data.context.node.type,
-		error: props.data.context.error,
-		chat_session_id: assistantStore.currentSessionId,
-	});
+	if ('errorHelp' in props.data.context) {
+		await assistantStore.initErrorHelper(props.data.context.errorHelp);
+		// todo move into function above
+		telemetry.track('User opened assistant', {
+			source: 'error',
+			task: 'error',
+			has_existing_session: true,
+			workflow_id: workflowsStore.workflowId,
+			node_type: props.data.context.errorHelp.node.type,
+			error: props.data.context.errorHelp.error,
+			chat_session_id: assistantStore.currentSessionId,
+		});
+	} else if ('credHelp' in props.data.context) {
+		await assistantStore.initSupportChat(props.data.context.credHelp.question);
+		// todo move into above
+		telemetry.track('User opened assistant', {
+			source: 'cred', // todo
+			task: 'cred-help', // todo
+			has_existing_session: false,
+			workflow_id: workflowsStore.workflowId,
+			// node_type: node.value.type,
+			// todo cred_type?
+		});
+	}
 	close();
 };
 </script>

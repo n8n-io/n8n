@@ -79,10 +79,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	const canShowAssistant = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			ENABLED_VIEWS.includes(route.name as VIEWS),
+		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
+		// todo show on cred list
+		// ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const assistantMessages = computed(() =>
@@ -321,6 +320,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initSupportChat(userMessage: string) {
 		const id = getRandomId();
 		resetAssistantChat();
+		chatWindowOpen.value = true;
 		chatSessionError.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
@@ -632,13 +632,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	return {
+		canShowAssistantButtons,
 		chatWidth,
 		chatMessages,
 		unreadCount,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
-		canShowAssistantButtons,
 		currentSessionId,
 		lastUnread,
 		isSessionEnded,
