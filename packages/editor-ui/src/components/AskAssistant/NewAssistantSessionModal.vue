@@ -30,26 +30,19 @@ const close = () => {
 const startNewSession = async () => {
 	if ('errorHelp' in props.data.context) {
 		await assistantStore.initErrorHelper(props.data.context.errorHelp);
-		// todo move into function above
-		telemetry.track('User opened assistant', {
+		assistantStore.trackUserOpenedAssistant({
 			source: 'error',
 			task: 'error',
 			has_existing_session: true,
-			workflow_id: workflowsStore.workflowId,
-			node_type: props.data.context.errorHelp.node.type,
-			error: props.data.context.errorHelp.error,
-			chat_session_id: assistantStore.currentSessionId,
 		});
 	} else if ('credHelp' in props.data.context) {
 		await assistantStore.initSupportChat(props.data.context.credHelp.question);
 		// todo move into above
-		telemetry.track('User opened assistant', {
+		assistantStore.trackUserOpenedAssistant({
 			source: 'cred', // todo
 			task: 'cred-help', // todo
-			has_existing_session: false,
-			workflow_id: workflowsStore.workflowId,
-			// node_type: node.value.type,
-			// todo cred_type?
+			has_existing_session: true,
+			// cred_type?
 		});
 	}
 	close();

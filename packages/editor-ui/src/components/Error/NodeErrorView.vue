@@ -428,15 +428,11 @@ async function onAskAssistantClick() {
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorH);
-	// todo move into above
-	telemetry.track('User opened assistant', {
+	await assistantStore.initErrorHelper(errorHelp);
+	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
-		workflow_id: workflowsStore.workflowId,
-		node_type: node.value.type,
-		error: props.error,
 	});
 }
 </script>

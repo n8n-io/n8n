@@ -346,6 +346,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
+		const hasExistingSession = !!currentSessionId.value;
 		const id = getRandomId();
 		if (chatSessionError.value) {
 			if (isNodeErrorActive(context)) {
@@ -509,6 +510,35 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
+	function trackUserOpenedAssistant({
+		source,
+		task,
+		has_existing_session,
+	}: { has_existing_session: boolean } & (
+		| {
+				source: 'error';
+				task: 'error';
+		  }
+		| {
+				source: 'canvas';
+				task: 'placeholder';
+		  }
+		| {
+				source: 'cred';
+				task: 'cred-help';
+		  }
+	)) {
+		telemetry.track('User opened assistant', {
+			source,
+			task,
+			has_existing_session,
+			workflow_id: workflowsStore.workflowId,
+			node_type: chatSessionError.value?.node?.type,
+			error: chatSessionError.value?.error,
+			chat_session_id: currentSessionId,
+		});
+	}
+
 	function updateParameters(nodeName: string, parameters: INodeParameters) {
 		if (ndvStore.activeNodeName === nodeName) {
 			Object.keys(parameters).forEach((key) => {
@@ -643,6 +673,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread,
 		isSessionEnded,
 		onNodeExecution,
+		trackUserOpenedAssistant,
 		closeChat,
 		openChat,
 		updateWindowWidth,

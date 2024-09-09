@@ -226,14 +226,10 @@ async function onAskAssistantClick() {
 		return;
 	}
 	await assistantStore.initSupportChat(question);
-	// todo move into above
-	telemetry.track('User opened assistant', {
+	assistantStore.trackUserOpenedAssistant({
 		source: 'cred', // todo
 		task: 'cred-help', // todo
 		has_existing_session: false,
-		workflow_id: workflowsStore.workflowId,
-		// node_type: node.value.type,
-		// todo cred_type?
 	});
 }
 
