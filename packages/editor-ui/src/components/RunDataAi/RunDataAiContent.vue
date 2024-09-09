@@ -96,8 +96,9 @@ const executionRunData = computed(() => {
 });
 
 const outputError = computed(() => {
-	return executionRunData.value?.[props.inputData.node][props.inputData.runIndex]
-		.error as NodeError;
+	return executionRunData.value?.[props.inputData.node]?.[props.inputData.runIndex]?.error as
+		| NodeError
+		| undefined;
 });
 </script>
 

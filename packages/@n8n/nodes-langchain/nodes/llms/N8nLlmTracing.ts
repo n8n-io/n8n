@@ -39,12 +39,12 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	completionTokensEstimate = 0;
 
 	/**
-	 * A queue to map LLM run IDs to input indices.
+	 * A map to associate LLM run IDs to run details.
 	 * Key: Unique identifier for each LLM run (run ID)
-	 * Value: Index of the input corresponding to this run
+	 * Value: RunDetails object
 	 *
 	 */
-	runsQueue: Record<string, RunDetail> = {};
+	runsMap: Record<string, RunDetail> = {};
 
 	options = {
 		// Default(OpenAI format) parser
@@ -86,7 +86,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
-		const runDetails = this.runsQueue[runId] ?? { index: Object.keys(this.runsQueue).length - 1 };
+		// The fallback should never happen since handleLLMStart should always set the run details
+		// but just in case, we set the index to the length of the runsMap
+		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		output.generations = output.generations.map((gen) =>
 			gen.map((g) => pick(g, ['text', 'generationInfo'])),
@@ -160,7 +162,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		]);
 
 		// Save the run details for later use when processing `handleLLMEnd` event
-		this.runsQueue[runId] = {
+		this.runsMap[runId] = {
 			index,
 			options,
 			messages: prompts,
