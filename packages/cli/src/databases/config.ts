@@ -104,6 +104,7 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 		schema: postgresConfig.schema,
 		poolSize: postgresConfig.poolSize,
 		migrations: postgresMigrations,
+		connectTimeoutMS: postgresConfig.connectionTimeoutMs,
 		ssl,
 	};
 };
@@ -130,4 +131,10 @@ export function getConnectionOptions(): DataSourceOptions {
 		default:
 			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
+}
+
+export function arePostgresOptions(
+	options: DataSourceOptions,
+): options is PostgresConnectionOptions {
+	return options.type === 'postgres';
 }

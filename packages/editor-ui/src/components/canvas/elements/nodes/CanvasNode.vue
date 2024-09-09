@@ -219,12 +219,14 @@ const id = toRef(props, 'id');
 const data = toRef(props, 'data');
 const label = toRef(props, 'label');
 const selected = toRef(props, 'selected');
+const readOnly = toRef(props, 'readOnly');
 
 provide(CanvasNodeKey, {
 	id,
 	data,
 	label,
 	selected,
+	readOnly,
 	eventBus: canvasNodeEventBus,
 });
 
@@ -269,6 +271,7 @@ onBeforeUnmount(() => {
 				:offset="source.offset"
 				:is-connected="source.isConnected"
 				:is-connecting="source.isConnecting"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>
@@ -285,6 +288,7 @@ onBeforeUnmount(() => {
 				:offset="target.offset"
 				:is-connected="target.isConnected"
 				:is-connecting="target.isConnecting"
+				:is-read-only="readOnly"
 				:is-valid-connection="isValidConnection"
 				@add="onAdd"
 			/>

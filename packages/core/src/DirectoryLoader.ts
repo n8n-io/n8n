@@ -40,14 +40,20 @@ export type Types = {
 export abstract class DirectoryLoader {
 	isLazyLoaded = false;
 
+	// Another way of keeping track of the names and versions of a node. This
+	// seems to only be used by the installedPackages repository
 	loadedNodes: INodeTypeNameVersion[] = [];
 
+	// Stores the loaded descriptions and sourcepaths
 	nodeTypes: INodeTypeData = {};
 
 	credentialTypes: ICredentialTypeData = {};
 
+	// Stores the location and classnames of the nodes and credentials that are
+	// loaded; used to actually load the files in lazy-loading scenario.
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
+	// Stores the different versions with their individual descriptions
 	types: Types = { nodes: [], credentials: [] };
 
 	protected nodesByCredential: Record<string, string[]> = {};

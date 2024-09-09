@@ -3,20 +3,33 @@ import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
 import { useCanvasNode } from '@/composables/useCanvasNode';
 import { computed, ref } from 'vue';
 import type { CanvasNodeDefaultRender } from '@/types';
+import { useI18n } from '@/composables/useI18n';
 
 const emit = defineEmits<{
 	add: [];
 }>();
 
+const i18n = useI18n();
 const { render } = useCanvasNode();
-const { label, isConnected, isConnecting } = useCanvasNodeHandle();
+const { label, isConnected, isConnecting, isReadOnly, runData } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
 const isHovered = ref(false);
 
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 
+const runDataLabel = computed(() =>
+	runData.value
+		? i18n.baseText('ndv.output.items', {
+				adjustToNumber: runData.value.total,
+				interpolate: { count: String(runData.value.total) },
+			})
+		: '',
+);
+
 const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
+
+const plusState = computed(() => (runData.value ? 'success' : 'default'));
 
 const plusLineSize = computed(
 	() =>
@@ -24,7 +37,7 @@ const plusLineSize = computed(
 			small: 46,
 			medium: 66,
 			large: 80,
-		})[renderOptions.value.outputs?.labelSize ?? 'small'],
+		})[renderOptions.value.outputs?.labelSize ?? runData.value ? 'large' : 'small'],
 );
 
 function onMouseEnter() {
@@ -41,14 +54,17 @@ function onClickAdd() {
 </script>
 <template>
 	<div :class="['canvas-node-handle-main-output', $style.handle]">
-		<div :class="[$style.label]">{{ label }}</div>
+		<div v-if="label" :class="[$style.label, $style.outputLabel]">{{ label }}</div>
+		<div v-else-if="runData" :class="[$style.label, $style.runDataLabel]">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
-				v-if="!isConnected"
+				v-if="!isConnected && !isReadOnly"
 				v-show="isHandlePlusVisible"
+				data-test-id="canvas-handle-plus"
 				:line-size="plusLineSize"
 				:handle-classes="handleClasses"
+				:state="plusState"
 				@mouseenter="onMouseEnter"
 				@mouseleave="onMouseLeave"
 				@click:plus="onClickAdd"
@@ -67,17 +83,29 @@ function onClickAdd() {
 
 .label {
 	position: absolute;
-	top: 50%;
-	left: var(--spacing-m);
-	transform: translate(0, -50%);
-	font-size: var(--font-size-2xs);
-	color: var(--color-foreground-xdark);
 	background: var(--color-canvas-label-background);
 	z-index: 1;
 	max-width: calc(100% - var(--spacing-m) - 24px);
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.outputLabel {
+	top: 50%;
+	left: var(--spacing-m);
+	transform: translate(0, -50%);
+	font-size: var(--font-size-2xs);
+	color: var(--color-foreground-xdark);
+}
+
+.runDataLabel {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: var(--font-size-xs);
+	color: var(--color-success);
 }
 </style>
 

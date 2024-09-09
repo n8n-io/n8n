@@ -36,6 +36,7 @@ import type {
 	NodeParameterValue,
 	ResourceMapperValue,
 	INodeTypeDescription,
+	INodeTypeBaseDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
@@ -350,6 +351,51 @@ const declarativeNodeOptionParameters: INodeProperties = {
 		},
 	],
 };
+
+/**
+ * Modifies the description of the passed in object, such that it can be used
+ * as an AI Agent Tool.
+ * Returns the modified item (not copied)
+ */
+export function convertNodeToAiTool<
+	T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
+>(item: T): T {
+	// quick helper function for typeguard down below
+	function isFullDescription(obj: unknown): obj is INodeTypeDescription {
+		return typeof obj === 'object' && obj !== null && 'properties' in obj;
+	}
+
+	if (isFullDescription(item.description)) {
+		item.description.name += 'Tool';
+		item.description.inputs = [];
+		item.description.outputs = [NodeConnectionType.AiTool];
+		item.description.displayName += ' Tool (wrapped)';
+		delete item.description.usableAsTool;
+		if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
+			const descProp: INodeProperties = {
+				displayName: 'Description',
+				name: 'toolDescription',
+				type: 'string',
+				default: item.description.description,
+				required: true,
+				typeOptions: { rows: 2 },
+				description:
+					'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+				placeholder: `e.g. ${item.description.description}`,
+			};
+			item.description.properties.unshift(descProp);
+		}
+	}
+
+	item.description.codex = {
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Tools'],
+			Tools: ['Other Tools'],
+		},
+	};
+	return item;
+}
 
 /**
  * Determines if the provided node type has any output types other than the main connection type.

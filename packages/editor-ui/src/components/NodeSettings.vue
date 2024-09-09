@@ -1025,7 +1025,7 @@ onBeforeUnmount(() => {
 				"
 			/>
 			<div v-show="openPanel === 'params'">
-				<NodeWebhooks :node="node" :node-type="nodeType" />
+				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
