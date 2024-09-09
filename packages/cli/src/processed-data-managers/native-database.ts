@@ -321,6 +321,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
+		console.log(options);
 		await Container.get(ProcessedDataRepository).delete({
 			workflowId: contextData.workflow.id as string,
 			context: ProcessedDataManagerNativeDatabase.createContext(context, contextData),

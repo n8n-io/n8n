@@ -228,10 +228,9 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
-
 		{
 			displayName: 'Options',
-			name: 'xOptions',
+			name: 'dedupeOptions',
 			type: 'collection',
 			placeholder: 'Add Field',
 			default: {},
@@ -513,7 +512,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 		} else if (operation === 'removeItemsSeenInPreviousExecutions') {
 			const logic = this.getNodeParameter('logic', 0);
 			if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-				const context = this.getNodeParameter('context', 0, 'workflow');
+				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -564,7 +563,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 				return [returnData];
 			} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-				const context = this.getNodeParameter('context', 0, 'workflow');
+				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -582,7 +581,59 @@ export class RemoveDuplicatesV2 implements INodeType {
 				} = {};
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					checkValue = this.getNodeParameter('keyField', itemIndex, '')?.toString() || '';
+					checkValue =
+						this.getNodeParameter('incrementalKeyField', itemIndex, '')?.toString() || '';
+					if (itemMapping[checkValue]) {
+						itemMapping[checkValue].push(items[itemIndex]);
+					} else {
+						itemMapping[checkValue] = [items[itemIndex]];
+					}
+					// TODO: Add continueOnFail, where should it and up?
+				}
+				const addProcessedValue = true;
+
+				let itemsProcessed: ICheckProcessedOutput;
+				if (addProcessedValue) {
+					itemsProcessed = await this.helpers.checkProcessedAndRecord(
+						Object.keys(itemMapping),
+						context as ProcessedDataContext,
+						{ mode: 'latest', maxEntries: 1000 } as ICheckProcessedOptions,
+					);
+				} else {
+					itemsProcessed = await this.helpers.checkProcessed(
+						Object.keys(itemMapping),
+						context as ProcessedDataContext,
+						{ mode: 'latest' } as ICheckProcessedOptions,
+					);
+				}
+
+				const returnData: INodeExecutionData[] = itemsProcessed.new
+					.map((key) => {
+						return itemMapping[key];
+					})
+					.flat();
+
+				return [returnData];
+			} else if (logic === 'RemoveItemsUpToStoredDate') {
+				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
+
+				if (!['node', 'workflow'].includes(context as string)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The context '${context}' is not supported. Please select either "node" or "workflow".`,
+					);
+				}
+
+				const node = this.getNode();
+				console.log('\nEXECUTE NODE: ', node.name);
+
+				let checkValue: string;
+				const itemMapping: {
+					[key: string]: INodeExecutionData[];
+				} = {};
+
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					checkValue = this.getNodeParameter('dateKeyField', itemIndex, '')?.toString() || '';
 					if (itemMapping[checkValue]) {
 						itemMapping[checkValue].push(items[itemIndex]);
 					} else {
