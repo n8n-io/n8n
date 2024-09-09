@@ -75,7 +75,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from './events/event.service';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
-import { AbstractEngine } from './agents/worker-engines/abstract.engine';
+import { TaskManager } from './runners/task-managers/task-manager';
 
 export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 	// TODO: Expand with other error types
@@ -1047,7 +1047,7 @@ export async function getBase(
 			selfData?: IDataObject,
 			contextNodeName?: string,
 		) {
-			return await Container.get(AbstractEngine).startJob(
+			return await Container.get(TaskManager).startTask(
 				jobType,
 				settings,
 				executeFunctions,

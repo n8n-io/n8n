@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */ // @TODO: Remove later
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */ // @TODO: Remove later
 import {
 	type IExecuteFunctions,
 	type Workflow,
@@ -7,22 +9,22 @@ import {
 	type INode,
 	ApplicationError,
 	type WorkflowParameters,
-	INodeParameters,
-	WorkflowExecuteMode,
-	IExecuteData,
-	IDataObject,
+	type INodeParameters,
+	type WorkflowExecuteMode,
+	type IExecuteData,
+	type IDataObject,
 } from 'n8n-workflow';
 
-import { RPC_ALLOW_LIST, type N8nMessage, type WorkerMessage } from '../agent-types';
+import { RPC_ALLOW_LIST, type N8nMessage, type RequesterMessage } from '../runner-types';
 import { nanoid } from 'nanoid';
 
-export type EngineRequestAccept = (jobId: string) => void;
-export type EngineRequestReject = (reason: string) => void;
+export type RequestAccept = (jobId: string) => void;
+export type RequestReject = (reason: string) => void;
 
-export type EngineJobAccept = (data: unknown) => void;
-export type EngineJobReject = (error: unknown) => void;
+export type TaskAccept = (data: unknown) => void;
+export type TaskReject = (error: unknown) => void;
 
-export interface EngineJobData {
+export interface TaskData {
 	executeFunctions: IExecuteFunctions;
 	inputData: ITaskDataConnections;
 	node: INode;
@@ -59,17 +61,17 @@ export interface AllData {
 	contextNodeName: string;
 }
 
-export interface EngineJobRequest {
+export interface TaskRequest {
 	requestId: string;
-	jobType: string;
+	taskType: string;
 	settings: unknown;
-	data: EngineJobData;
+	data: TaskData;
 }
 
-export interface EngineJob {
-	jobId: string;
+export interface Task {
+	taskId: string;
 	settings: unknown;
-	data: EngineJobData;
+	data: TaskData;
 }
 
 export class JobError extends ApplicationError {}
@@ -87,20 +89,17 @@ const workflowToParameters = (workflow: Workflow): Omit<WorkflowParameters, 'nod
 	};
 };
 
-export class AbstractEngine {
-	requestAcceptRejects: Record<
-		string,
-		{ accept: EngineRequestAccept; reject: EngineRequestReject }
-	> = {};
+export class TaskManager {
+	requestAcceptRejects: Record<string, { accept: RequestAccept; reject: RequestReject }> = {};
 
-	jobAcceptRejects: Record<string, { accept: EngineJobAccept; reject: EngineJobReject }> = {};
+	taskAcceptRejects: Record<string, { accept: TaskAccept; reject: TaskReject }> = {};
 
-	pendingRequests: Record<string, EngineJobRequest> = {};
+	pendingRequests: Record<string, TaskRequest> = {};
 
-	jobs: Record<string, EngineJob> = {};
+	tasks: Record<string, Task> = {};
 
-	async startJob<T>(
-		jobType: string,
+	async startTask<T>(
+		taskType: string,
 		settings: unknown,
 		executeFunctions: IExecuteFunctions,
 		inputData: ITaskDataConnections,
@@ -118,7 +117,7 @@ export class AbstractEngine {
 		selfData: IDataObject = {},
 		contextNodeName: string = activeNodeName,
 	): Promise<T> {
-		const data: EngineJobData = {
+		const data: TaskData = {
 			workflow,
 			runExecutionData,
 			runIndex,
@@ -136,16 +135,16 @@ export class AbstractEngine {
 			activeNodeName,
 		};
 
-		const request: EngineJobRequest = {
+		const request: TaskRequest = {
 			requestId: nanoid(),
-			jobType,
+			taskType,
 			settings,
 			data,
 		};
 
 		this.pendingRequests[request.requestId] = request;
 
-		const jobIdPromise = new Promise<string>((resolve, reject) => {
+		const taskIdPromise = new Promise<string>((resolve, reject) => {
 			this.requestAcceptRejects[request.requestId] = {
 				accept: resolve,
 				reject,
@@ -153,31 +152,31 @@ export class AbstractEngine {
 		});
 
 		this.sendMessage({
-			type: 'worker:jobrequest',
+			type: 'requester:taskrequest',
 			requestId: request.requestId,
-			jobType,
+			taskType,
 		});
 
-		const jobId = await jobIdPromise;
+		const taskId = await taskIdPromise;
 
-		const job: EngineJob = {
-			jobId,
+		const task: Task = {
+			taskId,
 			data,
 			settings,
 		};
-		this.jobs[job.jobId] = job;
+		this.tasks[task.taskId] = task;
 
 		try {
 			const dataPromise = new Promise<unknown>((resolve, reject) => {
-				this.jobAcceptRejects[job.jobId] = {
+				this.taskAcceptRejects[task.taskId] = {
 					accept: resolve,
 					reject,
 				};
 			});
 
 			this.sendMessage({
-				type: 'worker:jobsettings',
-				jobId,
+				type: 'requester:tasksettings',
+				taskId,
 				settings,
 			});
 
@@ -190,36 +189,39 @@ export class AbstractEngine {
 			}
 			throw e;
 		} finally {
-			delete this.jobs[jobId];
+			delete this.tasks[taskId];
 		}
 	}
 
-	sendMessage(_message: WorkerMessage.ToN8n.All) {}
+	sendMessage(_message: RequesterMessage.ToN8n.All) {}
 
-	onMessage(message: N8nMessage.ToWorker.All) {
+	onMessage(message: N8nMessage.ToRequester.All) {
 		console.log({ message });
 		switch (message.type) {
-			case 'n8n:jobready':
-				this.jobReady(message.requestId, message.jobId);
+			case 'broker:taskready':
+				this.jobReady(message.requestId, message.taskId);
 				break;
-			case 'n8n:jobdone':
-				this.jobDone(message.jobId, message.data);
+			case 'broker:taskdone':
+				this.jobDone(message.taskId, message.data);
 				break;
-			case 'n8n:joberror':
-				this.jobError(message.jobId, message.error);
+			case 'broker:taskerror':
+				this.jobError(message.taskId, message.error);
 				break;
-			case 'n8n:jobdatarequest':
-				this.sendJobData(message.jobId, message.requestId, message.requestType);
+			case 'broker:taskdatarequest':
+				this.sendJobData(message.taskId, message.requestId, message.requestType);
 				break;
-			case 'n8n:rpc':
-				void this.handleRpc(message.jobId, message.callId, message.name, message.params);
+			case 'broker:rpc':
+				void this.handleRpc(message.taskId, message.callId, message.name, message.params);
 				break;
 		}
 	}
 
 	jobReady(requestId: string, jobId: string) {
 		if (!(requestId in this.requestAcceptRejects)) {
-			this.rejectJob(jobId, 'Request ID not found, request possibly already filled.');
+			this.rejectJob(
+				jobId,
+				'Request ID not found. In multi-main setup, it is possible for one of the mains to have reported ready state already.',
+			);
 			return;
 		}
 
@@ -229,32 +231,32 @@ export class AbstractEngine {
 
 	rejectJob(jobId: string, reason: string) {
 		this.sendMessage({
-			type: 'worker:jobcancel',
-			jobId,
+			type: 'requester:taskcancel',
+			taskId: jobId,
 			reason,
 		});
 	}
 
 	jobDone(jobId: string, data: unknown) {
-		if (jobId in this.jobAcceptRejects) {
-			this.jobAcceptRejects[jobId].accept(data);
-			delete this.jobAcceptRejects[jobId];
+		if (jobId in this.taskAcceptRejects) {
+			this.taskAcceptRejects[jobId].accept(data);
+			delete this.taskAcceptRejects[jobId];
 		}
 	}
 
 	jobError(jobId: string, error: unknown) {
-		if (jobId in this.jobAcceptRejects) {
-			this.jobAcceptRejects[jobId].reject(error);
-			delete this.jobAcceptRejects[jobId];
+		if (jobId in this.taskAcceptRejects) {
+			this.taskAcceptRejects[jobId].reject(error);
+			delete this.taskAcceptRejects[jobId];
 		}
 	}
 
 	sendJobData(
 		jobId: string,
 		requestId: string,
-		requestType: N8nMessage.ToWorker.JobDataRequest['requestType'],
+		requestType: N8nMessage.ToRequester.TaskDataRequest['requestType'],
 	) {
-		const job = this.jobs[jobId];
+		const job = this.tasks[jobId];
 		if (!job) {
 			// TODO: logging
 			return;
@@ -281,8 +283,8 @@ export class AbstractEngine {
 			// eslint-disable-next-line
 			delete (data as any)['executeFunctions'];
 			this.sendMessage({
-				type: 'worker:jobdataresponse',
-				jobId,
+				type: 'requester:taskdataresponse',
+				taskId: jobId,
 				requestId,
 				data,
 			});
@@ -292,10 +294,10 @@ export class AbstractEngine {
 	async handleRpc(
 		jobId: string,
 		callId: string,
-		name: N8nMessage.ToWorker.RPC['name'],
+		name: N8nMessage.ToRequester.RPC['name'],
 		params: unknown[],
 	) {
-		const job = this.jobs[jobId];
+		const job = this.tasks[jobId];
 		if (!job) {
 			// TODO: logging
 			return;
@@ -304,8 +306,8 @@ export class AbstractEngine {
 		try {
 			if (!RPC_ALLOW_LIST.includes(name)) {
 				this.sendMessage({
-					type: 'worker:rpcresponse',
-					jobId,
+					type: 'requester:rpcresponse',
+					taskId: jobId,
 					callId,
 					status: 'error',
 					data: 'Method not allowed',
@@ -327,8 +329,8 @@ export class AbstractEngine {
 			func = funcObj;
 			if (!func) {
 				this.sendMessage({
-					type: 'worker:rpcresponse',
-					jobId,
+					type: 'requester:rpcresponse',
+					taskId: jobId,
 					callId,
 					status: 'error',
 					data: 'Could not find method',
@@ -338,16 +340,16 @@ export class AbstractEngine {
 			const data = await func.call(funcs, ...params);
 
 			this.sendMessage({
-				type: 'worker:rpcresponse',
-				jobId,
+				type: 'requester:rpcresponse',
+				taskId: jobId,
 				callId,
 				status: 'success',
 				data,
 			});
 		} catch (e) {
 			this.sendMessage({
-				type: 'worker:rpcresponse',
-				jobId,
+				type: 'requester:rpcresponse',
+				taskId: jobId,
 				callId,
 				status: 'error',
 				data: e,

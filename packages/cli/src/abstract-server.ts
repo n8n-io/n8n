@@ -118,7 +118,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	protected setupAgentServer() {}
+	protected setupRunnerServer() {}
 
 	private async setupHealthCheck() {
 		// main health check should not care about DB connections
@@ -184,8 +184,8 @@ export abstract class AbstractServer {
 			await this.setupErrorHandlers();
 			this.setupPushServer();
 
-			if (!this.globalConfig.agents.disabled) {
-				this.setupAgentServer();
+			if (!this.globalConfig.taskRunners.disabled) {
+				this.setupRunnerServer();
 			}
 		}
 

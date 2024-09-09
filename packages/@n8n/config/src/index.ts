@@ -13,8 +13,7 @@ import { EndpointsConfig } from './configs/endpoints.config';
 import { CacheConfig } from './configs/cache.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { UserManagementConfig } from './configs/user-management.config';
-import { AgentsConfig } from './configs/agents.config';
-export { AgentsConfig } from './configs/agents.config';
+import { TaskRunnersConfig } from './configs/runners.config';
 
 @Config
 export class GlobalConfig {
@@ -81,5 +80,5 @@ export class GlobalConfig {
 	queue: ScalingModeConfig;
 
 	@Nested
-	agents: AgentsConfig;
+	taskRunners: TaskRunnersConfig;
 }
