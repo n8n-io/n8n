@@ -2674,7 +2674,6 @@ export interface IProcessedDataConfig {
 }
 
 export interface IProcessedDataManager {
-	init(): Promise<void>;
 	checkProcessed(
 		items: ProcessedDataItemTypes[],
 		context: ProcessedDataContext,

@@ -19,7 +19,6 @@ export async function getProcessedDataManagers(
 	availableModes.forEach(async (mode) => {
 		if (mode === 'nativeDatabase') {
 			activeInstances[mode] = new ProcessedDataManagerNativeDatabase();
-			await activeInstances[mode].init();
 		} else {
 			throw new ApplicationError(`The ProcessedDataManager of type '${mode}' is not supported.`);
 		}
