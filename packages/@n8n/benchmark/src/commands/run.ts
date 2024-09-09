@@ -1,59 +1,68 @@
 import { Command, Flags } from '@oclif/core';
-import { loadConfig } from '@/config/config';
 import { ScenarioLoader } from '@/scenario/scenarioLoader';
 import { ScenarioRunner } from '@/testExecution/scenarioRunner';
 import { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
 import { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
 import { K6Executor } from '@/testExecution/k6Executor';
+import { testScenariosPath } from '@/config/commonFlags';
 
 export default class RunCommand extends Command {
 	static description = 'Run all (default) or specified test scenarios';
 
-	// TODO: Add support for filtering scenarios
 	static flags = {
-		scenarios: Flags.string({
-			char: 't',
-			description: 'Comma-separated list of test scenarios to run',
-			required: false,
-		}),
+		testScenariosPath,
 		scenarioNamePrefix: Flags.string({
-			description: 'Prefix for the scenario name. Defaults to Unnamed',
-			required: false,
+			description: 'Prefix for the scenario name',
+			default: 'Unnamed',
+		}),
+		n8nBaseUrl: Flags.string({
+			description: 'The base URL for the n8n instance',
+			default: 'http://localhost:5678',
+			env: 'N8N_BASE_URL',
+		}),
+		n8nUserEmail: Flags.string({
+			description: 'The email address of the n8n user',
+			default: 'benchmark-user@n8n.io',
+			env: 'N8N_USER_EMAIL',
+		}),
+		k6ExecutablePath: Flags.string({
+			doc: 'The path to the k6 binary',
+			default: 'k6',
+			env: 'K6_PATH',
+		}),
+		k6ApiToken: Flags.string({
+			doc: 'The API token for k6 cloud',
+			default: undefined,
+			env: 'K6_API_TOKEN',
+		}),
+		n8nUserPassword: Flags.string({
+			description: 'The password of the n8n user',
+			default: 'VerySecret!123',
+			env: 'N8N_USER_PASSWORD',
 		}),
 	};
 
 	async run() {
-		const config = await this.loadConfigAndMergeWithFlags();
+		const { flags } = await this.parse(RunCommand);
 		const scenarioLoader = new ScenarioLoader();
 
 		const scenarioRunner = new ScenarioRunner(
-			new N8nApiClient(config.get('n8n.baseUrl')),
+			new N8nApiClient(flags.n8nBaseUrl),
 			new ScenarioDataFileLoader(),
 			new K6Executor({
-				k6ExecutablePath: config.get('k6.executablePath'),
-				k6ApiToken: config.get('k6.apiToken'),
-				n8nApiBaseUrl: config.get('n8n.baseUrl'),
+				k6ExecutablePath: flags.k6ExecutablePath,
+				k6ApiToken: flags.k6ApiToken,
+				n8nApiBaseUrl: flags.n8nBaseUrl,
 			}),
 			{
-				email: config.get('n8n.user.email'),
-				password: config.get('n8n.user.password'),
+				email: flags.n8nUserEmail,
+				password: flags.n8nUserPassword,
 			},
-			config.get('scenarioNamePrefix'),
+			flags.scenarioNamePrefix,
 		);
 
-		const allScenarios = scenarioLoader.loadAll(config.get('testScenariosPath'));
+		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath);
 
 		await scenarioRunner.runManyScenarios(allScenarios);
-	}
-
-	private async loadConfigAndMergeWithFlags() {
-		const config = loadConfig();
-		const { flags } = await this.parse(RunCommand);
-
-		if (flags.scenarioNamePrefix) {
-			config.set('scenarioNamePrefix', flags.scenarioNamePrefix);
-		}
-
-		return config;
 	}
 }
