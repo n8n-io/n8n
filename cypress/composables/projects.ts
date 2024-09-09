@@ -32,8 +32,6 @@ export const addProjectMember = (email: string, role?: string) => {
 	}
 };
 export const getResourceMoveModal = () => cy.getByTestId('project-move-resource-modal');
-export const getResourceMoveConfirmModal = () =>
-	cy.getByTestId('project-move-resource-confirm-modal');
 export const getProjectMoveSelect = () => cy.getByTestId('project-move-resource-modal-select');
 
 export function createProject(name: string) {

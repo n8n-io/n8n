@@ -481,44 +481,15 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Next")')
+				.find('button:contains("Move workflow")')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 2)
-				.first()
-				.should('contain.text', 'Project 1')
+				.should('have.length', 5)
+				.filter(':contains("Project 1")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Next")').click();
-
-			projects
-				.getResourceMoveConfirmModal()
-				.should('be.visible')
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.first()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.last()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('not.be.disabled')
-				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
 
 			workflowsPage.getters
 				.workflowCards()
@@ -537,44 +508,16 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects
 				.getResourceMoveModal()
 				.should('be.visible')
-				.find('button:contains("Next")')
+				.find('button:contains("Move credential")')
 				.should('be.disabled');
 			projects.getProjectMoveSelect().click();
 			getVisibleSelect()
 				.find('li')
-				.should('have.length', 1)
-				.first()
-				.should('contain.text', 'Project 2')
+				.should('have.length', 5)
+				.filter(':contains("Project 2")')
 				.click();
-			projects.getResourceMoveModal().find('button:contains("Next")').click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
 
-			projects
-				.getResourceMoveConfirmModal()
-				.should('be.visible')
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.first()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('be.disabled');
-			projects
-				.getResourceMoveConfirmModal()
-				.find('input[type="checkbox"]')
-				.last()
-				.parents('label')
-				.click();
-			projects
-				.getResourceMoveConfirmModal()
-				.find('button:contains("Confirm")')
-				.should('not.be.disabled')
-				.click();
 			credentialsPage.getters.credentialCards().should('not.have.length');
 			projects.getMenuItems().last().click();
 			projects.getProjectTabCredentials().click();
