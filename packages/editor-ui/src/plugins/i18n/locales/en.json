@@ -2070,7 +2070,7 @@
 	"workflowActivator.showMessage.activeChangedWorkflowIdUndefined.message": "Please save it before activating",
 	"workflowActivator.showMessage.activeChangedWorkflowIdUndefined.title": "Problem activating workflow",
 	"workflowActivator.showMessage.displayActivationError.message.catchBlock": "Sorry there was a problem requesting the error",
-	"workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined": "The following error occurred on workflow activation:<br /><i>{message}</i>",
+	"workflowActivator.showMessage.displayActivationError.message.errorDataNotUndefined": "The following error occurred on workflow activation:",
 	"workflowActivator.showMessage.displayActivationError.message.errorDataUndefined": "Unknown error",
 	"workflowActivator.showMessage.displayActivationError.title": "Problem activating workflow",
 	"workflowActivator.theWorkflowIsSetToBeActiveBut": "The workflow is activated but could not be started.<br />Click to display error message.",
