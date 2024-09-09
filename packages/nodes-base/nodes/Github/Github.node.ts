@@ -6,9 +6,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {NodeConnectionType, NodeOperationError} from 'n8n-workflow';
 
-import { snakeCase } from 'change-case';
+import {snakeCase} from 'change-case';
 import {
 	getFileSha,
 	githubApiRequest,
@@ -16,13 +16,14 @@ import {
 	isBase64,
 } from './GenericFunctions';
 
-import { getRepositories, getUsers } from './SearchFunctions';
+import {getRepositories, getUsers} from './SearchFunctions';
+import {validateJSON} from "../ClickUp/GenericFunctions";
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		icon: { light: 'file:github.svg', dark: 'file:github.dark.svg' },
+		icon: {light: 'file:github.svg', dark: 'file:github.dark.svg'},
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -102,6 +103,10 @@ export class Github implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
+					},
+					{
+						name: 'Workflow',
+						value: 'workflow',
 					},
 				],
 				default: 'issue',
@@ -391,6 +396,68 @@ export class Github implements INodeType {
 				default: 'create',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+					},
+				},
+				options: [
+					{
+						name: 'Dispatch',
+						value: 'dispatch',
+						description: 'Dispatch a workflow event',
+						action: 'Dispatch a workflow event',
+					},
+				],
+				default: 'dispatch',
+			},
+			{
+				displayName: 'Workflow ID',
+				name: 'workflowId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				description: 'The ID of the workflow to dispatch',
+			},
+			{
+				displayName: 'Ref',
+				name: 'ref',
+				type: 'string',
+				default: 'main',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				description: 'The git reference for the workflow dispatch (branch, tag, or commit SHA)',
+			},
+			{
+				displayName: 'Inputs',
+				name: 'inputs',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						resource: ['workflow'],
+						operation: ['dispatch'],
+					},
+				},
+				description: 'JSON object with input parameters for the workflow',
+			},
+
 			// ----------------------------------
 			//         shared
 			// ----------------------------------
@@ -398,7 +465,7 @@ export class Github implements INodeType {
 				displayName: 'Repository Owner',
 				name: 'owner',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {mode: 'list', value: ''},
 				required: true,
 				modes: [
 					{
@@ -458,7 +525,7 @@ export class Github implements INodeType {
 				displayName: 'Repository Name',
 				name: 'repository',
 				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
+				default: {mode: 'list', value: ''},
 				required: true,
 				modes: [
 					{
@@ -804,7 +871,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				default: { label: '' },
+				default: {label: ''},
 				options: [
 					{
 						displayName: 'Label',
@@ -829,7 +896,7 @@ export class Github implements INodeType {
 						resource: ['issue'],
 					},
 				},
-				default: { assignee: '' },
+				default: {assignee: ''},
 				options: [
 					{
 						displayName: 'Assignee',
@@ -915,7 +982,7 @@ export class Github implements INodeType {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Assignee',
 						},
-						default: { assignee: '' },
+						default: {assignee: ''},
 						options: [
 							{
 								displayName: 'Assignees',
@@ -944,7 +1011,7 @@ export class Github implements INodeType {
 							multipleValues: true,
 							multipleValueButtonText: 'Add Label',
 						},
-						default: { label: '' },
+						default: {label: ''},
 						options: [
 							{
 								displayName: 'Label',
@@ -1886,6 +1953,7 @@ export class Github implements INodeType {
 			'review:get',
 			'review:update',
 			'user:invite',
+			'workflow:dispatch',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
@@ -1924,7 +1992,7 @@ export class Github implements INodeType {
 				let owner = '';
 				if (fullOperation !== 'user:invite') {
 					// Request the parameters which almost all operations need
-					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
+					owner = this.getNodeParameter('owner', i, '', {extractValue: true}) as string;
 				}
 
 				let repository = '';
@@ -1933,7 +2001,7 @@ export class Github implements INodeType {
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories'
 				) {
-					repository = this.getNodeParameter('repository', i, '', { extractValue: true }) as string;
+					repository = this.getNodeParameter('repository', i, '', {extractValue: true}) as string;
 				}
 
 				if (resource === 'file') {
@@ -2348,6 +2416,29 @@ export class Github implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
+				} else if (resource === 'workflow') {
+					if (operation === 'dispatch') {
+						// ----------------------------------
+						//         dispatch
+						// ----------------------------------
+
+						requestMethod = 'POST';
+
+						const workflowId = this.getNodeParameter('workflowId', i) as string;
+
+						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
+						body.ref = this.getNodeParameter('ref', i) as string;
+
+						const inputs = validateJSON(
+							this.getNodeParameter('inputs', i) as string,
+						) as IDataObject;
+						if (inputs === undefined) {
+							throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON', {
+								itemIndex: i,
+							});
+						}
+						body.inputs = inputs;
+					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
 						itemIndex: i,
@@ -2389,7 +2480,7 @@ export class Github implements INodeType {
 							// but the incoming data does not get changed.
 							Object.assign(newItem.binary as object, items[i].binary!);
 						}
-						const { content, path } = responseData;
+						const {content, path} = responseData;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							Buffer.from(content as string, 'base64'),
 							path as string,
@@ -2401,7 +2492,7 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'release:delete') {
-					responseData = { success: true };
+					responseData = {success: true};
 				}
 
 				if (
@@ -2410,7 +2501,7 @@ export class Github implements INodeType {
 				) {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
-						{ itemData: { item: i } },
+						{itemData: {item: i}},
 					);
 					returnData.push(...executionData);
 				}
@@ -2428,11 +2519,11 @@ export class Github implements INodeType {
 									},
 								},
 							],
-							{ itemData: { item: i } },
+							{itemData: {item: i}},
 						);
 						returnData.push(...executionErrorData);
 					} else {
-						items[i].json = { error: error.message };
+						items[i].json = {error: error.message};
 					}
 					continue;
 				}
