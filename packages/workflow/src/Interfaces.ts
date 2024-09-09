@@ -1292,13 +1292,14 @@ type NonEmptyArray<T> = [T, ...T[]];
 
 export type FilterTypeCombinator = 'and' | 'or';
 
-export type FilterTypeOptions = Partial<{
-	caseSensitive: boolean | string; // default = true
-	leftValue: string; // when set, user can't edit left side of condition
-	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
-	maxConditions: number; // default = 10
-	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
-}>;
+export type FilterTypeOptions = {
+	version: 1 | 2 | {}; // required so nodes are pinned on a version
+	caseSensitive?: boolean | string; // default = true
+	leftValue?: string; // when set, user can't edit left side of condition
+	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions?: number; // default = 10
+	typeValidation?: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings (expressions), but still give autocomplete
+};
 
 export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
@@ -2554,6 +2555,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
+	version: 1 | 2;
 };
 
 export type FilterValue = {
