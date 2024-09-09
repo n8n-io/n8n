@@ -31,8 +31,8 @@ import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { EventService } from '@/events/event.service';
-import { SingleMainTaskManager } from '@/agents/worker-engines/single-main.engine';
-import { TaskManager } from '@/agents/worker-engines/abstract.engine';
+import { SingleMainTaskManager } from '@/runners/task-managers/single-main-task-manager';
+import { TaskManager } from '@/runners/task-managers/task-manager';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

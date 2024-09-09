@@ -219,6 +219,10 @@ describe('GlobalConfig', () => {
 				},
 			},
 		},
+		taskRunners: {
+			disabled: false,
+			path: '/runners/_ws',
+		},
 	};
 
 	it('should use all default values when no env variables are defined', () => {

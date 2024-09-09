@@ -14,6 +14,7 @@ import { CacheConfig } from './configs/cache.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { TaskRunnersConfig } from './configs/runners.config';
+export { TaskRunnersConfig } from './configs/runners.config';
 
 @Config
 export class GlobalConfig {
