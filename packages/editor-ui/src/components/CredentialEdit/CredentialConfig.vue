@@ -210,27 +210,20 @@ function onAuthTypeChange(newType: string): void {
 
 async function onAskAssistantClick() {
 	const sessionInProgress = !assistantStore.isSessionEnded;
-	const credentialName = props.credentialType.displayName;
-	const question = `How do I connect to ${credentialName}?`;
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
 			name: NEW_ASSISTANT_SESSION_MODAL,
 			data: {
 				context: {
 					credHelp: {
-						question,
+						credType: props.credentialType,
 					},
 				},
 			},
 		});
 		return;
 	}
-	await assistantStore.initSupportChat(question);
-	assistantStore.trackUserOpenedAssistant({
-		source: 'cred', // todo
-		task: 'cred-help', // todo
-		has_existing_session: false,
-	});
+	await assistantStore.initCredHelp(props.credentialType);
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {

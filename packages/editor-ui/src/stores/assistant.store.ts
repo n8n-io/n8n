@@ -16,7 +16,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { INodeParameters } from 'n8n-workflow';
+import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
@@ -315,6 +315,20 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				lastUnread.value = undefined;
 			}
 		}, 4000);
+	}
+
+	async function initCredHelp(credType: ICredentialType) {
+		const hasExistingSession = !!currentSessionId.value;
+		const credentialName = credType.displayName;
+		const question = `How do I connect to ${credentialName}?`;
+
+		await initSupportChat(question);
+
+		trackUserOpenedAssistant({
+			source: 'cred', // todo
+			task: 'cred-help', // todo
+			has_existing_session: hasExistingSession,
+		});
 	}
 
 	async function initSupportChat(userMessage: string) {
@@ -689,5 +703,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		assistantThinkingMessage,
 		chatSessionError,
 		isSupportChatSessionInProgress,
+		initCredHelp,
 	};
 });

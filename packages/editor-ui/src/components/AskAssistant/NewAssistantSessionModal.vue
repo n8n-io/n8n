@@ -7,19 +7,16 @@ import { useI18n } from '@/composables/useI18n';
 import { useUIStore } from '@/stores/ui.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { useAssistantStore } from '@/stores/assistant.store';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ICredentialType } from 'n8n-workflow';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
 const assistantStore = useAssistantStore();
-const workflowsStore = useWorkflowsStore();
-const telemetry = useTelemetry();
 
 const props = defineProps<{
 	name: string;
 	data: {
-		context: { errorHelp: ChatRequest.ErrorContext } | { credHelp: { question: string } };
+		context: { errorHelp: ChatRequest.ErrorContext } | { credHelp: { credType: ICredentialType } };
 	};
 }>();
 
@@ -36,13 +33,7 @@ const startNewSession = async () => {
 			has_existing_session: true,
 		});
 	} else if ('credHelp' in props.data.context) {
-		await assistantStore.initSupportChat(props.data.context.credHelp.question);
-		assistantStore.trackUserOpenedAssistant({
-			source: 'cred', // todo
-			task: 'cred-help', // todo
-			has_existing_session: true,
-			// cred_type?
-		});
+		await assistantStore.initCredHelp(props.data.context.credHelp.credType);
 	}
 	close();
 };
