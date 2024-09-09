@@ -263,7 +263,7 @@ onMounted(() => {
 										interpolate: { nodeName: subcategory ?? '' },
 									})
 								"
-							></span>
+							/>
 						</n8n-callout>
 						<ItemsRenderer :elements="placeholderTriggerActions" @selected="onSelected" />
 					</template>
