@@ -285,14 +285,6 @@ export class EnterpriseWorkflowService {
 				"You can't transfer a workflow into the project that's already owning it.",
 			);
 		}
-		if (sourceProject.type !== 'team' && sourceProject.type !== 'personal') {
-			throw new TransferWorkflowError(
-				'You can only transfer workflows out of personal or team projects.',
-			);
-		}
-		if (destinationProject.type !== 'team') {
-			throw new TransferWorkflowError('You can only transfer workflows into team projects.');
-		}
 
 		// 6. deactivate workflow if necessary
 		const wasActive = workflow.active;
