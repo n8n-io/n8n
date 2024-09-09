@@ -13,7 +13,7 @@ beforeEach(() => {
 
 describe('CanvasNodeStickyNote', () => {
 	it('should render node correctly', () => {
-		const { getByTestId } = renderComponent({
+		const { html } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasNodeProvide({
@@ -23,6 +23,23 @@ describe('CanvasNodeStickyNote', () => {
 			},
 		});
 
-		expect(getByTestId('canvas-sticky-note-node')).toMatchSnapshot();
+		expect(html()).toMatchSnapshot();
+	});
+
+	it('should disable resizing when node is readonly', () => {
+		const { container } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						id: 'sticky',
+						readOnly: true,
+					}),
+				},
+			},
+		});
+
+		const resizeControls = container.querySelectorAll('.vue-flow__resize-control');
+
+		expect(resizeControls).toHaveLength(0);
 	});
 });

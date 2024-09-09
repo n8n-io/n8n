@@ -39,11 +39,16 @@ export async function init() {
 	await Db.migrate();
 }
 
+export function isReady() {
+	return Db.connectionState.connected && Db.connectionState.migrated;
+}
+
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
 	await Db.close();
+	Db.connectionState.connected = false;
 }
 
 // Can't use `Object.keys(entities)` here because some entities have a `Entity` suffix, while the repositories don't
