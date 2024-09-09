@@ -69,7 +69,7 @@ describe('getGenericHints', () => {
 		expect(hints).toEqual([
 			{
 				message:
-					"The operation is performed for each input item. Use the 'Execute Once' setting to execute it only once for the first input item.",
+					'This node runs multiple times, once for each input item. Use ‘Execute Once’ in the node settings if you want to run it only once.',
 				location: 'outputPane',
 			},
 		]);

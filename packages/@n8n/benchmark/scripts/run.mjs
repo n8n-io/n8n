@@ -33,6 +33,7 @@ async function main() {
 			benchmarkTag: config.benchmarkTag,
 			isVerbose: config.isVerbose,
 			k6ApiToken: config.k6ApiToken,
+			n8nLicenseCert: config.n8nLicenseCert,
 			n8nTag: config.n8nTag,
 			n8nSetupsToUse,
 		});
@@ -41,6 +42,7 @@ async function main() {
 			benchmarkTag: config.benchmarkTag,
 			isVerbose: config.isVerbose,
 			k6ApiToken: config.k6ApiToken,
+			n8nLicenseCert: config.n8nLicenseCert,
 			n8nTag: config.n8nTag,
 			runDir: config.runDir,
 			n8nSetupsToUse,
@@ -62,6 +64,7 @@ function readAvailableN8nSetups() {
  * @property {string} n8nTag
  * @property {string} benchmarkTag
  * @property {string} [k6ApiToken]
+ * @property {string} [n8nLicenseCert]
  * @property {string} [runDir]
  *
  * @returns {Promise<Config>}
@@ -81,6 +84,7 @@ async function parseAndValidateConfig() {
 	const n8nTag = args.n8nTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = args.benchmarkTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = args.k6ApiToken || process.env.K6_API_TOKEN || undefined;
+	const n8nLicenseCert = args.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
 	const runDir = args.runDir || undefined;
 	const env = args.env || 'local';
 
@@ -96,6 +100,7 @@ async function parseAndValidateConfig() {
 		n8nTag,
 		benchmarkTag,
 		k6ApiToken,
+		n8nLicenseCert,
 		runDir,
 	};
 }

@@ -40,6 +40,14 @@ describe('CanvasHandlePlus', () => {
 		});
 	});
 
+	it('should apply correct classes based on state', () => {
+		const { container } = renderComponent({
+			props: { state: 'success' },
+		});
+
+		expect(container.firstChild).toHaveClass('success');
+	});
+
 	it('should render SVG elements correctly', () => {
 		const { container } = renderComponent();
 
