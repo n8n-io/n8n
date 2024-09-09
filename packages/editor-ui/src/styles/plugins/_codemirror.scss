@@ -95,10 +95,16 @@
 }
 
 .cm-editor .cm-tooltip.cm-completionInfo,
-.cm-editor .cm-tooltip.cm-cursorInfo {
+.cm-editor .cm-tooltip.cm-cursorInfo,
+.cm-editor .cm-tooltip-hover {
 	// Add padding when infobox only contains text
 	&:not(:has(div)) {
 		padding: var(--spacing-xs);
+	}
+
+	&:has(.cm-tooltip-lint) {
+		padding: 0;
+		overflow: hidden;
 	}
 
 	.autocomplete-info-container {
