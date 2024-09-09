@@ -95,8 +95,7 @@
 }
 
 .cm-editor .cm-tooltip.cm-completionInfo,
-.cm-editor .cm-tooltip.cm-cursorInfo,
-.cm-editor .cm-tooltip-hover {
+.cm-editor .cm-tooltip.cm-cursorInfo {
 	// Add padding when infobox only contains text
 	&:not(:has(div)) {
 		padding: var(--spacing-xs);
