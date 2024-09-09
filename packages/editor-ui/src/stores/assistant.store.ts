@@ -73,6 +73,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
+	const chatSessionTask = ref<'error' | 'support' | 'cred'>();
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -114,10 +115,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read,
 			).length,
 	);
-
-	const isSupportChatSessionInProgress = computed(() => {
-		return currentSessionId.value !== undefined && chatSessionError.value === undefined;
-	});
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
@@ -284,13 +281,17 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+					task: chatSessionTask.value,
 					node_type: chatSessionError.value?.node.type,
 				},
 				{ withPostHog: true },
 			);
 			// Track first user message in support chat now that we have a session id
-			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
+			if (
+				usersMessages.value.length === 1 &&
+				!currentSessionId.value &&
+				chatSessionTask.value === 'support'
+			) {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
 				trackUserMessage(firstUserMessage.content, false);
 			}
@@ -360,7 +361,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	async function initErrorHelper(context: ChatRequest.ErrorContext) {
-		const hasExistingSession = !!currentSessionId.value;
 		const id = getRandomId();
 		if (chatSessionError.value) {
 			if (isNodeErrorActive(context)) {
@@ -520,7 +520,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			is_quick_reply: isQuickReply,
 			chat_session_id: currentSessionId.value,
 			message_number: usersMessages.value.length,
-			task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+			task: chatSessionTask.value,
 		});
 	}
 
@@ -702,7 +702,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addAssistantMessages,
 		assistantThinkingMessage,
 		chatSessionError,
-		isSupportChatSessionInProgress,
+		chatSessionTask,
 		initCredHelp,
 	};
 });
