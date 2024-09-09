@@ -37,7 +37,6 @@ const startNewSession = async () => {
 		});
 	} else if ('credHelp' in props.data.context) {
 		await assistantStore.initSupportChat(props.data.context.credHelp.question);
-		// todo move into above
 		assistantStore.trackUserOpenedAssistant({
 			source: 'cred', // todo
 			task: 'cred-help', // todo
