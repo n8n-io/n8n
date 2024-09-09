@@ -70,7 +70,13 @@ jobs:
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
-        run: pnpm benchmark-in-cloud --n8nTag ${{ env.N8N_TAG }} --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} ${{ env.DEBUG }}
+        run: |
+          pnpm benchmark-in-cloud \
+            --vus 5 \
+            --duration 1m \
+            --n8nTag ${{ env.N8N_TAG }} \
+            --benchmarkTag ${{ env.N8N_BENCHMARK_TAG }} \
+            ${{ env.DEBUG }}
         working-directory: packages/@n8n/benchmark
 
         # We need to login again because the access token expires
