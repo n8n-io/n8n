@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import set from 'lodash/set';
 import Container from 'typedi';
-import { AgentsConfig } from '@n8n/config';
+import { TaskRunnersConfig } from '@n8n/config';
 
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
@@ -95,7 +95,7 @@ export class Code implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		const agentsConfig = Container.get(AgentsConfig);
+		const runnersConfig = Container.get(TaskRunnersConfig);
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
@@ -107,7 +107,7 @@ export class Code implements INodeType {
 				: 'javaScript';
 		const codeParameterName = language === 'python' ? 'pythonCode' : 'jsCode';
 
-		if (!agentsConfig.disabled) {
+		if (!runnersConfig.disabled) {
 			// TODO: once per item
 			const code = this.getNodeParameter(codeParameterName, 0) as string;
 			const items = (await this.startJob(

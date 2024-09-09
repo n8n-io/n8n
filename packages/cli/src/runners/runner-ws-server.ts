@@ -7,33 +7,33 @@ import { Server as WSServer } from 'ws';
 import type WebSocket from 'ws';
 import type { AuthlessRequest } from '@/requests';
 import { Logger } from '@/logger';
-import type { AgentMessage, N8nMessage } from './agent-types';
+import type { RunnerMessage, N8nMessage } from './runner-types';
 import { GlobalConfig } from '@n8n/config';
-import { AgentManager, type MessageCallback, type Agent } from './agent-manager.service';
+import { TaskBroker, type MessageCallback, type TaskRunner } from './task-broker.service';
 
-export type AgentServerRequest = AuthlessRequest<{}, {}, {}, { id: Agent['id'] }> & {
+export type RunnerServerRequest = AuthlessRequest<{}, {}, {}, { id: TaskRunner['id'] }> & {
 	ws: WebSocket;
 };
-export type AgentServerResponse = Response & { req: AgentServerRequest };
+export type RunnerServerResponse = Response & { req: RunnerServerRequest };
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
 
 @Service()
-export class AgentService {
-	agentConnections: Record<Agent['id'], WebSocket> = {};
+export class TaskRunnerService {
+	runnerConnections: Record<TaskRunner['id'], WebSocket> = {};
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly agentManager: AgentManager,
+		private readonly taskBroker: TaskBroker,
 	) {}
 
-	sendMessage(id: Agent['id'], message: N8nMessage.ToAgent.All) {
-		this.agentConnections[id]?.send(JSON.stringify(message));
+	sendMessage(id: TaskRunner['id'], message: N8nMessage.ToRunner.All) {
+		this.runnerConnections[id]?.send(JSON.stringify(message));
 	}
 
-	add(id: Agent['id'], connection: WebSocket) {
+	add(id: TaskRunner['id'], connection: WebSocket) {
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
 
@@ -43,37 +43,37 @@ export class AgentService {
 			try {
 				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
-				const message: AgentMessage.ToN8n.All = JSON.parse(
+				const message: RunnerMessage.ToN8n.All = JSON.parse(
 					buffer.toString('utf8'),
-				) as AgentMessage.ToN8n.All;
+				) as RunnerMessage.ToN8n.All;
 
-				if (!isConnected && message.type !== 'agent:info') {
+				if (!isConnected && message.type !== 'runner:info') {
 					return;
-				} else if (!isConnected && message.type === 'agent:info') {
+				} else if (!isConnected && message.type === 'runner:info') {
 					this.removeConnection(id);
 					isConnected = true;
 
-					this.agentConnections[id] = connection;
+					this.runnerConnections[id] = connection;
 
-					this.agentManager.registerAgent(
+					this.taskBroker.registerRunner(
 						{
 							id,
-							jobTypes: message.types,
+							taskTypes: message.types,
 							lastSeen: new Date(),
 							name: message.name,
 						},
 						this.sendMessage.bind(this, id) as MessageCallback,
 					);
 
-					this.sendMessage(id, { type: 'n8n:agentregistered' });
+					this.sendMessage(id, { type: 'broker:runnerregistered' });
 
-					this.logger.info(`Agent "${message.name}"(${id}) has registered`);
+					this.logger.info(`Runner "${message.name}"(${id}) has been registered`);
 					return;
 				}
 
-				void this.agentManager.onAgentMessage(id, message);
+				void this.taskBroker.onRunnerMessage(id, message);
 			} catch (error) {
-				this.logger.error(`Couldn't parse message from agent "${id}"`, {
+				this.logger.error(`Couldn't parse message from runner "${id}"`, {
 					error: error as unknown,
 					id,
 					data,
@@ -89,32 +89,34 @@ export class AgentService {
 		});
 
 		connection.on('message', onMessage);
-		connection.send(JSON.stringify({ type: 'n8n:inforequest' } as N8nMessage.ToAgent.InfoRequest));
+		connection.send(
+			JSON.stringify({ type: 'broker:inforequest' } as N8nMessage.ToRunner.InfoRequest),
+		);
 	}
 
-	removeConnection(id: Agent['id']) {
-		if (id in this.agentConnections) {
-			this.agentConnections[id].close();
-			delete this.agentConnections[id];
+	removeConnection(id: TaskRunner['id']) {
+		if (id in this.runnerConnections) {
+			this.runnerConnections[id].close();
+			delete this.runnerConnections[id];
 		}
 	}
 
-	handleRequest(req: AgentServerRequest, _res: AgentServerResponse) {
+	handleRequest(req: RunnerServerRequest, _res: RunnerServerResponse) {
 		this.add(req.query.id, req.ws);
 	}
 }
 
-// Checks for upgrade requests on the agents path and upgrades the connection
+// Checks for upgrade requests on the runners path and upgrades the connection
 // then, passes the request back to the app to handle the routing
-export const setupAgentServer = (restEndpoint: string, server: Server, app: Application) => {
+export const setupRunnerServer = (restEndpoint: string, server: Server, app: Application) => {
 	const globalConfig = Container.get(GlobalConfig);
-	let path = globalConfig.agents.path;
+	let path = globalConfig.taskRunners.path;
 	if (!path.startsWith('/')) {
 		path = '/' + path;
 	}
 	const endpoint = `/${restEndpoint}${path}`;
 	const wsServer = new WSServer({ noServer: true });
-	server.on('upgrade', (request: AgentServerRequest, socket: Socket, head) => {
+	server.on('upgrade', (request: RunnerServerRequest, socket: Socket, head) => {
 		if (parseUrl(request.url).pathname === endpoint) {
 			wsServer.handleUpgrade(request, socket, head, (ws) => {
 				request.ws = ws;
@@ -133,15 +135,15 @@ export const setupAgentServer = (restEndpoint: string, server: Server, app: Appl
 	});
 };
 
-export const setupAgentHandler = (restEndpoint: string, app: Application) => {
+export const setupRunnerHandler = (restEndpoint: string, app: Application) => {
 	const globalConfig = Container.get(GlobalConfig);
-	let path = globalConfig.agents.path;
+	let path = globalConfig.taskRunners.path;
 	if (!path.startsWith('/')) {
 		path = '/' + path;
 	}
 	const endpoint = `/${restEndpoint}${path}`;
-	const agentService = Container.get(AgentService);
-	app.use(endpoint, (req: AgentServerRequest, res: AgentServerResponse) =>
-		agentService.handleRequest(req, res),
+	const taskRunnerService = Container.get(TaskRunnerService);
+	app.use(endpoint, (req: RunnerServerRequest, res: RunnerServerResponse) =>
+		taskRunnerService.handleRequest(req, res),
 	);
 };
