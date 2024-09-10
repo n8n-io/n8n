@@ -47,7 +47,7 @@ export declare namespace WorkflowRequest {
 		{ workflowId: string },
 		{},
 		ManualRunPayload,
-		{ partialExecutionVersion: string | undefined }
+		{ partialExecutionVersion?: string }
 	>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
