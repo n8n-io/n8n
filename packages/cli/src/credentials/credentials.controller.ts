@@ -49,10 +49,17 @@ export class CredentialsController {
 
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: CredentialRequest.GetMany) {
-		return await this.credentialsService.getMany(req.user, {
+		const credentials = await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
 			includeScopes: req.query.includeScopes,
 		});
+		credentials.forEach((c) => {
+			// @ts-expect-error: This is to emulate the old behavior of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete c.shared;
+		});
+		return credentials;
 	}
 
 	@Get('/for-workflow')
@@ -75,38 +82,27 @@ export class CredentialsController {
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
-		if (this.license.isSharingEnabled()) {
-			const credentials = await this.enterpriseCredentialsService.getOne(
-				req.user,
-				req.params.credentialId,
-				// TODO: editor-ui is always sending this, maybe we can just rely on the
-				// the scopes and always decrypt the data if the user has the permissions
-				// to do so.
-				req.query.includeData === 'true',
-			);
-
-			const scopes = await this.credentialsService.getCredentialScopes(
-				req.user,
-				req.params.credentialId,
-			);
-
-			return { ...credentials, scopes };
-		}
-
-		// non-enterprise
-
-		const credentials = await this.credentialsService.getOne(
-			req.user,
-			req.params.credentialId,
-			req.query.includeData === 'true',
-		);
+		const { shared, ...credential } = this.license.isSharingEnabled()
+			? await this.enterpriseCredentialsService.getOne(
+					req.user,
+					req.params.credentialId,
+					// TODO: editor-ui is always sending this, maybe we can just rely on the
+					// the scopes and always decrypt the data if the user has the permissions
+					// to do so.
+					req.query.includeData === 'true',
+				)
+			: await this.credentialsService.getOne(
+					req.user,
+					req.params.credentialId,
+					req.query.includeData === 'true',
+				);
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
 			req.params.credentialId,
 		);
 
-		return { ...credentials, scopes };
+		return { ...credential, scopes };
 	}
 
 	// TODO: Write at least test cases for the failure paths.
@@ -153,7 +149,7 @@ export class CredentialsController {
 		const newCredential = await this.credentialsService.prepareCreateData(req.body);
 
 		const encryptedData = this.credentialsService.createEncryptedData(null, newCredential);
-		const credential = await this.credentialsService.save(
+		const { shared, ...credential } = await this.credentialsService.save(
 			newCredential,
 			encryptedData,
 			req.user,
@@ -216,7 +212,7 @@ export class CredentialsController {
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
-		const { data: _, ...rest } = responseData;
+		const { data, shared, ...rest } = responseData;
 
 		this.logger.debug('Credential updated', { credentialId });
 
