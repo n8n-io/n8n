@@ -14,7 +14,7 @@ import type {
 	NodeChange,
 	NodePositionChange,
 } from '@vue-flow/core';
-import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition, MarkerType } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
 import Node from './elements/nodes/CanvasNode.vue';
@@ -500,6 +500,7 @@ provide(CanvasKey, {
 		:nodes="nodes"
 		:edges="connections"
 		:apply-changes="false"
+		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"

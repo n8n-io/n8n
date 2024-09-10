@@ -941,6 +941,14 @@ watch(remoteParameterOptionsLoading, () => {
 	tempValue.value = displayValue.value as string;
 });
 
+// Focus input field when changing from fixed value to expression
+watch(isModelValueExpression, async (isExpression, wasExpression) => {
+	if (isExpression && !wasExpression) {
+		await nextTick();
+		inputField.value?.focus();
+	}
+});
+
 onUpdated(async () => {
 	await nextTick();
 

@@ -63,6 +63,10 @@ const getSize = (size: string): number => sizes[size];
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
+
+	svg {
+		border-radius: 50%;
+	}
 }
 
 .empty {

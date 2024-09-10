@@ -1,9 +1,15 @@
 import { chatWithAssistant, replaceCode } from '@/api/assistant';
-import { VIEWS, EDITABLE_CANVAS_VIEWS, STORES, AI_ASSISTANT_EXPERIMENT } from '@/constants';
+import {
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	STORES,
+	AI_ASSISTANT_EXPERIMENT,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 import type { ChatRequest } from '@/types/assistant.types';
 import type { ChatUI } from 'n8n-design-system/types/assistant';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, h, ref, watch } from 'vue';
 import { useRootStore } from './root.store';
 import { useUsersStore } from './users.store';
 import { useRoute } from 'vue-router';
@@ -28,6 +34,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from './ui.store';
+import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
@@ -116,7 +123,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
-		if (!currentSessionId.value || currentSessionWorkflowId.value === activeWorkflowId) {
+		if (
+			!currentSessionId.value ||
+			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			currentSessionWorkflowId.value === activeWorkflowId
+		) {
 			return;
 		}
 		resetAssistantChat();
@@ -276,6 +287,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				{
 					chat_session_id: currentSessionId.value,
 					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+					node_type: chatSessionError.value?.node.type,
 				},
 				{ withPostHog: true },
 			);
@@ -565,7 +577,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = true;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
-			checkIfNodeNDVIsOpen(activeNode.name);
+			showCodeUpdateToastIfNeeded(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
@@ -598,7 +610,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 			codeDiffMessage.replaced = false;
 			codeNodeEditorEventBus.emit('codeDiffApplied');
-			checkIfNodeNDVIsOpen(activeNode.name);
+			showCodeUpdateToastIfNeeded(activeNode.name);
 		} catch (e) {
 			console.error(e);
 			codeDiffMessage.error = true;
@@ -606,15 +618,14 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		codeDiffMessage.replacing = false;
 	}
 
-	function checkIfNodeNDVIsOpen(errorNodeName: string) {
+	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
 		if (errorNodeName !== ndvStore.activeNodeName) {
 			useToast().showMessage({
 				type: 'success',
 				title: locale.baseText('aiAssistant.codeUpdated.message.title'),
-				message: locale.baseText('aiAssistant.codeUpdated.message.body', {
-					interpolate: { nodeName: errorNodeName },
+				message: h(AiUpdatedCodeMessage, {
+					nodeName: errorNodeName,
 				}),
-				dangerouslyUseHTMLString: true,
 				duration: 4000,
 			});
 		}

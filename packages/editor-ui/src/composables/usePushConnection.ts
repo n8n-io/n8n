@@ -32,7 +32,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
-import { ref } from 'vue';
+import { h, ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -42,6 +42,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -407,16 +408,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 					toast.showMessage({
 						title,
-						message:
-							(nodeError?.description ?? runDataExecutedErrorMessage) +
-							i18n.baseText('pushConnection.executionError.openNode', {
-								interpolate: {
-									node: nodeError.node.name,
-								},
-							}),
+						message: h(NodeExecutionErrorMessage, {
+							errorMessage: nodeError?.description ?? runDataExecutedErrorMessage,
+							nodeName: nodeError.node.name,
+						}),
 						type: 'error',
 						duration: 0,
-						dangerouslyUseHTMLString: true,
 					});
 				} else {
 					let title: string;

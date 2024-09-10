@@ -645,37 +645,44 @@ export default defineComponent({
 			return true;
 		},
 		getNodeHints(): NodeHint[] {
-			if (this.node && this.nodeType) {
-				const workflowNode = this.workflow.getNode(this.node.name);
+			try {
+				if (this.node && this.nodeType) {
+					const workflowNode = this.workflow.getNode(this.node.name);
 
-				if (workflowNode) {
-					const executionHints = this.executionHints;
+					if (workflowNode) {
+						const executionHints = this.executionHints;
 
-					const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
-						runExecutionData: this.workflowExecution?.data ?? null,
-						runIndex: this.runIndex,
-						connectionInputData: this.parentNodeOutputData,
-					});
+						const nodeHints = NodeHelpers.getNodeHints(this.workflow, workflowNode, this.nodeType, {
+							runExecutionData: this.workflowExecution?.data ?? null,
+							runIndex: this.runIndex,
+							connectionInputData: this.parentNodeOutputData,
+						});
 
-					const hasMultipleInputItems =
-						this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
+						const hasMultipleInputItems =
+							this.parentNodeOutputData.length > 1 || this.parentNodePinnedData.length > 1;
 
-					const nodeOutputData =
-						this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main[0] || [];
+						const nodeOutputData =
+							this.workflowRunData?.[this.node.name]?.[this.runIndex]?.data?.main?.[0] || [];
 
-					const genericHints = getGenericHints({
-						workflowNode,
-						node: this.node,
-						nodeType: this.nodeType,
-						nodeOutputData,
-						workflow: this.workflow,
-						hasNodeRun: this.hasNodeRun,
-						hasMultipleInputItems,
-					});
+						const genericHints = getGenericHints({
+							workflowNode,
+							node: this.node,
+							nodeType: this.nodeType,
+							nodeOutputData,
+							workflow: this.workflow,
+							hasNodeRun: this.hasNodeRun,
+							hasMultipleInputItems,
+						});
 
-					return executionHints.concat(nodeHints, genericHints).filter(this.shouldHintBeDisplayed);
+						return executionHints
+							.concat(nodeHints, genericHints)
+							.filter(this.shouldHintBeDisplayed);
+					}
 				}
+			} catch (error) {
+				console.error('Error while getting node hints', error);
 			}
+
 			return [];
 		},
 		onItemHover(itemIndex: number | null) {

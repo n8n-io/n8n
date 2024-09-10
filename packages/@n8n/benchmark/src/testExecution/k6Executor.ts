@@ -3,10 +3,20 @@ import path from 'path';
 import { $, which, tmpfile } from 'zx';
 import type { Scenario } from '@/types/scenario';
 
+export type K6Tag = {
+	name: string;
+	value: string;
+};
+
 export type K6ExecutorOpts = {
 	k6ExecutablePath: string;
+	/** How many concurrent requests to make */
+	vus: number;
+	/** Test duration, e.g. 1m or 30s */
+	duration: string;
 	k6ApiToken?: string;
 	n8nApiBaseUrl: string;
+	tags?: K6Tag[];
 };
 
 export type K6RunOpts = {
@@ -19,7 +29,7 @@ export type K6RunOpts = {
  * @example ['--duration', '1m']
  * @example ['--quiet']
  */
-type K6CliFlag = [string] | [string, string];
+type K6CliFlag = [string | number] | [string, string | number];
 
 /**
  * Executes test scenarios using k6
@@ -45,7 +55,11 @@ export function handleSummary(data) {
 		const augmentedTestScriptPath = this.augmentSummaryScript(scenario, scenarioRunName);
 		const runDirPath = path.dirname(augmentedTestScriptPath);
 
-		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '3m'], ['--vus', '5']];
+		const flags: K6CliFlag[] = [
+			['--quiet'],
+			['--duration', this.opts.duration],
+			['--vus', this.opts.vus],
+		];
 
 		if (this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
