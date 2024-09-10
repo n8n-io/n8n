@@ -107,25 +107,6 @@ export class DirectedGraph {
 		return directChildren;
 	}
 
-	private getChildrenRecursive(node: INode, seen: Set<INode>): GraphConnection[] {
-		if (seen.has(node)) {
-			return [];
-		}
-
-		const directChildren = this.getDirectChildren(node);
-
-		return [
-			...directChildren,
-			...directChildren.flatMap((child) =>
-				this.getChildrenRecursive(child.to, new Set(seen).add(node)),
-			),
-		];
-	}
-
-	getChildren(node: INode): GraphConnection[] {
-		return this.getChildrenRecursive(node, new Set());
-	}
-
 	getDirectParents(node: INode) {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
