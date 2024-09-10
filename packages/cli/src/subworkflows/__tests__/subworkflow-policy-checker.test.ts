@@ -15,6 +15,7 @@ import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
+import type { UrlService } from '@/services/url.service';
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);
@@ -23,6 +24,7 @@ describe('SubworkflowPolicyChecker', () => {
 		workflows: { callerPolicyDefaultOption: 'workflowsFromSameOwner' },
 	});
 	const accessService = mock<AccessService>();
+	const urlService = mock<UrlService>();
 
 	const checker = new SubworkflowPolicyChecker(
 		mock(),
@@ -30,6 +32,7 @@ describe('SubworkflowPolicyChecker', () => {
 		ownershipService,
 		globalConfig,
 		accessService,
+		urlService,
 	);
 
 	beforeEach(() => {
@@ -186,13 +189,19 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(true);
 
-			const node = mock<INode>();
+			const instanceUrl = 'https://n8n.test.com';
+			urlService.getInstanceBaseUrl.mockReturnValueOnce(instanceUrl);
 
-			const check = checker.check(subworkflow, parentWorkflow.id, node, subworkflowProjectOwner.id);
+			const check = checker.check(
+				subworkflow,
+				parentWorkflow.id,
+				mock<INode>(),
+				subworkflowProjectOwner.id,
+			);
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} Update sub-workflow settings to allow other workflows to call it.`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} <a href=\"${instanceUrl}/workflow/subworkflow-id\" target=\"_blank\">Update sub-workflow settings</a> to allow other workflows to call it.`,
 			});
 		});
 

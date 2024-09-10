@@ -8,6 +8,7 @@ import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial
 import { AccessService } from '@/services/access.service';
 import type { Project } from '@/databases/entities/project';
 import { strict as assert } from 'node:assert';
+import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -20,6 +21,7 @@ export class SubworkflowPolicyChecker {
 		private readonly ownershipService: OwnershipService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly accessService: AccessService,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -54,6 +56,7 @@ export class SubworkflowPolicyChecker {
 				subworkflowId,
 				subworkflowProject,
 				node,
+				instanceUrl: this.urlService.getInstanceBaseUrl(),
 				...details,
 			});
 		}

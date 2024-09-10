@@ -12,6 +12,9 @@ type Options = {
 	/** Whether the user has access to the subworkflow via project and scope. */
 	hasAccess: boolean;
 
+	/** URL of the n8n instance. */
+	instanceUrl: string;
+
 	/** Full name of the user who owns the personal project that owns the subworkflow. Absent if team project. */
 	ownerName?: string;
 
@@ -23,12 +26,19 @@ export const SUBWORKFLOW_DENIAL_BASE_DESCRIPTION =
 	'The sub-workflow you’re trying to execute limits which workflows it can be called by.';
 
 export class SubworkflowPolicyDenialError extends WorkflowOperationError {
-	constructor({ subworkflowId, subworkflowProject, hasAccess, ownerName, node }: Options) {
+	constructor({
+		subworkflowId,
+		subworkflowProject,
+		instanceUrl,
+		hasAccess,
+		ownerName,
+		node,
+	}: Options) {
 		const descriptions = {
 			default: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 			accessible: [
 				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
-				'Update sub-workflow settings to allow other workflows to call it.',
+				`<a href="${instanceUrl}/workflow/${subworkflowId}" target="_blank">Update sub-workflow settings</a> to allow other workflows to call it.`,
 			].join(' '),
 			inaccessiblePersonalProject: [
 				SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
