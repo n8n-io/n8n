@@ -1,5 +1,9 @@
 import { Service } from 'typedi';
+import type PCancelable from 'p-cancelable';
+import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import type { RunningJobSummary } from '@n8n/api-types';
+
 import { WorkflowExecute } from 'n8n-core';
 import { Logger } from '@/logger';
 import config from '@/config';
@@ -7,9 +11,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { NodeTypes } from '@/node-types';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
-import type PCancelable from 'p-cancelable';
+import type { Job, JobId, JobResult, RunningJob } from './scaling.types';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -128,7 +130,7 @@ export class JobProcessor {
 			workflowRun = workflowExecute.run(workflow);
 		}
 
-		const runningJob: RunningJob = {
+		this.runningJobs[job.id] = {
 			run: workflowRun,
 			executionId,
 			workflowId: execution.workflowId,
@@ -138,8 +140,6 @@ export class JobProcessor {
 			retryOf: execution.retryOf ?? '',
 			status: execution.status,
 		};
-
-		this.runningJobs[job.id] = runningJob;
 
 		await workflowRun;
 

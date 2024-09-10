@@ -1,8 +1,9 @@
+import { Container } from 'typedi';
 import { jsonParse } from 'n8n-workflow';
-import Container from 'typedi';
+import * as os from 'os';
+
 import type { RedisServiceCommandObject } from '@/services/redis/redis-service-commands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/redis-constants';
-import * as os from 'os';
 import { License } from '@/license';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';

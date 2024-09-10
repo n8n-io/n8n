@@ -221,6 +221,12 @@ importers:
         specifier: workspace:*
         version: link:../packages/workflow
 
+  packages/@n8n/api-types:
+    devDependencies:
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+
   packages/@n8n/benchmark:
     dependencies:
       '@oclif/core':
@@ -662,6 +668,9 @@ importers:
       '@google-cloud/secret-manager':
         specifier: ^5.6.0
         version: 5.6.0(encoding@0.1.13)
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../@n8n/api-types
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1286,6 +1295,9 @@ importers:
       '@lezer/common':
         specifier: ^1.0.4
         version: 1.1.0
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../@n8n/api-types
       '@n8n/chat':
         specifier: workspace:*
         version: link:../@n8n/chat

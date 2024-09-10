@@ -1,4 +1,5 @@
-import type { IPushDataType, IPushDataWorkerStatusPayload, IWorkflowDb } from '@/interfaces';
+import type { PushType, WorkerStatus } from '@n8n/api-types';
+import type { IWorkflowDb } from '@/interfaces';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -42,7 +43,7 @@ export type RedisServiceBaseCommand =
 	| {
 			senderId: string;
 			command: 'relay-execution-lifecycle-event';
-			payload: { type: IPushDataType; args: Record<string, unknown>; pushRef: string };
+			payload: { type: PushType; args: Record<string, unknown>; pushRef: string };
 	  }
 	| {
 			senderId: string;
@@ -64,7 +65,7 @@ export type RedisServiceWorkerResponseObject = {
 	| RedisServiceBaseCommand
 	| {
 			command: 'getStatus';
-			payload: IPushDataWorkerStatusPayload;
+			payload: WorkerStatus;
 	  }
 	| {
 			command: 'getId';

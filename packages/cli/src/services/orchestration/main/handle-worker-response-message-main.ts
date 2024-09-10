@@ -1,5 +1,7 @@
+import { Container } from 'typedi';
 import { jsonParse } from 'n8n-workflow';
-import Container from 'typedi';
+import type { WorkerStatus } from '@n8n/api-types';
+
 import { Logger } from '@/logger';
 import { Push } from '../../../push';
 import type { RedisServiceWorkerResponseObject } from '../../redis/redis-service-commands';
@@ -27,7 +29,7 @@ export async function handleWorkerResponseMessageMain(
 		case 'getStatus':
 			Container.get(Push).broadcast('sendWorkerStatusMessage', {
 				workerId: workerResponse.workerId,
-				status: workerResponse.payload,
+				status: workerResponse.payload as WorkerStatus,
 			});
 			break;
 		case 'getId':

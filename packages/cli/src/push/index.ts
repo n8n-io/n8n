@@ -5,12 +5,12 @@ import type { Application } from 'express';
 import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
+import type { PushPayload, PushType } from '@n8n/api-types';
 
 import config from '@/config';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { IPushDataType } from '@/interfaces';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 import { SSEPush } from './sse.push';
@@ -73,11 +73,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast(type: IPushDataType, data?: unknown) {
+	broadcast<T extends PushType>(type: T, data: PushPayload<T>) {
 		this.backend.sendToAll(type, data);
 	}
 
-	send(type: IPushDataType, data: unknown, pushRef: string) {
+	send<T extends PushType>(type: T, data: PushPayload<T>, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
@@ -97,7 +97,7 @@ export class Push extends TypedEmitter<PushEvents> {
 		return this.backend;
 	}
 
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+	sendToUsers<T extends PushType>(type: T, data: PushPayload<T>, userIds: Array<User['id']>) {
 		this.backend.sendToUsers(type, data, userIds);
 	}
 
