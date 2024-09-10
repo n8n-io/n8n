@@ -34,7 +34,7 @@ export const returnAllOrLimit: INodeProperties[] = [
 ];
 
 export const looseTypeValidationProperty: INodeProperties = {
-	displayName: 'Less Strict Type Validation',
+	displayName: 'Convert Value Types',
 	description: 'Whether to try casting value types based on the selected operator',
 	name: 'looseTypeValidation',
 	type: 'boolean',

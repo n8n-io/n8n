@@ -19,6 +19,7 @@ const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 			combinator: 'and',
 			conditions: [],
 			options: {
+				version: 1,
 				leftValue: '',
 				caseSensitive: false,
 				typeValidation: 'strict',
@@ -230,6 +231,48 @@ describe('FilterParameter', () => {
 					).toThrowError(
 						"Conversion error: the string 'a string' can't be converted to a number [condition 0, item 0]",
 					);
+				});
+			});
+		});
+
+		describe('options.version', () => {
+			describe('version 1', () => {
+				it('should parse "false" as true', () => {
+					expect(
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'false',
+										rightValue: false,
+										operator: { operation: 'equals', type: 'boolean' },
+									},
+								],
+								options: { typeValidation: 'loose', version: 1 },
+							}),
+						),
+					).toEqual(false);
+				});
+			});
+
+			describe('version 2', () => {
+				it('should parse "false" as false', () => {
+					expect(
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: 'false',
+										rightValue: false,
+										operator: { operation: 'equals', type: 'boolean' },
+									},
+								],
+								options: { typeValidation: 'loose', version: 2 },
+							}),
+						),
+					).toEqual(true);
 				});
 			});
 		});
