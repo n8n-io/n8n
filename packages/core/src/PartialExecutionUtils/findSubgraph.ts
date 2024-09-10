@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import type { Connection } from './DirectedGraph';
+import type { GraphConnection } from './DirectedGraph';
 import { DirectedGraph } from './DirectedGraph';
 
 function findSubgraphRecursive(
@@ -8,7 +8,7 @@ function findSubgraphRecursive(
 	current: INode,
 	trigger: INode,
 	newGraph: DirectedGraph,
-	currentBranch: Connection[],
+	currentBranch: GraphConnection[],
 ) {
 	// If the current node is the chosen trigger keep this branch.
 	if (current === trigger) {

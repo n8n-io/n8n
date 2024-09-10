@@ -2,7 +2,7 @@ import * as a from 'assert';
 import type { IConnections, INode, WorkflowParameters } from 'n8n-workflow';
 import { NodeConnectionType, Workflow } from 'n8n-workflow';
 
-export type Connection = {
+export type GraphConnection = {
 	from: INode;
 	to: INode;
 	type: NodeConnectionType;
@@ -15,14 +15,14 @@ type DirectedGraphKey = `${string}-${NodeConnectionType}-${number}-${number}-${s
 export class DirectedGraph {
 	private nodes: Map<string, INode> = new Map();
 
-	private connections: Map<DirectedGraphKey, Connection> = new Map();
+	private connections: Map<DirectedGraphKey, GraphConnection> = new Map();
 
 	getNodes() {
 		return new Map(this.nodes.entries());
 	}
 
 	getConnections(filter: { to?: INode } = {}) {
-		const filteredCopy: Connection[] = [];
+		const filteredCopy: GraphConnection[] = [];
 
 		for (const connection of this.connections.values()) {
 			const toMatches = filter.to ? connection.to === filter.to : true;
@@ -64,7 +64,7 @@ export class DirectedGraph {
 		a.ok(fromExists);
 		a.ok(toExists);
 
-		const connection: Connection = {
+		const connection: GraphConnection = {
 			...connectionInput,
 			type: connectionInput.type ?? NodeConnectionType.Main,
 			outputIndex: connectionInput.outputIndex ?? 0,
@@ -94,7 +94,7 @@ export class DirectedGraph {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
 
-		const directChildren: Connection[] = [];
+		const directChildren: GraphConnection[] = [];
 
 		for (const connection of this.connections.values()) {
 			if (connection.from !== node) {
@@ -107,7 +107,7 @@ export class DirectedGraph {
 		return directChildren;
 	}
 
-	private getChildrenRecursive(node: INode, seen: Set<INode>): Connection[] {
+	private getChildrenRecursive(node: INode, seen: Set<INode>): GraphConnection[] {
 		if (seen.has(node)) {
 			return [];
 		}
@@ -122,7 +122,7 @@ export class DirectedGraph {
 		];
 	}
 
-	getChildren(node: INode): Connection[] {
+	getChildren(node: INode): GraphConnection[] {
 		return this.getChildrenRecursive(node, new Set());
 	}
 
@@ -130,7 +130,7 @@ export class DirectedGraph {
 		const nodeExists = this.nodes.get(node.name) === node;
 		a.ok(nodeExists);
 
-		const directParents: Connection[] = [];
+		const directParents: GraphConnection[] = [];
 
 		for (const connection of this.connections.values()) {
 			if (connection.to !== node) {
@@ -149,7 +149,7 @@ export class DirectedGraph {
 		type: NodeConnectionType,
 		inputIndex: number,
 		to: INode,
-	): Connection | undefined {
+	): GraphConnection | undefined {
 		return this.connections.get(
 			this.makeKey({
 				from,
@@ -225,7 +225,7 @@ export class DirectedGraph {
 		return result;
 	}
 
-	private makeKey(connection: Connection): DirectedGraphKey {
+	private makeKey(connection: GraphConnection): DirectedGraphKey {
 		return `${connection.from.name}-${connection.type}-${connection.outputIndex}-${connection.inputIndex}-${connection.to.name}`;
 	}
 }

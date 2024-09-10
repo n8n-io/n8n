@@ -1,8 +1,11 @@
 import { type INode, type IPinData, type IRunData } from 'n8n-workflow';
 
-import type { Connection, DirectedGraph } from './DirectedGraph';
+import type { GraphConnection, DirectedGraph } from './DirectedGraph';
 
-function sortByInputIndexThenByName(connection1: Connection, connection2: Connection): number {
+function sortByInputIndexThenByName(
+	connection1: GraphConnection,
+	connection2: GraphConnection,
+): number {
 	if (connection1.inputIndex === connection2.inputIndex) {
 		return connection1.from.name.localeCompare(connection2.from.name);
 	} else {
@@ -64,7 +67,7 @@ export function getSourceDataGroups(
 	node: INode,
 	runData: IRunData,
 	pinnedData: IPinData,
-): Connection[][] {
+): GraphConnection[][] {
 	const connections = graph.getConnections({ to: node });
 
 	const sortedConnectionsWithData = [];
@@ -79,8 +82,8 @@ export function getSourceDataGroups(
 
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
 
-	const groups: Connection[][] = [];
-	let currentGroup: Connection[] = [];
+	const groups: GraphConnection[][] = [];
+	let currentGroup: GraphConnection[] = [];
 	let currentInputIndex = -1;
 
 	while (sortedConnectionsWithData.length > 0) {
@@ -88,7 +91,8 @@ export function getSourceDataGroups(
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			(c) => c.inputIndex > currentInputIndex,
 		);
-		const connection: Connection | undefined = sortedConnectionsWithData[connectionWithDataIndex];
+		const connection: GraphConnection | undefined =
+			sortedConnectionsWithData[connectionWithDataIndex];
 
 		if (connection === undefined) {
 			groups.push(currentGroup);
