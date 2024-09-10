@@ -11,7 +11,6 @@ withDefaults(
 	}>(),
 	{
 		formLoading: false,
-		subtitle: undefined,
 		withSso: false,
 	},
 );

@@ -11,18 +11,87 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 
+const usersStore = useUsersStore();
+
 const locale = useI18n();
 const toast = useToast();
 const router = useRouter();
-
-const usersStore = useUsersStore();
 
 const password = ref('');
 const loading = ref(false);
 const config = ref<IFormBoxConfig | null>(null);
 
+const passwordsMatch = (value: string | number | boolean | null | undefined) => {
+	if (typeof value !== 'string') {
+		return false;
+	}
+
+	if (value !== password.value) {
+		return {
+			messageKey: 'auth.changePassword.passwordsMustMatchError',
+		};
+	}
+
+	return false;
+};
+
+const getResetToken = () => {
+	return !router.currentRoute.value.query.token ||
+		typeof router.currentRoute.value.query.token !== 'string'
+		? null
+		: router.currentRoute.value.query.token;
+};
+
+const getMfaEnabled = () => {
+	if (!router.currentRoute.value.query.mfaEnabled) return null;
+	return router.currentRoute.value.query.mfaEnabled === 'true' ? true : false;
+};
+
+const isFormWithMFAToken = (values: { [key: string]: string }): values is { mfaToken: string } => {
+	return 'mfaToken' in values;
+};
+
+const onSubmit = async (values: { [key: string]: string }) => {
+	if (!isFormWithMFAToken(values)) return;
+	try {
+		loading.value = true;
+		const token = getResetToken();
+
+		if (token) {
+			const changePasswordParameters = {
+				token,
+				password: password.value,
+				...(values.mfaToken && { mfaToken: values.mfaToken }),
+			};
+
+			await usersStore.changePassword(changePasswordParameters);
+
+			toast.showMessage({
+				type: 'success',
+				title: locale.baseText('auth.changePassword.passwordUpdated'),
+				message: locale.baseText('auth.changePassword.passwordUpdatedMessage'),
+			});
+
+			await router.push({ name: VIEWS.SIGNIN });
+		} else {
+			toast.showError(
+				new Error(locale.baseText('auth.validation.missingParameters')),
+				locale.baseText('auth.changePassword.error'),
+			);
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('auth.changePassword.error'));
+	}
+	loading.value = false;
+};
+
+const onInput = (e: { name: string; value: string }) => {
+	if (e.name === 'password') {
+		password.value = e.value;
+	}
+};
+
 onMounted(async () => {
-	console.log('onMounted');
 	const form: IFormBoxConfig = {
 		title: locale.baseText('auth.changePassword'),
 		buttonText: locale.baseText('auth.changePassword'),
@@ -91,76 +160,6 @@ onMounted(async () => {
 		void router.replace({ name: VIEWS.SIGNIN });
 	}
 });
-
-const passwordsMatch = (value: string | number | boolean | null | undefined) => {
-	if (typeof value !== 'string') {
-		return false;
-	}
-
-	if (value !== password.value) {
-		return {
-			messageKey: 'auth.changePassword.passwordsMustMatchError',
-		};
-	}
-
-	return false;
-};
-
-const onInput = (e: { name: string; value: string }) => {
-	if (e.name === 'password') {
-		password.value = e.value;
-	}
-};
-
-const getResetToken = () => {
-	return !router.currentRoute.value.query.token ||
-		typeof router.currentRoute.value.query.token !== 'string'
-		? null
-		: router.currentRoute.value.query.token;
-};
-
-const getMfaEnabled = () => {
-	if (!router.currentRoute.value.query.mfaEnabled) return null;
-	return router.currentRoute.value.query.mfaEnabled === 'true' ? true : false;
-};
-
-const isFormWithMFAToken = (values: { [key: string]: string }): values is { mfaToken: string } => {
-	return 'mfaToken' in values;
-};
-
-const onSubmit = async (values: { [key: string]: string }) => {
-	if (!isFormWithMFAToken(values)) return;
-	try {
-		loading.value = true;
-		const token = getResetToken();
-
-		if (token) {
-			const changePasswordParameters = {
-				token,
-				password: password.value,
-				...(values.mfaToken && { mfaToken: values.mfaToken }),
-			};
-
-			await usersStore.changePassword(changePasswordParameters);
-
-			toast.showMessage({
-				type: 'success',
-				title: locale.baseText('auth.changePassword.passwordUpdated'),
-				message: locale.baseText('auth.changePassword.passwordUpdatedMessage'),
-			});
-
-			await router.push({ name: VIEWS.SIGNIN });
-		} else {
-			toast.showError(
-				new Error(locale.baseText('auth.validation.missingParameters')),
-				locale.baseText('auth.changePassword.error'),
-			);
-		}
-	} catch (error) {
-		toast.showError(error, locale.baseText('auth.changePassword.error'));
-	}
-	loading.value = false;
-};
 </script>
 
 <template>
