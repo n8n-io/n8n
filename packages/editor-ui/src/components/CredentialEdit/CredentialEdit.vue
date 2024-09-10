@@ -407,7 +407,7 @@ async function beforeClose() {
 			},
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (isOAuthType.value && !isOAuthConnected.value) {
+	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
 			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),

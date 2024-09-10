@@ -76,5 +76,40 @@ describe('CredentialsView', () => {
 				null,
 			);
 		});
+
+		it('should disable cards based on permissions', () => {
+			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue([
+				{
+					id: '1',
+					name: 'test',
+					type: 'test',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+					scopes: ['credential:update'],
+				},
+				{
+					id: '2',
+					name: 'test2',
+					type: 'test2',
+					createdAt: '2021-05-05T00:00:00Z',
+					updatedAt: '2021-05-05T00:00:00Z',
+				},
+			]);
+
+			renderComponent();
+			expect(ResourcesListLayout.setup).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resources: [
+						expect.objectContaining({
+							readOnly: false,
+						}),
+						expect.objectContaining({
+							readOnly: true,
+						}),
+					],
+				}),
+				null,
+			);
+		});
 	});
 });
