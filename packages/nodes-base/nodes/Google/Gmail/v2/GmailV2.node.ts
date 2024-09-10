@@ -26,7 +26,7 @@ import {
 	unescapeSnippets,
 } from '../GenericFunctions';
 
-import { messageFields, messageOperations, sendAndWaitProperties } from './MessageDescription';
+import { messageFields, messageOperations } from './MessageDescription';
 
 import { labelFields, labelOperations } from './LabelDescription';
 
@@ -34,7 +34,11 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
 
-import { prepareActionRequiredEmail, sendAndWaitWebhook } from './utils';
+import {
+	configreSendAndWaitOperation,
+	prepareActionRequiredEmail,
+	sendAndWaitWebhook,
+} from './utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -137,7 +141,17 @@ const versionDescription: INodeTypeDescription = {
 		//-------------------------------
 		...messageOperations,
 		...messageFields,
-		...sendAndWaitProperties,
+		...configreSendAndWaitOperation(
+			{
+				displayName: 'To',
+				name: 'sendTo',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'e.g. info@example.com',
+			},
+			'message',
+		),
 		//-------------------------------
 		// Thread Operations
 		//-------------------------------

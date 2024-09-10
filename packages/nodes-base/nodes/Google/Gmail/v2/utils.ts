@@ -1,4 +1,10 @@
-import { NodeOperationError, type IExecuteFunctions, type IWebhookFunctions } from 'n8n-workflow';
+import {
+	type INodeProperties,
+	NodeOperationError,
+	updateDisplayOptions,
+	type IExecuteFunctions,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 import type { IEmail } from '../GenericFunctions';
 import { escapeHtml } from '../../../../utils/utilities';
 
@@ -38,7 +44,7 @@ const ACTION_RECORDED_PAGE = `
 			<section>
 				<div class='card'>
 					<div class='header'>
-						<h1>Yor action was recorded</h1>
+						<h1>Your action was recorded</h1>
 						<p>This page could be closed now</p>
 					</div>
 				</div>
@@ -216,4 +222,135 @@ export function prepareActionRequiredEmail(context: IExecuteFunctions) {
 	};
 
 	return email;
+}
+
+export function configreSendAndWaitOperation(sendTo: INodeProperties, resource: string) {
+	const buttonStyle: INodeProperties = {
+		displayName: 'Button Style',
+		name: 'buttonStyle',
+		type: 'options',
+		default: 'primary',
+		options: [
+			{
+				name: 'Primary',
+				value: 'primary',
+			},
+			{
+				name: 'Secondary',
+				value: 'secondary',
+			},
+		],
+	};
+	const sendAndWait: INodeProperties[] = [
+		// {
+		// 	displayName: 'To',
+		// 	name: 'sendTo',
+		// 	type: 'string',
+		// 	default: '',
+		// 	required: true,
+		// 	placeholder: 'e.g. info@example.com',
+		// },
+		sendTo,
+		{
+			displayName: 'Subject',
+			name: 'subject',
+			type: 'string',
+			default: '',
+			required: true,
+			placeholder: 'e.g. Approval required',
+		},
+		{
+			displayName: 'Message',
+			name: 'message',
+			type: 'string',
+			default: '',
+			required: true,
+			typeOptions: {
+				rows: 5,
+			},
+		},
+		{
+			displayName: 'Type of Approval',
+			name: 'approvalType',
+			type: 'options',
+			placeholder: 'Add option',
+			default: 'single',
+			options: [
+				{
+					name: 'Add an Approval Button',
+					value: 'single',
+				},
+				{
+					name: 'Add Approval and Disapproval Button',
+					value: 'double',
+				},
+				// {
+				// 	name: 'Add Selection of Options',
+				// 	value: 'options',
+				// },
+			],
+		},
+		{
+			displayName: 'Approve Button Label',
+			name: 'approveLabel',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					approvalType: ['single', 'double'],
+				},
+			},
+		},
+		{
+			...buttonStyle,
+			displayName: 'Approve Button Style',
+			name: 'buttonApprovalStyle',
+			displayOptions: {
+				show: {
+					approvalType: ['single', 'double'],
+				},
+			},
+		},
+		{
+			displayName: 'Disapprove Button Label',
+			name: 'disapproveLabel',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					approvalType: ['double'],
+				},
+			},
+		},
+		{
+			...buttonStyle,
+			displayName: 'Disapprove Button Style',
+			name: 'buttonDisapprovalStyle',
+			default: 'secondary',
+			displayOptions: {
+				show: {
+					approvalType: ['double'],
+				},
+			},
+		},
+		{
+			displayName:
+				'Use the Wait node for more complex approval. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
+			name: 'useWaitNotice',
+			type: 'notice',
+			default: '',
+		},
+	];
+
+	return updateDisplayOptions(
+		{
+			show: {
+				resource: [resource],
+				operation: ['sendAndWait'],
+			},
+		},
+		sendAndWait,
+	);
 }
