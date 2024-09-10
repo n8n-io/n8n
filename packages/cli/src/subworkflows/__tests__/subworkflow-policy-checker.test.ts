@@ -200,7 +200,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const subworkflowProjectOwner = mock<User>({ id: uuid() });
-			ownershipService.getProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(true);
 
 			const node = mock<INode>();
@@ -228,7 +228,7 @@ describe('SubworkflowPolicyChecker', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 			});
-			ownershipService.getProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(false);
 
 			const node = mock<INode>();
@@ -256,7 +256,7 @@ describe('SubworkflowPolicyChecker', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 			});
-			ownershipService.getProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(false);
 
 			const node = mock<INode>();
@@ -280,7 +280,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const subworkflowProjectOwner = mock<User>({ id: uuid() });
-			ownershipService.getProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
+			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(true);
 
 			const node = mock<INode>();

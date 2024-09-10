@@ -59,7 +59,9 @@ export class SubworkflowPolicyChecker {
 	}
 
 	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
-		const owner = (await this.ownershipService.getProjectOwnerCached(subworkflowProject.id)) ?? {
+		const owner = (await this.ownershipService.getPersonalProjectOwnerCached(
+			subworkflowProject.id,
+		)) ?? {
 			firstName: 'Unknown',
 			lastName: 'Unknown',
 		};
