@@ -183,7 +183,7 @@ interface CounterValues {
 	rate: number;
 }
 
-interface TrendMetric {
+interface K6TrendMetric {
 	type: 'trend';
 	contains: 'time';
 	values: TrendValues;
@@ -195,7 +195,7 @@ interface RateMetric {
 	values: RateValues;
 }
 
-interface CounterMetric {
+interface K6CounterMetric {
 	type: 'counter';
 	contains: MetricContains;
 	values: CounterValues;
@@ -214,24 +214,24 @@ interface State {
 }
 
 interface Metrics {
-	http_req_tls_handshaking: TrendMetric;
+	http_req_tls_handshaking: K6TrendMetric;
 	checks: RateMetric;
-	http_req_sending: TrendMetric;
-	http_reqs: CounterMetric;
-	http_req_blocked: TrendMetric;
-	data_received: CounterMetric;
-	iterations: CounterMetric;
-	http_req_waiting: TrendMetric;
-	http_req_receiving: TrendMetric;
-	'http_req_duration{expected_response:true}': TrendMetric;
-	iteration_duration: TrendMetric;
-	http_req_connecting: TrendMetric;
+	http_req_sending: K6TrendMetric;
+	http_reqs: K6CounterMetric;
+	http_req_blocked: K6TrendMetric;
+	data_received: K6CounterMetric;
+	iterations: K6CounterMetric;
+	http_req_waiting: K6TrendMetric;
+	http_req_receiving: K6TrendMetric;
+	'http_req_duration{expected_response:true}': K6TrendMetric;
+	iteration_duration: K6TrendMetric;
+	http_req_connecting: K6TrendMetric;
 	http_req_failed: RateMetric;
-	http_req_duration: TrendMetric;
-	data_sent: CounterMetric;
+	http_req_duration: K6TrendMetric;
+	data_sent: K6CounterMetric;
 }
 
-interface Check {
+interface K6Check {
 	name: string;
 	path: string;
 	id: string;
@@ -244,7 +244,7 @@ interface RootGroup {
 	path: string;
 	id: string;
 	groups: unknown[];
-	checks: Check[];
+	checks: K6Check[];
 }
 
 interface K6EndOfTestSummary {
