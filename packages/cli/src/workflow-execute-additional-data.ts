@@ -24,7 +24,8 @@ import type {
 	ExecutionStatus,
 	ExecutionError,
 	EventNamesAiNodesType,
-	CallbackManager,
+	ExecuteWorkflowOptions,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -42,7 +43,6 @@ import { ExternalHooks } from '@/external-hooks';
 import type {
 	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	IPushDataType,
 	ExecutionPayload,
@@ -714,13 +714,11 @@ export async function getRunData(
 		},
 	};
 
-	const runData: IWorkflowExecutionDataProcess = {
+	return {
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
 	};
-
-	return runData;
 }
 
 export async function getWorkflowData(
@@ -769,15 +767,7 @@ export async function getWorkflowData(
 async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	options: {
-		node?: INode;
-		parentWorkflowId: string;
-		inputData?: INodeExecutionData[];
-		loadedWorkflowData?: IWorkflowBase;
-		loadedRunData?: IWorkflowExecutionDataProcess;
-		parentWorkflowSettings?: IWorkflowSettings;
-		parentCallbackManager?: CallbackManager;
-	},
+	options: ExecuteWorkflowOptions,
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
