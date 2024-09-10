@@ -1,8 +1,8 @@
 import type { INode, Workflow } from 'n8n-workflow';
 
-function findAllParentTriggers(workflow: Workflow, destinationNode: string) {
+function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) {
 	const parentNodes = workflow
-		.getParentNodes(destinationNode)
+		.getParentNodes(destinationNodeName)
 		.map((name) => {
 			const node = workflow.getNode(name);
 
@@ -25,9 +25,9 @@ function findAllParentTriggers(workflow: Workflow, destinationNode: string) {
 // TODO: write unit tests for this
 export function findTriggerForPartialExecution(
 	workflow: Workflow,
-	destinationNode: string,
+	destinationNodeName: string,
 ): INode | undefined {
-	const parentTriggers = findAllParentTriggers(workflow, destinationNode).filter(
+	const parentTriggers = findAllParentTriggers(workflow, destinationNodeName).filter(
 		(trigger) => !trigger.disabled,
 	);
 	const pinnedTriggers = parentTriggers
