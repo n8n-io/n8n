@@ -55,6 +55,20 @@ function findStartNodesRecursive(
 	startNodes: Set<INode>,
 	seen: Set<INode>,
 ): Set<INode> {
+	//// TODO: find a consistent way to identify triggers
+	//const isTrigger = false;
+	//
+	//// if the current node is not a trigger
+	//if (!isTrigger) {
+	//	//and has no input data (on all connections)
+	//	const parents = graph.getDirectParents(current);
+	//	const allParentsHaveData = parents.every((c) => runData[c.from.name] || pinData[c.from.name]);
+	//
+	//	if (!allParentsHaveData) {
+	//		return startNodes;
+	//	}
+	//}
+
 	const nodeIsDirty = isDirty(current, runData, pinData);
 
 	// If the current node is dirty stop following this branch, we found a start

@@ -9,7 +9,7 @@
 // XX denotes that the node is disabled
 // PD denotes that the node has pinned data
 
-import { type IPinData, type IRunData } from 'n8n-workflow';
+import { IRun, type IPinData, type IRunData } from 'n8n-workflow';
 import { createNodeData, toITaskData } from './helpers';
 import { findStartNodes, isDirty } from '../findStartNodes';
 import { DirectedGraph } from '../DirectedGraph';
@@ -364,6 +364,40 @@ describe('findStartNodes', () => {
 
 		// ACT
 		const startNodes = findStartNodes(graph, trigger, node2, runData, pinData);
+
+		// ASSERT
+		expect(startNodes).toHaveLength(1);
+		expect(startNodes[0]).toEqual(node2);
+	});
+
+	//              ┌─────┐1      ►►
+	//           ┌─►│Node1┼──┐   ┌─────┐
+	// ┌───────┐1│  └─────┘  └──►│     │
+	// │Trigger├─┤               │Node3│
+	// └───────┘ │  ┌─────┐0 ┌──►│     │
+	//           └─►│Node2├──┘   └─────┘
+	//              └─────┘
+	test('foo', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: node1, to: node3, inputIndex: 0 },
+				{ from: node2, to: node3, inputIndex: 1 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: {} }])],
+			[node1.name]: [toITaskData([{ data: {} }])],
+		};
+
+		// ACT
+		const startNodes = findStartNodes(graph, trigger, node3, runData);
 
 		// ASSERT
 		expect(startNodes).toHaveLength(1);

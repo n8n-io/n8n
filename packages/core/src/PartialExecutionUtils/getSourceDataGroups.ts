@@ -13,6 +13,20 @@ function sortByInputIndexThenByName(
 	}
 }
 
+type Group = {
+	complete: boolean;
+	connections: GraphConnection[];
+};
+
+function newGroup() {
+	return {
+		complete: true,
+		connections: [],
+	};
+}
+
+// TODO: There must be a nicer way to write this function
+
 /**
  * Groups incoming connections to the node. The groups contain one connection
  * per input, if possible, with run data or pinned data.
@@ -67,46 +81,69 @@ export function getSourceDataGroups(
 	node: INode,
 	runData: IRunData,
 	pinnedData: IPinData,
-): GraphConnection[][] {
+): Group[] {
 	const connections = graph.getConnections({ to: node });
 
 	const sortedConnectionsWithData = [];
+	const sortedConnectionsWithoutData = [];
 
 	for (const connection of connections) {
 		const hasData = runData[connection.from.name] || pinnedData[connection.from.name];
 
 		if (hasData) {
 			sortedConnectionsWithData.push(connection);
+		} else {
+			sortedConnectionsWithoutData.push(connection);
 		}
 	}
 
 	sortedConnectionsWithData.sort(sortByInputIndexThenByName);
+	sortedConnectionsWithoutData.sort(sortByInputIndexThenByName);
 
-	const groups: GraphConnection[][] = [];
-	let currentGroup: GraphConnection[] = [];
+	const groups: Group[] = [];
+	let currentGroup: Group = newGroup();
 	let currentInputIndex = -1;
 
-	while (sortedConnectionsWithData.length > 0) {
-		const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
-			(c) => c.inputIndex > currentInputIndex,
-		);
-		const connection: GraphConnection | undefined =
-			sortedConnectionsWithData[connectionWithDataIndex];
+	while (sortedConnectionsWithData.length > 0 || sortedConnectionsWithoutData.length > 0) {
+		debugger;
+		currentInputIndex++;
 
-		if (connection === undefined) {
-			groups.push(currentGroup);
-			currentGroup = [];
-			currentInputIndex = -1;
-			continue;
+		{
+			const connectionWithDataIndex = sortedConnectionsWithData.findIndex(
+				// eslint-disable-next-line @typescript-eslint/no-loop-func
+				(c) => c.inputIndex === currentInputIndex,
+			);
+
+			if (connectionWithDataIndex >= 0) {
+				const connection = sortedConnectionsWithData[connectionWithDataIndex];
+
+				currentGroup.connections.push(connection);
+
+				sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
+				continue;
+			}
 		}
 
-		currentInputIndex = connection.inputIndex;
-		currentGroup.push(connection);
+		{
+			const connectionWithoutDataIndex = sortedConnectionsWithoutData.findIndex(
+				// eslint-disable-next-line @typescript-eslint/no-loop-func
+				(c) => c.inputIndex === currentInputIndex,
+			);
 
-		if (connectionWithDataIndex >= 0) {
-			sortedConnectionsWithData.splice(connectionWithDataIndex, 1);
+			if (connectionWithoutDataIndex >= 0) {
+				const connection = sortedConnectionsWithoutData[connectionWithoutDataIndex];
+
+				currentGroup.connections.push(connection);
+				currentGroup.complete = false;
+
+				sortedConnectionsWithoutData.splice(connectionWithoutDataIndex, 1);
+				continue;
+			}
 		}
+
+		groups.push(currentGroup);
+		currentGroup = newGroup();
+		currentInputIndex = -1;
 	}
 
 	groups.push(currentGroup);

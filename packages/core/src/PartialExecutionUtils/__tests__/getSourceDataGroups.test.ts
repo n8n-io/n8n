@@ -12,6 +12,7 @@ import { NodeConnectionType, type IRunData } from 'n8n-workflow';
 import { DirectedGraph } from '../DirectedGraph';
 import { createNodeData, toITaskData } from './helpers';
 import { getSourceDataGroups } from '../getSourceDataGroups';
+import { inspect } from 'util';
 
 describe('getSourceDataGroups', () => {
 	//┌───────┐1
@@ -51,15 +52,15 @@ describe('getSourceDataGroups', () => {
 		expect(groups).toHaveLength(2);
 
 		const group1 = groups[0];
-		expect(group1).toHaveLength(2);
-		expect(group1[0]).toEqual({
+		expect(group1.connections).toHaveLength(2);
+		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
 			inputIndex: 0,
 			to: node,
 		});
-		expect(group1[1]).toEqual({
+		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
@@ -68,8 +69,8 @@ describe('getSourceDataGroups', () => {
 		});
 
 		const group2 = groups[1];
-		expect(group2).toHaveLength(1);
-		expect(group2[0]).toEqual({
+		expect(group2.connections).toHaveLength(1);
+		expect(group2.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
@@ -115,15 +116,15 @@ describe('getSourceDataGroups', () => {
 		expect(groups).toHaveLength(2);
 
 		const group1 = groups[0];
-		expect(group1).toHaveLength(2);
-		expect(group1[0]).toEqual({
+		expect(group1.connections).toHaveLength(2);
+		expect(group1.connections[0]).toEqual({
 			from: source1,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
 			inputIndex: 0,
 			to: node,
 		});
-		expect(group1[1]).toEqual({
+		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
@@ -132,8 +133,8 @@ describe('getSourceDataGroups', () => {
 		});
 
 		const group2 = groups[1];
-		expect(group2).toHaveLength(1);
-		expect(group2[0]).toEqual({
+		expect(group2.connections).toHaveLength(1);
+		expect(group2.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
@@ -178,20 +179,95 @@ describe('getSourceDataGroups', () => {
 		expect(groups).toHaveLength(1);
 
 		const group1 = groups[0];
-		expect(group1).toHaveLength(2);
-		expect(group1[0]).toEqual({
+		expect(group1.connections).toHaveLength(2);
+		expect(group1.connections[0]).toEqual({
 			from: source2,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
 			inputIndex: 0,
 			to: node,
 		});
-		expect(group1[1]).toEqual({
+		expect(group1.connections[1]).toEqual({
 			from: source3,
 			outputIndex: 0,
 			type: NodeConnectionType.Main,
 			inputIndex: 1,
 			to: node,
 		});
+	});
+
+	//              ┌─────┐1      ►►
+	//           ┌─►│Node1┼──┐   ┌─────┐
+	// ┌───────┐1│  └─────┘  └──►│     │
+	// │Trigger├─┤               │Node3│
+	// └───────┘ │  ┌─────┐0 ┌──►│     │
+	//           └─►│Node2├──┘   └─────┘
+	//              └─────┘
+	test('foo', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: node1, to: node3, inputIndex: 0 },
+				{ from: node2, to: node3, inputIndex: 1 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { nodeName: 'trigger' } }])],
+			[node1.name]: [toITaskData([{ data: { nodeName: 'node1' } }])],
+		};
+		const pinData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node3, runData, pinData);
+
+		// ASSERT
+		expect(groups).toHaveLength(1);
+		const group1 = groups[0];
+		expect(group1.connections).toHaveLength(2);
+		expect(group1.complete).toEqual(false);
+	});
+
+	//              ┌─────┐0      ►►
+	//           ┌─►│Node1┼──┐   ┌─────┐
+	// ┌───────┐1│  └─────┘  └──►│     │
+	// │Trigger├─┤               │Node3│
+	// └───────┘ │  ┌─────┐1 ┌──►│     │
+	//           └─►│Node2├──┘   └─────┘
+	//              └─────┘
+	test('foo2', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const node3 = createNodeData({ name: 'node3' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, node3)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: node1, to: node3, inputIndex: 0 },
+				{ from: node2, to: node3, inputIndex: 1 },
+			);
+		const runData: IRunData = {
+			[trigger.name]: [toITaskData([{ data: { nodeName: 'trigger' } }])],
+			[node2.name]: [toITaskData([{ data: { nodeName: 'node2' } }])],
+		};
+		const pinData: IPinData = {};
+
+		// ACT
+		const groups = getSourceDataGroups(graph, node3, runData, pinData);
+
+		// ASSERT
+		console.log(inspect(groups, { colors: true, sorted: true, depth: null, compact: true }));
+		expect(groups).toHaveLength(1);
+		const group1 = groups[0];
+		expect(group1.connections).toHaveLength(2);
+		expect(group1.complete).toEqual(false);
 	});
 });

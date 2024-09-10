@@ -2239,14 +2239,14 @@ export interface IWorkflowExecuteAdditionalData {
 }
 
 export type WorkflowExecuteMode =
-	| 'cli'
-	| 'error'
+	| 'cli' // unused
+	| 'error' // unused, but maybe used for error workflows
 	| 'integrated'
 	| 'internal'
 	| 'manual'
-	| 'retry'
-	| 'trigger'
-	| 'webhook';
+	| 'retry' // unused
+	| 'trigger' // unused
+	| 'webhook'; // unused
 
 export type WorkflowActivateMode =
 	| 'init'
