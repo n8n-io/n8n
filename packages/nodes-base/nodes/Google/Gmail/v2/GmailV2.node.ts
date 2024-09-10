@@ -8,7 +8,6 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
@@ -34,6 +33,8 @@ import { labelFields, labelOperations } from './LabelDescription';
 import { draftFields, draftOperations } from './DraftDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
+
+import { prepareActionRequiredEmail, sendAndWaitWebhook } from './utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -233,13 +234,7 @@ export class GmailV2 implements INodeType {
 		},
 	};
 
-	async webhook(this: IWebhookFunctions) {
-		const query = this.getRequestObject().query as IDataObject;
-		return {
-			webhookResponse: JSON.stringify(query, null, 2),
-			workflowData: [[{ json: { data: query } }]],
-		};
-	}
+	webhook = sendAndWaitWebhook;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -250,24 +245,7 @@ export class GmailV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === 'sendAndWait') {
-			const sendTo = this.getNodeParameter('sendTo', 0) as string;
-			const to = prepareEmailsInput.call(this, sendTo, 'To', 0);
-			const message = (this.getNodeParameter('message', 0, '') as string).trim();
-			const subject = this.getNodeParameter('subject', 0) as string;
-			const resumeUrl = this.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-			const nodeId = this.evaluateExpression('{{ $nodeId }}', 0) as string;
-
-			const email: IEmail = {
-				to,
-				subject,
-				body: '',
-				htmlBody:
-					message +
-					'<br>' +
-					'<a href="' +
-					`${resumeUrl}/${nodeId}?result=true` +
-					'" target="_blank">Approve</a>',
-			};
+			const email: IEmail = prepareActionRequiredEmail(this);
 
 			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
 				raw: await encodeEmail(email),

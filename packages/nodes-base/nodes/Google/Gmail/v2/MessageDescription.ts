@@ -560,6 +560,22 @@ export const messageFields: INodeProperties[] = [
 /* -------------------------------------------------------------------------- */
 /*                      message: sendAndWait                                  */
 /* -------------------------------------------------------------------------- */
+const buttonStyle: INodeProperties = {
+	displayName: 'Button Style',
+	name: 'buttonStyle',
+	type: 'options',
+	default: 'primary',
+	options: [
+		{
+			name: 'Primary',
+			value: 'primary',
+		},
+		{
+			name: 'Secondary',
+			value: 'secondary',
+		},
+	],
+};
 export const sendAndWait: INodeProperties[] = [
 	{
 		displayName: 'To',
@@ -602,10 +618,10 @@ export const sendAndWait: INodeProperties[] = [
 				name: 'Add Approval and Disapproval Button',
 				value: 'double',
 			},
-			{
-				name: 'Add Selection of Options',
-				value: 'options',
-			},
+			// {
+			// 	name: 'Add Selection of Options',
+			// 	value: 'options',
+			// },
 		],
 	},
 	{
@@ -621,11 +637,30 @@ export const sendAndWait: INodeProperties[] = [
 		},
 	},
 	{
+		...buttonStyle,
+		name: 'buttonApprovalStyle',
+		displayOptions: {
+			show: {
+				approvalType: ['single', 'double'],
+			},
+		},
+	},
+	{
 		displayName: 'Disapprove Button Label',
 		name: 'disapproveLabel',
 		type: 'string',
 		default: '',
 		required: true,
+		displayOptions: {
+			show: {
+				approvalType: ['double'],
+			},
+		},
+	},
+	{
+		...buttonStyle,
+		name: 'buttonDisapprovalStyle',
+		default: 'secondary',
 		displayOptions: {
 			show: {
 				approvalType: ['double'],
