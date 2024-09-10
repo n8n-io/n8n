@@ -36,6 +36,9 @@ export function findTriggerForPartialExecution(
 		// TODO: add the other filters here from `findAllPinnedActivators`, see
 		// copy below.
 		.filter((trigger) => workflow.pinData?.[trigger.name])
+		// TODO: Make this sorting more predictable
+		// Put nodes which names end with 'webhook' first, while also reversing the
+		// order they had in the original array.
 		.sort((n) => (n.type.endsWith('webhook') ? -1 : 1));
 
 	if (pinnedTriggers.length) {
