@@ -11,6 +11,7 @@
 // @ts-check
 import { $ } from 'zx';
 import path from 'path';
+import { flagsObjectToCliArgs } from './utils/flags.mjs';
 
 /**
  * @typedef {Object} BenchmarkEnv
@@ -30,19 +31,21 @@ const paths = {
  * @property {string} [runDir]
  * @property {string} [k6ApiToken]
  * @property {string} [n8nLicenseCert]
+ * @property {string} [vus]
+ * @property {string} [duration]
  *
  * @param {Config} config
  */
 export async function runLocally(config) {
 	const runScriptPath = path.join(paths.scriptsDir, 'runForN8nSetup.mjs');
 
-	const flags = Object.entries({
+	const cliArgs = flagsObjectToCliArgs({
 		n8nDockerTag: config.n8nTag,
 		benchmarkDockerTag: config.benchmarkTag,
 		runDir: config.runDir,
-	})
-		.filter(([, value]) => value !== undefined)
-		.map(([key, value]) => `--${key}=${value}`);
+		vus: config.vus,
+		duration: config.duration,
+	});
 
 	try {
 		for (const n8nSetup of config.n8nSetupsToUse) {
@@ -54,7 +57,7 @@ export async function runLocally(config) {
 					K6_API_TOKEN: config.k6ApiToken,
 					N8N_LICENSE_CERT: config.n8nLicenseCert,
 				},
-			})`npx ${runScriptPath} ${flags} ${n8nSetup}`;
+			})`npx ${runScriptPath} ${cliArgs} ${n8nSetup}`;
 		}
 	} catch (error) {
 		console.error('An error occurred while running the benchmarks:');
