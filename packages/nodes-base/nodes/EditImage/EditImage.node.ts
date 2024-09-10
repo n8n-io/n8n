@@ -264,6 +264,22 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Text to write on the image',
 	},
 	{
+		displayName: 'Font Name or ID',
+		name: 'font',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getFonts',
+		},
+		default: '',
+		description:
+			'The font to use. Choose from the list, or specify the local file path to the font using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
+	{
 		displayName: 'Font Size',
 		name: 'fontSize',
 		type: 'number',
@@ -837,22 +853,6 @@ export class EditImage implements INodeType {
 								default: '',
 							},
 							...nodeOperationOptions,
-							{
-								displayName: 'Font Name or ID',
-								name: 'font',
-								type: 'options',
-								displayOptions: {
-									show: {
-										operation: ['text'],
-									},
-								},
-								typeOptions: {
-									loadOptionsMethod: 'getFonts',
-								},
-								default: 'default',
-								description:
-									'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-							},
 						],
 					},
 				],
@@ -877,22 +877,6 @@ export class EditImage implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'File name to set in binary data',
-					},
-					{
-						displayName: 'Font Name or ID',
-						name: 'font',
-						type: 'options',
-						displayOptions: {
-							show: {
-								'/operation': ['text'],
-							},
-						},
-						typeOptions: {
-							loadOptionsMethod: 'getFonts',
-						},
-						default: 'default',
-						description:
-							'The font to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Format',
@@ -975,11 +959,6 @@ export class EditImage implements INodeType {
 						return 1;
 					}
 					return 0;
-				});
-
-				returnData.unshift({
-					name: 'default',
-					value: 'default',
 				});
 
 				return returnData;
@@ -1233,8 +1212,6 @@ export class EditImage implements INodeType {
 
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
-
-						// const font = options.font || operationData.font;
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
