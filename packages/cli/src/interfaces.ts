@@ -277,6 +277,7 @@ export interface IPackageVersions {
 export type IPushDataType = IPushData['type'];
 
 export type IPushData =
+	| PushDataExecutionCanceled
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
 	| PushDataExecuteAfter
@@ -311,6 +312,11 @@ type PushDataWorkflowActivated = {
 type PushDataWorkflowDeactivated = {
 	data: IActiveWorkflowChanged;
 	type: 'workflowDeactivated';
+};
+
+export type PushDataExecutionCanceled = {
+	data: IPushDataExecutionCanceled;
+	type: 'executionCanceled';
 };
 
 export type PushDataExecutionRecovered = {
@@ -392,6 +398,10 @@ interface IActiveWorkflowChanged {
 interface IWorkflowFailedToActivate {
 	workflowId: Workflow['id'];
 	errorMessage: string;
+}
+
+export interface IPushDataExecutionCanceled {
+	executionId: string;
 }
 
 export interface IPushDataExecutionRecovered {

@@ -321,6 +321,11 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					return;
 				}
 
+				if (fullRunData.status === 'canceled') {
+					pushInstance.send('executionCanceled', { executionId }, pushRef);
+					return;
+				}
+
 				// Clone the object except the runData. That one is not supposed
 				// to be send. Because that data got send piece by piece after
 				// each node which finished executing

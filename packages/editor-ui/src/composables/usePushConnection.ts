@@ -240,6 +240,19 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			return true;
 		}
 
+		if (receivedData.type === 'executionCanceled') {
+			const { activeExecutionId } = workflowsStore;
+			if (activeExecutionId === receivedData.data.executionId) {
+				workflowsStore.executingNode.length = 0;
+				uiStore.removeActiveAction('workflowRunning');
+				toast.showMessage({
+					title: i18n.baseText('nodeView.showMessage.stopExecutionTry.title'),
+					type: 'success',
+				});
+				return true;
+			}
+		}
+
 		if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 			// The workflow finished executing
 			let pushData: IPushDataExecutionFinished;
