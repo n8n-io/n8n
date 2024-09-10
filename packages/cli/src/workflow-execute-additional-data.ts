@@ -786,6 +786,7 @@ async function executeWorkflow(
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
 	const eventService = Container.get(EventService);
+	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -810,7 +811,8 @@ async function executeWorkflow(
 	if (options.parentExecutionId !== undefined) {
 		executionId = options.parentExecutionId;
 	} else {
-		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
+		executionId = await activeExecutions.add(runData);
+		await executionRepository.updateStatus(executionId, 'running');
 	}
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
@@ -909,10 +911,7 @@ async function executeWorkflow(
 		// remove execution from active executions
 		activeExecutions.remove(executionId, fullRunData);
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
 			{
 				...executionError,
