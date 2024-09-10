@@ -7,13 +7,13 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { computed, ref } from 'vue';
 
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
+
 const toast = useToast();
 const locale = useI18n();
 
 const loading = ref(false);
-
-const settingsStore = useSettingsStore();
-const usersStore = useUsersStore();
 
 const formConfig = computed(() => {
 	const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
