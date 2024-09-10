@@ -63,7 +63,7 @@ export class SubworkflowPolicyChecker {
 	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
 		const hasAccess = userId
 			? await this.accessService.hasAccess(userId, subworkflow.id)
-			: false; /* no user ID in policy check for error workflow, so `false` keep error message generic */
+			: false; /* no user ID in policy check for error workflow, so `false` to keep error message generic */
 
 		if (subworkflowProject.type === 'team') return { hasAccess };
 
