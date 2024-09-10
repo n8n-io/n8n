@@ -30,8 +30,8 @@ import { flagsObjectToCliArgs } from './utils/flags.mjs';
  * @property {string} n8nTag
  * @property {string} benchmarkTag
  * @property {string} [k6ApiToken]
- * @property {string} [k6ResultWebhookUrl]
- * @property {string} [k6ResultWebhookAuthHeader]
+ * @property {string} [resultWebhookUrl]
+ * @property {string} [resultWebhookAuthHeader]
  * @property {string} [n8nLicenseCert]
  * @property {string} [vus]
  * @property {string} [duration]
@@ -102,8 +102,8 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 		n8nDockerTag: config.n8nTag,
 		benchmarkDockerTag: config.benchmarkTag,
 		k6ApiToken: config.k6ApiToken,
-		k6ResultWebhookUrl: config.k6ResultWebhookUrl,
-		k6ResultWebhookAuthHeader: config.k6ResultWebhookAuthHeader,
+		resultWebhookUrl: config.resultWebhookUrl,
+		resultWebhookAuthHeader: config.resultWebhookAuthHeader,
 		n8nLicenseCert: config.n8nLicenseCert,
 		vus: config.vus,
 		duration: config.duration,

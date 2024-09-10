@@ -36,15 +36,15 @@ export default class RunCommand extends Command {
 			default: undefined,
 			env: 'K6_API_TOKEN',
 		}),
-		k6ResultWebhookUrl: Flags.string({
-			doc: 'The URL where the k6 results should be sent to',
+		resultWebhookUrl: Flags.string({
+			doc: 'The URL where the benchmark results should be sent to',
 			default: undefined,
-			env: 'K6_RESULT_WEBHOOK_URL',
+			env: 'BENCHMARK_RESULT_WEBHOOK_URL',
 		}),
-		k6ResultWebhookAuthHeader: Flags.string({
-			doc: 'The Authorization header value for the k6 results webhook',
+		resultWebhookAuthHeader: Flags.string({
+			doc: 'The Authorization header value for the benchmark results webhook',
 			default: undefined,
-			env: 'K6_RESULT_WEBHOOK_AUTH_HEADER',
+			env: 'BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER',
 		}),
 		n8nUserPassword: Flags.string({
 			description: 'The password of the n8n user',
@@ -81,8 +81,8 @@ export default class RunCommand extends Command {
 				n8nApiBaseUrl: flags.n8nBaseUrl,
 				tags,
 				resultsWebhook: {
-					url: flags.k6ResultWebhookUrl,
-					authHeader: flags.k6ResultWebhookAuthHeader,
+					url: flags.resultWebhookUrl,
+					authHeader: flags.resultWebhookAuthHeader,
 				},
 			}),
 			{
