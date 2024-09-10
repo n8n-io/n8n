@@ -773,7 +773,6 @@ async function executeWorkflow(
 		node?: INode;
 		parentWorkflowId: string;
 		inputData?: INodeExecutionData[];
-		parentExecutionId?: string;
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
@@ -806,14 +805,8 @@ async function executeWorkflow(
 
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
-	let executionId;
-
-	if (options.parentExecutionId !== undefined) {
-		executionId = options.parentExecutionId;
-	} else {
-		executionId = await activeExecutions.add(runData);
-		await executionRepository.updateStatus(executionId, 'running');
-	}
+	const executionId = await activeExecutions.add(runData);
+	await executionRepository.updateStatus(executionId, 'running');
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
@@ -864,14 +857,6 @@ async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (options.parentExecutionId !== undefined) {
-			// Must be changed to become typed
-			return {
-				startedAt: new Date(),
-				workflow,
-				workflowExecute,
-			};
-		}
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;

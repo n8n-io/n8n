@@ -2171,7 +2171,6 @@ export interface ExecuteWorkflowOptions {
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
-	parentExecutionId?: string;
 	loadedWorkflowData?: IWorkflowBase;
 	loadedRunData?: any;
 	parentWorkflowSettings?: IWorkflowSettings;
