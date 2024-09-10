@@ -1536,7 +1536,10 @@ onBeforeUnmount(() => {
 	removeImportEventBindings();
 	removeExecutionOpenedEventBindings();
 	unregisterCustomActions();
-	collaborationStore.terminate();
+	if (!isDemoRoute.value) {
+		collaborationStore.terminate();
+		pushConnectionStore.pushDisconnect();
+	}
 });
 </script>
 
