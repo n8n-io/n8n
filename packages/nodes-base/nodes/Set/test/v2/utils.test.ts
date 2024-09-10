@@ -69,7 +69,7 @@ describe('test Set2, composeReturnItem', () => {
 			include: 'none',
 		};
 
-		const result = composeReturnItem.call(fakeExecuteFunction, 0, inputItem, newData, options);
+		const result = composeReturnItem.call(fakeExecuteFunction, 0, inputItem, newData, options, 3.4);
 
 		expect(result).toEqual({
 			json: {
@@ -114,7 +114,7 @@ describe('test Set2, composeReturnItem', () => {
 			include: 'selected',
 		};
 
-		const result = composeReturnItem.call(fakeExecuteFunction, 0, inputItem, newData, options);
+		const result = composeReturnItem.call(fakeExecuteFunction, 0, inputItem, newData, options, 3.4);
 
 		expect(result).toEqual({
 			json: {
@@ -131,6 +131,122 @@ describe('test Set2, composeReturnItem', () => {
 				item: 0,
 			},
 		});
+	});
+
+	it('should include binary when expected in version <3.4', () => {
+		const fakeExecuteFunction = createMockExecuteFunction({});
+
+		const inputItem = {
+			json: {
+				input1: 'value1',
+				input2: 2,
+				input3: [1, 2, 3],
+			},
+			pairedItem: {
+				item: 0,
+				input: undefined,
+			},
+			binary: {
+				data: {
+					data: 'content',
+					mimeType: 'image/jpg',
+				},
+			},
+		};
+
+		const newData = {
+			num1: 55,
+			str1: '42',
+			arr1: ['foo', 'bar'],
+			obj: {
+				key: 'value',
+			},
+		};
+
+		const resultWithIncludeBinary = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			newData,
+			{
+				include: 'all',
+				includeBinary: true,
+			},
+			3.3,
+		);
+
+		expect(resultWithIncludeBinary.binary).toEqual(inputItem.binary);
+
+		const resultWithoutIncludeBinary = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			newData,
+			{
+				include: 'all',
+			},
+			3.3,
+		);
+
+		expect(resultWithoutIncludeBinary.binary).toBeUndefined();
+	});
+
+	it('should include binary when expected in version >=3.4', () => {
+		const fakeExecuteFunction = createMockExecuteFunction({});
+
+		const inputItem = {
+			json: {
+				input1: 'value1',
+				input2: 2,
+				input3: [1, 2, 3],
+			},
+			pairedItem: {
+				item: 0,
+				input: undefined,
+			},
+			binary: {
+				data: {
+					data: 'content',
+					mimeType: 'image/jpg',
+				},
+			},
+		};
+
+		const newData = {
+			num1: 55,
+			str1: '42',
+			arr1: ['foo', 'bar'],
+			obj: {
+				key: 'value',
+			},
+		};
+
+		const resultWithStripBinary = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			newData,
+			{
+				include: 'all',
+				stripBinary: true,
+			},
+			3.4,
+		);
+
+		expect(resultWithStripBinary.binary).toBeUndefined();
+
+		const resultWithoutStripBinary = composeReturnItem.call(
+			fakeExecuteFunction,
+			0,
+			inputItem,
+			newData,
+			{
+				include: 'all',
+			},
+			3.4,
+		);
+
+		expect(resultWithoutStripBinary.binary).toEqual(inputItem.binary);
 	});
 });
 
@@ -181,11 +297,7 @@ describe('test Set2, parseJsonParameter', () => {
 
 describe('test Set2, validateEntry', () => {
 	it('should convert number to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: 42 as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', 42 as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -194,11 +306,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert array to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: [1, 2, 3] as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', [1, 2, 3] as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -207,11 +315,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert object to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: { foo: 'bar' } as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', { foo: 'bar' } as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -220,11 +324,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert boolean to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: true as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', true as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -233,11 +333,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert undefined to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: undefined as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', undefined as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',

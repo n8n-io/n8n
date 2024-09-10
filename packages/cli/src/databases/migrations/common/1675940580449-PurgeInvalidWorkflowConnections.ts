@@ -1,5 +1,5 @@
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { MigrationContext, IrreversibleMigration } from '@/databases/types';
 
 interface Workflow {
 	id: number;
@@ -47,10 +47,13 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 				});
 
 				// Update database with new connections
-				return runQuery(`UPDATE ${workflowsTable} SET connections = :connections WHERE id = :id`, {
-					connections: JSON.stringify(connections),
-					id: workflow.id,
-				});
+				return await runQuery(
+					`UPDATE ${workflowsTable} SET connections = :connections WHERE id = :id`,
+					{
+						connections: JSON.stringify(connections),
+						id: workflow.id,
+					},
+				);
 			}),
 		);
 	}

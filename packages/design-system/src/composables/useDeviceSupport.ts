@@ -1,14 +1,16 @@
 import { ref } from 'vue';
 
-interface DeviceSupportHelpers {
-	isTouchDevice: boolean;
-	isMacOs: boolean;
-	controlKeyCode: string;
-	isCtrlKeyPressed: (e: MouseEvent | KeyboardEvent) => boolean;
-}
-
-export function useDeviceSupport(): DeviceSupportHelpers {
-	const isTouchDevice = ref('ontouchstart' in window || navigator.maxTouchPoints > 0);
+export function useDeviceSupport() {
+	/**
+	 * Check if the device is a touch device but exclude devices that have a fine pointer (mouse or track-pad)
+	 * - `fine` will check for an accurate pointing device. Examples include mice, touch-pads, and drawing styluses
+	 * - `coarse` will check for a pointing device of limited accuracy. Examples include touchscreens and motion-detection sensors
+	 * - `any-pointer` will check for the presence of any pointing device, if there are multiple of them
+	 */
+	const isTouchDevice = ref(
+		window.matchMedia('(any-pointer: coarse)').matches &&
+			!window.matchMedia('(any-pointer: fine)').matches,
+	);
 	const userAgent = ref(navigator.userAgent.toLowerCase());
 	const isMacOs = ref(
 		userAgent.value.includes('macintosh') ||
@@ -19,9 +21,6 @@ export function useDeviceSupport(): DeviceSupportHelpers {
 	const controlKeyCode = ref(isMacOs.value ? 'Meta' : 'Control');
 
 	function isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
-		if (isTouchDevice.value && e instanceof MouseEvent) {
-			return true;
-		}
 		if (isMacOs.value) {
 			return (e as KeyboardEvent).metaKey;
 		}

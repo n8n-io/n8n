@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	JsonObject,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function philipsHueApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -18,7 +18,7 @@ export async function philipsHueApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},

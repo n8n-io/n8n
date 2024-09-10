@@ -41,5 +41,12 @@ export class S3 implements ICredentialType {
 			type: 'boolean',
 			default: false,
 		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+		},
 	];
 }

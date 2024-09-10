@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import {
 	createCollectionEntry,
@@ -23,8 +24,7 @@ export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cockpit',
 		name: 'cockpit',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:cockpit.png',
+		icon: { light: 'file:cockpit.svg', dark: 'file:cockpit.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
@@ -32,8 +32,8 @@ export class Cockpit implements INodeType {
 		defaults: {
 			name: 'Cockpit',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'cockpitApi',

@@ -13,7 +13,7 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { addSortRules, addWhereClauses } from '../../helpers/utils';
+import { addSortRules, addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
 
 import {
 	optionsCollection,
@@ -91,10 +91,10 @@ export async function execute(
 		const SELECT = selectDistinct ? 'SELECT DISTINCT' : 'SELECT';
 
 		if (outputColumns.includes('*')) {
-			query = `${SELECT} * FROM \`${table}\``;
+			query = `${SELECT} * FROM ${escapeSqlIdentifier(table)}`;
 		} else {
-			const escapedColumns = outputColumns.map((column) => `\`${column}\``).join(', ');
-			query = `${SELECT} ${escapedColumns} FROM \`${table}\``;
+			const escapedColumns = outputColumns.map(escapeSqlIdentifier).join(', ');
+			query = `${SELECT} ${escapedColumns} FROM ${escapeSqlIdentifier(table)}`;
 		}
 
 		let values: QueryValues = [];

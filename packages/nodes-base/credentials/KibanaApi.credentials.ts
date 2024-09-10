@@ -3,6 +3,7 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class KibanaApi implements ICredentialType {
@@ -12,7 +13,7 @@ export class KibanaApi implements ICredentialType {
 
 	documentationUrl = 'kibana';
 
-	icon = 'file:icons/Kibana.svg';
+	icon: Icon = 'file:icons/Kibana.svg';
 
 	httpRequestNode = {
 		name: 'Kibana',

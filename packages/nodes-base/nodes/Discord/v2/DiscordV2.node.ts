@@ -1,5 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -30,6 +28,6 @@ export class DiscordV2 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

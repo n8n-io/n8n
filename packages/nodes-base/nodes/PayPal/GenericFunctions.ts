@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	JsonObject,
 	IDataObject,
@@ -7,6 +5,8 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -29,7 +29,7 @@ async function getAccessToken(
 		{},
 		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
 	);
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: headerWithAuthentication,
 		method: 'POST',
 		form: {
@@ -48,7 +48,7 @@ async function getAccessToken(
 export async function payPalApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	query?: IDataObject,
@@ -93,7 +93,7 @@ export async function payPalApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	query?: IDataObject,

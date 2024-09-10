@@ -1,4 +1,4 @@
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
 
 describe('useActionsGenerator', () => {
@@ -14,8 +14,8 @@ describe('useActionsGenerator', () => {
 		defaults: {
 			name: 'Test',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [],
 	};
 
@@ -74,7 +74,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -117,7 +117,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -156,7 +156,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [],
 			});
@@ -189,7 +189,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -251,7 +251,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -326,7 +326,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({
@@ -371,7 +371,7 @@ describe('useActionsGenerator', () => {
 				],
 			};
 
-			const { actions } = generateMergedNodesAndActions([node]);
+			const { actions } = generateMergedNodesAndActions([node], []);
 			expect(actions).toEqual({
 				[NODE_NAME]: [
 					expect.objectContaining({

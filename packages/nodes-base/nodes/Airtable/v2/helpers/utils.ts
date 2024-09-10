@@ -1,4 +1,5 @@
-import type { IDataObject, NodeApiError } from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
+import set from 'lodash/set';
 import type { UpdateRecord } from './interfaces';
 
 export function removeIgnored(data: IDataObject, ignore: string | string[]) {
@@ -42,7 +43,7 @@ export function findMatches(
 		});
 
 		if (!matches?.length) {
-			throw new Error('No records match provided keys');
+			throw new ApplicationError('No records match provided keys', { level: 'warning' });
 		}
 
 		return matches;
@@ -57,20 +58,27 @@ export function findMatches(
 		});
 
 		if (!match) {
-			throw new Error('Record matching provided keys was not found');
+			throw new ApplicationError('Record matching provided keys was not found', {
+				level: 'warning',
+			});
 		}
 
 		return [match];
 	}
 }
 
-export function processAirtableError(error: NodeApiError, id?: string) {
+export function processAirtableError(error: NodeApiError, id?: string, itemIndex?: number) {
 	if (error.description === 'NOT_FOUND' && id) {
 		error.description = `${id} is not a valid Record ID`;
 	}
 	if (error.description?.includes('You must provide an array of up to 10 record objects') && id) {
 		error.description = `${id} is not a valid Record ID`;
 	}
+
+	if (itemIndex !== undefined) {
+		set(error, 'context.itemIndex', itemIndex);
+	}
+
 	return error;
 }
 

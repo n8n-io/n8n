@@ -2,13 +2,14 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
@@ -26,8 +27,8 @@ export class NocoDB implements INodeType {
 		defaults: {
 			name: 'NocoDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'nocoDb',
@@ -237,6 +238,9 @@ export class NocoDB implements INodeType {
 						new Error(`Error while fetching ${version === 3 ? 'bases' : 'projects'}!`, {
 							cause: e,
 						}),
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -257,12 +261,18 @@ export class NocoDB implements INodeType {
 						throw new NodeOperationError(
 							this.getNode(),
 							new Error('Error while fetching tables!', { cause: e }),
+							{
+								level: 'warning',
+							},
 						);
 					}
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
 						`No  ${version === 3 ? 'base' : 'project'} selected!`,
+						{
+							level: 'warning',
+						},
 					);
 				}
 			},
@@ -279,7 +289,7 @@ export class NocoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let returnAll = false;
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 
 		let qs: IDataObject = {};
 
@@ -521,6 +531,7 @@ export class NocoDB implements INodeType {
 								this,
 								responseData as IDataObject[],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							data.push(...response);
 						}
@@ -584,6 +595,7 @@ export class NocoDB implements INodeType {
 								this,
 								[responseData as IDataObject],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							const newItem = {
 								binary: data[0].binary,

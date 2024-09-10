@@ -10,6 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { todoistApiRequest } from '../GenericFunctions';
 
@@ -42,8 +43,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Todoist',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'todoistApi',
@@ -279,7 +280,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Additional Fields',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -390,7 +391,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Filters',
 			name: 'filters',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {

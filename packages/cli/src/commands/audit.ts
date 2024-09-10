@@ -1,11 +1,12 @@
-import { flags } from '@oclif/command';
-import { SecurityAuditService } from '@/security-audit/SecurityAudit.service';
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
+import { ApplicationError } from 'n8n-workflow';
+
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
 import { RISK_CATEGORIES } from '@/security-audit/constants';
 import config from '@/config';
 import type { Risk } from '@/security-audit/types';
-import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
-import { InternalHooks } from '@/InternalHooks';
+import { BaseCommand } from './base-command';
 
 export class SecurityAudit extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -17,20 +18,20 @@ export class SecurityAudit extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		categories: flags.string({
+		help: Flags.help({ char: 'h' }),
+		categories: Flags.string({
 			default: RISK_CATEGORIES.join(','),
 			description: 'Comma-separated list of categories to include in the audit',
 		}),
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		'days-abandoned-workflow': flags.integer({
+
+		'days-abandoned-workflow': Flags.integer({
 			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
 			description: 'Days for a workflow to be considered abandoned if not executed',
 		}),
 	};
 
 	async run() {
-		const { flags: auditFlags } = this.parse(SecurityAudit);
+		const { flags: auditFlags } = await this.parse(SecurityAudit);
 
 		const categories =
 			auditFlags.categories?.split(',').filter((c): c is Risk.Category => c !== '') ??
@@ -46,7 +47,7 @@ export class SecurityAudit extends BaseCommand {
 
 			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
 
-			throw new Error([message, hint].join('. '));
+			throw new ApplicationError([message, hint].join('. '));
 		}
 
 		const result = await Container.get(SecurityAuditService).run(
@@ -59,8 +60,6 @@ export class SecurityAudit extends BaseCommand {
 		} else {
 			process.stdout.write(JSON.stringify(result, null, 2));
 		}
-
-		void Container.get(InternalHooks).onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {

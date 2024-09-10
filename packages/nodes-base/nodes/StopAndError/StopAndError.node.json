@@ -12,6 +12,6 @@
 	},
 	"alias": ["Throw error", "Error", "Exception"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Flow"]
 	}
 }

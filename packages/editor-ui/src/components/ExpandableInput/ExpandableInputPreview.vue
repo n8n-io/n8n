@@ -1,5 +1,15 @@
+<script setup lang="ts">
+import ExpandableInputBase from './ExpandableInputBase.vue';
+
+type Props = {
+	modelValue: string;
+};
+
+defineProps<Props>();
+</script>
+
 <template>
-	<ExpandableInputBase :modelValue="modelValue" :staticSize="true">
+	<ExpandableInputBase :model-value="modelValue" :static-size="true">
 		<input
 			:class="{ 'el-input__inner': true, clickable: true }"
 			:value="modelValue"
@@ -8,17 +18,6 @@
 		/>
 	</ExpandableInputBase>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import ExpandableInputBase from './ExpandableInputBase.vue';
-
-export default defineComponent({
-	name: 'ExpandableInputPreview',
-	components: { ExpandableInputBase },
-	props: ['modelValue'],
-});
-</script>
 
 <style lang="scss" scoped>
 input,

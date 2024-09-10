@@ -136,7 +136,7 @@ export const boardItemFields: INodeProperties[] = [
 				operation: ['changeColumnValue'],
 			},
 		},
-		description: 'The unique identifier of the item to to change column of',
+		description: 'The unique identifier of the item to change column of',
 	},
 	{
 		displayName: 'Column Name or ID',

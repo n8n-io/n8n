@@ -1,3 +1,40 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+
+interface Props {
+	theme: 'success' | 'danger';
+	message: string;
+	buttonLabel?: string;
+	buttonLoadingLabel?: string;
+	buttonTitle?: string;
+	details?: string;
+	buttonLoading?: boolean;
+}
+
+withDefaults(defineProps<Props>(), {
+	buttonLoading: false,
+	buttonLabel: '',
+	buttonLoadingLabel: '',
+	buttonTitle: '',
+	details: '',
+});
+
+const emit = defineEmits<{
+	click: [];
+}>();
+
+const expanded = ref(false);
+
+const expand = () => {
+	expanded.value = true;
+};
+
+const onClick = () => {
+	expanded.value = false;
+	emit('click');
+};
+</script>
+
 <template>
 	<el-tag :type="theme" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
@@ -16,7 +53,7 @@
 				</div>
 			</div>
 
-			<slot name="button" v-if="$slots.button" />
+			<slot v-if="$slots.button" name="button" />
 			<n8n-button
 				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
@@ -34,53 +71,6 @@
 		</div>
 	</el-tag>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'Banner',
-	data() {
-		return {
-			expanded: false,
-		};
-	},
-	props: {
-		theme: {
-			type: String,
-			validator: (value: string): boolean => ['success', 'danger'].indexOf(value) !== -1,
-		},
-		message: {
-			type: String,
-		},
-		buttonLabel: {
-			type: String,
-		},
-		buttonLoadingLabel: {
-			type: String,
-		},
-		buttonTitle: {
-			type: String,
-		},
-		details: {
-			type: String,
-		},
-		buttonLoading: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	methods: {
-		expand() {
-			this.expanded = true;
-		},
-		onClick() {
-			this.expanded = false;
-			this.$emit('click');
-		},
-	},
-});
-</script>
 
 <style module lang="scss">
 .icon {

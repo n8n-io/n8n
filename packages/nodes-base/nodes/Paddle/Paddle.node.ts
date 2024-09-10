@@ -8,9 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { couponFields, couponOperations } from './CouponDescription';
 
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -41,8 +41,8 @@ export class Paddle implements INodeType {
 		defaults: {
 			name: 'Paddle',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'paddleApi',

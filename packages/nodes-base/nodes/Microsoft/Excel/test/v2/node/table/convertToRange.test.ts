@@ -1,4 +1,4 @@
-import type { INodeTypes } from 'n8n-workflow';
+import type { IHttpRequestMethods, INodeTypes } from 'n8n-workflow';
 
 import nock from 'nock';
 import * as transport from '../../../../v2/transport';
@@ -10,7 +10,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: string) {
+		microsoftApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
 					address: 'Sheet4!A1:D5',
@@ -61,6 +61,6 @@ describe('Test MicrosoftExcelV2, table => convertToRange', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

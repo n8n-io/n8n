@@ -1,25 +1,25 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
+import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri: string | null = null,
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -37,12 +37,20 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
+		let credentialType = 'googleFirebaseCloudFirestoreOAuth2Api';
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+
+		if (authentication === 'serviceAccount') {
+			const credentials = await this.getCredentials('googleApi');
+			credentialType = 'googleApi';
+
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'firestore');
+
+			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
+		}
+
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(
-			this,
-			'googleFirebaseCloudFirestoreOAuth2Api',
-			options,
-		);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -51,7 +59,7 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

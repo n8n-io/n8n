@@ -8,6 +8,8 @@ let telemetry: Telemetry;
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
+const MOCK_VERSION_CLI = '0.0.0';
+
 describe('telemetry', () => {
 	beforeAll(() => {
 		telemetry = new Telemetry();
@@ -59,6 +61,30 @@ describe('telemetry', () => {
 			telemetry.identify(userId, instanceId, versionCli);
 			expect(identifyFunction).toHaveBeenCalledTimes(1);
 			expect(identifyFunction).toHaveBeenCalledWith(`${instanceId}#${userId}`, {
+				instance_id: instanceId,
+				version_cli: versionCli,
+			});
+		});
+
+		it('Rudderstack identify method should be called when proving userId and versionCli and projectId', () => {
+			const identifyFunction = vi.spyOn(window.rudderanalytics, 'identify');
+
+			const userId = '1';
+			const instanceId = '1';
+			const versionCli = '1';
+			const projectId = '1';
+
+			settingsStore.setSettings(
+				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+					deployment: {
+						type: '',
+					},
+				}),
+			);
+
+			telemetry.identify(userId, instanceId, versionCli, projectId);
+			expect(identifyFunction).toHaveBeenCalledTimes(1);
+			expect(identifyFunction).toHaveBeenCalledWith(`${instanceId}#${userId}#${projectId}`, {
 				instance_id: instanceId,
 				version_cli: versionCli,
 			});
@@ -135,6 +161,24 @@ describe('telemetry', () => {
 
 			telemetry.identify(instanceId);
 			expect(resetFunction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('track function', () => {
+		it('should call Rudderstack track method with correct parameters', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+
+			const event = 'testEvent';
+			const properties = { test: '1' };
+			const options = { withPostHog: false };
+
+			telemetry.track(event, properties, options);
+
+			expect(trackFunction).toHaveBeenCalledTimes(1);
+			expect(trackFunction).toHaveBeenCalledWith(event, {
+				...properties,
+				version_cli: MOCK_VERSION_CLI,
+			});
 		});
 	});
 });

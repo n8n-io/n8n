@@ -4,7 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
@@ -22,8 +22,9 @@ export class QuestDb implements INodeType {
 		defaults: {
 			name: 'QuestDB',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'questDb',
@@ -63,7 +64,6 @@ export class QuestDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {

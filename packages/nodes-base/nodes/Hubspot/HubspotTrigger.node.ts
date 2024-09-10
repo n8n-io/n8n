@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
@@ -25,7 +25,7 @@ export class HubspotTrigger implements INodeType {
 			name: 'HubSpot Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'hubspotDeveloperApi',
@@ -446,6 +446,9 @@ export class HubspotTrigger implements INodeType {
 			}
 			if (subscriptionType.includes('deal')) {
 				bodyData[i].dealId = bodyData[i].objectId;
+			}
+			if (subscriptionType.includes('ticket')) {
+				bodyData[i].ticketId = bodyData[i].objectId;
 			}
 			delete bodyData[i].objectId;
 		}

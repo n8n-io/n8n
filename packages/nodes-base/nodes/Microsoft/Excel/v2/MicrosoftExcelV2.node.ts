@@ -22,6 +22,6 @@ export class MicrosoftExcelV2 implements INodeType {
 	methods = { listSearch, loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

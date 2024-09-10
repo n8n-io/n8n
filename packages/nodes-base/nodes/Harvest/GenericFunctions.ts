@@ -1,24 +1,24 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	qs: IDataObject,
 	path: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
 	uri?: string,
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Harvest-Account-Id': `${this.getNodeParameter('accountId', 0)}`,
 			'User-Agent': 'Harvest App',
@@ -59,7 +59,7 @@ export async function harvestApiRequest(
  */
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	qs: IDataObject,
 	uri: string,
 	resource: string,

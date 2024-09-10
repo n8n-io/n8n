@@ -1,107 +1,41 @@
-<template>
-	<div :class="$style.jsonDisplay">
-		<Suspense>
-			<run-data-json-actions
-				v-if="!editMode.enabled"
-				:node="node"
-				:sessioId="sessionId"
-				:displayMode="displayMode"
-				:distanceFromActive="distanceFromActive"
-				:selectedJsonPath="selectedJsonPath"
-				:jsonData="jsonData"
-				:paneType="paneType"
-			/>
-		</Suspense>
-		<draggable
-			type="mapping"
-			targetDataKey="mappable"
-			:disabled="!mappingEnabled"
-			@dragstart="onDragStart"
-			@dragend="onDragEnd"
-		>
-			<template #preview="{ canDrop, el }">
-				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
-			</template>
-			<vue-json-pretty
-				:data="jsonData"
-				:deep="10"
-				:showLength="true"
-				:selectedValue="selectedJsonPath"
-				rootPath=""
-				selectableType="single"
-				class="json-data"
-				@update:selectedValue="selectedJsonPath = $event"
-			>
-				<template #renderNodeKey="{ node }">
-					<span
-						data-target="mappable"
-						:data-value="getJsonParameterPath(node.path)"
-						:data-name="node.key"
-						:data-path="node.path"
-						:data-depth="node.level"
-						:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-						v-html="highlightSearchTerm(node.key)"
-					/>
-				</template>
-				<template #renderNodeValue="{ node }">
-					<span v-if="isNaN(node.index)" v-html="highlightSearchTerm(node.content)" />
-					<span
-						v-else
-						data-target="mappable"
-						:data-value="getJsonParameterPath(node.path)"
-						:data-name="getListItemName(node.path)"
-						:data-path="node.path"
-						:data-depth="node.level"
-						:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-						class="ph-no-capture"
-						v-html="highlightSearchTerm(node.content)"
-					/>
-				</template>
-			</vue-json-pretty>
-		</draggable>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson, highlightText, isString, sanitizeHtml, shorten } from '@/utils';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { isString } from '@/utils/typeGuards';
+import { shorten } from '@/utils/typesUtils';
 import type { INodeUi } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { nonExistingJsonPath } from '@/constants';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
-const RunDataJsonActions = defineAsyncComponent(
-	async () => import('@/components/RunDataJsonActions.vue'),
+const LazyRunDataJsonActions = defineAsyncComponent(
+	async () => await import('@/components/RunDataJsonActions.vue'),
 );
 
 export default defineComponent({
-	name: 'run-data-json',
-	mixins: [externalHooks],
+	name: 'RunDataJson',
 	components: {
 		VueJsonPretty,
 		Draggable,
-		RunDataJsonActions,
+		LazyRunDataJsonActions,
 		MappingPill,
+		TextWithHighlights,
 	},
 	props: {
 		editMode: {
-			type: Object as () => { enabled?: boolean; value?: string },
+			type: Object as PropType<{ enabled?: boolean; value?: string }>,
+			default: () => ({}),
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		paneType: {
@@ -109,15 +43,18 @@ export default defineComponent({
 		},
 		node: {
 			type: Object as PropType<INodeUi>,
+			required: true,
 		},
 		inputData: {
 			type: Array as PropType<INodeExecutionData[]>,
+			required: true,
 		},
 		mappingEnabled: {
 			type: Boolean,
 		},
 		distanceFromActive: {
 			type: Number,
+			required: true,
 		},
 		runIndex: {
 			type: Number,
@@ -130,11 +67,14 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const externalHooks = useExternalHooks();
+
 		const selectedJsonPath = ref(nonExistingJsonPath);
 		const draggingPath = ref<null | string>(null);
 		const displayMode = ref('json');
 
 		return {
+			externalHooks,
 			selectedJsonPath,
 			draggingPath,
 			displayMode,
@@ -144,6 +84,9 @@ export default defineComponent({
 		...mapStores(useNDVStore, useWorkflowsStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
+		},
+		highlight(): boolean {
+			return this.ndvStore.highlightDraggables;
 		},
 	},
 	methods: {
@@ -187,8 +130,10 @@ export default defineComponent({
 			};
 
 			setTimeout(() => {
-				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+				void this.externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
+					withPostHog: true,
+				});
 			}, 1000); // ensure dest data gets set if drop
 		},
 		getContent(value: unknown): string {
@@ -197,12 +142,85 @@ export default defineComponent({
 		getListItemName(path: string): string {
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
 		},
-		highlightSearchTerm(value: string): string {
-			return sanitizeHtml(highlightText(this.getContent(value), this.search));
-		},
 	},
 });
 </script>
+
+<template>
+	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
+		<Suspense>
+			<LazyRunDataJsonActions
+				v-if="!editMode.enabled"
+				:node="node"
+				:push-ref="pushRef"
+				:display-mode="displayMode"
+				:distance-from-active="distanceFromActive"
+				:selected-json-path="selectedJsonPath"
+				:json-data="jsonData"
+				:pane-type="paneType"
+			/>
+		</Suspense>
+		<Draggable
+			type="mapping"
+			target-data-key="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+		>
+			<template #preview="{ canDrop, el }">
+				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
+			</template>
+			<VueJsonPretty
+				:data="jsonData"
+				:deep="10"
+				:show-length="true"
+				:selected-value="selectedJsonPath"
+				root-path=""
+				selectable-type="single"
+				class="json-data"
+				@update:selected-value="selectedJsonPath = $event"
+			>
+				<template #renderNodeKey="{ node }">
+					<TextWithHighlights
+						:content="getContent(node.key)"
+						:search="search"
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="node.key"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+					/>
+				</template>
+				<template #renderNodeValue="{ node }">
+					<TextWithHighlights
+						v-if="isNaN(node.index)"
+						:content="getContent(node.content)"
+						:search="search"
+					/>
+					<TextWithHighlights
+						v-else
+						:content="getContent(node.content)"
+						:search="search"
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="getListItemName(node.path)"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						class="ph-no-capture"
+					/>
+				</template>
+			</VueJsonPretty>
+		</Draggable>
+	</div>
+</template>
 
 <style lang="scss" module>
 .jsonDisplay {
@@ -223,20 +241,22 @@ export default defineComponent({
 			opacity: 1;
 		}
 	}
-}
 
-.mappable {
-	cursor: grab;
+	.mappable {
+		cursor: grab;
 
-	&:hover {
-		background-color: var(--color-json-highlight);
+		&:hover {
+			background-color: var(--color-json-highlight);
+		}
 	}
-}
 
-.dragged {
-	&,
-	&:hover {
-		background-color: var(--color-primary-tint-2);
+	&.highlight .mappable,
+	.dragged {
+		&,
+		&:hover {
+			background-color: var(--color-primary-tint-2);
+			color: var(--color-primary);
+		}
 	}
 }
 </style>
@@ -244,6 +264,7 @@ export default defineComponent({
 <style lang="scss">
 .vjs-tree {
 	color: var(--color-json-default);
+	--color-line-break: var(--color-code-line-break);
 }
 
 .vjs-tree-node {

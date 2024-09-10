@@ -96,7 +96,7 @@ export async function execute(
 	}
 
 	if (fieldsToMatchOn.includes('id')) {
-		await theHiveApiRequest.call(this, 'PATCH', `/v1/case/${id}`, body);
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/case/${id}`, updateBody);
 	} else {
 		const filter = {
 			_name: 'filter',

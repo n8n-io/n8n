@@ -1,5 +1,5 @@
 export const nodesPanelSession = {
-	sessionId: '',
+	pushRef: '',
 	data: {
 		nodeFilter: '',
 		resultsNodes: [] as string[],
@@ -15,13 +15,13 @@ export const hooksGenerateNodesPanelEvent = () => {
 			results_count: nodesPanelSession.data.resultsNodes.length,
 			results_nodes: nodesPanelSession.data.resultsNodes,
 			filter_mode: nodesPanelSession.data.filterMode,
-			nodes_panel_session_id: nodesPanelSession.sessionId,
+			nodes_panel_session_id: nodesPanelSession.pushRef,
 		},
 	};
 };
 
 export const hooksResetNodesPanelSession = () => {
-	nodesPanelSession.sessionId = `nodes_panel_session_${new Date().valueOf()}`;
+	nodesPanelSession.pushRef = `nodes_panel_session_${new Date().valueOf()}`;
 	nodesPanelSession.data = {
 		nodeFilter: '',
 		resultsNodes: [],

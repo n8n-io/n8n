@@ -4,7 +4,7 @@ const variablesPage = new VariablesPage();
 
 describe('Variables', () => {
 	it('should show the unlicensed action box when the feature is disabled', () => {
-		cy.disableFeature('variables', false);
+		cy.disableFeature('variables');
 		cy.visit(variablesPage.url);
 
 		variablesPage.getters.unavailableResourcesList().should('be.visible');
@@ -18,14 +18,15 @@ describe('Variables', () => {
 
 		beforeEach(() => {
 			cy.intercept('GET', '/rest/variables').as('loadVariables');
+			cy.intercept('GET', '/rest/login').as('login');
 
 			cy.visit(variablesPage.url);
-			cy.wait(['@loadVariables', '@loadSettings']);
+			cy.wait(['@loadVariables', '@loadSettings', '@login']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {
 			variablesPage.getters.emptyResourcesList().should('be.visible');
-			variablesPage.getters.createVariableButton().should('be.visible');
+			variablesPage.getters.emptyResourcesListNewVariableButton().should('be.visible');
 		});
 
 		it('should create a new variable using empty state row', () => {

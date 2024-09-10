@@ -8,9 +8,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import map from 'lodash/map';
 import isEmpty from 'lodash/isEmpty';
@@ -106,8 +106,8 @@ export class Mandrill implements INodeType {
 		defaults: {
 			name: 'Mandrill',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mandrillApi',
@@ -216,7 +216,7 @@ export class Mandrill implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

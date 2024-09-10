@@ -9,9 +9,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';
@@ -75,8 +75,8 @@ export class SlackV1 implements INodeType {
 			defaults: {
 				name: 'Slack',
 			},
-			inputs: ['main'],
-			outputs: ['main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [NodeConnectionType.Main],
 			credentials: [
 				{
 					name: 'slackApi',

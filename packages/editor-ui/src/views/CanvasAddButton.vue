@@ -1,28 +1,3 @@
-<template>
-	<div
-		:class="$style.canvasAddButton"
-		:style="containerCssVars"
-		ref="container"
-		data-test-id="canvas-add-button"
-	>
-		<n8n-tooltip
-			placement="top"
-			:visible="showTooltip"
-			:disabled="nodeCreatorStore.showScrim"
-			:popper-class="$style.tooltip"
-			:show-after="700"
-		>
-			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
-				<font-awesome-icon icon="plus" size="lg" />
-			</button>
-			<template #content>
-				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
-			</template>
-		</n8n-tooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { XYPosition } from '@/Interface';
@@ -42,6 +17,31 @@ const containerCssVars = computed(() => ({
 }));
 </script>
 
+<template>
+	<div
+		ref="container"
+		:class="$style.canvasAddButton"
+		:style="containerCssVars"
+		data-test-id="canvas-add-button"
+	>
+		<n8n-tooltip
+			placement="top"
+			:visible="showTooltip"
+			:disabled="nodeCreatorStore.showScrim"
+			:popper-class="$style.tooltip"
+			:show-after="700"
+		>
+			<button :class="$style.button" data-test-id="canvas-plus-button" @click="$emit('click')">
+				<font-awesome-icon icon="plus" size="lg" />
+			</button>
+			<template #content>
+				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
+			</template>
+		</n8n-tooltip>
+		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
+	</div>
+</template>
+
 <style lang="scss" module>
 .canvasAddButton {
 	display: flex;
@@ -54,7 +54,7 @@ const containerCssVars = computed(() => ({
 	top: var(--trigger-placeholder-top-position);
 	left: var(--trigger-placeholder-left-position);
 	// We have to increase z-index to make sure it's higher than selecting box in NodeView
-	// otherwise the clics wouldn't register
+	// otherwise the clicks wouldn't register
 	z-index: 101;
 
 	&:hover .button svg path {

@@ -1,8 +1,17 @@
 import { render } from '@testing-library/vue';
 import N8nDatatable from '../Datatable.vue';
 import { rows, columns } from './data';
+import { removeDynamicAttributes } from 'n8n-design-system/utils';
 
-const stubs = ['n8n-select', 'n8n-option', 'n8n-button', 'n8n-pagination'];
+const stubs = [
+	'n8n-option',
+	'n8n-button',
+	// Ideally we'd like to stub N8nSelect & N8nPagination, but it doesn't work
+	// after migrating to setup script:
+	// https://github.com/vuejs/vue-test-utils/issues/2048
+	// 'n8n-select',
+	// 'n8n-pagination',
+];
 
 describe('components', () => {
 	describe('N8nDatatable', () => {
@@ -25,6 +34,7 @@ describe('components', () => {
 			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
 				columns.length * rowsPerPage,
 			);
+			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
@@ -64,6 +74,27 @@ describe('components', () => {
 				columns.length * rowsPerPage,
 			);
 			expect(wrapper.container.querySelector('tbody td')?.textContent).toEqual('Row slot');
+		});
+
+		it('should render all rows when rowsPerPage is set to -1', () => {
+			const wrapper = render(N8nDatatable, {
+				props: { columns, rows, rowsPerPage: -1 },
+				global: { stubs },
+			});
+
+			const pagination = wrapper.container.querySelector('.pagination');
+			expect(pagination?.querySelector('.el-pager')).toBeNull();
+
+			const pageSizeSelector = wrapper.container.querySelector('.pageSizeSelector');
+			expect(pageSizeSelector?.textContent).toContain('Page size');
+
+			const allOption = wrapper.getByText('All');
+			expect(allOption).not.toBeNull();
+
+			expect(wrapper.container.querySelectorAll('tbody tr').length).toEqual(rows.length);
+			expect(wrapper.container.querySelectorAll('tbody tr td').length).toEqual(
+				columns.length * rows.length,
+			);
 		});
 	});
 });

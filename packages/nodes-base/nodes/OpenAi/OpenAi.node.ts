@@ -1,4 +1,6 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import { oldVersionNotice } from '../../utils/descriptions';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
 import { chatFields, chatOperations } from './ChatDescription';
@@ -7,16 +9,17 @@ export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI',
 		name: 'openAi',
-		icon: 'file:openAi.svg',
+		hidden: true,
+		icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Open AI',
 		defaults: {
 			name: 'OpenAI',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -28,6 +31,7 @@ export class OpenAi implements INodeType {
 			baseURL: 'https://api.openai.com',
 		},
 		properties: [
+			oldVersionNotice,
 			{
 				displayName: 'Resource',
 				name: 'resource',

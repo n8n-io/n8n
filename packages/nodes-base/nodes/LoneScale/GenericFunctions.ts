@@ -1,17 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IWebhookFunctions,
+import {
+	ApplicationError,
+	type IHttpRequestMethods,
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHookFunctions,
+	type ILoadOptionsFunctions,
+	type IWebhookFunctions,
+	type IRequestOptions,
 } from 'n8n-workflow';
 import { BASE_URL } from './constants';
 
 export async function lonescaleApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -19,7 +20,7 @@ export async function lonescaleApiRequest(
 ) {
 	const endpoint = `${BASE_URL}`;
 	const credentials = await this.getCredentials('loneScaleApi');
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			'X-API-KEY': credentials?.apiKey,
@@ -43,7 +44,10 @@ export async function lonescaleApiRequest(
 		if (error.response) {
 			const errorMessage =
 				error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Autopilot error response [${error.statusCode}]: ${errorMessage}`);
+			throw new ApplicationError(
+				`Autopilot error response [${error.statusCode}]: ${errorMessage}`,
+				{ level: 'warning' },
+			);
 		}
 		throw error;
 	}

@@ -203,7 +203,7 @@ export const operationFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'additionalOptions',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

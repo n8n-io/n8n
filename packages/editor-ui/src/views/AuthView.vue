@@ -1,31 +1,9 @@
-<template>
-	<div :class="$style.container">
-		<div :class="$style.logoContainer">
-			<Logo />
-		</div>
-		<div v-if="subtitle" :class="$style.textContainer">
-			<n8n-text size="large">{{ subtitle }}</n8n-text>
-		</div>
-		<div :class="$style.formContainer">
-			<n8n-form-box
-				v-bind="form"
-				data-test-id="auth-form"
-				:buttonLoading="formLoading"
-				@secondaryClick="onSecondaryClick"
-				@submit="onSubmit"
-				@update="onUpdate"
-			>
-				<SSOLogin v-if="withSso" />
-			</n8n-form-box>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 
 import Logo from '@/components/Logo.vue';
 import SSOLogin from '@/components/SSOLogin.vue';
+import type { IFormBoxConfig } from '@/Interface';
 
 export default defineComponent({
 	name: 'AuthView',
@@ -34,7 +12,9 @@ export default defineComponent({
 		SSOLogin,
 	},
 	props: {
-		form: {},
+		form: {
+			type: Object as PropType<IFormBoxConfig>,
+		},
 		formLoading: {
 			type: Boolean,
 			default: false,
@@ -60,6 +40,29 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<div :class="$style.logoContainer">
+			<Logo />
+		</div>
+		<div v-if="subtitle" :class="$style.textContainer">
+			<n8n-text size="large">{{ subtitle }}</n8n-text>
+		</div>
+		<div :class="$style.formContainer">
+			<n8n-form-box
+				v-bind="form"
+				data-test-id="auth-form"
+				:button-loading="formLoading"
+				@secondary-click="onSecondaryClick"
+				@submit="onSubmit"
+				@update="onUpdate"
+			>
+				<SSOLogin v-if="withSso" />
+			</n8n-form-box>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 body {

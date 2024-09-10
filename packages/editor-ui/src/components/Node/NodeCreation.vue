@@ -18,17 +18,17 @@ type Props = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const NodeCreator = defineAsyncComponent(
-	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+const LazyNodeCreator = defineAsyncComponent(
+	async () => await import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
 
 const props = withDefaults(defineProps<Props>(), {
-	createNodeActive: false,
+	createNodeActive: false, // Determines if the node creator is open
 });
 
 const emit = defineEmits<{
-	(event: 'addNodes', value: AddedNodesAndConnections): void;
-	(event: 'toggleNodeCreator', value: ToggleNodeCreatorOptions): void;
+	addNodes: [value: AddedNodesAndConnections];
+	toggleNodeCreator: [value: ToggleNodeCreatorOptions];
 }>();
 
 const state = reactive({
@@ -88,13 +88,15 @@ function addStickyNote() {
 	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
 }
 
-function closeNodeCreator() {
-	emit('toggleNodeCreator', { createNodeActive: false });
+function closeNodeCreator(hasAddedNodes = false) {
+	if (props.createNodeActive) {
+		emit('toggleNodeCreator', { createNodeActive: false, hasAddedNodes });
+	}
 }
 
 function nodeTypeSelected(nodeTypes: string[]) {
 	emit('addNodes', getAddedNodesAndConnections(nodeTypes.map((type) => ({ type }))));
-	closeNodeCreator();
+	closeNodeCreator(true);
 }
 </script>
 
@@ -106,39 +108,39 @@ function nodeTypeSelected(nodeTypes: string[]) {
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-				<keyboard-shortcut-tooltip
+				<KeyboardShortcutTooltip
 					:label="$locale.baseText('nodeView.openNodesPanel')"
 					:shortcut="{ keys: ['Tab'] }"
 					placement="left"
 				>
 					<n8n-icon-button
-						size="xlarge"
+						size="large"
 						icon="plus"
 						type="tertiary"
 						:class="$style.nodeCreatorPlus"
 						@click="openNodeCreator"
 					/>
-				</keyboard-shortcut-tooltip>
+				</KeyboardShortcutTooltip>
 				<div
 					:class="[$style.addStickyButton, state.showStickyButton ? $style.visibleButton : '']"
-					@click="addStickyNote"
 					data-test-id="add-sticky-button"
+					@click="addStickyNote"
 				>
-					<keyboard-shortcut-tooltip
+					<KeyboardShortcutTooltip
 						:label="$locale.baseText('nodeView.addStickyHint')"
 						:shortcut="{ keys: ['s'], shiftKey: true }"
 						placement="left"
 					>
 						<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
-					</keyboard-shortcut-tooltip>
+					</KeyboardShortcutTooltip>
 				</div>
 			</div>
 		</div>
 		<Suspense>
-			<NodeCreator
+			<LazyNodeCreator
 				:active="createNodeActive"
-				@nodeTypeSelected="nodeTypeSelected"
-				@closeNodeCreator="closeNodeCreator"
+				@node-type-selected="nodeTypeSelected"
+				@close-node-creator="closeNodeCreator"
 			/>
 		</Suspense>
 	</div>
@@ -176,21 +178,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
-
-	button {
-		border-color: var(--color-button-node-creator-border-font);
-		color: var(--color-button-node-creator-border-font);
-
-		&:hover {
-			border-color: var(--color-button-node-creator-hover-border-font);
-			color: var(--color-button-node-creator-hover-border-font);
-			background: var(--color-button-node-creator-background);
-		}
-	}
 }
 .nodeCreatorPlus {
-	border-width: 2px;
-	border-radius: var(--border-radius-base);
 	width: 36px;
 	height: 36px;
 }

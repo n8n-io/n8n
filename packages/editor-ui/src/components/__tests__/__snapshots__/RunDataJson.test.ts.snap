@@ -86,14 +86,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="list"
               data-path="[0].list"
               data-target="mappable"
               data-value="{{ $('Set').item.json.list }}"
             >
-              "list"
+              
+              <span>
+                <!--v-if-->
+                "list"
+              </span>
+              
             </span>
             
             <span
@@ -140,14 +145,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[0]"
                 data-path="[0].list[0]"
                 data-target="mappable"
                 data-value="{{ $('Set').item.json.list[0] }}"
               >
-                1
+                
+                <span>
+                  <!--v-if-->
+                  1
+                </span>
+                
               </span>
               
             </span>
@@ -185,14 +195,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[1]"
                 data-path="[0].list[1]"
                 data-target="mappable"
                 data-value="{{ $('Set').item.json.list[1] }}"
               >
-                2
+                
+                <span>
+                  <!--v-if-->
+                  2
+                </span>
+                
               </span>
               
             </span>
@@ -230,14 +245,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
             >
               
               <span
-                class="mappable ph-no-capture"
+                class="content mappable ph-no-capture"
                 data-depth="3"
                 data-name="list[2]"
                 data-path="[0].list[2]"
                 data-target="mappable"
                 data-value="{{ $('Set').item.json.list[2] }}"
               >
-                3
+                
+                <span>
+                  <!--v-if-->
+                  3
+                </span>
+                
               </span>
               
             </span>
@@ -299,14 +319,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="record"
               data-path="[0].record"
               data-target="mappable"
               data-value="{{ $('Set').item.json.record }}"
             >
-              "record"
+              
+              <span>
+                <!--v-if-->
+                "record"
+              </span>
+              
             </span>
             
             <span
@@ -351,14 +376,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="3"
               data-name="name"
               data-path="[0].record.name"
               data-target="mappable"
               data-value="{{ $('Set').item.json.record.name }}"
             >
-              "name"
+              
+              <span>
+                <!--v-if-->
+                "name"
+              </span>
+              
             </span>
             
             <span
@@ -372,8 +402,15 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
-                "Joe"
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  "Joe"
+                </span>
+                
               </span>
               
             </span>
@@ -435,14 +472,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myNumber"
               data-path="[0].myNumber"
               data-target="mappable"
               data-value="{{ $('Set').item.json.myNumber }}"
             >
-              "myNumber"
+              
+              <span>
+                <!--v-if-->
+                "myNumber"
+              </span>
+              
             </span>
             
             <span
@@ -456,8 +498,15 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-number"
             >
               
-              <span>
-                123
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  123
+                </span>
+                
               </span>
               
             </span>
@@ -490,14 +539,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myStringNumber"
               data-path="[0].myStringNumber"
               data-target="mappable"
               data-value="{{ $('Set').item.json.myStringNumber }}"
             >
-              "myStringNumber"
+              
+              <span>
+                <!--v-if-->
+                "myStringNumber"
+              </span>
+              
             </span>
             
             <span
@@ -511,8 +565,15 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
-                "456"
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  "456"
+                </span>
+                
               </span>
               
             </span>
@@ -545,14 +606,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="myStringText"
               data-path="[0].myStringText"
               data-target="mappable"
               data-value="{{ $('Set').item.json.myStringText }}"
             >
-              "myStringText"
+              
+              <span>
+                <!--v-if-->
+                "myStringText"
+              </span>
+              
             </span>
             
             <span
@@ -566,8 +632,15 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-string"
             >
               
-              <span>
-                "abc"
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  "abc"
+                </span>
+                
               </span>
               
             </span>
@@ -600,14 +673,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="nil"
               data-path="[0].nil"
               data-target="mappable"
               data-value="{{ $('Set').item.json.nil }}"
             >
-              "nil"
+              
+              <span>
+                <!--v-if-->
+                "nil"
+              </span>
+              
             </span>
             
             <span
@@ -621,8 +699,15 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-null"
             >
               
-              <span>
-                null
+              <span
+                class="content"
+              >
+                
+                <span>
+                  <!--v-if-->
+                  null
+                </span>
+                
               </span>
               
             </span>
@@ -655,14 +740,19 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
           >
             
             <span
-              class="mappable"
+              class="content mappable"
               data-depth="2"
               data-name="d"
               data-path="[0].d"
               data-target="mappable"
               data-value="{{ $('Set').item.json.d }}"
             >
-              "d"
+              
+              <span>
+                <!--v-if-->
+                "d"
+              </span>
+              
             </span>
             
             <span
@@ -676,7 +766,11 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               class="vjs-value vjs-value-undefined"
             >
               
-              <span />
+              <span
+                class="content"
+              >
+                <span />
+              </span>
               
             </span>
             <!---->

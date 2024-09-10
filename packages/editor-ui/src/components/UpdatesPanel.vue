@@ -1,51 +1,3 @@
-<template>
-	<ModalDrawer :name="VERSIONS_MODAL_KEY" direction="ltr" width="520px">
-		<template #header>
-			<span :class="$style.title">
-				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
-			</span>
-		</template>
-		<template #content>
-			<section :class="$style['description']">
-				<p v-if="currentVersion">
-					{{
-						$locale.baseText('updatesPanel.youReOnVersion', {
-							interpolate: { currentVersionName: currentVersion.name },
-						})
-					}}
-					<strong>
-						<TimeAgo :date="currentVersion.createdAt" />
-					</strong>
-					{{ $locale.baseText('updatesPanel.andIs') }}
-					<strong>
-						{{
-							$locale.baseText('updatesPanel.version', {
-								interpolate: {
-									numberOfVersions: nextVersions.length,
-									howManySuffix: nextVersions.length > 1 ? 's' : '',
-								},
-							})
-						}}
-					</strong>
-					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
-				</p>
-
-				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
-					<font-awesome-icon icon="info-circle"></font-awesome-icon>
-					<span>
-						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
-					</span>
-				</n8n-link>
-			</section>
-			<section :class="$style.versions">
-				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
-					<VersionCard :version="version" />
-				</div>
-			</section>
-		</template>
-	</ModalDrawer>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 
@@ -83,6 +35,59 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<ModalDrawer
+		:name="VERSIONS_MODAL_KEY"
+		direction="ltr"
+		width="520px"
+		data-test-id="version-updates-panel"
+	>
+		<template #header>
+			<span :class="$style.title">
+				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
+			</span>
+		</template>
+		<template #content>
+			<section :class="$style['description']">
+				<p v-if="currentVersion">
+					{{
+						$locale.baseText('updatesPanel.youReOnVersion', {
+							interpolate: { currentVersionName: currentVersion.name },
+						})
+					}}
+					<strong>
+						<TimeAgo :date="currentVersion.createdAt" />
+					</strong>
+					{{ $locale.baseText('updatesPanel.andIs') }}
+					<strong>
+						{{
+							$locale.baseText('updatesPanel.version', {
+								interpolate: {
+									numberOfVersions: nextVersions.length,
+									howManySuffix: nextVersions.length > 1 ? 's' : '',
+								},
+							})
+						}}
+					</strong>
+					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
+				</p>
+
+				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
+					<font-awesome-icon icon="info-circle" class="mr-2xs" />
+					<span>
+						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
+					</span>
+				</n8n-link>
+			</section>
+			<section :class="$style.versions">
+				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
+					<VersionCard :version="version" />
+				</div>
+			</section>
+		</template>
+	</ModalDrawer>
+</template>
 
 <style module lang="scss">
 .title {

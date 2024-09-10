@@ -11,7 +11,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 export async function brandfetchApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {},
 	qs: IDataObject = {},
@@ -42,7 +42,11 @@ export async function brandfetchApiRequest(
 
 		console.log(options);
 
-		const response = await this.helpers.httpRequestWithAuthentication.call(this, 'brandfetchApi', options);
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			'brandfetchApi',
+			options,
+		);
 
 		if (response.statusCode && response.statusCode !== 200) {
 			throw new NodeApiError(this.getNode(), response as JsonObject);

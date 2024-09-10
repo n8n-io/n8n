@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
-import { STARTING_NODES } from './constants';
+import { STARTING_NODES } from '@/constants';
 
 /**
  * Returns if the given id is a valid workflow id
@@ -39,18 +38,6 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const alphabetizeKeys = (obj: INode) =>
-	Object.keys(obj)
-		.sort()
-		.reduce<Partial<INode>>(
-			(acc, key) => ({
-				...acc,
-				// @ts-expect-error @TECH_DEBT Adding index signature to INode causes type issues downstream
-				[key]: obj[key],
-			}),
-			{},
-		);
-
 export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	const pass: T[] = [];
 	const fail: T[] = [];
@@ -58,34 +45,6 @@ export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	array.forEach((i) => (test(i) ? pass : fail).push(i));
 
 	return [pass, fail];
-};
-
-export const webhookNotFoundErrorMessage = (
-	path: string,
-	httpMethod?: string,
-	webhookMethods?: string[],
-) => {
-	let webhookPath = path;
-
-	if (httpMethod) {
-		webhookPath = `${httpMethod} ${webhookPath}`;
-	}
-
-	if (webhookMethods?.length && httpMethod) {
-		let methods = '';
-
-		if (webhookMethods.length === 1) {
-			methods = webhookMethods[0];
-		} else {
-			const lastMethod = webhookMethods.pop();
-
-			methods = `${webhookMethods.join(', ')} or ${lastMethod as string}`;
-		}
-
-		return `This webhook is not registered for ${httpMethod} requests. Did you mean to make a ${methods} request?`;
-	} else {
-		return `The requested webhook "${webhookPath}" is not registered.`;
-	}
 };
 
 export const toError = (maybeError: unknown) =>
@@ -101,3 +60,36 @@ export const isIntegerString = (value: string) => /^\d+$/.test(value);
 export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
+
+export function removeTrailingSlash(path: string) {
+	return path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+// return the difference between two arrays
+export function rightDiff<T1, T2>(
+	[arr1, keyExtractor1]: [T1[], (item: T1) => string],
+	[arr2, keyExtractor2]: [T2[], (item: T2) => string],
+): T2[] {
+	// create map { itemKey => true } for fast lookup for diff
+	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
+		map[keyExtractor1(item)] = true;
+		return map;
+	}, {});
+
+	// diff against map
+	return arr2.reduce<T2[]>((acc, item) => {
+		if (!keyMap[keyExtractor2(item)]) {
+			acc.push(item);
+		}
+		return acc;
+	}, []);
+}
+
+/**
+ * Asserts that the passed in type is never.
+ * Can be used to make sure the type is exhausted
+ * in switch statements or if/else chains.
+ */
+export const assertNever = (_value: never) => {};
+
+export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeInt);

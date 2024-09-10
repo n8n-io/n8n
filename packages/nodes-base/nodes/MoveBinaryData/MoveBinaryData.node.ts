@@ -10,7 +10,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	deepCopy,
+	jsonParse,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
 
@@ -42,6 +48,7 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
@@ -53,8 +60,8 @@ export class MoveBinaryData implements INodeType {
 			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -176,9 +183,23 @@ export class MoveBinaryData implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
+					{
+						displayName: 'Add Byte Order Mark (BOM)',
+						name: 'addBOM',
+						description:
+							'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
+						displayOptions: {
+							show: {
+								'/mode': ['jsonToBinary'],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: false,
+					},
 					{
 						displayName: 'Data Is Base64',
 						name: 'dataIsBase64',
@@ -206,7 +227,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: 'utf8',
-						description: 'Set the encoding of the data stream',
+						description: 'Choose the character set to use to encode the data',
 					},
 					{
 						displayName: 'Strip BOM',
@@ -219,18 +240,6 @@ export class MoveBinaryData implements INodeType {
 						},
 						type: 'boolean',
 						default: true,
-					},
-					{
-						displayName: 'Add BOM',
-						name: 'addBOM',
-						displayOptions: {
-							show: {
-								'/mode': ['jsonToBinary'],
-								encoding: bomAware,
-							},
-						},
-						type: 'boolean',
-						default: false,
 					},
 					{
 						displayName: 'File Name',

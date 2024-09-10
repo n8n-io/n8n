@@ -6,9 +6,9 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, randomInt } from 'n8n-workflow';
 
-import { isEqual, isNull, merge } from 'lodash';
+import { isEqual, isNull, merge, isObject, reduce, get } from 'lodash';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -42,6 +42,32 @@ export function chunk<T>(array: T[], size = 1) {
 }
 
 /**
+ * Shuffles an array in place using the Fisher-Yates shuffle algorithm
+ * @param {Array} array The array to shuffle.
+ */
+export const shuffleArray = <T>(array: T[]): void => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = randomInt(i + 1);
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+};
+
+/**
+ * Flattens an object with deep data
+ * @param {IDataObject} data The object to flatten
+ * @param {string[]} prefix The prefix to add to each key in the returned flat object
+ */
+export const flattenKeys = (obj: IDataObject, prefix: string[] = []): IDataObject => {
+	return !isObject(obj)
+		? { [prefix.join('.')]: obj }
+		: reduce(
+				obj,
+				(cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...prefix, key])),
+				{},
+			);
+};
+
+/**
  * Takes a multidimensional array and converts it to a one-dimensional array.
  *
  * @param {Array} nestedArray The array to be flattened.
@@ -70,6 +96,38 @@ export function flatten<T>(nestedArray: T[][]) {
 	return result as any;
 }
 
+/**
+ * Compares the values of specified keys in two objects.
+ *
+ * @param {T} obj1 - The first object to compare.
+ * @param {T} obj2 - The second object to compare.
+ * @param {string[]} keys - An array of keys to compare.
+ * @param {boolean} disableDotNotation - Whether to use dot notation to access nested properties.
+ * @returns {boolean} - Whether the values of the specified keys are equal in both objects.
+ */
+export const compareItems = <T extends { json: Record<string, unknown> }>(
+	obj1: T,
+	obj2: T,
+	keys: string[],
+	disableDotNotation: boolean = false,
+): boolean => {
+	let result = true;
+	for (const key of keys) {
+		if (!disableDotNotation) {
+			if (!isEqual(get(obj1.json, key), get(obj2.json, key))) {
+				result = false;
+				break;
+			}
+		} else {
+			if (!isEqual(obj1.json[key], obj2.json[key])) {
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+};
+
 export function updateDisplayOptions(
 	displayOptions: IDisplayOptions,
 	properties: INodeProperties[],
@@ -90,12 +148,12 @@ export function processJsonInput<T>(jsonData: T, inputName?: string) {
 		try {
 			values = jsonParse(jsonData);
 		} catch (error) {
-			throw new Error(`Input ${input}must contain a valid JSON`);
+			throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 		}
 	} else if (typeof jsonData === 'object') {
 		values = jsonData;
 	} else {
-		throw new Error(`Input ${input}must contain a valid JSON`);
+		throw new ApplicationError(`Input ${input} must contain a valid JSON`, { level: 'warning' });
 	}
 
 	return values;
@@ -223,14 +281,17 @@ export const keysToLowercase = <T>(headers: T) => {
  * @param privateKey - The private key to format.
  * @returns The formatted private key.
  */
-export function formatPrivateKey(privateKey: string): string {
+export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
+	let regex = /(PRIVATE KEY|CERTIFICATE)/;
+	if (keyIsPublic) {
+		regex = /(PUBLIC KEY)/;
+	}
 	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
 	let formattedPrivateKey = '';
 	const parts = privateKey.split('-----').filter((item) => item !== '');
 	parts.forEach((part) => {
-		const regex = /(PRIVATE KEY|CERTIFICATE)/;
 		if (regex.test(part)) {
 			formattedPrivateKey += `-----${part}-----`;
 		} else {
@@ -326,3 +387,20 @@ export function preparePairedItemDataArray(
 	if (Array.isArray(pairedItem)) return pairedItem;
 	return [pairedItem];
 }
+
+export const sanitizeDataPathKey = (item: IDataObject, key: string) => {
+	if (item[key] !== undefined) {
+		return key;
+	}
+
+	if (
+		(key.startsWith("['") && key.endsWith("']")) ||
+		(key.startsWith('["') && key.endsWith('"]'))
+	) {
+		key = key.slice(2, -2);
+		if (item[key] !== undefined) {
+			return key;
+		}
+	}
+	return key;
+};

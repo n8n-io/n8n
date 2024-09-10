@@ -1,15 +1,10 @@
 import type {
-	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	ValidationResult,
 } from 'n8n-workflow';
 
-export interface IProcessMessage {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	data?: any;
-	type: string;
-}
+export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
 export interface IResponseError extends Error {
 	statusCode?: number;
@@ -22,7 +17,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 }
 
 export interface IWorkflowData {
-	pollResponses?: IPollResponse[];
 	triggerResponses?: ITriggerResponse[];
 }
 
@@ -41,4 +35,4 @@ export namespace n8n {
 	}
 }
 
-export type ExtendedValidationResult = Partial<ValidationResult> & { fieldName?: string };
+export type ExtendedValidationResult = ValidationResult & { fieldName?: string };

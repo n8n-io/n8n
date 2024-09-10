@@ -4,10 +4,9 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUrl } from 'request';
 
 /**
  * Make an API request to Mattermost
@@ -29,7 +28,7 @@ export async function apiRequest(
 	//set-up uri
 	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,

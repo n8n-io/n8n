@@ -5,6 +5,7 @@ import type {
 	INodeListSearchItems,
 	INodePropertyOptions,
 	INode,
+	ResourceMapperField,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from './GoogleSheet';
@@ -28,7 +29,7 @@ export function getSpreadsheetId(
 		throw new NodeOperationError(
 			node,
 			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
-			{ severity: 'warning' },
+			{ level: 'warning' },
 		);
 	}
 	if (documentIdType === 'url') {
@@ -43,6 +44,11 @@ export function getSpreadsheetId(
 	}
 	// If it is byID or byList we can just return
 	return value;
+}
+
+export function getSheetId(value: string): number {
+	if (value === 'gid=0') return 0;
+	return parseInt(value);
 }
 
 // Convert number to Sheets / Excel column name
@@ -72,7 +78,7 @@ export function getColumnNumber(colPosition: string): number {
 export function hexToRgb(hex: string) {
 	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
 	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
+	hex = hex.replace(shorthandRegex, (_, r, g, b) => {
 		return r + r + g + g + b + b;
 	});
 
@@ -328,4 +334,31 @@ export function cellFormatDefault(nodeVersion: number) {
 		return 'RAW';
 	}
 	return 'USER_ENTERED';
+}
+
+export function checkForSchemaChanges(
+	node: INode,
+	columnNames: string[],
+	schema: ResourceMapperField[],
+) {
+	const updatedColumnNames: Array<{ oldName: string; newName: string }> = [];
+
+	//if sheet does not contain ROW_NUMBER ignore it as data come from read rows operation
+	const schemaColumns = columnNames.includes(ROW_NUMBER)
+		? schema.map((s) => s.id)
+		: schema.filter((s) => s.id !== ROW_NUMBER).map((s) => s.id);
+
+	for (const [columnIndex, columnName] of columnNames.entries()) {
+		const schemaEntry = schemaColumns[columnIndex];
+		if (schemaEntry === undefined) break;
+		if (columnName !== schemaEntry) {
+			updatedColumnNames.push({ oldName: schemaEntry, newName: columnName });
+		}
+	}
+
+	if (updatedColumnNames.length) {
+		throw new NodeOperationError(node, "Column names were updated after the node's setup", {
+			description: `Refresh the columns list in the 'Column to Match On' parameter. Updated columns: ${updatedColumnNames.map((c) => `${c.oldName} -> ${c.newName}`).join(', ')}`,
+		});
+	}
 }

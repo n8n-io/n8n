@@ -6,13 +6,14 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeConnectionType, jsonParse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSE Trigger',
 		name: 'sseTrigger',
 		icon: 'fa:cloud-download-alt',
+		iconColor: 'dark-blue',
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when Server-Sent Events occur',
@@ -34,7 +35,7 @@ export class SseTrigger implements INodeType {
 				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'URL',

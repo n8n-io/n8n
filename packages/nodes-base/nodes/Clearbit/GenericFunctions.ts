@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function clearbitApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	api: string,
 	resource: string,
 
@@ -21,7 +21,7 @@ export async function clearbitApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('clearbitApi');
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: { Authorization: `Bearer ${credentials.apiKey}` },
 		method,
 		qs,

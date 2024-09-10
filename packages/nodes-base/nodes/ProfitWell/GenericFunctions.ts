@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function profitWellApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -21,7 +21,7 @@ export async function profitWellApiRequest(
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('profitWellApi');
-		let options: OptionsWithUri = {
+		let options: IRequestOptions = {
 			headers: {
 				Authorization: credentials.accessToken,
 			},

@@ -1,5 +1,20 @@
-import type { INodeParameters, INodeProperties } from '@/Interfaces';
-import { getNodeParameters } from '@/NodeHelpers';
+import {
+	NodeConnectionType,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type INodeType,
+	type INodeTypeDescription,
+} from '@/Interfaces';
+import type { Workflow } from '@/Workflow';
+import {
+	getNodeParameters,
+	getNodeHints,
+	isSingleExecution,
+	isSubNodeType,
+	applyDeclarativeNodeOptionParameters,
+	convertNodeToAiTool,
+} from '@/NodeHelpers';
 
 describe('NodeHelpers', () => {
 	describe('getNodeParameters', () => {
@@ -3436,5 +3451,275 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+	});
+
+	describe('getNodeHints', () => {
+		//TODO: Add more tests here when hints are added to some node types
+		test('should return node hints if present in node type', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+			expect(hints[0].message).toEqual('TEST HINT');
+		});
+		test('should not include hint if displayCondition is false', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'FALSE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return false;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(0);
+		});
+		test('should include hint if displayCondition is true', () => {
+			const testType = {
+				hints: [
+					{
+						message: 'TEST HINT',
+						displayCondition: 'TRUE DISPLAY CONDITION EXPESSION',
+					},
+				],
+			} as INodeTypeDescription;
+
+			const workflow = {
+				expression: {
+					getSimpleParameterValue(
+						_node: string,
+						_parameter: string,
+						_mode: string,
+						_additionalData = {},
+					) {
+						return true;
+					},
+				},
+			} as unknown as Workflow;
+
+			const node: INode = {
+				name: 'Test Node Hints',
+			} as INode;
+			const nodeType = testType;
+
+			const hints = getNodeHints(workflow, node, nodeType);
+
+			expect(hints).toHaveLength(1);
+		});
+	});
+
+	describe('isSingleExecution', () => {
+		test('should determine based on node parameters if it would be executed once', () => {
+			expect(isSingleExecution('n8n-nodes-base.code', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.code', { mode: 'runOnceForEachItem' })).toEqual(
+				false,
+			);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.executeWorkflow', { mode: 'each' })).toEqual(false);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.crateDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.timescaleDb', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'update' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.microsoftSql', { operation: 'delete' })).toEqual(
+				true,
+			);
+			expect(isSingleExecution('n8n-nodes-base.questDb', {})).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'insert' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.mongoDb', { operation: 'update' })).toEqual(true);
+			expect(isSingleExecution('n8n-nodes-base.redis', {})).toEqual(true);
+		});
+	});
+
+	describe('isSubNodeType', () => {
+		const tests: Array<[boolean, Pick<INodeTypeDescription, 'outputs'> | null]> = [
+			[false, null],
+			[false, { outputs: '={{random_expression}}' }],
+			[false, { outputs: [] }],
+			[false, { outputs: [NodeConnectionType.Main] }],
+			[true, { outputs: [NodeConnectionType.AiAgent] }],
+			[true, { outputs: [NodeConnectionType.Main, NodeConnectionType.AiAgent] }],
+		];
+		test.each(tests)('should return %p for %o', (expected, nodeType) => {
+			expect(isSubNodeType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('applyDeclarativeNodeOptionParameters', () => {
+		test.each([
+			[
+				'node with execute method',
+				{
+					execute: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with trigger method',
+				{
+					trigger: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'node with webhook method',
+				{
+					webhook: jest.fn(),
+					description: {
+						properties: [],
+					},
+				},
+			],
+			[
+				'a polling node-type',
+				{
+					description: {
+						polling: true,
+						properties: [],
+					},
+				},
+			],
+			[
+				'a node-type with a non-main output',
+				{
+					description: {
+						outputs: ['main', 'ai_agent'],
+						properties: [],
+					},
+				},
+			],
+		])('should not modify properties on node with %s method', (_, nodeTypeName) => {
+			const nodeType = nodeTypeName as unknown as INodeType;
+			applyDeclarativeNodeOptionParameters(nodeType);
+			expect(nodeType.description.properties).toEqual([]);
+		});
+	});
+
+	describe('convertNodeToAiTool', () => {
+		let fullNodeWrapper: { description: INodeTypeDescription };
+
+		beforeEach(() => {
+			fullNodeWrapper = {
+				description: {
+					displayName: 'Test Node',
+					name: 'testNode',
+					group: ['test'],
+					description: 'A test node',
+					version: 1,
+					defaults: {},
+					inputs: [NodeConnectionType.Main],
+					outputs: [NodeConnectionType.Main],
+					properties: [],
+				},
+			};
+		});
+
+		it('should modify the name and displayName correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.name).toBe('testNodeTool');
+			expect(result.description.displayName).toBe('Test Node Tool (wrapped)');
+		});
+
+		it('should update inputs and outputs', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.inputs).toEqual([]);
+			expect(result.description.outputs).toEqual([NodeConnectionType.AiTool]);
+		});
+
+		it('should remove the usableAsTool property', () => {
+			fullNodeWrapper.description.usableAsTool = true;
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.usableAsTool).toBeUndefined();
+		});
+
+		it("should add toolDescription property if it doesn't exist", () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			const toolDescriptionProp = result.description.properties.find(
+				(prop) => prop.name === 'toolDescription',
+			);
+			expect(toolDescriptionProp).toBeDefined();
+			expect(toolDescriptionProp?.type).toBe('string');
+			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+		});
+
+		it('should not add toolDescription property if it already exists', () => {
+			const toolDescriptionProp: INodeProperties = {
+				displayName: 'Tool Description',
+				name: 'toolDescription',
+				type: 'string',
+				default: 'Existing description',
+			};
+			fullNodeWrapper.description.properties = [toolDescriptionProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(1);
+			expect(result.description.properties[0]).toEqual(toolDescriptionProp);
+		});
+
+		it('should set codex categories correctly', () => {
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.codex).toEqual({
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: ['Other Tools'],
+				},
+			});
+		});
+
+		it('should preserve existing properties', () => {
+			const existingProp: INodeProperties = {
+				displayName: 'Existing Prop',
+				name: 'existingProp',
+				type: 'string',
+				default: 'test',
+			};
+			fullNodeWrapper.description.properties = [existingProp];
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			expect(result.description.properties).toHaveLength(2); // Existing prop + toolDescription
+			expect(result.description.properties).toContainEqual(existingProp);
+		});
 	});
 });

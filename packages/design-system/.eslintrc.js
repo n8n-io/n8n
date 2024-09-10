@@ -9,8 +9,6 @@ module.exports = {
 	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
-		'n8n-local-rules/dangerously-use-html-string-missing': 'off',
-
 		// TODO: Remove these
 		'import/no-default-export': 'warn',
 		'import/order': 'off',
@@ -22,12 +20,6 @@ module.exports = {
 	},
 
 	overrides: [
-		{
-			files: ['src/**/*.stories.ts'],
-			rules: {
-				'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
-			},
-		},
 		{
 			files: ['src/**/*.stories.ts', 'src/**/*.vue', 'src/**/*.spec.ts'],
 			rules: {

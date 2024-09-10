@@ -11,14 +11,14 @@ export const showFor =
 							operation: operations,
 						},
 					},
-			  }
+				}
 			: {
 					displayOptions: {
 						show: {
 							resource: resources,
 						},
 					},
-			  };
+				};
 	};
 
 export const mapWith =
@@ -51,7 +51,7 @@ export const getAdditionalOptions = (fields: INodeProperties[]): INodeProperties
 			},
 		},
 		default: {},
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		options: fields,
 	};
 };

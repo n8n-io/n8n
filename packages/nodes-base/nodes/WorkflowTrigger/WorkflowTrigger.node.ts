@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 type eventType = 'Workflow activated' | 'Workflow updated' | undefined;
 type activationType = 'activate' | 'update';
@@ -13,6 +14,7 @@ export class WorkflowTrigger implements INodeType {
 		displayName: 'Workflow Trigger',
 		name: 'workflowTrigger',
 		icon: 'fa:network-wired',
+		iconColor: 'orange-red',
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers based on various lifecycle events, like when a workflow is activated',
@@ -24,7 +26,7 @@ export class WorkflowTrigger implements INodeType {
 			color: '#ff6d5a',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Events',

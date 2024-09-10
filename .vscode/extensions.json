@@ -5,7 +5,7 @@
 		"dbaeumer.vscode-eslint",
 		"EditorConfig.EditorConfig",
 		"esbenp.prettier-vscode",
-		"Vue.vscode-typescript-vue-plugin",
+		"mjmlio.vscode-mjml",
 		"Vue.volar"
 	]
 }

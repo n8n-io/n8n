@@ -127,6 +127,7 @@
 	border-radius: var.$tag-border-radius;
 	box-sizing: border-box;
 	white-space: nowrap;
+	line-height: 1;
 
 	.el-icon.el-tag__close {
 		border-radius: 50%;
@@ -137,9 +138,8 @@
 		height: 16px;
 		width: 16px;
 		line-height: 16px;
-		vertical-align: middle;
-		top: -1px;
-		right: -5px;
+		margin-top: 0;
+		margin-right: 0;
 
 		&::before {
 			display: block;

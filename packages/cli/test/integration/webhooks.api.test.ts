@@ -1,24 +1,30 @@
 import { readFileSync } from 'fs';
-import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
-import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+} from 'n8n-workflow';
 
-import { AbstractServer } from '@/AbstractServer';
-import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
-import { NodeTypes } from '@/NodeTypes';
+import { AbstractServer } from '@/abstract-server';
+import { ExternalHooks } from '@/external-hooks';
+import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 
 import { mockInstance } from '../shared/mocking';
-import { initActiveWorkflowRunner } from './shared/utils';
-import * as testDb from './shared/testDb';
+import { initActiveWorkflowManager } from './shared/utils';
+import * as testDb from './shared/test-db';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import type { SuperAgentTest } from './shared/types';
+import { Telemetry } from '@/telemetry';
+
+mockInstance(Telemetry);
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 	mockInstance(Push);
 
 	let agent: SuperAgentTest;
@@ -41,7 +47,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			await initActiveWorkflowRunner();
+			await initActiveWorkflowManager();
 
 			const server = new (class extends AbstractServer {})();
 			await server.start();
@@ -144,7 +150,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			await initActiveWorkflowRunner();
+			await initActiveWorkflowManager();
 
 			const server = new (class extends AbstractServer {})();
 			await server.start();
@@ -181,7 +187,7 @@ describe('Webhook API', () => {
 			description: '',
 			defaults: {},
 			inputs: [],
-			outputs: ['main'],
+			outputs: [NodeConnectionType.Main],
 			webhooks: [
 				{
 					name: 'default',

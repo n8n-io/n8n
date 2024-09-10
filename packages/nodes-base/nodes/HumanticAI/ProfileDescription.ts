@@ -68,7 +68,7 @@ export const profileFields: INodeProperties[] = [
 		description: 'Whether to send a resume for a resume based analysis',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -79,7 +79,7 @@ export const profileFields: INodeProperties[] = [
 				sendResume: [true],
 			},
 		},
-		description: 'The resume in PDF or DOCX format',
+		hint: 'The name of the input binary field containing the resume in PDF or DOCX format',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -104,7 +104,7 @@ export const profileFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -180,7 +180,7 @@ export const profileFields: INodeProperties[] = [
 		description: 'Additional text written by the user',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -191,6 +191,6 @@ export const profileFields: INodeProperties[] = [
 				sendResume: [true],
 			},
 		},
-		description: 'The resume in PDF or DOCX format',
+		hint: 'The name of the input binary field containing the resume in PDF or DOCX format',
 	},
 ];

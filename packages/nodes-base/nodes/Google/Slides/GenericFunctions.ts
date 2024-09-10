@@ -1,9 +1,9 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -12,7 +12,7 @@ import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -22,7 +22,7 @@ export async function googleApiRequest(
 		0,
 		'serviceAccount',
 	) as string;
-	const options: OptionsWithUri & { headers: IDataObject } = {
+	const options: IRequestOptions & { headers: IDataObject } = {
 		headers: {
 			'Content-Type': 'application/json',
 		},

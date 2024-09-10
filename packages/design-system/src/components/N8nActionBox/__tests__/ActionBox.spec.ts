@@ -10,6 +10,7 @@ describe('N8NActionBox', () => {
 				description:
 					'Long description that you should know something is the way it is because of how it is. ',
 				buttonText: 'Do something',
+				buttonType: 'primary',
 			},
 			global: {
 				stubs: ['n8n-heading', 'n8n-text', 'n8n-button', 'n8n-callout'],

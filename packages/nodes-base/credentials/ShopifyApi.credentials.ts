@@ -6,7 +6,6 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
 
@@ -63,7 +62,7 @@ export class ShopifyApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2019-10',
+			baseURL: '=https://{{$credentials.shopSubdomain}}.myshopify.com/admin/api/2024-07',
 			url: '/products.json',
 		},
 	};

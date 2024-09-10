@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -33,7 +33,7 @@ export class FacebookTrigger implements INodeType {
 			name: 'Facebook Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'facebookGraphAppApi',
@@ -62,6 +62,17 @@ export class FacebookTrigger implements INodeType {
 				required: true,
 				default: '',
 				description: 'Facebook APP ID',
+			},
+			{
+				displayName: 'To watch Whatsapp business account events use the Whatsapp trigger node',
+				name: 'whatsappBusinessAccountNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						object: ['whatsappBusinessAccount'],
+					},
+				},
 			},
 			{
 				displayName: 'Object',
@@ -195,7 +206,7 @@ export class FacebookTrigger implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
-						{ severity: 'warning' },
+						{ level: 'warning' },
 					);
 				}
 

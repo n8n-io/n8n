@@ -1,8 +1,13 @@
-import { EventEmitter } from 'events';
 import { assert, jsonStringify } from 'n8n-workflow';
-import type { IPushDataType } from '@/Interfaces';
-import type { Logger } from '@/Logger';
-import type { User } from '@db/entities/User';
+import type { IPushDataType } from '@/interfaces';
+import type { Logger } from '@/logger';
+import type { User } from '@/databases/entities/user';
+import { TypedEmitter } from '@/typed-emitter';
+import type { OnPushMessage } from '@/push/types';
+
+export interface AbstractPushEvents {
+	message: OnPushMessage;
+}
 
 /**
  * Abstract class for two-way push communication.
@@ -10,88 +15,98 @@ import type { User } from '@db/entities/User';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> extends EventEmitter {
+export abstract class AbstractPush<T> extends TypedEmitter<AbstractPushEvents> {
 	protected connections: Record<string, T> = {};
 
-	protected userIdBySessionId: Record<string, string> = {};
+	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
-	protected abstract sendToOne(connection: T, data: string): void;
+	protected abstract sendToOneConnection(connection: T, data: string): void;
 
 	constructor(protected readonly logger: Logger) {
 		super();
 	}
 
-	protected add(sessionId: string, userId: User['id'], connection: T): void {
-		const { connections, userIdBySessionId: userIdsBySessionId } = this;
-		this.logger.debug('Add editor-UI session', { sessionId });
+	protected add(pushRef: string, userId: User['id'], connection: T) {
+		const { connections, userIdByPushRef } = this;
+		this.logger.debug('Add editor-UI session', { pushRef });
 
-		const existingConnection = connections[sessionId];
+		const existingConnection = connections[pushRef];
+
 		if (existingConnection) {
-			// Make sure to remove existing connection with the same id
+			// Make sure to remove existing connection with the same ID
 			this.close(existingConnection);
 		}
 
-		connections[sessionId] = connection;
-		userIdsBySessionId[sessionId] = userId;
+		connections[pushRef] = connection;
+		userIdByPushRef[pushRef] = userId;
 	}
 
-	protected onMessageReceived(sessionId: string, msg: unknown): void {
-		this.logger.debug('Received message from editor-UI', { sessionId, msg });
-		const userId = this.userIdBySessionId[sessionId];
-		this.emit('message', {
-			sessionId,
-			userId,
-			msg,
-		});
+	protected onMessageReceived(pushRef: string, msg: unknown) {
+		this.logger.debug('Received message from editor-UI', { pushRef, msg });
+
+		const userId = this.userIdByPushRef[pushRef];
+
+		this.emit('message', { pushRef, userId, msg });
 	}
 
-	protected remove(sessionId?: string): void {
-		if (sessionId !== undefined) {
-			this.logger.debug('Remove editor-UI session', { sessionId });
-			delete this.connections[sessionId];
-			delete this.userIdBySessionId[sessionId];
-		}
+	protected remove(pushRef?: string) {
+		if (!pushRef) return;
+
+		this.logger.debug('Removed editor-UI session', { pushRef });
+
+		delete this.connections[pushRef];
+		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendToSessions<D>(type: IPushDataType, data: D, sessionIds: string[]) {
+	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
 		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
 			dataType: type,
-			sessionIds: sessionIds.join(', '),
+			pushRefs: pushRefs.join(', '),
 		});
 
-		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
+		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
-		for (const sessionId of sessionIds) {
-			const connection = this.connections[sessionId];
+		for (const pushRef of pushRefs) {
+			const connection = this.connections[pushRef];
 			assert(connection);
-			this.sendToOne(connection, sendData);
+			this.sendToOneConnection(connection, stringifiedPayload);
 		}
 	}
 
-	broadcast<D>(type: IPushDataType, data?: D) {
-		this.sendToSessions(type, data, Object.keys(this.connections));
+	sendToAll(type: IPushDataType, data?: unknown) {
+		this.sendTo(type, data, Object.keys(this.connections));
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string) {
-		const { connections } = this;
-		if (connections[sessionId] === undefined) {
-			this.logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
+	sendToOne(type: IPushDataType, data: unknown, pushRef: string) {
+		if (this.connections[pushRef] === undefined) {
+			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendToSessions(type, data, [sessionId]);
+		this.sendTo(type, data, [pushRef]);
 	}
 
-	/**
-	 * Sends the given data to given users' connections
-	 */
-	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
-		const userSessionIds = Object.keys(connections).filter((sessionId) =>
-			userIds.includes(this.userIdBySessionId[sessionId]),
+		const userPushRefs = Object.keys(connections).filter((pushRef) =>
+			userIds.includes(this.userIdByPushRef[pushRef]),
 		);
 
-		this.sendToSessions(type, data, userSessionIds);
+		this.sendTo(type, data, userPushRefs);
+	}
+
+	closeAllConnections() {
+		for (const pushRef in this.connections) {
+			// Signal the connection that we want to close it.
+			// We are not removing the sessions here because it should be
+			// the implementation's responsibility to do so once the connection
+			// has actually closed.
+			this.close(this.connections[pushRef]);
+		}
+	}
+
+	hasPushRef(pushRef: string) {
+		return this.connections[pushRef] !== undefined;
 	}
 }

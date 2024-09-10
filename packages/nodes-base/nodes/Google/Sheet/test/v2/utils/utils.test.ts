@@ -1,8 +1,9 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, ResourceMapperField } from 'n8n-workflow';
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import {
 	addRowNumber,
 	autoMapInputData,
+	checkForSchemaChanges,
 	prepareSheetData,
 	removeEmptyColumns,
 	removeEmptyRows,
@@ -280,5 +281,166 @@ describe('Test Google Sheets, autoMapInputData', () => {
 				info: 'some info',
 			},
 		]);
+	});
+});
+
+describe('Test Google Sheets, lookupValues', () => {
+	const inputData = [
+		['row_number', 'id', 'num', 'text'],
+		[2, 1, '111', 'bar'],
+		[3, 3, 1, 'bar'],
+		[4, 4, 1, 'baz'],
+		[5, 5, 1, 'baz'],
+		[6, 6, 66, 'foo'],
+		[7, 7, 77, 'foo'],
+	] as string[][];
+
+	it('should return rows by combining filters by OR', async () => {
+		const fakeExecuteFunction = {
+			getNode() {
+				return {};
+			},
+		} as unknown as IExecuteFunctions;
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		const result = await googleSheet.lookupValues({
+			inputData,
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
+				{
+					lookupColumn: 'num',
+					lookupValue: '1',
+				},
+				{
+					lookupColumn: 'text',
+					lookupValue: 'foo',
+				},
+			],
+			returnAllMatches: true,
+			combineFilters: 'OR',
+		});
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([
+			{
+				row_number: 3,
+				id: 3,
+				num: 1,
+				text: 'bar',
+			},
+			{
+				row_number: 4,
+				id: 4,
+				num: 1,
+				text: 'baz',
+			},
+			{
+				row_number: 5,
+				id: 5,
+				num: 1,
+				text: 'baz',
+			},
+			{
+				row_number: 6,
+				id: 6,
+				num: 66,
+				text: 'foo',
+			},
+			{
+				row_number: 7,
+				id: 7,
+				num: 77,
+				text: 'foo',
+			},
+		]);
+	});
+
+	it('should return rows by combining filters by AND', async () => {
+		const fakeExecuteFunction = {
+			getNode() {
+				return {};
+			},
+		} as unknown as IExecuteFunctions;
+
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		const result = await googleSheet.lookupValues({
+			inputData,
+			keyRowIndex: 0,
+			dataStartRowIndex: 1,
+			lookupValues: [
+				{
+					lookupColumn: 'num',
+					lookupValue: '1',
+				},
+				{
+					lookupColumn: 'text',
+					lookupValue: 'baz',
+				},
+			],
+			returnAllMatches: true,
+			combineFilters: 'AND',
+		});
+
+		expect(result).toBeDefined();
+		expect(result).toEqual([
+			{
+				row_number: 4,
+				id: 4,
+				num: 1,
+				text: 'baz',
+			},
+			{
+				row_number: 5,
+				id: 5,
+				num: 1,
+				text: 'baz',
+			},
+		]);
+	});
+});
+
+describe('Test Google Sheets, checkForSchemaChanges', () => {
+	it('should not to throw error', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'data' },
+			] as ResourceMapperField[]),
+		).not.toThrow();
+	});
+	it('should throw error when columns were renamed', async () => {
+		const node: INode = {
+			id: '1',
+			name: 'Google Sheets',
+			typeVersion: 4.4,
+			type: 'n8n-nodes-base.googleSheets',
+			position: [60, 760],
+			parameters: {
+				operation: 'append',
+			},
+		};
+
+		expect(() =>
+			checkForSchemaChanges(node, ['id', 'name', 'data'], [
+				{ id: 'id' },
+				{ id: 'name' },
+				{ id: 'text' },
+			] as ResourceMapperField[]),
+		).toThrow("Column names were updated after the node's setup");
 	});
 });

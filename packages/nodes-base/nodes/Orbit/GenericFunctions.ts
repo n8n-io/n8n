@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	JsonObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -13,7 +13,7 @@ import type { IRelation } from './Interfaces';
 
 export async function orbitApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -23,7 +23,7 @@ export async function orbitApiRequest(
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('orbitApi');
-		let options: OptionsWithUri = {
+		let options: IRequestOptions = {
 			headers: {
 				Authorization: `Bearer ${credentials.accessToken}`,
 			},
@@ -86,7 +86,7 @@ export function resolveMember(responseData: IRelation) {
 export async function orbitApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

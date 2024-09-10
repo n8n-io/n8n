@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import type { IMessage } from './GenericFunctions';
 import { mailjetApiRequest, validateJSON } from './GenericFunctions';
@@ -27,8 +27,8 @@ export class Mailjet implements INodeType {
 		defaults: {
 			name: 'Mailjet',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mailjetEmailApi',

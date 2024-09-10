@@ -1,0 +1,469 @@
+{
+  "name": "html extract fix",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b421815f-bbeb-480d-a759-6a0360a050b6",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "html"
+            }
+          ]
+        },
+        "options": {
+          "cleanUpText": true
+        }
+      },
+      "id": "73ed18ec-3a26-4300-b917-240faa810a33",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "html",
+              "skipSelectors": "img, a"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d8eaf4c4-be91-43ba-b5ff-efcc7ece60b0",
+      "name": "HTML2",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "p",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "145a5168-69fd-49bd-a2a0-07841854937c",
+      "name": "HTML3",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "=html"
+            }
+          ]
+        },
+        "options": {
+          "trimValues": true
+        }
+      },
+      "id": "7a370ce9-e4c4-46e0-89a4-881a6c8a7019",
+      "name": "HTML1",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "div",
+              "returnValue": "attribute"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "64c9005d-f9fe-457e-8e24-f1c59e76aeae",
+      "name": "HTML4",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "body",
+              "returnValue": "html"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eef6b477-2c28-4c20-884f-93bbd48f9d0d",
+      "name": "HTML5",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "data",
+              "cssSelector": "#text-id",
+              "returnValue": "value"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a548e5e3-0dcd-4f52-a581-bd046ef325b3",
+      "name": "HTML6",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  data: `<html>\n<head>\n\t<title>My Page</title>\t\n</head>\n<body>\n\t<h1>My Page</h1>\n\t<p>Hello World</p>\n\t<div class=\"content\">\n\t\t<p>Another paragraph\\n</p>\n\t\t<p>Yet \\r\\n\\r\\n\\t\\t\\t\\t\\t\\t\\another paragraph\\n</p>\n\t\t<p>And\\one more\\n</p>\n\t</div>\n\t<img src=\"https://n8n.io/n8n-logo.png\" alt=\"n8n.io logo\" />\n\t<a href=\"https://n8n.io\">n8n.io</a>\n    <input id=\"text-id\" type=\"text\" value=\"n8n\" />\n</body>\n</html>`\n};"
+      },
+      "id": "ed46f03d-6cde-4225-beab-fdbe82bf095f",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        740
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9d4c07df-3348-4b0e-b144-dfb038bddb99",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0dd56421-7e3a-4908-a933-c4e09de6b7d5",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        620
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "15c21267-b4b7-4805-ad40-32060400fcef",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        780
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d6fd1d78-e24b-4237-bd66-620130f0e5fc",
+      "name": "No Operation, do nothing3",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        1140
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f8b7457b-7b46-4af6-958c-ad770f29e587",
+      "name": "No Operation, do nothing4",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        960
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f509b012-78ea-4e14-9ee4-ebdd562efe3e",
+      "name": "No Operation, do nothing5",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        420
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "173f20fb-80aa-42d1-97b1-fc7a751fbedd",
+      "name": "No Operation, do nothing6",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        1300
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing4": [
+      {
+        "json": {
+          "data": {
+            "class": "content"
+          }
+        }
+      }
+    ],
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "data": "MY PAGEHello WorldAnother paragraphYet another paragraphAndone moren8n.io logo [https://n8n.io/n8n-logo.png] n8n.io [https://n8n.io]"
+        }
+      }
+    ],
+    "No Operation, do nothing5": [
+      {
+        "json": {
+          "data": "MY PAGE\n\nHello World\n\nAnother paragraph\n\nYet another paragraph\n\nAndone more\n\nn8n.io logo [https://n8n.io/n8n-logo.png] n8n.io [https://n8n.io]"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "data": "MY PAGE\n\nHello World\n\nAnother paragraph\n\nYet another paragraph\n\nAndone more"
+        }
+      }
+    ],
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "data": [
+            "Hello World",
+            "Another paragraph",
+            "Yet another paragraph",
+            "Andone more"
+          ]
+        }
+      }
+    ],
+    "No Operation, do nothing3": [
+      {
+        "json": {
+          "data": "\n\t<h1>My Page</h1>\n\t<p>Hello World</p>\n\t<div class=\"content\">\n\t\t<p>Another paragraph\n</p>\n\t\t<p>Yet \n\n\t\t\t\t\t\tanother paragraph\n</p>\n\t\t<p>Andone more\n</p>\n\t</div>\n\t<img src=\"https://n8n.io/n8n-logo.png\" alt=\"n8n.io logo\">\n\t<a href=\"https://n8n.io\">n8n.io</a>\n    <input id=\"text-id\" type=\"text\" value=\"n8n\">\n\n"
+        }
+      }
+    ],
+    "No Operation, do nothing6": [
+      {
+        "json": {
+          "data": "n8n"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTML6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML6": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML5": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML4": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "170b087f-19bf-4cbd-90cf-d684fb112034",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+  },
+  "id": "vqwcz5PIBQmAw4SZ",
+  "tags": []
+}

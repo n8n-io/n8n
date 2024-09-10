@@ -2,21 +2,19 @@
 import Modal from './Modal.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, SOURCE_CONTROL_PUSH_MODAL_KEY } from '@/constants';
 import { computed, onMounted, ref } from 'vue';
-import type { PropType } from 'vue';
 import type { EventBus } from 'n8n-design-system/utils';
 import type { SourceControlAggregatedFile } from '@/Interface';
-import { useI18n, useLoadingService, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useToast } from '@/composables/useToast';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useUIStore } from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
 import { useRoute } from 'vue-router';
 import dateformat from 'dateformat';
 
-const props = defineProps({
-	data: {
-		type: Object as PropType<{ eventBus: EventBus; status: SourceControlAggregatedFile[] }>,
-		default: () => ({}),
-	},
-});
+const props = defineProps<{
+	data: { eventBus: EventBus; status: SourceControlAggregatedFile[] };
+}>();
 
 const defaultStagedFileTypes = ['tags', 'variables', 'credential'];
 
@@ -40,9 +38,9 @@ const files = ref<SourceControlAggregatedFile[]>(
 
 const commitMessage = ref('');
 const loading = ref(true);
-const context = ref<'workflow' | 'workflows' | 'credentials' | string>('');
+const context = ref<'workflow' | 'workflows' | 'credentials' | ''>('');
 
-const statusToBadgeThemeMap = {
+const statusToBadgeThemeMap: Record<string, string> = {
 	created: 'success',
 	deleted: 'danger',
 	modified: 'warning',
@@ -62,7 +60,7 @@ const workflowId = computed(() => {
 });
 
 const sortedFiles = computed(() => {
-	const statusPriority = {
+	const statusPriority: Record<string, number> = {
 		modified: 1,
 		renamed: 2,
 		created: 3,
@@ -84,7 +82,11 @@ const sortedFiles = computed(() => {
 			return 1;
 		}
 
-		return a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0;
+		return (a.updatedAt ?? 0) < (b.updatedAt ?? 0)
+			? 1
+			: (a.updatedAt ?? 0) > (b.updatedAt ?? 0)
+				? -1
+				: 0;
 	});
 });
 
@@ -139,7 +141,7 @@ function getContext() {
 		return 'workflows';
 	} else if (
 		route.fullPath.startsWith('/credentials') ||
-		uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open
+		uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open
 	) {
 		return 'credentials';
 	} else if (route.fullPath.startsWith('/workflow/')) {
@@ -149,13 +151,18 @@ function getContext() {
 	return '';
 }
 
-function getStagedFilesByContext(files: SourceControlAggregatedFile[]): Record<string, boolean> {
-	const stagedFiles = files.reduce((acc, file) => {
-		acc[file.file] = false;
-		return acc;
-	}, {});
+function getStagedFilesByContext(
+	filesByContext: SourceControlAggregatedFile[],
+): Record<string, boolean> {
+	const stagedFiles = filesByContext.reduce(
+		(acc, file) => {
+			acc[file.file] = false;
+			return acc;
+		},
+		{} as Record<string, boolean>,
+	);
 
-	files.forEach((file) => {
+	filesByContext.forEach((file) => {
 		if (defaultStagedFileTypes.includes(file.type)) {
 			stagedFiles[file.file] = true;
 		}
@@ -182,13 +189,13 @@ function close() {
 }
 
 function renderUpdatedAt(file: SourceControlAggregatedFile) {
-	const currentYear = new Date().getFullYear();
+	const currentYear = new Date().getFullYear().toString();
 
 	return i18n.baseText('settings.sourceControl.lastUpdated', {
 		interpolate: {
 			date: dateformat(
 				file.updatedAt,
-				`d mmm${file.updatedAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
 			),
 			time: dateformat(file.updatedAt, 'HH:MM'),
 		},
@@ -225,14 +232,31 @@ async function commitAndPush() {
 		loadingService.stopLoading();
 	}
 }
+
+function getStatusText(file: SourceControlAggregatedFile): string {
+	if (file.status === 'deleted') {
+		return i18n.baseText('settings.sourceControl.status.deleted');
+	}
+
+	if (file.status === 'created') {
+		return i18n.baseText('settings.sourceControl.status.created');
+	}
+
+	if (file.status === 'modified') {
+		return i18n.baseText('settings.sourceControl.status.modified');
+	}
+
+	return i18n.baseText('settings.sourceControl.status.renamed');
+}
 </script>
 
 <template>
 	<Modal
 		width="812px"
 		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
-		:eventBus="data.eventBus"
+		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
+		max-height="80%"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -248,13 +272,13 @@ async function commitAndPush() {
 						<div class="mt-l mb-2xs">
 							<n8n-checkbox
 								:indeterminate="selectAllIndeterminate"
-								:modelValue="selectAll"
-								@update:modelValue="onToggleSelectAll"
+								:model-value="selectAll"
+								@update:model-value="onToggleSelectAll"
 							>
 								<n8n-text bold tag="strong">
 									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 								</n8n-text>
-								<n8n-text tag="strong" v-show="workflowFiles.length > 0">
+								<n8n-text v-show="workflowFiles.length > 0" tag="strong">
 									({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
 								</n8n-text>
 							</n8n-checkbox>
@@ -268,9 +292,9 @@ async function commitAndPush() {
 						>
 							<div :class="$style.listItemBody">
 								<n8n-checkbox
-									:modelValue="staged[file.file]"
+									:model-value="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@update:modelValue="setStagedStatus(file, !staged[file.file])"
+									@update:model-value="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
@@ -278,7 +302,7 @@ async function commitAndPush() {
 										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
 										<strong>{{ file.name || file.id }}</strong>
 									</n8n-text>
-									<n8n-text bold v-else> {{ file.name }} </n8n-text>
+									<n8n-text v-else bold> {{ file.name }} </n8n-text>
 									<div v-if="file.updatedAt">
 										<n8n-text color="text-light" size="small">
 											{{ renderUpdatedAt(file) }}
@@ -287,19 +311,19 @@ async function commitAndPush() {
 								</div>
 								<div :class="$style.listItemStatus">
 									<n8n-badge
-										class="mr-2xs"
 										v-if="workflowId === file.id && file.type === 'workflow'"
+										class="mr-2xs"
 									>
 										Current workflow
 									</n8n-badge>
 									<n8n-badge :theme="statusToBadgeThemeMap[file.status] || 'default'">
-										{{ i18n.baseText(`settings.sourceControl.status.${file.status}`) }}
+										{{ getStatusText(file) }}
 									</n8n-badge>
 								</div>
 							</div>
 						</n8n-card>
 					</div>
-					<n8n-notice class="mt-0" v-else>
+					<n8n-notice v-else class="mt-0">
 						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
 							<template #link>
 								<n8n-link size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
@@ -315,8 +339,8 @@ async function commitAndPush() {
 						{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
 					</n8n-text>
 					<n8n-input
-						type="text"
 						v-model="commitMessage"
+						type="text"
 						:placeholder="
 							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"

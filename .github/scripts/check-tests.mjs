@@ -1,11 +1,10 @@
-import fs from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import util from 'util';
 import { exec } from 'child_process';
 import { glob } from 'glob';
 import ts from 'typescript';
 
-const readFileAsync = util.promisify(fs.readFile);
 const execAsync = util.promisify(exec);
 
 const filterAsync = async (asyncPredicate, arr) => {
@@ -37,7 +36,7 @@ const isAbstractMethod = (node) => {
 
 // Function to check if a file has a function declaration, function expression, object method or class
 const hasFunctionOrClass = async (filePath) => {
-	const fileContent = await readFileAsync(filePath, 'utf-8');
+	const fileContent = await readFile(filePath, 'utf-8');
 	const sourceFile = ts.createSourceFile(filePath, fileContent, ts.ScriptTarget.Latest, true);
 
 	let hasFunctionOrClass = false;

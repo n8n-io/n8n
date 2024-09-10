@@ -297,7 +297,7 @@ export const simplifyBoolean: INodeProperties = {
 // embeds -----------------------------------------------------------------------------------------
 const embedFields: INodeProperties[] = [
 	{
-		displayName: 'Description (Required)',
+		displayName: 'Description',
 		name: 'description',
 		type: 'string',
 		default: '',
@@ -318,7 +318,7 @@ const embedFields: INodeProperties[] = [
 	{
 		displayName: 'Color',
 		name: 'color',
-		// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+
 		type: 'color',
 		default: '',
 		description: 'Color code of the embed',
@@ -416,11 +416,9 @@ export const embedsFixedCollection: INodeProperties = {
 				{
 					displayName: 'Value',
 					name: 'json',
-					type: 'string',
+					type: 'json',
 					default: '={}',
 					typeOptions: {
-						editor: 'json',
-						editorLanguage: 'json',
 						rows: 2,
 					},
 					displayOptions: {

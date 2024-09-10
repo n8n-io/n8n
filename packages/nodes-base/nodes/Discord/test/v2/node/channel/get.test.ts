@@ -1,15 +1,15 @@
-import type { INodeTypes } from 'n8n-workflow';
+import type { INodeTypes, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
-import type { OptionsWithUrl } from 'request-promise-native';
 import * as transport from '../../../../v2/transport/helpers';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
+// TODO: use nock
 const requestApiSpy = jest.spyOn(transport, 'requestApi');
 
 requestApiSpy.mockImplementation(
-	async (options: OptionsWithUrl, credentialType: string, endpoint: string) => {
+	async (_options: IRequestOptions, _credentialType: string, endpoint: string) => {
 		if (endpoint === '/users/@me/guilds') {
 			return {
 				headers: {},
@@ -107,6 +107,6 @@ describe('Test DiscordV2, channel => get', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

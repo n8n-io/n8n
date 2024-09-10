@@ -16,7 +16,7 @@ export const register = () => {
 			const sizeDifference = (unconnectedPlusSize - unconnectedDiamondWidth) / 2;
 
 			const container = svg.node('g', {
-				style: `--svg-color: var(${endpointInstance.params.color})`,
+				style: `--svg-color: var(--endpoint-svg-color, var(${endpointInstance.params.color}))`,
 				width,
 				height,
 			});
@@ -70,11 +70,10 @@ export const register = () => {
 			container.appendChild(unconnectedGroup);
 			container.appendChild(defaultGroup);
 
-			endpointInstance.setupOverlays();
 			endpointInstance.setVisible(false);
 
 			return container;
 		},
-		updateNode: (endpointInstance: N8nAddInputEndpoint) => {},
+		updateNode: () => {},
 	});
 };

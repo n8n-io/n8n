@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import omit from 'lodash/omit';
 import moment from 'moment-timezone';
@@ -48,8 +49,8 @@ export class Wise implements INodeType {
 		defaults: {
 			name: 'Wise',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'wiseApi',
@@ -213,7 +214,7 @@ export class Wise implements INodeType {
 
 						const profileId = this.getNodeParameter('profileId', i);
 						const borderlessAccountId = this.getNodeParameter('borderlessAccountId', i);
-						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf';
+						const format = this.getNodeParameter('format', i) as 'json' | 'csv' | 'pdf' | 'xml';
 						const endpoint = `v3/profiles/${profileId}/borderless-accounts/${borderlessAccountId}/statement.${format}`;
 
 						const qs = {

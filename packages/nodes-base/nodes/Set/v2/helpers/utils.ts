@@ -5,14 +5,21 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeOperationError,
+	deepCopy,
+	getValueDescription,
+	jsonParse,
+	validateFieldType,
+} from 'n8n-workflow';
 
-import set from 'lodash/set';
 import get from 'lodash/get';
+import set from 'lodash/set';
 import unset from 'lodash/unset';
 
-import { getResolvables } from '../../../../utils/utilities';
-import type { SetNodeOptions, SetField } from './interfaces';
+import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
+import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
@@ -31,13 +38,13 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 	} else {
 		return {
 			set: (item: IDataObject, key: string, value: IDataObject) => {
-				item[key] = value;
+				item[sanitizeDataPathKey(item, key)] = value;
 			},
 			get: (item: IDataObject, key: string) => {
-				return item[key];
+				return item[sanitizeDataPathKey(item, key)];
 			},
 			unset: (item: IDataObject, key: string) => {
-				delete item[key];
+				delete item[sanitizeDataPathKey(item, key)];
 			},
 		};
 	}
@@ -49,13 +56,17 @@ export function composeReturnItem(
 	inputItem: INodeExecutionData,
 	newFields: IDataObject,
 	options: SetNodeOptions,
+	nodeVersion: number,
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
 		pairedItem: { item: itemIndex },
 	};
 
-	if (options.includeBinary && inputItem.binary !== undefined) {
+	const includeBinary =
+		(nodeVersion >= 3.4 && !options.stripBinary && options.include !== 'none') ||
+		(nodeVersion < 3.4 && !!options.includeBinary);
+	if (includeBinary && inputItem.binary !== undefined) {
 		// Create a shallow copy of the binary data so that the old
 		// data references which do not get changed still stay behind
 		// but the incoming data does not get changed.
@@ -101,7 +112,9 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new Error(`The include option "${options.include}" is not known!`);
+			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+				level: 'warning',
+			});
 	}
 
 	for (const key of Object.keys(newFields)) {
@@ -155,46 +168,43 @@ export const parseJsonParameter = (
 };
 
 export const validateEntry = (
-	entry: SetField,
+	name: string,
+	type: FieldType,
+	value: unknown,
 	node: INode,
 	itemIndex: number,
 	ignoreErrors = false,
 	nodeVersion?: number,
 ) => {
-	let entryValue = entry[entry.type];
-	const name = entry.name;
-
-	if (nodeVersion && nodeVersion >= 3.2 && (entryValue === undefined || entryValue === null)) {
+	if (nodeVersion && nodeVersion >= 3.2 && (value === undefined || value === null)) {
 		return { name, value: null };
 	}
 
-	const entryType = entry.type.replace('Value', '') as FieldType;
-
 	const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
 
-	if (entryType === 'string') {
-		if (nodeVersion && nodeVersion > 3 && (entryValue === undefined || entryValue === null)) {
+	if (type === 'string') {
+		if (nodeVersion && nodeVersion > 3 && (value === undefined || value === null)) {
 			if (ignoreErrors) {
 				return { name, value: null };
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${entryType} but we got '${String(entryValue)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
 					{ description },
 				);
 			}
-		} else if (typeof entryValue === 'object') {
-			entryValue = JSON.stringify(entryValue);
+		} else if (typeof value === 'object') {
+			value = JSON.stringify(value);
 		} else {
-			entryValue = String(entryValue);
+			value = String(value);
 		}
 	}
 
-	const validationResult = validateFieldType(name, entryValue, entryType);
+	const validationResult = validateFieldType(name, value, type);
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = entry[entry.type];
+			return { name, value: value ?? null };
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -204,9 +214,10 @@ export const validateEntry = (
 		}
 	}
 
-	const value = validationResult.newValue === undefined ? null : validationResult.newValue;
-
-	return { name, value };
+	return {
+		name,
+		value: validationResult.newValue ?? null,
+	};
 };
 
 export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {

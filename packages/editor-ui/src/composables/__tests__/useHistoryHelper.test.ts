@@ -3,8 +3,9 @@ import { MAIN_HEADER_TABS } from '@/constants';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useHistoryHelper } from '../useHistoryHelper';
-import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
+import { defineComponent, type PropType } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
+import { mock } from 'vitest-mock-extended';
 
 const undoMock = vi.fn();
 const redoMock = vi.fn();
@@ -22,19 +23,27 @@ vi.mock('@/stores/history.store', () => {
 		}),
 	};
 });
-vi.mock('@/stores/ui.store');
+vi.mock('@/stores/ui.store', () => {
+	return {
+		useUIStore: () => ({
+			isAnyModalOpen: false,
+		}),
+	};
+});
 vi.mock('vue-router', () => ({
 	useRoute: () => ({}),
+	RouterLink: vi.fn(),
 }));
 
 const TestComponent = defineComponent({
 	props: {
 		route: {
-			type: Object,
+			type: Object as PropType<RouteLocationNormalizedLoaded>,
+			required: true,
 		},
 	},
 	setup(props) {
-		useHistoryHelper(props.route as Route);
+		useHistoryHelper(props.route);
 
 		return {};
 	},
@@ -50,12 +59,12 @@ describe('useHistoryHelper', () => {
 		// @ts-ignore
 		render(TestComponent, {
 			props: {
-				route: {
+				route: mock<RouteLocationNormalizedLoaded>({
 					name: MAIN_HEADER_TABS.WORKFLOW,
 					meta: {
 						nodeView: true,
 					},
-				},
+				}),
 			},
 		});
 
@@ -68,12 +77,12 @@ describe('useHistoryHelper', () => {
 		// @ts-ignore
 		render(TestComponent, {
 			props: {
-				route: {
+				route: mock<RouteLocationNormalizedLoaded>({
 					name: MAIN_HEADER_TABS.WORKFLOW,
 					meta: {
 						nodeView: true,
 					},
-				},
+				}),
 			},
 		});
 

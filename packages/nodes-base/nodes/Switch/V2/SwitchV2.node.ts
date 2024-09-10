@@ -22,7 +22,7 @@ export class SwitchV2 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: ['main'],
+			inputs: [NodeConnectionType.Main],
 
 			outputs: `={{
 					((parameters) => {
@@ -182,7 +182,7 @@ export class SwitchV2 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -257,7 +257,7 @@ export class SwitchV2 implements INodeType {
 										},
 									],
 									default: 'after',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -348,7 +348,7 @@ export class SwitchV2 implements INodeType {
 										},
 									],
 									default: 'smaller',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -455,7 +455,7 @@ export class SwitchV2 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -643,6 +643,8 @@ export class SwitchV2 implements INodeType {
 				item = items[itemIndex];
 				const rules = this.getNodeParameter('rules.rules', itemIndex, []) as INodeParameters[];
 				mode = this.getNodeParameter('mode', itemIndex) as string;
+
+				item.pairedItem = { item: itemIndex };
 
 				if (mode === 'expression') {
 					const outputsAmount = this.getNodeParameter('outputsAmount', itemIndex) as number;

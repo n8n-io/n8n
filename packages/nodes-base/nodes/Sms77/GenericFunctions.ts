@@ -1,7 +1,12 @@
-import type { IDataObject, IExecuteFunctions, IHookFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to seven
@@ -11,12 +16,12 @@ import type { OptionsWithUri } from 'request';
  */
 export async function sms77ApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			SentWith: 'n8n',
 		},

@@ -31,7 +31,6 @@ const airtableReadOnlyFields = [
 	'rollup',
 	'externalSyncSource',
 	'multipleLookupValues',
-	'multipleRecordLinks',
 ];
 
 const airtableTypesMap: TypesMap = {
@@ -42,7 +41,7 @@ const airtableTypesMap: TypesMap = {
 	time: [],
 	object: [],
 	options: ['singleSelect'],
-	array: ['multipleSelects', 'multipleAttachments'],
+	array: ['multipleSelects', 'multipleRecordLinks', 'multipleAttachments'],
 };
 
 function mapForeignType(foreignType: string, typesMap: TypesMap): FieldType {
@@ -79,7 +78,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 
 	if (!tableData) {
 		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
-			severity: 'warning',
+			level: 'warning',
 		});
 	}
 

@@ -1,6 +1,6 @@
-import { License } from '@/License';
 import { Container } from 'typedi';
-import { BaseCommand } from '../BaseCommand';
+import { License } from '@/license';
+import { BaseCommand } from '../base-command';
 
 export class LicenseInfoCommand extends BaseCommand {
 	static description = 'Print license information';

@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	organizationOperations,
@@ -40,7 +40,7 @@ export class Kitemaker implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kitemaker',
 		name: 'kitemaker',
-		icon: 'file:kitemaker.svg',
+		icon: { light: 'file:kitemaker.svg', dark: 'file:kitemaker.dark.svg' },
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
@@ -48,8 +48,8 @@ export class Kitemaker implements INodeType {
 		defaults: {
 			name: 'Kitemaker',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'kitemakerApi',

@@ -1,9 +1,9 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -17,7 +17,7 @@ import type {
 
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
@@ -30,10 +30,10 @@ export async function gristApiRequest(
 		planType === 'free'
 			? `https://docs.getgrist.com/api${endpoint}`
 			: planType === 'paid'
-			  ? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-			  : `${selfHostedUrl}/api${endpoint}`;
+				? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+				: `${selfHostedUrl}/api${endpoint}`;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},

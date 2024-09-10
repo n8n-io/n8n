@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { onBeforeUnmount, onMounted, computed, ref } from 'vue';
 import { TIME } from '@/constants';
+import { isUserGlobalOwner } from '@/utils/userUtils';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
@@ -16,7 +17,7 @@ const activeUsersSorted = computed(() => {
 	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
 		(userInfo) => userInfo.user,
 	);
-	const owner = currentWorkflowUsers.find((user) => user.globalRoleId === 1);
+	const owner = currentWorkflowUsers.find(isUserGlobalOwner);
 	return {
 		defaultGroup: owner
 			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]
@@ -53,6 +54,7 @@ const onDocumentVisibilityChange = () => {
 };
 
 onMounted(() => {
+	collaborationStore.initialize();
 	startHeartbeat();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 });
@@ -60,6 +62,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 	stopHeartbeat();
+	collaborationStore.terminate();
 });
 </script>
 
@@ -68,7 +71,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack :users="activeUsersSorted" :currentUserEmail="currentUserEmail" />
+		<n8n-user-stack :users="activeUsersSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

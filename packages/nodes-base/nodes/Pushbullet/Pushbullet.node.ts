@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
@@ -23,8 +24,8 @@ export class Pushbullet implements INodeType {
 		defaults: {
 			name: 'Pushbullet',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pushbulletOAuth2Api',
@@ -156,7 +157,7 @@ export class Pushbullet implements INodeType {
 				description: 'URL of the push',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -169,8 +170,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be created',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Target',

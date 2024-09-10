@@ -1,4 +1,5 @@
 import nock from 'nock';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import * as upload from '../../../../v2/actions/file/upload.operation';
 
@@ -11,7 +12,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function (method: string) {
+		googleApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
 					headers: { location: 'someLocation' },
@@ -48,7 +49,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		jest.unmock('../../../../v2/helpers/utils');
 	});
 
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			name: 'newFile.txt',
 			folderId: {
@@ -75,7 +76,7 @@ describe('test GoogleDriveV2: file upload', () => {
 			undefined,
 			{ uploadType: 'resumable' },
 			undefined,
-			{ resolveWithFullResponse: true },
+			{ returnFullResponse: true },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',

@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 export class SwitchV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -20,8 +20,13 @@ export class SwitchV1 implements INodeType {
 				name: 'Switch',
 				color: '#506000',
 			},
-			inputs: ['main'],
-			outputs: ['main', 'main', 'main', 'main'],
+			inputs: [NodeConnectionType.Main],
+			outputs: [
+				NodeConnectionType.Main,
+				NodeConnectionType.Main,
+				NodeConnectionType.Main,
+				NodeConnectionType.Main,
+			],
 			outputNames: ['0', '1', '2', '3'],
 			properties: [
 				{
@@ -151,7 +156,7 @@ export class SwitchV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -229,7 +234,7 @@ export class SwitchV1 implements INodeType {
 										},
 									],
 									default: 'after',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -323,7 +328,7 @@ export class SwitchV1 implements INodeType {
 										},
 									],
 									default: 'smaller',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',
@@ -433,7 +438,7 @@ export class SwitchV1 implements INodeType {
 										},
 									],
 									default: 'equal',
-									description: 'Operation to decide where the the data should be mapped to',
+									description: 'Operation to decide where the data should be mapped to',
 								},
 								{
 									displayName: 'Value 2',

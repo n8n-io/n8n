@@ -1,0 +1,13 @@
+{
+	"extends": ["../../../tsconfig.json", "../../../tsconfig.backend.json"],
+	"compilerOptions": {
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["credentials/**/*", "nodes/**/*", "utils/**/*.ts", "nodes/**/*.json", "types/*.ts"],
+	"references": [
+		{ "path": "../../workflow/tsconfig.build.json" },
+		{ "path": "../../core/tsconfig.build.json" }
+	]
+}

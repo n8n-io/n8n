@@ -6,13 +6,14 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
 		icon: 'fa:sync',
+		iconColor: 'dark-green',
 		group: ['organization'],
 		version: 3,
 		description: 'Split data into batches and iterate over each batch',
@@ -20,9 +21,9 @@ export class SplitInBatchesV3 implements INodeType {
 			name: 'Loop Over Items',
 			color: '#007755',
 		},
-		inputs: ['main'],
+		inputs: [NodeConnectionType.Main],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['main', 'main'],
+		outputs: [NodeConnectionType.Main, NodeConnectionType.Main],
 		outputNames: ['done', 'loop'],
 		properties: [
 			{
@@ -46,7 +47,7 @@ export class SplitInBatchesV3 implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{

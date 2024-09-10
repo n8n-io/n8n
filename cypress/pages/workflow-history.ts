@@ -1,7 +1,7 @@
-import { BasePage } from "./base";
+import { BasePage } from './base';
 
 export class WorkflowHistoryPage extends BasePage {
-    getters = {
-        workflowHistoryCloseButton: () => cy.getByTestId('workflow-history-close-button'),
-    }
+	getters = {
+		workflowHistoryCloseButton: () => cy.getByTestId('workflow-history-close-button'),
+	};
 }

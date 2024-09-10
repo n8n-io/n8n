@@ -36,8 +36,12 @@ export const Example = Template.bind({});
 Example.args = {
 	options: [
 		{
-			label: 'Test',
-			value: 'test',
+			label: 'First',
+			value: 'first',
+		},
+		{
+			label: 'Second',
+			value: 'second',
 		},
 		{
 			label: 'Github',

@@ -159,6 +159,12 @@ export const invoiceFields: INodeProperties[] = [
 				default: false,
 			},
 			{
+				displayName: 'Mark Sent',
+				name: 'markSent',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Paid',
 				name: 'paid',
 				type: 'number',

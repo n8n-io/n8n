@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeConnectionType, NodeApiError } from 'n8n-workflow';
 import { validateJSON, veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
 import { eventFields, eventOperations } from './EventDescripion';
@@ -23,8 +23,8 @@ export class Vero implements INodeType {
 		defaults: {
 			name: 'Vero',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'veroApi',

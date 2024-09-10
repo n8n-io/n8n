@@ -219,8 +219,10 @@ export class Github implements INodeType {
 
 ```json
 {
-	"header.displayName": "🇩🇪 GitHub",
-	"header.description": "🇩🇪 Consume GitHub API"
+	"header": {
+		"displayName": "🇩🇪 GitHub",
+		"description": "🇩🇪 Consume GitHub API"
+	}
 }
 ```
 
@@ -495,7 +497,7 @@ pnpm start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/nodes-base
-pnpm build:translations
+pnpm n8n-generate-translations
 pnpm watch
 ```
 
@@ -504,6 +506,6 @@ After changing the dynamic text file:
 1. Stop and restart the first terminal.
 2. Refresh the browser at `http://localhost:5678`
 
-If a `headerText` section was changed, re-run `pnpm build:translations` in `/nodes-base`.
+If a `headerText` section was changed, re-run `pnpm n8n-generate-translations` in `/nodes-base`.
 
 > **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.

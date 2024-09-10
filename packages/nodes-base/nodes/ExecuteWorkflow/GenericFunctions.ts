@@ -1,17 +1,27 @@
 import { readFile as fsReadFile } from 'fs/promises';
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type IExecuteWorkflowInfo,
-	jsonParse,
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IExecuteWorkflowInfo,
+	INodeParameterResourceLocator,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
 	const workflowInfo: IExecuteWorkflowInfo = {};
-
+	const nodeVersion = this.getNode().typeVersion;
 	if (source === 'database') {
 		// Read workflow from database
-		workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+		if (nodeVersion === 1) {
+			workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
+		} else {
+			const { value } = this.getNodeParameter(
+				'workflowId',
+				itemIndex,
+				{},
+			) as INodeParameterResourceLocator;
+			workflowInfo.id = value as string;
+		}
 	} else if (source === 'localFile') {
 		// Read workflow from filesystem
 		const workflowPath = this.getNodeParameter('workflowPath', itemIndex) as string;
@@ -47,7 +57,7 @@ export async function getWorkflowInfo(this: IExecuteFunctions, source: string, i
 			uri: workflowUrl,
 			json: true,
 			gzip: true,
-		};
+		} satisfies IRequestOptions;
 
 		const response = await this.helpers.request(requestOptions);
 		workflowInfo.code = response;

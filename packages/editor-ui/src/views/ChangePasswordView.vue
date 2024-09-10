@@ -1,16 +1,6 @@
-<template>
-	<AuthView
-		v-if="config"
-		:form="config"
-		:formLoading="loading"
-		@submit="onSubmit"
-		@update="onInput"
-	/>
-</template>
-
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
@@ -170,3 +160,13 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<AuthView
+		v-if="config"
+		:form="config"
+		:form-loading="loading"
+		@submit="onSubmit"
+		@update="onInput"
+	/>
+</template>

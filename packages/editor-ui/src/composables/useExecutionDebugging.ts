@@ -1,16 +1,26 @@
 import { h, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useI18n, useMessage, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
 import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/constants';
-import { useSettingsStore, useUIStore, useWorkflowsStore } from '@/stores';
 import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from './useTelemetry';
+import { useRootStore } from '@/stores/root.store';
+import { isFullExecutionResponse } from '@/utils/typeGuards';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 
 export const useExecutionDebugging = () => {
+	const telemetry = useTelemetry();
+
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
@@ -19,8 +29,8 @@ export const useExecutionDebugging = () => {
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
-	const isDebugEnabled = computed(() =>
-		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
+	const isDebugEnabled = computed(
+		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DebugInEditor],
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
@@ -52,7 +62,7 @@ export const useExecutionDebugging = () => {
 				h(
 					'ul',
 					{ class: 'mt-l ml-l' },
-					matchingPinnedNodeNames.map((name) => h('li', name)),
+					matchingPinnedNodeNames.map((name) => h('li', sanitizeHtml(name))),
 				),
 			]);
 
@@ -88,17 +98,22 @@ export const useExecutionDebugging = () => {
 		workflowsStore.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
-		workflowNodes
-			.filter((node: INodeUi) => !workflow.getParentNodes(node.name).length)
-			.forEach((node: INodeUi) => {
-				const nodeData = runData[node.name]?.[0].data?.main[0];
-				if (nodeData) {
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-					});
-				}
-			});
+		const pinnableNodes = workflowNodes.filter(
+			(node: INodeUi) => !workflow.getParentNodes(node.name).length,
+		);
+
+		let pinnings = 0;
+
+		pinnableNodes.forEach((node: INodeUi) => {
+			const nodeData = runData[node.name]?.[0].data?.main[0];
+			if (nodeData) {
+				pinnings++;
+				workflowsStore.pinData({
+					node,
+					data: nodeData,
+				});
+			}
+		});
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),
@@ -115,6 +130,13 @@ export const useExecutionDebugging = () => {
 				type: 'warning',
 			});
 		}
+
+		telemetry.track('User clicked debug execution button', {
+			instance_id: useRootStore().instanceId,
+			exec_status: isFullExecutionResponse(execution) ? execution.status : '',
+			override_pinned_data: pinnableNodes.length === pinnings,
+			all_exec_data_imported: missingNodeNames.length === 0,
+		});
 	};
 
 	const handleDebugLinkClick = (event: Event): void => {

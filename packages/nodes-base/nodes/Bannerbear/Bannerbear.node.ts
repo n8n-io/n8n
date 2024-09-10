@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
 
@@ -27,8 +28,8 @@ export class Bannerbear implements INodeType {
 		defaults: {
 			name: 'Bannerbear',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'bannerbearApi',
@@ -144,7 +145,7 @@ export class Bannerbear implements INodeType {
 
 						const promise = async (uid: string) => {
 							let data: IDataObject = {};
-							return new Promise((resolve, reject) => {
+							return await new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {
 									data = await bannerbearApiRequest.call(this, 'GET', `/images/${uid}`);
 

@@ -1,85 +1,8 @@
-<template>
-	<div :class="$style.container">
-		<header :class="$style.header">
-			<node-icon
-				v-if="runMeta?.node"
-				:class="$style.nodeIcon"
-				:node-type="runMeta.node"
-				:size="20"
-			/>
-			<div :class="$style.headerWrap">
-				<p :class="$style.title">
-					{{ inputData.node }}
-				</p>
-				<ul :class="$style.meta">
-					<li v-if="runMeta?.startTimeMs">{{ runMeta?.executionTimeMs }}ms</li>
-					<li v-if="runMeta?.startTimeMs">
-						<n8n-tooltip>
-							<template #content>
-								{{ new Date(runMeta?.startTimeMs).toLocaleString() }}
-							</template>
-							{{
-								$locale.baseText('runData.aiContentBlock.startedAt', {
-									interpolate: {
-										startTime: new Date(runMeta?.startTimeMs).toLocaleTimeString(),
-									},
-								})
-							}}
-						</n8n-tooltip>
-					</li>
-					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0">
-						{{
-							$locale.baseText('runData.aiContentBlock.tokens', {
-								interpolate: {
-									count: consumedTokensSum?.totalTokens.toString()!,
-								},
-							})
-						}}
-						<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right">
-							<div>
-								<n8n-text :bold="true" size="small">
-									{{ $locale.baseText('runData.aiContentBlock.tokens.prompt') }}
-									{{
-										$locale.baseText('runData.aiContentBlock.tokens', {
-											interpolate: {
-												count: consumedTokensSum?.promptTokens.toString()!,
-											},
-										})
-									}}
-								</n8n-text>
-								<br />
-								<n8n-text :bold="true" size="small">
-									{{ $locale.baseText('runData.aiContentBlock.tokens.completion') }}
-									{{
-										$locale.baseText('runData.aiContentBlock.tokens', {
-											interpolate: {
-												count: consumedTokensSum?.completionTokens.toString()!,
-											},
-										})
-									}}
-								</n8n-text>
-							</div>
-						</n8n-info-tip>
-					</li>
-				</ul>
-			</div>
-		</header>
-
-		<main :class="$style.content" v-for="(run, index) in props.inputData.data" :key="index">
-			<AiRunContentBlock :runData="run" />
-		</main>
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { IAiData, IAiDataContent } from '@/Interface';
-import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
-import type {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { INodeExecutionData, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
@@ -104,12 +27,13 @@ type TokenUsageData = {
 	promptTokens: number;
 	totalTokens: number;
 };
+
 const consumedTokensSum = computed(() => {
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const consumedTokensSum1 = outputRun.value?.data?.reduce(
+	const tokenUsage = outputRun.value?.data?.reduce(
 		(acc: TokenUsageData, curr: INodeExecutionData) => {
-			const response = curr.json?.response as IDataObject;
-			const tokenUsageData = (response?.llmOutput as IDataObject)?.tokenUsage as TokenUsageData;
+			const tokenUsageData = (curr.json?.tokenUsage ??
+				curr.json?.tokenUsageEstimate) as TokenUsageData;
 
 			if (!tokenUsageData) return acc;
 
@@ -126,9 +50,16 @@ const consumedTokensSum = computed(() => {
 		},
 	);
 
-	return consumedTokensSum1;
+	return tokenUsage;
 });
 
+const usingTokensEstimates = computed(() => {
+	return outputRun.value?.data?.some((d) => d.json?.tokenUsageEstimate);
+});
+
+function formatTokenUsageCount(count: number) {
+	return usingTokensEstimates.value ? `~${count}` : count.toString();
+}
 function extractRunMeta(run: IAiDataContent) {
 	const uiNode = workflowsStore.getNodeByName(props.inputData.node);
 	const nodeType = nodeTypesStore.getNodeType(uiNode?.type ?? '');
@@ -155,6 +86,79 @@ const runMeta = computed(() => {
 	return extractRunMeta(outputRun.value);
 });
 </script>
+
+<template>
+	<div :class="$style.container">
+		<header :class="$style.header">
+			<NodeIcon
+				v-if="runMeta?.node"
+				:class="$style.nodeIcon"
+				:node-type="runMeta.node"
+				:size="20"
+			/>
+			<div :class="$style.headerWrap">
+				<p :class="$style.title">
+					{{ inputData.node }}
+				</p>
+				<ul :class="$style.meta">
+					<li v-if="runMeta?.startTimeMs">{{ runMeta?.executionTimeMs }}ms</li>
+					<li v-if="runMeta?.startTimeMs">
+						<n8n-tooltip>
+							<template #content>
+								{{ new Date(runMeta?.startTimeMs).toLocaleString() }}
+							</template>
+							{{
+								$locale.baseText('runData.aiContentBlock.startedAt', {
+									interpolate: {
+										startTime: new Date(runMeta?.startTimeMs).toLocaleTimeString(),
+									},
+								})
+							}}
+						</n8n-tooltip>
+					</li>
+					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0" :class="$style.tokensUsage">
+						{{
+							$locale.baseText('runData.aiContentBlock.tokens', {
+								interpolate: {
+									count: formatTokenUsageCount(consumedTokensSum?.totalTokens ?? 0),
+								},
+							})
+						}}
+						<n8n-info-tip type="tooltip" theme="info-light" tooltip-placement="right">
+							<div>
+								<n8n-text :bold="true" size="small">
+									{{ $locale.baseText('runData.aiContentBlock.tokens.prompt') }}
+									{{
+										$locale.baseText('runData.aiContentBlock.tokens', {
+											interpolate: {
+												count: formatTokenUsageCount(consumedTokensSum?.promptTokens ?? 0),
+											},
+										})
+									}}
+								</n8n-text>
+								<br />
+								<n8n-text :bold="true" size="small">
+									{{ $locale.baseText('runData.aiContentBlock.tokens.completion') }}
+									{{
+										$locale.baseText('runData.aiContentBlock.tokens', {
+											interpolate: {
+												count: formatTokenUsageCount(consumedTokensSum?.completionTokens ?? 0),
+											},
+										})
+									}}
+								</n8n-text>
+							</div>
+						</n8n-info-tip>
+					</li>
+				</ul>
+			</div>
+		</header>
+
+		<main v-for="(run, index) in props.inputData.data" :key="index" :class="$style.content">
+			<AiRunContentBlock :run-data="run" />
+		</main>
+	</div>
+</template>
 
 <style type="scss" module>
 .container {
@@ -195,5 +199,10 @@ const runMeta = computed(() => {
 	& > li:not(:first-child) {
 		padding-left: var(--spacing-3xs);
 	}
+}
+.tokensUsage {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
 }
 </style>

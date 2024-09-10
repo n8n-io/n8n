@@ -70,7 +70,7 @@ $border-radius-circle: 100%;
 
 /* Outline
 -------------------------- */
-$focus-outline-width: 2px;
+$focus-outline-width: 3px;
 
 /* Box shadow
 -------------------------- */
@@ -399,8 +399,16 @@ $input-placeholder-color: var(--input-placeholder-color, var(--color-text-light)
 $input-focus-border: var(--input-focus-border-color, var(--color-secondary));
 $input-border-color: var(--input-border-color, var(--border-color-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
-$input-border-width: var(--border-width-base);
+$input-border-width: var(--input-border-width, var(--border-width-base));
 $input-border: $input-border-color $input-border-style $input-border-width;
+$input-border-right-color: var(
+	--input-border-right-color,
+	var(--input-border-color, var(--border-color-base))
+);
+$input-border-bottom-color: var(
+	--input-border-bottom-color,
+	var(--input-border-color, var(--border-color-base))
+);
 
 $input-font-size: var(--input-font-size, var(--font-size-s));
 /// color||Color|0
@@ -410,6 +418,23 @@ $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 /// borderRadius||Border|2
+$input-border-radius: var(--input-border-radius, var(--border-radius-base));
+$input-border-top-left-radius: var(
+	--input-border-top-left-radius,
+	var(--input-border-radius, var(--border-radius-base))
+);
+$input-border-top-right-radius: var(
+	--input-border-top-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-left-radius: var(
+	--input-border-bottom-left-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-right-radius: var(
+	--input-border-bottom-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
 $input-border-radius: var(--input-border-radius, var(--border-radius-base));
 $input-border-color-hover: $border-color-hover;
 /// color||Color|0
@@ -441,6 +466,7 @@ $input-small-height: 30px !default;
 $input-mini-font-size: 12px;
 /// height||Other|4
 $input-mini-height: 26px !default;
+$input-number-control-border-radius: 3px;
 
 /* Cascader
 -------------------------- */
@@ -525,7 +551,7 @@ $button-hover-border-color: var(
 );
 $button-hover-background-color: var(
 	--button-hover-background-color,
-	var(--color-button-primary-hover-active-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 
 // Active
@@ -536,7 +562,7 @@ $button-active-border-color: var(
 );
 $button-active-background-color: var(
 	--button-active-background-color,
-	var(--color-button-primary-hover-active-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 
 // Focus
@@ -544,7 +570,7 @@ $button-focus-font-color: var(--button-focus-font-color, var(--color-button-prim
 $button-focus-border-color: var(--button-focus-border-color, var(--color-button-primary-border));
 $button-focus-background-color: var(
 	--button-focus-background-color,
-	var(--color-button-primary-background)
+	var(--color-button-primary-hover-active-focus-background)
 );
 $button-focus-outline-color: var(
 	--button-focus-outline-color,
@@ -648,7 +674,7 @@ $switch-button-size: 16px;
 
 /* Dialog
 -------------------------- */
-$dialog-background-color: $color-white;
+$dialog-background-color: var(--color-dialog-background);
 $dialog-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 /// fontSize||Font|1
 $dialog-content-font-size: 14px;

@@ -1,5 +1,5 @@
 import type { WorkflowTitleStatus } from '@/Interface';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export function useTitleChange() {
 	const prependBeta = (title: string) => {

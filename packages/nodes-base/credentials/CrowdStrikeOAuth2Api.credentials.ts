@@ -14,7 +14,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'crowdstrike';
 
-	icon = 'file:icons/CrowdStrike.svg';
+	icon = { light: 'file:icons/CrowdStrike.svg', dark: 'file:icons/CrowdStrike.dark.svg' } as const;
 
 	httpRequestNode = {
 		name: 'CrowdStrike',
@@ -63,9 +63,11 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 		const url = credentials.url as string;
 		const { access_token } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/oauth2/token?client_id=${
-				credentials.clientId
-			}&client_secret=${credentials.clientSecret}`,
+			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/oauth2/token`,
+			body: {
+				client_id: credentials.clientId,
+				client_secret: credentials.clientSecret,
+			},
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
 			},

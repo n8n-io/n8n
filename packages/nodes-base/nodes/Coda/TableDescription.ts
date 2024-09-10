@@ -27,12 +27,13 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Get All Columns',
 				value: 'getAllColumns',
+				description: 'Get all columns in a table',
 				action: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',
 				value: 'getAllRows',
-				description: 'Get all the rows',
+				description: 'Get all rows in a table',
 				action: 'Get all rows',
 			},
 			{
@@ -103,7 +104,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -188,7 +189,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -310,7 +311,7 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

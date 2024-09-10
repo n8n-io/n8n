@@ -1,30 +1,31 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
+import {
+	type IDataObject,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { calApiRequest, sortOptionParameters } from './GenericFunctions';
 
 export class CalTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cal Trigger',
+		displayName: 'Cal.com Trigger',
 		name: 'calTrigger',
-		icon: 'file:cal.svg',
+		icon: { light: 'file:cal.svg', dark: 'file:cal.dark.svg' },
 		group: ['trigger'],
 		version: [1, 2],
 		subtitle: '=Events: {{$parameter["events"].join(", ")}}',
-		description: 'Handle Cal events via webhooks',
+		description: 'Handle Cal.com events via webhooks',
 		defaults: {
-			name: 'Cal Trigger',
+			name: 'Cal.com Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'calApi',

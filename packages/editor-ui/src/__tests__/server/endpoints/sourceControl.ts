@@ -17,7 +17,7 @@ export function routesForSourceControl(server: Server) {
 		keyGeneratorType: 'ed25519',
 	};
 
-	server.get(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
+	server.get(`${sourceControlApiRoot}/preferences`, () => {
 		return new Response(
 			200,
 			{},
@@ -27,7 +27,7 @@ export function routesForSourceControl(server: Server) {
 		);
 	});
 
-	server.post(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
+	server.post(`${sourceControlApiRoot}/preferences`, (_schema: AppSchema, request: Request) => {
 		const requestBody: Partial<SourceControlPreferences> = jsonParse(request.requestBody);
 
 		return new Response(
@@ -42,7 +42,7 @@ export function routesForSourceControl(server: Server) {
 		);
 	});
 
-	server.patch(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
+	server.patch(`${sourceControlApiRoot}/preferences`, (_schema: AppSchema, request: Request) => {
 		const requestBody: Partial<SourceControlPreferences> = jsonParse(request.requestBody);
 
 		return new Response(

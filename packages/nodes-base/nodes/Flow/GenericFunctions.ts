@@ -1,16 +1,17 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function flowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +21,7 @@ export async function flowApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('flowApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: { Authorization: `Bearer ${credentials.accessToken}` },
 		method,
 		qs,
@@ -47,7 +48,7 @@ export async function flowApiRequest(
 export async function FlowApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

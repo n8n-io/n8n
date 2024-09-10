@@ -1,88 +1,3 @@
-<template>
-	<div @keydown.stop class="duplicate-parameter">
-		<n8n-input-label
-			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
-			:underline="true"
-			size="small"
-			color="text-dark"
-		/>
-
-		<div
-			v-for="(value, index) in mutableValues"
-			:key="index"
-			class="duplicate-parameter-item"
-			:class="parameter.type"
-		>
-			<div class="delete-item clickable" v-if="!isReadOnly">
-				<font-awesome-icon
-					icon="trash"
-					:title="$locale.baseText('multipleParameter.deleteItem')"
-					@click="deleteItem(index)"
-				/>
-				<div v-if="sortable">
-					<font-awesome-icon
-						v-if="index !== 0"
-						icon="angle-up"
-						class="clickable"
-						:title="$locale.baseText('multipleParameter.moveUp')"
-						@click="moveOptionUp(index)"
-					/>
-					<font-awesome-icon
-						v-if="index !== mutableValues.length - 1"
-						icon="angle-down"
-						class="clickable"
-						:title="$locale.baseText('multipleParameter.moveDown')"
-						@click="moveOptionDown(index)"
-					/>
-				</div>
-			</div>
-			<div v-if="parameter.type === 'collection'">
-				<collection-parameter
-					:parameter="parameter"
-					:values="value"
-					:nodeValues="nodeValues"
-					:path="getPath(index)"
-					:hideDelete="hideDelete"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
-			</div>
-			<div v-else>
-				<parameter-input-full
-					class="duplicate-parameter-input-item"
-					:parameter="parameter"
-					:value="value"
-					:displayOptions="true"
-					:hideLabel="true"
-					:path="getPath(index)"
-					@update="valueChanged"
-					inputSize="small"
-					:isReadOnly="isReadOnly"
-				/>
-			</div>
-		</div>
-
-		<div class="add-item-wrapper">
-			<div
-				v-if="(mutableValues && mutableValues.length === 0) || isReadOnly"
-				class="no-items-exist"
-			>
-				<n8n-text size="small">{{
-					$locale.baseText('multipleParameter.currentlyNoItemsExist')
-				}}</n8n-text>
-			</div>
-			<n8n-button
-				v-if="!isReadOnly"
-				type="tertiary"
-				block
-				@click="addItem()"
-				:label="addButtonText"
-			/>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -102,7 +17,7 @@ export default defineComponent({
 	},
 	props: {
 		nodeValues: {
-			type: Object as PropType<Record<string, INodeParameters[]>>,
+			type: Object as PropType<INodeParameters>,
 			required: true,
 		},
 		parameter: {
@@ -127,17 +42,6 @@ export default defineComponent({
 			mutableValues: [] as INodeParameters[],
 		};
 	},
-	watch: {
-		values: {
-			handler(newValues: INodeParameters[]) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
-	},
 	computed: {
 		addButtonText(): string {
 			if (
@@ -156,10 +60,21 @@ export default defineComponent({
 			return !!this.parameter.typeOptions?.sortable;
 		},
 	},
+	watch: {
+		values: {
+			handler(newValues: INodeParameters[]) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
+	},
 	methods: {
 		addItem() {
 			const name = this.getPath();
-			const currentValue = get(this.nodeValues, name, [] as INodeParameters[]);
+			const currentValue = get(this.nodeValues, name, []) as INodeParameters[];
 
 			currentValue.push(deepCopy(this.parameter.default as INodeParameters));
 
@@ -207,6 +122,91 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div class="duplicate-parameter" @keydown.stop>
+		<n8n-input-label
+			:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+			:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
+			:underline="true"
+			size="small"
+			color="text-dark"
+		/>
+
+		<div
+			v-for="(value, index) in mutableValues"
+			:key="index"
+			class="duplicate-parameter-item"
+			:class="parameter.type"
+		>
+			<div v-if="!isReadOnly" class="delete-item clickable">
+				<font-awesome-icon
+					icon="trash"
+					:title="$locale.baseText('multipleParameter.deleteItem')"
+					@click="deleteItem(index)"
+				/>
+				<div v-if="sortable">
+					<font-awesome-icon
+						v-if="index !== 0"
+						icon="angle-up"
+						class="clickable"
+						:title="$locale.baseText('multipleParameter.moveUp')"
+						@click="moveOptionUp(index)"
+					/>
+					<font-awesome-icon
+						v-if="index !== mutableValues.length - 1"
+						icon="angle-down"
+						class="clickable"
+						:title="$locale.baseText('multipleParameter.moveDown')"
+						@click="moveOptionDown(index)"
+					/>
+				</div>
+			</div>
+			<div v-if="parameter.type === 'collection'">
+				<CollectionParameter
+					:parameter="parameter"
+					:values="value"
+					:node-values="nodeValues"
+					:path="getPath(index)"
+					:hide-delete="hideDelete"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+				/>
+			</div>
+			<div v-else>
+				<ParameterInputFull
+					class="duplicate-parameter-input-item"
+					:parameter="parameter"
+					:value="value"
+					:display-options="true"
+					:hide-label="true"
+					:path="getPath(index)"
+					input-size="small"
+					:is-read-only="isReadOnly"
+					@update="valueChanged"
+				/>
+			</div>
+		</div>
+
+		<div class="add-item-wrapper">
+			<div
+				v-if="(mutableValues && mutableValues.length === 0) || isReadOnly"
+				class="no-items-exist"
+			>
+				<n8n-text size="small">{{
+					$locale.baseText('multipleParameter.currentlyNoItemsExist')
+				}}</n8n-text>
+			</div>
+			<n8n-button
+				v-if="!isReadOnly"
+				type="tertiary"
+				block
+				:label="addButtonText"
+				@click="addItem()"
+			/>
+		</div>
+	</div>
+</template>
 
 <style scoped lang="scss">
 .duplicate-parameter {

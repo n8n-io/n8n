@@ -141,14 +141,14 @@ export const issueFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '([0-9]{2,})[ \t]*',
+							regex: '([0-9]{1,})[ \t]*',
 							errorMessage: 'Not a valid Jira Issue Type ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([0-9]{2,})',
+					regex: '^([0-9]{1,})',
 				},
 			},
 		],
@@ -878,7 +878,7 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
 				operation: ['getAll'],

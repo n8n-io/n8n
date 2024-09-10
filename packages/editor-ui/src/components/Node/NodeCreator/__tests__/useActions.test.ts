@@ -1,6 +1,7 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useActions } from '../composables/useActions';
 import {
@@ -9,8 +10,10 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	SLACK_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 
 describe('useActions', () => {
@@ -87,6 +90,86 @@ describe('useActions', () => {
 					{ openDetail: true, type: SPLIT_IN_BATCHES_NODE_TYPE },
 					{ isAutoAdd: true, name: 'Replace Me', type: NO_OP_NODE_TYPE },
 				],
+			});
+		});
+
+		test('should connect node to schedule trigger when adding them together', () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeCreatorStore = useNodeCreatorStore();
+			const nodeTypesStore = useNodeTypesStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
+				{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never,
+			]);
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+			nodeTypesStore.nodeTypes = {
+				[SCHEDULE_TRIGGER_NODE_TYPE]: {
+					1: {
+						name: SCHEDULE_TRIGGER_NODE_TYPE,
+						displayName: 'Schedule Trigger',
+						group: ['trigger'],
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+						description: '',
+					},
+				},
+			};
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(
+				getAddedNodesAndConnections([
+					{ type: SCHEDULE_TRIGGER_NODE_TYPE, openDetail: true },
+					{ type: SLACK_NODE_TYPE },
+				]),
+			).toEqual({
+				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
+				nodes: [{ type: SCHEDULE_TRIGGER_NODE_TYPE, openDetail: true }, { type: SLACK_NODE_TYPE }],
+			});
+		});
+
+		test('should connect node to webhook trigger when adding them together', () => {
+			const workflowsStore = useWorkflowsStore();
+			const nodeCreatorStore = useNodeCreatorStore();
+			const nodeTypesStore = useNodeTypesStore();
+
+			vi.spyOn(workflowsStore, 'workflowTriggerNodes', 'get').mockReturnValue([
+				{ type: SCHEDULE_TRIGGER_NODE_TYPE } as never,
+			]);
+			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
+				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+			);
+			vi.spyOn(nodeCreatorStore, 'selectedView', 'get').mockReturnValue(TRIGGER_NODE_CREATOR_VIEW);
+			nodeTypesStore.nodeTypes = {
+				[WEBHOOK_NODE_TYPE]: {
+					1: {
+						name: WEBHOOK_NODE_TYPE,
+						displayName: 'Webhook',
+						group: ['trigger'],
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+						description: '',
+					},
+				},
+			};
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(
+				getAddedNodesAndConnections([
+					{ type: WEBHOOK_NODE_TYPE, openDetail: true },
+					{ type: SLACK_NODE_TYPE },
+				]),
+			).toEqual({
+				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
+				nodes: [{ type: WEBHOOK_NODE_TYPE, openDetail: true }, { type: SLACK_NODE_TYPE }],
 			});
 		});
 	});

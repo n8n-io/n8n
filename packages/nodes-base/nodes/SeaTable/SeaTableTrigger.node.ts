@@ -1,13 +1,14 @@
-import type {
-	IPollFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IPollFunctions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
+	type INodePropertyOptions,
+	type INodeType,
+	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { getColumns, rowFormatColumns, seaTableApiRequest, simplify } from './GenericFunctions';
 
 import type { ICtx, IRow, IRowResponse } from './Interfaces';
@@ -32,7 +33,7 @@ export class SeaTableTrigger implements INodeType {
 		],
 		polling: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Table Name or ID',

@@ -215,12 +215,12 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		hint: 'The name of the output binary field to put the file in',
 		displayOptions: {
 			show: {
 				resource: ['invoice'],

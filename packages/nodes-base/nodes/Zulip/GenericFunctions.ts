@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,6 +5,8 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -16,7 +16,7 @@ import type { IUser } from './UserInterface';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: IMessage | IStream | IUser = {},
@@ -28,7 +28,7 @@ export async function zulipApiRequest(
 
 	const endpoint = `${credentials.url.toString().replace(new RegExp('/$'), '')}/api/v1`;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		auth: {
 			user: credentials.email as string,
 			password: credentials.apiKey as string,
@@ -37,7 +37,7 @@ export async function zulipApiRequest(
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
-		form: body,
+		form: body as IDataObject,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
 		json: true,

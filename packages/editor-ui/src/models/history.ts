@@ -75,7 +75,7 @@ export class MoveNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('nodeMove', {
 				nodeName: this.nodeName,
 				position: this.oldPosition,
@@ -102,7 +102,7 @@ export class AddNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertAddNode', { node: this.node });
 			resolve();
 		});
@@ -126,7 +126,7 @@ export class RemoveNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertRemoveNode', { node: this.node });
 			resolve();
 		});
@@ -156,7 +156,7 @@ export class AddConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertAddConnection', { connection: this.connectionData });
 			resolve();
 		});
@@ -186,7 +186,7 @@ export class RemoveConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			setTimeout(() => {
 				historyBus.emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
@@ -220,7 +220,7 @@ export class EnableNodeToggleCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('enableNodeToggle', {
 				nodeName: this.nodeName,
 				isDisabled: this.oldState,
@@ -254,7 +254,7 @@ export class RenameNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>((resolve) => {
+		return await new Promise<void>((resolve) => {
 			historyBus.emit('revertRenameNode', {
 				currentName: this.currentName,
 				newName: this.newName,

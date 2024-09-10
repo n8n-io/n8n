@@ -5,8 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -36,8 +37,8 @@ export class SecurityScorecard implements INodeType {
 		defaults: {
 			name: 'SecurityScorecard',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'securityScorecardApi',

@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function openThesaurusApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,7 +20,7 @@ export async function openThesaurusApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	try {
-		let options: OptionsWithUri = {
+		let options = {
 			headers: {
 				'User-Agent': 'https://n8n.io',
 			},
@@ -29,7 +29,7 @@ export async function openThesaurusApiRequest(
 			body,
 			uri: uri || `https://www.openthesaurus.de${resource}`,
 			json: true,
-		};
+		} satisfies IRequestOptions;
 
 		options = Object.assign({}, options, option);
 		options.qs.format = 'application/json';

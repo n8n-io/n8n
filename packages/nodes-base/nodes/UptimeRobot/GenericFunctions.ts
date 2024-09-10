@@ -1,11 +1,15 @@
-import type { OptionsWithUri } from 'request';
-
-import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function uptimeRobotApiRequest(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -14,7 +18,7 @@ export async function uptimeRobotApiRequest(
 ) {
 	const credentials = await this.getCredentials('uptimeRobotApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		qs,
 		form: {

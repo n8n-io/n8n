@@ -23,6 +23,6 @@ export class PostgresV2 implements INodeType {
 	methods = { credentialTest, listSearch, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
 
@@ -22,8 +23,8 @@ export class Pushover implements INodeType {
 		defaults: {
 			name: 'Pushover',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'pushoverApi',
@@ -196,13 +197,12 @@ export class Pushover implements INodeType {
 								displayName: 'Attachment Property',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'Input Binary Field',
 										name: 'binaryPropertyName',
 										type: 'string',
 										default: '',
 										placeholder: 'data',
-										description:
-											'Name of the binary properties which contain data which should be added to email as attachment',
+										hint: 'The name of the input binary field containing the file which should be added to email as attachment',
 									},
 								],
 							},

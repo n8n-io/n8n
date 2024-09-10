@@ -290,7 +290,7 @@ describe('AugmentObject', () => {
 		});
 
 		test('should work with complex values on first level', () => {
-			const originalObject = {
+			const originalObject: any = {
 				a: {
 					b: {
 						cc: '3',
@@ -483,7 +483,7 @@ describe('AugmentObject', () => {
 
 		test('should be faster than doing a deepCopy', () => {
 			const iterations = 100;
-			const originalObject: IDataObject = {
+			const originalObject: any = {
 				a: {
 					b: {
 						c: {
@@ -530,7 +530,7 @@ describe('AugmentObject', () => {
 		});
 
 		test('should return property descriptors', () => {
-			const originalObject = {
+			const originalObject: any = {
 				x: {
 					y: {},
 					z: {},
@@ -559,7 +559,7 @@ describe('AugmentObject', () => {
 		});
 
 		test('should return valid values on `has` calls', () => {
-			const originalObject = {
+			const originalObject: any = {
 				x: {
 					y: {},
 				},

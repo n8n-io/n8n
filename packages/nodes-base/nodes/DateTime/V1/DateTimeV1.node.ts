@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -61,8 +61,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Date & Time',
 		color: '#408000',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		{
 			displayName:
@@ -203,7 +203,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -362,7 +362,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			displayOptions: {
 				show: {
@@ -521,7 +521,7 @@ export class DateTimeV1 implements INodeType {
 						newItem.binary = item.binary;
 					}
 
-					set(newItem, `json.${dataPropertyName}`, newDate);
+					set(newItem, ['json', dataPropertyName], newDate);
 
 					returnData.push(newItem);
 				}
@@ -565,7 +565,7 @@ export class DateTimeV1 implements INodeType {
 						newItem.binary = item.binary;
 					}
 
-					set(newItem, `json.${dataPropertyName}`, newDate.toISOString());
+					set(newItem, ['json', dataPropertyName], newDate.toISOString());
 
 					returnData.push(newItem);
 				}

@@ -1,3 +1,19 @@
+<script lang="ts" setup>
+interface RadioButtonProps {
+	label: string;
+	value: string;
+	active?: boolean;
+	disabled?: boolean;
+	size?: 'small' | 'medium';
+}
+
+withDefaults(defineProps<RadioButtonProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
+});
+</script>
+
 <template>
 	<label
 		role="radio"
@@ -7,7 +23,7 @@
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
 		}"
-		aria-checked="true"
+		:aria-checked="active"
 	>
 		<div
 			:class="{
@@ -22,36 +38,6 @@
 		</div>
 	</label>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'n8n-radio-button',
-	props: {
-		label: {
-			type: String,
-			required: true,
-		},
-		value: {
-			type: String,
-			required: true,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium'].includes(value),
-		},
-		disabled: {
-			type: Boolean,
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {

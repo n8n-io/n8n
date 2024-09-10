@@ -43,6 +43,6 @@
 	},
 	"alias": ["Join", "Concatenate", "Wait"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": ["Flow", "Data Transformation"]
 	}
 }

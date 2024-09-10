@@ -1,25 +1,18 @@
-<script lang="ts">
-import { ElPopover } from 'element-plus';
-import { defineComponent } from 'vue';
+<script setup lang="ts">
+import { ElPopover, popoverProps } from 'element-plus';
 
-export default defineComponent({
-	name: 'N8nPopover',
-	props: {
-		...ElPopover.props,
-	},
-	components: {
-		ElPopover,
-	},
+defineProps({
+	...popoverProps,
 });
 </script>
 
 <template>
 	<span>
-		<el-popover v-bind="{ ...$props, ...$attrs }">
+		<ElPopover v-bind="{ ...$props, ...$attrs }">
 			<template #reference>
 				<slot name="reference" />
 			</template>
 			<slot />
-		</el-popover>
+		</ElPopover>
 	</span>
 </template>

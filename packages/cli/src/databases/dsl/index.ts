@@ -1,7 +1,16 @@
-import type { QueryRunner } from 'typeorm';
-import { Column } from './Column';
-import { AddColumns, AddNotNull, CreateTable, DropColumns, DropNotNull, DropTable } from './Table';
-import { CreateIndex, DropIndex } from './Indices';
+import type { QueryRunner } from '@n8n/typeorm';
+import { Column } from './column';
+import {
+	AddColumns,
+	AddForeignKey,
+	AddNotNull,
+	CreateTable,
+	DropColumns,
+	DropForeignKey,
+	DropNotNull,
+	DropTable,
+} from './table';
+import { CreateIndex, DropIndex } from './indices';
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
 	column: (name: string) => new Column(name),
@@ -23,8 +32,44 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		customIndexName?: string,
 	) => new CreateIndex(tableName, columnNames, isUnique, tablePrefix, queryRunner, customIndexName),
 
-	dropIndex: (tableName: string, columnNames: string[], customIndexName?: string) =>
-		new DropIndex(tableName, columnNames, tablePrefix, queryRunner, customIndexName),
+	dropIndex: (
+		tableName: string,
+		columnNames: string[],
+		{ customIndexName, skipIfMissing }: { customIndexName?: string; skipIfMissing?: boolean } = {
+			skipIfMissing: false,
+		},
+	) =>
+		new DropIndex(tableName, columnNames, tablePrefix, queryRunner, customIndexName, skipIfMissing),
+
+	addForeignKey: (
+		tableName: string,
+		columnName: string,
+		reference: [string, string],
+		customConstraintName?: string,
+	) =>
+		new AddForeignKey(
+			tableName,
+			columnName,
+			reference,
+			tablePrefix,
+			queryRunner,
+			customConstraintName,
+		),
+
+	dropForeignKey: (
+		tableName: string,
+		columnName: string,
+		reference: [string, string],
+		customConstraintName?: string,
+	) =>
+		new DropForeignKey(
+			tableName,
+			columnName,
+			reference,
+			tablePrefix,
+			queryRunner,
+			customConstraintName,
+		),
 
 	addNotNull: (tableName: string, columnName: string) =>
 		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),

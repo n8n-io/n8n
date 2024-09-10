@@ -5,6 +5,7 @@ import { WorkflowsPage } from './workflows';
 
 export class MfaLoginPage extends BasePage {
 	url = '/mfa';
+
 	getters = {
 		form: () => cy.getByTestId('mfa-login-form'),
 		token: () => cy.getByTestId('token'),

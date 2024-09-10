@@ -1,0 +1,56 @@
+name: Reusable linting workflow
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to lint.
+        required: false
+        type: string
+        default: master
+      cacheKey:
+        description: Cache key for modules and build artifacts.
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - run: corepack enable
+      - uses: actions/setup-node@v4.0.2
+        with:
+          node-version: 20.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup build cache
+        uses: rharkor/caching-for-turbo@v1.5
+
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build
+
+      - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ inputs.cacheKey }}
+
+      - name: Lint Backend
+        run: pnpm lint:backend
+
+      - name: Lint Nodes
+        run: pnpm lint:nodes
+
+      - name: Lint Frontend
+        run: pnpm lint:frontend

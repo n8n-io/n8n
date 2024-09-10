@@ -1,5 +1,5 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/ldap/constants';
 
 export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 	async up({ escape, dbType, isMysql, runQuery }: MigrationContext) {
@@ -29,15 +29,15 @@ export class CreateLdapEntities1674509946020 implements ReversibleMigration {
 			dbType === 'sqlite'
 				? 'INTEGER PRIMARY KEY AUTOINCREMENT'
 				: dbType === 'postgresdb'
-				  ? 'SERIAL NOT NULL PRIMARY KEY'
-				  : 'INTEGER NOT NULL AUTO_INCREMENT';
+					? 'SERIAL NOT NULL PRIMARY KEY'
+					: 'INTEGER NOT NULL AUTO_INCREMENT';
 
 		const timestampColumn =
 			dbType === 'sqlite'
 				? 'DATETIME NOT NULL'
 				: dbType === 'postgresdb'
-				  ? 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP'
-				  : 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP';
+					? 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP'
+					: 'DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP';
 
 		await runQuery(
 			`CREATE TABLE IF NOT EXISTS ${escape.tableName('auth_provider_sync_history')} (

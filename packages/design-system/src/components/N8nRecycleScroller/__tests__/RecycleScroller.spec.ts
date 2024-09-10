@@ -3,8 +3,8 @@ import N8nRecycleScroller from '../RecycleScroller.vue';
 
 const itemSize = 100;
 const itemKey = 'id';
-const items = [...(new Array(100) as number[])].map((item, index) => ({
-	id: index,
+const items = [...(new Array(100) as number[])].map((_, index) => ({
+	id: String(index),
 	name: `Item ${index}`,
 }));
 

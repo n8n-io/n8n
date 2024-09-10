@@ -1,10 +1,74 @@
+<script lang="ts">
+import { useUIStore } from '@/stores/ui.store';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+
+export default defineComponent({
+	name: 'CommunityPackageCard',
+	props: {
+		communityPackage: {
+			type: Object as () => PublicInstalledPackage | null,
+			required: false,
+			default: null,
+		},
+		loading: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	data() {
+		return {
+			packageActions: [
+				{
+					label: this.$locale.baseText('settings.communityNodes.viewDocsAction.label'),
+					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
+					type: 'external-link',
+				},
+				{
+					label: this.$locale.baseText('settings.communityNodes.uninstallAction.label'),
+					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
+				},
+			],
+		};
+	},
+	computed: {
+		...mapStores(useUIStore),
+	},
+	methods: {
+		async onAction(value: string) {
+			if (!this.communityPackage) return;
+			switch (value) {
+				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
+					this.$telemetry.track('user clicked to browse the cnr package documentation', {
+						package_name: this.communityPackage.packageName,
+						package_version: this.communityPackage.installedVersion,
+					});
+					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
+					break;
+				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
+					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
+					break;
+				default:
+					break;
+			}
+		},
+		onUpdateClick() {
+			if (!this.communityPackage) return;
+			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
+		},
+	},
+});
+</script>
+
 <template>
-	<div :class="$style.cardContainer">
+	<div :class="$style.cardContainer" data-test-id="community-package-card">
 		<div v-if="loading" :class="$style.cardSkeleton">
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 		</div>
-		<div v-else :class="$style.packageCard">
+		<div v-else-if="communityPackage" :class="$style.packageCard">
 			<div :class="$style.cardInfoContainer">
 				<div :class="$style.cardTitle">
 					<n8n-text :bold="true" size="large">{{ communityPackage.packageName }}</n8n-text>
@@ -43,7 +107,7 @@
 							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
 						</div>
 					</template>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick" />
+					<n8n-button outline label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
 					<template #content>
@@ -60,66 +124,6 @@
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { useUIStore } from '@/stores/ui.store';
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
-import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
-
-export default defineComponent({
-	name: 'CommunityPackageCard',
-	props: {
-		communityPackage: {
-			type: Object as () => PublicInstalledPackage,
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			packageActions: [
-				{
-					label: this.$locale.baseText('settings.communityNodes.viewDocsAction.label'),
-					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS,
-					type: 'external-link',
-				},
-				{
-					label: this.$locale.baseText('settings.communityNodes.uninstallAction.label'),
-					value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
-				},
-			],
-		};
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-	methods: {
-		async onAction(value: string) {
-			switch (value) {
-				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.VIEW_DOCS:
-					this.$telemetry.track('user clicked to browse the cnr package documentation', {
-						package_name: this.communityPackage.packageName,
-						package_version: this.communityPackage.installedVersion,
-					});
-					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
-					break;
-				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
-					break;
-				default:
-					break;
-			}
-		},
-		onUpdateClick() {
-			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .cardContainer {

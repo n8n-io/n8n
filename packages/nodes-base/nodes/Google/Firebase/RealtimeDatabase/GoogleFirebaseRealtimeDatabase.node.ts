@@ -7,8 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -24,8 +25,8 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		defaults: {
 			name: 'Google Cloud Realtime Database',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'googleFirebaseRealtimeDatabaseOAuth2Api',
@@ -180,7 +181,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
 
-				let method = 'GET',
+				let method: IHttpRequestMethods = 'GET',
 					attributes = '';
 				const document: IDataObject = {};
 				if (operation === 'create') {

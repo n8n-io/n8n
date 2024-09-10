@@ -6,8 +6,15 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+	sleep,
+} from 'n8n-workflow';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
@@ -22,8 +29,8 @@ const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Discord',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		oldVersionNotice,
 		{
@@ -48,21 +55,21 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Additional Fields',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
 					displayName: 'Allowed Mentions',
 					name: 'allowedMentions',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Attachments',
 					name: 'attachments',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -75,14 +82,14 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Components',
 					name: 'components',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Embeds',
 					name: 'embeds',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -95,7 +102,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'JSON Payload',
 					name: 'payloadJson',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -216,7 +223,7 @@ export class DiscordV1 implements INodeType {
 			if (!body.payload_json) delete body.payload_json;
 			if (!body.attachments) delete body.attachments;
 
-			let requestOptions;
+			let requestOptions: IRequestOptions;
 
 			if (!body.payload_json) {
 				requestOptions = {

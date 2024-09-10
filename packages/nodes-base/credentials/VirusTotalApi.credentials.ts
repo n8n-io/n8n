@@ -3,6 +3,7 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
 
 export class VirusTotalApi implements ICredentialType {
@@ -12,7 +13,7 @@ export class VirusTotalApi implements ICredentialType {
 
 	documentationUrl = 'virustotal';
 
-	icon = 'file:icons/VirusTotal.svg';
+	icon: Icon = 'file:icons/VirusTotal.svg';
 
 	httpRequestNode = {
 		name: 'VirusTotal',

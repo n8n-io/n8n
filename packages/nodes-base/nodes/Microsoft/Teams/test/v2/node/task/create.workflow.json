@@ -1,0 +1,167 @@
+{
+  "name": "My workflow 69",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "28f1f78e-0d50-4bfe-aa16-1a53f0832793",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "groupId": {
+          "__rl": true,
+          "value": "1644e7fe-547e-4223-a24f-922395865343",
+          "mode": "list",
+          "cachedResultName": "5w1hb7"
+        },
+        "planId": {
+          "__rl": true,
+          "value": "THwgIivuyU26ki8qS7ufcJgAB6zf",
+          "mode": "list",
+          "cachedResultName": "my best plan"
+        },
+        "bucketId": {
+          "__rl": true,
+          "value": "CO-ZsX1s4kO7FtO6ZHZdDpgAFL1m",
+          "mode": "list",
+          "cachedResultName": "To do"
+        },
+        "title": "do this",
+        "options": {
+          "assignedTo": {
+            "__rl": true,
+            "value": "ba4a422e-bdce-4795-b4b6-579287363f0e",
+            "mode": "list",
+            "cachedResultName": "Henrietta Mueller"
+          },
+          "dueDateTime": "2023-10-30T22:00:00.000Z",
+          "percentComplete": 25
+        }
+      },
+      "id": "e1c2eafd-4a1e-48aa-bc0e-d5a03644fedc",
+      "name": "Microsoft Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        740,
+        300
+      ],
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "6isd5ytvA0qV78eK",
+          "name": "Microsoft Teams account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "a05a3079-3431-44b8-a317-79e5d8babe25",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        300
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#planner/tasks/$entity",
+          "@odata.etag": "W/\"JzEtVGFzayAgQEBAQEBAQEBAQEBAQEBARCc=\"",
+          "planId": "THwgIivuyU26ki8qS7ufcJgAB6zf",
+          "bucketId": "CO-ZsX1s4kO7FtO6ZHZdDpgAFL1m",
+          "title": "do this",
+          "orderHint": "8584964728139267910",
+          "assigneePriority": "",
+          "percentComplete": 25,
+          "startDateTime": null,
+          "createdDateTime": "2024-01-13T08:21:11.5507897Z",
+          "dueDateTime": "2023-10-30T22:00:00Z",
+          "hasDescription": false,
+          "previewType": "automatic",
+          "completedDateTime": null,
+          "completedBy": null,
+          "referenceCount": 0,
+          "checklistItemCount": 0,
+          "activeChecklistItemCount": 0,
+          "conversationThreadId": null,
+          "priority": 5,
+          "id": "mYxTKaD9VkqWaBCJE5v4E5gAHcPB",
+          "createdBy": {
+            "user": {
+              "displayName": null,
+              "id": "b834447b-6848-4af9-8390-d2259ce46b74"
+            },
+            "application": {
+              "displayName": null,
+              "id": "66bdd989-4a29-465d-86fb-d94ed8fd86ed"
+            }
+          },
+          "appliedCategories": {},
+          "assignments": {
+            "ba4a422e-bdce-4795-b4b6-579287363f0e": {
+              "@odata.type": "#microsoft.graph.plannerAssignment",
+              "assignedDateTime": "2024-01-13T08:21:11.5507897Z",
+              "orderHint": "8584964728740986700PZ",
+              "assignedBy": {
+                "user": {
+                  "displayName": null,
+                  "id": "b834447b-6848-4af9-8390-d2259ce46b74"
+                },
+                "application": {
+                  "displayName": null,
+                  "id": "66bdd989-4a29-465d-86fb-d94ed8fd86ed"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Teams": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8cb42e14-a12c-4c24-8374-4105664065c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "id": "73ZPNCHsvTvFBx1V",
+  "tags": []
+}

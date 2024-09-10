@@ -1,8 +1,7 @@
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import { useUIStore } from '@/stores/ui.store';
 import CollaborationPane from '@/components//MainHeader/CollaborationPane.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -13,15 +12,9 @@ const OWNER_USER = {
 	email: 'owner@user.com',
 	firstName: 'Owner',
 	lastName: 'User',
-	globalRoleId: 1,
+	role: ROLE.Owner,
 	disabled: false,
-	globalRole: {
-		id: '1',
-		name: 'owner',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: true,
 	fullName: 'Owner User',
 };
 
@@ -31,15 +24,9 @@ const MEMBER_USER = {
 	email: 'member@user.com',
 	firstName: 'Member',
 	lastName: 'User',
-	globalRoleId: 2,
+	role: ROLE.Member,
 	disabled: false,
-	globalRole: {
-		id: '2',
-		name: 'member',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: false,
 	fullName: 'Member User',
 };
 
@@ -49,19 +36,11 @@ const MEMBER_USER_2 = {
 	email: 'member2@user.com',
 	firstName: 'Another Member',
 	lastName: 'User',
-	globalRoleId: 2,
+	role: ROLE.Member,
 	disabled: false,
-	globalRole: {
-		id: '2',
-		name: 'member',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: false,
 	fullName: 'Another Member User',
 };
-
-let uiStore: ReturnType<typeof useUIStore>;
 
 const initialState = {
 	[STORES.SETTINGS]: {
@@ -98,10 +77,6 @@ const defaultRenderOptions: RenderOptions = {
 const renderComponent = createComponentRenderer(CollaborationPane, defaultRenderOptions);
 
 describe('CollaborationPane', () => {
-	beforeEach(() => {
-		uiStore = useUIStore();
-	});
-
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -117,19 +92,11 @@ describe('CollaborationPane', () => {
 		expect(queryByTestId(`user-stack-avatar-${MEMBER_USER_2.id}`)).toBeNull();
 	});
 
-	it('should render current user correctly', async () => {
-		const { getByText, queryByText } = renderComponent();
-		await waitAllPromises();
-		expect(getByText(`${OWNER_USER.fullName} (you)`)).toBeInTheDocument();
-		expect(queryByText(`${MEMBER_USER.fullName} (you)`)).toBeNull();
-		expect(queryByText(`${MEMBER_USER.fullName}`)).toBeInTheDocument();
-	});
-
 	it('should always render owner first in the list', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
-		// Owner is second in the store bur shourld be rendered first
+		// Owner is second in the store but should be rendered first
 		expect(firstAvatar).toHaveAttribute('data-test-id', `user-stack-avatar-${OWNER_USER.id}`);
 	});
 });

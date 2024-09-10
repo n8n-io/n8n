@@ -1,22 +1,29 @@
 import config from '@/config';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import Container from 'typedi';
 
-import * as testDb from './shared/testDb';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import * as testDb from './shared/test-db';
+import type { ExecutionEntity } from '@/databases/entities/execution-entity';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 
 import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
-import { createExecution, createSuccessfulExecution } from './shared/db/executions';
+import {
+	annotateExecution,
+	createExecution,
+	createSuccessfulExecution,
+} from './shared/db/executions';
+import { mock } from 'jest-mock-extended';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
+	const instanceSettings = new InstanceSettings();
+	instanceSettings.markAsLeader();
 
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
@@ -27,15 +34,17 @@ describe('softDeleteOnPruningCycle()', () => {
 
 		pruningService = new PruningService(
 			mockInstance(Logger),
+			instanceSettings,
 			Container.get(ExecutionRepository),
 			mockInstance(BinaryDataService),
+			mock(),
 		);
 
 		workflow = await createWorkflow();
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['Execution']);
+		await testDb.truncate(['Execution', 'ExecutionAnnotation']);
 	});
 
 	afterAll(async () => {
@@ -47,7 +56,7 @@ describe('softDeleteOnPruningCycle()', () => {
 	});
 
 	async function findAllExecutions() {
-		return Container.get(ExecutionRepository).find({
+		return await Container.get(ExecutionRepository).find({
 			order: { id: 'asc' },
 			withDeleted: true,
 		});
@@ -95,11 +104,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: now, stoppedAt: now }],
 			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
-			['failed', { startedAt: now, stoppedAt: now }],
+			['error', { startedAt: now, stoppedAt: now }],
 			['success', { finished: true, startedAt: now, stoppedAt: now }],
 		])('should prune %s executions', async (status, attributes) => {
 			const executions = [
@@ -132,6 +140,25 @@ describe('softDeleteOnPruningCycle()', () => {
 			expect(result).toEqual([
 				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
 				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
+			]);
+		});
+
+		test('should not prune annotated executions', async () => {
+			const executions = [
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+				await createSuccessfulExecution(workflow),
+			];
+
+			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
+
+			await pruningService.softDeleteOnPruningCycle();
+
+			const result = await findAllExecutions();
+			expect(result).toEqual([
+				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
+				expect.objectContaining({ id: executions[1].id, deletedAt: expect.any(Date) }),
+				expect.objectContaining({ id: executions[2].id, deletedAt: null }),
 			]);
 		});
 	});
@@ -188,11 +215,10 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
-			['warning', { startedAt: yesterday, stoppedAt: yesterday }],
 			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],
-			['failed', { startedAt: yesterday, stoppedAt: yesterday }],
+			['error', { startedAt: yesterday, stoppedAt: yesterday }],
 			['success', { finished: true, startedAt: yesterday, stoppedAt: yesterday }],
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await createExecution({ status, ...attributes }, workflow);
@@ -221,6 +247,34 @@ describe('softDeleteOnPruningCycle()', () => {
 			expect(result).toEqual([
 				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
 				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
+			]);
+		});
+
+		test('should not prune annotated executions', async () => {
+			const executions = [
+				await createExecution(
+					{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
+					workflow,
+				),
+				await createExecution(
+					{ finished: true, startedAt: yesterday, stoppedAt: yesterday, status: 'success' },
+					workflow,
+				),
+				await createExecution(
+					{ finished: true, startedAt: now, stoppedAt: now, status: 'success' },
+					workflow,
+				),
+			];
+
+			await annotateExecution(executions[0].id, { vote: 'up' }, [workflow.id]);
+
+			await pruningService.softDeleteOnPruningCycle();
+
+			const result = await findAllExecutions();
+			expect(result).toEqual([
+				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
+				expect.objectContaining({ id: executions[1].id, deletedAt: expect.any(Date) }),
+				expect.objectContaining({ id: executions[2].id, deletedAt: null }),
 			]);
 		});
 	});

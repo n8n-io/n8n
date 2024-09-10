@@ -1,54 +1,7 @@
-<template>
-	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
-		<template #header>
-			<div>
-				<n8n-heading tag="h2" bold :class="$style.cardHeading">
-					{{ destination.label }}
-				</n8n-heading>
-				<div :class="$style.cardDescription">
-					<n8n-text color="text-light" size="small">
-						<span>{{ $locale.baseText(typeLabelName) }}</span>
-					</n8n-text>
-				</div>
-			</div>
-		</template>
-		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
-				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
-					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
-						{{ $locale.baseText('workflowActivator.active') }}
-					</n8n-text>
-					<n8n-text v-else color="text-base" size="small" bold>
-						{{ $locale.baseText('workflowActivator.inactive') }}
-					</n8n-text>
-				</div>
-
-				<el-switch
-					class="mr-s"
-					:disabled="!isInstanceOwner"
-					:modelValue="nodeParameters.enabled"
-					@update:modelValue="onEnabledSwitched($event, destination.id)"
-					:title="
-						nodeParameters.enabled
-							? $locale.baseText('workflowActivator.deactivateWorkflow')
-							: $locale.baseText('workflowActivator.activateWorkflow')
-					"
-					active-color="#13ce66"
-					inactive-color="#8899AA"
-					data-test-id="workflow-activate-switch"
-				>
-				</el-switch>
-
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
-			</div>
-		</template>
-	</n8n-card>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
@@ -63,18 +16,18 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
+	components: {},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
 		};
 	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
-	components: {},
 	props: {
 		eventBus: {
 			type: Object as PropType<EventBus>,
@@ -84,7 +37,7 @@ export default defineComponent({
 			required: true,
 			default: deepCopy(defaultMessageEventBusDestinationOptions),
 		},
-		isInstanceOwner: Boolean,
+		readonly: Boolean,
 	},
 	mounted() {
 		this.nodeParameters = Object.assign(
@@ -105,7 +58,7 @@ export default defineComponent({
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
 			];
-			if (this.isInstanceOwner) {
+			if (!this.readonly) {
 				actions.push({
 					label: this.$locale.baseText('workflows.item.delete'),
 					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
@@ -128,17 +81,19 @@ export default defineComponent({
 			}
 		},
 		async onClick(event: Event) {
+			const cardActions = this.$refs.cardActions as HTMLDivElement | null;
+			const target = event.target as HTMLDivElement | null;
 			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target) ||
-				event.target?.contains(this.$refs.cardActions)
+				cardActions === target ||
+				cardActions?.contains(target) ||
+				target?.contains(cardActions)
 			) {
 				return;
 			}
 
 			this.$emit('edit', this.destination.id);
 		},
-		onEnabledSwitched(state: boolean, destinationId: string) {
+		onEnabledSwitched(state: boolean) {
 			this.nodeParameters.enabled = state;
 			void this.saveDestination();
 		},
@@ -175,6 +130,53 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
+		<template #header>
+			<div>
+				<n8n-heading tag="h2" bold :class="$style.cardHeading">
+					{{ destination.label }}
+				</n8n-heading>
+				<div :class="$style.cardDescription">
+					<n8n-text color="text-light" size="small">
+						<span>{{ $locale.baseText(typeLabelName) }}</span>
+					</n8n-text>
+				</div>
+			</div>
+		</template>
+		<template #append>
+			<div ref="cardActions" :class="$style.cardActions">
+				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
+					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
+						{{ $locale.baseText('workflowActivator.active') }}
+					</n8n-text>
+					<n8n-text v-else color="text-base" size="small" bold>
+						{{ $locale.baseText('workflowActivator.inactive') }}
+					</n8n-text>
+				</div>
+
+				<el-switch
+					class="mr-s"
+					:disabled="readonly"
+					:model-value="nodeParameters.enabled"
+					:title="
+						nodeParameters.enabled
+							? $locale.baseText('workflowActivator.deactivateWorkflow')
+							: $locale.baseText('workflowActivator.activateWorkflow')
+					"
+					active-color="#13ce66"
+					inactive-color="#8899AA"
+					data-test-id="workflow-activate-switch"
+					@update:model-value="onEnabledSwitched($event)"
+				>
+				</el-switch>
+
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+			</div>
+		</template>
+	</n8n-card>
+</template>
 
 <style lang="scss" module>
 .cardLink {

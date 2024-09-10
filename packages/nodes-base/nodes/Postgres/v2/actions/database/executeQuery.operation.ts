@@ -3,10 +3,16 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
@@ -26,7 +32,6 @@ const properties: INodeProperties[] = [
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 			sqlDialect: 'PostgreSQL',
 		},
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
@@ -47,7 +52,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -74,22 +79,45 @@ export async function execute(
 
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
-			if (rawReplacements) {
-				const rawValues = rawReplacements
-					.replace(/^=+/, '')
+			const stringToArray = (str: NodeParameterValueType | undefined) => {
+				if (!str) return [];
+				return String(str)
 					.split(',')
 					.filter((entry) => entry)
 					.map((entry) => entry.trim());
+			};
 
-				for (const rawValue of rawValues) {
-					const resolvables = getResolvables(rawValue);
+			if (rawReplacements) {
+				const nodeVersion = nodeOptions.nodeVersion as number;
 
+				if (nodeVersion >= 2.5) {
+					const rawValues = rawReplacements.replace(/^=+/, '');
+					const resolvables = getResolvables(rawValues);
 					if (resolvables.length) {
 						for (const resolvable of resolvables) {
-							values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							const evaluatedValues = stringToArray(this.evaluateExpression(`${resolvable}`, i));
+							if (evaluatedValues.length) values.push(...evaluatedValues);
 						}
 					} else {
-						values.push(rawValue);
+						values.push(...stringToArray(rawValues));
+					}
+				} else {
+					const rawValues = rawReplacements
+						.replace(/^=+/, '')
+						.split(',')
+						.filter((entry) => entry)
+						.map((entry) => entry.trim());
+
+					for (const rawValue of rawValues) {
+						const resolvables = getResolvables(rawValue);
+
+						if (resolvables.length) {
+							for (const resolvable of resolvables) {
+								values.push(this.evaluateExpression(`${resolvable}`, i) as IDataObject);
+							}
+						} else {
+							values.push(rawValue);
+						}
 					}
 				}
 			}
@@ -105,8 +133,18 @@ export async function execute(
 			}
 		}
 
+		if (!queryReplacement || nodeOptions.treatQueryParametersInSingleQuotesAsText) {
+			let nextValueIndex = values.length + 1;
+			const literals = query.match(/'\$[0-9]+'/g) ?? [];
+			for (const literal of literals) {
+				query = query.replace(literal, `$${nextValueIndex}`);
+				values.push(literal.replace(/'/g, ''));
+				nextValueIndex++;
+			}
+		}
+
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

@@ -3,10 +3,10 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import type { GrafanaCredentials } from './types';
 
@@ -16,16 +16,16 @@ export function tolerateTrailingSlash(baseUrl: string) {
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl: rawBaseUrl } = (await this.getCredentials('grafanaApi')) as GrafanaCredentials;
+	const { baseUrl: rawBaseUrl } = await this.getCredentials<GrafanaCredentials>('grafanaApi');
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},

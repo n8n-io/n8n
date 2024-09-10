@@ -1,5 +1,3 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,12 +5,14 @@ import type {
 	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -20,7 +20,7 @@ export async function twitterApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUrl = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -59,7 +59,7 @@ export async function twitterApiRequest(
 export async function twitterApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -83,14 +83,21 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 	if (tweetId.mode === 'id') {
 		return tweetId.value as string;
 	} else if (tweetId.mode === 'url') {
-		const value = tweetId.value as string;
-		const tweetIdMatch = value.includes('lists')
-			? value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/list(s)?\/(\d+)$/)
-			: value.match(/^https?:\/\/twitter\.com\/(?:#!\/)?(\w+)\/status(es)?\/(\d+)$/);
-
-		return tweetIdMatch?.[3] as string;
+		try {
+			const url = new URL(tweetId.value as string);
+			if (!/(twitter|x).com$/.test(url.hostname)) {
+				throw new ApplicationError('Invalid domain');
+			}
+			const parts = url.pathname.split('/');
+			if (parts.length !== 4 || parts[2] !== 'status' || !/^\d+$/.test(parts[3])) {
+				throw new ApplicationError('Invalid path');
+			}
+			return parts[3];
+		} catch (error) {
+			throw new ApplicationError('Not a valid tweet url', { level: 'warning', cause: error });
+		}
 	} else {
-		throw new Error(`The mode ${tweetId.mode} is not valid!`);
+		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
 }
 
@@ -120,5 +127,8 @@ export async function returnIdFromUsername(
 			{},
 		)) as { id: string };
 		return list.id;
-	} else throw new Error(`The username mode ${usernameRlc.mode} is not valid!`);
+	} else
+		throw new ApplicationError(`The username mode ${usernameRlc.mode} is not valid!`, {
+			level: 'warning',
+		});
 }

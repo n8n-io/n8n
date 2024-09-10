@@ -62,7 +62,15 @@ export async function caseSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return listResource.call(this, 'listCase', 'title', 'title', 'cases', filter, paginationToken);
+	return await listResource.call(
+		this,
+		'listCase',
+		'title',
+		'title',
+		'cases',
+		filter,
+		paginationToken,
+	);
 }
 
 export async function commentSearch(
@@ -70,7 +78,7 @@ export async function commentSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return listResource.call(
+	return await listResource.call(
 		this,
 		'listComment',
 		'message',
@@ -86,7 +94,15 @@ export async function alertSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return listResource.call(this, 'listAlert', 'title', 'title', 'alerts', filter, paginationToken);
+	return await listResource.call(
+		this,
+		'listAlert',
+		'title',
+		'title',
+		'alerts',
+		filter,
+		paginationToken,
+	);
 }
 
 export async function taskSearch(
@@ -94,7 +110,15 @@ export async function taskSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return listResource.call(this, 'listTask', 'title', 'title', undefined, filter, paginationToken);
+	return await listResource.call(
+		this,
+		'listTask',
+		'title',
+		'title',
+		undefined,
+		filter,
+		paginationToken,
+	);
 }
 
 export async function pageSearch(
@@ -171,7 +195,7 @@ export async function logSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return listResource.call(
+	return await listResource.call(
 		this,
 		'listLog',
 		'message',

@@ -69,7 +69,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		// const spreadsheetId = this.getNodeParameter('spreadsheetId', i) as string;
 		const documentId = this.getNodeParameter('documentId', i, undefined, {
 			extractValue: true,
 		}) as string;

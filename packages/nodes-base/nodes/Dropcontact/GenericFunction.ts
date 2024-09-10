@@ -4,21 +4,21 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	IPairedItemData,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bubble.
  */
 export async function dropcontactApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		uri: `https://api.dropcontact.io${endpoint}`,
 		qs,
@@ -34,7 +34,7 @@ export async function dropcontactApiRequest(
 		delete options.qs;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
 }
 
 export function mapPairedItemsFrom<T>(iterable: Iterable<T> | ArrayLike<T>): IPairedItemData[] {

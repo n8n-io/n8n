@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { useLoadingService, useI18n } from '@/composables';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
-import { useTemplatesStore, useWorkflowsStore } from '@/stores';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
-const workfowStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
 const router = useRouter();
 const route = useRoute();
 const i18n = useI18n();
@@ -24,10 +26,10 @@ const openWorkflowTemplate = async (templateId: string) => {
 			interpolate: { name: template.name },
 		});
 
-		const workflow = await workfowStore.createNewWorkflow({
+		const workflow = await workflowsStore.createNewWorkflow({
 			name,
 			connections: template.workflow.connections,
-			nodes: template.workflow.nodes,
+			nodes: template.workflow.nodes.map(workflowsStore.convertTemplateNodeToNodeUi),
 			pinData: template.workflow.pinData,
 			settings: template.workflow.settings,
 			meta: {

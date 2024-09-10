@@ -154,7 +154,6 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 		{
 			id: 'First name',
 			displayName: 'First name',
-			match: false,
 			required: true,
 			defaultMatch: false,
 			display: true,
@@ -164,7 +163,6 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 		{
 			id: 'Last name',
 			displayName: 'Last name',
-			match: false,
 			required: true,
 			defaultMatch: false,
 			display: true,
@@ -174,7 +172,6 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 		{
 			id: 'Username',
 			displayName: 'Username',
-			match: false,
 			required: false,
 			defaultMatch: false,
 			display: true,
@@ -184,7 +181,6 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 		{
 			id: 'Address',
 			displayName: 'Address',
-			match: false,
 			required: false,
 			defaultMatch: false,
 			display: true,
@@ -194,7 +190,6 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 		{
 			id: 'id',
 			displayName: 'id',
-			match: true,
 			required: true,
 			defaultMatch: true,
 			display: true,

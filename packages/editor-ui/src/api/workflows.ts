@@ -1,9 +1,25 @@
-import type { IExecutionsCurrentSummaryExtended, IRestApiContext } from '@/Interface';
-import type { ExecutionFilters, ExecutionOptions, IDataObject } from 'n8n-workflow';
+import type {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IRestApiContext,
+	IWorkflowDb,
+	NewWorkflowResponse,
+} from '@/Interface';
+import type {
+	ExecutionFilters,
+	ExecutionOptions,
+	ExecutionSummary,
+	IDataObject,
+} from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
-export async function getNewWorkflow(context: IRestApiContext, name?: string) {
-	const response = await makeRestApiRequest(context, 'GET', '/workflows/new', name ? { name } : {});
+export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
+	const response = await makeRestApiRequest<NewWorkflowResponse>(
+		context,
+		'GET',
+		'/workflows/new',
+		data,
+	);
 	return {
 		name: response.name,
 		onboardingFlowEnabled: response.onboardingFlowEnabled === true,
@@ -14,21 +30,28 @@ export async function getNewWorkflow(context: IRestApiContext, name?: string) {
 export async function getWorkflow(context: IRestApiContext, id: string, filter?: object) {
 	const sendData = filter ? { filter } : undefined;
 
-	return makeRestApiRequest(context, 'GET', `/workflows/${id}`, sendData);
+	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
 export async function getWorkflows(context: IRestApiContext, filter?: object) {
-	const sendData = filter ? { filter } : undefined;
-
-	return makeRestApiRequest(context, 'GET', '/workflows', sendData);
+	return await makeRestApiRequest<IWorkflowDb[]>(context, 'GET', '/workflows', {
+		includeScopes: true,
+		...(filter ? { filter } : {}),
+	});
 }
 
 export async function getActiveWorkflows(context: IRestApiContext) {
-	return makeRestApiRequest(context, 'GET', '/active');
+	return await makeRestApiRequest<string[]>(context, 'GET', '/active-workflows');
 }
 
-export async function getCurrentExecutions(context: IRestApiContext, filter: IDataObject) {
-	return makeRestApiRequest(context, 'GET', '/executions-current', { filter });
+export async function getActiveExecutions(context: IRestApiContext, filter: IDataObject) {
+	const output = await makeRestApiRequest<{
+		results: ExecutionSummary[];
+		count: number;
+		estimated: boolean;
+	}>(context, 'GET', '/executions', { filter });
+
+	return output.results;
 }
 
 export async function getExecutions(
@@ -36,9 +59,13 @@ export async function getExecutions(
 	filter?: ExecutionFilters,
 	options?: ExecutionOptions,
 ): Promise<{ count: number; results: IExecutionsCurrentSummaryExtended[]; estimated: boolean }> {
-	return makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
+	return await makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
 }
 
 export async function getExecutionData(context: IRestApiContext, executionId: string) {
-	return makeRestApiRequest(context, 'GET', `/executions/${executionId}`);
+	return await makeRestApiRequest<IExecutionResponse | null>(
+		context,
+		'GET',
+		`/executions/${executionId}`,
+	);
 }

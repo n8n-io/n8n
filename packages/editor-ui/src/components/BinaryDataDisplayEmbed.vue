@@ -1,3 +1,55 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import VueJsonPretty from 'vue-json-pretty';
+import RunDataHtml from '@/components/RunDataHtml.vue';
+
+const props = defineProps<{
+	binaryData: IBinaryData;
+}>();
+
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const data = ref('');
+
+const workflowsStore = useWorkflowsStore();
+
+const embedClass = computed(() => {
+	return [props.binaryData.fileType ?? 'other'];
+});
+
+onMounted(async () => {
+	const { id, data: binaryData, fileName, fileType, mimeType } = props.binaryData;
+	const isJSONData = fileType === 'json';
+	const isHTMLData = fileType === 'html';
+
+	if (!id) {
+		if (isJSONData || isHTMLData) {
+			data.value = jsonParse(atob(binaryData));
+		} else {
+			embedSource.value = 'data:' + mimeType + ';base64,' + binaryData;
+		}
+	} else {
+		try {
+			const binaryUrl = workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType);
+			if (isJSONData || isHTMLData) {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				data.value = await (isJSONData ? fetchedData.json() : fetchedData.text());
+			} else {
+				embedSource.value = binaryUrl;
+			}
+		} catch (e) {
+			error.value = true;
+		}
+	}
+
+	isLoading.value = false;
+});
+</script>
+
 <template>
 	<span>
 		<div v-if="isLoading">Loading binary data...</div>
@@ -11,86 +63,17 @@
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
-			<vue-json-pretty
+			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="data"
 				:deep="3"
-				:showLength="true"
+				:show-length="true"
 			/>
-			<run-data-html v-else-if="binaryData.fileType === 'html'" :inputHtml="data" />
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass" />
 		</span>
 	</span>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import type { IBinaryData } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-import type { PropType } from 'vue';
-import VueJsonPretty from 'vue-json-pretty';
-import { useWorkflowsStore } from '@/stores';
-import RunDataHtml from '@/components/RunDataHtml.vue';
-
-export default defineComponent({
-	name: 'BinaryDataDisplayEmbed',
-	components: {
-		VueJsonPretty,
-		RunDataHtml,
-	},
-	props: {
-		binaryData: {
-			type: Object as PropType<IBinaryData>,
-			required: true,
-		},
-	},
-	data() {
-		return {
-			isLoading: true,
-			embedSource: '',
-			error: false,
-			data: '',
-		};
-	},
-	computed: {
-		...mapStores(useWorkflowsStore),
-	},
-	async mounted() {
-		const { id, data, fileName, fileType, mimeType } = this.binaryData;
-		const isJSONData = fileType === 'json';
-		const isHTMLData = fileType === 'html';
-
-		if (!id) {
-			if (isJSONData || isHTMLData) {
-				this.data = jsonParse(atob(data));
-			} else {
-				this.embedSource = 'data:' + mimeType + ';base64,' + data;
-			}
-		} else {
-			try {
-				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
-				if (isJSONData || isHTMLData) {
-					const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
-					this.data = await (isJSONData ? fetchedData.json() : fetchedData.text());
-				} else {
-					this.embedSource = binaryUrl;
-				}
-			} catch (e) {
-				this.error = true;
-			}
-		}
-
-		this.isLoading = false;
-	},
-	methods: {
-		embedClass(): string[] {
-			const { fileType } = this.binaryData;
-			return [fileType ?? 'other'];
-		},
-	},
-});
-</script>
 
 <style lang="scss">
 .binary-data {

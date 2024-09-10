@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import isEmpty from 'lodash/isEmpty';
 
@@ -48,8 +48,8 @@ export class Stripe implements INodeType {
 		defaults: {
 			name: 'Stripe',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'stripeApi',
@@ -113,7 +113,7 @@ export class Stripe implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'customer');
+				return await loadResource.call(this, 'customer');
 			},
 			async getCurrencies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];

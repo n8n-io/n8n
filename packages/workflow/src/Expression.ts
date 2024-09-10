@@ -15,7 +15,8 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './errors/expression.error';
+import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
@@ -24,6 +25,8 @@ import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
 import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
 import { getGlobalState } from './GlobalState';
+import { ApplicationError } from './errors/application.error';
+import { sanitizer, sanitizerName } from './ExpressionSandboxing';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -71,10 +74,17 @@ export class Expression {
 	 *
 	 */
 	convertObjectValueToString(value: object): string {
-		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new Error('invalid DateTime');
+			throw new ApplicationError('invalid DateTime');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
 		}
 
 		let result = '';
@@ -83,6 +93,8 @@ export class Expression {
 			result = DateTime.fromJSDate(value, {
 				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
 			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
 		} else {
 			result = JSON.stringify(value);
 		}
@@ -102,6 +114,7 @@ export class Expression {
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
 	// TODO: Clean that up at some point and move all the options into an options object
+	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -159,7 +172,7 @@ export class Expression {
 						release: process.release,
 						version: process.pid,
 						versions: process.versions,
-				  }
+					}
 				: {};
 
 		/**
@@ -294,6 +307,8 @@ export class Expression {
 		data.extend = extend;
 		data.extendOptional = extendOptional;
 
+		data[sanitizerName] = sanitizer;
+
 		Object.assign(data, extendedFunctions);
 
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
@@ -309,12 +324,12 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new Error('invalid syntax');
+			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
 
 			if (returnValue.name === 'DateTime')
-				throw new Error('this is a DateTime, please access its methods');
+				throw new ApplicationError('this is a DateTime, please access its methods');
 
-			throw new Error('this is a function, please add ()');
+			throw new ApplicationError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -338,14 +353,14 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new Error('invalid syntax');
+			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new Error(match.groups.msg);
+				throw new ApplicationError(match.groups.msg);
 			}
 		} finally {
 			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });

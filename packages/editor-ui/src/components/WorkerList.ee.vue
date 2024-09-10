@@ -1,43 +1,23 @@
-<template>
-	<div>
-		<PushConnectionTracker class="actions"></PushConnectionTracker>
-		<div :class="$style.workerListHeader">
-			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
-		</div>
-		<div v-if="isMounting">
-			<n8n-loading :class="$style.tableLoader" variant="custom" />
-		</div>
-		<div v-else>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
-			<div v-else>
-				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
-				</div>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { externalHooks } from '@/mixins/externalHooks';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useI18n, useToast } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
-import { useOrchestrationStore } from '../stores/orchestration.store';
-import { setPageTitle } from '@/utils';
-import { pushConnection } from '../mixins/pushConnection';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { setPageTitle } from '@/utils/htmlUtils';
 import WorkerCard from './Workers/WorkerCard.ee.vue';
+import { usePushConnection } from '@/composables/usePushConnection';
+import { useRouter } from 'vue-router';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useRootStore } from '@/stores/root.store';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
 	props: {
@@ -47,37 +27,18 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const router = useRouter();
 		const i18n = useI18n();
+		const pushConnection = usePushConnection({ router });
+
 		return {
 			i18n,
+			pushConnection,
 			...useToast(),
 		};
 	},
-	data() {
-		return {
-			isMounting: true,
-		};
-	},
-	mounted() {
-		setPageTitle(`n8n - ${this.pageTitle}`);
-		this.isMounting = false;
-	},
-	beforeMount() {
-		if (window.Cypress !== undefined) {
-			return;
-		}
-		this.pushConnect();
-		this.orchestrationManagerStore.startWorkerStatusPolling();
-	},
-	beforeUnmount() {
-		if (window.Cypress !== undefined) {
-			return;
-		}
-		this.orchestrationManagerStore.stopWorkerStatusPolling();
-		this.pushDisconnect();
-	},
 	computed: {
-		...mapStores(useUIStore, useOrchestrationStore),
+		...mapStores(useRootStore, useUIStore, usePushConnectionStore, useOrchestrationStore),
 		combinedWorkers(): IPushDataWorkerStatusPayload[] {
 			const returnData: IPushDataWorkerStatusPayload[] = [];
 			for (const workerId in this.orchestrationManagerStore.workers) {
@@ -85,12 +46,40 @@ export default defineComponent({
 			}
 			return returnData;
 		},
+		initialStatusReceived(): boolean {
+			return this.orchestrationManagerStore.initialStatusReceived;
+		},
 		workerIds(): string[] {
 			return Object.keys(this.orchestrationManagerStore.workers);
 		},
 		pageTitle() {
 			return this.i18n.baseText('workerList.pageTitle');
 		},
+	},
+	mounted() {
+		setPageTitle(`n8n - ${this.pageTitle}`);
+
+		this.$telemetry.track('User viewed worker view', {
+			instance_id: this.rootStore.instanceId,
+		});
+	},
+	beforeMount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
+
+		this.pushConnection.initialize();
+		this.pushStore.pushConnect();
+		this.orchestrationManagerStore.startWorkerStatusPolling();
+	},
+	beforeUnmount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
+
+		this.orchestrationManagerStore.stopWorkerStatusPolling();
+		this.pushStore.pushDisconnect();
+		this.pushConnection.terminate();
 	},
 	methods: {
 		averageLoadAvg(loads: number[]) {
@@ -109,6 +98,26 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<div>
+		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<div :class="$style.workerListHeader">
+			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+		</div>
+		<div v-if="!initialStatusReceived">
+			<n8n-spinner />
+		</div>
+		<div v-else>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style module lang="scss">
 .workerListHeader {

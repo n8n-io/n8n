@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as record from './record/Record.resource';
 import * as base from './base/Base.resource';
@@ -9,14 +9,14 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'airtable',
 	icon: 'file:airtable.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Read, update, write and delete data from Airtable',
 	defaults: {
 		name: 'Airtable',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'airtableTokenApi',

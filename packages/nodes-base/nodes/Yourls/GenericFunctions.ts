@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function yourlsApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -20,7 +20,7 @@ export async function yourlsApiRequest(
 	qs.signature = credentials.signature as string;
 	qs.format = 'json';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -34,6 +34,16 @@ export async function yourlsApiRequest(
 			throw new NodeOperationError(
 				this.getNode(),
 				`Yourls error response [400]: ${response.message}`,
+			);
+		}
+
+		if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Yourls responded with a 'Fatal error', check description for more details",
+				{
+					description: `Server response:\n${response}`,
+				},
 			);
 		}
 

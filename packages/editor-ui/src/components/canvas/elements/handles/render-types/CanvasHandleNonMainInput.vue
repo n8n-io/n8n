@@ -1,0 +1,91 @@
+<script lang="ts" setup>
+import CanvasHandlePlus from '@/components/canvas/elements/handles/render-types/parts/CanvasHandlePlus.vue';
+import { useCanvasNodeHandle } from '@/composables/useCanvasNodeHandle';
+import { NodeConnectionType } from 'n8n-workflow';
+import { computed, ref } from 'vue';
+
+const emit = defineEmits<{
+	add: [];
+}>();
+
+const { label, isConnected, isConnecting, type } = useCanvasNodeHandle();
+
+const handleClasses = 'target';
+
+const supportsMultipleConnections = computed(() => type.value === NodeConnectionType.AiTool);
+
+const isHandlePlusAvailable = computed(
+	() => !isConnected.value || supportsMultipleConnections.value,
+);
+const isHandlePlusVisible = computed(
+	() => !isConnecting.value || isHovered.value || supportsMultipleConnections.value,
+);
+const isHovered = ref(false);
+
+function onMouseEnter() {
+	isHovered.value = true;
+}
+
+function onMouseLeave() {
+	isHovered.value = false;
+}
+
+function onClickAdd() {
+	emit('add');
+}
+</script>
+<template>
+	<div :class="['canvas-node-handle-non-main-input', $style.handle]">
+		<div :class="[$style.label]">{{ label }}</div>
+		<CanvasHandleDiamond :handle-classes="handleClasses" />
+		<Transition name="canvas-node-handle-non-main-input">
+			<CanvasHandlePlus
+				v-if="isHandlePlusAvailable"
+				v-show="isHandlePlusVisible"
+				:handle-classes="handleClasses"
+				position="bottom"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+				@click:plus="onClickAdd"
+			/>
+		</Transition>
+	</div>
+</template>
+
+<style lang="scss" module>
+.handle {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.label {
+	position: absolute;
+	top: 20px;
+	left: 50%;
+	transform: translate(-50%, 0);
+	font-size: var(--font-size-2xs);
+	color: var(--color-foreground-xdark);
+	background: var(--color-canvas-label-background);
+	z-index: 1;
+	text-align: center;
+	white-space: nowrap;
+}
+</style>
+
+<style lang="scss">
+.canvas-node-handle-non-main-input-enter-active,
+.canvas-node-handle-non-main-input-leave-active {
+	transform-origin: center 0;
+	transition-property: transform, opacity;
+	transition-duration: 0.2s;
+	transition-timing-function: ease;
+}
+
+.canvas-node-handle-non-main-input-enter-from,
+.canvas-node-handle-non-main-input-leave-to {
+	transform: scale(0);
+	opacity: 0;
+}
+</style>

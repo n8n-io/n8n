@@ -1,11 +1,10 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
 import { generatePairedItemData } from '../../utils/utilities';
 import { getWorkflowInfo } from './GenericFunctions';
 
@@ -14,16 +13,17 @@ export class ExecuteWorkflow implements INodeType {
 		displayName: 'Execute Workflow',
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
+		iconColor: 'orange-red',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
 			name: 'Execute Workflow',
 			color: '#ff6d5a',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Operation',
@@ -78,6 +78,7 @@ export class ExecuteWorkflow implements INodeType {
 				displayOptions: {
 					show: {
 						source: ['database'],
+						'@version': [1],
 					},
 				},
 				default: '',
@@ -86,7 +87,20 @@ export class ExecuteWorkflow implements INodeType {
 				description:
 					"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
-
+			{
+				displayName: 'Workflow',
+				name: 'workflowId',
+				type: 'workflowSelector',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				default: '',
+				required: true,
+				hint: "Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
+			},
 			// ----------------------------------
 			//         source:localFile
 			// ----------------------------------
@@ -111,9 +125,8 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
-					editor: 'json',
 					rows: 10,
 				},
 				displayOptions: {
@@ -171,6 +184,23 @@ export class ExecuteWorkflow implements INodeType {
 				],
 				default: 'once',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add option',
+				options: [
+					{
+						displayName: 'Wait For Sub-Workflow Completion',
+						name: 'waitForSubWorkflow',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether the main workflow should wait for the sub-workflow to complete its execution before proceeding',
+					},
+				],
+			},
 		],
 	};
 
@@ -180,29 +210,45 @@ export class ExecuteWorkflow implements INodeType {
 		const items = this.getInputData();
 
 		if (mode === 'each') {
-			const returnData: INodeExecutionData[][] = [];
+			let returnData: INodeExecutionData[][] = [];
 
 			for (let i = 0; i < items.length; i++) {
 				try {
+					const waitForSubWorkflow = this.getNodeParameter(
+						'options.waitForSubWorkflow',
+						i,
+						true,
+					) as boolean;
 					const workflowInfo = await getWorkflowInfo.call(this, source, i);
-					const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(workflowInfo, [
-						items[i],
-					]);
 
-					for (const [outputIndex, outputData] of workflowResult.entries()) {
-						for (const item of outputData) {
-							item.pairedItem = { item: i };
+					if (waitForSubWorkflow) {
+						const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
+							workflowInfo,
+							[items[i]],
+						);
+
+						for (const [outputIndex, outputData] of workflowResult.entries()) {
+							for (const item of outputData) {
+								item.pairedItem = { item: i };
+							}
+
+							if (returnData[outputIndex] === undefined) {
+								returnData[outputIndex] = [];
+							}
+
+							returnData[outputIndex].push(...outputData);
 						}
-
-						if (returnData[outputIndex] === undefined) {
-							returnData[outputIndex] = [];
-						}
-
-						returnData[outputIndex].push(...outputData);
+					} else {
+						void this.executeWorkflow(workflowInfo, [items[i]]);
+						returnData = [items];
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+						if (returnData[i] === undefined) {
+							returnData[i] = [];
+						}
+						returnData[i].push({ json: { error: error.message }, pairedItem: { item: i } });
+						continue;
 					}
 					throw new NodeOperationError(this.getNode(), error, {
 						message: `Error executing workflow with item at index ${i}`,
@@ -215,17 +261,36 @@ export class ExecuteWorkflow implements INodeType {
 			return returnData;
 		} else {
 			try {
+				const waitForSubWorkflow = this.getNodeParameter(
+					'options.waitForSubWorkflow',
+					0,
+					true,
+				) as boolean;
 				const workflowInfo = await getWorkflowInfo.call(this, source);
+
+				if (!waitForSubWorkflow) {
+					void this.executeWorkflow(workflowInfo, items);
+					return [items];
+				}
+
 				const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
 					workflowInfo,
 					items,
 				);
 
-				const pairedItem = generatePairedItemData(items.length);
+				const fallbackPairedItemData = generatePairedItemData(items.length);
 
 				for (const output of workflowResult) {
-					for (const item of output) {
-						item.pairedItem = pairedItem;
+					const sameLength = output.length === items.length;
+
+					for (const [itemIndex, item] of output.entries()) {
+						if (item.pairedItem) continue;
+
+						if (sameLength) {
+							item.pairedItem = { item: itemIndex };
+						} else {
+							item.pairedItem = fallbackPairedItemData;
+						}
 					}
 				}
 

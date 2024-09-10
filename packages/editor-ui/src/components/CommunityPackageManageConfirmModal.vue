@@ -1,42 +1,8 @@
-<template>
-	<Modal
-		width="540px"
-		:name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY"
-		:title="getModalContent.title"
-		:eventBus="modalBus"
-		:center="true"
-		:showClose="!loading"
-		:beforeClose="onModalClose"
-	>
-		<template #content>
-			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div
-				:class="$style.descriptionContainer"
-				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
-			>
-				<n8n-info-tip theme="info" type="note" :bold="false">
-					<span v-text="getModalContent.description"></span>
-				</n8n-info-tip>
-			</div>
-		</template>
-		<template #footer>
-			<n8n-button
-				:loading="loading"
-				:disabled="loading"
-				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
-				size="large"
-				float="right"
-				@click="onConfirmButtonClick"
-			/>
-		</template>
-	</Modal>
-</template>
-
 <script>
 import { defineComponent } from 'vue';
 import Modal from '@/components/Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -75,7 +41,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useCommunityNodesStore),
 		activePackage() {
-			return this.communityNodesStore.getInstalledPackageByName(this.activePackageName);
+			return this.communityNodesStore.installedPackages[this.activePackageName];
 		},
 		getModalContent() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
@@ -193,6 +159,40 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<Modal
+		width="540px"
+		:name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY"
+		:title="getModalContent.title"
+		:event-bus="modalBus"
+		:center="true"
+		:show-close="!loading"
+		:before-close="onModalClose"
+	>
+		<template #content>
+			<n8n-text>{{ getModalContent.message }}</n8n-text>
+			<div
+				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
+				:class="$style.descriptionContainer"
+			>
+				<n8n-info-tip theme="info" type="note" :bold="false">
+					<span v-text="getModalContent.description"></span>
+				</n8n-info-tip>
+			</div>
+		</template>
+		<template #footer>
+			<n8n-button
+				:loading="loading"
+				:disabled="loading"
+				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
+				size="large"
+				float="right"
+				@click="onConfirmButtonClick"
+			/>
+		</template>
+	</Modal>
+</template>
 
 <style module lang="scss">
 .descriptionContainer {

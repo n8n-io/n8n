@@ -4,12 +4,14 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export class NoOp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'No Operation, do nothing',
 		name: 'noOp',
 		icon: 'fa:arrow-right',
+		iconColor: 'gray',
 		group: ['organization'],
 		version: 1,
 		description: 'No Operation',
@@ -17,8 +19,8 @@ export class NoOp implements INodeType {
 			name: 'No Operation, do nothing',
 			color: '#b0b0b0',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [],
 	};
 

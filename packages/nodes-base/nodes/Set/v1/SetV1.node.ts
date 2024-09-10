@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { NodeConnectionType, deepCopy } from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -22,8 +22,8 @@ const versionDescription: INodeTypeDescription = {
 		name: 'Set',
 		color: '#0000FF',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	properties: [
 		{
 			displayName: 'Keep Only Set',
@@ -118,7 +118,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Options',
 			name: 'options',
 			type: 'collection',
-			placeholder: 'Add Option',
+			placeholder: 'Add option',
 			default: {},
 			options: [
 				{
@@ -150,7 +150,7 @@ export class SetV1 implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (items.length === 0) {
-			items.push({ json: {} });
+			items.push({ json: {}, pairedItem: { item: 0 } });
 		}
 
 		const returnData: INodeExecutionData[] = [];

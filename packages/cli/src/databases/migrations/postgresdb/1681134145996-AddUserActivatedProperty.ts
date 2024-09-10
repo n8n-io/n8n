@@ -1,5 +1,5 @@
-import type { MigrationContext, ReversibleMigration } from '@db/types';
-import type { UserSettings } from '@/Interfaces';
+import type { MigrationContext, ReversibleMigration } from '@/databases/types';
+import type { UserSettings } from '@/interfaces';
 
 export class AddUserActivatedProperty1681134145996 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
@@ -18,15 +18,15 @@ export class AddUserActivatedProperty1681134145996 implements ReversibleMigratio
 						AND r.scope = 'workflow'`,
 		)) as UserSettings[];
 
-		const updatedUsers = activatedUsers.map(async (user) =>
-			queryRunner.query(
+		const updatedUserPromises = activatedUsers.map(async (user) => {
+			await queryRunner.query(
 				`UPDATE "${tablePrefix}user" SET settings = '${JSON.stringify(
 					user.settings,
 				)}' WHERE id = '${user.id}' `,
-			),
-		);
+			);
+		});
 
-		await Promise.all(updatedUsers);
+		await Promise.all(updatedUserPromises);
 
 		if (!activatedUsers.length) {
 			await queryRunner.query(

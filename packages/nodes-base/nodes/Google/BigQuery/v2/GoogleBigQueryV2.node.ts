@@ -23,6 +23,6 @@ export class GoogleBigQueryV2 implements INodeType {
 	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

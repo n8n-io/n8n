@@ -1,14 +1,16 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IHttpRequestMethods,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { spotifyApiRequest, spotifyApiRequestAllItems } from './GenericFunctions';
 
-import { isoCountryCodes } from './IsoCountryCodes';
+import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
 export class Spotify implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,8 +24,8 @@ export class Spotify implements INodeType {
 		defaults: {
 			name: 'Spotify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'spotifyOAuth2Api',
@@ -789,7 +791,7 @@ export class Spotify implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll: boolean;
 		let propertyName = '';

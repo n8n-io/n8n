@@ -113,7 +113,7 @@ export const messagePostDescription: MessageProperties = [
 							{
 								displayName: 'Options',
 								name: 'options',
-								placeholder: 'Add Option',
+								placeholder: 'Add option',
 								description: 'Adds a new option to select field',
 								type: 'fixedCollection',
 								typeOptions: {
@@ -367,7 +367,7 @@ export const messagePostDescription: MessageProperties = [
 		},
 		default: {},
 		description: 'Other options to set',
-		placeholder: 'Add options',
+		placeholder: 'Add option',
 		options: [
 			{
 				displayName: 'Make Comment',

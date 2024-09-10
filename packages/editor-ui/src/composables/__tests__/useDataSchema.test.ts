@@ -1,5 +1,5 @@
 import jp from 'jsonpath';
-import { useDataSchema } from '@/composables';
+import { useDataSchema } from '@/composables/useDataSchema';
 import type { Schema } from '@/Interface';
 
 describe('useDataSchema', () => {
@@ -350,6 +350,178 @@ describe('useDataSchema', () => {
 				}`,
 			);
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
+		});
+	});
+
+	describe('filterSchema', () => {
+		const filterSchema = useDataSchema().filterSchema;
+		it('should correctly filter a flat schema', () => {
+			const flatSchema: Schema = {
+				type: 'object',
+				value: [
+					{
+						key: 'name',
+						type: 'string',
+						value: 'First item',
+						path: '.name',
+					},
+					{
+						key: 'code',
+						type: 'number',
+						value: '1',
+						path: '.code',
+					},
+					{
+						key: 'email',
+						type: 'string',
+						value: 'first item@gmail.com',
+						path: '.email',
+					},
+				],
+				path: '',
+			};
+
+			expect(filterSchema(flatSchema, 'mail')).toEqual({
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'email',
+						path: '.email',
+						type: 'string',
+						value: 'first item@gmail.com',
+					},
+				],
+			});
+			expect(filterSchema(flatSchema, '1')).toEqual({
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'code',
+						path: '.code',
+						type: 'number',
+						value: '1',
+					},
+				],
+			});
+			expect(filterSchema(flatSchema, 'no match')).toEqual(null);
+		});
+
+		it('should correctly filter a nested schema', () => {
+			const nestedSchema: Schema = {
+				type: 'object',
+				value: [
+					{
+						key: 'name',
+						type: 'string',
+						value: 'First item',
+						path: '.name',
+					},
+					{
+						key: 'code',
+						type: 'number',
+						value: '1',
+						path: '.code',
+					},
+					{
+						key: 'email',
+						type: 'string',
+						value: 'first item@gmail.com',
+						path: '.email',
+					},
+					{
+						key: 'obj',
+						type: 'object',
+						value: [
+							{
+								key: 'foo',
+								type: 'object',
+								value: [
+									{
+										key: 'nested',
+										type: 'string',
+										value: 'bar',
+										path: '.obj.foo.nested',
+									},
+								],
+								path: '.obj.foo',
+							},
+						],
+						path: '.obj',
+					},
+				],
+				path: '',
+			};
+
+			expect(filterSchema(nestedSchema, 'bar')).toEqual({
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'obj',
+						path: '.obj',
+						type: 'object',
+						value: [
+							{
+								key: 'foo',
+								path: '.obj.foo',
+								type: 'object',
+								value: [
+									{
+										key: 'nested',
+										path: '.obj.foo.nested',
+										type: 'string',
+										value: 'bar',
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+			expect(filterSchema(nestedSchema, '1')).toEqual({
+				path: '',
+				type: 'object',
+				value: [
+					{
+						key: 'code',
+						path: '.code',
+						type: 'number',
+						value: '1',
+					},
+				],
+			});
+			expect(filterSchema(nestedSchema, 'no match')).toEqual(null);
+		});
+
+		it('should not filter schema with empty search', () => {
+			const flatSchema: Schema = {
+				type: 'object',
+				value: [
+					{
+						key: 'name',
+						type: 'string',
+						value: 'First item',
+						path: '.name',
+					},
+					{
+						key: 'code',
+						type: 'number',
+						value: '1',
+						path: '.code',
+					},
+					{
+						key: 'email',
+						type: 'string',
+						value: 'first item@gmail.com',
+						path: '.email',
+					},
+				],
+				path: '',
+			};
+
+			expect(filterSchema(flatSchema, '')).toEqual(flatSchema);
 		});
 	});
 });

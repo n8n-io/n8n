@@ -1,16 +1,20 @@
 import type { Application } from 'express';
-import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
-import type { SuperAgentTest } from 'supertest';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type TestAgent from 'supertest/lib/agent';
 import type { Server } from 'http';
 
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb } from '@/Interfaces';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { User } from '@/databases/entities/user';
+import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/interfaces';
+import type { LicenseMocker } from './license';
+import type { Project } from '@/databases/entities/project';
 
 type EndpointGroup =
+	| 'health'
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
 	| 'credentials'
@@ -23,6 +27,7 @@ type EndpointGroup =
 	| 'eventBus'
 	| 'license'
 	| 'variables'
+	| 'annotationTags'
 	| 'tags'
 	| 'externalSecrets'
 	| 'mfa'
@@ -30,34 +35,37 @@ type EndpointGroup =
 	| 'executions'
 	| 'workflowHistory'
 	| 'binaryData'
-	| 'invitations';
+	| 'invitations'
+	| 'debug'
+	| 'project'
+	| 'role'
+	| 'dynamic-node-parameters';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
+	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 }
+
+export type SuperAgentTest = TestAgent;
 
 export interface TestServer {
 	app: Application;
 	httpServer: Server;
-	authAgentFor: (user: User) => SuperAgentTest;
-	publicApiAgentFor: (user: User) => SuperAgentTest;
-	authlessAgent: SuperAgentTest;
+	authAgentFor: (user: User) => TestAgent;
+	publicApiAgentFor: (user: User) => TestAgent;
+	authlessAgent: TestAgent;
+	restlessAgent: TestAgent;
+	license: LicenseMocker;
 }
 
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 
 export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
-	{ user }: { user: User },
+	options: { user: User } | { project: Project },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
-
-export type PostgresSchemaSection = {
-	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
-};

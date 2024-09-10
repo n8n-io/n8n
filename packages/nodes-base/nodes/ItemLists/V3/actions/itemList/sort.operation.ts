@@ -11,9 +11,9 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 
-import { shuffleArray, sortByCode } from '../../helpers/utils';
+import { sortByCode } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
+import { shuffleArray, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -96,7 +96,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
-			editor: 'code',
+			editor: 'jsEditor',
 			rows: 10,
 		},
 		default: `// The two items to compare are in the variables a and b

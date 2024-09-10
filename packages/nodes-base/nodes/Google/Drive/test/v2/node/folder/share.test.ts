@@ -26,7 +26,7 @@ describe('test GoogleDriveV2: folder share', () => {
 		jest.unmock('../../../../v2/transport');
 	});
 
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			resource: 'folder',
 			operation: 'share',

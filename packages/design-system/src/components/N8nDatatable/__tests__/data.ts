@@ -1,6 +1,6 @@
 import type { PropType } from 'vue';
 import { defineComponent, h } from 'vue';
-import type { DatatableRow } from '../../../types';
+import type { DatatableColumn, DatatableRow } from '../../../types';
 import N8nButton from '../../N8nButton';
 
 export const ActionComponent = defineComponent({
@@ -15,7 +15,7 @@ export const ActionComponent = defineComponent({
 	},
 });
 
-export const columns = [
+export const columns: DatatableColumn[] = [
 	{ id: 'id', path: 'id', label: 'ID' },
 	{ id: 'name', path: 'name', label: 'Name' },
 	{ id: 'age', path: 'meta.age', label: 'Age' },
@@ -23,10 +23,11 @@ export const columns = [
 		id: 'action',
 		label: 'Action',
 		render: ActionComponent,
+		path: 'action',
 	},
 ];
 
-export const rows = [
+export const rows: DatatableRow[] = [
 	{ id: 1, name: 'Richard Hendricks', meta: { age: 29 } },
 	{ id: 2, name: 'Bertram Gilfoyle', meta: { age: 44 } },
 	{ id: 3, name: 'Dinesh Chugtai', meta: { age: 31 } },

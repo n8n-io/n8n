@@ -10,7 +10,7 @@ export class Twitter extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'X (Formerly Twitter)',
 			name: 'twitter',
-			icon: 'file:x.svg',
+			icon: { light: 'file:x.svg', dark: 'file:x.dark.svg' },
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume the X API',

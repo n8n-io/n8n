@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -19,7 +20,7 @@ const actions: UserAction[] = actionTypes.map((value) => ({
 const renderComponent = createComponentRenderer(WorkflowHistoryContent);
 
 let pinia: ReturnType<typeof createPinia>;
-let postMessageSpy: vi.SpyInstance;
+let postMessageSpy: MockInstance;
 
 describe('WorkflowHistoryContent', () => {
 	beforeEach(() => {

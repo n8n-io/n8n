@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import { cleanData, cleanDataPreviousApiVersions, mindeeApiRequest } from './GenericFunctions';
 
@@ -21,8 +21,8 @@ export class Mindee implements INodeType {
 		defaults: {
 			name: 'Mindee',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mindeeReceiptApi',
@@ -156,7 +156,7 @@ export class Mindee implements INodeType {
 				default: 'predict',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -167,8 +167,7 @@ export class Mindee implements INodeType {
 						resource: ['receipt', 'invoice'],
 					},
 				},
-				description:
-					'Name of the binary property which containsthe data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
 				displayName: 'RAW Data',

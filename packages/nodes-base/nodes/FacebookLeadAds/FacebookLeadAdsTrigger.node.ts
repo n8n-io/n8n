@@ -7,6 +7,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import {
 	appWebhookSubscriptionCreate,
@@ -31,7 +32,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 			name: 'Facebook Lead Ads Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'facebookLeadAdsOAuth2Api',
@@ -125,7 +126,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				options: [
 					{
@@ -169,7 +170,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
-						{ severity: 'warning' },
+						{ level: 'warning' },
 					);
 				}
 

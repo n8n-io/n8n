@@ -7,8 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,
@@ -50,7 +51,7 @@ export class Mailchimp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
-		icon: 'file:mailchimp.svg',
+		icon: { light: 'file:mailchimp.svg', dark: 'file:mailchimp.dark.svg' },
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -58,8 +59,8 @@ export class Mailchimp implements INodeType {
 		defaults: {
 			name: 'Mailchimp',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'mailchimpApi',
@@ -356,7 +357,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -703,7 +704,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -785,7 +786,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1288,7 +1289,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {
@@ -1417,7 +1418,7 @@ export class Mailchimp implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add option',
 				default: {},
 				displayOptions: {
 					show: {

@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function scorecardApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -23,7 +23,7 @@ export async function scorecardApiRequest(
 
 	const headerWithAuthentication = { Authorization: `Token ${credentials.apiKey}` };
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: headerWithAuthentication,
 		method,
 		qs: query,

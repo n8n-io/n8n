@@ -1,4 +1,4 @@
-import { isEmpty, intersection, isValidDate } from '@/utils';
+import { isEmpty, intersection, isValidDate } from '@/utils/typesUtils';
 
 describe('Types Utils', () => {
 	describe('isEmpty', () => {

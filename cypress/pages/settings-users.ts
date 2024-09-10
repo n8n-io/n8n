@@ -11,6 +11,7 @@ const settingsSidebar = new SettingsSidebar();
 
 export class SettingsUsersPage extends BasePage {
 	url = '/settings/users';
+
 	getters = {
 		setUpOwnerButton: () => cy.getByTestId('action-box').find('button').first(),
 		inviteButton: () => cy.getByTestId('settings-users-invite-button').last(),
@@ -20,6 +21,8 @@ export class SettingsUsersPage extends BasePage {
 		userItem: (email: string) => cy.getByTestId(`user-list-item-${email.toLowerCase()}`),
 		userActionsToggle: (email: string) =>
 			this.getters.userItem(email).find('[data-test-id="action-toggle"]'),
+		userRoleSelect: (email: string) =>
+			this.getters.userItem(email).find('[data-test-id="user-role-select"]'),
 		deleteUserAction: () =>
 			cy.getByTestId('action-toggle-dropdown').find('li:contains("Delete"):visible'),
 		confirmDeleteModal: () => cy.getByTestId('deleteUser-modal').last(),
@@ -32,6 +35,7 @@ export class SettingsUsersPage extends BasePage {
 		deleteUserButton: () => this.getters.confirmDeleteModal().find('button:contains("Delete")'),
 		deleteDataInput: () => cy.getByTestId('delete-data-input').find('input').first(),
 	};
+
 	actions = {
 		goToOwnerSetup: () => this.getters.setUpOwnerButton().click(),
 		loginAndVisit: (email: string, password: string, isOwner: boolean) => {
@@ -39,10 +43,10 @@ export class SettingsUsersPage extends BasePage {
 			workflowPage.actions.visit();
 			mainSidebar.actions.goToSettings();
 			if (isOwner) {
-				settingsSidebar.getters.menuItem('Users').click();
+				settingsSidebar.getters.users().click();
 				cy.url().should('match', new RegExp(this.url));
 			} else {
-				settingsSidebar.getters.menuItem('Users').should('not.exist');
+				settingsSidebar.getters.users().should('not.exist');
 				// Should be redirected to workflows page if trying to access UM url
 				cy.visit('/settings/users');
 				cy.url().should('match', new RegExp(workflowsPage.url));

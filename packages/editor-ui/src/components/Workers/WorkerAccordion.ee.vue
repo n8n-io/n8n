@@ -1,3 +1,26 @@
+<script setup lang="ts">
+import { ref } from 'vue';
+
+const props = withDefaults(
+	defineProps<{
+		icon?: string;
+		iconColor?: string;
+		initialExpanded?: boolean;
+	}>(),
+	{
+		icon: 'tasks',
+		iconColor: 'black',
+		initialExpanded: true,
+	},
+);
+
+const expanded = ref<boolean>(props.initialExpanded);
+
+function toggle() {
+	expanded.value = !expanded.value;
+}
+</script>
+
 <template>
 	<div :class="['accordion', $style.container]">
 		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
@@ -12,31 +35,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue';
-
-const props = defineProps({
-	icon: {
-		type: String,
-		default: 'tasks',
-	},
-	iconColor: {
-		type: String,
-		default: 'black',
-	},
-	initialExpanded: {
-		type: Boolean,
-		default: true,
-	},
-});
-
-const expanded = ref<boolean>(props.initialExpanded);
-
-function toggle() {
-	expanded.value = !expanded.value;
-}
-</script>
 
 <style lang="scss" module>
 .container {

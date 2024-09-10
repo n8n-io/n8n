@@ -1,4 +1,4 @@
-import { getValueByPath } from '@/utils';
+import { getValueByPath } from 'n8n-design-system/utils';
 
 describe('getValueByPath()', () => {
 	const object = {

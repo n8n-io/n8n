@@ -18,11 +18,6 @@ export const postOperations: INodeProperties[] = [
 				description: 'Create a post',
 				action: 'Create a post',
 			},
-			// {
-			// 	name: 'Delete',
-			// 	value: 'delete',
-			// 	description: 'Delete a post',
-			// },
 			{
 				name: 'Get',
 				value: 'get',
@@ -619,7 +614,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -697,7 +692,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -930,7 +925,7 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {

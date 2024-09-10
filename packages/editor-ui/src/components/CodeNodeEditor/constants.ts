@@ -56,7 +56,7 @@ return $input.item;`.trim(),
 		runOnceForAllItems: `
 # Loop over input items and add a new field called 'myNewField' to the JSON of each one
 for item in _input.all():
-	item.json.myNewField = 1
+  item.json.myNewField = 1
 return _input.all()`.trim(),
 		runOnceForEachItem: `
 # Add a new field called 'myNewField' to the JSON of the item

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as message from './message';
 import * as channel from './channel';
@@ -17,8 +17,8 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Discord',
 	},
-	inputs: ['main'],
-	outputs: ['main'],
+	inputs: [NodeConnectionType.Main],
+	outputs: [NodeConnectionType.Main],
 	credentials: [
 		{
 			name: 'discordBotApi',
@@ -61,7 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'OAuth2',
 					value: 'oAuth2',
-					description: 'Manage messages, channels, and members on a server',
+					description: "Same features as 'Bot Token' with easier Bot installation",
 				},
 				{
 					name: 'Webhook',

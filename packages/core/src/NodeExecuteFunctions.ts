@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/naming-convention */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -12,15 +11,15 @@ import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
+	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import type {
 	AxiosError,
+	AxiosHeaders,
 	AxiosPromise,
-	AxiosProxyConfig,
 	AxiosRequestConfig,
 	AxiosResponse,
-	Method,
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
@@ -30,15 +29,17 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { Agent } from 'https';
+import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
+import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
-	ConnectionTypes,
+	CloseFunction,
 	ContextType,
-	ExecutionError,
+	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -75,6 +76,7 @@ import type {
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 	IRunExecutionData,
 	ISourceData,
 	ITaskData,
@@ -89,37 +91,42 @@ import type {
 	NodeExecutionWithMetadata,
 	NodeHelperFunctions,
 	NodeParameterValueType,
+	NodeTypeAndVersion,
 	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	CallbackManager,
+	INodeParameters,
+	EnsureTypeOptions,
+	SSHTunnelFunctions,
+	SchedulingFunctions,
 } from 'n8n-workflow';
 import {
+	NodeConnectionType,
 	ExpressionError,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeHelpers,
 	NodeOperationError,
-	NodeSSLError,
-	OAuth2GrantType,
+	NodeSslError,
 	WorkflowDataProxy,
 	createDeferredPromise,
 	deepCopy,
 	fileTypeFromMimeType,
-	getGlobalState,
 	isObjectEmpty,
 	isResourceMapperValue,
 	validateFieldType,
 	ExecutionBaseError,
 	jsonParse,
+	ApplicationError,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import path from 'path';
 import { stringify } from 'qs';
-import type { OptionsWithUrl } from 'request';
-import type { OptionsWithUri, RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
@@ -130,6 +137,7 @@ import {
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
 	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
@@ -137,18 +145,21 @@ import {
 } from './Constants';
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError } from './Interfaces';
-import { getClientCredentialsToken } from './OAuth2Helper';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
-} from './WorkflowExecutionMetadata';
+} from './ExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
 import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
+import { ScheduledTaskManager } from './ScheduledTaskManager';
+import { SSHClientsManager } from './SSHClientsManager';
+import { binaryToBuffer } from './BinaryData/utils';
+import { getNodeAsTool } from './CreateNodeAsTool';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -161,6 +172,13 @@ axios.defaults.paramsSerializer = (params) => {
 	}
 	return stringify(params, { arrayFormat: 'indices' });
 };
+axios.interceptors.request.use((config) => {
+	// If no content-type is set by us, prevent axios from force-setting the content-type to `application/x-www-form-urlencoded`
+	if (config.data === undefined) {
+		config.headers.setContentType(false, false);
+	}
+	return config;
+});
 
 const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	if (value?.hasOwnProperty('value') && value.hasOwnProperty('options')) {
@@ -186,23 +204,35 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
-function searchForHeader(headers: IDataObject, headerName: string) {
-	if (headers === undefined) {
+
+const validateUrl = (url?: string): boolean => {
+	if (!url) return false;
+
+	try {
+		new URL(url);
+		return true;
+	} catch (error) {
+		return false;
+	}
+};
+
+function searchForHeader(config: AxiosRequestConfig, headerName: string) {
+	if (config.headers === undefined) {
 		return undefined;
 	}
 
-	const headerNames = Object.keys(headers);
+	const headerNames = Object.keys(config.headers);
 	headerName = headerName.toLowerCase();
 	return headerNames.find((thisHeader) => thisHeader.toLowerCase() === headerName);
 }
 
-async function generateContentLengthHeader(formData: FormData, headers: IDataObject) {
-	if (!formData?.getLength) {
+async function generateContentLengthHeader(config: AxiosRequestConfig) {
+	if (!(config.data instanceof FormData)) {
 		return;
 	}
 	try {
-		const length = await new Promise((res, rej) => {
-			formData.getLength((error: Error | null, length: number) => {
+		const length = await new Promise<number>((res, rej) => {
+			config.data.getLength((error: Error | null, length: number) => {
 				if (error) {
 					rej(error);
 					return;
@@ -210,15 +240,50 @@ async function generateContentLengthHeader(formData: FormData, headers: IDataObj
 				res(length);
 			});
 		});
-		headers = Object.assign(headers, {
+		config.headers = {
+			...config.headers,
 			'content-length': length,
-		});
+		};
 	} catch (error) {
 		Logger.error('Unable to calculate form data length', { error });
 	}
 }
 
-async function parseRequestObject(requestObject: IDataObject) {
+const getHostFromRequestObject = (
+	requestObject: Partial<{
+		url: string;
+		uri: string;
+		baseURL: string;
+	}>,
+): string | null => {
+	try {
+		const url = (requestObject.url ?? requestObject.uri) as string;
+		return new URL(url, requestObject.baseURL).hostname;
+	} catch (error) {
+		return null;
+	}
+};
+
+const getBeforeRedirectFn =
+	(agentOptions: AgentOptions, axiosConfig: AxiosRequestConfig) =>
+	(redirectedRequest: Record<string, any>) => {
+		const redirectAgent = new Agent({
+			...agentOptions,
+			servername: redirectedRequest.hostname,
+		});
+		redirectedRequest.agent = redirectAgent;
+		redirectedRequest.agents.https = redirectAgent;
+
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
+
+// eslint-disable-next-line complexity
+export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
 	// the request library to axios directly
@@ -228,7 +293,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as string;
+		axiosConfig.headers = requestObject.headers as AxiosHeaders;
 	}
 
 	// Let's start parsing the hardest part, which is the request body.
@@ -246,7 +311,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 		);
 	const contentType =
 		contentTypeHeaderKeyName &&
-		(axiosConfig.headers[contentTypeHeaderKeyName] as string | undefined);
+		(axiosConfig.headers?.[contentTypeHeaderKeyName] as string | undefined);
 	if (contentType === 'application/x-www-form-urlencoded' && requestObject.formData === undefined) {
 		// there are nodes incorrectly created, informing the content type header
 		// and also using formData. Request lib takes precedence for the formData.
@@ -265,7 +330,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 				axiosConfig.data = stringify(allData);
 			}
 		}
-	} else if (contentType && contentType.includes('multipart/form-data') !== false) {
+	} else if (contentType?.includes('multipart/form-data')) {
 		if (requestObject.formData !== undefined && requestObject.formData instanceof FormData) {
 			axiosConfig.data = requestObject.formData;
 		} else {
@@ -278,10 +343,10 @@ async function parseRequestObject(requestObject: IDataObject) {
 		}
 		// replace the existing header with a new one that
 		// contains the boundary property.
-		delete axiosConfig.headers[contentTypeHeaderKeyName];
+		delete axiosConfig.headers?.[contentTypeHeaderKeyName!];
 		const headers = axiosConfig.data.getHeaders();
 		axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-		await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
+		await generateContentLengthHeader(axiosConfig);
 	} else {
 		// When using the `form` property it means the content should be x-www-form-urlencoded.
 		if (requestObject.form !== undefined && requestObject.body === undefined) {
@@ -291,7 +356,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 					? stringify(requestObject.form, { format: 'RFC3986' })
 					: stringify(requestObject.form).toString();
 			if (axiosConfig.headers !== undefined) {
-				const headerName = searchForHeader(axiosConfig.headers, 'content-type');
+				const headerName = searchForHeader(axiosConfig, 'content-type');
 				if (headerName) {
 					delete axiosConfig.headers[headerName];
 				}
@@ -305,9 +370,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// remove any "content-type" that might exist.
 			if (axiosConfig.headers !== undefined) {
 				const headers = Object.keys(axiosConfig.headers);
-				headers.forEach((header) =>
-					header.toLowerCase() === 'content-type' ? delete axiosConfig.headers[header] : null,
-				);
+				headers.forEach((header) => {
+					if (header.toLowerCase() === 'content-type') {
+						delete axiosConfig.headers?.[header];
+					}
+				});
 			}
 
 			if (requestObject.formData instanceof FormData) {
@@ -318,7 +385,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 			// Mix in headers as FormData creates the boundary.
 			const headers = axiosConfig.data.getHeaders();
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, headers);
-			await generateContentLengthHeader(axiosConfig.data, axiosConfig.headers);
+			await generateContentLengthHeader(axiosConfig);
 		} else if (requestObject.body !== undefined) {
 			// If we have body and possibly form
 			if (requestObject.form !== undefined && requestObject.body) {
@@ -330,28 +397,28 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString() as string;
+		axiosConfig.url = requestObject.uri?.toString();
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString() as string;
+		axiosConfig.url = requestObject.url?.toString();
 	}
 
 	if (requestObject.baseURL !== undefined) {
-		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+		axiosConfig.baseURL = requestObject.baseURL?.toString();
 	}
 
 	if (requestObject.method !== undefined) {
-		axiosConfig.method = requestObject.method as Method;
+		axiosConfig.method = requestObject.method;
 	}
 
 	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
-		axiosConfig.params = requestObject.qs as IDataObject;
+		axiosConfig.params = requestObject.qs;
 	}
 
 	function hasArrayFormatOptions(
-		arg: IDataObject,
-	): arg is IDataObject & { qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' } } {
+		arg: IRequestOptions,
+	): arg is Required<Pick<IRequestOptions, 'qsStringifyOptions'>> {
 		if (
 			typeof arg.qsStringifyOptions === 'object' &&
 			arg.qsStringifyOptions !== null &&
@@ -389,13 +456,12 @@ async function parseRequestObject(requestObject: IDataObject) {
 
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
-		if ((requestObject.auth as IDataObject).bearer !== undefined) {
+		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				Authorization: `Bearer ${(requestObject.auth as IDataObject).bearer}`,
+				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
 		} else {
-			const authObj = requestObject.auth as IDataObject;
+			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
 				username: (authObj.user || authObj.username) as string,
@@ -426,28 +492,33 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
+	const { method } = requestObject;
 	if (
-		requestObject.followRedirect === false &&
-		((requestObject.method as string | undefined) || 'get').toLowerCase() === 'get'
+		(requestObject.followRedirect !== false &&
+			(!method || method === 'GET' || method === 'HEAD')) ||
+		requestObject.followAllRedirects
 	) {
-		axiosConfig.maxRedirects = 0;
-	}
-	if (
-		requestObject.followAllRedirects === false &&
-		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
-	) {
+		axiosConfig.maxRedirects = requestObject.maxRedirects;
+	} else {
 		axiosConfig.maxRedirects = 0;
 	}
 
-	if (requestObject.rejectUnauthorized === false) {
-		axiosConfig.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
-		});
+	const host = getHostFromRequestObject(requestObject);
+	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
+	if (host) {
+		agentOptions.servername = host;
 	}
+	if (requestObject.rejectUnauthorized === false) {
+		agentOptions.rejectUnauthorized = false;
+		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
+	}
+
+	axiosConfig.httpsAgent = new Agent(agentOptions);
+
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
 	if (requestObject.timeout !== undefined) {
-		axiosConfig.timeout = requestObject.timeout as number;
+		axiosConfig.timeout = requestObject.timeout;
 	}
 
 	if (requestObject.proxy !== undefined) {
@@ -455,8 +526,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 		if (typeof requestObject.proxy === 'string') {
 			try {
 				const url = new URL(requestObject.proxy);
+				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
 				axiosConfig.proxy = {
-					host: url.hostname,
+					host,
 					port: parseInt(url.port, 10),
 					protocol: url.protocol,
 				};
@@ -481,8 +553,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 					const [userpass, hostport] = requestObject.proxy.split('@');
 					const [username, password] = userpass.split(':');
 					const [hostname, port] = hostport.split(':');
+					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
 					axiosConfig.proxy = {
-						host: hostname,
+						host,
 						port: parseInt(port, 10),
 						protocol: 'http',
 						auth: {
@@ -506,7 +579,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 				}
 			}
 		} else {
-			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+			axiosConfig.proxy = requestObject.proxy;
 		}
 	}
 
@@ -605,12 +678,6 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-type ConfigObject = {
-	auth?: { sendImmediately: boolean };
-	resolveWithFullResponse?: boolean;
-	simple?: boolean;
-};
-
 interface IContentType {
 	type: string;
 	parameters: {
@@ -699,36 +766,34 @@ export function parseIncomingMessage(message: IncomingMessage) {
 	}
 }
 
+async function binaryToString(body: Buffer | Readable, encoding?: BufferEncoding) {
+	const buffer = await binaryToBuffer(body);
+	if (!encoding && body instanceof IncomingMessage) {
+		parseIncomingMessage(body);
+		encoding = body.encoding;
+	}
+	return buffer.toString(encoding);
+}
+
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
 	node: INode | undefined,
-	uriOrObject: string | object,
-	options?: object,
+	uriOrObject: string | IRequestOptions,
+	options?: IRequestOptions,
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let configObject: ConfigObject;
-	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
-		axiosConfig.url = uriOrObject;
-	}
-	if (uriOrObject !== undefined && typeof uriOrObject === 'object') {
-		configObject = uriOrObject;
+	let configObject: IRequestOptions;
+	if (typeof uriOrObject === 'string') {
+		configObject = { uri: uriOrObject, ...options };
 	} else {
-		configObject = options || {};
+		configObject = uriOrObject ?? {};
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
-
-	Logger.debug(
-		'Proxying request to axios',
-		// {
-		// 	originalConfig: configObject,
-		// 	parsedConfig: axiosConfig,
-		// }
-	);
 
 	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
@@ -748,7 +813,7 @@ export async function proxyRequestToAxios(
 			}
 		};
 	} else {
-		requestFn = async () => axios(axiosConfig);
+		requestFn = async () => await axios(axiosConfig);
 	}
 
 	try {
@@ -763,11 +828,11 @@ export async function proxyRequestToAxios(
 		return configObject.resolveWithFullResponse
 			? {
 					body,
-					headers: response.headers,
+					headers: { ...response.headers },
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-			  }
+				}
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -783,9 +848,7 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await Container.get(BinaryDataService)
-						.toBuffer(responseData)
-						.then((buffer) => buffer.toString('utf-8'));
+					responseData = await binaryToString(responseData);
 				}
 
 				if (configObject.simple === false) {
@@ -804,11 +867,16 @@ export async function proxyRequestToAxios(
 				error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 				throw Object.assign(error, {
 					statusCode: response.status,
+					/**
+					 * Axios adds `status` when serializing, causing `status` to be available only to the client.
+					 * Hence we add it explicitly to allow the backend to use it when resolving expressions.
+					 */
+					status: response.status,
 					error: responseData,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
 			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
-				throw new NodeSSLError(error);
+				throw new NodeSslError(error);
 			}
 		}
 
@@ -816,6 +884,7 @@ export async function proxyRequestToAxios(
 	}
 }
 
+// eslint-disable-next-line complexity
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -845,11 +914,17 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	if (n8nRequest.skipSslCertificateValidation === true) {
-		axiosRequest.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-		});
+	const host = getHostFromRequestObject(n8nRequest);
+	const agentOptions: AgentOptions = {};
+	if (host) {
+		agentOptions.servername = host;
 	}
+	if (n8nRequest.skipSslCertificateValidation === true) {
+		agentOptions.rejectUnauthorized = false;
+	}
+	axiosRequest.httpsAgent = new Agent(agentOptions);
+
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -860,7 +935,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	const { body } = n8nRequest;
 	if (body) {
 		// Let's add some useful header standards here.
-		const existingContentTypeHeaderKey = searchForHeader(axiosRequest.headers, 'content-type');
+		const existingContentTypeHeaderKey = searchForHeader(axiosRequest, 'content-type');
 		if (existingContentTypeHeaderKey === undefined) {
 			axiosRequest.headers = axiosRequest.headers || {};
 			// We are only setting content type headers if the user did
@@ -874,7 +949,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 				axiosRequest.headers['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
 		} else if (
-			axiosRequest.headers[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
+			axiosRequest.headers?.[existingContentTypeHeaderKey] === 'application/x-www-form-urlencoded'
 		) {
 			axiosRequest.data = new URLSearchParams(n8nRequest.body as Record<string, string>);
 		}
@@ -887,19 +962,25 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	}
 
 	if (n8nRequest.json) {
-		const key = searchForHeader(axiosRequest.headers, 'accept');
+		const key = searchForHeader(axiosRequest, 'accept');
 		// If key exists, then the user has set both accept
 		// header and the json flag. Header should take precedence.
 		if (!key) {
-			axiosRequest.headers.Accept = 'application/json';
+			axiosRequest.headers = {
+				...axiosRequest.headers,
+				Accept: 'application/json',
+			};
 		}
 	}
 
-	const userAgentHeader = searchForHeader(axiosRequest.headers, 'user-agent');
+	const userAgentHeader = searchForHeader(axiosRequest, 'user-agent');
 	// If key exists, then the user has set both accept
 	// header and the json flag. Header should take precedence.
 	if (!userAgentHeader) {
-		axiosRequest.headers['User-Agent'] = 'n8n';
+		axiosRequest.headers = {
+			...axiosRequest.headers,
+			'User-Agent': 'n8n',
+		};
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
@@ -909,9 +990,21 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	return axiosRequest;
 }
 
+const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
+
+/** Remove empty request body on GET, HEAD, and OPTIONS requests */
+export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
+	const method = requestOptions.method || 'GET';
+	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
+		delete requestOptions.body;
+	}
+};
+
 async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	removeEmptyBody(requestOptions);
+
 	let axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
@@ -919,6 +1012,7 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
 	let result: AxiosResponse<any>;
 	try {
 		result = await axios(axiosRequest);
@@ -957,14 +1051,14 @@ export function getBinaryPath(binaryDataId: string): string {
  * Returns binary file metadata
  */
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
-	return Container.get(BinaryDataService).getMetadata(binaryDataId);
+	return await Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
 export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
-	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
+	return await Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -974,18 +1068,29 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(node, 'No binary data exists on item!', {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`This operation expects the node's input data to contain a binary file '${propertyName}', but none was found [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description: 'Make sure that the previous node outputs a binary file',
+			},
+		);
 	}
 
 	const binaryPropertyData = binaryKeyData[propertyName];
 	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(node, `Item has no binary property called "${propertyName}"`, {
-			itemIndex,
-		});
+		throw new NodeOperationError(
+			node,
+			`The item has no binary field '${propertyName}' [item ${itemIndex}]`,
+			{
+				itemIndex,
+				description:
+					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+			},
+		);
 	}
 
 	return binaryPropertyData;
@@ -1000,8 +1105,8 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getAsBuffer(binaryData);
+	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
+	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
@@ -1018,7 +1123,7 @@ export async function setBinaryDataBuffer(
 	workflowId: string,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return Container.get(BinaryDataService).store(
+	return await Container.get(BinaryDataService).store(
 		workflowId,
 		executionId,
 		bufferOrStream,
@@ -1077,7 +1182,7 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return Container.get(BinaryDataService).copyBinaryFile(
+	return await Container.get(BinaryDataService).copyBinaryFile(
 		workflowId,
 		executionId,
 		returnData,
@@ -1089,6 +1194,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
+// eslint-disable-next-line complexity
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -1174,63 +1280,89 @@ async function prepareBinaryData(
 		}
 	}
 
-	return setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
+	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
+}
+
+function applyPaginationRequestData(
+	requestData: IRequestOptions,
+	paginationRequestData: PaginationOptions['request'],
+): IRequestOptions {
+	const preparedPaginationData: Partial<IRequestOptions> = {
+		...paginationRequestData,
+		uri: paginationRequestData.url,
+	};
+
+	if ('formData' in requestData) {
+		preparedPaginationData.formData = paginationRequestData.body;
+		delete preparedPaginationData.body;
+	} else if ('form' in requestData) {
+		preparedPaginationData.form = paginationRequestData.body;
+		delete preparedPaginationData.body;
+	}
+
+	return merge({}, requestData, preparedPaginationData);
 }
 
 /**
  * Makes a request using OAuth data for authentication
  *
- * @param {(OptionsWithUri | RequestPromiseOptions)} requestOptions
+ * @param {(IHttpRequestOptions | IRequestOptions)} requestOptions
  *
  */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
-	const credentials = await this.getCredentials(credentialsType);
+	removeEmptyBody(requestOptions);
+
+	const credentials = (await this.getCredentials(
+		credentialsType,
+	)) as unknown as OAuth2CredentialData;
 
 	// Only the OAuth2 with authorization code grant needs connection
-	if (
-		credentials.grantType === OAuth2GrantType.authorizationCode &&
-		credentials.oauthTokenData === undefined
-	) {
-		throw new Error('OAuth credentials not connected!');
+	if (credentials.grantType === 'authorizationCode' && credentials.oauthTokenData === undefined) {
+		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oAuthClient = new ClientOAuth2({
-		clientId: credentials.clientId as string,
-		clientSecret: credentials.clientSecret as string,
-		accessTokenUri: credentials.accessTokenUrl as string,
+		clientId: credentials.clientId,
+		clientSecret: credentials.clientSecret,
+		accessTokenUri: credentials.accessTokenUrl,
 		scopes: (credentials.scope as string).split(' '),
-		ignoreSSLIssues: credentials.ignoreSSLIssues as boolean,
+		ignoreSSLIssues: credentials.ignoreSSLIssues,
+		authentication: credentials.authentication ?? 'header',
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (
-		credentials.grantType === OAuth2GrantType.clientCredentials &&
-		(oauthTokenData === undefined || Object.keys(oauthTokenData).length === 0)
+		credentials.grantType === 'clientCredentials' &&
+		(oauthTokenData === undefined ||
+			Object.keys(oauthTokenData).length === 0 ||
+			oauthTokenData.access_token === '') // stub
 	) {
-		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
+		const { data } = await oAuthClient.credentials.getToken();
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
-			throw new Error(
-				`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-			);
+			throw new ApplicationError('Node does not have credential type', {
+				extra: { nodeName: node.name },
+				tags: { credentialType: credentialsType },
+			});
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
+		credentials.oauthTokenData = data;
 
 		// Save the refreshed token
 		await additionalData.credentialsHelper.updateCredentials(
 			nodeCredentials,
 			credentialsType,
-			Object.assign(credentials, { oauthTokenData: data }),
+			credentials as unknown as ICredentialDataDecryptedObject,
 		);
 
 		oauthTokenData = data;
@@ -1248,7 +1380,7 @@ export async function requestOAuth2(
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 	);
 
-	(requestOptions as OptionsWithUri).rejectUnauthorized = !credentials.ignoreSSLIssues;
+	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
@@ -1264,7 +1396,7 @@ export async function requestOAuth2(
 		});
 	}
 	if (isN8nRequest) {
-		return this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
+		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (error.response?.status === 401) {
 				Logger.debug(
 					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
@@ -1272,7 +1404,7 @@ export async function requestOAuth2(
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 					const body: IDataObject = {
-						client_id: credentials.clientId as string,
+						client_id: credentials.clientId,
 						...(credentials.grantType === 'authorizationCode' && {
 							client_secret: credentials.clientSecret as string,
 						}),
@@ -1290,8 +1422,8 @@ export async function requestOAuth2(
 				);
 				// if it's OAuth2 with client credentials grant type, get a new token
 				// instead of refreshing it.
-				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-					newToken = await getClientCredentialsToken(token.client, credentials);
+				if (credentials.grantType === 'clientCredentials') {
+					newToken = await token.client.credentials.getToken();
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1303,15 +1435,15 @@ export async function requestOAuth2(
 				credentials.oauthTokenData = newToken.data;
 				// Find the credentials
 				if (!node.credentials?.[credentialsType]) {
-					throw new Error(
-						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-					);
+					throw new ApplicationError('Node does not have credential type', {
+						extra: { nodeName: node.name, credentialType: credentialsType },
+					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
 				await additionalData.credentialsHelper.updateCredentials(
 					nodeCredentials,
 					credentialsType,
-					credentials,
+					credentials as unknown as ICredentialDataDecryptedObject,
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 
@@ -1321,7 +1453,7 @@ export async function requestOAuth2(
 					});
 				}
 
-				return this.helpers.httpRequest(refreshedRequestOption);
+				return await this.helpers.httpRequest(refreshedRequestOption);
 			}
 			throw error;
 		});
@@ -1331,8 +1463,8 @@ export async function requestOAuth2(
 			? 401
 			: oAuth2Options?.tokenExpiredStatusCode;
 
-	return this.helpers
-		.request(newRequestOptions)
+	return await this.helpers
+		.request(newRequestOptions as IRequestOptions)
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
@@ -1367,8 +1499,8 @@ export async function requestOAuth2(
 
 				// if it's OAuth2 with client credentials grant type, get a new token
 				// instead of refreshing it.
-				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-					newToken = await getClientCredentialsToken(token.client, credentials);
+				if (credentials.grantType === 'clientCredentials') {
+					newToken = await token.client.credentials.getToken();
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions as unknown as ClientOAuth2Options);
 				}
@@ -1380,9 +1512,10 @@ export async function requestOAuth2(
 
 				// Find the credentials
 				if (!node.credentials?.[credentialsType]) {
-					throw new Error(
-						`The node "${node.name}" does not have credentials of type "${credentialsType}"!`,
-					);
+					throw new ApplicationError('Node does not have credential type', {
+						tags: { credentialType: credentialsType },
+						extra: { nodeName: node.name },
+					});
 				}
 				const nodeCredentials = node.credentials[credentialsType];
 
@@ -1407,7 +1540,7 @@ export async function requestOAuth2(
 					});
 				}
 
-				return this.helpers.request(newRequestOptions);
+				return await this.helpers.request(newRequestOptions as IRequestOptions);
 			}
 
 			// Unknown error so simply throw it
@@ -1421,17 +1554,19 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
+	removeEmptyBody(requestOptions);
+
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
-		throw new Error('No credentials were returned!');
+		throw new ApplicationError('No credentials were returned');
 	}
 
 	if (credentials.oauthTokenData === undefined) {
-		throw new Error('OAuth credentials not connected!');
+		throw new ApplicationError('OAuth credentials not connected');
 	}
 
 	const oauth = new clientOAuth1({
@@ -1468,25 +1603,24 @@ export async function requestOAuth1(
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
-	// @ts-expect-error @TECH_DEBT: Remove request library
-	if (requestOptions.uri && !requestOptions.url) {
-		// @ts-expect-error @TECH_DEBT: Remove request library
+	if ('uri' in requestOptions && !requestOptions.url) {
 		requestOptions.url = requestOptions.uri;
-		// @ts-expect-error @TECH_DEBT: Remove request library
 		delete requestOptions.uri;
 	}
 
 	requestOptions.headers = oauth.toHeader(
 		oauth.authorize(requestOptions as unknown as clientOAuth1.RequestOptions, token),
-	);
+	) as unknown as Record<string, string>;
 	if (isN8nRequest) {
-		return this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
+		return await this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
 	}
 
-	return this.helpers.request(requestOptions).catch(async (error: IResponseError) => {
-		// Unknown error so simply throw it
-		throw error;
-	});
+	return await this.helpers
+		.request(requestOptions as IRequestOptions)
+		.catch(async (error: IResponseError) => {
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 export async function httpRequestWithAuthentication(
@@ -1498,9 +1632,12 @@ export async function httpRequestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
@@ -1519,14 +1656,15 @@ export async function httpRequestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials(credentialsType);
+			credentialsDecrypted =
+				await this.getCredentials<ICredentialDataDecryptedObject>(credentialsType);
 		}
 
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
+				{ level: 'warning' },
 			);
 		}
 
@@ -1652,7 +1790,7 @@ export function normalizeItems(
 		return executionData;
 
 	if (executionData.some((item) => typeof item === 'object' && 'json' in item)) {
-		throw new Error('Inconsistent item format');
+		throw new ApplicationError('Inconsistent item format');
 	}
 
 	if (executionData.every((item) => typeof item === 'object' && 'binary' in item)) {
@@ -1672,7 +1810,7 @@ export function normalizeItems(
 	}
 
 	if (executionData.some((item) => typeof item === 'object' && 'binary' in item)) {
-		throw new Error('Inconsistent item format');
+		throw new ApplicationError('Inconsistent item format');
 	}
 
 	return executionData.map((item) => {
@@ -1684,12 +1822,15 @@ export function normalizeItems(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions,
+	requestOptions: IRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
+	itemIndex?: number,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
 	try {
@@ -1713,14 +1854,17 @@ export async function requestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials(credentialsType);
+			credentialsDecrypted = await this.getCredentials<ICredentialDataDecryptedObject>(
+				credentialsType,
+				itemIndex,
+			);
 		}
 
 		if (credentialsDecrypted === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set!`,
-				{ severity: 'warning' },
+				`Node "${node.name}" does not have any credentials of type "${credentialsType}" set`,
+				{ level: 'warning' },
 			);
 		}
 
@@ -1738,14 +1882,14 @@ export async function requestWithAuthentication(
 			Object.assign(credentialsDecrypted, data);
 		}
 
-		requestOptions = await additionalData.credentialsHelper.authenticate(
+		requestOptions = (await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-		);
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
+		)) as IRequestOptions;
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1762,24 +1906,21 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
-					requestOptions = await additionalData.credentialsHelper.authenticate(
+					requestOptions = (await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-					);
+					)) as IRequestOptions;
 					// retry the request
-					return await proxyRequestToAxios(
-						workflow,
-						additionalData,
-						node,
-						requestOptions as IDataObject,
-					);
+					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
 			throw error;
 		} catch (error) {
+			if (error instanceof ExecutionBaseError) throw error;
+
 			throw new NodeApiError(this.getNode(), error);
 		}
 	}
@@ -1797,11 +1938,13 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
 	return {
 		$execution: {
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			resumeFormUrl,
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
@@ -1811,7 +1954,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.verbose(e.message);
+								Logger.debug(e.message);
 							}
 						},
 						setAll(obj: Record<string, string>): void {
@@ -1821,7 +1964,7 @@ export function getAdditionalKeys(
 								if (mode === 'manual') {
 									throw e;
 								}
-								Logger.verbose(e.message);
+								Logger.debug(e.message);
 							}
 						},
 						get(key: string): string {
@@ -1830,7 +1973,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-				  }
+					}
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -1849,37 +1992,38 @@ export function getAdditionalKeys(
  * @param {INode} node Node which request the data
  * @param {string} type The credential type to return
  */
-export async function getCredentials(
+export async function getCredentials<T extends object = ICredentialDataDecryptedObject>(
 	workflow: Workflow,
 	node: INode,
 	type: string,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
+	executeData?: IExecuteData,
 	runExecutionData?: IRunExecutionData | null,
 	runIndex?: number,
 	connectionInputData?: INodeExecutionData[],
 	itemIndex?: number,
-): Promise<ICredentialDataDecryptedObject> {
+): Promise<T> {
 	// Get the NodeType as it has the information if the credentials are required
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
 		throw new NodeOperationError(
 			node,
-			`Node type "${node.type}" is not known so can not get credentials!`,
+			`Node type "${node.type}" is not known so can not get credentials`,
 		);
 	}
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = [HTTP_REQUEST_NODE_TYPE].includes(node.type);
+	const fullAccess = [HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE].includes(node.type);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {
 		if (nodeType.description.credentials === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials defined!`,
-				{ severity: 'warning' },
+				`Node type "${node.type}" does not have any credentials defined`,
+				{ level: 'warning' },
 			);
 		}
 
@@ -1889,8 +2033,8 @@ export async function getCredentials(
 		if (nodeCredentialDescription === undefined) {
 			throw new NodeOperationError(
 				node,
-				`Node type "${node.type}" does not have any credentials of type "${type}" defined!`,
-				{ severity: 'warning' },
+				`Node type "${node.type}" does not have any credentials of type "${type}" defined`,
+				{ level: 'warning' },
 			);
 		}
 
@@ -1914,16 +2058,14 @@ export async function getCredentials(
 		if (nodeCredentialDescription?.required === true) {
 			// Credentials are required so error
 			if (!node.credentials) {
-				throw new NodeOperationError(node, 'Node does not have any credentials set!', {
-					severity: 'warning',
+				throw new NodeOperationError(node, 'Node does not have any credentials set', {
+					level: 'warning',
 				});
 			}
 			if (!node.credentials[type]) {
-				throw new NodeOperationError(
-					node,
-					`Node does not have any credentials set for "${type}"!`,
-					{ severity: 'warning' },
-				);
+				throw new NodeOperationError(node, `Node does not have any credentials set for "${type}"`, {
+					level: 'warning',
+				});
 			}
 		} else {
 			// Credentials are not required
@@ -1974,18 +2116,19 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
+		executeData,
 		false,
 		expressionResolveValues,
 	);
 
-	return decryptedDataObject;
+	return decryptedDataObject as T;
 }
 
 /**
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(inputData: NodeParameterValueType): void {
+export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	if (typeof inputData !== 'object' || inputData === null) {
 		return;
 	}
@@ -1997,13 +2140,13 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 
 	if (typeof inputData === 'object') {
 		Object.keys(inputData).forEach((key) => {
-			if (typeof inputData[key as keyof typeof inputData] === 'object') {
-				if (inputData[key as keyof typeof inputData]?.constructor.name === 'DateTime') {
+			const value = (inputData as INodeParameters)[key];
+			if (typeof value === 'object') {
+				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
-					inputData[key as keyof typeof inputData] =
-						inputData[key as keyof typeof inputData]?.toString();
+					(inputData as INodeParameters)[key] = value.toString();
 				} else {
-					cleanupParameterData(inputData[key as keyof typeof inputData]);
+					cleanupParameterData(value);
 				}
 			}
 		});
@@ -2047,12 +2190,9 @@ const validateResourceMapperValue = (
 		}
 
 		if (schemaEntry?.type) {
-			const validationResult = validateFieldType(
-				key,
-				resolvedValue,
-				schemaEntry.type,
-				schemaEntry.options,
-			);
+			const validationResult = validateFieldType(key, resolvedValue, schemaEntry.type, {
+				valueOptions: schemaEntry.options,
+			});
 			if (!validationResult.valid) {
 				return { ...validationResult, fieldName: key };
 			} else {
@@ -2107,31 +2247,30 @@ const validateCollection = (
 		return validationResult;
 	}
 
-	for (const value of Array.isArray(validationResult.newValue)
-		? (validationResult.newValue as IDataObject[])
-		: [validationResult.newValue as IDataObject]) {
-		for (const key of Object.keys(value)) {
-			if (!validationMap[key]) continue;
+	if (validationResult.valid) {
+		for (const value of Array.isArray(validationResult.newValue)
+			? (validationResult.newValue as IDataObject[])
+			: [validationResult.newValue as IDataObject]) {
+			for (const key of Object.keys(value)) {
+				if (!validationMap[key]) continue;
 
-			const fieldValidationResult = validateFieldType(
-				key,
-				value[key],
-				validationMap[key].type,
-				validationMap[key].options,
-			);
+				const fieldValidationResult = validateFieldType(key, value[key], validationMap[key].type, {
+					valueOptions: validationMap[key].options,
+				});
 
-			if (!fieldValidationResult.valid) {
-				throw new ExpressionError(
-					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
-					{
-						description: fieldValidationResult.errorMessage,
-						runIndex,
-						itemIndex,
-						nodeCause: node.name,
-					},
-				);
+				if (!fieldValidationResult.valid) {
+					throw new ExpressionError(
+						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+						{
+							description: fieldValidationResult.errorMessage,
+							runIndex,
+							itemIndex,
+							nodeCause: node.name,
+						},
+					);
+				}
+				value[key] = fieldValidationResult.newValue;
 			}
-			value[key] = fieldValidationResult.newValue;
 		}
 	}
 
@@ -2209,6 +2348,99 @@ export const validateValueAgainstSchema = (
 	return validationResult.newValue;
 };
 
+export function ensureType(
+	toType: EnsureTypeOptions,
+	parameterValue: any,
+	parameterName: string,
+	errorOptions?: { itemIndex?: number; runIndex?: number; nodeCause?: string },
+): string | number | boolean | object {
+	let returnData = parameterValue;
+
+	if (returnData === null) {
+		throw new ExpressionError(`Parameter '${parameterName}' must not be null`, errorOptions);
+	}
+
+	if (returnData === undefined) {
+		throw new ExpressionError(
+			`Parameter '${parameterName}' could not be 'undefined'`,
+			errorOptions,
+		);
+	}
+
+	if (['object', 'array', 'json'].includes(toType)) {
+		if (typeof returnData !== 'object') {
+			// if value is not an object and is string try to parse it, else throw an error
+			if (typeof returnData === 'string' && returnData.length) {
+				try {
+					const parsedValue = JSON.parse(returnData);
+					returnData = parsedValue;
+				} catch (error) {
+					throw new ExpressionError(`Parameter '${parameterName}' could not be parsed`, {
+						...errorOptions,
+						description: error.message,
+					});
+				}
+			} else {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be an ${toType}, but we got '${String(parameterValue)}'`,
+					errorOptions,
+				);
+			}
+		} else if (toType === 'json') {
+			// value is an object, make sure it is valid JSON
+			try {
+				JSON.stringify(returnData);
+			} catch (error) {
+				throw new ExpressionError(`Parameter '${parameterName}' is not valid JSON`, {
+					...errorOptions,
+					description: error.message,
+				});
+			}
+		}
+
+		if (toType === 'array' && !Array.isArray(returnData)) {
+			// value is not an array, but has to be
+			throw new ExpressionError(
+				`Parameter '${parameterName}' must be an array, but we got object`,
+				errorOptions,
+			);
+		}
+	}
+
+	try {
+		if (toType === 'string') {
+			if (typeof returnData === 'object') {
+				returnData = JSON.stringify(returnData);
+			} else {
+				returnData = String(returnData);
+			}
+		}
+
+		if (toType === 'number') {
+			returnData = Number(returnData);
+			if (Number.isNaN(returnData)) {
+				throw new ExpressionError(
+					`Parameter '${parameterName}' must be a number, but we got '${parameterValue}'`,
+					errorOptions,
+				);
+			}
+		}
+
+		if (toType === 'boolean') {
+			returnData = Boolean(returnData);
+		}
+	} catch (error) {
+		if (error instanceof ExpressionError) throw error;
+
+		throw new ExpressionError(`Parameter '${parameterName}' could not be converted to ${toType}`, {
+			...errorOptions,
+			description: error.message,
+		});
+	}
+
+	return returnData;
+}
+
 /**
  * Returns the requested resolved (all expressions replaced) node parameters.
  *
@@ -2230,13 +2462,15 @@ export function getNodeParameter(
 ): NodeParameterValueType | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
+		throw new ApplicationError('Node type is unknown so cannot return parameter value', {
+			tags: { nodeType: node.type },
+		});
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
 
 	if (value === undefined) {
-		throw new Error(`Could not get parameter "${parameterName}"!`);
+		throw new ApplicationError('Could not get parameter', { extra: { parameterName } });
 	}
 
 	if (options?.rawExpressions) {
@@ -2274,7 +2508,16 @@ export function getNodeParameter(
 
 	// This is outside the try/catch because it throws errors with proper messages
 	if (options?.extractValue) {
-		returnData = extractValue(returnData, parameterName, node, nodeType);
+		returnData = extractValue(returnData, parameterName, node, nodeType, itemIndex);
+	}
+
+	// Make sure parameter value is the type specified in the ensureType option, if needed convert it
+	if (options?.ensureType) {
+		returnData = ensureType(options.ensureType, returnData, parameterName, {
+			itemIndex,
+			runIndex,
+			nodeCause: node.name,
+		});
 	}
 
 	// Validate parameter value if it has a schema defined(RMC) or validateType defined
@@ -2350,13 +2593,6 @@ export function getNodeWebhookUrl(
 }
 
 /**
- * Returns the timezone for the workflow
- */
-export function getTimezone(workflow: Workflow): string {
-	return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
-}
-
-/**
  * Returns the full webhook description of the webhook with the given name
  *
  */
@@ -2387,14 +2623,16 @@ const addExecutionDataFunctions = async (
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
 	runExecutionData: IRunExecutionData,
-	connectionType: ConnectionTypes,
+	connectionType: NodeConnectionType,
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
 ): Promise<void> => {
-	if (connectionType === 'main') {
-		throw new Error(`Setting the ${type} is not supported for the main connection!`);
+	if (connectionType === NodeConnectionType.Main) {
+		throw new ApplicationError('Setting type is not supported for main connection', {
+			extra: { type },
+		});
 	}
 
 	let taskData: ITaskData | undefined;
@@ -2419,7 +2657,6 @@ const addExecutionDataFunctions = async (
 	taskData = taskData!;
 
 	if (data instanceof Error) {
-		// TODO: Or "failed", what is the difference
 		taskData.executionStatus = 'error';
 		taskData.error = data;
 	} else {
@@ -2465,7 +2702,7 @@ const addExecutionDataFunctions = async (
 			runExecutionData.executionData!.metadata = {};
 		}
 
-		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
+		let sourceTaskData = get(runExecutionData, ['executionData', 'metadata', sourceNodeName]);
 
 		if (!sourceTaskData) {
 			runExecutionData.executionData!.metadata[sourceNodeName] = [];
@@ -2485,6 +2722,210 @@ const addExecutionDataFunctions = async (
 	}
 };
 
+async function getInputConnectionData(
+	this: IAllExecuteFunctions,
+	workflow: Workflow,
+	runExecutionData: IRunExecutionData,
+	runIndex: number,
+	connectionInputData: INodeExecutionData[],
+	additionalData: IWorkflowExecuteAdditionalData,
+	executeData: IExecuteData | undefined,
+	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
+	inputName: NodeConnectionType,
+	itemIndex: number,
+): Promise<unknown> {
+	const node = this.getNode();
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+	const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+
+	let inputConfiguration = inputs.find((input) => {
+		if (typeof input === 'string') {
+			return input === inputName;
+		}
+		return input.type === inputName;
+	});
+
+	if (inputConfiguration === undefined) {
+		throw new ApplicationError('Node does not have input of type', {
+			extra: { nodeName: node.name, inputName },
+		});
+	}
+
+	if (typeof inputConfiguration === 'string') {
+		inputConfiguration = {
+			type: inputConfiguration,
+		} as INodeInputConfiguration;
+	}
+
+	const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
+	if (parentNodes.length === 0) {
+		if (inputConfiguration.required) {
+			throw new NodeOperationError(
+				node,
+				`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
+			);
+		}
+		return inputConfiguration.maxConnections === 1 ? undefined : [];
+	}
+
+	const constParentNodes = parentNodes
+		.map((nodeName) => {
+			return workflow.getNode(nodeName) as INode;
+		})
+		.filter((connectedNode) => connectedNode.disabled !== true)
+		.map(async (connectedNode) => {
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(
+				connectedNode.type,
+				connectedNode.typeVersion,
+			);
+
+			const context = Object.assign({}, this);
+
+			context.getNodeParameter = (
+				parameterName: string,
+				itemIndex: number,
+				fallbackValue?: any,
+				options?: IGetNodeParameterOptions,
+			) => {
+				return getNodeParameter(
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					connectedNode,
+					parameterName,
+					itemIndex,
+					mode,
+					getAdditionalKeys(additionalData, mode, runExecutionData),
+					executeData,
+					fallbackValue,
+					{ ...(options || {}), contextNode: node },
+				) as any;
+			};
+
+			// TODO: Check what else should be overwritten
+			context.getNode = () => {
+				return deepCopy(connectedNode);
+			};
+
+			context.getCredentials = async (key: string) => {
+				try {
+					return await getCredentials(
+						workflow,
+						connectedNode,
+						key,
+						additionalData,
+						mode,
+						executeData,
+						runExecutionData,
+						runIndex,
+						connectionInputData,
+						itemIndex,
+					);
+				} catch (error) {
+					// Display the error on the node which is causing it
+
+					let currentNodeRunIndex = 0;
+					if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
+						currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
+					}
+
+					await addExecutionDataFunctions(
+						'input',
+						connectedNode.name,
+						error,
+						runExecutionData,
+						inputName,
+						additionalData,
+						node.name,
+						runIndex,
+						currentNodeRunIndex,
+					);
+
+					throw error;
+				}
+			};
+
+			if (!nodeType.supplyData) {
+				if (nodeType.description.outputs.includes(NodeConnectionType.AiTool)) {
+					nodeType.supplyData = async function (this: IExecuteFunctions) {
+						return getNodeAsTool(this, nodeType, this.getNode().parameters);
+					};
+				} else {
+					throw new ApplicationError('Node does not have a `supplyData` method defined', {
+						extra: { nodeName: connectedNode.name },
+					});
+				}
+			}
+
+			try {
+				const response = await nodeType.supplyData.call(context, itemIndex);
+				if (response.closeFunction) {
+					closeFunctions.push(response.closeFunction);
+				}
+				return response;
+			} catch (error) {
+				// Propagate errors from sub-nodes
+				if (error.functionality === 'configuration-node') throw error;
+				if (!(error instanceof ExecutionBaseError)) {
+					error = new NodeOperationError(connectedNode, error, {
+						itemIndex,
+					});
+				}
+
+				let currentNodeRunIndex = 0;
+				if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
+					currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
+				}
+
+				// Display the error on the node which is causing it
+				await addExecutionDataFunctions(
+					'input',
+					connectedNode.name,
+					error,
+					runExecutionData,
+					inputName,
+					additionalData,
+					node.name,
+					runIndex,
+					currentNodeRunIndex,
+				);
+
+				// Display on the calling node which node has the error
+				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {
+					itemIndex,
+					functionality: 'configuration-node',
+					description: error.message,
+				});
+			}
+		});
+
+	// Validate the inputs
+	const nodes = await Promise.all(constParentNodes);
+
+	if (inputConfiguration.required && nodes.length === 0) {
+		throw new NodeOperationError(
+			node,
+			`A ${inputConfiguration?.displayName ?? inputName} sub-node must be connected`,
+		);
+	}
+	if (
+		inputConfiguration.maxConnections !== undefined &&
+		nodes.length > inputConfiguration.maxConnections
+	) {
+		throw new NodeOperationError(
+			node,
+			`Only ${inputConfiguration.maxConnections} ${inputName} sub-nodes are/is allowed to be connected`,
+		);
+	}
+
+	return inputConfiguration.maxConnections === 1
+		? (nodes || [])[0]?.response
+		: nodes.map((node) => node.response);
+}
+
 const getCommonWorkflowFunctions = (
 	workflow: Workflow,
 	node: INode,
@@ -2499,12 +2940,41 @@ const getCommonWorkflowFunctions = (
 		active: workflow.active,
 	}),
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
+	getChildNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getChildNodes(nodeName);
 
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getParentNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getParentNodes(nodeName);
+
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getKnownNodeTypes: () => workflow.nodeTypes.getKnownTypes(),
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
-	getTimezone: () => getTimezone(workflow),
-
+	getTimezone: () => workflow.timezone,
+	getCredentialsProperties: (type: string) =>
+		additionalData.credentialsHelper.getCredentialsProperties(type),
 	prepareOutputData: async (outputData) => [outputData],
 });
 
@@ -2561,9 +3031,10 @@ const getRequestHelperFunctions = (
 
 	return {
 		httpRequest,
+		// eslint-disable-next-line complexity
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
-			requestOptions: OptionsWithUri,
+			requestOptions: IRequestOptions,
 			itemIndex: number,
 			paginationOptions: PaginationOptions,
 			credentialsType?: string,
@@ -2578,7 +3049,7 @@ const getRequestHelperFunctions = (
 
 			let tempResponseData: IN8nHttpFullResponse;
 			let makeAdditionalRequest: boolean;
-			let paginateRequestData: IHttpRequestOptions;
+			let paginateRequestData: PaginationOptions['request'];
 
 			const runIndex = 0;
 
@@ -2608,9 +3079,17 @@ const getRequestHelperFunctions = (
 					executeData,
 					additionalKeys,
 					false,
-				) as object as IHttpRequestOptions;
+				) as object as PaginationOptions['request'];
 
-				const tempRequestOptions = merge(requestOptions, paginateRequestData);
+				const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
+
+				if (!validateUrl(tempRequestOptions.uri as string)) {
+					throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
+						itemIndex,
+						runIndex,
+						type: 'invalid_url',
+					});
+				}
 
 				if (credentialsType) {
 					tempResponseData = await this.helpers.requestWithAuthentication.call(
@@ -2634,21 +3113,15 @@ const getRequestHelperFunctions = (
 
 				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
 
-				if (
-					newResponse.body?.constructor.name === 'IncomingMessage' &&
-					paginationOptions.binaryResult !== true
-				) {
-					const data = await this.helpers
-						.binaryToBuffer(newResponse.body as Buffer | Readable)
-						.then((body) => body.toString());
+				if (newResponse.body instanceof Readable && paginationOptions.binaryResult !== true) {
 					// Keep the original string version that we can use it to hash if needed
-					contentBody = data;
+					contentBody = await binaryToString(newResponse.body as Buffer | Readable);
 
 					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
 					if (responseContentType.includes('application/json')) {
-						newResponse.body = jsonParse(data, { fallbackValue: {} });
+						newResponse.body = jsonParse(contentBody, { fallbackValue: {} });
 					} else {
-						newResponse.body = data;
+						newResponse.body = contentBody;
 					}
 					tempResponseData.__bodyResolved = true;
 					tempResponseData.body = newResponse.body;
@@ -2707,10 +3180,16 @@ const getRequestHelperFunctions = (
 				additionalKeys.$response = newResponse;
 				additionalKeys.$pageCount = additionalKeys.$pageCount + 1;
 
-				if (
-					paginationOptions.maxRequests &&
-					additionalKeys.$pageCount >= paginationOptions.maxRequests
-				) {
+				const maxRequests = getResolvedValue(
+					paginationOptions.maxRequests,
+					itemIndex,
+					runIndex,
+					executeData,
+					additionalKeys,
+					false,
+				) as number;
+
+				if (maxRequests && additionalKeys.$pageCount >= maxRequests) {
 					break;
 				}
 
@@ -2724,19 +3203,26 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (paginationOptions.requestInterval) {
+						const requestInterval = getResolvedValue(
+							paginationOptions.requestInterval,
+							itemIndex,
+							runIndex,
+							executeData,
+							additionalKeys,
+							false,
+						) as number;
+
+						await sleep(requestInterval);
+					}
 					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 						// We have it configured to let all requests pass no matter the response code
 						// via "requestOptions.simple = false" to not by default fail if it is for example
 						// configured to stop on 404 response codes. For that reason we have to throw here
 						// now an error manually if the response code is not a success one.
 						let data = tempResponseData.body;
-						if (
-							data?.constructor.name === 'IncomingMessage' &&
-							paginationOptions.binaryResult !== true
-						) {
-							data = await this.helpers
-								.binaryToBuffer(tempResponseData.body as Buffer | Readable)
-								.then((body) => body.toString());
+						if (data instanceof Readable && paginationOptions.binaryResult !== true) {
+							data = await binaryToString(data as Buffer | Readable);
 						} else if (typeof data === 'object') {
 							data = JSON.stringify(data);
 						}
@@ -2766,7 +3252,7 @@ const getRequestHelperFunctions = (
 			requestOptions,
 			additionalCredentialOptions,
 		): Promise<any> {
-			return httpRequestWithAuthentication.call(
+			return await httpRequestWithAuthentication.call(
 				this,
 				credentialsType,
 				requestOptions,
@@ -2778,15 +3264,16 @@ const getRequestHelperFunctions = (
 		},
 
 		request: async (uriOrObject, options) =>
-			proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+			await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
 
 		async requestWithAuthentication(
 			this,
 			credentialsType,
 			requestOptions,
 			additionalCredentialOptions,
+			itemIndex,
 		): Promise<any> {
-			return requestWithAuthentication.call(
+			return await requestWithAuthentication.call(
 				this,
 				credentialsType,
 				requestOptions,
@@ -2794,24 +3281,25 @@ const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+				itemIndex,
 			);
 		},
 
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 		): Promise<any> {
-			return requestOAuth1.call(this, credentialsType, requestOptions);
+			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
-			return requestOAuth2.call(
+			return await requestOAuth2.call(
 				this,
 				credentialsType,
 				requestOptions,
@@ -2820,6 +3308,19 @@ const getRequestHelperFunctions = (
 				oAuth2Options,
 			);
 		},
+	};
+};
+
+const getSSHTunnelFunctions = (): SSHTunnelFunctions => ({
+	getSSHClient: async (credentials) =>
+		await Container.get(SSHClientsManager).getClient(credentials),
+});
+
+const getSchedulingFunctions = (workflow: Workflow): SchedulingFunctions => {
+	const scheduledTaskManager = Container.get(ScheduledTaskManager);
+	return {
+		registerCron: (cronExpression, onTick) =>
+			scheduledTaskManager.registerCron(workflow, cronExpression, onTick),
 	};
 };
 
@@ -2835,7 +3336,7 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-function isFilePathBlocked(filePath: string): boolean {
+export function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
@@ -2851,10 +3352,10 @@ function isFilePathBlocked(filePath: string): boolean {
 		return true;
 	}
 
-	//restrict access to .n8n folder and other .env config related paths
+	//restrict access to .n8n folder, ~/.cache/n8n/public, and other .env config related paths
 	if (blockFileAccessToN8nFiles) {
-		const { n8nFolder } = Container.get(InstanceSettings);
-		const restrictedPaths = [n8nFolder];
+		const { n8nFolder, staticCacheDir } = Container.get(InstanceSettings);
+		const restrictedPaths = [n8nFolder, staticCacheDir];
 
 		if (process.env[CONFIG_FILES]) {
 			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
@@ -2897,15 +3398,15 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 			throw error.code === 'ENOENT'
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
-						severity: 'warning',
-				  })
+						level: 'warning',
+					})
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
 		return createReadStream(filePath);
@@ -2918,10 +3419,10 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	async writeContentToFile(filePath, content, flag) {
 		if (isFilePathBlocked(filePath as string)) {
 			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				severity: 'warning',
+				level: 'warning',
 			});
 		}
-		return fsWriteFile(filePath, content, { encoding: 'binary', flag });
+		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
 });
 
@@ -2930,7 +3431,7 @@ const getNodeHelperFunctions = (
 	workflowId: string,
 ): NodeHelperFunctions => ({
 	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(workflowId, executionId!, filePath, fileName, mimeType),
+		await copyBinaryFile(workflowId, executionId!, filePath, fileName, mimeType),
 });
 
 const getBinaryHelperFunctions = (
@@ -2940,14 +3441,14 @@ const getBinaryHelperFunctions = (
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer: async (body: Buffer | Readable) =>
-		Container.get(BinaryDataService).toBuffer(body),
+	binaryToBuffer,
+	binaryToString,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
-		prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
+		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
-		setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
+		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
-		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
+		throw new ApplicationError('`copyBinaryFile` has been removed. Please upgrade this node.');
 	},
 });
 
@@ -2972,7 +3473,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 /**
  * Returns the execute functions the poll nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecutePollFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -2983,17 +3484,20 @@ export function getExecutePollFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			__emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!');
+			__emit: (): void => {
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function',
+				);
 			},
-			__emitError(error: Error) {
-				throw new Error(
-					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
+			__emitError() {
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function',
 				);
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
+			getCredentials: async (type) =>
+				await getCredentials(workflow, node, type, additionalData, mode),
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -3023,6 +3527,7 @@ export function getExecutePollFunctions(
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
+				...getSchedulingFunctions(workflow),
 				returnJsonArray,
 			},
 		};
@@ -3032,7 +3537,7 @@ export function getExecutePollFunctions(
 /**
  * Returns the execute functions the trigger nodes have access to.
  */
-// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowManager.add
 export function getExecuteTriggerFunctions(
 	workflow: Workflow,
 	node: INode,
@@ -3043,15 +3548,20 @@ export function getExecuteTriggerFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+			emit: (): void => {
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
+				);
 			},
-			emitError: (error: Error): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
+			emitError: (): void => {
+				throw new ApplicationError(
+					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function',
+				);
 			},
 			getMode: () => mode,
 			getActivationMode: () => activation,
-			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
+			getCredentials: async (type) =>
+				await getCredentials(workflow, node, type, additionalData, mode),
 			getNodeParameter: (
 				parameterName: string,
 				fallbackValue?: any,
@@ -3079,8 +3589,10 @@ export function getExecuteTriggerFunctions(
 			},
 			helpers: {
 				createDeferredPromise,
+				...getSSHTunnelFunctions(),
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
+				...getSchedulingFunctions(workflow),
 				returnJsonArray,
 			},
 		};
@@ -3100,6 +3612,7 @@ export function getExecuteFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executeData: IExecuteData,
 	mode: WorkflowExecuteMode,
+	closeFunctions: CloseFunction[],
 	abortSignal?: AbortSignal,
 ): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
@@ -3108,19 +3621,22 @@ export function getExecuteFunctions(
 			...executionCancellationFunctions(abortSignal),
 			getMode: () => mode,
 			getCredentials: async (type, itemIndex) =>
-				getCredentials(
+				await getCredentials(
 					workflow,
 					node,
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
-			continueOnFail: () => continueOnFail(node),
+			continueOnFail: () => {
+				return continueOnFail(node);
+			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
 					`=${expression}`,
@@ -3138,197 +3654,58 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
+				parentCallbackManager?: CallbackManager,
 			): Promise<any> {
-				return additionalData
+				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
 						parentWorkflowId: workflow.id?.toString(),
 						inputData,
 						parentWorkflowSettings: workflow.settings,
+						node,
+						parentCallbackManager,
 					})
-					.then(async (result) =>
-						Container.get(BinaryDataService).duplicateBinaryData(
-							workflow.id,
-							additionalData.executionId!,
-							result,
-						),
+					.then(
+						async (result) =>
+							await Container.get(BinaryDataService).duplicateBinaryData(
+								workflow.id,
+								additionalData.executionId!,
+								result,
+							),
 					);
 			},
 			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
+
 			async getInputConnectionData(
-				inputName: ConnectionTypes,
+				inputName: NodeConnectionType,
 				itemIndex: number,
-				// TODO: Not implemented yet, and maybe also not needed
-				inputIndex?: number,
 			): Promise<unknown> {
-				const node = this.getNode();
+				return await getInputConnectionData.call(
+					this,
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					additionalData,
+					executeData,
+					mode,
+					closeFunctions,
+					inputName,
+					itemIndex,
+				);
+			},
+
+			getNodeInputs(): INodeInputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
-
-				let inputConfiguration = inputs.find((input) => {
-					if (typeof input === 'string') {
-						return input === inputName;
+				return NodeHelpers.getNodeInputs(workflow, node, nodeType.description).map((output) => {
+					if (typeof output === 'string') {
+						return {
+							type: output,
+						};
 					}
-					return input.type === inputName;
+					return output;
 				});
-
-				if (inputConfiguration === undefined) {
-					throw new Error(`The node "${node.name}" does not have an input of type "${inputName}"`);
-				}
-
-				if (typeof inputConfiguration === 'string') {
-					inputConfiguration = {
-						type: inputConfiguration,
-					} as INodeInputConfiguration;
-				}
-
-				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
-				if (parentNodes.length === 0) {
-					return inputConfiguration.maxConnections === 1 ? undefined : [];
-				}
-
-				const constParentNodes = parentNodes
-					.map((nodeName) => {
-						return workflow.getNode(nodeName) as INode;
-					})
-					.filter((connectedNode) => connectedNode.disabled !== true)
-					.map(async (connectedNode) => {
-						const nodeType = workflow.nodeTypes.getByNameAndVersion(
-							connectedNode.type,
-							connectedNode.typeVersion,
-						);
-
-						if (!nodeType.supplyData) {
-							throw new Error(
-								`The node "${connectedNode.name}" does not have a "supplyData" method defined!`,
-							);
-						}
-
-						const context = Object.assign({}, this);
-
-						context.getNodeParameter = (
-							parameterName: string,
-							itemIndex: number,
-							fallbackValue?: any,
-							options?: IGetNodeParameterOptions,
-						) => {
-							return getNodeParameter(
-								workflow,
-								runExecutionData,
-								runIndex,
-								connectionInputData,
-								connectedNode,
-								parameterName,
-								itemIndex,
-								mode,
-								getAdditionalKeys(additionalData, mode, runExecutionData),
-								executeData,
-								fallbackValue,
-								{ ...(options || {}), contextNode: node },
-							) as any;
-						};
-
-						// TODO: Check what else should be overwritten
-						context.getNode = () => {
-							return deepCopy(connectedNode);
-						};
-
-						context.getCredentials = async (key: string) => {
-							try {
-								return await getCredentials(
-									workflow,
-									connectedNode,
-									key,
-									additionalData,
-									mode,
-									runExecutionData,
-									runIndex,
-									connectionInputData,
-									itemIndex,
-								);
-							} catch (error) {
-								// Display the error on the node which is causing it
-
-								let currentNodeRunIndex = 0;
-								if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
-									currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
-								}
-
-								await addExecutionDataFunctions(
-									'input',
-									connectedNode.name,
-									error,
-									runExecutionData,
-									inputName,
-									additionalData,
-									node.name,
-									runIndex,
-									currentNodeRunIndex,
-								);
-
-								throw error;
-							}
-						};
-
-						try {
-							return await nodeType.supplyData.call(context, itemIndex);
-						} catch (error) {
-							if (!(error instanceof ExecutionBaseError)) {
-								error = new NodeOperationError(connectedNode, error, {
-									itemIndex,
-								});
-							}
-
-							let currentNodeRunIndex = 0;
-							if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
-								currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
-							}
-
-							// Display the error on the node which is causing it
-							await addExecutionDataFunctions(
-								'input',
-								connectedNode.name,
-								error,
-								runExecutionData,
-								inputName,
-								additionalData,
-								node.name,
-								runIndex,
-								currentNodeRunIndex,
-							);
-
-							// Display on the calling node which node has the error
-							throw new NodeOperationError(
-								connectedNode,
-								`Error on node "${connectedNode.name}" which is connected via input "${inputName}"`,
-								{
-									itemIndex,
-								},
-							);
-						}
-					});
-
-				// Validate the inputs
-				const nodes = await Promise.all(constParentNodes);
-
-				if (inputConfiguration.required && nodes.length === 0) {
-					throw new NodeOperationError(node, `A ${inputName} processor node must be connected!`);
-				}
-				if (
-					inputConfiguration.maxConnections !== undefined &&
-					nodes.length > inputConfiguration.maxConnections
-				) {
-					throw new NodeOperationError(
-						node,
-						`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected!`,
-					);
-				}
-
-				return inputConfiguration.maxConnections === 1
-					? (nodes || [])[0]?.response
-					: nodes.map((node) => node.response);
 			},
 			getNodeOutputs(): INodeOutputConfiguration[] {
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -3349,20 +3726,23 @@ export function getExecuteFunctions(
 
 				// TODO: Check if nodeType has input with that index defined
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input with given index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (inputData[inputName][inputIndex] === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Value of input was not set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
-				return inputData[inputName][inputIndex] as INodeExecutionData[];
+				return inputData[inputName][inputIndex];
 			},
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
 					// Should never happen as n8n sets it automatically
-					throw new Error('Source data is missing!');
+					throw new ApplicationError('Source data is missing');
 				}
 				return executeData.source[inputName][inputIndex];
 			},
@@ -3402,8 +3782,6 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			binaryToBuffer: async (body: Buffer | Readable) =>
-				Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -3441,8 +3819,8 @@ export function getExecuteFunctions(
 			},
 
 			addInputData(
-				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][] | ExecutionError,
+				connectionType: NodeConnectionType,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): { index: number } {
 				const nodeName = this.getNode().name;
 				let currentNodeRunIndex = 0;
@@ -3471,9 +3849,9 @@ export function getExecuteFunctions(
 				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
-				connectionType: ConnectionTypes,
+				connectionType: NodeConnectionType,
 				currentNodeRunIndex: number,
-				data: INodeExecutionData[][] | ExecutionError,
+				data: INodeExecutionData[][] | ExecutionBaseError,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3497,18 +3875,30 @@ export function getExecuteFunctions(
 				createDeferredPromise,
 				copyInputItems,
 				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getSSHTunnelFunctions(),
 				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+					await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 
 				returnJsonArray,
 				normalizeItems,
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
+			},
+			getParentCallbackManager: () => additionalData.parentCallbackManager,
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -3553,12 +3943,13 @@ export function getExecuteSingleFunctions(
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
 			getCredentials: async (type) =>
-				getCredentials(
+				await getCredentials(
 					workflow,
 					node,
 					type,
 					additionalData,
 					mode,
+					executeData,
 					runExecutionData,
 					runIndex,
 					connectionInputData,
@@ -3572,21 +3963,23 @@ export function getExecuteSingleFunctions(
 
 				// TODO: Check if nodeType has input with that index defined
 				if (inputData[inputName].length < inputIndex) {
-					throw new Error(`Could not get input index "${inputIndex}" of input "${inputName}"!`);
+					throw new ApplicationError('Could not get input index', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				const allItems = inputData[inputName][inputIndex];
 
 				if (allItems === null) {
-					// return [];
-					throw new Error(`Value "${inputIndex}" of input "${inputName}" did not get set!`);
+					throw new ApplicationError('Input index was not set', {
+						extra: { inputIndex, inputName },
+					});
 				}
 
 				if (allItems[itemIndex] === null) {
-					// return [];
-					throw new Error(
-						`Value "${inputIndex}" of input "${inputName}" with itemIndex "${itemIndex}" did not get set!`,
-					);
+					throw new ApplicationError('Value of input with given index was not set', {
+						extra: { inputIndex, inputName, itemIndex },
+					});
 				}
 
 				return allItems[itemIndex];
@@ -3594,7 +3987,7 @@ export function getExecuteSingleFunctions(
 			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
 				if (executeData?.source === null) {
 					// Should never happen as n8n sets it automatically
-					throw new Error('Source data is missing!');
+					throw new ApplicationError('Source data is missing');
 				}
 				return executeData.source[inputName][inputIndex] as ISourceData;
 			},
@@ -3644,7 +4037,17 @@ export function getExecuteSingleFunctions(
 				assertBinaryData: (propertyName, inputIndex = 0) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+			},
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
@@ -3653,8 +4056,9 @@ export function getExecuteSingleFunctions(
 export function getCredentialTestFunctions(): ICredentialTestFunctions {
 	return {
 		helpers: {
+			...getSSHTunnelFunctions(),
 			request: async (uriOrObject: string | object, options?: object) => {
-				return proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
+				return await proxyRequestToAxios(undefined, undefined, undefined, uriOrObject, options);
 			},
 		},
 	};
@@ -3673,7 +4077,7 @@ export function getLoadOptionsFunctions(
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getCredentials: async (type) =>
-				getCredentials(workflow, node, type, additionalData, 'internal'),
+				await getCredentials(workflow, node, type, additionalData, 'internal'),
 			getCurrentNodeParameter: (
 				parameterPath: string,
 				options?: IGetNodeParameterOptions,
@@ -3690,9 +4094,9 @@ export function getLoadOptionsFunctions(
 				if (options?.extractValue) {
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
-						throw new Error(
-							`Node type "${node.type}" is not known so can not return parameter value!`,
-						);
+						throw new ApplicationError('Node type is not known so cannot return parameter value', {
+							tags: { nodeType: node.type },
+						});
 					}
 					returnData = extractValue(
 						returnData,
@@ -3731,7 +4135,10 @@ export function getLoadOptionsFunctions(
 					options,
 				);
 			},
-			helpers: getRequestHelperFunctions(workflow, node, additionalData),
+			helpers: {
+				...getSSHTunnelFunctions(),
+				...getRequestHelperFunctions(workflow, node, additionalData),
+			},
 		};
 	})(workflow, node, path);
 }
@@ -3745,13 +4152,13 @@ export function getExecuteHookFunctions(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	activation: WorkflowActivateMode,
-	isTest?: boolean,
 	webhookData?: IWebhookData,
 ): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
+			getCredentials: async (type) =>
+				await getCredentials(workflow, node, type, additionalData, mode),
 			getMode: () => mode,
 			getActivationMode: () => activation,
 			getNodeParameter: (
@@ -3787,12 +4194,12 @@ export function getExecuteHookFunctions(
 					additionalData,
 					mode,
 					getAdditionalKeys(additionalData, mode, null),
-					isTest,
+					webhookData?.isTest,
 				);
 			},
 			getWebhookName(): string {
 				if (webhookData === undefined) {
-					throw new Error('Is only supported in webhook functions!');
+					throw new ApplicationError('Only supported in webhook functions');
 				}
 				return webhookData.webhookDescription.name;
 			},
@@ -3805,28 +4212,70 @@ export function getExecuteHookFunctions(
 /**
  * Returns the execute functions regular nodes have access to when webhook-function is defined.
  */
+// TODO: check where it is used and make sure close functions are called
 export function getExecuteWebhookFunctions(
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	webhookData: IWebhookData,
+	closeFunctions: CloseFunction[],
+	runExecutionData: IRunExecutionData | null,
 ): IWebhookFunctions {
-	return ((workflow: Workflow, node: INode) => {
+	return ((workflow: Workflow, node: INode, runExecutionData: IRunExecutionData | null) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
 			getBodyData(): IDataObject {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.body;
 			},
-			getCredentials: async (type) => getCredentials(workflow, node, type, additionalData, mode),
+			getCredentials: async (type) =>
+				await getCredentials(workflow, node, type, additionalData, mode),
 			getHeaderData(): IncomingHttpHeaders {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.headers;
+			},
+			async getInputConnectionData(
+				inputName: NodeConnectionType,
+				itemIndex: number,
+			): Promise<unknown> {
+				// To be able to use expressions like "$json.sessionId" set the
+				// body data the webhook received to what is normally used for
+				// incoming node data.
+				const connectionInputData: INodeExecutionData[] = [
+					{ json: additionalData.httpRequest?.body || {} },
+				];
+				const runExecutionData: IRunExecutionData = {
+					resultData: {
+						runData: {},
+					},
+				};
+				const executeData: IExecuteData = {
+					data: {
+						main: [connectionInputData],
+					},
+					node,
+					source: null,
+				};
+				const runIndex = 0;
+
+				return await getInputConnectionData.call(
+					this,
+					workflow,
+					runExecutionData,
+					runIndex,
+					connectionInputData,
+					additionalData,
+					executeData,
+					mode,
+					closeFunctions,
+					inputName,
+					itemIndex,
+				);
 			},
 			getMode: () => mode,
 			getNodeParameter: (
@@ -3834,10 +4283,21 @@ export function getExecuteWebhookFunctions(
 				fallbackValue?: any,
 				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object => {
-				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
 				const runIndex = 0;
-				const connectionInputData: INodeExecutionData[] = [];
+
+				let connectionInputData: INodeExecutionData[] = [];
+				let executionData: IExecuteData | undefined;
+
+				if (runExecutionData?.executionData !== undefined) {
+					executionData = runExecutionData.executionData.nodeExecutionStack[0];
+
+					if (executionData !== undefined) {
+						connectionInputData = executionData.data.main[0]!;
+					}
+				}
+
+				const additionalKeys = getAdditionalKeys(additionalData, mode, runExecutionData);
 
 				return getNodeParameter(
 					workflow,
@@ -3848,33 +4308,33 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					getAdditionalKeys(additionalData, mode, null),
-					undefined,
+					additionalKeys,
+					executionData,
 					fallbackValue,
 					options,
 				);
 			},
 			getParamsData(): object {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.params;
 			},
 			getQueryData(): object {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest.query;
 			},
 			getRequestObject(): Request {
 				if (additionalData.httpRequest === undefined) {
-					throw new Error('Request is missing!');
+					throw new ApplicationError('Request is missing');
 				}
 				return additionalData.httpRequest;
 			},
 			getResponseObject(): Response {
 				if (additionalData.httpResponse === undefined) {
-					throw new Error('Response is missing!');
+					throw new ApplicationError('Response is missing');
 				}
 				return additionalData.httpResponse;
 			},
@@ -3896,5 +4356,5 @@ export function getExecuteWebhookFunctions(
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
-	})(workflow, node);
+	})(workflow, node, runExecutionData);
 }

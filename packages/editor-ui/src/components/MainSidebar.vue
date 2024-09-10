@@ -1,3 +1,287 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useRootStore } from '@/stores/root.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useVersionsStore } from '@/stores/versions.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+
+import { hasPermission } from '@/utils/rbac/permissions';
+import { useDebounce } from '@/composables/useDebounce';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useUserHelpers } from '@/composables/useUserHelpers';
+
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+
+const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
+const cloudPlanStore = useCloudPlanStore();
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const templatesStore = useTemplatesStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const versionsStore = useVersionsStore();
+const workflowsStore = useWorkflowsStore();
+
+const { callDebounced } = useDebounce();
+const externalHooks = useExternalHooks();
+const locale = useI18n();
+const route = useRoute();
+const router = useRouter();
+const telemetry = useTelemetry();
+
+useUserHelpers(router, route);
+
+// Template refs
+const user = ref<Element | null>(null);
+
+// Component data
+const basePath = ref('');
+const fullyExpanded = ref(false);
+const userMenuItems = ref([
+	{
+		id: 'settings',
+		label: locale.baseText('settings'),
+	},
+	{
+		id: 'logout',
+		label: locale.baseText('auth.signout'),
+	},
+]);
+
+const mainMenuItems = ref([
+	{
+		id: 'cloud-admin',
+		position: 'bottom',
+		label: 'Admin Panel',
+		icon: 'cloud',
+		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+	},
+	{
+		// Link to in-app templates, available if custom templates are enabled
+		id: 'templates',
+		icon: 'box-open',
+		label: locale.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
+		route: { to: { name: VIEWS.TEMPLATES } },
+	},
+	{
+		// Link to website templates, available if custom templates are not enabled
+		id: 'templates',
+		icon: 'box-open',
+		label: locale.baseText('mainSidebar.templates'),
+		position: 'bottom',
+		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
+		link: {
+			href: templatesStore.websiteTemplateRepositoryURL,
+			target: '_blank',
+		},
+	},
+	{
+		id: 'variables',
+		icon: 'variable',
+		label: locale.baseText('mainSidebar.variables'),
+		customIconSize: 'medium',
+		position: 'bottom',
+		route: { to: { name: VIEWS.VARIABLES } },
+	},
+	{
+		id: 'executions',
+		icon: 'tasks',
+		label: locale.baseText('mainSidebar.executions'),
+		position: 'bottom',
+		route: { to: { name: VIEWS.EXECUTIONS } },
+	},
+	{
+		id: 'help',
+		icon: 'question',
+		label: locale.baseText('mainSidebar.help'),
+		position: 'bottom',
+		children: [
+			{
+				id: 'quickstart',
+				icon: 'video',
+				label: locale.baseText('mainSidebar.helpMenuItems.quickstart'),
+				link: {
+					href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'docs',
+				icon: 'book',
+				label: locale.baseText('mainSidebar.helpMenuItems.documentation'),
+				link: {
+					href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'forum',
+				icon: 'users',
+				label: locale.baseText('mainSidebar.helpMenuItems.forum'),
+				link: {
+					href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'examples',
+				icon: 'graduation-cap',
+				label: locale.baseText('mainSidebar.helpMenuItems.course'),
+				link: {
+					href: 'https://docs.n8n.io/courses/',
+					target: '_blank',
+				},
+			},
+			{
+				id: 'about',
+				icon: 'info',
+				label: locale.baseText('mainSidebar.aboutN8n'),
+				position: 'bottom',
+			},
+		],
+	},
+]);
+
+const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
+
+const logoPath = computed(
+	() => basePath.value + (isCollapsed.value ? 'static/logo/collapsed.svg' : uiStore.logo),
+);
+
+const hasVersionUpdates = computed(
+	() => settingsStore.settings.releaseChannel === 'stable' && versionsStore.hasVersionUpdates,
+);
+
+const nextVersions = computed(() => versionsStore.nextVersions);
+const showUserArea = computed(() => hasPermission(['authenticated']));
+const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
+
+onMounted(async () => {
+	window.addEventListener('resize', onResize);
+	basePath.value = rootStore.baseUrl;
+	if (user.value) {
+		void externalHooks.run('mainSidebar.mounted', {
+			userRef: user.value,
+		});
+	}
+
+	await nextTick(() => {
+		uiStore.sidebarMenuCollapsed = window.innerWidth < 900;
+		fullyExpanded.value = !isCollapsed.value;
+	});
+
+	becomeTemplateCreatorStore.startMonitoringCta();
+});
+
+onBeforeUnmount(() => {
+	becomeTemplateCreatorStore.stopMonitoringCta();
+	window.removeEventListener('resize', onResize);
+});
+
+const trackTemplatesClick = () => {
+	telemetry.track('User clicked on templates', {
+		role: usersStore.currentUserCloudInfo?.role,
+		active_workflow_count: workflowsStore.activeWorkflows.length,
+	});
+};
+
+const trackHelpItemClick = (itemType: string) => {
+	telemetry.track('User clicked help resource', {
+		type: itemType,
+		workflow_id: workflowsStore.workflowId,
+	});
+};
+
+const onUserActionToggle = (action: string) => {
+	switch (action) {
+		case 'logout':
+			onLogout();
+			break;
+		case 'settings':
+			void router.push({ name: VIEWS.PERSONAL_SETTINGS });
+			break;
+		default:
+			break;
+	}
+};
+
+const onLogout = () => {
+	void router.push({ name: VIEWS.SIGNOUT });
+};
+
+const toggleCollapse = () => {
+	uiStore.toggleSidebarMenuCollapse();
+	// When expanding, delay showing some element to ensure smooth animation
+	if (!isCollapsed.value) {
+		setTimeout(() => {
+			fullyExpanded.value = !isCollapsed.value;
+		}, 300);
+	} else {
+		fullyExpanded.value = !isCollapsed.value;
+	}
+};
+
+const openUpdatesPanel = () => {
+	uiStore.openModal(VERSIONS_MODAL_KEY);
+};
+
+const handleSelect = (key: string) => {
+	switch (key) {
+		case 'templates':
+			if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
+				trackTemplatesClick();
+			}
+			break;
+		case 'about': {
+			trackHelpItemClick('about');
+			uiStore.openModal(ABOUT_MODAL_KEY);
+			break;
+		}
+		case 'cloud-admin': {
+			void cloudPlanStore.redirectToDashboard();
+			break;
+		}
+		case 'quickstart':
+		case 'docs':
+		case 'forum':
+		case 'examples': {
+			trackHelpItemClick(key);
+			break;
+		}
+		default:
+			break;
+	}
+};
+
+const onResize = (event: UIEvent) => {
+	void callDebounced(onResizeEnd, { debounceTime: 100 }, event);
+};
+
+const onResizeEnd = async (event: UIEvent) => {
+	const browserWidth = (event.target as Window).outerWidth;
+	await checkWidthAndAdjustSidebar(browserWidth);
+};
+
+const checkWidthAndAdjustSidebar = async (width: number) => {
+	if (width < 900) {
+		uiStore.sidebarMenuCollapsed = true;
+		await nextTick();
+		fullyExpanded.value = !isCollapsed.value;
+	}
+};
+</script>
+
 <template>
 	<div
 		id="side-menu"
@@ -20,16 +304,23 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<ProjectNavigation
+					:collapsed="isCollapsed"
+					:plan-name="cloudPlanStore.currentPlanData?.displayName"
+				/>
 			</template>
 
 			<template #beforeLowerMenu>
-				<ExecutionsUsage
-					:cloud-plan-data="currentPlanAndUsageData"
-					v-if="fullyExpanded && userIsTrialing"
-			/></template>
+				<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+			</template>
 			<template #menuSuffix>
 				<div>
-					<div v-if="hasVersionUpdates" :class="$style.updates" @click="openUpdatesPanel">
+					<div
+						v-if="hasVersionUpdates"
+						data-test-id="version-updates-panel-button"
+						:class="$style.updates"
+						@click="openUpdatesPanel"
+					>
 						<div :class="$style.giftContainer">
 							<GiftNotificationIcon />
 						</div>
@@ -45,24 +336,19 @@
 					<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 				</div>
 			</template>
-			<template #footer v-if="showUserArea">
-				<div :class="$style.userArea">
+			<template v-if="showUserArea" #footer>
+				<div ref="user" :class="$style.userArea">
 					<div class="ml-3xs" data-test-id="main-sidebar-user-menu">
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
-						<el-dropdown
-							:disabled="!isCollapsed"
-							placement="right-end"
-							trigger="click"
-							@command="onUserActionToggle"
-						>
+						<el-dropdown placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{ [$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar
-									:firstName="usersStore.currentUser.firstName"
-									:lastName="usersStore.currentUser.lastName"
+									:first-name="usersStore.currentUser?.firstName"
+									:last-name="usersStore.currentUser?.lastName"
 									size="small"
 								/>
 							</div>
-							<template #dropdown>
+							<template v-if="isCollapsed" #dropdown>
 								<el-dropdown-menu>
 									<el-dropdown-item command="settings">
 										{{ $locale.baseText('settings') }}
@@ -78,7 +364,7 @@
 						:class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }"
 					>
 						<n8n-text size="small" :bold="true" color="text-dark">{{
-							usersStore.currentUser.fullName
+							usersStore.currentUser?.fullName
 						}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
@@ -94,427 +380,6 @@
 		</n8n-menu>
 	</div>
 </template>
-
-<script lang="ts">
-import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } from '@/Interface';
-import GiftNotificationIcon from './GiftNotificationIcon.vue';
-
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { useMessage } from '@/composables';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { workflowRun } from '@/mixins/workflowRun';
-
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from '@/mixins/userHelpers';
-import { debounceHelper } from '@/mixins/debounce';
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useWorkflowsStore,
-	useRootStore,
-	useVersionsStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-} from '@/stores/';
-import { isNavigationFailure } from 'vue-router';
-import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
-import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
-import { ROLE } from '@/utils';
-import { hasPermission } from '@/rbac/permissions';
-
-export default defineComponent({
-	name: 'MainSidebar',
-	components: {
-		GiftNotificationIcon,
-		ExecutionsUsage,
-		MainSidebarSourceControl,
-	},
-	mixins: [genericHelpers, workflowHelpers, workflowRun, userHelpers, debounceHelper],
-	setup(props) {
-		return {
-			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props),
-		};
-	},
-	data() {
-		return {
-			basePath: '',
-			fullyExpanded: false,
-		};
-	},
-	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-			useVersionsStore,
-			useWorkflowsStore,
-			useCloudPlanStore,
-			useSourceControlStore,
-		),
-		logoPath(): string {
-			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
-
-			return this.basePath + this.uiStore.logo;
-		},
-		hasVersionUpdates(): boolean {
-			return (
-				this.settingsStore.settings.releaseChannel === 'stable' &&
-				this.versionsStore.hasVersionUpdates
-			);
-		},
-		nextVersions(): IVersion[] {
-			return this.versionsStore.nextVersions;
-		},
-		isCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
-		},
-		canUserAccessSettings(): boolean {
-			const accessibleRoute = this.findFirstAccessibleSettingsRoute();
-			return accessibleRoute !== null;
-		},
-		showUserArea(): boolean {
-			return hasPermission(['role'], {
-				role: [ROLE.Member, ROLE.Owner],
-			});
-		},
-		workflowExecution(): IExecutionResponse | null {
-			return this.workflowsStore.getWorkflowExecution;
-		},
-		userMenuItems(): object[] {
-			return [
-				{
-					id: 'settings',
-					label: this.$locale.baseText('settings'),
-				},
-				{
-					id: 'logout',
-					label: this.$locale.baseText('auth.signout'),
-				},
-			];
-		},
-		mainMenuItems(): IMenuItem[] {
-			const items: IMenuItem[] = [];
-			const injectedItems = this.uiStore.sidebarMenuItems;
-
-			const workflows: IMenuItem = {
-				id: 'workflows',
-				icon: 'network-wired',
-				label: this.$locale.baseText('mainSidebar.workflows'),
-				position: 'top',
-				activateOnRouteNames: [VIEWS.WORKFLOWS],
-			};
-
-			if (this.sourceControlStore.preferences.branchReadOnly) {
-				workflows.secondaryIcon = {
-					name: 'lock',
-					tooltip: {
-						content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-					},
-				};
-			}
-
-			if (injectedItems && injectedItems.length > 0) {
-				for (const item of injectedItems) {
-					items.push({
-						id: item.id,
-						icon: item.icon || '',
-						label: item.label || '',
-						position: item.position,
-						type: item.properties?.href ? 'link' : 'regular',
-						properties: item.properties,
-					} as IMenuItem);
-				}
-			}
-
-			const regularItems: IMenuItem[] = [
-				workflows,
-				{
-					id: 'templates',
-					icon: 'box-open',
-					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
-					available: this.settingsStore.isTemplatesEnabled,
-					activateOnRouteNames: [VIEWS.TEMPLATES],
-				},
-				{
-					id: 'credentials',
-					icon: 'key',
-					label: this.$locale.baseText('mainSidebar.credentials'),
-					customIconSize: 'medium',
-					position: 'top',
-					activateOnRouteNames: [VIEWS.CREDENTIALS],
-				},
-				{
-					id: 'variables',
-					icon: 'variable',
-					label: this.$locale.baseText('mainSidebar.variables'),
-					customIconSize: 'medium',
-					position: 'top',
-					activateOnRouteNames: [VIEWS.VARIABLES],
-				},
-				{
-					id: 'executions',
-					icon: 'tasks',
-					label: this.$locale.baseText('mainSidebar.executions'),
-					position: 'top',
-					activateOnRouteNames: [VIEWS.EXECUTIONS],
-				},
-				{
-					id: 'cloud-admin',
-					type: 'link',
-					position: 'bottom',
-					label: 'Admin Panel',
-					icon: 'home',
-					available: this.settingsStore.isCloudDeployment && this.usersStore.isInstanceOwner,
-				},
-				{
-					id: 'settings',
-					icon: 'cog',
-					label: this.$locale.baseText('settings'),
-					position: 'bottom',
-					available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
-					activateOnRouteNames: [VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS],
-				},
-				{
-					id: 'help',
-					icon: 'question',
-					label: 'Help',
-					position: 'bottom',
-					children: [
-						{
-							id: 'quickstart',
-							icon: 'video',
-							label: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
-							type: 'link',
-							properties: {
-								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
-								newWindow: true,
-							},
-						},
-						{
-							id: 'docs',
-							icon: 'book',
-							label: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
-							type: 'link',
-							properties: {
-								href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
-								newWindow: true,
-							},
-						},
-						{
-							id: 'forum',
-							icon: 'users',
-							label: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
-							type: 'link',
-							properties: {
-								href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
-								newWindow: true,
-							},
-						},
-						{
-							id: 'examples',
-							icon: 'graduation-cap',
-							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
-							type: 'link',
-							properties: {
-								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
-								newWindow: true,
-							},
-						},
-						{
-							id: 'about',
-							icon: 'info',
-							label: this.$locale.baseText('mainSidebar.aboutN8n'),
-							position: 'bottom',
-						},
-					],
-				},
-			];
-			return [...items, ...regularItems];
-		},
-		userIsTrialing(): boolean {
-			return this.cloudPlanStore.userIsTrialing;
-		},
-		currentPlanAndUsageData(): CloudPlanAndUsageData | null {
-			const planData = this.cloudPlanStore.currentPlanData;
-			const usage = this.cloudPlanStore.currentUsageData;
-			if (!planData || !usage) return null;
-			return {
-				...planData,
-				usage,
-			};
-		},
-	},
-	async mounted() {
-		this.basePath = this.rootStore.baseUrl;
-		if (this.$refs.user) {
-			void this.$externalHooks().run('mainSidebar.mounted', {
-				userRef: this.$refs.user as Element,
-			});
-		}
-
-		void this.$nextTick(() => {
-			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
-				this.uiStore.sidebarMenuCollapsed = true;
-			} else {
-				this.uiStore.sidebarMenuCollapsed = false;
-			}
-
-			this.fullyExpanded = !this.isCollapsed;
-		});
-	},
-	created() {
-		window.addEventListener('resize', this.onResize);
-	},
-	beforeUnmount() {
-		window.removeEventListener('resize', this.onResize);
-	},
-	methods: {
-		trackHelpItemClick(itemType: string) {
-			this.$telemetry.track('User clicked help resource', {
-				type: itemType,
-				workflow_id: this.workflowsStore.workflowId,
-			});
-		},
-		async onUserActionToggle(action: string) {
-			switch (action) {
-				case 'logout':
-					this.onLogout();
-					break;
-				case 'settings':
-					void this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
-					break;
-				default:
-					break;
-			}
-		},
-		onLogout() {
-			void this.$router.push({ name: VIEWS.SIGNOUT });
-		},
-		toggleCollapse() {
-			this.uiStore.toggleSidebarMenuCollapse();
-			// When expanding, delay showing some element to ensure smooth animation
-			if (!this.isCollapsed) {
-				setTimeout(() => {
-					this.fullyExpanded = !this.isCollapsed;
-				}, 300);
-			} else {
-				this.fullyExpanded = !this.isCollapsed;
-			}
-		},
-		openUpdatesPanel() {
-			this.uiStore.openModal(VERSIONS_MODAL_KEY);
-		},
-		async handleSelect(key: string) {
-			switch (key) {
-				case 'workflows': {
-					if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
-						this.goToRoute({ name: VIEWS.WORKFLOWS });
-					}
-					break;
-				}
-				case 'templates': {
-					if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
-						this.goToRoute({ name: VIEWS.TEMPLATES });
-					}
-					break;
-				}
-				case 'credentials': {
-					if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
-						this.goToRoute({ name: VIEWS.CREDENTIALS });
-					}
-					break;
-				}
-				case 'variables': {
-					if (this.$router.currentRoute.name !== VIEWS.VARIABLES) {
-						this.goToRoute({ name: VIEWS.VARIABLES });
-					}
-					break;
-				}
-				case 'executions': {
-					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
-						this.goToRoute({ name: VIEWS.EXECUTIONS });
-					}
-					break;
-				}
-				case 'settings': {
-					const defaultRoute = this.findFirstAccessibleSettingsRoute();
-					if (defaultRoute) {
-						const route = this.$router.resolve({ name: defaultRoute });
-						if (this.$router.currentRoute.name !== defaultRoute) {
-							this.goToRoute(route.path);
-						}
-					}
-					break;
-				}
-				case 'about': {
-					this.trackHelpItemClick('about');
-					this.uiStore.openModal(ABOUT_MODAL_KEY);
-					break;
-				}
-				case 'cloud-admin': {
-					this.cloudPlanStore.redirectToDashboard();
-					break;
-				}
-				case 'quickstart':
-				case 'docs':
-				case 'forum':
-				case 'examples': {
-					this.trackHelpItemClick(key);
-					break;
-				}
-				default:
-					break;
-			}
-		},
-		goToRoute(route: string | { name: string }) {
-			this.$router.push(route).catch((failure) => {
-				console.log(failure);
-				// Catch navigation failures caused by route guards
-				if (!isNavigationFailure(failure)) {
-					console.error(failure);
-				}
-			});
-		},
-		findFirstAccessibleSettingsRoute() {
-			const settingsRoutes = this.$router
-				.getRoutes()
-				.find((route) => route.path === '/settings')!
-				.children.map((route) => route.name || '');
-
-			let defaultSettingsRoute = null;
-			for (const route of settingsRoutes) {
-				if (this.canUserAccessRouteByName(route)) {
-					defaultSettingsRoute = route;
-					break;
-				}
-			}
-
-			return defaultSettingsRoute;
-		},
-		onResize(event: UIEvent) {
-			void this.callDebounced('onResizeEnd', { debounceTime: 100 }, event);
-		},
-		async onResizeEnd(event: UIEvent) {
-			const browserWidth = (event.target as Window).outerWidth;
-			await this.checkWidthAndAdjustSidebar(browserWidth);
-		},
-		async checkWidthAndAdjustSidebar(width: number) {
-			if (width < 900) {
-				this.uiStore.sidebarMenuCollapsed = true;
-				await this.$nextTick();
-				this.fullyExpanded = !this.isCollapsed;
-			}
-		},
-	},
-});
-</script>
 
 <style lang="scss" module>
 .sideMenu {

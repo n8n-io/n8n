@@ -16,7 +16,7 @@ import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
-import { useI18n } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 
@@ -33,28 +33,42 @@ const searchPlaceholder = computed(() =>
 	isActionsMode.value
 		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 				interpolate: { node: activeViewStack.value.title as string },
-		  })
+			})
 		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
 );
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
 
+function getDefaultActiveIndex(search: string = ''): number {
+	if (activeViewStack.value.activeIndex) {
+		return activeViewStack.value.activeIndex;
+	}
+
+	if (activeViewStack.value.mode === 'actions') {
+		// For actions, set the active focus to the first action, not category
+		return 1;
+	} else if (activeViewStack.value.sections) {
+		// For sections, set the active focus to the first node, not section (unless searching)
+		return search ? 0 : 1;
+	}
+
+	return 0;
+}
+
 function onSearch(value: string) {
 	if (activeViewStack.value.uuid) {
 		updateCurrentViewStack({ search: value });
-		void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+		void setActiveItemIndex(getDefaultActiveIndex(value));
 	}
 }
 
 function onTransitionEnd() {
-	// For actions, set the active focus to the first action, not category
-	const newStackIndex = activeViewStack.value.mode === 'actions' ? 1 : 0;
-	void setActiveItemIndex(activeViewStack.value.activeIndex || 0 || newStackIndex);
+	void setActiveItemIndex(getDefaultActiveIndex());
 }
 
 onMounted(() => {
 	attachKeydownEvent();
-	void setActiveItemIndex(activeViewStack.value.activeIndex ?? 0);
+	void setActiveItemIndex(getDefaultActiveIndex());
 });
 
 onUnmounted(() => {
@@ -104,12 +118,12 @@ function onBackButton() {
 	<transition
 		v-if="viewStacks.length > 0"
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
-		@afterLeave="onTransitionEnd"
+		@after-leave="onTransitionEnd"
 	>
 		<aside
+			:key="`${activeViewStack.uuid}`"
 			:class="[$style.nodesListPanel, activeViewStack.panelClass]"
 			@keydown.capture.stop
-			:key="`${activeViewStack.uuid}`"
 		>
 			<header
 				:class="{
@@ -121,9 +135,9 @@ function onBackButton() {
 			>
 				<div :class="$style.top">
 					<button
+						v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
 						:class="$style.backButton"
 						@click="onBackButton"
-						v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
 					>
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
@@ -135,10 +149,10 @@ function onBackButton() {
 						:name="activeViewStack.nodeIcon.icon"
 						:color="activeViewStack.nodeIcon.color"
 						:circle="false"
-						:showTooltip="false"
+						:show-tooltip="false"
 						:size="20"
 					/>
-					<p :class="$style.title" v-text="activeViewStack.title" v-if="activeViewStack.title" />
+					<p v-if="activeViewStack.title" :class="$style.title" v-text="activeViewStack.title" />
 				</div>
 				<p
 					v-if="activeViewStack.subtitle"
@@ -146,7 +160,7 @@ function onBackButton() {
 					v-text="activeViewStack.subtitle"
 				/>
 			</header>
-			<search-bar
+			<SearchBar
 				v-if="activeViewStack.hasSearch"
 				:class="$style.searchBar"
 				:placeholder="
@@ -154,21 +168,21 @@ function onBackButton() {
 						? searchPlaceholder
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
-				:modelValue="activeViewStack.search"
-				@update:modelValue="onSearch"
+				:model-value="activeViewStack.search"
+				@update:model-value="onSearch"
 			/>
 			<div :class="$style.renderedItems">
 				<n8n-notice
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
 					:content="activeViewStack.info"
-					theme="info"
+					theme="warning"
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
-				<NodesRenderer v-else :rootView="nodeCreatorView" v-bind="$attrs" />
+				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
 			</div>
 		</aside>
 	</transition>

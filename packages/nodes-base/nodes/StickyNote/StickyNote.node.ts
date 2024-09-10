@@ -26,7 +26,6 @@ export class StickyNote implements INodeType {
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
-				required: true,
 				default:
 					"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
 			},
@@ -47,7 +46,7 @@ export class StickyNote implements INodeType {
 			{
 				displayName: 'Color',
 				name: 'color',
-				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
+
 				type: 'number',
 				required: true,
 				default: 1,
