@@ -625,7 +625,7 @@ export const sendAndWait: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Aproove Button Label',
+		displayName: 'Approve Button Label',
 		name: 'approveLabel',
 		type: 'string',
 		default: '',
@@ -666,6 +666,13 @@ export const sendAndWait: INodeProperties[] = [
 				approvalType: ['double'],
 			},
 		},
+	},
+	{
+		displayName:
+			'Use the Wait node for more complex approval. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
+		name: 'useWaitNotice',
+		type: 'notice',
+		default: '',
 	},
 ];
 
