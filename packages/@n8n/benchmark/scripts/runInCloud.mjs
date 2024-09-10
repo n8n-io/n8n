@@ -13,6 +13,7 @@ import { sleep, which, $, tmpdir } from 'zx';
 import path from 'path';
 import { SshClient } from './clients/sshClient.mjs';
 import { TerraformClient } from './clients/terraformClient.mjs';
+import { flagsObjectToCliArgs } from './utils/flags.mjs';
 
 /**
  * @typedef {Object} BenchmarkEnv
@@ -30,6 +31,8 @@ import { TerraformClient } from './clients/terraformClient.mjs';
  * @property {string} benchmarkTag
  * @property {string} [k6ApiToken]
  * @property {string} [n8nLicenseCert]
+ * @property {string} [vus]
+ * @property {string} [duration]
  *
  * @param {Config} config
  */
@@ -93,17 +96,16 @@ async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup
 	console.log(`Running benchmarks for ${n8nSetup}...`);
 	const runScriptPath = path.join(scriptsDir, 'runForN8nSetup.mjs');
 
-	const flags = {
+	const cliArgs = flagsObjectToCliArgs({
 		n8nDockerTag: config.n8nTag,
 		benchmarkDockerTag: config.benchmarkTag,
 		k6ApiToken: config.k6ApiToken,
 		n8nLicenseCert: config.n8nLicenseCert,
-	};
+		vus: config.vus,
+		duration: config.duration,
+	});
 
-	const flagsString = Object.entries(flags)
-		.filter(([, value]) => value !== undefined)
-		.map(([key, value]) => `--${key}=${value}`)
-		.join(' ');
+	const flagsString = cliArgs.join(' ');
 
 	await sshClient.ssh(`npx zx ${runScriptPath} ${flagsString} ${n8nSetup}`, {
 		// Test run should always log its output
