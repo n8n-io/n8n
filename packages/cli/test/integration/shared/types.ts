@@ -10,6 +10,7 @@ import type { LicenseMocker } from './license';
 import type { Project } from '@/databases/entities/project';
 
 type EndpointGroup =
+	| 'health'
 	| 'me'
 	| 'users'
 	| 'auth'
@@ -54,6 +55,7 @@ export interface TestServer {
 	authAgentFor: (user: User) => TestAgent;
 	publicApiAgentFor: (user: User) => TestAgent;
 	authlessAgent: TestAgent;
+	restlessAgent: TestAgent;
 	license: LicenseMocker;
 }
 
