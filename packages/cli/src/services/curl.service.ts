@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import curlconverter from 'curlconverter';
+import * as curlconverter from 'curlconverter';
 import get from 'lodash/get';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
