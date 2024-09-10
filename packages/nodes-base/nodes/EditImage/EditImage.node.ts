@@ -1234,14 +1234,11 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font || operationData.font;
-
-						if (font && font !== 'default') {
-							gmInstance = gmInstance!.font(font as string);
-						}
+						// const font = options.font || operationData.font;
 
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
+							.font(operationData.font as string)
 							.fontSize(operationData.fontSize as number)
 							.drawText(
 								operationData.positionX as number,
