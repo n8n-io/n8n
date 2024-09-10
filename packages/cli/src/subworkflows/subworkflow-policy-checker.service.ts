@@ -36,6 +36,8 @@ export class SubworkflowPolicyChecker {
 
 		if (policy === 'any') return;
 
+		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
+
 		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
 			parentWorkflowId,
 			subworkflowId,
@@ -43,23 +45,19 @@ export class SubworkflowPolicyChecker {
 
 		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
 
-		if (
-			policy === 'none' ||
-			(policy === 'workflowsFromAList' && !this.hasParentListed(subworkflow, parentWorkflowId)) ||
-			(policy === 'workflowsFromSameOwner' && !areOwnedBySameProject)
-		) {
-			this.logDenial({ parentWorkflowId, subworkflowId, policy });
+		if (policy === 'workflowsFromSameOwner' && areOwnedBySameProject) return;
 
-			const details = await this.errorDetails(subworkflowProject, subworkflow, userId);
+		this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
-			throw new SubworkflowPolicyDenialError({
-				subworkflowId,
-				subworkflowProject,
-				node,
-				instanceUrl: this.urlService.getInstanceBaseUrl(),
-				...details,
-			});
-		}
+		const errorDetails = await this.errorDetails(subworkflowProject, subworkflow, userId);
+
+		throw new SubworkflowPolicyDenialError({
+			subworkflowId,
+			subworkflowProject,
+			node,
+			instanceUrl: this.urlService.getInstanceBaseUrl(),
+			...errorDetails,
+		});
 	}
 
 	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
@@ -111,7 +109,7 @@ export class SubworkflowPolicyChecker {
 	/**
 	 * Whether the subworkflow has the parent workflow listed as a caller.
 	 */
-	private hasParentListed(subworkflow: Workflow, parentWorkflowId: string) {
+	private isListed(subworkflow: Workflow, parentWorkflowId: string) {
 		const callerIds =
 			subworkflow.settings.callerIds
 				?.split(',')
