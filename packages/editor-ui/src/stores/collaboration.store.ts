@@ -1,10 +1,14 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+
+import { STORES, PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/constants';
+import { useBeforeUnload } from '@/composables/useBeforeUnload';
+import type { IUser } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
-import { STORES } from '@/constants';
-import type { IUser } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
+import { useUIStore } from '@/stores/ui.store';
 
 type ActiveUsersForWorkflows = {
 	[workflowId: string]: Array<{ user: IUser; lastSeen: string }>;
@@ -16,15 +20,45 @@ type ActiveUsersForWorkflows = {
  */
 export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const pushStore = usePushConnectionStore();
-	const workflowStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
 	const usersStore = useUsersStore();
+	const uiStore = useUIStore();
+
+	const route = useRoute();
+	const { addBeforeUnloadHandler } = useBeforeUnload({ route });
+	const unloadTimeout = ref<NodeJS.Timeout | null>(null);
+	addBeforeUnloadHandler(() => {
+		// Notify that workflow is closed straight away
+		notifyWorkflowClosed();
+		if (uiStore.stateIsDirty) {
+			// If user decided to stay on the page we notify that the workflow is opened again
+			unloadTimeout.value = setTimeout(() => notifyWorkflowOpened, 5 * TIME.SECOND);
+		}
+	});
 
 	const usersForWorkflows = ref<ActiveUsersForWorkflows>({});
 	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
 
 	const getUsersForCurrentWorkflow = computed(() => {
-		return usersForWorkflows.value[workflowStore.workflowId] ?? [];
+		return usersForWorkflows.value[workflowsStore.workflowId] ?? [];
 	});
+
+	const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
+	const heartbeatTimer = ref<number | null>(null);
+
+	const startHeartbeat = () => {
+		if (heartbeatTimer.value !== null) {
+			clearInterval(heartbeatTimer.value);
+			heartbeatTimer.value = null;
+		}
+		heartbeatTimer.value = window.setInterval(notifyWorkflowOpened, HEARTBEAT_INTERVAL);
+	};
+
+	const stopHeartbeat = () => {
+		if (heartbeatTimer.value !== null) {
+			clearInterval(heartbeatTimer.value);
+		}
+	};
 
 	function initialize() {
 		if (pushStoreEventListenerRemovalFn.value) {
@@ -37,6 +71,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				usersForWorkflows.value[workflowId] = event.data.activeUsers;
 			}
 		});
+
+		notifyWorkflowOpened();
+		startHeartbeat();
 	}
 
 	function terminate() {
@@ -44,10 +81,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			pushStoreEventListenerRemovalFn.value();
 			pushStoreEventListenerRemovalFn.value = null;
 		}
-	}
-
-	function workflowUsersUpdated(data: ActiveUsersForWorkflows) {
-		usersForWorkflows.value = data;
+		notifyWorkflowClosed();
+		stopHeartbeat();
+		pushStore.clearQueue();
+		if (unloadTimeout.value) {
+			clearTimeout(unloadTimeout.value);
+		}
 	}
 
 	function functionRemoveCurrentUserFromActiveUsers(workflowId: string) {
@@ -61,14 +100,18 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		);
 	}
 
-	function notifyWorkflowOpened(workflowId: string) {
+	function notifyWorkflowOpened() {
+		const { workflowId } = workflowsStore;
+		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
 		pushStore.send({
 			type: 'workflowOpened',
 			workflowId,
 		});
 	}
 
-	function notifyWorkflowClosed(workflowId: string) {
+	function notifyWorkflowClosed() {
+		const { workflowId } = workflowsStore;
+		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
 		pushStore.send({ type: 'workflowClosed', workflowId });
 
 		functionRemoveCurrentUserFromActiveUsers(workflowId);
@@ -78,9 +121,8 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		usersForWorkflows,
 		initialize,
 		terminate,
-		notifyWorkflowOpened,
-		notifyWorkflowClosed,
-		workflowUsersUpdated,
 		getUsersForCurrentWorkflow,
+		startHeartbeat,
+		stopHeartbeat,
 	};
 });
