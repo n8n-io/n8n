@@ -104,7 +104,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 	describe('`any` caller policy', () => {
 		it('if no sharing, should be overriden to `workflows-from-same-owner`', async () => {
-			license.isSharingEnabled.mockReturnValue(false);
+			license.isSharingEnabled.mockReturnValueOnce(false);
 
 			const parentWorkflow = mock<WorkflowEntity>();
 			const subworkflowId = 'subworkflow-id';
@@ -160,8 +160,8 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const bothWorkflowsProject = mock<Project>({ id: uuid() });
 
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // subworkflow
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // parent workflow project
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(bothWorkflowsProject); // subworkflow project
 
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'workflowsFromSameOwner' } });
 
@@ -242,9 +242,12 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(false);
 
-			const node = mock<INode>();
-
-			const check = checker.check(subworkflow, parentWorkflow.id, node, subworkflowProjectOwner.id);
+			const check = checker.check(
+				subworkflow,
+				parentWorkflow.id,
+				mock<INode>(),
+				subworkflowProjectOwner.id,
+			);
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
@@ -266,9 +269,7 @@ describe('SubworkflowPolicyChecker', () => {
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
 			accessService.hasAccess.mockResolvedValueOnce(true);
 
-			const node = mock<INode>();
-
-			const check = checker.check(subworkflow, parentWorkflow.id, node);
+			const check = checker.check(subworkflow, parentWorkflow.id, mock<INode>());
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
