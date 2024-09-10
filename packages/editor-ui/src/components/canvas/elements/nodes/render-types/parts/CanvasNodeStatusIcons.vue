@@ -15,6 +15,7 @@ const {
 	executionRunning,
 	hasRunData,
 	runDataIterations,
+	isDisabled,
 } = useCanvasNode();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
@@ -45,7 +46,7 @@ const hideNodeIssues = computed(() => false); // @TODO Implement this
 		</N8nTooltip>
 	</div>
 	<div
-		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value"
+		v-else-if="hasPinnedData && !nodeHelpers.isProductionExecutionPreview.value && !isDisabled"
 		data-test-id="canvas-node-status-pinned"
 		:class="[$style.status, $style.pinnedData]"
 	>

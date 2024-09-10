@@ -33,7 +33,6 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
-    "convict": "6.2.4",
     "dotenv": "8.6.0",
     "zx": "^8.1.4"
   },
