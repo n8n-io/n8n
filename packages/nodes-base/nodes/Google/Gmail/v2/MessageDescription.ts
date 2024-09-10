@@ -591,7 +591,7 @@ export const sendAndWait: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		placeholder: 'e.g. n8n AUTOMATED: Approval required',
+		placeholder: 'e.g. Approval required',
 	},
 	{
 		displayName: 'Message',
