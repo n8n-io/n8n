@@ -306,7 +306,6 @@ export class WorkflowRunner {
 					workflowExecution = workflowExecute.runPartialWorkflow2(
 						workflow,
 						data.runData,
-						data.startNodes,
 						data.destinationNode,
 						data.pinData,
 					);

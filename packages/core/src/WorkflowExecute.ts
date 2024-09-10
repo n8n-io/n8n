@@ -321,7 +321,6 @@ export class WorkflowExecute {
 	runPartialWorkflow2(
 		workflow: Workflow,
 		runData: IRunData,
-		_startNodes: StartNodeData[],
 		destinationNodeName?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
