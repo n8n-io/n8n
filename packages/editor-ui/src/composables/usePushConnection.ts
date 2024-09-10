@@ -32,7 +32,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
-import { ref } from 'vue';
+import { h, ref } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -41,6 +41,8 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { PushMessageQueueItem } from '@/types';
+import { useAssistantStore } from '@/stores/assistant.store';
+import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -57,6 +59,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const assistantStore = useAssistantStore();
 
 	const retryTimeout = ref<NodeJS.Timeout | null>(null);
 	const pushMessageQueue = ref<PushMessageQueueItem[]>([]);
@@ -293,7 +296,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 			const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
-			codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
+			codeNodeEditorEventBus.emit('highlightLine', lineNumber ?? 'final');
 
 			const workflow = workflowHelpers.getCurrentWorkflow();
 			if (runDataExecuted.waitTill !== undefined) {
@@ -405,16 +408,12 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 					toast.showMessage({
 						title,
-						message:
-							(nodeError?.description ?? runDataExecutedErrorMessage) +
-							i18n.baseText('pushConnection.executionError.openNode', {
-								interpolate: {
-									node: nodeError.node.name,
-								},
-							}),
+						message: h(NodeExecutionErrorMessage, {
+							errorMessage: nodeError?.description ?? runDataExecutedErrorMessage,
+							nodeName: nodeError.node.name,
+						}),
 						type: 'error',
 						duration: 0,
-						dangerouslyUseHTMLString: true,
 					});
 				} else {
 					let title: string;
@@ -535,6 +534,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 			const pushData = receivedData.data;
 			workflowsStore.addNodeExecutionData(pushData);
 			workflowsStore.removeExecutingNode(pushData.nodeName);
+			void assistantStore.onNodeExecution(pushData);
 		} else if (receivedData.type === 'nodeExecuteBefore') {
 			// A node started to be executed. Set it as executing.
 			const pushData = receivedData.data;

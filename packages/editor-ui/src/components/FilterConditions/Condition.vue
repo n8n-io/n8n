@@ -17,6 +17,7 @@ import { type FilterOperatorId } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
+	inferOperatorType,
 	isEmptyInput,
 	operatorTypeToNodeProperty,
 	resolveCondition,
@@ -69,6 +70,14 @@ const isEmpty = computed(() => {
 const conditionResult = computed(() =>
 	resolveCondition({ condition: condition.value, options: props.options }),
 );
+
+const suggestedType = computed(() => {
+	if (conditionResult.value.status !== 'resolve_error') {
+		return inferOperatorType(conditionResult.value.resolved.leftValue);
+	}
+
+	return 'any';
+});
 
 const allIssues = computed(() => {
 	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
@@ -176,6 +185,7 @@ const onBlur = (): void => {
 			<template #middle>
 				<OperatorSelect
 					:selected="`${operator.type}:${operator.operation}`"
+					:suggested-type="suggestedType"
 					:read-only="readOnly"
 					@operator-change="onOperatorChange"
 				></OperatorSelect>

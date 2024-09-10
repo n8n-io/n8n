@@ -7,14 +7,16 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
-import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionFilterType, ExecutionSummaryWithScopes, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
+import type { PermissionsRecord } from '@/permissions';
+import { getResourcePermissions } from '@/permissions';
 
 const props = withDefaults(
 	defineProps<{
-		executions: ExecutionSummary[];
+		executions: ExecutionSummaryWithScopes[];
 		filters: ExecutionFilterType;
 		total: number;
 		estimated: boolean;
@@ -160,6 +162,12 @@ function getExecutionWorkflowName(execution: ExecutionSummary): string {
 	return (
 		getWorkflowName(execution.workflowId ?? '') ?? i18n.baseText('executionsList.unsavedWorkflow')
 	);
+}
+
+function getExecutionWorkflowPermissions(
+	execution: ExecutionSummaryWithScopes,
+): PermissionsRecord['workflow'] {
+	return getResourcePermissions(execution.scopes).workflow;
 }
 
 function getWorkflowName(workflowId: string): string | undefined {
@@ -344,7 +352,9 @@ async function onAutoRefreshToggle(value: boolean) {
 						:key="execution.id"
 						:execution="execution"
 						:workflow-name="getExecutionWorkflowName(execution)"
+						:workflow-permissions="getExecutionWorkflowPermissions(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						data-test-id="global-execution-list-item"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"

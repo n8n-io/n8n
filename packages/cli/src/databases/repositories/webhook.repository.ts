@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { WebhookEntity } from '../entities/WebhookEntity';
+import { WebhookEntity } from '../entities/webhook-entity';
 
 @Service()
 export class WebhookRepository extends Repository<WebhookEntity> {

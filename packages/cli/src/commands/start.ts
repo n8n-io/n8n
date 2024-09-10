@@ -11,26 +11,25 @@ import glob from 'fast-glob';
 import { jsonParse, randomString } from 'n8n-workflow';
 
 import config from '@/config';
-import { ActiveExecutions } from '@/ActiveExecutions';
-import { ActiveWorkflowManager } from '@/ActiveWorkflowManager';
-import { Server } from '@/Server';
+import { ActiveExecutions } from '@/active-executions';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { Server } from '@/server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import { License } from '@/License';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { License } from '@/license';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
 import { UrlService } from '@/services/url.service';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { WaitTracker } from '@/WaitTracker';
-import { BaseCommand } from './BaseCommand';
-import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { WaitTracker } from '@/wait-tracker';
+import { BaseCommand } from './base-command';
+import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowRunner } from '@/WorkflowRunner';
-import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import { WorkflowRunner } from '@/workflow-runner';
 import { EventService } from '@/events/event.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -240,7 +239,10 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
-		await Container.get(OrchestrationHandlerMainService).init();
+		await Container.get(OrchestrationHandlerMainService).initWithOptions({
+			queueModeId: this.queueModeId,
+			redisPublisher: Container.get(OrchestrationService).redisPublisher,
+		});
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
@@ -305,7 +307,6 @@ export class Start extends BaseCommand {
 		await this.server.start();
 
 		Container.get(PruningService).init();
-		Container.get(ExecutionRecoveryService).init();
 
 		if (config.getEnv('executions.mode') === 'regular') {
 			await this.runEnqueuedExecutions();
@@ -332,7 +333,7 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					void this.stopProcess();
+					void this.onTerminationSignal('SIGINT')();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
 

@@ -3,6 +3,10 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import router from '@/router';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -50,32 +54,23 @@ const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	connections: {},
 });
 
-vi.mock('@/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflowsById: {},
-		createNewWorkflow: vi.fn(() => {}),
-		addWorkflow: vi.fn(() => {}),
-		setActive: vi.fn(() => {}),
-		setWorkflowId: vi.fn(() => {}),
-		setWorkflowVersionId: vi.fn(() => {}),
-		setWorkflowName: vi.fn(() => {}),
-		setWorkflowSettings: vi.fn(() => {}),
-		setNodeValue: vi.fn(() => {}),
-		setWorkflowTagIds: vi.fn(() => {}),
-		getCurrentWorkflow: vi.fn(() => ({})),
-	})),
-}));
-
 describe('useWorkflowHelpers', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
+	let tagsStore: ReturnType<typeof useTagsStore>;
+
+	beforeAll(() => {
+		setActivePinia(createTestingPinia());
+		workflowsStore = useWorkflowsStore();
+		workflowsEEStore = useWorkflowsEEStore();
+		tagsStore = useTagsStore();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
 	describe('saveAsNewWorkflow', () => {
-		beforeAll(() => {
-			setActivePinia(createTestingPinia());
-		});
-
-		afterEach(() => {
-			vi.clearAllMocks();
-		});
-
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
 			if (!workflow.nodes) {
@@ -118,6 +113,103 @@ describe('useWorkflowHelpers', () => {
 			// Now, expect webhookIds and paths to be different
 			expect(webHookIdsPreSave).not.toEqual(webHookIdsPostSave);
 			expect(pathsPreSave).not.toEqual(pathsPostSave);
+		});
+	});
+
+	describe('initState', () => {
+		it('should initialize workflow state with provided data', () => {
+			const { initState } = useWorkflowHelpers({ router });
+
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: {},
+				meta: {},
+				scopes: ['workflow:create'],
+				usedCredentials: [],
+				sharedWithProjects: [],
+				tags: [],
+			});
+			const addWorkflowSpy = vi.spyOn(workflowsStore, 'addWorkflow');
+			const setActiveSpy = vi.spyOn(workflowsStore, 'setActive');
+			const setWorkflowIdSpy = vi.spyOn(workflowsStore, 'setWorkflowId');
+			const setWorkflowNameSpy = vi.spyOn(workflowsStore, 'setWorkflowName');
+			const setWorkflowSettingsSpy = vi.spyOn(workflowsStore, 'setWorkflowSettings');
+			const setWorkflowPinDataSpy = vi.spyOn(workflowsStore, 'setWorkflowPinData');
+			const setWorkflowVersionIdSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionId');
+			const setWorkflowMetadataSpy = vi.spyOn(workflowsStore, 'setWorkflowMetadata');
+			const setWorkflowScopesSpy = vi.spyOn(workflowsStore, 'setWorkflowScopes');
+			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
+			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
+
+			initState(workflowData);
+
+			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
+			expect(setActiveSpy).toHaveBeenCalledWith(true);
+			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
+			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
+				newName: 'Test Workflow',
+				setStateDirty: false,
+			});
+			expect(setWorkflowSettingsSpy).toHaveBeenCalledWith({
+				executionOrder: 'v1',
+				timezone: 'DEFAULT',
+			});
+			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
+			expect(setWorkflowVersionIdSpy).toHaveBeenCalledWith('1');
+			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
+			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
+			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
+			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
+				workflowId: '1',
+				sharedWithProjects: [],
+			});
+			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
+		});
+
+		it('should handle missing `usedCredentials` and `sharedWithProjects` gracefully', () => {
+			const { initState } = useWorkflowHelpers({ router });
+
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: {},
+				meta: {},
+				scopes: [],
+				tags: [],
+			});
+			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
+			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
+
+			initState(workflowData);
+
+			expect(setUsedCredentialsSpy).not.toHaveBeenCalled();
+			expect(setWorkflowSharedWithSpy).not.toHaveBeenCalled();
+		});
+
+		it('should handle missing `tags` gracefully', () => {
+			const { initState } = useWorkflowHelpers({ router });
+
+			const workflowData = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				pinData: {},
+				meta: {},
+				scopes: [],
+			});
+			const setWorkflowTagIdsSpy = vi.spyOn(workflowsStore, 'setWorkflowTagIds');
+			const upsertTagsSpy = vi.spyOn(tagsStore, 'upsertTags');
+
+			initState(workflowData);
+
+			expect(setWorkflowTagIdsSpy).toHaveBeenCalledWith([]);
+			expect(upsertTagsSpy).toHaveBeenCalledWith([]);
 		});
 	});
 });

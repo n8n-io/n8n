@@ -1,7 +1,7 @@
-import type { User } from '@db/entities/User';
+import type { User } from '@/databases/entities/user';
 
 import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import * as testDb from '../shared/test-db';
 import { createUser } from '../shared/db/users';
 import { createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTeamProject } from '../shared/db/projects';

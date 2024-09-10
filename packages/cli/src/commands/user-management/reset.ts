@@ -1,12 +1,12 @@
 import { Container } from 'typedi';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { User } from '@db/entities/User';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
-import { BaseCommand } from '../BaseCommand';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { User } from '@/databases/entities/user';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { BaseCommand } from '../base-command';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const defaultUserProps = {

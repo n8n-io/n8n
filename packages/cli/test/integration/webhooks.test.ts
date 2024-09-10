@@ -2,13 +2,12 @@ import type SuperAgentTest from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 
-import { AbstractServer } from '@/AbstractServer';
-import { ActiveWebhooks } from '@/webhooks/ActiveWebhooks';
-import { ExternalHooks } from '@/ExternalHooks';
-import { InternalHooks } from '@/InternalHooks';
-import { TestWebhooks } from '@/webhooks/TestWebhooks';
-import { WaitingWebhooks } from '@/webhooks/WaitingWebhooks';
-import { WaitingForms } from '@/WaitingForms';
+import { AbstractServer } from '@/abstract-server';
+import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { ExternalHooks } from '@/external-hooks';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
+import { WaitingForms } from '@/waiting-forms';
 import type { IWebhookResponseCallbackData } from '@/webhooks/webhook.types';
 
 import { mockInstance } from '@test/mocking';
@@ -19,11 +18,10 @@ let agent: SuperAgentTest;
 
 describe('WebhookServer', () => {
 	mockInstance(ExternalHooks);
-	mockInstance(InternalHooks);
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const activeWebhooks = mockInstance(ActiveWebhooks);
+		const liveWebhooks = mockInstance(LiveWebhooks);
 		const testWebhooks = mockInstance(TestWebhooks);
 		mockInstance(WaitingWebhooks);
 		mockInstance(WaitingForms);
@@ -37,7 +35,7 @@ describe('WebhookServer', () => {
 		});
 
 		const tests = [
-			['webhook', activeWebhooks],
+			['webhook', liveWebhooks],
 			['webhookTest', testWebhooks],
 			// TODO: enable webhookWaiting & waitingForms after CORS support is added
 			// ['webhookWaiting', waitingWebhooks],

@@ -1,4 +1,4 @@
-import { ActivationErrorsService } from '@/ActivationErrors.service';
+import { ActivationErrorsService } from '@/activation-errors.service';
 import { CacheService } from '@/services/cache/cache.service';
 import { GlobalConfig } from '@n8n/config';
 import { mockInstance } from '@test/mocking';

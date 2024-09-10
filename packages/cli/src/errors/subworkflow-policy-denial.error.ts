@@ -1,5 +1,5 @@
 import { WorkflowOperationError } from 'n8n-workflow';
-import type { Project } from '@/databases/entities/Project';
+import type { Project } from '@/databases/entities/project';
 import type { INode } from 'n8n-workflow';
 
 type SubworkflowPolicyDenialErrorParams = {

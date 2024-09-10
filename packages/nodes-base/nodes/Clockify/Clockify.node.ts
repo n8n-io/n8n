@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
@@ -43,8 +44,8 @@ export class Clockify implements INodeType {
 		defaults: {
 			name: 'Clockify',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'clockifyApi',
@@ -839,7 +840,7 @@ export class Clockify implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {} });
 					continue;
 				}

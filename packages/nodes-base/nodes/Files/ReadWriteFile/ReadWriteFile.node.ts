@@ -4,6 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import * as read from './actions/read.operation';
 import * as write from './actions/write.operation';
@@ -19,8 +20,8 @@ export class ReadWriteFile implements INodeType {
 		defaults: {
 			name: 'Read/Write Files from Disk',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:

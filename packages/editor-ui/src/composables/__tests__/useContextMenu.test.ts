@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -38,6 +38,7 @@ describe('useContextMenu', () => {
 
 		workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.nodes = nodes;
+		workflowsStore.workflow.scopes = ['workflow:update'];
 		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
 			nodes,
 			getNode: (_: string) => {
@@ -94,7 +95,10 @@ describe('useContextMenu', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
 		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(basicChain);
-		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue(['main', 'ai_languageModel']);
+		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([
+			NodeConnectionType.Main,
+			NodeConnectionType.AiLanguageModel,
+		]);
 		open(mockEvent, { source: 'node-right-click', nodeId: basicChain.id });
 
 		expect(isOpen.value).toBe(true);
@@ -127,6 +131,7 @@ describe('useContextMenu', () => {
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
+			workflowsStore.workflow.scopes = ['workflow:read'];
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);

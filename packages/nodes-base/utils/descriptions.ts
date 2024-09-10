@@ -33,6 +33,22 @@ export const returnAllOrLimit: INodeProperties[] = [
 	},
 ];
 
+export const looseTypeValidationProperty: INodeProperties = {
+	displayName: 'Convert Value Types',
+	description: 'Whether to try casting value types based on the selected operator',
+	name: 'looseTypeValidation',
+	type: 'boolean',
+	default: true,
+};
+
+export const appendAttributionOption: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Append n8n Attribution',
+	name: 'appendAttribution',
+	type: 'boolean',
+	default: true,
+};
+
 export const encodeDecodeOptions: INodePropertyOptions[] = [
 	{
 		name: 'armscii8',

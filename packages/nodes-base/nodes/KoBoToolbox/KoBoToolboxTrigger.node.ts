@@ -1,10 +1,11 @@
-import type {
-	IDataObject,
-	IHookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IHookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -29,7 +30,7 @@ export class KoBoToolboxTrigger implements INodeType {
 			name: 'KoBoToolbox Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'koBoToolboxApi',

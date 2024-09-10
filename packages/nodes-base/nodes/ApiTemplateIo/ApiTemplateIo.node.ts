@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -28,8 +28,8 @@ export class ApiTemplateIo implements INodeType {
 		defaults: {
 			name: 'APITemplate.io',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'apiTemplateIoApi',
@@ -385,7 +385,7 @@ export class ApiTemplateIo implements INodeType {
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -471,7 +471,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}
@@ -561,7 +561,7 @@ export class ApiTemplateIo implements INodeType {
 						}
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
-						if (this.continueOnFail(error)) {
+						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
 							continue;
 						}

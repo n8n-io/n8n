@@ -3,15 +3,15 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { validateEntity } from '@/GenericHelpers';
+import { validateEntity } from '@/generic-helpers';
 import { GlobalScope, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { OwnerRequest } from '@/requests';
-import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/Logger';
+import { Logger } from '@/logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 

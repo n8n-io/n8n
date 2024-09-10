@@ -12,7 +12,7 @@ import type {
 	Hash,
 } from '@/services/cache/cache.types';
 import { TIME } from '@/constants';
-import { TypedEmitter } from '@/TypedEmitter';
+import { TypedEmitter } from '@/typed-emitter';
 import { GlobalConfig } from '@n8n/config';
 
 type CacheEvents = {
@@ -45,7 +45,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			);
 
 			const redisClient = redisClientService.createClient({
-				type: 'client(cache)',
+				type: 'cache(n8n)',
 				extraOptions: { keyPrefix: prefix },
 			});
 

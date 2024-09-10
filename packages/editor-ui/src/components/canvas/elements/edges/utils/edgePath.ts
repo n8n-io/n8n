@@ -5,7 +5,13 @@ const EDGE_PADDING_Y = 140;
 const EDGE_PADDING_Y_TOP = 80;
 const EDGE_BORDER_RADIUS = 8;
 const EDGE_OFFSET = 40;
-const HANDLE_SIZE = 16;
+// const HANDLE_SIZE = 16;
+
+const isTargetHandlePositionedLeftOfSourceTarget = (sourceX: number, targetX: number) =>
+	sourceX > targetX;
+
+const pathIntersectsNodes = (targetY: number, sourceY: number) =>
+	Math.abs(targetY - sourceY) < EDGE_PADDING_Y;
 
 export function getCustomPath(
 	props: Pick<
@@ -14,12 +20,15 @@ export function getCustomPath(
 	>,
 ) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
-	const xDiff = targetX - sourceX;
 	const yDiff = targetY - sourceY;
+
+	if (!isTargetHandlePositionedLeftOfSourceTarget(sourceX, targetX)) {
+		return getBezierPath(props);
+	}
 
 	// Connection is backwards and the source is on the right side
 	// -> We need to avoid overlapping the source node
-	if (xDiff < -HANDLE_SIZE && sourcePosition === Position.Right) {
+	if (pathIntersectsNodes(targetY, sourceY)) {
 		const direction = yDiff < -EDGE_PADDING_Y || yDiff > 0 ? 'up' : 'down';
 		const firstSegmentTargetX = sourceX;
 		const firstSegmentTargetY =
@@ -49,5 +58,5 @@ export function getCustomPath(
 		return path;
 	}
 
-	return getBezierPath(props);
+	return getSmoothStepPath(props);
 }

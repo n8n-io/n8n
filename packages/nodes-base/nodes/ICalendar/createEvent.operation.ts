@@ -354,7 +354,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			});
 		} catch (error) {
 			const errorDescription = error.description;
-			if (this.continueOnFail(error)) {
+			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
 						error: error.message,

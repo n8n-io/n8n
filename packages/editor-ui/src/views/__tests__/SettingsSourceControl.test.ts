@@ -105,7 +105,7 @@ describe('SettingsSourceControl', () => {
 		expect(saveSettingsButton).toBeDisabled();
 
 		const branchSelect = getByTestId('source-control-branch-select');
-		await userEvent.click(within(branchSelect).getByRole('textbox'));
+		await userEvent.click(within(branchSelect).getByRole('combobox'));
 
 		await waitFor(() => expect(getByText('main')).toBeVisible());
 		await userEvent.click(getByText('main'));
@@ -137,7 +137,7 @@ describe('SettingsSourceControl', () => {
 			expect(refreshSshKeyButton).toBeVisible();
 		});
 
-		await userEvent.click(within(sshKeyTypeSelect).getByRole('textbox'));
+		await userEvent.click(within(sshKeyTypeSelect).getByRole('combobox'));
 		await waitFor(() => expect(getByText('RSA')).toBeVisible());
 		await userEvent.click(getByText('RSA'));
 		await userEvent.click(refreshSshKeyButton);

@@ -6,13 +6,13 @@ import { Cipher } from 'n8n-core';
 import { nanoid } from 'nanoid';
 import type { InstanceSettings } from 'n8n-core';
 
-import * as testDb from '../shared/testDb';
-import { SourceControlImportService } from '@/environments/sourceControl/sourceControlImport.service.ee';
+import * as testDb from '../shared/test-db';
+import { SourceControlImportService } from '@/environments/source-control/source-control-import.service.ee';
 import { createMember, getGlobalOwner } from '../shared/db/users';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { mockInstance } from '../../shared/mocking';
-import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
-import type { ExportableCredential } from '@/environments/sourceControl/types/exportableCredential';
+import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+import type { ExportableCredential } from '@/environments/source-control/types/exportable-credential';
 import { createTeamProject, getPersonalProject } from '../shared/db/projects';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { saveCredential } from '../shared/db/credentials';

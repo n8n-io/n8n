@@ -1,0 +1,7 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "SetNodeExpressions",
+	"description": "Expressions in a Set node",
+	"scenarioData": { "workflowFiles": ["setNodeExpressions.json"] },
+	"scriptPath": "setNodeExpressions.script.js"
+}

@@ -8,23 +8,26 @@ import type {
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
+	IPersonalizationSurveyAnswersV4,
 	IUser,
 } from 'n8n-workflow';
 
 import { Expose } from 'class-transformer';
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
-import { NoXss } from '@db/utils/customValidators';
-import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole } from '@db/entities/User';
-import type { GlobalRole, User } from '@db/entities/User';
-import type { Variables } from '@db/entities/Variables';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-import type { Project, ProjectType } from '@db/entities/Project';
-import type { ProjectRole } from './databases/entities/ProjectRelation';
+import { NoXss } from '@/validators/no-xss.validator';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/interfaces';
+import { AssignableRole } from '@/databases/entities/user';
+import type { GlobalRole, User } from '@/databases/entities/user';
+import type { Variables } from '@/databases/entities/variables';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { WorkflowHistory } from '@/databases/entities/workflow-history';
+import type { Project, ProjectType } from '@/databases/entities/project';
+import type { ProjectRole } from './databases/entities/project-relation';
 import type { Scope } from '@n8n/permissions';
 import type { ScopesField } from './services/role.service';
+import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { NoUrl } from '@/validators/no-url.validator';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@Expose()
@@ -33,15 +36,22 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 
 	@Expose()
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'First name must be of type string.' })
 	@Length(1, 32, { message: 'First name must be $constraint1 to $constraint2 characters long.' })
 	firstName: string;
 
 	@Expose()
 	@NoXss()
+	@NoUrl()
 	@IsString({ message: 'Last name must be of type string.' })
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
+
+	@IsOptional()
+	@Expose()
+	@IsString({ message: 'Two factor code must be a string.' })
+	mfaCode?: string;
 }
 
 export class UserSettingsUpdatePayload {
@@ -224,9 +234,9 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string; token?: string }
+		{ currentPassword: string; newPassword: string; mfaCode?: string }
 	>;
-	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+	export type SurveyAnswers = AuthenticatedRequest<{}, {}, IPersonalizationSurveyAnswersV4>;
 }
 
 export interface UserSetupPayload {
@@ -353,6 +363,7 @@ export type LoginRequest = AuthlessRequest<
 export declare namespace MFA {
 	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Disable = AuthenticatedRequest<{}, {}, { token: string }, {}>;
 	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
 	type ValidateRecoveryCode = AuthenticatedRequest<
 		{},
@@ -431,6 +442,17 @@ export declare namespace DynamicNodeParametersRequest {
 // ----------------------------------
 
 export declare namespace TagsRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//             /annotation-tags
+// ----------------------------------
+
+export declare namespace AnnotationTagsRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
 	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
@@ -605,4 +627,15 @@ export declare namespace NpsSurveyRequest {
 	// type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, NpsSurveyState>;
 	// once some schema validation is added
 	type NpsSurveyUpdate = AuthenticatedRequest<{}, {}, unknown>;
+}
+
+// ----------------------------------
+//             /ai-assistant
+// ----------------------------------
+
+export declare namespace AiAssistantRequest {
+	type Chat = AuthenticatedRequest<{}, {}, AiAssistantSDK.ChatRequestPayload>;
+
+	type SuggestionPayload = { sessionId: string; suggestionId: string };
+	type ApplySuggestion = AuthenticatedRequest<{}, {}, SuggestionPayload>;
 }

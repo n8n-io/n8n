@@ -55,7 +55,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/root.store';
@@ -428,9 +428,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function fetchWorkflow(id: string): Promise<IWorkflowDb> {
 		const rootStore = useRootStore();
-		const workflow = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
-		addWorkflow(workflow);
-		return workflow;
+		const workflowData = await workflowsApi.getWorkflow(rootStore.restApiContext, id);
+		addWorkflow(workflowData);
+		return workflowData;
 	}
 
 	async function getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
@@ -500,8 +500,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executingNode.value = executingNode.value.filter((name) => name !== nodeName);
 	}
 
-	function setWorkflowId(id: string) {
-		workflow.value.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+	function setWorkflowId(id?: string) {
+		workflow.value.id = !id || id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -669,14 +669,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowPinData(pinData: IPinData) {
+	function setWorkflowPinData(pinData?: IPinData) {
 		workflow.value = {
 			...workflow.value,
-			pinData: pinData || {},
+			pinData: pinData ?? {},
 		};
 		updateCachedWorkflow();
 
-		dataPinningEventBus.emit('pin-data', pinData || {});
+		dataPinningEventBus.emit('pin-data', pinData ?? {});
 	}
 
 	function setWorkflowTagIds(tags: string[]) {
@@ -697,6 +697,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...workflow.value,
 			tags: updated as IWorkflowDb['tags'],
 		};
+	}
+
+	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
+		workflow.value.scopes = scopes;
 	}
 
 	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
@@ -764,7 +768,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		uiStore.stateIsDirty = true;
 		updateCachedWorkflow();
 
-		dataPinningEventBus.emit('unpin-data', { [payload.node.name]: undefined });
+		dataPinningEventBus.emit('unpin-data', {
+			nodeNames: [payload.node.name],
+		});
 	}
 
 	function addConnection(data: { connection: IConnection[] }): void {
@@ -1496,7 +1502,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function checkIfNodeHasChatParent(nodeName: string): boolean {
 		const workflow = getCurrentWorkflow();
-		const parents = workflow.getParentNodes(nodeName, 'main');
+		const parents = workflow.getParentNodes(nodeName, NodeConnectionType.Main);
 
 		const matchedChatNode = parents.find((parent) => {
 			const parentNodeType = getNodeByName(parent)?.type;
@@ -1634,6 +1640,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowTagIds,
 		addWorkflowTagIds,
 		removeWorkflowTagId,
+		setWorkflowScopes,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
 		setWorkflow,

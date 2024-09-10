@@ -1,29 +1,3 @@
-<template>
-	<div>
-		<aside
-			:class="{
-				[$style.nodeCreatorScrim]: true,
-				[$style.active]: showScrim,
-			}"
-		/>
-		<SlideTransition>
-			<div
-				v-if="active"
-				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true }"
-				:style="nodeCreatorInlineStyle"
-				data-test-id="node-creator"
-				@dragover="onDragOver"
-				@drop="onDrop"
-				@mousedown="onMouseDown"
-				@mouseup="onMouseUp"
-			>
-				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
-			</div>
-		</SlideTransition>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
@@ -38,6 +12,7 @@ import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUIStore } from '@/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/constants';
+import { useAssistantStore } from '@/stores/assistant.store';
 
 export interface Props {
 	active?: boolean;
@@ -52,6 +27,7 @@ const emit = defineEmits<{
 	nodeTypeSelected: [value: string[]];
 }>();
 const uiStore = useUIStore();
+const assistantStore = useAssistantStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -66,7 +42,8 @@ const showScrim = computed(() => useNodeCreatorStore().showScrim);
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
 const nodeCreatorInlineStyle = computed(() => {
-	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
+	const rightPosition = assistantStore.isAssistantOpen ? assistantStore.chatWidth : 0;
+	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px`, right: `${rightPosition}px` };
 });
 function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
@@ -124,8 +101,8 @@ watch(
 );
 
 // Close node creator when the last view stacks is closed
-watch(viewStacksLength, (viewStacksLength) => {
-	if (viewStacksLength === 0) {
+watch(viewStacksLength, (value) => {
+	if (value === 0) {
 		emit('closeNodeCreator');
 		setShowScrim(false);
 	}
@@ -159,6 +136,32 @@ onBeforeUnmount(() => {
 	unBindOnMouseUpOutside();
 });
 </script>
+
+<template>
+	<div>
+		<aside
+			:class="{
+				[$style.nodeCreatorScrim]: true,
+				[$style.active]: showScrim,
+			}"
+		/>
+		<SlideTransition>
+			<div
+				v-if="active"
+				ref="nodeCreator"
+				:class="{ [$style.nodeCreator]: true }"
+				:style="nodeCreatorInlineStyle"
+				data-test-id="node-creator"
+				@dragover="onDragOver"
+				@drop="onDrop"
+				@mousedown="onMouseDown"
+				@mouseup="onMouseUp"
+			>
+				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
+			</div>
+		</SlideTransition>
+	</div>
+</template>
 
 <style module lang="scss">
 :global(strong) {

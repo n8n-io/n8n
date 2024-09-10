@@ -15,7 +15,19 @@ describe('CanvasNodeStatusIcons', () => {
 			},
 		});
 
-		expect(getByTestId('canvas-node-status-pinned')).toHaveTextContent('5');
+		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
+	});
+
+	it('should not render pinned icon when disabled', () => {
+		const { queryByTestId } = renderComponent({
+			global: {
+				provide: createCanvasNodeProvide({
+					data: { disabled: true, pinnedData: { count: 5, visible: true } },
+				}),
+			},
+		});
+
+		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
 	});
 
 	it('should render correctly for a running node', () => {
@@ -31,7 +43,9 @@ describe('CanvasNodeStatusIcons', () => {
 	it('should render correctly for a node that ran successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {
-				provide: createCanvasNodeProvide({ data: { runData: { count: 15, visible: true } } }),
+				provide: createCanvasNodeProvide({
+					data: { runData: { outputMap: {}, iterations: 15, visible: true } },
+				}),
 			},
 		});
 

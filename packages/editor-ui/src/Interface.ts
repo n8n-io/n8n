@@ -48,6 +48,8 @@ import type {
 	NodeConnectionType,
 	INodeCredentialsDetails,
 	StartNodeData,
+	IPersonalizationSurveyAnswersV4,
+	AnnotationVote,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -205,19 +207,6 @@ export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
 	hasJson: { [key: string]: boolean };
-}
-
-export interface IVariableItemSelected {
-	variable: string;
-}
-
-export interface IVariableSelectorOption {
-	name: string;
-	key?: string;
-	value?: string;
-	options?: IVariableSelectorOption[] | null;
-	allowParentSelect?: boolean;
-	dataType?: string;
 }
 
 // Simple version of n8n-workflow.Workflow
@@ -398,9 +387,11 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummary[];
+	results: ExecutionSummaryWithScopes[];
 	estimated: boolean;
 }
 
@@ -431,6 +422,16 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
+export type PushDataUsersForWorkflow = {
+	workflowId: string;
+	activeUsers: Array<{ user: IUser; lastSeen: string }>;
+};
+
+type PushDataWorkflowUsersChanged = {
+	data: PushDataUsersForWorkflow;
+	type: 'activeWorkflowUsersChanged';
+};
+
 export type IPushData =
 	| PushDataExecutionFinished
 	| PushDataExecutionStarted
@@ -445,6 +446,7 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved
+	| PushDataWorkflowUsersChanged
 	| PushDataWorkflowFailedToActivate;
 
 export type PushDataActiveWorkflowAdded = {
@@ -657,24 +659,6 @@ export type IPersonalizationSurveyAnswersV3 = {
 	automationGoalSmOther?: string | null;
 	usageModes?: string[] | null;
 	email?: string | null;
-};
-
-export type IPersonalizationSurveyAnswersV4 = {
-	version: 'v4';
-	automationGoalDevops?: string[] | null;
-	automationGoalDevopsOther?: string | null;
-	companyIndustryExtended?: string[] | null;
-	otherCompanyIndustryExtended?: string[] | null;
-	companySize?: string | null;
-	companyType?: string | null;
-	automationGoalSm?: string[] | null;
-	automationGoalSmOther?: string | null;
-	usageModes?: string[] | null;
-	email?: string | null;
-	role?: string | null;
-	roleOther?: string | null;
-	reportedSource?: string | null;
-	reportedSourceOther?: string | null;
 };
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
@@ -1582,12 +1566,16 @@ export type ExecutionFilterMetadata = {
 	value: string;
 };
 
+export type ExecutionFilterVote = AnnotationVote | 'all';
+
 export type ExecutionFilterType = {
 	status: string;
 	workflowId: string;
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];
+	annotationTags: string[];
+	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
 };
 
@@ -1599,6 +1587,8 @@ export type ExecutionsQueryFilter = {
 	metadata?: Array<{ key: string; value: string }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	annotationTags?: string[];
+	vote?: ExecutionFilterVote;
 };
 
 export type SamlAttributeMapping = {
@@ -1826,6 +1816,7 @@ export type ToggleNodeCreatorOptions = {
 	createNodeActive: boolean;
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: NodeFilterType;
+	hasAddedNodes?: boolean;
 };
 
 export type AppliedThemeOption = 'light' | 'dark';

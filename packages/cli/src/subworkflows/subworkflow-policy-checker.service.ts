@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import { Logger } from '@/Logger';
-import { License } from '@/License';
+import { Logger } from '@/logger';
+import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
 import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';

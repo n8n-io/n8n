@@ -20,6 +20,10 @@ export interface NotificationErrorWithNodeAndDescription extends ApplicationErro
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: false,
 	position: 'bottom-right',
+	zIndex: 1900, // above NDV and below the modals
+	offset: 64,
+	appendTo: '#app-grid',
+	customClass: 'content-toast',
 };
 
 const stickyNotificationQueue: NotificationHandle[] = [];
@@ -154,7 +158,9 @@ export function useToast() {
 	}
 
 	function showAlert(config: NotificationOptions): NotificationHandle {
-		return Notification(config);
+		return Notification({
+			...config,
+		});
 	}
 
 	function causedByCredential(message: string | undefined) {

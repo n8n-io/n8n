@@ -657,6 +657,15 @@ export const eventFields: INodeProperties[] = [
 				description: 'At least some part of the event must be before this time',
 			},
 			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				placeholder: 'e.g. items(ID,status,summary)',
+				default: '',
+				description:
+					"Specify fields to return, by default a predefined by Google set of commonly used fields would be returned. To return all fields, use '*', <a href='https://developers.google.com/calendar/api/guides/performance#partial' target='_blank'>more info</a>.",
+			},
+			{
 				displayName: 'iCalUID',
 				name: 'iCalUID',
 				type: 'string',

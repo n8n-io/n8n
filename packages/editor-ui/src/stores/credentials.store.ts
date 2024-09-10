@@ -183,17 +183,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const getCredentialOwnerName = computed(() => {
 		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
-			const { firstName, lastName, email } = splitName(credential?.homeProject?.name ?? '');
+			const { name, email } = splitName(credential?.homeProject?.name ?? '');
 
-			if (credential?.homeProject?.name) {
-				if (lastName && email) {
-					return `${firstName} ${lastName} (${email})`;
-				} else {
-					return firstName;
-				}
-			} else {
-				return i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
-			}
+			return name
+				? email
+					? `${name} (${email})`
+					: name
+				: email ?? i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
 		};
 	});
 
@@ -206,7 +202,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const httpOnlyCredentialTypes = computed(() => {
-		return allCredentialTypes.value.filter((credentialType) => credentialType.httpRequestNode);
+		return allCredentialTypes.value.filter(
+			(credentialType) => credentialType.httpRequestNode && !credentialType.httpRequestNode.hidden,
+		);
 	});
 
 	// #endregion
@@ -426,6 +424,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	// #endregion
 
 	return {
+		state,
 		getCredentialOwnerName,
 		getCredentialsByType,
 		getCredentialById,

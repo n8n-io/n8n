@@ -3,6 +3,7 @@ import { render, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import N8nSelect from '../Select.vue';
 import N8nOption from '../../N8nOption/Option.vue';
+import { removeDynamicAttributes } from 'n8n-design-system/utils';
 
 describe('components', () => {
 	describe('N8nSelect', () => {
@@ -21,6 +22,7 @@ describe('components', () => {
 					],
 				},
 			});
+			removeDynamicAttributes(wrapper.container);
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 

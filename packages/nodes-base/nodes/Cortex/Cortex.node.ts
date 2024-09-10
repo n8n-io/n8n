@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import upperFirst from 'lodash/upperFirst';
 import * as changeCase from 'change-case';
 import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
@@ -32,8 +33,8 @@ export class Cortex implements INodeType {
 		defaults: {
 			name: 'Cortex',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'cortexApi',
@@ -375,7 +376,7 @@ export class Cortex implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
 					continue;
 				}

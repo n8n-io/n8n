@@ -10,7 +10,7 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +24,8 @@ export class GraphQL implements INodeType {
 		defaults: {
 			name: 'GraphQL',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
 				name: 'httpBasicAuth',
@@ -509,7 +509,7 @@ export class GraphQL implements INodeType {
 					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {
-				if (this.continueOnFail(error)) {
+				if (this.continueOnFail()) {
 					const errorData = this.helpers.returnJsonArray({
 						$error: error,
 						json: this.getInputData(itemIndex),

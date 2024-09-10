@@ -1,10 +1,3 @@
-<template>
-	<div :class="$style.editor" :style="isReadOnly ? 'opacity: 0.7' : ''">
-		<div ref="jsEditorRef" class="ph-no-capture js-editor"></div>
-		<slot name="suffix" />
-	</div>
-</template>
-
 <script setup lang="ts">
 import { history, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
@@ -123,6 +116,13 @@ const extensions = computed(() => {
 	return extensionsToApply;
 });
 </script>
+
+<template>
+	<div :class="$style.editor" :style="isReadOnly ? 'opacity: 0.7' : ''">
+		<div ref="jsEditorRef" class="ph-no-capture js-editor"></div>
+		<slot name="suffix" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .editor {

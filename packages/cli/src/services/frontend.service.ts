@@ -15,24 +15,24 @@ import { InstanceSettings } from 'n8n-core';
 
 import config from '@/config';
 import { LICENSE_FEATURES } from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { CredentialTypes } from '@/CredentialTypes';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { License } from '@/License';
-import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { getLdapLoginLabel } from '@/Ldap/helpers.ee';
-import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { CredentialTypes } from '@/credential-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { License } from '@/license';
+import { getCurrentAuthenticationMethod } from '@/sso/sso-helpers';
+import { getLdapLoginLabel } from '@/ldap/helpers.ee';
+import { getSamlLoginLabel } from '@/sso/saml/saml-helpers';
+import { getVariablesLimit } from '@/environments/variables/environment-helpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
-import { UserManagementMailer } from '@/UserManagement/email';
-import type { CommunityPackagesService } from '@/services/communityPackages.service';
-import { Logger } from '@/Logger';
+} from '@/workflows/workflow-history/workflow-history-helper.ee';
+import { UserManagementMailer } from '@/user-management/email';
+import type { CommunityPackagesService } from '@/services/community-packages.service';
+import { Logger } from '@/logger';
 import { UrlService } from './url.service';
 import { EventService } from '@/events/event.service';
-import { isApiEnabled } from '@/PublicApi';
+import { isApiEnabled } from '@/public-api';
 
 @Service()
 export class FrontendService {
@@ -58,7 +58,7 @@ export class FrontendService {
 		this.initSettings();
 
 		if (this.globalConfig.nodes.communityPackages.enabled) {
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+			void import('@/services/community-packages.service').then(({ CommunityPackagesService }) => {
 				this.communityPackagesService = Container.get(CommunityPackagesService);
 			});
 		}
@@ -160,6 +160,9 @@ export class FrontendService {
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
 			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			aiAssistant: {
+				enabled: false,
+			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
 				host: this.globalConfig.templates.host,
@@ -279,6 +282,7 @@ export class FrontendService {
 		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
 
 		this.settings.license.planName = this.license.getPlanName();
 		this.settings.license.consumerId = this.license.getConsumerId();
@@ -329,6 +333,10 @@ export class FrontendService {
 
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
+		}
+
+		if (isAiAssistantEnabled) {
+			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');

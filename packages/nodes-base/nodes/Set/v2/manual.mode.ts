@@ -249,7 +249,7 @@ export async function execute(
 		);
 		return composeReturnItem.call(this, i, item, newData, options, node.typeVersion);
 	} catch (error) {
-		if (this.continueOnFail(error)) {
+		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message, pairedItem: { item: i } } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, {
