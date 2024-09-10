@@ -57,6 +57,7 @@ export default defineComponent({
 				scopes: credential.scopes,
 				type: credential.type,
 				sharedWithProjects: credential.sharedWithProjects,
+				readOnly: !getResourcePermissions(credential.scopes).credential.update,
 			}));
 		},
 		allCredentialTypes(): ICredentialType[] {
@@ -179,7 +180,12 @@ export default defineComponent({
 			</div>
 		</template>
 		<template #default="{ data }">
-			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				:read-only="data.readOnly"
+			/>
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
