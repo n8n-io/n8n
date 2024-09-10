@@ -16,16 +16,16 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
 
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const cloudPlanStore = useCloudPlanStore();
+
 const route = useRoute();
 const router = useRouter();
 
 const toast = useToast();
 const locale = useI18n();
 const telemetry = useTelemetry();
-
-const usersStore = useUsersStore();
-const settingsStore = useSettingsStore();
-const cloudPlanStore = useCloudPlanStore();
 
 const loading = ref(false);
 const showMfaView = ref(false);
