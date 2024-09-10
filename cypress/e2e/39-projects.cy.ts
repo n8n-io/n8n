@@ -1,4 +1,10 @@
-import { INSTANCE_MEMBERS, MANUAL_TRIGGER_NODE_NAME, NOTION_NODE_NAME } from '../constants';
+import {
+	INSTANCE_ADMIN,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	MANUAL_TRIGGER_NODE_NAME,
+	NOTION_NODE_NAME,
+} from '../constants';
 import {
 	WorkflowsPage,
 	WorkflowPage,
@@ -497,9 +503,77 @@ describe('Projects', { disableAutoLogin: true }, () => {
 				.filter(':contains("Owned by me")')
 				.should('not.exist');
 
-			// Move the credential from Project 1 to Project 2
+			// Move the workflow from Project 1 to Project 2
 			projects.getMenuItems().first().click();
 			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(':contains("Project 2")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+
+			// Move the workflow from Project 2 to a member user
+			projects.getMenuItems().last().click();
+			workflowsPage.getters.workflowCards().should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_MEMBERS[0].email}")`)
+				.click();
+
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+
+			// Move the workflow from member user back to Home
+			projects.getHomeButton().click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':has(.n8n-badge:contains("Project"))')
+				.should('have.length', 2);
+			workflowsPage.getters.workflowCardActions('Workflow in Home project').click();
+			workflowsPage.getters.workflowMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move workflow")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_OWNER.email}")`)
+				.click();
+
+			projects.getResourceMoveModal().find('button:contains("Move workflow")').click();
+			workflowsPage.getters
+				.workflowCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('have.length', 1);
+
+			// Move the credential from Project 1 to Project 2
+			projects.getMenuItems().first().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 1);
 			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
@@ -519,9 +593,79 @@ describe('Projects', { disableAutoLogin: true }, () => {
 			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
 
 			credentialsPage.getters.credentialCards().should('not.have.length');
+
+			// Move the credential from Project 2 to admin user
 			projects.getMenuItems().last().click();
 			projects.getProjectTabCredentials().click();
 			credentialsPage.getters.credentialCards().should('have.length', 2);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_ADMIN.email}")`)
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+			credentialsPage.getters.credentialCards().should('have.length', 1);
+
+			// Move the credential from admin user back to instance owner
+			projects.getHomeButton().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters.credentialCards().should('have.length', 3);
+
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(`:contains("${INSTANCE_OWNER.email}")`)
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+
+			credentialsPage.getters
+				.credentialCards()
+				.should('have.length', 3)
+				.filter(':contains("Owned by me")')
+				.should('have.length', 2);
+
+			// Move the credential from admin user back to its original project (Project 1)
+			credentialsPage.getters.credentialCardActions('Credential in Project 1').click();
+			credentialsPage.getters.credentialMoveButton().click();
+
+			projects
+				.getResourceMoveModal()
+				.should('be.visible')
+				.find('button:contains("Move credential")')
+				.should('be.disabled');
+			projects.getProjectMoveSelect().click();
+			getVisibleSelect()
+				.find('li')
+				.should('have.length', 5)
+				.filter(':contains("Project 1")')
+				.click();
+			projects.getResourceMoveModal().find('button:contains("Move credential")').click();
+
+			projects.getMenuItems().first().click();
+			projects.getProjectTabCredentials().click();
+			credentialsPage.getters
+				.credentialCards()
+				.filter(':contains("Credential in Project 1")')
+				.should('have.length', 1);
 		});
 
 		it('should handle viewer role', () => {
