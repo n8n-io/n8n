@@ -219,3 +219,30 @@ export function validateJSON(json: string | undefined): any {
 	}
 	return result;
 }
+
+export function getTarget(
+	context: IExecuteFunctions,
+	itemIndex: number,
+	idType: 'user' | 'channel',
+): string {
+	let target = '';
+
+	if (idType === 'channel') {
+		target = context.getNodeParameter('channelId', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	} else {
+		target = context.getNodeParameter('user', itemIndex, undefined, {
+			extractValue: true,
+		}) as string;
+	}
+
+	if (
+		idType === 'user' &&
+		(context.getNodeParameter('user', itemIndex) as IDataObject).mode === 'username'
+	) {
+		target = target.slice(0, 1) === '@' ? target : `@${target}`;
+	}
+
+	return target;
+}

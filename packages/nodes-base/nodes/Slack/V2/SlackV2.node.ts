@@ -15,17 +15,34 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { BINARY_ENCODING, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeConnectionType,
+	NodeOperationError,
+	WAIT_TIME_UNLIMITED,
+} from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
-import { messageFields, messageOperations } from './MessageDescription';
+import {
+	channelRLC,
+	messageFields,
+	messageOperations,
+	sendToSelector,
+	userRLC,
+} from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
-import { slackApiRequest, slackApiRequestAllItems, getMessageContent } from './GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	getMessageContent,
+	getTarget,
+} from './GenericFunctions';
+import { configreSendAndWaitOperation, sendAndWaitWebhook } from '../../Google/Gmail/v2/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -57,6 +74,16 @@ export class SlackV2 implements INodeType {
 							authentication: ['oAuth2'],
 						},
 					},
+				},
+			],
+			webhooks: [
+				{
+					name: 'default',
+					httpMethod: 'GET',
+					responseMode: 'onReceived',
+					path: '={{ $nodeId }}',
+					restartWebhook: true,
+					isFullPath: true,
 				},
 			],
 			properties: [
@@ -119,6 +146,28 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
+				...configreSendAndWaitOperation(
+					[
+						{ ...sendToSelector, default: 'user' },
+						{
+							...channelRLC,
+							displayOptions: {
+								show: {
+									select: ['channel'],
+								},
+							},
+						},
+						{
+							...userRLC,
+							displayOptions: {
+								show: {
+									select: ['user'],
+								},
+							},
+						},
+					],
+					'message',
+				),
 				...starOperations,
 				...starFields,
 				...fileOperations,
@@ -306,6 +355,8 @@ export class SlackV2 implements INodeType {
 		},
 	};
 
+	webhook = sendAndWaitWebhook;
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -318,6 +369,50 @@ export class SlackV2 implements INodeType {
 
 		const nodeVersion = this.getNode().typeVersion;
 		const instanceId = this.getInstanceId();
+
+		if (resource === 'message' && operation === 'sendAndWait') {
+			const select = this.getNodeParameter('select', 0) as 'user' | 'channel';
+			const target = getTarget(this, 0, select);
+
+			const resumeUrl = this.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
+			const nodeId = this.evaluateExpression('{{ $nodeId }}', 0) as string;
+
+			const url = `${resumeUrl}/${nodeId}`;
+
+			// const content = {};
+
+			const body: IDataObject = {
+				channel: target,
+				blocks: [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: '*Confirm sending report*',
+						},
+					},
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: 'Do you want to send report to the jon@mail.com',
+						},
+					},
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: `<${url}?result=false|No>    <${url}?result=true|*Yes*>`,
+						},
+					},
+				],
+			};
+
+			await slackApiRequest.call(this, 'POST', '/chat.postMessage', body);
+
+			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
+			return [this.getInputData()];
+		}
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -748,22 +843,8 @@ export class SlackV2 implements INodeType {
 				if (resource === 'message') {
 					//https://api.slack.com/methods/chat.postMessage
 					if (operation === 'post') {
-						const select = this.getNodeParameter('select', i) as string;
-						let target =
-							select === 'channel'
-								? (this.getNodeParameter('channelId', i, undefined, {
-										extractValue: true,
-									}) as string)
-								: (this.getNodeParameter('user', i, undefined, {
-										extractValue: true,
-									}) as string);
-
-						if (
-							select === 'user' &&
-							(this.getNodeParameter('user', i) as IDataObject).mode === 'username'
-						) {
-							target = target.slice(0, 1) === '@' ? target : `@${target}`;
-						}
+						const select = this.getNodeParameter('select', i) as 'user' | 'channel';
+						const target = getTarget(this, i, select);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 

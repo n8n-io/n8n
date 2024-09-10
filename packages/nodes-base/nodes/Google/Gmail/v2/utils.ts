@@ -224,7 +224,13 @@ export function prepareActionRequiredEmail(context: IExecuteFunctions) {
 	return email;
 }
 
-export function configreSendAndWaitOperation(sendTo: INodeProperties, resource: string) {
+export function configreSendAndWaitOperation(
+	sendToProperties: INodeProperties | INodeProperties[],
+	resource: string,
+) {
+	if (!Array.isArray(sendToProperties)) {
+		sendToProperties = [sendToProperties];
+	}
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -242,15 +248,7 @@ export function configreSendAndWaitOperation(sendTo: INodeProperties, resource: 
 		],
 	};
 	const sendAndWait: INodeProperties[] = [
-		// {
-		// 	displayName: 'To',
-		// 	name: 'sendTo',
-		// 	type: 'string',
-		// 	default: '',
-		// 	required: true,
-		// 	placeholder: 'e.g. info@example.com',
-		// },
-		sendTo,
+		...sendToProperties,
 		{
 			displayName: 'Subject',
 			name: 'subject',
