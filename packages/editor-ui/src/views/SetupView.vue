@@ -15,14 +15,14 @@ import { MORE_ONBOARDING_OPTIONS_EXPERIMENT, VIEWS } from '@/constants';
 
 import AuthView from '@/views/AuthView.vue';
 
-const toast = useToast();
-const locale = useI18n();
-const router = useRouter();
-
 const posthogStore = usePostHog();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+
+const toast = useToast();
+const locale = useI18n();
+const router = useRouter();
 
 const loading = ref(false);
 const formConfig: IFormBoxConfig = reactive({
