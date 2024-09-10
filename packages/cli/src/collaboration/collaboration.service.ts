@@ -8,9 +8,9 @@ import type { OnPushMessage } from '@/push/types';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { User } from '@/databases/entities/user';
 import { CollaborationState } from '@/collaboration/collaboration.state';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserService } from '@/services/user.service';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { AccessService } from '@/services/access.service';
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -23,7 +23,7 @@ export class CollaborationService {
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly accessService: AccessService,
 	) {}
 
 	init() {
@@ -57,7 +57,7 @@ export class CollaborationService {
 	private async handleWorkflowOpened(userId: User['id'], msg: WorkflowOpenedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.hasUserAccessToWorkflow(userId, workflowId))) {
+		if (!(await this.accessService.hasAccess(userId, workflowId))) {
 			return;
 		}
 
@@ -69,7 +69,7 @@ export class CollaborationService {
 	private async handleWorkflowClosed(userId: User['id'], msg: WorkflowClosedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.hasUserAccessToWorkflow(userId, workflowId))) {
+		if (!(await this.accessService.hasAccess(userId, workflowId))) {
 			return;
 		}
 
@@ -101,20 +101,5 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers('activeWorkflowUsersChanged', msgData, workflowUserIds);
-	}
-
-	private async hasUserAccessToWorkflow(userId: User['id'], workflowId: Workflow['id']) {
-		const user = await this.userRepository.findOneBy({
-			id: userId,
-		});
-		if (!user) {
-			return false;
-		}
-
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
-
-		return !!workflow;
 	}
 }

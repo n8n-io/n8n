@@ -822,6 +822,7 @@ async function executeWorkflow(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
+			additionalData.userId,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call

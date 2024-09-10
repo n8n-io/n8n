@@ -3,8 +3,10 @@ import { GlobalConfig } from '@n8n/config';
 import { Logger } from '@/logger';
 import { License } from '@/license';
 import { OwnershipService } from '@/services/ownership.service';
-import type { Workflow, INode, WorkflowSettings } from 'n8n-workflow';
+import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { AccessService } from '@/services/access.service';
+import type { Project } from '@/databases/entities/project';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -16,12 +18,13 @@ export class SubworkflowPolicyChecker {
 		private readonly license: License,
 		private readonly ownershipService: OwnershipService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly accessService: AccessService,
 	) {}
 
 	/**
 	 * Check whether the parent workflow is allowed to call the subworkflow.
 	 */
-	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode) {
+	async check(subworkflow: Workflow, parentWorkflowId: string, node?: INode, userId?: string) {
 		const { id: subworkflowId } = subworkflow;
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
@@ -44,13 +47,28 @@ export class SubworkflowPolicyChecker {
 		) {
 			this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
+			const details = await this.errorDetails(subworkflowProject, subworkflow, userId);
+
 			throw new SubworkflowPolicyDenialError({
 				subworkflowId,
 				subworkflowProject,
-				areOwnedBySameProject,
 				node,
+				...details,
 			});
 		}
+	}
+
+	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
+		const owner = (await this.ownershipService.getProjectOwnerCached(subworkflowProject.id)) ?? {
+			firstName: 'Unknown',
+			lastName: 'Unknown',
+		};
+
+		const hasAccess = userId
+			? await this.accessService.hasAccess(userId, subworkflow.id)
+			: false; /* no user ID in policy check for error workflow, so `false` keep error message generic */
+
+		return { hasAccess, subworkflowProjectOwnerName: owner.firstName + ' ' + owner.lastName };
 	}
 
 	/**
