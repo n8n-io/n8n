@@ -7,6 +7,7 @@ import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
 import type { Project } from '@/databases/entities/project';
+import { strict as assert } from 'node:assert';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -59,18 +60,20 @@ export class SubworkflowPolicyChecker {
 	}
 
 	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
-		const owner = (await this.ownershipService.getPersonalProjectOwnerCached(
-			subworkflowProject.id,
-		)) ?? {
-			firstName: 'Unknown',
-			lastName: 'Unknown',
-		};
-
 		const hasAccess = userId
 			? await this.accessService.hasAccess(userId, subworkflow.id)
 			: false; /* no user ID in policy check for error workflow, so `false` keep error message generic */
 
-		return { hasAccess, subworkflowProjectOwnerName: owner.firstName + ' ' + owner.lastName };
+		if (subworkflowProject.type === 'team') return { hasAccess };
+
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(subworkflowProject.id);
+
+		assert(owner !== null); // only `null` if not personal
+
+		return {
+			hasAccess,
+			ownerName: owner.firstName + ' ' + owner.lastName,
+		};
 	}
 
 	/**

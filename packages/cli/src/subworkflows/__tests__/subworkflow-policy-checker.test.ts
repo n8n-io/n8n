@@ -12,7 +12,10 @@ import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
 import type { AccessService } from '@/services/access.service';
 import type { User } from '@/databases/entities/user';
-import { SUBWORKFLOW_DENIAL_EXPLANATION } from '@/errors/subworkflow-policy-denial.error';
+import {
+	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
+	SubworkflowPolicyDenialError,
+} from '@/errors/subworkflow-policy-denial.error';
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);
@@ -39,7 +42,7 @@ describe('SubworkflowPolicyChecker', () => {
 	});
 
 	describe('no caller policy', () => {
-		it('should fall back to N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', async () => {
+		it('should fall back to `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION`', async () => {
 			const checker = new SubworkflowPolicyChecker(
 				mock(),
 				license,
@@ -53,15 +56,13 @@ describe('SubworkflowPolicyChecker', () => {
 			const subworkflow = mock<Workflow>({ id: subworkflowId }); // no caller policy
 
 			const parentWorkflowProject = mock<Project>();
-			ownershipService.getWorkflowProjectCached.mockResolvedValue(parentWorkflowProject);
+			const subworkflowProject = mock<Project>({ type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toMatchObject({
-				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description:
-					'The sub-workflow you’re trying to execute limits which workflows it can be called by.',
-			});
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 
 			config.load(config.default);
 		});
@@ -92,9 +93,9 @@ describe('SubworkflowPolicyChecker', () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: 'parent-workflow-id' });
 
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid() });
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject); // parent workflow
-			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject); // subworkflow
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
+			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const subworkflowId = 'subworkflow-id';
 			const subworkflow = mock<Workflow>({
@@ -104,11 +105,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toMatchObject({
-				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description:
-					'The sub-workflow you’re trying to execute limits which workflows it can be called by.',
-			});
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 	});
 
@@ -121,18 +118,14 @@ describe('SubworkflowPolicyChecker', () => {
 			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'any' } }); // should be overridden
 
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
 
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
 
 			const check = checker.check(subworkflow, parentWorkflow.id);
 
-			await expect(check).rejects.toMatchObject({
-				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description:
-					'The sub-workflow you’re trying to execute limits which workflows it can be called by.',
-			});
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 
 		it('should not throw', async () => {
@@ -153,7 +146,7 @@ describe('SubworkflowPolicyChecker', () => {
 	describe('`workflows-from-same-owner` caller policy', () => {
 		it('should deny if the two workflows are owned by different projects', async () => {
 			const parentWorkflowProject = mock<Project>({ id: uuid() });
-			const subworkflowProject = mock<Project>({ id: uuid() });
+			const subworkflowProject = mock<Project>({ id: uuid(), type: 'team' });
 
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(parentWorkflowProject);
 			ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(subworkflowProject);
@@ -166,10 +159,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const check = checker.check(subworkflow, uuid());
 
-			await expect(check).rejects.toMatchObject({
-				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: SUBWORKFLOW_DENIAL_EXPLANATION,
-			});
+			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 
 		it('should allow if both workflows are owned by the same project', async () => {
@@ -209,7 +199,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: `${SUBWORKFLOW_DENIAL_EXPLANATION} Update sub-workflow settings to allow other workflows to call it.`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} Update sub-workflow settings to allow other workflows to call it.`,
 			});
 		});
 
@@ -237,7 +227,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: `${SUBWORKFLOW_DENIAL_EXPLANATION} You will need John Doe to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} You will need John Doe to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
 			});
 		});
 
@@ -265,11 +255,11 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: `${SUBWORKFLOW_DENIAL_EXPLANATION} You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
+				description: `${SUBWORKFLOW_DENIAL_BASE_DESCRIPTION} You will need an admin from the ${subworkflowProject.name} project to update the sub-workflow (${subworkflowId}) settings to allow this workflow to call it.`,
 			});
 		});
 
-		it('should contain description for default (error workflow) case', async () => {
+		it('should contain description for default (e.g. error workflow) case', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 			const subworkflowId = 'subworkflow-id';
 			const subworkflow = mock<Workflow>({ id: subworkflowId, settings: { callerPolicy: 'none' } });
@@ -289,7 +279,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toMatchObject({
 				message: `The sub-workflow (${subworkflowId}) cannot be called by this workflow`,
-				description: SUBWORKFLOW_DENIAL_EXPLANATION,
+				description: SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 			});
 		});
 	});
