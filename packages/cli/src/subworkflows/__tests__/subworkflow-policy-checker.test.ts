@@ -3,7 +3,6 @@ import type { INode, Workflow } from 'n8n-workflow';
 import type { Project } from '@/databases/entities/project';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '@test/mocking';
-import config from '@/config';
 import { mock } from 'jest-mock-extended';
 import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
 
@@ -43,13 +42,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 	describe('no caller policy', () => {
 		it('should fall back to `N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION`', async () => {
-			const checker = new SubworkflowPolicyChecker(
-				mock(),
-				license,
-				ownershipService,
-				mock<GlobalConfig>({ workflows: { callerPolicyDefaultOption: 'none' } }),
-				accessService,
-			);
+			globalConfig.workflows.callerPolicyDefaultOption = 'none';
 
 			const parentWorkflow = mock<WorkflowEntity>();
 			const subworkflowId = 'subworkflow-id';
@@ -64,7 +57,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 
-			config.load(config.default);
+			globalConfig.workflows.callerPolicyDefaultOption = 'workflowsFromSameOwner';
 		});
 	});
 
