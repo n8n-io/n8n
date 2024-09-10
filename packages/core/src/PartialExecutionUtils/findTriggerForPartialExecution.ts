@@ -1,4 +1,5 @@
 import type { INode, Workflow } from 'n8n-workflow';
+import * as assert from 'assert/strict';
 
 function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) {
 	const parentNodes = workflow
@@ -6,9 +7,9 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 		.map((name) => {
 			const node = workflow.getNode(name);
 
-			if (!node) {
-				return null;
-			}
+			// We got the node name from `workflow.getParentNodes`. The node must
+			// exist.
+			assert.ok(node);
 
 			return {
 				node,
@@ -23,6 +24,7 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 }
 
 // TODO: write unit tests for this
+// TODO: rewrite this using DirectedGraph instead of workflow.
 export function findTriggerForPartialExecution(
 	workflow: Workflow,
 	destinationNodeName: string,
