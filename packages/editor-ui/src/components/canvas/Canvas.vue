@@ -501,6 +501,7 @@ provide(CanvasKey, {
 		:edges="connections"
 		:apply-changes="false"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
+		:connection-radius="60"
 		pan-on-scroll
 		snap-to-grid
 		:snap-grid="[GRID_SIZE, GRID_SIZE]"
