@@ -36,7 +36,9 @@ const availableProjects = computed(() =>
 		.filter((p) => p.id !== props.data.resource.homeProject?.id)
 		.sort((a, b) => a.name?.localeCompare(b.name ?? '') ?? 0),
 );
-
+const selectedProject = computed(() =>
+	availableProjects.value.find((p) => p.id === projectId.value),
+);
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
@@ -56,12 +58,12 @@ const closeModal = () => {
 };
 
 const moveResource = async () => {
-	if (!projectId.value) return;
+	if (!selectedProject.value) return;
 	try {
 		await projectsStore.moveResourceToProject(
 			props.data.resourceType,
 			props.data.resource.id,
-			projectId.value,
+			selectedProject.value.id,
 		);
 		closeModal();
 		telemetry.track(`User successfully moved ${props.data.resourceType}`, {
@@ -82,8 +84,7 @@ const moveResource = async () => {
 				resource: props.data.resource,
 				resourceType: props.data.resourceType,
 				resourceTypeLabel: props.data.resourceTypeLabel,
-				projectId: projectId.value,
-				projectName: availableProjects.value.find((p) => p.id === projectId.value)?.name ?? '',
+				targetProject: selectedProject.value,
 			}),
 			type: 'success',
 		});
