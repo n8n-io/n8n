@@ -12,6 +12,7 @@ import {
 import { ChatVertexAI } from '@langchain/google-vertexai';
 import type { SafetySetting } from '@google/generative-ai';
 import { ProjectsClient } from '@google-cloud/resource-manager';
+import { formatPrivateKey } from 'n8n-nodes-base/dist/utils/utilities';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { N8nLlmTracing } from '../N8nLlmTracing';
 import { additionalOptions } from '../gemini-common/additional-options';
@@ -97,7 +98,7 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
-				const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+				const privateKey = formatPrivateKey(credentials.privateKey as string);
 				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
@@ -125,7 +126,7 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
-		const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
