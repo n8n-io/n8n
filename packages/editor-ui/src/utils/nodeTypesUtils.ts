@@ -528,6 +528,8 @@ export function getReferencedNodes(node: INode): string[] {
 	if (!node) {
 		return [];
 	}
+	console.log('========================== EXPRESSIONS ==============================');
+	console.log(extractExpressions(node.parameters));
 	// Go through all parameters and check if they contain expressions on any level
 	for (const key in node.parameters) {
 		if (node.parameters[key] && typeof node.parameters[key] === 'object') {
@@ -539,7 +541,31 @@ export function getReferencedNodes(node: INode): string[] {
 			}
 		}
 	}
+	console.log('========================================================');
 	return referencedNodes.size ? Array.from(referencedNodes) : [];
+}
+
+// TODO: Fix types
+function extractExpressions(obj: object): Array<{ key: string; expression: string }> {
+	const expressions: Array<{ key: string; expression: string }> = [];
+
+	function recurse(currentObj: object, currentPath: string) {
+		for (const key in currentObj) {
+			const value = currentObj[key];
+			const path = currentPath ? `${currentPath}.${key}` : key;
+
+			// If the value is an object, recurse
+			if (typeof value === 'object' && value !== null) {
+				recurse(value, path);
+			} else if (typeof value === 'string' && value.startsWith('={{')) {
+				// Check for the custom expression syntax
+				expressions.push({ key: path, expression: value });
+			}
+		}
+	}
+
+	recurse(obj, '');
+	return expressions;
 }
 
 /**

@@ -376,12 +376,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		const inputData = ndvStore.ndvInputData[0].json;
-		const inputNodeName = ndvStore.input.nodeName;
-		const nodeInputData: { inputNodeName?: string; inputData?: IDataObject } = {
-			inputNodeName,
-			inputData,
-		};
+		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
+		const ndvInput = ndvStore.ndvInputData;
+		if (ndvInput?.length) {
+			const inputData = ndvStore.ndvInputData[0].json;
+			const inputNodeName = ndvStore.input.nodeName;
+			nodeInputData = {
+				inputNodeName,
+				inputData,
+			};
+		}
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
