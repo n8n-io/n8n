@@ -323,7 +323,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const credentialName = credType.displayName;
 		const question = `How do I set up the credentials for ${credentialName}?`;
 
-		await initSupportChat(question);
+		await initSupportChat(question, credType);
 
 		trackUserOpenedAssistant({
 			source: 'cred', // todo
@@ -332,7 +332,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		});
 	}
 
-	async function initSupportChat(userMessage: string) {
+	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		const id = getRandomId();
 		resetAssistantChat();
 		chatWindowOpen.value = true;
@@ -342,17 +342,30 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
+			role: 'user',
+			type: 'init-support-chat',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			question: userMessage,
+		};
+		if (credentialType) {
+			payload = {
+				...payload,
+				type: 'init-cred-help',
+				credentialType: {
+					name: credentialType.name,
+					displayName: credentialType.displayName,
+				},
+			};
+		}
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-support-chat',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					question: userMessage,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
