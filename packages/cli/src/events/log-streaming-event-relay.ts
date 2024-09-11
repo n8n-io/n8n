@@ -503,4 +503,6 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload,
 		});
 	}
+
+	// #endregion
 }
