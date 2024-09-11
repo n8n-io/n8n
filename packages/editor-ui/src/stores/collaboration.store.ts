@@ -41,16 +41,14 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const heartbeatTimer = ref<number | null>(null);
 
 	const startHeartbeat = () => {
-		if (heartbeatTimer.value !== null) {
-			clearInterval(heartbeatTimer.value);
-			heartbeatTimer.value = null;
-		}
+		stopHeartbeat();
 		heartbeatTimer.value = window.setInterval(notifyWorkflowOpened, HEARTBEAT_INTERVAL);
 	};
 
 	const stopHeartbeat = () => {
 		if (heartbeatTimer.value !== null) {
 			clearInterval(heartbeatTimer.value);
+			heartbeatTimer.value = null;
 		}
 	};
 
@@ -92,10 +90,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	function notifyWorkflowOpened() {
 		const { workflowId } = workflowsStore;
 		if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) return;
-		pushStore.send({
-			type: 'workflowOpened',
-			workflowId,
-		});
+		pushStore.send({ type: 'workflowOpened', workflowId });
 	}
 
 	function notifyWorkflowClosed() {
