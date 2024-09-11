@@ -1,8 +1,8 @@
 import type { Schema } from '@/Interface';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INode, INodeParameters } from 'n8n-workflow';
 
 export namespace ChatRequest {
-	interface NodeExecutionSchema {
+	export interface NodeExecutionSchema {
 		nodeName: string;
 		schema: Schema;
 	}
@@ -21,6 +21,7 @@ export namespace ChatRequest {
 			stack?: string;
 		};
 		node: INode;
+		nodeInputData?: IDataObject;
 	}
 
 	export interface InitErrorHelper extends ErrorContext, WorkflowContext {

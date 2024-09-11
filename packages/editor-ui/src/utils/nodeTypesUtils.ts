@@ -5,7 +5,6 @@ import type {
 	ITemplatesNode,
 	IVersionNode,
 	NodeAuthenticationOption,
-	Schema,
 	SimplifiedNodeType,
 } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
@@ -20,10 +19,10 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ChatRequest } from '@/types/assistant.types';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
 import type {
-	AssignmentCollectionValue,
 	IDataObject,
 	INode,
 	INodeCredentialDescription,
@@ -523,42 +522,22 @@ function extractNodeNames(template: string): string[] {
  * Extract the node names from the expressions in the node parameters.
  */
 export function getReferencedNodes(node: INode): string[] {
-	const referencedNodes: string[] = [];
+	const referencedNodes: Set<string> = new Set();
 	if (!node) {
-		return referencedNodes;
+		return [];
 	}
-	// Special case for code node
-	if (node.type === 'n8n-nodes-base.set' && node.parameters.assignments) {
-		const assignments = node.parameters.assignments as AssignmentCollectionValue;
-		if (assignments.assignments?.length) {
-			assignments.assignments.forEach((assignment) => {
-				if (assignment.name && assignment.value && String(assignment.value).startsWith('=')) {
-					const nodeNames = extractNodeNames(String(assignment.value));
-					if (nodeNames.length) {
-						referencedNodes.push(...nodeNames);
-					}
-				}
-			});
+	// Go through all parameters and check if they contain expressions on any level
+	for (const key in node.parameters) {
+		if (node.parameters[key] && typeof node.parameters[key] === 'object') {
+			const names = extractNodeNames(JSON.stringify(node.parameters[key]));
+			if (names.length) {
+				names.forEach((name) => {
+					referencedNodes.add(name);
+				});
+			}
 		}
-	} else {
-		Object.values(node.parameters).forEach((value) => {
-			if (!value) {
-				return;
-			}
-			let strValue = String(value);
-			// Handle resource locator
-			if (typeof value === 'object' && 'value' in value) {
-				strValue = String(value.value);
-			}
-			if (strValue.startsWith('=')) {
-				const nodeNames = extractNodeNames(strValue);
-				if (nodeNames.length) {
-					referencedNodes.push(...nodeNames);
-				}
-			}
-		});
 	}
-	return referencedNodes;
+	return referencedNodes.size ? Array.from(referencedNodes) : [];
 }
 
 /**
@@ -579,22 +558,18 @@ export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode
  * @returns An array of objects containing the node name and the schema
  */
 export function getNodesSchemas(nodeNames: string[]) {
-	return nodeNames.map((name) => {
+	const schemas: ChatRequest.NodeExecutionSchema[] = [];
+	nodeNames.forEach((name) => {
 		const node = useWorkflowsStore().getNodeByName(name);
 		if (!node) {
-			return {
-				nodeName: name,
-				schema: {} as Schema,
-			};
+			return;
 		}
 		const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
-		const schema = getSchemaForExecutionData(
-			executionDataToJson(getInputDataWithPinned(node)),
-			true,
-		);
-		return {
+		const schema = getSchemaForExecutionData(executionDataToJson(getInputDataWithPinned(node)));
+		schemas.push({
 			nodeName: node.name,
 			schema,
-		};
+		});
 	});
+	return schemas;
 }

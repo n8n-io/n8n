@@ -16,7 +16,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { INodeParameters } from 'n8n-workflow';
+import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
@@ -376,6 +376,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
+		const inputData = ndvStore.ndvInputData[0].json;
+		const inputNodeName = ndvStore.input.nodeName;
+		const nodeInputData: { inputNodeName?: string; inputData?: IDataObject } = {
+			inputNodeName,
+			inputData,
+		};
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
 		openChat();
 
@@ -391,6 +397,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					},
 					error: context.error,
 					node: pruneNodeProperties(context.node, ['position']),
+					nodeInputData,
 					executionSchema: schemas,
 					authType,
 				},
