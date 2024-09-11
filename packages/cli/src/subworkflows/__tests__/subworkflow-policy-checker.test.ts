@@ -124,7 +124,7 @@ describe('SubworkflowPolicyChecker', () => {
 			await expect(check).rejects.toThrowError(SubworkflowPolicyDenialError);
 		});
 
-		it('should not throw', async () => {
+		it('should not throw on a regular subworkflow call', async () => {
 			const parentWorkflow = mock<WorkflowEntity>({ id: uuid() });
 			const subworkflow = mock<Workflow>({ settings: { callerPolicy: 'any' } });
 
