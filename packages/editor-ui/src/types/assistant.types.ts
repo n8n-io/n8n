@@ -48,7 +48,10 @@ export namespace ChatRequest {
 			firstName: string;
 		};
 		question: string;
-		credentialType: string;
+		credentialType: {
+			name: string;
+			displayName: string;
+		};
 	}
 
 	export type InteractionEventName = 'node-execution-succeeded' | 'node-execution-errored';
