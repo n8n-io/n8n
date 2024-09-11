@@ -36,6 +36,14 @@ async function main() {
 	const vus = argv.vus;
 	const duration = argv.duration;
 
+	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
+	if (n8nSetupToUse === 'scaling' && !hasN8nLicense) {
+		console.error(
+			'n8n license is required to run the scaling setup. Please provide N8N_LICENSE_CERT or N8N_LICENSE_ACTIVATION_KEY',
+		);
+		process.exit(1);
+	}
+
 	if (!fs.existsSync(baseRunDir)) {
 		console.error(
 			`The run directory "${baseRunDir}" does not exist. Please specify a valid directory using --runDir`,
