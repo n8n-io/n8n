@@ -57,7 +57,7 @@ export class CollaborationService {
 	private async handleWorkflowOpened(userId: User['id'], msg: WorkflowOpenedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.accessService.hasAccess(userId, workflowId))) {
+		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
 			return;
 		}
 
@@ -69,7 +69,7 @@ export class CollaborationService {
 	private async handleWorkflowClosed(userId: User['id'], msg: WorkflowClosedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.accessService.hasAccess(userId, workflowId))) {
+		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
 			return;
 		}
 

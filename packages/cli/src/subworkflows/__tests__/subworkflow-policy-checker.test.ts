@@ -187,7 +187,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const subworkflowProjectOwner = mock<User>({ id: uuid() });
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
-			accessService.hasAccess.mockResolvedValueOnce(true);
+			accessService.hasReadAccess.mockResolvedValueOnce(true);
 
 			const instanceUrl = 'https://n8n.test.com';
 			urlService.getInstanceBaseUrl.mockReturnValueOnce(instanceUrl);
@@ -221,7 +221,7 @@ describe('SubworkflowPolicyChecker', () => {
 				lastName: 'Doe',
 			});
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
-			accessService.hasAccess.mockResolvedValueOnce(false);
+			accessService.hasReadAccess.mockResolvedValueOnce(false);
 
 			const node = mock<INode>();
 
@@ -249,7 +249,7 @@ describe('SubworkflowPolicyChecker', () => {
 				lastName: 'Doe',
 			});
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
-			accessService.hasAccess.mockResolvedValueOnce(false);
+			accessService.hasReadAccess.mockResolvedValueOnce(false);
 
 			const check = checker.check(
 				subworkflow,
@@ -276,7 +276,7 @@ describe('SubworkflowPolicyChecker', () => {
 
 			const subworkflowProjectOwner = mock<User>({ id: uuid() });
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(subworkflowProjectOwner);
-			accessService.hasAccess.mockResolvedValueOnce(true);
+			accessService.hasReadAccess.mockResolvedValueOnce(true);
 
 			const check = checker.check(subworkflow, parentWorkflow.id, mock<INode>());
 

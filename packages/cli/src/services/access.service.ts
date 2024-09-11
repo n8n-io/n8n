@@ -4,6 +4,9 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import type { User } from '@/databases/entities/user';
 import type { Workflow } from 'n8n-workflow';
 
+/**
+ * Responsible for checking whether a user has access to a resource.
+ */
 @Service()
 export class AccessService {
 	constructor(
@@ -11,8 +14,8 @@ export class AccessService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
-	/** Whether the user has access to the workflow via project and scope. */
-	async hasAccess(userId: User['id'], workflowId: Workflow['id']) {
+	/** Whether a user has read access to a workflow based on their project and scope. */
+	async hasReadAccess(userId: User['id'], workflowId: Workflow['id']) {
 		const user = await this.userRepository.findOneBy({ id: userId });
 
 		if (!user) return false;
