@@ -16,4 +16,17 @@ describe('N8nInfoTip', () => {
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
+
+	it('should render correctly as tooltip', () => {
+		const wrapper = render(N8nInfoTip, {
+			slots,
+			props: {
+				type: 'tooltip',
+			},
+			global: {
+				stubs,
+			},
+		});
+		expect(wrapper.html()).toMatchSnapshot();
+	});
 });
