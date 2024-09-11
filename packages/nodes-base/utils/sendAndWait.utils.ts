@@ -10,6 +10,8 @@ type SendAndWaitConfig = {
 	options: Array<{ label: string; value: string; style: string }>;
 };
 
+export const MESSAGE_PREFIX = 'n8n ACTION REQUIRED: ';
+
 const BUTTON_STYLE_SECONDARY =
 	'display:inline-block; text-decoration:none; background-color:#fff; color:#4a4a4a; padding:12px 24px; font-family: Arial,sans-serif; font-size:14px;font-weight:600; border:1px solid #d1d1d1; border-radius:6px; min-width:120px; margin: 12px 6px 0 6px;';
 const BUTTON_STYLE_PRIMARY =
@@ -370,7 +372,7 @@ export function createEmail(context: IExecuteFunctions) {
 
 	const email: IEmail = {
 		to,
-		subject: `n8n ACTION REQUIRED: ${config.title}`,
+		subject: `${MESSAGE_PREFIX}${config.title}`,
 		body: '',
 		htmlBody: createEmailBody(config.title, config.message, buttons.join('\n'), instanceId),
 	};

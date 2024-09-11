@@ -41,6 +41,7 @@ import {
 	slackApiRequestAllItems,
 	getMessageContent,
 	getTarget,
+	createSendAndWaitMessageBody,
 } from './GenericFunctions';
 import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait.utils';
 
@@ -368,44 +369,12 @@ export class SlackV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === 'sendAndWait') {
-			const select = this.getNodeParameter('select', 0) as 'user' | 'channel';
-			const target = getTarget(this, 0, select);
-
-			const resumeUrl = this.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
-			const nodeId = this.evaluateExpression('{{ $nodeId }}', 0) as string;
-
-			const url = `${resumeUrl}/${nodeId}`;
-
-			// const content = {};
-
-			const body: IDataObject = {
-				channel: target,
-				blocks: [
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: '*Confirm sending report*',
-						},
-					},
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: 'Do you want to send report to the jon@mail.com',
-						},
-					},
-					{
-						type: 'section',
-						text: {
-							type: 'mrkdwn',
-							text: `<${url}?result=false|No>    <${url}?result=true|*Yes*>`,
-						},
-					},
-				],
-			};
-
-			await slackApiRequest.call(this, 'POST', '/chat.postMessage', body);
+			await slackApiRequest.call(
+				this,
+				'POST',
+				'/chat.postMessage',
+				createSendAndWaitMessageBody(this),
+			);
 
 			await this.putExecutionToWait(new Date(WAIT_TIME_UNLIMITED));
 			return [this.getInputData()];

@@ -11,6 +11,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
+import { getSendAndWaitConfig, MESSAGE_PREFIX } from '../../../utils/sendAndWait.utils';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -245,4 +246,86 @@ export function getTarget(
 	}
 
 	return target;
+}
+
+export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
+	const select = context.getNodeParameter('select', 0) as 'user' | 'channel';
+	const target = getTarget(context, 0, select);
+
+	const config = getSendAndWaitConfig(context);
+
+	const body: IDataObject = {
+		channel: target,
+		blocks: [
+			{
+				type: 'divider',
+			},
+			{
+				type: 'rich_text',
+				elements: [
+					{
+						type: 'rich_text_section',
+						elements: [
+							{
+								type: 'text',
+								text: MESSAGE_PREFIX,
+								style: {
+									bold: true,
+								},
+							},
+							{
+								type: 'text',
+								text: config.title,
+								style: {
+									bold: true,
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'plain_text',
+					text: ' ',
+				},
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'plain_text',
+					text: config.message,
+					emoji: true,
+				},
+			},
+			{
+				type: 'section',
+				text: {
+					type: 'plain_text',
+					text: ' ',
+				},
+			},
+			{
+				type: 'divider',
+			},
+			{
+				type: 'actions',
+				elements: config.options.map((option) => {
+					return {
+						type: 'button',
+						style: option.style === 'primary' ? 'primary' : undefined,
+						text: {
+							type: 'plain_text',
+							text: option.label,
+							emoji: true,
+						},
+						url: config.url,
+					};
+				}),
+			},
+		],
+	};
+
+	return body;
 }
