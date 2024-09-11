@@ -38,7 +38,12 @@ import { useUIStore } from './ui.store';
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
 export const DEFAULT_CHAT_WIDTH = 330;
-export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+export const ENABLED_VIEWS = [
+	...EDITABLE_CANVAS_VIEWS,
+	VIEWS.EXECUTION_PREVIEW,
+	VIEWS.WORKFLOWS,
+	VIEWS.CREDENTIALS,
+];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
@@ -81,12 +86,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
 	);
 
-	const canShowAssistant = computed(
-		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
-		// todo show on cred list
-		// ENABLED_VIEWS.includes(route.name as VIEWS),
-	);
-
 	const assistantMessages = computed(() =>
 		chatMessages.value.filter((msg) => msg.role === 'assistant'),
 	);
@@ -104,11 +103,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
-	const canShowAssistantButtons = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
+	const isAssistantEnabled = computed(
+		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
+	);
+
+	const canShowAssistant = computed(
+		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
+	);
+
+	const canShowAssistantButtonsOnCanvas = computed(
+		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const unreadCount = computed(
@@ -696,7 +700,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	return {
-		canShowAssistantButtons,
+		isAssistantEnabled,
+		canShowAssistantButtonsOnCanvas,
 		chatWidth,
 		chatMessages,
 		unreadCount,

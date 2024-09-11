@@ -171,13 +171,14 @@ const isMissingCredentials = computed(() => props.credentialType === null);
 
 const isNewCredential = computed(() => props.mode === 'new' && !props.credentialId);
 
-const isAskAssistantAvailable = computed(() => {
-	if (!documentationUrl.value || !props.credentialProperties.length) {
-		return false;
-	}
-	// todo custom nodes? community nodes?
-	return assistantStore.canShowAssistantButtons;
-});
+const isAskAssistantAvailable = computed(
+	() =>
+		documentationUrl.value &&
+		documentationUrl.value.includes(DOCS_DOMAIN) &&
+		props.credentialProperties.length &&
+		props.credentialPermissions.update &&
+		assistantStore.isAssistantEnabled,
+);
 
 const assistantAlreadyAsked = computed<boolean>(() => {
 	return assistantStore.isCredTypeActive(props.credentialType);

@@ -34,7 +34,7 @@ const onClick = () => {
 
 <template>
 	<div
-		v-if="assistantStore.canShowAssistantButtons && !assistantStore.isAssistantOpen"
+		v-if="assistantStore.canShowAssistantButtonsOnCanvas && !assistantStore.isAssistantOpen"
 		:class="$style.container"
 		data-test-id="ask-assistant-floating-button"
 	>
