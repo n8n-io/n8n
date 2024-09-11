@@ -21,6 +21,7 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IWorkflowExecutionDataProcess,
+	IUser,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -289,11 +290,11 @@ export type IPushData =
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
 	| PushDataWorkflowFailedToActivate
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataCollaboratorsChanged;
 
-type PushDataActiveWorkflowUsersChanged = {
-	data: IActiveWorkflowUsersChanged;
-	type: 'activeWorkflowUsersChanged';
+type PushDataCollaboratorsChanged = {
+	data: ICollaboratorsChanged;
+	type: 'collaboratorsChanged';
 };
 
 type PushDataWorkflowFailedToActivate = {
@@ -369,14 +370,14 @@ export type PushDataNodeDescriptionUpdated = {
 /** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
 export type Iso8601DateTimeString = string;
 
-export interface IActiveWorkflowUser {
-	user: PublicUser;
+export interface ICollaborator {
+	user: IUser;
 	lastSeen: Iso8601DateTimeString;
 }
 
-export interface IActiveWorkflowUsersChanged {
+export interface ICollaboratorsChanged {
 	workflowId: Workflow['id'];
-	activeUsers: IActiveWorkflowUser[];
+	collaborators: ICollaborator[];
 }
 
 export interface IActiveWorkflowAdded {
