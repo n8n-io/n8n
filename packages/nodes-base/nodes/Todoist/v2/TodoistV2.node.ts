@@ -208,7 +208,7 @@ const versionDescription: INodeTypeDescription = {
 					operation: ['create', 'move', 'sync'],
 				},
 			},
-			description: 'The project you want to operate on. Choose from the list, or specify an ID.',
+			description: 'The destination project. Choose from the list, or specify an ID.',
 		},
 		{
 			displayName: 'Additional Fields',
@@ -229,7 +229,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					typeOptions: {
 						loadOptionsMethod: 'getSections',
-						loadOptionsDependsOn: ['/project', 'options.parent'],
+						loadOptionsDependsOn: ['project', 'options.parent'],
 					},
 					default: '',
 					description:
@@ -241,7 +241,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					typeOptions: {
 						loadOptionsMethod: 'getItems',
-						loadOptionsDependsOn: ['/project', 'options.section'],
+						loadOptionsDependsOn: ['project', 'options.section'],
 					},
 					default: '',
 					description:
