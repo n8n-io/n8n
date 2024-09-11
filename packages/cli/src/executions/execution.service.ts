@@ -8,6 +8,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowBase,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -21,7 +22,6 @@ import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
 } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import type { ExecutionRequest, ExecutionSummaries, StopResult } from './execution.types';

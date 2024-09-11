@@ -3,8 +3,9 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
+import type { IWorkflowDb } from '@/interfaces';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole } from '@/databases/entities/user';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
