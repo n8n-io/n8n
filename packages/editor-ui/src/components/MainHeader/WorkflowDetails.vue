@@ -668,7 +668,7 @@ function showCreateWorkflowSuccessToast(id?: string) {
 			</span>
 			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
-					<CollaborationPane v-if="nodeViewVersion === '2' && !isNewWorkflow" />
+					<CollaborationPane v-if="!isNewWorkflow" />
 					<N8nButton
 						type="secondary"
 						data-test-id="workflow-share-button"
