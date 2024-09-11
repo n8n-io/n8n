@@ -103,7 +103,6 @@ import { createEventBus } from 'n8n-design-system';
 import type { PinDataSource } from '@/composables/usePinnedData';
 import { useClipboard } from '@/composables/useClipboard';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
-import { useCollaborationStore } from '@/stores/collaboration.store';
 import { getResourcePermissions } from '@/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/components/NodeViewUnfinishedWorkflowMessage.vue';
 
@@ -137,7 +136,6 @@ const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
 const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
-const collaborationStore = useCollaborationStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
@@ -353,8 +351,6 @@ async function initializeWorkspaceForExistingWorkflow(id: string) {
 		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
 			editableWorkflow.value.homeProject,
 		);
-
-		collaborationStore.notifyWorkflowOpened(id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
 
@@ -1482,7 +1478,6 @@ watch(
 onBeforeMount(() => {
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushConnect();
-		collaborationStore.initialize();
 	}
 });
 
@@ -1537,7 +1532,6 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
-		collaborationStore.terminate();
 		pushConnectionStore.pushDisconnect();
 	}
 });

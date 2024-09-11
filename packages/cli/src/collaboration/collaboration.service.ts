@@ -1,16 +1,17 @@
-import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { Push } from '../push';
-import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
-import { parseWorkflowMessage } from './collaboration.message';
-import type { IActiveWorkflowUsersChanged } from '../interfaces';
+import type { Workflow } from 'n8n-workflow';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+
+import { Push } from '@/push';
+import type { ICollaboratorsChanged } from '@/interfaces';
 import type { OnPushMessage } from '@/push/types';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { User } from '@/databases/entities/user';
-import { CollaborationState } from '@/collaboration/collaboration.state';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserService } from '@/services/user.service';
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+
+import { CollaborationState } from './collaboration.state';
+import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
+import { parseWorkflowMessage } from './collaboration.message';
 
 /**
  * Service for managing collaboration feature between users. E.g. keeping
@@ -22,7 +23,6 @@ export class CollaborationService {
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
-		private readonly userService: UserService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
@@ -61,7 +61,7 @@ export class CollaborationService {
 			return;
 		}
 
-		await this.state.addActiveWorkflowUser(workflowId, userId);
+		await this.state.addCollaborator(workflowId, userId);
 
 		await this.sendWorkflowUsersChangedMessage(workflowId);
 	}
@@ -73,7 +73,7 @@ export class CollaborationService {
 			return;
 		}
 
-		await this.state.removeActiveWorkflowUser(workflowId, userId);
+		await this.state.removeCollaborator(workflowId, userId);
 
 		await this.sendWorkflowUsersChangedMessage(workflowId);
 	}
@@ -81,26 +81,23 @@ export class CollaborationService {
 	private async sendWorkflowUsersChangedMessage(workflowId: Workflow['id']) {
 		// We have already validated that all active workflow users
 		// have proper access to the workflow, so we don't need to validate it again
-		const activeWorkflowUsers = await this.state.getActiveWorkflowUsers(workflowId);
-		const workflowUserIds = activeWorkflowUsers.map((user) => user.userId);
+		const collaborators = await this.state.getCollaborators(workflowId);
+		const userIds = collaborators.map((user) => user.userId);
 
-		if (workflowUserIds.length === 0) {
+		if (userIds.length === 0) {
 			return;
 		}
-		const users = await this.userRepository.getByIds(this.userRepository.manager, workflowUserIds);
-
-		const msgData: IActiveWorkflowUsersChanged = {
+		const users = await this.userRepository.getByIds(this.userRepository.manager, userIds);
+		const activeCollaborators = users.map((user) => ({
+			user: user.toIUser(),
+			lastSeen: collaborators.find(({ userId }) => userId === user.id)!.lastSeen,
+		}));
+		const msgData: ICollaboratorsChanged = {
 			workflowId,
-			activeUsers: await Promise.all(
-				users.map(async (user) => ({
-					user: await this.userService.toPublic(user),
-					lastSeen: activeWorkflowUsers.find((activeUser) => activeUser.userId === user.id)!
-						.lastSeen,
-				})),
-			),
+			collaborators: activeCollaborators,
 		};
 
-		this.push.sendToUsers('activeWorkflowUsersChanged', msgData, workflowUserIds);
+		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
 	}
 
 	private async hasUserAccessToWorkflow(userId: User['id'], workflowId: Workflow['id']) {
