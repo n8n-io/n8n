@@ -80,7 +80,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
-	const chatSessionTask = ref<'error' | 'support' | 'cred'>();
+	const chatSessionTask = ref<'error' | 'support' | 'credentials' | undefined>();
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
@@ -143,6 +143,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
 		chatSessionCredType.value = undefined;
+		chatSessionTask.value = undefined;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
 	}
 
 	// As assistant sidebar opens and closes, use window width to calculate the container width
@@ -236,13 +238,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const targetNode = context.node.name;
 
 		return (
+			chatSessionTask.value === 'error' &&
 			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
 	}
 
 	function isCredTypeActive(credType: ICredentialType) {
-		return credType.name === chatSessionCredType.value?.name;
+		return (
+			chatSessionTask.value === 'credentials' && credType.name === chatSessionCredType.value?.name
+		);
 	}
 
 	function clearMessages() {
@@ -336,8 +341,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		await initSupportChat(question, credType);
 
 		trackUserOpenedAssistant({
-			source: 'cred', // todo
-			task: 'cred-help', // todo
+			source: 'credential',
+			task: 'credentials',
 			has_existing_session: hasExistingSession,
 		});
 	}
@@ -345,11 +350,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		const id = getRandomId();
 		resetAssistantChat();
+		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		chatSessionCredType.value = credentialType;
 		chatWindowOpen.value = true;
-		chatSessionError.value = undefined;
-		currentSessionActiveExecutionId.value = undefined;
-		currentSessionWorkflowId.value = workflowsStore.workflowId;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
@@ -394,6 +397,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		resetAssistantChat();
+		chatSessionTask.value = 'error';
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
 
@@ -475,7 +479,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: false,
 			});
@@ -486,7 +490,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			await sendEvent('node-execution-succeeded');
 			nodeExecutionStatus.value = 'success';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: true,
 			});
@@ -562,8 +566,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'placeholder';
 		  }
 		| {
-				source: 'cred';
-				task: 'cred-help';
+				source: 'credential';
+				task: 'credentials';
 		  }
 	)) {
 		telemetry.track('User opened assistant', {
