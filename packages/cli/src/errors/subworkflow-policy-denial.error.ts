@@ -9,7 +9,7 @@ type Options = {
 	/** Project that owns the subworkflow whose execution was denied. */
 	subworkflowProject: Project;
 
-	/** Whether the user has access to the subworkflow via project and scope. */
+	/** Whether the user has read access to the subworkflow based on their project and scope. */
 	hasReadAccess: boolean;
 
 	/** URL of the n8n instance. */
