@@ -5,6 +5,7 @@ import { NodeConnectionType, jsonParse, NodeOperationError } from 'n8n-workflow'
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import type { ZodTypeAny } from 'zod';
 import { ZodBoolean, ZodNullable, ZodNumber, ZodObject, ZodOptional } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 const getSimplifiedType = (schema: ZodTypeAny) => {
 	if (schema instanceof ZodObject) {
@@ -28,20 +29,31 @@ const getParametersDescription = (parameters: Array<[string, ZodTypeAny]>) =>
 		)
 		.join(',\n ');
 
-export const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
+const prepareFallbackToolDescription = (toolDescription: string, schema: ZodObject<any>) => {
 	let description = `${toolDescription}`;
 
 	const toolParameters = Object.entries<ZodTypeAny>(schema.shape);
 
 	if (toolParameters.length) {
-		description += `
-Tool expects valid stringified JSON object with ${toolParameters.length} properties.
-Property names with description, type and required status:
+		// If the schema is complex (contains nested objects), we provide a detailed description of the expected parameters as a JSON schema
+		if (toolParameters.some(([, parameterSchema]) => parameterSchema instanceof ZodObject)) {
+			description += `
+Tool expects valid stringified JSON object with a structure: ${JSON.stringify(zodToJsonSchema(schema))}. This object will be parsed and validated using the provided schema`;
+		} else {
+			// Otherwise we provide a simplified description of the expected parameters
+			description += `
+Tool expects valid stringified JSON object with ${toolParameters.length} properties. Property names with description, type and required status:
 ${getParametersDescription(toolParameters)}
 ALL parameters marked as required must be provided`;
+		}
+
+		// 		description += `
+		// Tool expects valid stringified JSON object with ${toolParameters.length} properties. Property names with description, type and required status:
+		// ${getParametersDescription(toolParameters)}
+		// ALL parameters marked as required must be provided`;
 	}
 
-	return description;
+	return description.replaceAll('{', '{{').replaceAll('}', '}}');
 };
 
 export class N8nTool extends DynamicStructuredTool {
