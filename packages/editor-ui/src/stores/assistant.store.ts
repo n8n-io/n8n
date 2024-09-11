@@ -64,6 +64,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			suggested: INodeParameters;
 		};
 	}>({});
+
+	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
@@ -136,6 +138,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
+		chatSessionCredType.value = undefined;
 	}
 
 	// As assistant sidebar opens and closes, use window width to calculate the container width
@@ -164,7 +167,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-		// TODO: simplify
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
@@ -233,6 +235,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
 		);
+	}
+
+	function isCredTypeActive(credType: ICredentialType) {
+		return credType.name === chatSessionCredType.value?.name;
 	}
 
 	function clearMessages() {
@@ -335,6 +341,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		const id = getRandomId();
 		resetAssistantChat();
+		chatSessionCredType.value = credentialType;
 		chatWindowOpen.value = true;
 		chatSessionError.value = undefined;
 		currentSessionActiveExecutionId.value = undefined;
@@ -717,5 +724,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		chatSessionError,
 		chatSessionTask,
 		initCredHelp,
+		isCredTypeActive,
 	};
 });

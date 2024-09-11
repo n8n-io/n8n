@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeMount, watch, ref } from 'vue';
+import { computed, onBeforeMount, watch } from 'vue';
 
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import type {
@@ -179,7 +179,9 @@ const isAskAssistantAvailable = computed(() => {
 	return assistantStore.canShowAssistantButtons;
 });
 
-const assistantAlreadyAsked = ref<boolean>(false);
+const assistantAlreadyAsked = computed<boolean>(() => {
+	return assistantStore.isCredTypeActive(props.credentialType);
+});
 
 const docs = computed(() => CREDENTIAL_MARKDOWN_DOCS[props.credentialType.name]);
 const showCredentialDocs = computed(
@@ -203,7 +205,6 @@ function onDocumentationUrlClick(): void {
 
 function onAuthTypeChange(newType: string): void {
 	emit('authTypeChanged', newType);
-	assistantAlreadyAsked.value = false;
 }
 
 async function onAskAssistantClick() {
@@ -222,7 +223,6 @@ async function onAskAssistantClick() {
 		return;
 	}
 	await assistantStore.initCredHelp(props.credentialType);
-	assistantAlreadyAsked.value = true;
 }
 
 watch(showOAuthSuccessBanner, (newValue, oldValue) => {
