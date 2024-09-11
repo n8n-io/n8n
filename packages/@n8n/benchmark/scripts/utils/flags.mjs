@@ -11,9 +11,7 @@ export function flagsObjectToCliArgs(flags) {
 	return Object.entries(flags)
 		.filter(([, value]) => value !== undefined)
 		.map(([key, value]) => {
-			if (typeof value === 'number') {
-				return `--${key}=${value}`;
-			} else if (typeof value === 'string' && value.includes(' ')) {
+			if (typeof value === 'string' && value.includes(' ')) {
 				return `--${key}="${value}"`;
 			} else {
 				return `--${key}=${value}`;
