@@ -7,9 +7,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IPinData,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITelemetryTrackProperties,
@@ -22,7 +20,7 @@ import type {
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
-	StartNodeData,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -493,21 +491,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
-	restartExecutionId?: string;
-	executionMode: WorkflowExecuteMode;
-	executionData?: IRunExecutionData;
-	runData?: IRunData;
-	pinData?: IPinData;
-	retryOf?: string;
-	pushRef?: string;
-	startNodes?: StartNodeData[];
-	workflowData: IWorkflowBase;
-	userId?: string;
-	projectId?: string;
 }
 
 export interface IWorkflowExecuteProcess {
