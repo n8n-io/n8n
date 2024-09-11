@@ -23,8 +23,6 @@ env:
   ARM_CLIENT_ID: ${{ secrets.BENCHMARK_ARM_CLIENT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
   ARM_TENANT_ID: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
-  BENCHMARK_RESULT_WEBHOOK_URL: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_URL }}
-  BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER }}
   N8N_TAG: ${{ inputs.n8n_tag || 'nightly' }}
   N8N_BENCHMARK_TAG: ${{ inputs.benchmark_tag || 'latest' }}
   DEBUG: ${{ inputs.debug == 'true' && '--debug' || '' }}
@@ -71,6 +69,10 @@ jobs:
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
+        env:
+          BENCHMARK_RESULT_WEBHOOK_URL: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_URL }}
+          BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_BENCHMARK_LICENSE_CERT }}
         run: |
           pnpm benchmark-in-cloud \
             --vus 5 \
