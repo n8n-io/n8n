@@ -276,7 +276,8 @@ const nodeOperationOptions: INodeProperties[] = [
 			loadOptionsMethod: 'getFonts',
 		},
 		default: '',
-		description: 'The font to use. Choose from the list, or specify the local file path to the font using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The font to use. Choose from the list, or specify the local file path to the font using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Font Size',
