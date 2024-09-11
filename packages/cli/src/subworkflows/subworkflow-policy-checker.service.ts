@@ -61,18 +61,18 @@ export class SubworkflowPolicyChecker {
 	}
 
 	private async errorDetails(subworkflowProject: Project, subworkflow: Workflow, userId?: string) {
-		const hasAccess = userId
+		const hasReadAccess = userId
 			? await this.accessService.hasReadAccess(userId, subworkflow.id)
 			: false; /* no user ID in policy check for error workflow, so `false` to keep error message generic */
 
-		if (subworkflowProject.type === 'team') return { hasAccess };
+		if (subworkflowProject.type === 'team') return { hasReadAccess };
 
 		const owner = await this.ownershipService.getPersonalProjectOwnerCached(subworkflowProject.id);
 
 		assert(owner !== null); // only `null` if not personal
 
 		return {
-			hasAccess,
+			hasReadAccess,
 			ownerName: owner.firstName + ' ' + owner.lastName,
 		};
 	}

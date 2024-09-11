@@ -10,7 +10,7 @@ type Options = {
 	subworkflowProject: Project;
 
 	/** Whether the user has access to the subworkflow via project and scope. */
-	hasAccess: boolean;
+	hasReadAccess: boolean;
 
 	/** URL of the n8n instance. */
 	instanceUrl: string;
@@ -30,7 +30,7 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 		subworkflowId,
 		subworkflowProject,
 		instanceUrl,
-		hasAccess,
+		hasReadAccess,
 		ownerName,
 		node,
 	}: Options) {
@@ -51,7 +51,7 @@ export class SubworkflowPolicyDenialError extends WorkflowOperationError {
 		};
 
 		const description = () => {
-			if (hasAccess) return descriptions.accessible;
+			if (hasReadAccess) return descriptions.accessible;
 			if (subworkflowProject.type === 'personal') return descriptions.inaccessiblePersonalProject;
 			if (subworkflowProject.type === 'team') return descriptions.inaccesibleTeamProject;
 
