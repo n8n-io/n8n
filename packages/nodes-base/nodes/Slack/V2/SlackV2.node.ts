@@ -42,7 +42,7 @@ import {
 	getMessageContent,
 	getTarget,
 } from './GenericFunctions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../Google/Gmail/v2/utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../../utils/sendAndWait.utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;

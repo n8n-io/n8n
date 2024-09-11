@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
-import type { IEmail } from '../GenericFunctions';
+import type { IEmail } from '../../../../utils/interfaces';
 import {
 	encodeEmail,
 	googleApiRequest,
@@ -34,7 +34,11 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
 
-import { getSendAndWaitProperties, prepareActionRequiredEmail, sendAndWaitWebhook } from './utils';
+import {
+	getSendAndWaitProperties,
+	createEmail,
+	sendAndWaitWebhook,
+} from '../../../../utils/sendAndWait.utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -254,7 +258,7 @@ export class GmailV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === 'sendAndWait') {
-			const email: IEmail = prepareActionRequiredEmail(this);
+			const email: IEmail = createEmail(this);
 
 			await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
 				raw: await encodeEmail(email),
