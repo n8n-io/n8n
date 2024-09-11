@@ -18,10 +18,8 @@ watch(visibility, (visibilityState) => {
 	}
 });
 
-const activeUsersSorted = computed(() => {
-	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
-		(userInfo) => userInfo.user,
-	);
+const collaboratorsSorted = computed(() => {
+	const currentWorkflowUsers = collaborationStore.collaborators.map(({ user }) => user);
 	const owner = currentWorkflowUsers.find(isUserGlobalOwner);
 	return {
 		defaultGroup: owner
@@ -46,7 +44,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack :users="activeUsersSorted" :current-user-email="currentUserEmail" />
+		<n8n-user-stack :users="collaboratorsSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 
