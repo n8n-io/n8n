@@ -298,6 +298,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					chat_session_id: currentSessionId.value,
 					task: chatSessionTask.value,
 					node_type: chatSessionError.value?.node.type,
+					credential_type: chatSessionCredType.value?.name,
 				},
 				{ withPostHog: true },
 			);
