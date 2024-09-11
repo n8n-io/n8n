@@ -132,6 +132,10 @@ describe('NDV', () => {
 				'contains.text',
 				"An expression here won't work because it uses .item and n8n can't figure out the matching item.",
 			);
+		ndv.getters.nodeRunErrorIndicator().should('be.visible');
+		// The error details should be hidden behind a tooltip
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Start Time');
+		ndv.getters.nodeRunErrorIndicator().should('not.contain', 'Execution Time');
 	});
 
 	it('should save workflow using keyboard shortcut from NDV', () => {

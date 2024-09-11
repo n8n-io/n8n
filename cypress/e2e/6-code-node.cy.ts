@@ -38,6 +38,51 @@ describe('Code node', () => {
 
 			successToast().contains('Node executed successfully');
 		});
+
+		it('should show lint errors in `runOnceForAllItems` mode', () => {
+			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+			const getEditor = () => getParameter().find('.cm-content').should('exist');
+
+			getEditor().type('{selectall}').paste(`$input.itemMatching()
+$input.item
+$('When clicking ‘Test workflow’').item
+$input.first(1)
+
+for (const item of $input.all()) {
+  item.foo
+}
+
+return
+`);
+			getParameter().get('.cm-lint-marker-error').should('have.length', 6);
+			getParameter().contains('itemMatching').realHover();
+			cy.get('.cm-tooltip-lint').should(
+				'have.text',
+				'`.itemMatching()` expects an item index to be passed in as its argument.',
+			);
+		});
+
+		it('should show lint errors in `runOnceForEachItem` mode', () => {
+			const getParameter = () => ndv.getters.parameterInput('jsCode').should('be.visible');
+			const getEditor = () => getParameter().find('.cm-content').should('exist');
+
+			ndv.getters.parameterInput('mode').click();
+			ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
+			getEditor().type('{selectall}').paste(`$input.itemMatching()
+$input.all()
+$input.first()
+$input.item()
+
+return []
+`);
+
+			getParameter().get('.cm-lint-marker-error').should('have.length', 5);
+			getParameter().contains('all').realHover();
+			cy.get('.cm-tooltip-lint').should(
+				'have.text',
+				"Method `$input.all()` is only available in the 'Run Once for All Items' mode.",
+			);
+		});
 	});
 
 	describe('Ask AI', () => {

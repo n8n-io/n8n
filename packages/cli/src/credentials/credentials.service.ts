@@ -113,13 +113,6 @@ export class CredentialsService {
 				);
 			}
 
-			credentials.forEach((c) => {
-				// @ts-expect-error: This is to emulate the old behaviour of removing the shared
-				// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-				// though. So to avoid leaking the information we just delete it.
-				delete c.shared;
-			});
-
 			return credentials;
 		}
 
@@ -164,13 +157,6 @@ export class CredentialsService {
 		if (options.includeScopes) {
 			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
 		}
-
-		credentials.forEach((c) => {
-			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
-			delete c.shared;
-		});
 
 		return credentials;
 	}

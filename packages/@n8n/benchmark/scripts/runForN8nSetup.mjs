@@ -24,12 +24,25 @@ async function main() {
 	const n8nTag = argv.n8nDockerTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = argv.benchmarkDockerTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
+	const resultWebhookUrl =
+		argv.resultWebhookUrl || process.env.BENCHMARK_RESULT_WEBHOOK_URL || undefined;
+	const resultWebhookAuthHeader =
+		argv.resultWebhookAuthHeader || process.env.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER || undefined;
 	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
 	const n8nLicenseCert = argv.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
 	const n8nLicenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY || '';
 	const n8nLicenseTenantId = argv.n8nLicenseTenantId || process.env.N8N_LICENSE_TENANT_ID || '';
+	const envTag = argv.env || 'local';
 	const vus = argv.vus;
 	const duration = argv.duration;
+
+	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
+	if (n8nSetupToUse === 'scaling' && !hasN8nLicense) {
+		console.error(
+			'n8n license is required to run the scaling setup. Please provide N8N_LICENSE_CERT or N8N_LICENSE_ACTIVATION_KEY',
+		);
+		process.exit(1);
+	}
 
 	if (!fs.existsSync(baseRunDir)) {
 		console.error(
@@ -54,6 +67,8 @@ async function main() {
 				N8N_ENCRYPTION_KEY,
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
+				BENCHMARK_RESULT_WEBHOOK_URL: resultWebhookUrl,
+				BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: resultWebhookAuthHeader,
 				RUN_DIR: runDir,
 				MOCK_API_DATA_PATH: paths.mockApiDataPath,
 			},
@@ -70,6 +85,7 @@ async function main() {
 		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
 
 		const tags = Object.entries({
+			Env: envTag,
 			N8nVersion: n8nTag,
 			N8nSetup: n8nSetupToUse,
 		})

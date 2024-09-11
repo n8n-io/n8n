@@ -30,6 +30,8 @@ const paths = {
  * @property {string} benchmarkTag
  * @property {string} [runDir]
  * @property {string} [k6ApiToken]
+ * @property {string} [resultWebhookUrl]
+ * @property {string} [resultWebhookAuthHeader]
  * @property {string} [n8nLicenseCert]
  * @property {string} [vus]
  * @property {string} [duration]
@@ -45,6 +47,7 @@ export async function runLocally(config) {
 		runDir: config.runDir,
 		vus: config.vus,
 		duration: config.duration,
+		env: 'local',
 	});
 
 	try {
@@ -55,6 +58,8 @@ export async function runLocally(config) {
 				env: {
 					...process.env,
 					K6_API_TOKEN: config.k6ApiToken,
+					BENCHMARK_RESULT_WEBHOOK_URL: config.resultWebhookUrl,
+					BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: config.resultWebhookAuthHeader,
 					N8N_LICENSE_CERT: config.n8nLicenseCert,
 				},
 			})`npx ${runScriptPath} ${cliArgs} ${n8nSetup}`;

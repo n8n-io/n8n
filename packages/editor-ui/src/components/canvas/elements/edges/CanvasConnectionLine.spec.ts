@@ -53,4 +53,25 @@ describe('CanvasConnectionLine', () => {
 			'M0 0L 32,0Q 40,0 40,8L 40,132Q 40,140 32,140L1 140L0 140M0 140L-40 140L -132,140Q -140,140 -140,132L -140,-92Q -140,-100 -132,-100L-100 -100',
 		);
 	});
+
+	it('should only avoid obstacles when the edge intersects the nodes ', () => {
+		const { container } = renderComponent({
+			props: {
+				...DEFAULT_PROPS,
+				sourceX: -72,
+				sourceY: -290,
+				sourcePosition: Position.Right,
+				targetX: -344,
+				targetY: -30,
+				targetPosition: Position.Left,
+			},
+		});
+
+		const edge = container.querySelector('.vue-flow__edge-path');
+
+		expect(edge).toHaveAttribute(
+			'd',
+			'M-72 -290L -57,-290Q -52,-290 -52,-285L -52,-165Q -52,-160 -57,-160L -359,-160Q -364,-160 -364,-155L -364,-35Q -364,-30 -359,-30L-344 -30',
+		);
+	});
 });
