@@ -321,6 +321,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					data-test-id="credentail-edit-ask-assistant-button"
 				>
 					<InlineAskAssistantButton :asked="assistantAlreadyAsked" @click="onAskAssistantClick" />
+					<span>for setup instructions</span>
 				</div>
 
 				<CopyInput
@@ -422,5 +423,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 
 .googleReconnectLabel {
 	margin-right: var(--spacing-3xs);
+}
+
+.askAssistantButton {
+	display: flex;
+	align-items: center;
+	> span {
+		margin-left: var(--spacing-3xs);
+		font-size: var(--font-size-s);
+	}
 }
 </style>
