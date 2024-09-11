@@ -28,6 +28,7 @@ import type {
 	INode,
 	INodeCredentialDescription,
 	INodeExecutionData,
+	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValueType,
@@ -528,8 +529,6 @@ export function getReferencedNodes(node: INode): string[] {
 	if (!node) {
 		return [];
 	}
-	console.log('========================== EXPRESSIONS ==============================');
-	console.log(extractExpressions(node.parameters));
 	// Go through all parameters and check if they contain expressions on any level
 	for (const key in node.parameters) {
 		if (node.parameters[key] && typeof node.parameters[key] === 'object') {
@@ -541,14 +540,29 @@ export function getReferencedNodes(node: INode): string[] {
 			}
 		}
 	}
-	console.log('========================================================');
 	return referencedNodes.size ? Array.from(referencedNodes) : [];
 }
 
-// TODO: Fix types
-function extractExpressions(obj: object): Array<{ key: string; expression: string }> {
-	const expressions: Array<{ key: string; expression: string }> = [];
+/**
+ * Processes node object before sending it to AI assistant
+ * - Removes unnecessary properties
+ * - Extracts expressions from the parameters and resolves them
+ * @param node
+ * @param propsToRemove
+ * @returns processed node
+ */
+export function processNodeForLLM(node: INode, propsToRemove: string[]): INode {
+	// Make a copy of the node object so we don't modify the original
+	const nodeForLLM = { ...node };
+	propsToRemove.forEach((key) => {
+		delete nodeForLLM[key as keyof INode];
+	});
+	resolveNodeExpressions(nodeForLLM.parameters);
+	return nodeForLLM;
+}
 
+// TODO: Fix types, add tests
+function resolveNodeExpressions(nodeParameters: INodeParameters): void {
 	function recurse(currentObj: object, currentPath: string) {
 		for (const key in currentObj) {
 			const value = currentObj[key];
@@ -559,48 +573,32 @@ function extractExpressions(obj: object): Array<{ key: string; expression: strin
 				recurse(value, path);
 			} else if (typeof value === 'string' && value.startsWith('={{')) {
 				// Check for the custom expression syntax
-				expressions.push({ key: path, expression: value });
+				const resolved = resolveExpression(
+					{ key: path, expression: value },
+					nodeParameters as INode,
+				);
+				currentObj[key] = {
+					value,
+					resolvedExpressionValue: resolved,
+				};
 			}
 		}
 	}
-
-	recurse(obj, '');
-	return expressions;
+	recurse(nodeParameters, '');
 }
 
-/**
- * Remove properties from a node based on the provided list of property names.
- * Reruns a new node object with the properties removed.
- */
-export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode {
-	const prunedNode = { ...node };
-	propsToRemove.forEach((key) => {
-		delete prunedNode[key as keyof INode];
-	});
-	// TODO: Rename this function, fix types and test for different node types
-	for (const key in prunedNode.parameters) {
-		const paramName = key;
-		const paramValue = node.parameters[key];
-		const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-		let resolvedExpressionValue = paramValue;
-		if (typeof paramValue === 'string' && paramValue.startsWith('=')) {
-			resolvedExpressionValue = workflowHelpers.resolveExpression(paramValue, node.parameters);
-		} else if (
-			typeof paramValue === 'object' &&
-			'value' in paramValue &&
-			typeof paramValue.value === 'string' &&
-			paramValue.value.startsWith('=')
-		) {
-			resolvedExpressionValue = workflowHelpers.resolveExpression(
-				paramValue.value,
-				node.parameters,
-			);
-		}
-		if (resolvedExpressionValue !== paramValue) {
-			node.parameters[paramName] = { value: paramValue, resolvedExpressionValue };
-		}
+function resolveExpression(expression: { key: string; expression: string }, node: INode) {
+	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+	let resolvedExpressionValue = '';
+	try {
+		resolvedExpressionValue = workflowHelpers.resolveExpression(
+			expression.expression,
+			node.parameters
+		);
+	} catch (error) {
+		resolvedExpressionValue = `Error in expression: "${error.message}"`;
 	}
-	return prunedNode;
+	return resolvedExpressionValue;
 }
 
 /**

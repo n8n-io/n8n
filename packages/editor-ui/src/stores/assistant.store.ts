@@ -26,7 +26,7 @@ import {
 	getNodeAuthOptions,
 	getReferencedNodes,
 	getNodesSchemas,
-	pruneNodeProperties,
+	processNodeForLLM,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -400,7 +400,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: pruneNodeProperties(context.node, ['position']),
+					node: processNodeForLLM(context.node, ['position']),
 					nodeInputData,
 					executionSchema: schemas,
 					authType,
