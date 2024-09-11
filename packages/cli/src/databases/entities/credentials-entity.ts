@@ -26,4 +26,9 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
+
+	toJSON() {
+		const { shared, ...rest } = this;
+		return rest;
+	}
 }

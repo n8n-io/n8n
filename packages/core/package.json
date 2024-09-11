@@ -44,7 +44,7 @@
     "file-type": "16.5.4",
     "form-data": "catalog:",
     "lodash": "catalog:",
-    "@langchain/core": "0.2.18",
+    "@langchain/core": "catalog:",
     "luxon": "catalog:",
     "mime-types": "2.1.35",
     "n8n-workflow": "workspace:*",

@@ -515,7 +515,6 @@ describe('GET /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({
 			id: savedCredential.id,
-			shared: [{ projectId: teamProject.id, role: 'credential:owner' }],
 			homeProject: {
 				id: teamProject.id,
 			},

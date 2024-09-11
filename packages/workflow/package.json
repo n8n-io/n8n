@@ -29,7 +29,7 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@langchain/core": "^0.2.18",
+    "@langchain/core": "catalog:",
     "@types/deep-equal": "^1.0.1",
     "@types/express": "catalog:",
     "@types/jmespath": "^0.15.0",

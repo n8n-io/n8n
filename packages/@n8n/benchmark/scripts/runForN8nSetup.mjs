@@ -6,11 +6,14 @@
 import path from 'path';
 import { $, argv, fs } from 'zx';
 import { DockerComposeClient } from './clients/dockerComposeClient.mjs';
+import { flagsObjectToCliArgs } from './utils/flags.mjs';
 
 const paths = {
 	n8nSetupsDir: path.join(__dirname, 'n8nSetups'),
 	mockApiDataPath: path.join(__dirname, 'mockApi'),
 };
+
+const N8N_ENCRYPTION_KEY = 'very-secret-encryption-key';
 
 async function main() {
 	const [n8nSetupToUse] = argv._;
@@ -21,7 +24,25 @@ async function main() {
 	const n8nTag = argv.n8nDockerTag || process.env.N8N_DOCKER_TAG || 'latest';
 	const benchmarkTag = argv.benchmarkDockerTag || process.env.BENCHMARK_DOCKER_TAG || 'latest';
 	const k6ApiToken = argv.k6ApiToken || process.env.K6_API_TOKEN || undefined;
+	const resultWebhookUrl =
+		argv.resultWebhookUrl || process.env.BENCHMARK_RESULT_WEBHOOK_URL || undefined;
+	const resultWebhookAuthHeader =
+		argv.resultWebhookAuthHeader || process.env.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER || undefined;
 	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
+	const n8nLicenseCert = argv.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
+	const n8nLicenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY || '';
+	const n8nLicenseTenantId = argv.n8nLicenseTenantId || process.env.N8N_LICENSE_TENANT_ID || '';
+	const envTag = argv.env || 'local';
+	const vus = argv.vus;
+	const duration = argv.duration;
+
+	const hasN8nLicense = !!n8nLicenseCert || !!n8nLicenseActivationKey;
+	if (n8nSetupToUse === 'scaling' && !hasN8nLicense) {
+		console.error(
+			'n8n license is required to run the scaling setup. Please provide N8N_LICENSE_CERT or N8N_LICENSE_ACTIVATION_KEY',
+		);
+		process.exit(1);
+	}
 
 	if (!fs.existsSync(baseRunDir)) {
 		console.error(
@@ -38,9 +59,16 @@ async function main() {
 			cwd: composeFilePath,
 			verbose: true,
 			env: {
+				PATH: process.env.PATH,
 				N8N_VERSION: n8nTag,
+				N8N_LICENSE_CERT: n8nLicenseCert,
+				N8N_LICENSE_ACTIVATION_KEY: n8nLicenseActivationKey,
+				N8N_LICENSE_TENANT_ID: n8nLicenseTenantId,
+				N8N_ENCRYPTION_KEY,
 				BENCHMARK_VERSION: benchmarkTag,
 				K6_API_TOKEN: k6ApiToken,
+				BENCHMARK_RESULT_WEBHOOK_URL: resultWebhookUrl,
+				BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: resultWebhookAuthHeader,
 				RUN_DIR: runDir,
 				MOCK_API_DATA_PATH: paths.mockApiDataPath,
 			},
@@ -56,20 +84,42 @@ async function main() {
 	try {
 		await dockerComposeClient.$('up', '-d', '--remove-orphans', 'n8n');
 
-		await dockerComposeClient.$('run', 'benchmark', 'run', `--scenarioNamePrefix=${n8nSetupToUse}`);
+		const tags = Object.entries({
+			Env: envTag,
+			N8nVersion: n8nTag,
+			N8nSetup: n8nSetupToUse,
+		})
+			.map(([key, value]) => `${key}=${value}`)
+			.join(',');
+
+		const cliArgs = flagsObjectToCliArgs({
+			scenarioNamePrefix: n8nSetupToUse,
+			vus,
+			duration,
+			tags,
+		});
+
+		await dockerComposeClient.$('run', 'benchmark', 'run', ...cliArgs);
 	} catch (error) {
 		console.error('An error occurred while running the benchmarks:');
-		console.error(error);
+		console.error(error.message);
 		console.error('');
-		await dumpN8nInstanceLogs(dockerComposeClient);
+		await printContainerStatus(dockerComposeClient);
+		console.error('');
+		await dumpLogs(dockerComposeClient);
 	} finally {
 		await dockerComposeClient.$('down');
 	}
 }
 
-async function dumpN8nInstanceLogs(dockerComposeClient) {
-	console.error('n8n instance logs:');
-	await dockerComposeClient.$('logs', 'n8n');
+async function printContainerStatus(dockerComposeClient) {
+	console.error('Container statuses:');
+	await dockerComposeClient.$('ps', '-a');
+}
+
+async function dumpLogs(dockerComposeClient) {
+	console.error('Container logs:');
+	await dockerComposeClient.$('logs');
 }
 
 function printUsage() {

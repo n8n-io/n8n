@@ -361,7 +361,7 @@ export class GmailTrigger implements INodeType {
 		const nextPollPossibleDuplicates = (responseData as IDataObject[]).reduce(
 			(duplicates, { json }) => {
 				const emailDate = getEmailDateAsSeconds(json as IDataObject);
-				return emailDate === lastEmailDate
+				return emailDate <= lastEmailDate
 					? duplicates.concat((json as IDataObject).id as string)
 					: duplicates;
 			},

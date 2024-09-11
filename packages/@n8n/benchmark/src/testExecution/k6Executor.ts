@@ -1,12 +1,24 @@
 import fs from 'fs';
 import path from 'path';
+import assert from 'node:assert/strict';
 import { $, which, tmpfile } from 'zx';
 import type { Scenario } from '@/types/scenario';
+import { buildTestReport, type K6Tag } from '@/testExecution/testReport';
+export type { K6Tag };
 
 export type K6ExecutorOpts = {
 	k6ExecutablePath: string;
+	/** How many concurrent requests to make */
+	vus: number;
+	/** Test duration, e.g. 1m or 30s */
+	duration: string;
 	k6ApiToken?: string;
 	n8nApiBaseUrl: string;
+	tags?: K6Tag[];
+	resultsWebhook?: {
+		url: string;
+		authHeader: string;
+	};
 };
 
 export type K6RunOpts = {
@@ -19,7 +31,7 @@ export type K6RunOpts = {
  * @example ['--duration', '1m']
  * @example ['--quiet']
  */
-type K6CliFlag = [string] | [string, string];
+type K6CliFlag = [string | number] | [string, string | number];
 
 /**
  * Executes test scenarios using k6
@@ -45,9 +57,13 @@ export function handleSummary(data) {
 		const augmentedTestScriptPath = this.augmentSummaryScript(scenario, scenarioRunName);
 		const runDirPath = path.dirname(augmentedTestScriptPath);
 
-		const flags: K6CliFlag[] = [['--quiet'], ['--duration', '3m'], ['--vus', '5']];
+		const flags: K6CliFlag[] = [
+			['--quiet'],
+			['--duration', this.opts.duration],
+			['--vus', this.opts.vus],
+		];
 
-		if (this.opts.k6ApiToken) {
+		if (!this.opts.resultsWebhook && this.opts.k6ApiToken) {
 			flags.push(['--out', 'cloud']);
 		}
 
@@ -55,20 +71,46 @@ export function handleSummary(data) {
 
 		const k6ExecutablePath = await this.resolveK6ExecutablePath();
 
-		const processPromise = $({
+		await $({
 			cwd: runDirPath,
 			env: {
 				API_BASE_URL: this.opts.n8nApiBaseUrl,
 				K6_CLOUD_TOKEN: this.opts.k6ApiToken,
 				SCRIPT_FILE_PATH: augmentedTestScriptPath,
 			},
+			stdio: 'inherit',
 		})`${k6ExecutablePath} run ${flattedFlags} ${augmentedTestScriptPath}`;
 
-		for await (const chunk of processPromise.stdout) {
-			console.log((chunk as Buffer).toString());
-		}
+		console.log('\n');
 
-		this.loadEndOfTestSummary(runDirPath, scenarioRunName);
+		if (this.opts.resultsWebhook) {
+			const endOfTestSummary = this.loadEndOfTestSummary(runDirPath, scenarioRunName);
+
+			const testReport = buildTestReport(scenario, endOfTestSummary, [
+				...(this.opts.tags ?? []),
+				{ name: 'Vus', value: this.opts.vus.toString() },
+				{ name: 'Duration', value: this.opts.duration.toString() },
+			]);
+
+			await this.sendTestReport(testReport);
+		}
+	}
+
+	async sendTestReport(testReport: unknown) {
+		assert(this.opts.resultsWebhook);
+
+		const response = await fetch(this.opts.resultsWebhook.url, {
+			method: 'POST',
+			body: JSON.stringify(testReport),
+			headers: {
+				Authorization: this.opts.resultsWebhook.authHeader,
+				'Content-Type': 'application/json',
+			},
+		});
+
+		if (!response.ok) {
+			console.warn(`Failed to send test summary: ${response.status} ${await response.text()}`);
+		}
 	}
 
 	/**

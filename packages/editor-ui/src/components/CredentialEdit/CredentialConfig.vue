@@ -266,7 +266,10 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			/>
 
 			<template v-if="credentialPermissions.update">
-				<n8n-notice v-if="documentationUrl && credentialProperties.length && !docs" theme="warning">
+				<n8n-notice
+					v-if="documentationUrl && credentialProperties.length && !showCredentialDocs"
+					theme="warning"
+				>
 					{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
 					<span class="ml-4xs">
 						<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
