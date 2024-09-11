@@ -321,7 +321,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	async function initCredHelp(credType: ICredentialType) {
 		const hasExistingSession = !!currentSessionId.value;
 		const credentialName = credType.displayName;
-		const question = `How do I connect to ${credentialName}?`;
+		const question = `How do I set up the credentials for ${credentialName}?`;
 
 		await initSupportChat(question);
 
