@@ -25,8 +25,10 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const uiStore = useUIStore();
 
 	const route = useRoute();
-	const { addBeforeUnloadHandler } = useBeforeUnload({ route });
+	const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings, addBeforeUnloadHandler } =
+		useBeforeUnload({ route });
 	const unloadTimeout = ref<NodeJS.Timeout | null>(null);
+
 	addBeforeUnloadHandler(() => {
 		// Notify that workflow is closed straight away
 		notifyWorkflowClosed();
@@ -72,6 +74,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 			}
 		});
 
+		addBeforeUnloadEventBindings();
 		notifyWorkflowOpened();
 		startHeartbeat();
 	}
@@ -84,6 +87,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		notifyWorkflowClosed();
 		stopHeartbeat();
 		pushStore.clearQueue();
+		removeBeforeUnloadEventBindings();
 		if (unloadTimeout.value) {
 			clearTimeout(unloadTimeout.value);
 		}
