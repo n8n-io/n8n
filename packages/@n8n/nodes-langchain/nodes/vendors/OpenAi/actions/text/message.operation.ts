@@ -175,7 +175,8 @@ const properties: INodeProperties[] = [
 				name: 'maxToolsIterations',
 				type: 'number',
 				default: 15,
-				description: 'The maximum number tools iterations the LLM will run before stopping',
+				description:
+					'The maximum number of tool iteration cycles the LLM will run before stopping. A single iteration can contain multiple tool calls. Set to 0 for no limit.',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.5 } }],
