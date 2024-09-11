@@ -68,7 +68,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new ApplicationError(
-				`Mode is not compatible. Data got originally saved with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+				'Logic is not compatible. Data got originally saved with a different logic than the one used now. Try "Clean Database" to reset the logic.',
 			);
 		}
 
@@ -128,7 +128,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new ApplicationError(
-				`Mode is not compatible. Data got originally saved with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+				'Logic is not compatible. Data got originally saved with a different logic than the one used now. Try "Clean Database" to reset the logic.',
 			);
 		}
 
