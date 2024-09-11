@@ -11,9 +11,9 @@ import type {
 	WorkflowOperationError,
 	Workflow,
 	NodeOperationError,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
