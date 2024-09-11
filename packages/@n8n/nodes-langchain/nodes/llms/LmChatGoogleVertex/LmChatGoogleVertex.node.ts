@@ -97,11 +97,13 @@ export class LmChatGoogleVertex implements INodeType {
 				const results: Array<{ name: string; value: string }> = [];
 
 				const credentials = await this.getCredentials('googleApi');
+				const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+				const email = (credentials.email as string).trim();
 
 				const client = new ProjectsClient({
 					credentials: {
-						client_email: credentials.email as string,
-						private_key: credentials.privateKey as string,
+						client_email: email,
+						private_key: privateKey,
 					},
 				});
 
@@ -123,6 +125,8 @@ export class LmChatGoogleVertex implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googleApi');
+		const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+		const email = (credentials.email as string).trim();
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -153,8 +157,8 @@ export class LmChatGoogleVertex implements INodeType {
 				authOptions: {
 					projectId,
 					credentials: {
-						client_email: credentials.email as string,
-						private_key: credentials.privateKey as string,
+						client_email: email,
+						private_key: privateKey,
 					},
 				},
 				model: modelName,
