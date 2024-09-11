@@ -31,6 +31,7 @@ import type {
 	WebhookResponseMode,
 	Workflow,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -53,7 +54,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import type { Project } from '@/databases/entities/project';
-import type { IExecutionDb, IWorkflowDb, IWorkflowExecutionDataProcess } from '@/interfaces';
+import type { IExecutionDb, IWorkflowDb } from '@/interfaces';
 
 /**
  * Returns all the webhooks which should be created for the given workflow
