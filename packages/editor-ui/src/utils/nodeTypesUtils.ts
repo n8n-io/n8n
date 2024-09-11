@@ -8,6 +8,7 @@ import type {
 	SimplifiedNodeType,
 } from '@/Interface';
 import { useDataSchema } from '@/composables/useDataSchema';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import {
 	CORE_NODES_CATEGORY,
 	MAIN_AUTH_FIELD_NAME,
@@ -33,6 +34,7 @@ import type {
 	ResourceMapperField,
 	Themed,
 } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used to get information about
@@ -549,6 +551,29 @@ export function pruneNodeProperties(node: INode, propsToRemove: string[]): INode
 	propsToRemove.forEach((key) => {
 		delete prunedNode[key as keyof INode];
 	});
+	// TODO: Rename this function, fix types and test for different node types
+	for (const key in prunedNode.parameters) {
+		const paramName = key;
+		const paramValue = node.parameters[key];
+		const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+		let resolvedExpressionValue = paramValue;
+		if (typeof paramValue === 'string' && paramValue.startsWith('=')) {
+			resolvedExpressionValue = workflowHelpers.resolveExpression(paramValue, node.parameters);
+		} else if (
+			typeof paramValue === 'object' &&
+			'value' in paramValue &&
+			typeof paramValue.value === 'string' &&
+			paramValue.value.startsWith('=')
+		) {
+			resolvedExpressionValue = workflowHelpers.resolveExpression(
+				paramValue.value,
+				node.parameters,
+			);
+		}
+		if (resolvedExpressionValue !== paramValue) {
+			node.parameters[paramName] = { value: paramValue, resolvedExpressionValue };
+		}
+	}
 	return prunedNode;
 }
 
