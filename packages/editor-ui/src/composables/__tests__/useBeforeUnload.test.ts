@@ -62,6 +62,17 @@ describe('useBeforeUnload', () => {
 		});
 	});
 
+	describe('addBeforeUnloadHandler', () => {
+		it('should add additional handlers', () => {
+			const { addBeforeUnloadHandler, onBeforeUnload } = useBeforeUnload({ route: defaultRoute });
+			const event = new Event('beforeunload');
+			const handler = vi.fn();
+			addBeforeUnloadHandler(handler);
+			onBeforeUnload(event);
+			expect(handler).toHaveBeenCalled();
+		});
+	});
+
 	describe('addBeforeUnloadEventBindings', () => {
 		it('should add beforeunload event listener', () => {
 			const { addBeforeUnloadEventBindings } = useBeforeUnload({ route: defaultRoute });

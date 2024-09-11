@@ -162,4 +162,9 @@ export class User extends WithTimestamps implements IUser {
 			return 'Unnamed Project';
 		}
 	}
+
+	toIUser(): IUser {
+		const { id, email, firstName, lastName } = this;
+		return { id, email, firstName, lastName };
+	}
 }
