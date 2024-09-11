@@ -203,6 +203,7 @@ function onDocumentationUrlClick(): void {
 
 function onAuthTypeChange(newType: string): void {
 	emit('authTypeChanged', newType);
+	assistantAlreadyAsked.value = false;
 }
 
 async function onAskAssistantClick() {
