@@ -967,6 +967,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-message-added-to-memory` event', () => {
 			const payload: RelayEventMap['ai-message-added-to-memory'] = {
+				msg: 'Test',
 				executionId: 'exec456',
 				nodeName: 'Memory',
 				workflowId: 'wf789',
@@ -984,6 +985,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-output-parsed` event', () => {
 			const payload: RelayEventMap['ai-output-parsed'] = {
+				msg: 'Test',
 				executionId: 'exec123',
 				nodeName: 'Output Parser',
 				workflowId: 'wf456',
@@ -1001,6 +1003,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-documents-retrieved` event', () => {
 			const payload: RelayEventMap['ai-documents-retrieved'] = {
+				msg: 'Test',
 				executionId: 'exec789',
 				nodeName: 'Retriever',
 				workflowId: 'wf123',
@@ -1018,6 +1021,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-document-embedded` event', () => {
 			const payload: RelayEventMap['ai-document-embedded'] = {
+				msg: 'Test',
 				executionId: 'exec456',
 				nodeName: 'Embeddings',
 				workflowId: 'wf789',
@@ -1035,6 +1039,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-query-embedded` event', () => {
 			const payload: RelayEventMap['ai-query-embedded'] = {
+				msg: 'Test',
 				executionId: 'exec123',
 				nodeName: 'Embeddings',
 				workflowId: 'wf456',
@@ -1052,6 +1057,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-document-processed` event', () => {
 			const payload: RelayEventMap['ai-document-processed'] = {
+				msg: 'Test',
 				executionId: 'exec789',
 				nodeName: 'Embeddings',
 				workflowId: 'wf789',
@@ -1069,6 +1075,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-text-split` event', () => {
 			const payload: RelayEventMap['ai-text-split'] = {
+				msg: 'Test',
 				executionId: 'exec456',
 				nodeName: 'Text Splitter',
 				workflowId: 'wf789',
@@ -1086,6 +1093,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-tool-called` event', () => {
 			const payload: RelayEventMap['ai-tool-called'] = {
+				msg: 'Test',
 				executionId: 'exec123',
 				nodeName: 'Tool',
 				workflowId: 'wf456',
@@ -1103,6 +1111,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-vector-store-searched` event', () => {
 			const payload: RelayEventMap['ai-vector-store-searched'] = {
+				msg: 'Test',
 				executionId: 'exec789',
 				nodeName: 'Vector Store',
 				workflowId: 'wf123',
@@ -1120,6 +1129,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-llm-generated-output` event', () => {
 			const payload: RelayEventMap['ai-llm-generated-output'] = {
+				msg: 'Test',
 				executionId: 'exec456',
 				nodeName: 'OpenAI',
 				workflowId: 'wf789',
@@ -1137,6 +1147,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-llm-errored` event', () => {
 			const payload: RelayEventMap['ai-llm-errored'] = {
+				msg: 'Test',
 				executionId: 'exec789',
 				nodeName: 'OpenAI',
 				workflowId: 'wf123',
@@ -1154,6 +1165,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-vector-store-populated` event', () => {
 			const payload: RelayEventMap['ai-vector-store-populated'] = {
+				msg: 'Test',
 				executionId: 'exec456',
 				nodeName: 'Vector Store',
 				workflowId: 'wf789',
@@ -1171,6 +1183,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should log on `ai-vector-store-updated` event', () => {
 			const payload: RelayEventMap['ai-vector-store-updated'] = {
+				msg: 'Test',
 				executionId: 'exec789',
 				nodeName: 'Vector Store',
 				workflowId: 'wf123',
