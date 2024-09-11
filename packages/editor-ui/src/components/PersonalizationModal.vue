@@ -81,6 +81,7 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 	MORE_ONBOARDING_OPTIONS_EXPERIMENT,
+	COMMUNITY_PLUS_ENROLLMENT_MODAL,
 } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
@@ -93,6 +94,7 @@ import { usePostHog } from '@/stores/posthog.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useI18n } from '@/composables/useI18n';
 import { useRoute, useRouter } from 'vue-router';
+import { useUIStore } from '@/stores/ui.store';
 
 const SURVEY_VERSION = 'v4';
 
@@ -107,6 +109,7 @@ const usersStore = useUsersStore();
 const posthogStore = usePostHog();
 const route = useRoute();
 const router = useRouter();
+const uiStore = useUIStore();
 
 const formValues = ref<Record<string, string>>({});
 const isSaving = ref(false);
@@ -559,14 +562,21 @@ const onSave = () => {
 
 const closeDialog = () => {
 	modalBus.emit('close');
-	const isPartOfOnboardingExperiment =
-		posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
-		MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
-	// In case the redirect to homepage for new users didn't happen
-	// we try again after closing the modal
-	if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
-		void router.replace({ name: VIEWS.HOMEPAGE });
-	}
+	uiStore.openModalWithData({
+		name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+		data: {
+			closeCallback: () => {
+				const isPartOfOnboardingExperiment =
+					posthogStore.getVariant(MORE_ONBOARDING_OPTIONS_EXPERIMENT.name) ===
+					MORE_ONBOARDING_OPTIONS_EXPERIMENT.control;
+				// In case the redirect to homepage for new users didn't happen
+				// we try again after closing the modal
+				if (route.name !== VIEWS.HOMEPAGE && !isPartOfOnboardingExperiment) {
+					void router.replace({ name: VIEWS.HOMEPAGE });
+				}
+			},
+		},
+	});
 };
 
 const onSubmit = async (values: IPersonalizationLatestVersion) => {

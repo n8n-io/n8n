@@ -19,6 +19,16 @@ import {
 	DEVOPS_AUTOMATION_GOAL_KEY,
 } from '@/constants';
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		replace: vi.fn(),
+	}),
+	useRoute: () => ({
+		location: {},
+	}),
+	RouterLink: vi.fn(),
+}));
+
 const renderModal = createComponentRenderer(PersonalizationModal, {
 	global: {
 		stubs: {
