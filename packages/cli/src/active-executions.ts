@@ -5,6 +5,7 @@ import type {
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -19,7 +20,6 @@ import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
-	IWorkflowExecutionDataProcess,
 } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';

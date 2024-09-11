@@ -2167,13 +2167,27 @@ export const eventNamesAiNodes = [
 
 export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
 
+export interface IWorkflowExecutionDataProcess {
+	destinationNode?: string;
+	restartExecutionId?: string;
+	executionMode: WorkflowExecuteMode;
+	executionData?: IRunExecutionData;
+	runData?: IRunData;
+	pinData?: IPinData;
+	retryOf?: string;
+	pushRef?: string;
+	startNodes?: StartNodeData[];
+	workflowData: IWorkflowBase;
+	userId?: string;
+	projectId?: string;
+}
+
 export interface ExecuteWorkflowOptions {
 	node?: INode;
 	parentWorkflowId: string;
 	inputData?: INodeExecutionData[];
-	parentExecutionId?: string;
 	loadedWorkflowData?: IWorkflowBase;
-	loadedRunData?: any;
+	loadedRunData?: IWorkflowExecutionDataProcess;
 	parentWorkflowSettings?: IWorkflowSettings;
 	parentCallbackManager?: CallbackManager;
 }
