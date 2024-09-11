@@ -23,8 +23,6 @@ import type { ChatRequest } from '@/types/assistant.types';
 import InlineAskAssistantButton from 'n8n-design-system/components/InlineAskAssistantButton/InlineAskAssistantButton.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	// TODO: .node can be undefined
@@ -41,9 +39,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
-const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
-const telemetry = useTelemetry();
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
@@ -123,7 +119,7 @@ const isAskAssistantAvailable = computed(() => {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
-	return assistantStore.canShowAssistantButtons && !isCustomNode;
+	return assistantStore.canShowAssistantButtonsOnCanvas && !isCustomNode;
 });
 
 const assistantAlreadyAsked = computed(() => {
@@ -411,7 +407,7 @@ function copySuccess() {
 async function onAskAssistantClick() {
 	const { message, lineNumber, description } = props.error;
 	const sessionInProgress = !assistantStore.isSessionEnded;
-	const errorPayload: ChatRequest.ErrorContext = {
+	const errorHelp: ChatRequest.ErrorContext = {
 		error: {
 			name: props.error.name,
 			message,
@@ -424,18 +420,15 @@ async function onAskAssistantClick() {
 	if (sessionInProgress) {
 		uiStore.openModalWithData({
 			name: NEW_ASSISTANT_SESSION_MODAL,
-			data: { context: errorPayload },
+			data: { context: { errorHelp } },
 		});
 		return;
 	}
-	await assistantStore.initErrorHelper(errorPayload);
-	telemetry.track('User opened assistant', {
+	await assistantStore.initErrorHelper(errorHelp);
+	assistantStore.trackUserOpenedAssistant({
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
-		workflow_id: workflowsStore.workflowId,
-		node_type: node.value.type,
-		error: props.error,
 	});
 }
 </script>

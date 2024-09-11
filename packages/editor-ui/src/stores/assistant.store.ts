@@ -16,7 +16,7 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from './settings.store';
 import { assert } from '@/utils/assert';
 import { useWorkflowsStore } from './workflows.store';
-import type { INodeParameters } from 'n8n-workflow';
+import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { ndvEventBus, codeNodeEditorEventBus } from '@/event-bus';
 import { useNDVStore } from './ndv.store';
@@ -39,7 +39,12 @@ import AiUpdatedCodeMessage from '@/components/AiUpdatedCodeMessage.vue';
 export const MAX_CHAT_WIDTH = 425;
 export const MIN_CHAT_WIDTH = 250;
 export const DEFAULT_CHAT_WIDTH = 330;
-export const ENABLED_VIEWS = [...EDITABLE_CANVAS_VIEWS, VIEWS.EXECUTION_PREVIEW];
+export const ENABLED_VIEWS = [
+	...EDITABLE_CANVAS_VIEWS,
+	VIEWS.EXECUTION_PREVIEW,
+	VIEWS.WORKFLOWS,
+	VIEWS.CREDENTIALS,
+];
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
 
 export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
@@ -65,6 +70,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			suggested: INodeParameters;
 		};
 	}>({});
+
+	const chatSessionCredType = ref<ICredentialType | undefined>();
 	const chatSessionError = ref<ChatRequest.ErrorContext | undefined>();
 	const currentSessionId = ref<string | undefined>();
 	const currentSessionActiveExecutionId = ref<string | undefined>();
@@ -74,16 +81,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	// This is used to show a message when the assistant is performing intermediate steps
 	// We use streaming for assistants that support it, and this for agents
 	const assistantThinkingMessage = ref<string | undefined>();
+	const chatSessionTask = ref<'error' | 'support' | 'credentials' | undefined>();
 
 	const isExperimentEnabled = computed(
 		() => getVariant(AI_ASSISTANT_EXPERIMENT.name) === AI_ASSISTANT_EXPERIMENT.variant,
-	);
-
-	const canShowAssistant = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			ENABLED_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const assistantMessages = computed(() =>
@@ -103,11 +104,16 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 	const isAssistantOpen = computed(() => canShowAssistant.value && chatWindowOpen.value);
 
-	const canShowAssistantButtons = computed(
-		() =>
-			isExperimentEnabled.value &&
-			settings.isAiAssistantEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
+	const isAssistantEnabled = computed(
+		() => isExperimentEnabled.value && settings.isAiAssistantEnabled,
+	);
+
+	const canShowAssistant = computed(
+		() => isAssistantEnabled.value && ENABLED_VIEWS.includes(route.name as VIEWS),
+	);
+
+	const canShowAssistantButtonsOnCanvas = computed(
+		() => isAssistantEnabled.value && EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
 
 	const unreadCount = computed(
@@ -116,10 +122,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				(msg) => READABLE_TYPES.includes(msg.type) && msg.role === 'assistant' && !msg.read,
 			).length,
 	);
-
-	const isSupportChatSessionInProgress = computed(() => {
-		return currentSessionId.value !== undefined && chatSessionError.value === undefined;
-	});
 
 	watch(route, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
@@ -141,6 +143,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		currentSessionActiveExecutionId.value = undefined;
 		suggestions.value = {};
 		nodeExecutionStatus.value = 'not_executed';
+		chatSessionCredType.value = undefined;
+		chatSessionTask.value = undefined;
+		currentSessionWorkflowId.value = workflowsStore.workflowId;
 	}
 
 	// As assistant sidebar opens and closes, use window width to calculate the container width
@@ -169,7 +174,6 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			(msg) => !(msg.id === id && msg.role === 'assistant'),
 		);
 		assistantThinkingMessage.value = undefined;
-		// TODO: simplify
 		newMessages.forEach((msg) => {
 			if (msg.type === 'message') {
 				messages.push({
@@ -235,8 +239,15 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const targetNode = context.node.name;
 
 		return (
+			chatSessionTask.value === 'error' &&
 			workflowsStore.activeExecutionId === currentSessionActiveExecutionId.value &&
 			targetNode === chatSessionError.value?.node.name
+		);
+	}
+
+	function isCredTypeActive(credType: ICredentialType) {
+		return (
+			chatSessionTask.value === 'credentials' && credType.name === chatSessionCredType.value?.name
 		);
 	}
 
@@ -286,13 +297,18 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				'Assistant session started',
 				{
 					chat_session_id: currentSessionId.value,
-					task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+					task: chatSessionTask.value,
 					node_type: chatSessionError.value?.node.type,
+					credential_type: chatSessionCredType.value?.name,
 				},
 				{ withPostHog: true },
 			);
 			// Track first user message in support chat now that we have a session id
-			if (usersMessages.value.length === 1 && isSupportChatSessionInProgress.value) {
+			if (
+				usersMessages.value.length === 1 &&
+				!currentSessionId.value &&
+				chatSessionTask.value === 'support'
+			) {
 				const firstUserMessage = usersMessages.value[0] as ChatUI.TextMessage;
 				trackUserMessage(firstUserMessage.content, false);
 			}
@@ -319,26 +335,53 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}, 4000);
 	}
 
-	async function initSupportChat(userMessage: string) {
+	async function initCredHelp(credType: ICredentialType) {
+		const hasExistingSession = !!currentSessionId.value;
+		const credentialName = credType.displayName;
+		const question = `How do I set up the credentials for ${credentialName}?`;
+
+		await initSupportChat(question, credType);
+
+		trackUserOpenedAssistant({
+			source: 'credential',
+			task: 'credentials',
+			has_existing_session: hasExistingSession,
+		});
+	}
+
+	async function initSupportChat(userMessage: string, credentialType?: ICredentialType) {
 		const id = getRandomId();
 		resetAssistantChat();
-		chatSessionError.value = undefined;
-		currentSessionActiveExecutionId.value = undefined;
-		currentSessionWorkflowId.value = workflowsStore.workflowId;
+		chatSessionTask.value = credentialType ? 'credentials' : 'support';
+		chatSessionCredType.value = credentialType;
+		chatWindowOpen.value = true;
 		addUserMessage(userMessage, id);
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.thinking'));
 		streaming.value = true;
+
+		let payload: ChatRequest.InitSupportChat | ChatRequest.InitCredHelp = {
+			role: 'user',
+			type: 'init-support-chat',
+			user: {
+				firstName: usersStore.currentUser?.firstName ?? '',
+			},
+			question: userMessage,
+		};
+		if (credentialType) {
+			payload = {
+				...payload,
+				type: 'init-cred-help',
+				credentialType: {
+					name: credentialType.name,
+					displayName: credentialType.displayName,
+				},
+			};
+		}
+
 		chatWithAssistant(
 			rootStore.restApiContext,
 			{
-				payload: {
-					role: 'user',
-					type: 'init-support-chat',
-					user: {
-						firstName: usersStore.currentUser?.firstName ?? '',
-					},
-					question: userMessage,
-				},
+				payload,
 			},
 			(msg) => onEachStreamingMessage(msg, id),
 			() => onDoneStreaming(id),
@@ -356,6 +399,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 
 		resetAssistantChat();
+		chatSessionTask.value = 'error';
 		chatSessionError.value = context;
 		currentSessionWorkflowId.value = workflowsStore.workflowId;
 
@@ -437,7 +481,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			await sendEvent('node-execution-errored', pushEvent.data.error);
 			nodeExecutionStatus.value = 'error';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: false,
 			});
@@ -448,7 +492,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			await sendEvent('node-execution-succeeded');
 			nodeExecutionStatus.value = 'success';
 			telemetry.track('User executed node after assistant suggestion', {
-				task: 'error',
+				task: chatSessionTask.value,
 				chat_session_id: currentSessionId.value,
 				success: true,
 			});
@@ -506,7 +550,36 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			is_quick_reply: isQuickReply,
 			chat_session_id: currentSessionId.value,
 			message_number: usersMessages.value.length,
-			task: isSupportChatSessionInProgress.value ? 'support' : 'error',
+			task: chatSessionTask.value,
+		});
+	}
+
+	function trackUserOpenedAssistant({
+		source,
+		task,
+		has_existing_session,
+	}: { has_existing_session: boolean } & (
+		| {
+				source: 'error';
+				task: 'error';
+		  }
+		| {
+				source: 'canvas';
+				task: 'placeholder';
+		  }
+		| {
+				source: 'credential';
+				task: 'credentials';
+		  }
+	)) {
+		telemetry.track('User opened assistant', {
+			source,
+			task,
+			has_existing_session,
+			workflow_id: workflowsStore.workflowId,
+			node_type: chatSessionError.value?.node?.type,
+			error: chatSessionError.value?.error,
+			chat_session_id: currentSessionId,
 		});
 	}
 
@@ -632,17 +705,19 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	return {
+		isAssistantEnabled,
+		canShowAssistantButtonsOnCanvas,
 		chatWidth,
 		chatMessages,
 		unreadCount,
 		streaming,
 		isAssistantOpen,
 		canShowAssistant,
-		canShowAssistantButtons,
 		currentSessionId,
 		lastUnread,
 		isSessionEnded,
 		onNodeExecution,
+		trackUserOpenedAssistant,
 		closeChat,
 		openChat,
 		updateWindowWidth,
@@ -657,6 +732,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		addAssistantMessages,
 		assistantThinkingMessage,
 		chatSessionError,
-		isSupportChatSessionInProgress,
+		chatSessionTask,
+		initCredHelp,
+		isCredTypeActive,
 	};
 });
