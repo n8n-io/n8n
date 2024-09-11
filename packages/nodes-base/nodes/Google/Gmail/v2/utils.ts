@@ -156,7 +156,7 @@ function createMessageBody(title: string, message: string, buttons: string, inst
 	`;
 }
 
-function createButton(url: string, label: string, result: 'true' | 'false', style: string) {
+function createButton(url: string, label: string, result: string, style: string) {
 	let buttonStyle = BUTTON_STYLE_PRIMARY;
 	if (style === 'secondary') {
 		buttonStyle = BUTTON_STYLE_SECONDARY;
@@ -173,16 +173,61 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	};
 }
 
-export function prepareActionRequiredEmail(context: IExecuteFunctions) {
-	const sendTo = context.getNodeParameter('sendTo', 0) as string;
+type SendAndWaitConfig = {
+	title: string;
+	message: string;
+	url: string;
+	options: Array<{ label: string; value: string; style: string }>;
+};
+
+export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitConfig {
 	const message = escapeHtml((context.getNodeParameter('message', 0, '') as string).trim());
 	const subject = escapeHtml(context.getNodeParameter('subject', 0) as string);
 	const resumeUrl = context.evaluateExpression('{{ $execution?.resumeUrl }}', 0) as string;
 	const nodeId = context.evaluateExpression('{{ $nodeId }}', 0) as string;
 	const approvalType = context.getNodeParameter('approvalType', 0) as string;
 
-	let to = '';
-	to = sendTo.trim();
+	const config: SendAndWaitConfig = {
+		title: subject,
+		message,
+		url: `${resumeUrl}/${nodeId}`,
+		options: [],
+	};
+
+	if (approvalType === 'single') {
+		const label = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
+		const style = context.getNodeParameter('buttonApprovalStyle', 0) as string;
+		config.options.push({
+			label,
+			value: 'true',
+			style,
+		});
+	}
+
+	if (approvalType === 'double') {
+		const approveLabel = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
+		const buttonApprovalStyle = context.getNodeParameter('buttonApprovalStyle', 0) as string;
+		const disapproveLabel = escapeHtml(context.getNodeParameter('disapproveLabel', 0) as string);
+		const buttonDisapprovalStyle = context.getNodeParameter('buttonDisapprovalStyle', 0) as string;
+
+		config.options.push({
+			label: disapproveLabel,
+			value: 'false',
+			style: buttonDisapprovalStyle,
+		});
+		config.options.push({
+			label: approveLabel,
+			value: 'true',
+			style: buttonApprovalStyle,
+		});
+	}
+
+	return config;
+}
+
+export function prepareActionRequiredEmail(context: IExecuteFunctions) {
+	const to = (context.getNodeParameter('sendTo', 0, '') as string).trim();
+	const config = getSendAndWaitConfig(context);
 
 	if (to.indexOf('@') === -1 || (to.match(/@/g) || []).length > 1) {
 		const description = `The email address '${to}' in the 'To' field isn't valid or contains multiple addresses. Please provide only a single email address.`;
@@ -192,45 +237,28 @@ export function prepareActionRequiredEmail(context: IExecuteFunctions) {
 		});
 	}
 
-	const url = `${resumeUrl}/${nodeId}`;
-
-	let buttons = '';
-	if (approvalType === 'single') {
-		const approveLabel = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
-		const buttonApprovalStyle = context.getNodeParameter('buttonApprovalStyle', 0) as string;
-		buttons = createButton(url, approveLabel, 'true', buttonApprovalStyle);
-	}
-
-	if (approvalType === 'double') {
-		const approveLabel = escapeHtml(context.getNodeParameter('approveLabel', 0) as string);
-		const buttonApprovalStyle = context.getNodeParameter('buttonApprovalStyle', 0) as string;
-		const disapproveLabel = escapeHtml(context.getNodeParameter('disapproveLabel', 0) as string);
-		const buttonDisapprovalStyle = context.getNodeParameter('buttonDisapprovalStyle', 0) as string;
-		buttons = `
-			${createButton(url, disapproveLabel, 'false', buttonDisapprovalStyle)}
-			${createButton(url, approveLabel, 'true', buttonApprovalStyle)}
-		`;
+	const buttons: string[] = [];
+	for (const option of config.options) {
+		buttons.push(createButton(config.url, option.label, option.value, option.style));
 	}
 
 	const instanceId = context.getInstanceId();
 
 	const email: IEmail = {
 		to,
-		subject: `n8n ACTION REQUIRED: ${subject}`,
+		subject: `n8n ACTION REQUIRED: ${config.title}`,
 		body: '',
-		htmlBody: createMessageBody(subject, message, buttons, instanceId),
+		htmlBody: createMessageBody(config.title, config.message, buttons.join('\n'), instanceId),
 	};
 
 	return email;
 }
 
-export function configreSendAndWaitOperation(
-	sendToProperties: INodeProperties | INodeProperties[],
-	resource: string,
+export function getSendAndWaitProperties(
+	targetProperties: INodeProperties[],
+	resource: string = 'message',
+	additionalProperties: INodeProperties[] = [],
 ) {
-	if (!Array.isArray(sendToProperties)) {
-		sendToProperties = [sendToProperties];
-	}
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -248,7 +276,7 @@ export function configreSendAndWaitOperation(
 		],
 	};
 	const sendAndWait: INodeProperties[] = [
-		...sendToProperties,
+		...targetProperties,
 		{
 			displayName: 'Subject',
 			name: 'subject',
@@ -282,10 +310,6 @@ export function configreSendAndWaitOperation(
 					name: 'Add Approval and Disapproval Button',
 					value: 'double',
 				},
-				// {
-				// 	name: 'Add Selection of Options',
-				// 	value: 'options',
-				// },
 			],
 		},
 		{
@@ -333,6 +357,7 @@ export function configreSendAndWaitOperation(
 				},
 			},
 		},
+		...additionalProperties,
 		{
 			displayName:
 				'Use the Wait node for more complex approval. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',

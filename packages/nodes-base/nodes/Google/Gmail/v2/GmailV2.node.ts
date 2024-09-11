@@ -34,11 +34,7 @@ import { draftFields, draftOperations } from './DraftDescription';
 
 import { threadFields, threadOperations } from './ThreadDescription';
 
-import {
-	configreSendAndWaitOperation,
-	prepareActionRequiredEmail,
-	sendAndWaitWebhook,
-} from './utils';
+import { getSendAndWaitProperties, prepareActionRequiredEmail, sendAndWaitWebhook } from './utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -141,7 +137,7 @@ const versionDescription: INodeTypeDescription = {
 		//-------------------------------
 		...messageOperations,
 		...messageFields,
-		...configreSendAndWaitOperation(
+		...getSendAndWaitProperties([
 			{
 				displayName: 'To',
 				name: 'sendTo',
@@ -150,8 +146,7 @@ const versionDescription: INodeTypeDescription = {
 				required: true,
 				placeholder: 'e.g. info@example.com',
 			},
-			'message',
-		),
+		]),
 		//-------------------------------
 		// Thread Operations
 		//-------------------------------

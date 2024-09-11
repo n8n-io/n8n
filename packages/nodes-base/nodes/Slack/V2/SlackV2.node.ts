@@ -42,7 +42,7 @@ import {
 	getMessageContent,
 	getTarget,
 } from './GenericFunctions';
-import { configreSendAndWaitOperation, sendAndWaitWebhook } from '../../Google/Gmail/v2/utils';
+import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../Google/Gmail/v2/utils';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -146,28 +146,25 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
-				...configreSendAndWaitOperation(
-					[
-						{ ...sendToSelector, default: 'user' },
-						{
-							...channelRLC,
-							displayOptions: {
-								show: {
-									select: ['channel'],
-								},
+				...getSendAndWaitProperties([
+					{ ...sendToSelector, default: 'user' },
+					{
+						...channelRLC,
+						displayOptions: {
+							show: {
+								select: ['channel'],
 							},
 						},
-						{
-							...userRLC,
-							displayOptions: {
-								show: {
-									select: ['user'],
-								},
+					},
+					{
+						...userRLC,
+						displayOptions: {
+							show: {
+								select: ['user'],
 							},
 						},
-					],
-					'message',
-				),
+					},
+				]),
 				...starOperations,
 				...starFields,
 				...fileOperations,
