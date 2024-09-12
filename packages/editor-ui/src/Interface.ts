@@ -422,14 +422,19 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
-export type PushDataUsersForWorkflow = {
+export interface Collaborator {
+	user: IUser;
+	lastSeen: string;
+}
+
+export type PushDataCollaborators = {
 	workflowId: string;
-	activeUsers: Array<{ user: IUser; lastSeen: string }>;
+	collaborators: Collaborator[];
 };
 
-type PushDataWorkflowUsersChanged = {
-	data: PushDataUsersForWorkflow;
-	type: 'activeWorkflowUsersChanged';
+type PushDataCollaboratorsChanged = {
+	data: PushDataCollaborators;
+	type: 'collaboratorsChanged';
 };
 
 export type IPushData =
@@ -446,7 +451,7 @@ export type IPushData =
 	| PushDataWorkerStatusMessage
 	| PushDataActiveWorkflowAdded
 	| PushDataActiveWorkflowRemoved
-	| PushDataWorkflowUsersChanged
+	| PushDataCollaboratorsChanged
 	| PushDataWorkflowFailedToActivate;
 
 export type PushDataActiveWorkflowAdded = {

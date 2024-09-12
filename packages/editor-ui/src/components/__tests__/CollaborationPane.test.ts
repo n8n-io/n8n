@@ -60,13 +60,10 @@ const initialState = {
 		},
 	},
 	[STORES.COLLABORATION]: {
-		usersForWorkflows: {
-			w1: [
-				{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER },
-				{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER },
-			],
-			w2: [{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER_2 }],
-		},
+		collaborators: [
+			{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER },
+			{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER },
+		],
 	},
 };
 
@@ -98,5 +95,23 @@ describe('CollaborationPane', () => {
 		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
 		// Owner is second in the store but should be rendered first
 		expect(firstAvatar).toHaveAttribute('data-test-id', `user-stack-avatar-${OWNER_USER.id}`);
+	});
+
+	it('should not render the user-stack if there is only one user', async () => {
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.COLLABORATION]: {
+						collaborators: [{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER }],
+					},
+				},
+			}),
+		});
+		await waitAllPromises();
+
+		const collaborationPane = getByTestId('collaboration-pane');
+		expect(collaborationPane).toBeInTheDocument();
+		expect(collaborationPane.querySelector('[data-test-id=user-stack-avatars]')).toBeNull();
 	});
 });
