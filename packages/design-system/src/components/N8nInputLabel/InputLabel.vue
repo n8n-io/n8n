@@ -185,10 +185,19 @@ const addTargetBlank = (html: string) =>
 }
 
 :root .tooltipPopper {
+	line-height: var(--font-line-height-compact);
 	max-width: 400px;
 
 	li {
 		margin-left: var(--spacing-s);
+	}
+
+	code {
+		color: var(--color-text-dark);
+		font-size: var(--font-size-3xs);
+		background: var(--color-background-medium);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
 	}
 }
 </style>

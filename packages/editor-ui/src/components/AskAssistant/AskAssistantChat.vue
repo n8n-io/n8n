@@ -33,7 +33,7 @@ async function onUserMessage(content: string, quickReplyType?: string, isFeedbac
 	} else {
 		await assistantStore.sendMessage({ text: content, quickReplyType });
 	}
-	const task = assistantStore.isSupportChatSessionInProgress ? 'support' : 'error';
+	const task = assistantStore.chatSessionTask;
 	const solutionCount = assistantStore.chatMessages.filter(
 		(msg) => msg.role === 'assistant' && !['text', 'event'].includes(msg.type),
 	).length;

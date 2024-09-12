@@ -265,7 +265,7 @@ describe('check()', () => {
 
 		const workflowEntity = await createWorkflow(nodes, owner);
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(ownerPersonalProject);
-		ownershipService.getProjectOwnerCached.mockResolvedValueOnce(owner);
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(owner);
 
 		await expect(
 			permissionChecker.check(workflowEntity.id, workflowEntity.nodes),
