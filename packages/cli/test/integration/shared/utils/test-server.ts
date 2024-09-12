@@ -16,6 +16,7 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import type { APIRequest } from '@/requests';
+import { Telemetry } from '@/telemetry';
 
 import { mockInstance } from '../../../shared/mocking';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -90,6 +91,7 @@ export const setupTestServer = ({
 	mockInstance(Logger);
 	mockInstance(PostHogClient);
 	mockInstance(Push);
+	mockInstance(Telemetry);
 
 	const testServer: TestServer = {
 		app,
