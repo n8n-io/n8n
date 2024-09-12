@@ -95,6 +95,7 @@ export class LmChatOpenAi implements INodeType {
 											pass: `={{
 												($parameter.options?.baseURL && !$parameter.options?.baseURL?.includes('api.openai.com')) ||
 												$responseItem.id.startsWith('ft:') ||
+												$responseItem.id.startsWith('o1') ||
 												($responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct'))
 											}}`,
 										},
