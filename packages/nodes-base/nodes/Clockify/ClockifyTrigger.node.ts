@@ -43,7 +43,7 @@ export class ClockifyTrigger implements INodeType {
 				name: 'workspaceId',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -59,6 +59,10 @@ export class ClockifyTrigger implements INodeType {
 					{
 						name: 'New Time Entry',
 						value: EntryTypeEnum.NEW_TIME_ENTRY,
+					},
+					{
+						name: 'Fetch All Time Entries',
+						value: EntryTypeEnum.FETCH_ALL_TIME_ENTRIES,
 					},
 				],
 				required: true,
@@ -105,6 +109,12 @@ export class ClockifyTrigger implements INodeType {
 		let result = null;
 
 		switch (triggerField) {
+			// TODO
+			case EntryTypeEnum.FETCH_ALL_TIME_ENTRIES:
+				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
+				qs.hydrated = true;
+				qs['in-progress'] = false;
+				break;
 			case EntryTypeEnum.NEW_TIME_ENTRY:
 			default:
 				const workflowTimezone = this.getTimezone();
@@ -117,9 +127,9 @@ export class ClockifyTrigger implements INodeType {
 		}
 
 		result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs);
-		webhookData.lastTimeChecked = qs.end;
 
 		if (Array.isArray(result) && result.length !== 0) {
+			if (triggerField === EntryTypeEnum.NEW_TIME_ENTRY) webhookData.lastTimeChecked = qs.end;
 			return [this.helpers.returnJsonArray(result)];
 		}
 		return null;
