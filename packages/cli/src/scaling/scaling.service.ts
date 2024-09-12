@@ -209,8 +209,8 @@ export class ScalingService {
 			throw error;
 		});
 
-		if (this.instanceType === 'main') {
-			this.registerMainListeners();
+		if (this.instanceType === 'main' || this.instanceType === 'webhook') {
+			this.registerMainOrWebhookListeners();
 		} else if (this.instanceType === 'worker') {
 			this.registerWorkerListeners();
 		}
@@ -246,9 +246,9 @@ export class ScalingService {
 	}
 
 	/**
-	 * Register listeners on a `main` process for Bull queue events.
+	 * Register listeners on a `main` or `webhook` process for Bull queue events.
 	 */
-	private registerMainListeners() {
+	private registerMainOrWebhookListeners() {
 		this.queue.on('global:progress', (_jobId: JobId, msg: unknown) => {
 			if (!this.isPubSubMessage(msg)) return;
 
