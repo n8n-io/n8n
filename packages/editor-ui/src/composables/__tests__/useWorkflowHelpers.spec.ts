@@ -70,6 +70,152 @@ describe('useWorkflowHelpers', () => {
 		vi.clearAllMocks();
 	});
 
+	describe('resolveNodeExpressions', () => {
+		it('should correctly detect and resolve expressions in a regular node ', () => {
+			const nodeParameters = {
+				curlImport: '',
+				method: 'GET',
+				url: '={{ $json.name }}',
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: false,
+				sendHeaders: false,
+				sendBody: false,
+				options: {},
+				infoMessage: '',
+			};
+			const workflowHelpers = useWorkflowHelpers({ router });
+			workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(nodeParameters.url).toHaveProperty('resolvedExpressionValue');
+		});
+
+		it('should correctly detect and resolve expressions in a node with assignments (set node) ', () => {
+			const nodeParameters = {
+				mode: 'manual',
+				duplicateItem: false,
+				assignments: {
+					assignments: [
+						{
+							id: '25d2d012-089b-424d-bfc6-642982a0711f',
+							name: 'date',
+							value:
+								"={{ DateTime.fromFormat('2023-12-12', 'dd/MM/yyyy').toISODate().plus({7, 'days' }) }}",
+							type: 'number',
+						},
+					],
+				},
+				includeOtherFields: false,
+				options: {},
+			};
+			const workflowHelpers = useWorkflowHelpers({ router });
+			workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(nodeParameters.assignments.assignments[0].value).toHaveProperty(
+				'resolvedExpressionValue',
+			);
+		});
+
+		it('should correctly detect and resolve expressions in a node with filter component', () => {
+			const nodeParameters = {
+				mode: 'rules',
+				rules: {
+					values: [
+						{
+							conditions: {
+								options: {
+									caseSensitive: true,
+									leftValue: '',
+									typeValidation: 'strict',
+									version: 2,
+								},
+								conditions: [
+									{
+										leftValue: "={{ $('Edit Fields 1').item.json.name }}",
+										rightValue: 12,
+										operator: {
+											type: 'number',
+											operation: 'equals',
+										},
+									},
+								],
+								combinator: 'and',
+							},
+							renameOutput: false,
+						},
+					],
+				},
+				looseTypeValidation: false,
+				options: {},
+			};
+			const workflowHelpers = useWorkflowHelpers({ router });
+			workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(nodeParameters.rules.values[0].conditions.conditions[0].leftValue).toHaveProperty(
+				'resolvedExpressionValue',
+			);
+		});
+		it('should correctly detect and resolve expressions in a node with resource locator component', () => {
+			const nodeParameters = {
+				authentication: 'oAuth2',
+				resource: 'sheet',
+				operation: 'read',
+				documentId: {
+					__rl: true,
+					value: "={{ $('Edit Fields').item.json.document }}",
+					mode: 'id',
+				},
+				sheetName: {
+					__rl: true,
+					value: "={{ $('Edit Fields').item.json.sheet }}",
+					mode: 'id',
+				},
+				filtersUI: {},
+				combineFilters: 'AND',
+				options: {},
+			};
+			const workflowHelpers = useWorkflowHelpers({ router });
+			workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(nodeParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
+			expect(nodeParameters.sheetName.value).toHaveProperty('resolvedExpressionValue');
+		});
+		it('should correctly detect and resolve expressions in a node with resource mapper component', () => {
+			const nodeParameters = {
+				authentication: 'oAuth2',
+				resource: 'sheet',
+				operation: 'read',
+				documentId: {
+					__rl: true,
+					value: '1BAjxEhlUu5tXDCMQcjqjguIZDFuct3FYkdo7flxl3yc',
+					mode: 'list',
+					cachedResultName: 'Mapping sheet',
+					cachedResultUrl:
+						'https://docs.google.com/spreadsheets/d/1BAjxEhlUu5tXDCMQcjqjguIZDFuct3FYkdo7flxl3yc/edit?usp=drivesdk',
+				},
+				sheetName: {
+					__rl: true,
+					value: 'gid=0',
+					mode: 'list',
+					cachedResultName: 'Users',
+					cachedResultUrl:
+						'https://docs.google.com/spreadsheets/d/1BAjxEhlUu5tXDCMQcjqjguIZDFuct3FYkdo7flxl3yc/edit#gid=0',
+				},
+				filtersUI: {
+					values: [
+						{
+							lookupColumn: 'First name',
+							lookupValue: "={{ $('Edit Fields 1').item.json.userName }}",
+						},
+					],
+				},
+				combineFilters: 'AND',
+				options: {},
+			};
+			const workflowHelpers = useWorkflowHelpers({ router });
+			workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(nodeParameters.filtersUI.values[0].lookupValue).toHaveProperty(
+				'resolvedExpressionValue',
+			);
+		});
+	});
+
 	describe('saveAsNewWorkflow', () => {
 		it('should respect `resetWebhookUrls: false` when duplicating workflows', async () => {
 			const workflow = getDuplicateTestWorkflow();
