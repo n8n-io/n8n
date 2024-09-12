@@ -3,23 +3,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { STORES } from '@/constants';
 import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@/__tests__/utils';
 
-const OWNER_USER = mock<IUser>({
-	id: 'owner-id',
-});
-
-const MEMBER_USER = mock<IUser>({
-	id: 'member-id',
-});
-
-const MEMBER_USER_2 = mock<IUser>({
-	id: 'member-id-2',
-});
+const OWNER_USER = mock<IUser>({ id: 'owner-id' });
+const MEMBER_USER = mock<IUser>({ id: 'member-id' });
+const MEMBER_USER_2 = mock<IUser>({ id: 'member-id-2' });
 
 const initialState = {
 	[STORES.USERS]: {
