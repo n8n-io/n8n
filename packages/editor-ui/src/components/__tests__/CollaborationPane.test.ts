@@ -89,7 +89,7 @@ describe('CollaborationPane', () => {
 		expect(queryByTestId(`user-stack-avatar-${MEMBER_USER_2.id}`)).toBeNull();
 	});
 
-	it('should always render owner first in the list', async () => {
+	it('should always render the current user first in the list', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
 		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
