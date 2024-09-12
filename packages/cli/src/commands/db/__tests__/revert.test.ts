@@ -1,10 +1,11 @@
-import { main } from '@/commands/db/revert';
-import { mockInstance } from '@test/mocking';
-import { Logger } from '@/logger';
-import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
 import type { Migration, MigrationExecutor } from '@n8n/typeorm';
 import { type DataSource } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+
+import { main } from '@/commands/db/revert';
+import type { IrreversibleMigration, ReversibleMigration } from '@/databases/types';
+import { Logger } from '@/logger';
+import { mockInstance } from '@test/mocking';
 
 const logger = mockInstance(Logger);
 

@@ -1,11 +1,12 @@
 import type express from 'express';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+
+import * as ResponseHelper from '@/response-helper';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
-import * as ResponseHelper from '@/response-helper';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 

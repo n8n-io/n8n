@@ -1,11 +1,11 @@
-import SSEChannel from 'sse-channel';
 import { Service } from 'typedi';
 
+import type { User } from '@/databases/entities/user';
 import { Logger } from '@/logger';
+import SSEChannel from 'sse-channel';
 
 import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
-import type { User } from '@/databases/entities/user';
 
 type Connection = { req: PushRequest; res: PushResponse };
 

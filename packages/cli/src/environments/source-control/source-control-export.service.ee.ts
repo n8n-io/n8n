@@ -1,18 +1,24 @@
-import Container, { Service } from 'typedi';
+import { rmSync } from 'fs';
+import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
+import { Credentials, InstanceSettings } from 'n8n-core';
+import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import path from 'path';
+import Container, { Service } from 'typedi';
+
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { Logger } from '@/logger';
+
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import { ApplicationError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
-import { rmSync } from 'fs';
-import { Credentials, InstanceSettings } from 'n8n-core';
-import type { ExportableWorkflow } from './types/exportable-workflow';
-import type { ExportableCredential } from './types/exportable-credential';
-import type { ExportResult } from './types/export-result';
 import {
 	getCredentialExportPath,
 	getVariablesPath,
@@ -20,16 +26,12 @@ import {
 	sourceControlFoldersExistCheck,
 	stringContainsExpression,
 } from './source-control-helper.ee';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import type { ExportResult } from './types/export-result';
+import type { ExportableCredential } from './types/exportable-credential';
+import type { ExportableWorkflow } from './types/exportable-workflow';
+import type { ResourceOwner } from './types/resource-owner';
 import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import type { ResourceOwner } from './types/resource-owner';
 
 @Service()
 export class SourceControlExportService {

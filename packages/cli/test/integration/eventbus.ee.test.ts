@@ -1,7 +1,4 @@
-import { Container } from 'typedi';
 import axios from 'axios';
-import syslog from 'syslog-client';
-import { v4 as uuid } from 'uuid';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -12,21 +9,24 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+import syslog from 'syslog-client';
+import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
 
 import type { User } from '@/databases/entities/user';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { EventNamesTypes } from '@/eventbus/event-message-classes';
+import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
 import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
-import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
-import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
-import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
-import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
-import { mockInstance } from '../shared/mocking';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');

@@ -1,8 +1,9 @@
-import { Service } from 'typedi';
-import { Logger } from '@/logger';
+import { GlobalConfig } from '@n8n/config';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
-import { GlobalConfig } from '@n8n/config';
+import { Service } from 'typedi';
+
+import { Logger } from '@/logger';
 
 import type { RedisClientType } from './redis.types';
 

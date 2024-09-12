@@ -1,29 +1,30 @@
 import 'reflect-metadata';
-import { Container } from 'typedi';
-import { Command, Errors } from '@oclif/core';
 import { GlobalConfig } from '@n8n/config';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { Command, Errors } from '@oclif/core';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { Container } from 'typedi';
+
 import type { AbstractServer } from '@/abstract-server';
-import { Logger } from '@/logger';
 import config from '@/config';
-import * as Db from '@/db';
-import * as CrashJournal from '@/crash-journal';
 import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
-import { initErrorHandling } from '@/error-reporting';
-import { ExternalHooks } from '@/external-hooks';
-import { NodeTypes } from '@/node-types';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { N8nInstanceType } from '@/interfaces';
-import { PostHogClient } from '@/posthog';
-import { License } from '@/license';
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { initExpressionEvaluator } from '@/expression-evaluator';
+import * as CrashJournal from '@/crash-journal';
 import { generateHostInstanceId } from '@/databases/utils/generators';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import * as Db from '@/db';
+import { initErrorHandling } from '@/error-reporting';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
+import { initExpressionEvaluator } from '@/expression-evaluator';
+import { ExternalHooks } from '@/external-hooks';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import type { N8nInstanceType } from '@/interfaces';
+import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Logger } from '@/logger';
+import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
+import { ShutdownService } from '@/shutdown/shutdown.service';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);

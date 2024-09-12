@@ -1,5 +1,6 @@
-import { NoUrl } from '../no-url.validator';
 import { validate } from 'class-validator';
+
+import { NoUrl } from '../no-url.validator';
 
 describe('NoUrl', () => {
 	class Entity {

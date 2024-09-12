@@ -1,12 +1,14 @@
-import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
-import { SecretsProvider } from '@/interfaces';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { Container } from 'typedi';
+
+import type { SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
+import { SecretsProvider } from '@/interfaces';
 import { Logger } from '@/logger';
+
 import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 import { preferGet } from '../external-secrets-helper.ee';
-import { Container } from 'typedi';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 

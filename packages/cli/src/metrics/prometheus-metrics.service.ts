@@ -1,18 +1,19 @@
-import { N8N_VERSION } from '@/constants';
+import { GlobalConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
+import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 
-import { CacheService } from '@/services/cache/cache.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventMessageTypeNames } from 'n8n-workflow';
-import type { EventMessageTypes } from '@/eventbus';
-import type { Includes, MetricCategory, MetricLabel } from './types';
-import { GlobalConfig } from '@n8n/config';
-import { EventService } from '@/events/event.service';
 import config from '@/config';
+import { N8N_VERSION } from '@/constants';
+import type { EventMessageTypes } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
+
+import type { Includes, MetricCategory, MetricLabel } from './types';
 
 @Service()
 export class PrometheusMetricsService {

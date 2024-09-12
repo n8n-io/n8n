@@ -1,9 +1,10 @@
 import { assert, jsonStringify } from 'n8n-workflow';
+
+import type { User } from '@/databases/entities/user';
 import type { IPushDataType } from '@/interfaces';
 import type { Logger } from '@/logger';
-import type { User } from '@/databases/entities/user';
-import { TypedEmitter } from '@/typed-emitter';
 import type { OnPushMessage } from '@/push/types';
+import { TypedEmitter } from '@/typed-emitter';
 
 export interface AbstractPushEvents {
 	message: OnPushMessage;

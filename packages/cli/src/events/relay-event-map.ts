@@ -5,10 +5,12 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/interfaces';
+
+import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole } from '@/databases/entities/user';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import type { IWorkflowDb } from '@/interfaces';
+
 import type { AiEventMap } from './ai-event-map';
 
 export type UserLike = {

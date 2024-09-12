@@ -1,33 +1,33 @@
 import { plainToInstance } from 'class-transformer';
 
 import { AuthService } from '@/auth/auth.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { AuthIdentity } from '@/databases/entities/auth-identity';
+import { Project } from '@/databases/entities/project';
 import { User } from '@/databases/entities/user';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { PublicUser } from '@/interfaces';
+import { Logger } from '@/logger';
+import { listQueryMiddleware } from '@/middlewares';
 import {
 	ListQuery,
 	UserRequest,
 	UserRoleChangePayload,
 	UserSettingsUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/interfaces';
-import { AuthIdentity } from '@/databases/entities/auth-identity';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { UserService } from '@/services/user.service';
-import { listQueryMiddleware } from '@/middlewares';
-import { Logger } from '@/logger';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ExternalHooks } from '@/external-hooks';
-import { validateEntity } from '@/generic-helpers';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { Project } from '@/databases/entities/project';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service';
-import { EventService } from '@/events/event.service';
+import { UserService } from '@/services/user.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @RestController('/users')
 export class UsersController {

@@ -1,6 +1,8 @@
 import { Service } from 'typedi';
-import { OrchestrationService } from '../../orchestration.service';
+
 import config from '@/config';
+
+import { OrchestrationService } from '../../orchestration.service';
 
 @Service()
 export class OrchestrationWorkerService extends OrchestrationService {

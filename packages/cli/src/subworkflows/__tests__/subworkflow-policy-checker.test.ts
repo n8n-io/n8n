@@ -1,21 +1,22 @@
-import { v4 as uuid } from 'uuid';
-import type { INode, Workflow } from 'n8n-workflow';
-import type { Project } from '@/databases/entities/project';
-import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '@test/mocking';
-import { mock } from 'jest-mock-extended';
-import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
-
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import type { License } from '@/license';
 import type { GlobalConfig } from '@n8n/config';
-import type { AccessService } from '@/services/access.service';
+import { mock } from 'jest-mock-extended';
+import type { INode, Workflow } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+
+import type { Project } from '@/databases/entities/project';
 import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import {
 	SUBWORKFLOW_DENIAL_BASE_DESCRIPTION,
 	SubworkflowPolicyDenialError,
 } from '@/errors/subworkflow-policy-denial.error';
+import type { License } from '@/license';
+import type { AccessService } from '@/services/access.service';
+import { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@/services/url.service';
+import { mockInstance } from '@test/mocking';
+
+import { SubworkflowPolicyChecker } from '../subworkflow-policy-checker.service';
 
 describe('SubworkflowPolicyChecker', () => {
 	const ownershipService = mockInstance(OwnershipService);

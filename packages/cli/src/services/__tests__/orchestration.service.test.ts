@@ -1,23 +1,24 @@
-import Container from 'typedi';
 import type Redis from 'ioredis';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { WorkflowActivateMode } from 'n8n-workflow';
+import Container from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
-import { OrchestrationService } from '@/services/orchestration.service';
-import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { RedisService } from '@/services/redis.service';
-import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
-import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
-import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
-import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { Push } from '@/push';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { mockInstance } from '@test/mocking';
+import * as helpers from '@/services/orchestration/helpers';
+import { handleCommandMessageMain } from '@/services/orchestration/main/handle-command-message-main';
+import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handle-worker-response-message-main';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import type { RedisServiceWorkerResponseObject } from '@/services/redis/redis-service-commands';
+import { RedisService } from '@/services/redis.service';
+import { mockInstance } from '@test/mocking';
+
 import type { MainResponseReceivedHandlerOptions } from '../orchestration/main/types';
 
 const instanceSettings = Container.get(InstanceSettings);

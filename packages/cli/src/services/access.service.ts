@@ -1,8 +1,9 @@
+import type { Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
+
+import type { User } from '@/databases/entities/user';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { User } from '@/databases/entities/user';
-import type { Workflow } from 'n8n-workflow';
 
 /**
  * Responsible for checking whether a user has access to a resource.

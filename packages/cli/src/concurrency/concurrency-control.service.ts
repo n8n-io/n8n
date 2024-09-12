@@ -1,14 +1,16 @@
-import { Logger } from '@/logger';
-import config from '@/config';
-import { Service } from 'typedi';
-import { ConcurrencyQueue } from './concurrency-queue';
-import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
-import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
-import type { IExecutingWorkflowData } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { InvalidConcurrencyLimitError } from '@/errors/invalid-concurrency-limit.error';
+import { UnknownExecutionModeError } from '@/errors/unknown-execution-mode.error';
 import { EventService } from '@/events/event.service';
+import type { IExecutingWorkflowData } from '@/interfaces';
+import { Logger } from '@/logger';
+import { Telemetry } from '@/telemetry';
+
+import { ConcurrencyQueue } from './concurrency-queue';
 
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];

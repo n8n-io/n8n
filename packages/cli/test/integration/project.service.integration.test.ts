@@ -1,10 +1,12 @@
 import Container from 'typedi';
-import { ProjectService } from '@/services/project.service';
-import * as testDb from './shared/test-db';
+
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { ProjectService } from '@/services/project.service';
+
+import { linkUserToProject, createTeamProject } from './shared/db/projects';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { linkUserToProject, createTeamProject } from './shared/db/projects';
+import * as testDb from './shared/test-db';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
