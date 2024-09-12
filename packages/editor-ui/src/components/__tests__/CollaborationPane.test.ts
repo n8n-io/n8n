@@ -1,4 +1,3 @@
-import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
@@ -43,20 +42,18 @@ const MEMBER_USER_2 = {
 };
 
 const initialState = {
-	[STORES.SETTINGS]: {
-		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
-	},
+	[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 	[STORES.WORKFLOWS]: {
 		workflow: {
 			id: 'w1',
 		},
 	},
 	[STORES.USERS]: {
-		currentUserId: 'aaaaaa',
-		users: {
-			aaaaaa: OWNER_USER,
-			aaabbb: MEMBER_USER,
-			aaaccc: MEMBER_USER_2,
+		currentUserId: OWNER_USER.id,
+		usersById: {
+			[OWNER_USER.id]: OWNER_USER,
+			[MEMBER_USER.id]: MEMBER_USER,
+			[MEMBER_USER_2.id]: MEMBER_USER_2,
 		},
 	},
 	[STORES.COLLABORATION]: {
@@ -92,6 +89,7 @@ describe('CollaborationPane', () => {
 	it('should always render the current user first in the list', async () => {
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
+
 		const firstAvatar = getByTestId('user-stack-avatars').querySelector('.n8n-avatar');
 		// Owner is second in the store but should be rendered first
 		expect(firstAvatar).toHaveAttribute('data-test-id', `user-stack-avatar-${OWNER_USER.id}`);

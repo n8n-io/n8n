@@ -22,6 +22,7 @@ const showUserStack = computed(() => collaborationStore.collaborators.length > 1
 const collaboratorsSorted = computed(() => {
 	const users = collaborationStore.collaborators.map(({ user }) => user);
 	const index = users.findIndex((user) => user.id === usersStore.currentUser?.id);
+	if (index === -1) return { defaultGroup: users };
 	const [currentUser] = users.splice(index, 1);
 	return { defaultGroup: [currentUser, ...users] };
 });
