@@ -8,7 +8,6 @@ import {
 } from '@/constants';
 
 import type {
-	GenericValue,
 	IConnections,
 	IDataObject,
 	IExecuteData,
@@ -70,7 +69,6 @@ import { useTagsStore } from '@/stores/tags.store';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import type { NavigationGuardNext } from 'vue-router';
-import { ResolvedNodeParameters } from '@/types/assistant.types';
 
 type ResolveParameterOptions = {
 	targetItem?: TargetItem;
