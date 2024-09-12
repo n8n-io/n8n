@@ -30,8 +30,8 @@ async function main() {
 		argv.resultWebhookAuthHeader || process.env.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER || undefined;
 	const baseRunDir = argv.runDir || process.env.RUN_DIR || '/n8n';
 	const n8nLicenseCert = argv.n8nLicenseCert || process.env.N8N_LICENSE_CERT || undefined;
-	const n8nLicenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY || '';
-	const n8nLicenseTenantId = argv.n8nLicenseTenantId || process.env.N8N_LICENSE_TENANT_ID || '';
+	const n8nLicenseActivationKey = process.env.N8N_LICENSE_ACTIVATION_KEY || undefined;
+	const n8nLicenseTenantId = argv.n8nLicenseTenantId || process.env.N8N_LICENSE_TENANT_ID || '1';
 	const envTag = argv.env || 'local';
 	const vus = argv.vus;
 	const duration = argv.duration;
