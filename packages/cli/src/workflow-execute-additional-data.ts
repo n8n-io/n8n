@@ -23,7 +23,8 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
-	CallbackManager,
+	ExecuteWorkflowOptions,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -41,7 +42,6 @@ import { ExternalHooks } from '@/external-hooks';
 import type {
 	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	IPushDataType,
 	ExecutionPayload,
@@ -713,13 +713,11 @@ export async function getRunData(
 		},
 	};
 
-	const runData: IWorkflowExecutionDataProcess = {
+	return {
 		executionMode: mode,
 		executionData: runExecutionData,
 		workflowData,
 	};
-
-	return runData;
 }
 
 export async function getWorkflowData(
@@ -768,16 +766,7 @@ export async function getWorkflowData(
 async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	options: {
-		node?: INode;
-		parentWorkflowId: string;
-		inputData?: INodeExecutionData[];
-		parentExecutionId?: string;
-		loadedWorkflowData?: IWorkflowBase;
-		loadedRunData?: IWorkflowExecutionDataProcess;
-		parentWorkflowSettings?: IWorkflowSettings;
-		parentCallbackManager?: CallbackManager;
-	},
+	options: ExecuteWorkflowOptions,
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
@@ -785,6 +774,7 @@ async function executeWorkflow(
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
 	const eventService = Container.get(EventService);
+	const executionRepository = Container.get(ExecutionRepository);
 
 	const workflowData =
 		options.loadedWorkflowData ??
@@ -804,13 +794,8 @@ async function executeWorkflow(
 
 	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
-	let executionId;
-
-	if (options.parentExecutionId !== undefined) {
-		executionId = options.parentExecutionId;
-	} else {
-		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
-	}
+	const executionId = await activeExecutions.add(runData);
+	await executionRepository.updateStatus(executionId, 'running');
 
 	Container.get(EventService).emit('workflow-pre-execute', { executionId, data: runData });
 
@@ -821,6 +806,7 @@ async function executeWorkflow(
 			workflow,
 			options.parentWorkflowId,
 			options.node,
+			additionalData.userId,
 		);
 
 		// Create new additionalData to have different workflow loaded and to call
@@ -861,14 +847,6 @@ async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (options.parentExecutionId !== undefined) {
-			// Must be changed to become typed
-			return {
-				startedAt: new Date(),
-				workflow,
-				workflowExecute,
-			};
-		}
 		const execution = workflowExecute.processRunExecutionData(workflow);
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
@@ -908,10 +886,7 @@ async function executeWorkflow(
 		// remove execution from active executions
 		activeExecutions.remove(executionId, fullRunData);
 
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
+		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
 		throw objectToError(
 			{
 				...executionError,

@@ -9,6 +9,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
@@ -21,12 +22,7 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-import type {
-	ExecutionPayload,
-	IWorkflowDb,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/interfaces';
+import type { ExecutionPayload, IWorkflowDb, IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
