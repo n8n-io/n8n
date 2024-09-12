@@ -1,11 +1,12 @@
-import config from '@/config';
-import { Service } from 'typedi';
-import { TIME } from '@/constants';
 import { InstanceSettings } from 'n8n-core';
 import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { TIME } from '@/constants';
 import { Logger } from '@/logger';
-import { RedisServicePubSubPublisher } from '@/services/redis/redis-service-pub-sub-publisher';
 import { RedisClientService } from '@/services/redis/redis-client.service';
+import { RedisServicePubSubPublisher } from '@/services/redis/redis-service-pub-sub-publisher';
 import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {

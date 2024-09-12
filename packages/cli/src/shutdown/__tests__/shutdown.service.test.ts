@@ -1,8 +1,9 @@
-import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import Container from 'typedi';
+
 import type { ServiceClass } from '@/shutdown/shutdown.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import Container from 'typedi';
 
 class MockComponent {
 	onShutdown() {}

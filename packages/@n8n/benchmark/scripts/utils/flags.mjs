@@ -10,5 +10,11 @@
 export function flagsObjectToCliArgs(flags) {
 	return Object.entries(flags)
 		.filter(([, value]) => value !== undefined)
-		.map(([key, value]) => `--${key}=${value}`);
+		.map(([key, value]) => {
+			if (typeof value === 'string' && value.includes(' ')) {
+				return `--${key}="${value}"`;
+			} else {
+				return `--${key}=${value}`;
+			}
+		});
 }

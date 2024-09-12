@@ -1,12 +1,16 @@
-import { ActiveExecutions } from '@/active-executions';
+import { mock } from 'jest-mock-extended';
+import type {
+	IExecuteResponsePromiseData,
+	IRun,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
-import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { mock } from 'jest-mock-extended';
+
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { mockInstance } from '@test/mocking';
 
 const FAKE_EXECUTION_ID = '15';

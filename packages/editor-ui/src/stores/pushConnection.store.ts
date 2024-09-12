@@ -150,6 +150,10 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
+	const clearQueue = () => {
+		outgoingQueue.value = [];
+	};
+
 	return {
 		pushRef,
 		pushSource,
@@ -159,5 +163,6 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		pushConnect,
 		pushDisconnect,
 		send,
+		clearQueue,
 	};
 });

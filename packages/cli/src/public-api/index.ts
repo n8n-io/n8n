@@ -1,21 +1,20 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { Router } from 'express';
 import express from 'express';
+import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
+import type { OpenAPIV3 } from 'openapi-types';
 import path from 'path';
-
+import type { JsonObject } from 'swagger-ui-express';
+import { Container } from 'typedi';
 import validator from 'validator';
 import YAML from 'yamljs';
-import type { HttpError } from 'express-openapi-validator/dist/framework/types';
-import type { OpenAPIV3 } from 'openapi-types';
-import type { JsonObject } from 'swagger-ui-express';
 
-import { License } from '@/license';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { UrlService } from '@/services/url.service';
-import type { AuthenticatedRequest } from '@/requests';
-import { GlobalConfig } from '@n8n/config';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import type { AuthenticatedRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
 
 async function createApiRouter(
 	version: string,

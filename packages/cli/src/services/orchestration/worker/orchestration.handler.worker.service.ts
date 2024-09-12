@@ -1,7 +1,8 @@
 import { Service } from 'typedi';
-import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+
 import { getWorkerCommandReceivedHandler } from './handle-command-message-worker';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
 
 @Service()
 export class OrchestrationHandlerWorkerService extends OrchestrationHandlerService {

@@ -1,13 +1,15 @@
+import { Service } from 'typedi';
+
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import type { WorkflowHistory } from '@/databases/entities/workflow-history';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { Service } from 'typedi';
-import { isWorkflowHistoryEnabled } from './workflow-history-helper.ee';
-import { Logger } from '@/logger';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
+import { Logger } from '@/logger';
+
+import { isWorkflowHistoryEnabled } from './workflow-history-helper.ee';
 
 @Service()
 export class WorkflowHistoryService {

@@ -1,4 +1,6 @@
+import type { Scope } from '@n8n/permissions';
 import type { Application } from 'express';
+import type { WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -7,9 +9,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IPinData,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITelemetryTrackProperties,
@@ -22,15 +22,12 @@ import type {
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
-	StartNodeData,
+	IWorkflowExecutionDataProcess,
+	IUser,
 } from 'n8n-workflow';
-
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-
-import type { WorkflowExecute } from 'n8n-core';
-
 import type PCancelable from 'p-cancelable';
 
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import type { SharedCredentials } from '@/databases/entities/shared-credentials';
@@ -40,11 +37,11 @@ import type { CredentialsRepository } from '@/databases/repositories/credentials
 import type { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
 import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExternalHooks } from './external-hooks';
+
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
-import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
+import type { ExternalHooks } from './external-hooks';
 import type { RunningJobSummary } from './scaling/scaling.types';
-import type { Scope } from '@n8n/permissions';
+import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -291,11 +288,11 @@ export type IPushData =
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
 	| PushDataWorkflowFailedToActivate
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataCollaboratorsChanged;
 
-type PushDataActiveWorkflowUsersChanged = {
-	data: IActiveWorkflowUsersChanged;
-	type: 'activeWorkflowUsersChanged';
+type PushDataCollaboratorsChanged = {
+	data: ICollaboratorsChanged;
+	type: 'collaboratorsChanged';
 };
 
 type PushDataWorkflowFailedToActivate = {
@@ -371,14 +368,14 @@ export type PushDataNodeDescriptionUpdated = {
 /** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
 export type Iso8601DateTimeString = string;
 
-export interface IActiveWorkflowUser {
-	user: PublicUser;
+export interface ICollaborator {
+	user: IUser;
 	lastSeen: Iso8601DateTimeString;
 }
 
-export interface IActiveWorkflowUsersChanged {
+export interface ICollaboratorsChanged {
 	workflowId: Workflow['id'];
-	activeUsers: IActiveWorkflowUser[];
+	collaborators: ICollaborator[];
 }
 
 export interface IActiveWorkflowAdded {
@@ -493,21 +490,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
-	restartExecutionId?: string;
-	executionMode: WorkflowExecuteMode;
-	executionData?: IRunExecutionData;
-	runData?: IRunData;
-	pinData?: IPinData;
-	retryOf?: string;
-	pushRef?: string;
-	startNodes?: StartNodeData[];
-	workflowData: IWorkflowBase;
-	userId?: string;
-	projectId?: string;
 }
 
 export interface IWorkflowExecuteProcess {

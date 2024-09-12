@@ -1,7 +1,8 @@
 import { mock } from 'jest-mock-extended';
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+
 import type { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
+import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 describe('LicenseMetricsService', () => {
 	const workflowRepository = mock<WorkflowRepository>();

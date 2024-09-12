@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.58.0",
+  "version": "1.59.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -112,7 +112,7 @@
     "csrf": "3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "8.6.0",
-    "express": "4.19.2",
+    "express": "4.21.0",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
     "express-openapi-validator": "5.3.3",

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
+import { Agent as HTTPSAgent } from 'https';
 import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
@@ -11,12 +11,14 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+import Container from 'typedi';
+
 import { CredentialsHelper } from '@/credentials-helper';
-import { Agent as HTTPSAgent } from 'https';
+import * as SecretsHelpers from '@/external-secrets/external-secrets-helper.ee';
+
+import { MessageEventBusDestination } from './message-event-bus-destination.ee';
 import { eventMessageGenericDestinationTestEvent } from '../event-message-classes/event-message-generic';
 import type { MessageEventBus, MessageWithCallback } from '../message-event-bus/message-event-bus';
-import * as SecretsHelpers from '@/external-secrets/external-secrets-helper.ee';
-import Container from 'typedi';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,

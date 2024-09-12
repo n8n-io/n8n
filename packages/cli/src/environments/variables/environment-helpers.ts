@@ -1,4 +1,5 @@
 import { Container } from 'typedi';
+
 import { License } from '@/license';
 
 export function isVariablesEnabled(): boolean {

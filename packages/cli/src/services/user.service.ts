@@ -1,17 +1,17 @@
-import { Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import type { User, AssignableRole } from '@/databases/entities/user';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { Invitation, PublicUser } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
-import { Logger } from '@/logger';
-import { UserManagementMailer } from '@/user-management/email';
-import { UrlService } from '@/services/url.service';
-import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
+import type { Invitation, PublicUser } from '@/interfaces';
+import { Logger } from '@/logger';
+import type { PostHogClient } from '@/posthog';
+import type { UserRequest } from '@/requests';
+import { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 @Service()
 export class UserService {
