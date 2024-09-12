@@ -8,7 +8,7 @@
  */
 // @ts-check
 import { $, minimist } from 'zx';
-import { TerraformClient } from './clients/terraformClient.mjs';
+import { TerraformClient } from './clients/terraform-client.mjs';
 
 const RESOURCE_GROUP_NAME = 'n8n-benchmarking';
 

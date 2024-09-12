@@ -11,8 +11,8 @@
 // @ts-check
 import { sleep, which, $, tmpdir } from 'zx';
 import path from 'path';
-import { SshClient } from './clients/sshClient.mjs';
-import { TerraformClient } from './clients/terraformClient.mjs';
+import { SshClient } from './clients/ssh-client.mjs';
+import { TerraformClient } from './clients/terraform-client.mjs';
 import { flagsObjectToCliArgs } from './utils/flags.mjs';
 
 /**
@@ -96,7 +96,7 @@ async function runBenchmarksOnVm(config, benchmarkEnv) {
  */
 async function runBenchmarkForN8nSetup({ config, sshClient, scriptsDir, n8nSetup }) {
 	console.log(`Running benchmarks for ${n8nSetup}...`);
-	const runScriptPath = path.join(scriptsDir, 'runForN8nSetup.mjs');
+	const runScriptPath = path.join(scriptsDir, 'run-for-n8n-setup.mjs');
 
 	const cliArgs = flagsObjectToCliArgs({
 		n8nDockerTag: config.n8nTag,
