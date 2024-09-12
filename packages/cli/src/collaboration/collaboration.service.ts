@@ -7,9 +7,9 @@ import type { ICollaboratorsChanged } from '@/interfaces';
 import type { OnPushMessage } from '@/push/types';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { User } from '@/databases/entities/user';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { CollaborationState } from '@/collaboration/collaboration.state';
+import { AccessService } from '@/services/access.service';
 
-import { CollaborationState } from './collaboration.state';
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';
 import { parseWorkflowMessage } from './collaboration.message';
 
@@ -23,7 +23,7 @@ export class CollaborationService {
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userRepository: UserRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly accessService: AccessService,
 	) {}
 
 	init() {
@@ -57,7 +57,7 @@ export class CollaborationService {
 	private async handleWorkflowOpened(userId: User['id'], msg: WorkflowOpenedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.hasUserAccessToWorkflow(userId, workflowId))) {
+		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
 			return;
 		}
 
@@ -69,7 +69,7 @@ export class CollaborationService {
 	private async handleWorkflowClosed(userId: User['id'], msg: WorkflowClosedMessage) {
 		const { workflowId } = msg;
 
-		if (!(await this.hasUserAccessToWorkflow(userId, workflowId))) {
+		if (!(await this.accessService.hasReadAccess(userId, workflowId))) {
 			return;
 		}
 
@@ -98,20 +98,5 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers('collaboratorsChanged', msgData, userIds);
-	}
-
-	private async hasUserAccessToWorkflow(userId: User['id'], workflowId: Workflow['id']) {
-		const user = await this.userRepository.findOneBy({
-			id: userId,
-		});
-		if (!user) {
-			return false;
-		}
-
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
-
-		return !!workflow;
 	}
 }
