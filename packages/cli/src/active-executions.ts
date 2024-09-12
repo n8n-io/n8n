@@ -252,7 +252,7 @@ export class ActiveExecutions {
 				await this.concurrencyControl.removeAll(this.activeExecutions);
 			}
 
-			executionIds.forEach((executionId) => this.stopExecution(executionId));
+			executionIds.forEach((executionId) => this.cancelExecution(executionId));
 		}
 
 		let count = 0;
