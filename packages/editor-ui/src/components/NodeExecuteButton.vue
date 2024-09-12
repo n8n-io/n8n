@@ -49,6 +49,10 @@ const emit = defineEmits<{
 	execute: [];
 }>();
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const lastPopupCountUpdate = ref(0);
 
 const router = useRouter();
