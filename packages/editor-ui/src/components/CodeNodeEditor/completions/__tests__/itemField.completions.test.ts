@@ -9,13 +9,13 @@ describe('inputMethodCompletions', () => {
 			from: 0,
 			options: [
 				{
-					info: 'Returns the JSON input data to the current node, for the current item. Shorthand for <code>$input.item.json</code>.',
+					info: expect.any(Function),
 					label: '$input.item.json',
 					type: 'variable',
 				},
 
 				{
-					info: 'Returns any binary input data to the current node, for the current item. Shorthand for <code>$input.item.binary</code>.',
+					info: expect.any(Function),
 					label: '$input.item.binary',
 					type: 'variable',
 				},
@@ -29,13 +29,13 @@ describe('inputMethodCompletions', () => {
 			from: 0,
 			options: [
 				{
-					info: 'Returns the JSON input data to the current node, for the current item. Shorthand for <code>$input.item.json</code>.',
+					info: expect.any(Function),
 					label: '$input.first().json',
 					type: 'variable',
 				},
 
 				{
-					info: 'Returns any binary input data to the current node, for the current item. Shorthand for <code>$input.item.binary</code>.',
+					info: expect.any(Function),
 					label: '$input.first().binary',
 					type: 'variable',
 				},
@@ -49,13 +49,13 @@ describe('inputMethodCompletions', () => {
 			from: 0,
 			options: [
 				{
-					info: 'Returns the JSON input data to thqe current node, for the current item. Shorthand for <code>$input.item.json</code>.',
+					info: expect.any(Function),
 					label: '$input.all()[1].json',
 					type: 'variable',
 				},
 
 				{
-					info: 'Returns any binary input data to the current node, for the current item. Shorthand for <code>$input.item.binary</code>.',
+					info: expect.any(Function),
 					label: '$input.all()[1].binary',
 					type: 'variable',
 				},
