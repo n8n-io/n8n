@@ -8,6 +8,7 @@ import { NodeTypes } from '@/node-types';
 import * as testDb from '../shared/test-db';
 import { mockInstance } from '@test/mocking';
 import { getProcessedDataManagers } from '../../../src/processed-data-managers';
+import { createWorkflow } from '@test-integration/db/workflows';
 
 let workflow: Workflow;
 
@@ -71,9 +72,10 @@ beforeAll(async () => {
 	};
 
 	const nodeTypes = mockInstance(NodeTypes);
+	const workflowEntityOriginal = await createWorkflow();
 
 	workflow = new Workflow({
-		id: '1',
+		id: workflowEntityOriginal.id,
 		nodes: [node],
 		connections: {},
 		active: false,
@@ -266,7 +268,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 		expect(processedData).toEqual({ new: ['0', '1', '7'], processed: ['2', '3', '4', '5', '6'] });
 	});
 
-	describe('ProcessedData (mode: latest): NativeDatabase should record and check data correctly', () => {
+	describe('ProcessedData (mode: latestIncrementalKey): NativeDatabase should record and check data correctly', () => {
 		const tests: Array<{
 			description: string;
 			data: Array<{
@@ -348,36 +350,6 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 				],
 			},
 			{
-				description: 'letters',
-				data: [
-					{
-						operation: 'checkProcessed',
-						input: ['b', 'c'],
-						output: { new: ['b', 'c'], processed: [] },
-					},
-					{
-						operation: 'checkProcessedAndRecord',
-						input: ['b', 'c'],
-						output: { new: ['b', 'c'], processed: [] },
-					},
-					{
-						operation: 'checkProcessed',
-						input: ['b', 'c', 'd'],
-						output: { new: ['d'], processed: ['b', 'c'] },
-					},
-					{
-						operation: 'checkProcessedAndRecord',
-						input: ['b', 'c', 'd', 'e'],
-						output: { new: ['d', 'e'], processed: ['b', 'c'] },
-					},
-					{
-						operation: 'checkProcessed',
-						input: ['a', 'b', 'c', 'd', 'f', 'g'],
-						output: { new: ['f', 'g'], processed: ['a', 'b', 'c', 'd'] },
-					},
-				],
-			},
-			{
 				description: 'numbers',
 				data: [
 					{
@@ -416,6 +388,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 					workflow,
 					node,
 				};
+				const mode = testData.description === 'dates' ? 'latestDate' : 'latestIncrementalKey';
 
 				let processedData: ICheckProcessedOutput;
 
@@ -424,7 +397,7 @@ describe('ProcessedDataManagers.NativeDatabase', () => {
 						data.input,
 						context,
 						contextData,
-						{ mode: 'latest' },
+						{ mode },
 					);
 
 					expect(processedData).toEqual(data.output);

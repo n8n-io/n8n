@@ -767,7 +767,7 @@ export interface BinaryHelperFunctions {
 
 export type ProcessedDataContext = 'node' | 'workflow';
 export type ProcessedDataItemTypes = string | number;
-export type ProcessedDataMode = 'entries' | 'latest';
+export type ProcessedDataMode = 'entries' | 'latestIncrementalKey' | 'latestDate';
 
 export interface ICheckProcessedOutput {
 	new: ProcessedDataItemTypes[];

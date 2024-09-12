@@ -6,6 +6,7 @@ import type {
 	ICheckProcessedOutput,
 	ProcessedDataContext,
 	ProcessedDataItemTypes,
+	ProcessedDataMode,
 } from 'n8n-workflow';
 import { createHash } from 'crypto';
 
@@ -19,10 +20,35 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 	}
 
 	private static compareValues(
+		mode: ProcessedDataMode,
 		value1: ProcessedDataItemTypes,
 		value2: ProcessedDataItemTypes,
 	): boolean {
-		return value1 > value2;
+		if (mode === 'latestIncrementalKey') {
+			const num1 = Number(value1);
+			const num2 = Number(value2);
+			if (!isNaN(num1) && !isNaN(num2)) {
+				return num1 > num2;
+			}
+			throw new ApplicationError(
+				'Invalid value. Only numbers are supported in mode "latestIncrementalKey"',
+			);
+		} else if (mode === 'latestDate') {
+			const date1 = new Date(value1 as string);
+			const date2 = new Date(value2 as string);
+
+			if (!isNaN(date1.getTime()) && !isNaN(date2.getTime())) {
+				return date1 > date2;
+			} else {
+				throw new ApplicationError(
+					'Invalid value. Only valid dates are supported in mode "latestDate"',
+				);
+			}
+		} else {
+			throw new ApplicationError(
+				"Invalid mode. Only 'latestIncrementalKey' and 'latestDate' are supported.",
+			);
+		}
 	}
 
 	private static createContext(
@@ -78,12 +104,18 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			return returnData;
 		}
 
-		if (options.mode === 'latest') {
+		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
 			const processedDataValue = processedData.value as IProcessedDataLatest;
 
 			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
 			incomingItems.forEach((item) => {
-				if (ProcessedDataManagerNativeDatabase.compareValues(item, processedDataValue.data)) {
+				if (
+					ProcessedDataManagerNativeDatabase.compareValues(
+						options.mode,
+						item,
+						processedDataValue.data,
+					)
+				) {
 					returnData.new.push(item);
 				} else {
 					returnData.processed.push(item);
@@ -132,7 +164,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			);
 		}
 
-		if (options.mode === 'latest') {
+		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
 			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
 
 			if (!processedData) {
@@ -161,9 +193,15 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			const processedDataValue = processedData.value as IProcessedDataLatest;
 
 			incomingItems.forEach((item) => {
-				if (ProcessedDataManagerNativeDatabase.compareValues(item, processedDataValue.data)) {
+				if (
+					ProcessedDataManagerNativeDatabase.compareValues(
+						options.mode,
+						item,
+						processedDataValue.data,
+					)
+				) {
 					returnData.new.push(item);
-					if (ProcessedDataManagerNativeDatabase.compareValues(item, largestValue)) {
+					if (ProcessedDataManagerNativeDatabase.compareValues(options.mode, item, largestValue)) {
 						largestValue = item;
 					}
 				} else {
@@ -233,7 +271,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<void> {
-		if (options.mode === 'latest') {
+		if (options.mode === 'latestIncrementalKey' || options.mode === 'latestDate') {
 			throw new ApplicationError('Removing processed data is not possible in mode "latest"');
 		}
 

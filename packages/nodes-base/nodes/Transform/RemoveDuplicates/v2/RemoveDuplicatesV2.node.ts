@@ -468,6 +468,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 			const logic = this.getNodeParameter('logic', 0);
 			if (logic === 'removeItemsWithAlreadySeenKeyValues') {
 				const context = this.getNodeParameter('options.context', 0, 'workflow');
+				const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
+					'options.allowDuplicateItemsInTheSameExecution',
+					0,
+					false,
+				);
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -483,13 +488,17 @@ export class RemoveDuplicatesV2 implements INodeType {
 				const itemMapping: {
 					[key: string]: INodeExecutionData[];
 				} = {};
-
+				const uniqueItems: any[] = [];
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					checkValue = this.getNodeParameter('keyField', itemIndex, '')?.toString() || '';
-					if (itemMapping[checkValue]) {
+					if (
+						itemMapping[checkValue] &&
+						(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
+					) {
 						itemMapping[checkValue].push(items[itemIndex]);
 					} else {
 						itemMapping[checkValue] = [items[itemIndex]];
+						if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(checkValue);
 					}
 					// TODO: Add continueOnFail, where should it and up?
 				}
@@ -524,7 +533,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 				return [returnData];
 			} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
 				const context = this.getNodeParameter('options.context', 0, 'workflow');
-
+				const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
+					'options.allowDuplicateItemsInTheSameExecution',
+					0,
+					false,
+				);
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -535,18 +548,29 @@ export class RemoveDuplicatesV2 implements INodeType {
 				const node = this.getNode();
 				console.log('\nEXECUTE NODE: ', node.name);
 
-				let checkValue: string;
+				let parsedIncrementalKey: number;
 				const itemMapping: {
 					[key: string]: INodeExecutionData[];
 				} = {};
+				const uniqueItems: any[] = [];
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					checkValue =
-						this.getNodeParameter('incrementalKeyField', itemIndex, '')?.toString() || '';
-					if (itemMapping[checkValue]) {
-						itemMapping[checkValue].push(items[itemIndex]);
+					const incrementalKey = this.getNodeParameter('incrementalKeyField', itemIndex, '');
+					parsedIncrementalKey = Number(incrementalKey);
+					if (isNaN(parsedIncrementalKey)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The value '${incrementalKey}' is not a number. Please provide a number.`,
+						);
+					}
+					if (
+						itemMapping[parsedIncrementalKey] &&
+						(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(parsedIncrementalKey))
+					) {
+						itemMapping[parsedIncrementalKey].push(items[itemIndex]);
 					} else {
-						itemMapping[checkValue] = [items[itemIndex]];
+						itemMapping[parsedIncrementalKey] = [items[itemIndex]];
+						if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(parsedIncrementalKey);
 					}
 					// TODO: Add continueOnFail, where should it and up?
 				}
@@ -562,13 +586,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latest', maxEntries } as ICheckProcessedOptions,
+						{ mode: 'latestIncrementalKey', maxEntries } as ICheckProcessedOptions,
 					);
 				} else {
 					itemsProcessed = await this.helpers.checkProcessed(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latest' } as ICheckProcessedOptions,
+						{ mode: 'latestIncrementalKey' } as ICheckProcessedOptions,
 					);
 				}
 
@@ -581,7 +605,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 				return [returnData];
 			} else if (logic === 'RemoveItemsUpToStoredDate') {
 				const context = this.getNodeParameter('options.context', 0, 'workflow');
-
+				const allowDuplicateItemsInTheSameExecution = this.getNodeParameter(
+					'options.allowDuplicateItemsInTheSameExecution',
+					0,
+					false,
+				);
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -596,13 +624,18 @@ export class RemoveDuplicatesV2 implements INodeType {
 				const itemMapping: {
 					[key: string]: INodeExecutionData[];
 				} = {};
+				const uniqueItems: any[] = [];
 
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					checkValue = this.getNodeParameter('dateKeyField', itemIndex, '')?.toString() || '';
-					if (itemMapping[checkValue]) {
+					if (
+						itemMapping[checkValue] &&
+						(allowDuplicateItemsInTheSameExecution ?? !uniqueItems.includes(checkValue))
+					) {
 						itemMapping[checkValue].push(items[itemIndex]);
 					} else {
 						itemMapping[checkValue] = [items[itemIndex]];
+						if (!allowDuplicateItemsInTheSameExecution) uniqueItems.push(checkValue);
 					}
 					// TODO: Add continueOnFail, where should it and up?
 				}
@@ -617,13 +650,13 @@ export class RemoveDuplicatesV2 implements INodeType {
 					itemsProcessed = await this.helpers.checkProcessedAndRecord(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latest', maxEntries } as ICheckProcessedOptions,
+						{ mode: 'latestDate', maxEntries } as ICheckProcessedOptions,
 					);
 				} else {
 					itemsProcessed = await this.helpers.checkProcessed(
 						Object.keys(itemMapping),
 						context as ProcessedDataContext,
-						{ mode: 'latest' } as ICheckProcessedOptions,
+						{ mode: 'latestDate' } as ICheckProcessedOptions,
 					);
 				}
 
