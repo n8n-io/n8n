@@ -92,7 +92,9 @@ export class GoogleMyBusiness implements INodeType {
 					'GET',
 					'',
 					{},
-					{},
+					{
+						readMask: 'name',
+					},
 					100,
 					`https://mybusinessaccountmanagement.googleapis.com/v1/${account}/locations`,
 				);
