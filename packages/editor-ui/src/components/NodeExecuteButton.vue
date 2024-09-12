@@ -142,7 +142,7 @@ const disabledHint = computed(() => {
 		return i18n.baseText('ndv.execute.nodeIsDisabled');
 	}
 
-	if (isTriggerNode.value && hasIssues) {
+	if (isTriggerNode.value && hasIssues.value) {
 		const activeNode = ndvStore.activeNode;
 		if (activeNode && activeNode.name !== props.nodeName) {
 			return i18n.baseText('ndv.execute.fixPrevious');
