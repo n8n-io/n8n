@@ -8,6 +8,7 @@ import {
 } from '@/constants';
 
 import type {
+	GenericValue,
 	IConnections,
 	IDataObject,
 	IExecuteData,
@@ -694,23 +695,23 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
-	// TODO: Fix types, add tests
 	function resolveNodeExpressions(nodeParameters: INodeParameters): void {
-		function recurse(currentObj: { [key: string]: unknown }, currentPath: string) {
+		function recurse(currentObj: Record<string, unknown>, currentPath: string): void {
 			for (const key in currentObj) {
 				const value = currentObj[key];
 				const path = currentPath ? `${currentPath}.${key}` : key;
-				// If the value is an object, recurse
-				if (typeof value === 'object' && value !== null) {
-					recurse(value, path);
+
+				if (value && typeof value === 'object' && !Array.isArray(value)) {
+					recurse(value as Record<string, unknown>, path);
 				} else if (typeof value === 'string' && value.startsWith('={{')) {
-					// Check for the custom expression syntax
+					// Resolve expression if it is one
 					let resolved;
 					try {
 						resolved = resolveExpression(value, nodeParameters);
 					} catch (error) {
-						resolved = `Error in expression: "${error.message}"`;
+						resolved = `Error in expression: "${(error as Error).message}"`;
 					}
+					// Update current value to include resolved value
 					currentObj[key] = {
 						value,
 						resolvedExpressionValue: resolved,
@@ -718,6 +719,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				}
 			}
 		}
+
 		recurse(nodeParameters, '');
 	}
 

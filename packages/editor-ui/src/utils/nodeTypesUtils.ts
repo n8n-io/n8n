@@ -28,7 +28,6 @@ import type {
 	INode,
 	INodeCredentialDescription,
 	INodeExecutionData,
-	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValueType,
