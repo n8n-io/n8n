@@ -20,6 +20,8 @@ import {
 	getTimezones,
 	googleApiRequest,
 	googleApiRequestAllItems,
+	googleApiRequestWithRetries,
+	type RecurentEvent,
 } from './GenericFunctions';
 
 import { eventFields, eventOperations } from './EventDescription';
@@ -34,7 +36,7 @@ export class GoogleCalendar implements INodeType {
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		defaults: {
@@ -46,6 +48,16 @@ export class GoogleCalendar implements INodeType {
 			{
 				name: 'googleCalendarOAuth2Api',
 				required: true,
+			},
+		],
+		hints: [
+			{
+				message:
+					"Turn off 'Return Next Instance of Recurring Event' option to improve efficiency and return reccuring events itself instead of their next event instance",
+				displayCondition:
+					'={{ $nodeVersion >= 1.2 && $parameter["operation"] === "getAll" && $parameter["options"]["returnNextInstance"] !== false}}',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
 			},
 		],
 		properties: [
@@ -381,16 +393,33 @@ export class GoogleCalendar implements INodeType {
 						if (tz) {
 							qs.timeZone = tz;
 						}
-						responseData = await googleApiRequest.call(
+						const event = (await googleApiRequest.call(
 							this,
 							'GET',
 							`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
 							{},
 							qs,
-						);
+						)) as IDataObject;
 
-						if (responseData) {
-							responseData = addNextOccurrence([responseData]);
+						if (event) {
+							if (nodeVersion >= 1.2 && options.returnNextInstance !== false && event.recurrence) {
+								const eventInstances =
+									((
+										(await googleApiRequest.call(
+											this,
+											'GET',
+											`/calendar/v3/calendars/${calendarId}/events/${event.id}/instances`,
+											{},
+											{
+												timeMin: new Date().toISOString(),
+												maxResults: 1,
+											},
+										)) as IDataObject
+									).items as IDataObject[]) || [];
+								responseData = eventInstances[0] ? [eventInstances[0]] : [responseData];
+							} else {
+								responseData = addNextOccurrence([responseData as RecurentEvent]);
+							}
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/list
@@ -462,7 +491,38 @@ export class GoogleCalendar implements INodeType {
 						}
 
 						if (responseData) {
-							responseData = addNextOccurrence(responseData);
+							if (
+								nodeVersion >= 1.2 &&
+								!options.singleEvents &&
+								options.returnNextInstance !== false
+							) {
+								const updatedEvents: IDataObject[] = [];
+
+								for (const event of responseData) {
+									if (event.recurrence) {
+										const eventInstances =
+											((
+												(await googleApiRequestWithRetries({
+													context: this,
+													method: 'GET',
+													resource: `/calendar/v3/calendars/${calendarId}/events/${event.id}/instances`,
+													qs: {
+														timeMin: new Date().toISOString(),
+														maxResults: 1,
+													},
+													itemIndex: i,
+												})) as IDataObject
+											).items as IDataObject[]) || [];
+										updatedEvents.push(eventInstances[0] || event);
+										continue;
+									}
+
+									updatedEvents.push(event);
+								}
+								responseData = updatedEvents;
+							} else {
+								responseData = addNextOccurrence(responseData);
+							}
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch

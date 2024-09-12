@@ -3,13 +3,14 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	INode,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 import { RRule } from 'rrule';
@@ -52,7 +53,6 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -211,4 +211,61 @@ const hasTimezone = (date: string) => date.endsWith('Z') || /\+\d{2}:\d{2}$/.tes
 export function addTimezoneToDate(date: string, timezone: string) {
 	if (hasTimezone(date)) return date;
 	return moment.tz(date, timezone).utc().format();
+}
+
+async function requestWithRetries(
+	node: INode,
+	requestFn: () => Promise<any>,
+	retryCount: number = 0,
+	maxRetries: number = 10,
+	itemIndex: number = 0,
+): Promise<any> {
+	try {
+		return await requestFn();
+	} catch (error) {
+		if (!(error instanceof NodeApiError)) {
+			throw new NodeOperationError(node, error.message, { itemIndex });
+		}
+		if (retryCount >= maxRetries) throw error;
+
+		if (error.httpCode === '403' || error.httpCode === '429') {
+			const delay = 1000 * Math.pow(2, retryCount);
+
+			console.log(`Rate limit hit. Retrying in ${delay}ms... (Attempt ${retryCount + 1})`);
+
+			await sleep(delay);
+			return await requestWithRetries(node, requestFn, retryCount + 1, maxRetries, itemIndex);
+		} else {
+			throw error;
+		}
+	}
+}
+
+export async function googleApiRequestWithRetries({
+	context,
+	method,
+	resource,
+	body = {},
+	qs = {},
+	uri,
+	headers = {},
+	itemIndex = 0,
+}: {
+	context: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+	method: IHttpRequestMethods;
+	resource: string;
+	body?: any;
+	qs?: IDataObject;
+	uri?: string;
+	headers?: IDataObject;
+	itemIndex?: number;
+}) {
+	const requestFn = async (): Promise<any> => {
+		return await googleApiRequest.call(context, method, resource, body, qs, uri, headers);
+	};
+
+	const retryCount = 0;
+	const maxRetries = 10;
+
+	return await requestWithRetries(context.getNode(), requestFn, retryCount, maxRetries, itemIndex);
 }
