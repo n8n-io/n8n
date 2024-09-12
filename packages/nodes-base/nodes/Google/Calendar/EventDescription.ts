@@ -839,6 +839,8 @@ export const eventFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'@version': [1.2],
+				resource: ['event'],
+				operation: ['update'],
 				eventId: [{ _cnd: { includes: '_' } }],
 			},
 		},
