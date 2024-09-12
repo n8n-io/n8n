@@ -51,7 +51,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 				{
 					name: 'Manage Key Values in Database (No Removal)',
-					value: 'ManageKeyValuesInDatabase',
+					value: 'manageKeyValuesInDatabase',
 					description: 'Store or delete key values in the database without removing items',
 					action: 'Manage Key Values in Database (No Removal)',
 				},
@@ -112,36 +112,7 @@ const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
-		{
-			displayName: 'Options',
-			name: 'options',
-			type: 'collection',
-			placeholder: 'Add Field',
-			default: {},
-			displayOptions: {
-				show: {
-					compare: ['allFieldsExcept', 'selectedFields'],
-				},
-			},
-			options: [
-				{
-					displayName: 'Disable Dot Notation',
-					name: 'disableDotNotation',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether to disallow referencing child fields using `parent.child` in the field name',
-				},
-				{
-					displayName: 'Remove Other Fields',
-					name: 'removeOtherFields',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
-				},
-			],
-		},
+
 		// ----------------------------------
 		{
 			displayName:
@@ -180,7 +151,7 @@ const versionDescription: INodeTypeDescription = {
 						'Works with date key values, removes all input items with key values up to the stored value. Stores only the latest key value.',
 				},
 			],
-			default: 'removeDuplicateInputItems',
+			default: 'removeItemsWithAlreadySeenKeyValues',
 			description:
 				'How to select input items for removal based on key values stored in the dedupe database',
 			displayOptions: {
@@ -229,22 +200,83 @@ const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
+			displayName: 'Mode',
+			name: 'mode',
+			type: 'options',
+			default: 'cleanDatabase',
+			description:
+				'How you want to modify the key values stored on the database. None of these modes removes input items.',
+			displayOptions: {
+				show: {
+					operation: ['manageKeyValuesInDatabase'],
+				},
+			},
+			options: [
+				{
+					name: 'Clean Database',
+					value: 'cleanDatabase',
+					description: 'Clear all values stored for a key in the database',
+				},
+			],
+		},
+		{
 			displayName: 'Options',
-			name: 'dedupeOptions',
+			name: 'options',
 			type: 'collection',
 			placeholder: 'Add Field',
 			default: {},
 			displayOptions: {
 				show: {
-					operation: ['removeItemsSeenInPreviousExecutions'],
+					operation: [
+						'removeDuplicateInputItems',
+						'removeItemsSeenInPreviousExecutions',
+						'manageKeyValuesInDatabase',
+					],
 				},
 			},
 			options: [
+				{
+					displayName: 'Disable Dot Notation',
+					name: 'disableDotNotation',
+					type: 'boolean',
+					default: false,
+					displayOptions: {
+						show: {
+							'/operation': ['removeDuplicateInputItems'],
+						},
+						hide: {
+							'/compare': ['allFields'],
+						},
+					},
+					description:
+						'Whether to disallow referencing child fields using `parent.child` in the field name',
+				},
+				{
+					displayName: 'Remove Other Fields',
+					name: 'removeOtherFields',
+					type: 'boolean',
+					default: false,
+					displayOptions: {
+						show: {
+							'/operation': ['removeDuplicateInputItems'],
+						},
+						hide: {
+							'/compare': ['allFields'],
+						},
+					},
+					description:
+						'Whether to remove any fields that are not being compared. If disabled, will keep the values from the first of the duplicates.',
+				},
 				{
 					displayName: 'Allow Duplicate Items in the Same Execution',
 					name: 'allowDuplicateItemsInTheSameExecution',
 					type: 'boolean',
 					default: false,
+					displayOptions: {
+						show: {
+							'/operation': ['removeItemsSeenInPreviousExecutions'],
+						},
+					},
 					description:
 						'Whether input items with the same key field value should be allowed in the same execution',
 				},
@@ -253,6 +285,11 @@ const versionDescription: INodeTypeDescription = {
 					name: 'context',
 					type: 'options',
 					default: 'workflow',
+					displayOptions: {
+						show: {
+							'/operation': ['manageKeyValuesInDatabase', 'removeItemsSeenInPreviousExecutions'],
+						},
+					},
 					description:
 						'If set to ‘workflow,’ key values will be shared across all nodes in the workflow. If set to ‘node,’ key values will be specific to this node.',
 					options: [
@@ -273,6 +310,11 @@ const versionDescription: INodeTypeDescription = {
 					name: 'dontUpdateKeyValuesOnDatabase',
 					type: 'boolean',
 					default: false,
+					displayOptions: {
+						show: {
+							'/operation': ['removeItemsSeenInPreviousExecutions'],
+						},
+					},
 					description:
 						'Whether to just remove duplicates based on the stored key values without updating the database',
 				},
@@ -281,127 +323,15 @@ const versionDescription: INodeTypeDescription = {
 					name: 'maxKeyValuesToStoreInDatabase',
 					type: 'number',
 					default: 1000,
+					displayOptions: {
+						show: {
+							'/operation': ['removeItemsSeenInPreviousExecutions'],
+						},
+					},
 					description: 'Maximum value for “Max Key Values to Store in Database',
 				},
 			],
 		},
-		{
-			displayName: 'Mode',
-			name: 'mode',
-			type: 'options',
-			default: 'updateKeyValuesInDatabase',
-			description:
-				'How you want to modify the key values stored on the database. None of these modes removes input items.',
-			displayOptions: {
-				show: {
-					operation: ['ManageKeyValuesInDatabase'],
-				},
-			},
-			options: [
-				// {
-				// 	name: 'Update Key Values in Database',
-				// 	value: 'updateKeyValuesInDatabase',
-				// 	description: 'Store item key values in the database without removing items',
-				// },
-				// {
-				// 	name: 'Delete Key Values From Database',
-				// 	value: 'deleteKeyValuesFromDatabase',
-				// 	description: 'Delete input item key values from the database without removing items',
-				// },
-				{
-					name: 'Clean Database',
-					value: 'cleanDatabase',
-					description: 'Clear all values stored for a key in the database',
-				},
-			],
-		},
-		{
-			displayName: 'Context',
-			name: 'cleanDatabaseContext',
-			type: 'options',
-			default: 'workflow',
-			description:
-				'If set to ‘workflow,’ key values will be shared across all nodes in the workflow. If set to ‘node,’ key values will be specific to this node.',
-			options: [
-				{
-					name: 'Workflow',
-					value: 'workflow',
-					description: 'Deduplication info will be shared by all the nodes in the workflow',
-				},
-				{
-					name: 'Node',
-					value: 'node',
-					description: 'Deduplication info will be stored only for this node',
-				},
-			],
-			displayOptions: {
-				show: {
-					operation: ['ManageKeyValuesInDatabase'],
-				},
-			},
-		},
-		// {
-		// 	displayName: 'Logic',
-		// 	name: 'updateKeyValuesInDatabaseLogic',
-		// 	type: 'options',
-		// 	default: 'addNewKeyValues',
-		// 	description: 'The logic to follow to update the key values in the database',
-		// 	displayOptions: {
-		// 		show: {
-		// 			mode: ['updateKeyValuesInDatabase'],
-		// 		},
-		// 	},
-		// 	options: [
-		// 		{
-		// 			name: 'Add New Key Values',
-		// 			value: 'addNewKeyValues',
-		// 			description: 'Store all the new key values from incoming items in the database',
-		// 		},
-		// 		{
-		// 			name: 'Update Incremental Key Value With Highest',
-		// 			value: 'updateIncrementalKeyValueWithHighest',
-		// 			description:
-		// 				'Works with incremental key values, replace the key value in the database with the highest from incoming items',
-		// 		},
-		// 		{
-		// 			name: 'Update Date Key Value With Latest',
-		// 			value: 'updateDateKeyValueWithLatest',
-		// 			description:
-		// 				'Works with date key values, replace the key value in the database with the latest from incoming items',
-		// 		},
-		// 	],
-		// },
-		// {
-		// 	displayName: 'Logic',
-		// 	name: 'deleteKeyValuesFromDatabaseLogic',
-		// 	type: 'options',
-		// 	default: 'removeAllMatchingKeyValues',
-		// 	description: 'The logic to follow to remove the keys from the database',
-		// 	displayOptions: {
-		// 		show: {
-		// 			mode: ['deleteKeyValuesFromDatabase'],
-		// 		},
-		// 	},
-		// 	options: [
-		// 		{
-		// 			name: 'Remove All Matching Key Values',
-		// 			value: 'removeAllMatchingKeyValues',
-		// 			description: 'Remove all the key values from incoming items from the database',
-		// 		},
-		// 		{
-		// 			name: 'Reset Incremental Key Value to Lowest',
-		// 			value: 'resetIncrementalKeyValueToLowest',
-		// 			description:
-		// 				'Works with incremental key values, replace the key value in the database with the lowest from incoming items',
-		// 		},
-		// 		{
-		// 			name: 'Reset Incremental Key Value to Less Recent',
-		// 			value: 'resetIncrementalKeyValueToLessRecent',
-		// 			description:
-		// 				'Works with date key values, replace the key value in the database with the less recent date from incoming items',
-		// 		},
-		// 	],
-		// },
 	],
 };
 export class RemoveDuplicatesV2 implements INodeType {
@@ -537,7 +467,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 		} else if (operation === 'removeItemsSeenInPreviousExecutions') {
 			const logic = this.getNodeParameter('logic', 0);
 			if (logic === 'removeItemsWithAlreadySeenKeyValues') {
-				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
+				const context = this.getNodeParameter('options.context', 0, 'workflow');
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -564,15 +494,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 					// TODO: Add continueOnFail, where should it and up?
 				}
 				const addProcessedValue = !this.getNodeParameter(
-					'dedupeOptions.dontUpdateKeyValuesOnDatabase',
+					'options.dontUpdateKeyValuesOnDatabase',
 					0,
 					false,
 				);
-				const maxEntries = this.getNodeParameter(
-					'dedupeOptions.maxKeyValuesToStoreInDatabase',
-					0,
-					1000,
-				);
+				const maxEntries = this.getNodeParameter('options.maxKeyValuesToStoreInDatabase', 0, 1000);
 
 				let itemsProcessed: ICheckProcessedOutput;
 				if (addProcessedValue) {
@@ -597,7 +523,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 				return [returnData];
 			} else if (logic === 'removeItemsUpToStoredIncrementalKey') {
-				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
+				const context = this.getNodeParameter('options.context', 0, 'workflow');
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -625,15 +551,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 					// TODO: Add continueOnFail, where should it and up?
 				}
 				const addProcessedValue = !this.getNodeParameter(
-					'dedupeOptions.dontUpdateKeyValuesOnDatabase',
+					'options.dontUpdateKeyValuesOnDatabase',
 					0,
 					false,
 				);
-				const maxEntries = this.getNodeParameter(
-					'dedupeOptions.maxKeyValuesToStoreInDatabase',
-					0,
-					1000,
-				);
+				const maxEntries = this.getNodeParameter('options.maxKeyValuesToStoreInDatabase', 0, 1000);
 
 				let itemsProcessed: ICheckProcessedOutput;
 				if (addProcessedValue) {
@@ -658,7 +580,7 @@ export class RemoveDuplicatesV2 implements INodeType {
 
 				return [returnData];
 			} else if (logic === 'RemoveItemsUpToStoredDate') {
-				const context = this.getNodeParameter('dedupeOptions.context', 0, 'workflow');
+				const context = this.getNodeParameter('options.context', 0, 'workflow');
 
 				if (!['node', 'workflow'].includes(context as string)) {
 					throw new NodeOperationError(
@@ -685,15 +607,11 @@ export class RemoveDuplicatesV2 implements INodeType {
 					// TODO: Add continueOnFail, where should it and up?
 				}
 				const addProcessedValue = !this.getNodeParameter(
-					'dedupeOptions.dontUpdateKeyValuesOnDatabase',
+					'options.dontUpdateKeyValuesOnDatabase',
 					0,
 					false,
 				);
-				const maxEntries = this.getNodeParameter(
-					'dedupeOptions.maxKeyValuesToStoreInDatabase',
-					0,
-					1000,
-				);
+				const maxEntries = this.getNodeParameter('options.maxKeyValuesToStoreInDatabase', 0, 1000);
 				let itemsProcessed: ICheckProcessedOutput;
 				if (addProcessedValue) {
 					itemsProcessed = await this.helpers.checkProcessedAndRecord(
@@ -719,12 +637,12 @@ export class RemoveDuplicatesV2 implements INodeType {
 			} else {
 				return [items];
 			}
-		} else if (operation === 'ManageKeyValuesInDatabase') {
+		} else if (operation === 'manageKeyValuesInDatabase') {
 			const mode = this.getNodeParameter('mode', 0) as string;
 			if (mode === 'updateKeyValuesInDatabase') {
 			} else if (mode === 'deleteKeyValuesFromDatabase') {
 			} else if (mode === 'cleanDatabase') {
-				const context = this.getNodeParameter('cleanDatabaseContext', 0, 'workflow');
+				const context = this.getNodeParameter('options.context', 0, 'workflow');
 				await this.helpers.clearAllProcessedItems(context as ProcessedDataContext, {
 					mode: 'entries',
 				});
