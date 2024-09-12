@@ -104,7 +104,7 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 			{
 				name: 'My Test Node',
 				type: 'myTestNode',
-				latestVersion: '1',
+				latestVersion: 1,
 			} as InstalledNodes,
 		],
 	},
