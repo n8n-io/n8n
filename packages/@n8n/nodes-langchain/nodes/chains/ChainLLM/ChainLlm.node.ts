@@ -1,4 +1,9 @@
-import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeApiError,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -30,6 +35,7 @@ import {
 	isChatInstance,
 } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
+import { getCustomErrorMessage } from '../../vendors/OpenAi/helpers/error-handling';
 
 interface MessagesTemplate {
 	type: string;
@@ -580,6 +586,18 @@ export class ChainLlm implements INodeType {
 					});
 				});
 			} catch (error) {
+				if (error instanceof NodeApiError) {
+					// If the error is an OpenAI's rate limit error, we want to handle it differently
+					// because OpenAI has multiple different rate limit errors
+					const openAiErrorCode: string | undefined = (error.cause as any).error?.code;
+					if (openAiErrorCode) {
+						const customMessage = getCustomErrorMessage(openAiErrorCode);
+						if (customMessage) {
+							error.message = customMessage;
+						}
+					}
+				}
+
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
 					continue;
