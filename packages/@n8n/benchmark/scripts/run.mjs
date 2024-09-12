@@ -9,11 +9,11 @@
 import fs from 'fs';
 import minimist from 'minimist';
 import path from 'path';
-import { runInCloud } from './runInCloud.mjs';
-import { runLocally } from './runLocally.mjs';
+import { runInCloud } from './run-in-cloud.mjs';
+import { runLocally } from './run-locally.mjs';
 
 const paths = {
-	n8nSetupsDir: path.join(path.resolve('scripts'), 'n8nSetups'),
+	n8nSetupsDir: path.join(path.resolve('scripts'), 'n8n-setups'),
 };
 
 async function main() {

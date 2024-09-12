@@ -6,7 +6,7 @@
  */
 // @ts-check
 import { which, minimist } from 'zx';
-import { TerraformClient } from './clients/terraformClient.mjs';
+import { TerraformClient } from './clients/terraform-client.mjs';
 
 const args = minimist(process.argv.slice(3), {
 	boolean: ['debug'],

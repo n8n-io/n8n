@@ -39,7 +39,7 @@ const paths = {
  * @param {Config} config
  */
 export async function runLocally(config) {
-	const runScriptPath = path.join(paths.scriptsDir, 'runForN8nSetup.mjs');
+	const runScriptPath = path.join(paths.scriptsDir, 'run-for-n8n-setup.mjs');
 
 	const cliArgs = flagsObjectToCliArgs({
 		n8nDockerTag: config.n8nTag,

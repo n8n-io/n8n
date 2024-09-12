@@ -3,7 +3,7 @@ import path from 'path';
 import assert from 'node:assert/strict';
 import { $, which, tmpfile } from 'zx';
 import type { Scenario } from '@/types/scenario';
-import { buildTestReport, type K6Tag } from '@/testExecution/testReport';
+import { buildTestReport, type K6Tag } from '@/test-execution/test-report';
 export type { K6Tag };
 
 export type K6ExecutorOpts = {
