@@ -1,5 +1,5 @@
-import type { AuthenticatedN8nApiClient } from './authenticatedN8nApiClient';
-import type { Workflow } from '@/n8nApiClient/n8nApiClient.types';
+import type { AuthenticatedN8nApiClient } from './authenticated-n8n-api-client';
+import type { Workflow } from '@/n8n-api-client/n8n-api-client.types';
 
 export class WorkflowApiClient {
 	constructor(private readonly apiClient: AuthenticatedN8nApiClient) {}

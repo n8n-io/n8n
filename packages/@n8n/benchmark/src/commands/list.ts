@@ -1,6 +1,6 @@
 import { Command } from '@oclif/core';
-import { ScenarioLoader } from '@/scenario/scenarioLoader';
-import { testScenariosPath } from '@/config/commonFlags';
+import { ScenarioLoader } from '@/scenario/scenario-loader';
+import { testScenariosPath } from '@/config/common-flags';
 
 export default class ListCommand extends Command {
 	static description = 'List all available scenarios';

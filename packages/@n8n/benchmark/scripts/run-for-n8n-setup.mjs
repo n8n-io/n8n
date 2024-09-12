@@ -5,12 +5,12 @@
 // @ts-check
 import path from 'path';
 import { $, argv, fs } from 'zx';
-import { DockerComposeClient } from './clients/dockerComposeClient.mjs';
+import { DockerComposeClient } from './clients/docker-compose-client.mjs';
 import { flagsObjectToCliArgs } from './utils/flags.mjs';
 
 const paths = {
-	n8nSetupsDir: path.join(__dirname, 'n8nSetups'),
-	mockApiDataPath: path.join(__dirname, 'mockApi'),
+	n8nSetupsDir: path.join(__dirname, 'n8n-setups'),
+	mockApiDataPath: path.join(__dirname, 'mock-api'),
 };
 
 const N8N_ENCRYPTION_KEY = 'very-secret-encryption-key';
