@@ -822,6 +822,28 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Modify',
+		name: 'modifyTarget',
+		type: 'options',
+		options: [
+			{
+				name: 'Reccuring Event Instance',
+				value: 'instance',
+			},
+			{
+				name: 'Reccuring Event',
+				value: 'event',
+			},
+		],
+		default: 'instance',
+		displayOptions: {
+			show: {
+				'@version': [1.2],
+				eventId: [{ _cnd: { includes: '_' } }],
+			},
+		},
+	},
+	{
 		displayName: 'Use Default Reminders',
 		name: 'useDefaultReminders',
 		type: 'boolean',

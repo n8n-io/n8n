@@ -530,7 +530,22 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(
 							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
 						);
-						const eventId = this.getNodeParameter('eventId', i) as string;
+						let eventId = this.getNodeParameter('eventId', i) as string;
+
+						if (nodeVersion >= 1.2) {
+							const modifyTarget = this.getNodeParameter('modifyTarget', i, 'instance') as string;
+							if (modifyTarget === 'event') {
+								const instance = (await googleApiRequest.call(
+									this,
+									'GET',
+									`/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+									{},
+									qs,
+								)) as IDataObject;
+								eventId = instance.recurringEventId as string;
+							}
+						}
+
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						let updateTimezone = updateFields.timezone as string;
