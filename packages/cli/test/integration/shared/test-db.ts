@@ -1,13 +1,13 @@
-import { Container } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import type { DataSourceOptions, Repository } from '@n8n/typeorm';
 import { DataSource as Connection } from '@n8n/typeorm';
-import { GlobalConfig } from '@n8n/config';
+import { kebabCase } from 'lodash';
 import type { Class } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/db';
 import { getOptionOverrides } from '@/databases/config';
-import { kebabCase } from 'lodash';
+import * as Db from '@/db';
 
 export const testDbPrefix = 'n8n_test_';
 

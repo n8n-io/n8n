@@ -2,8 +2,14 @@ import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 import Container, { Service } from 'typedi';
-import { Logger } from '@/logger';
+
 import config from '@/config';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+import { LicenseMetricsService } from '@/metrics/license-metrics.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import {
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
@@ -11,13 +17,9 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/redis-service-pub-sub-publisher';
 import { RedisService } from './services/redis.service';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { OnShutdown } from '@/decorators/on-shutdown';
-import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 type FeatureReturnType = Partial<
 	{

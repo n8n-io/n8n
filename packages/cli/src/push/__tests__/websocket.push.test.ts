@@ -1,13 +1,12 @@
-import { Container } from 'typedi';
 import { EventEmitter } from 'events';
+import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
-import { WebSocketPush } from '@/push/websocket.push';
-import { Logger } from '@/logger';
-import type { PushDataExecutionRecovered } from '@/interfaces';
-
-import { mockInstance } from '@test/mocking';
 import type { User } from '@/databases/entities/user';
+import type { PushDataExecutionRecovered } from '@/interfaces';
+import { Logger } from '@/logger';
+import { WebSocketPush } from '@/push/websocket.push';
+import { mockInstance } from '@test/mocking';
 
 jest.useFakeTimers();
 

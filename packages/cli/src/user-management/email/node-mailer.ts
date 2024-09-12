@@ -1,13 +1,14 @@
-import { Service } from 'typedi';
-import path from 'node:path';
+import { GlobalConfig } from '@n8n/config';
 import { pick } from 'lodash';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import path from 'node:path';
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import type SMTPConnection from 'nodemailer/lib/smtp-connection';
-import { GlobalConfig } from '@n8n/config';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { Service } from 'typedi';
 
 import { Logger } from '@/logger';
+
 import type { MailData, SendEmailResult } from './interfaces';
 
 @Service()

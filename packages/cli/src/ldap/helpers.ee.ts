@@ -1,14 +1,18 @@
+import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
-import { Container } from 'typedi';
-import { validate } from 'jsonschema';
 import { randomString } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import * as Db from '@/db';
 import config from '@/config';
-import { User } from '@/databases/entities/user';
 import { AuthIdentity } from '@/databases/entities/auth-identity';
 import type { AuthProviderSyncHistory } from '@/databases/entities/auth-provider-sync-history';
+import { User } from '@/databases/entities/user';
+import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
+import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import * as Db from '@/db';
+import { License } from '@/license';
 
 import {
 	BINARY_AD_ATTRIBUTES,
@@ -17,10 +21,6 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { License } from '@/license';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { AuthProviderSyncHistoryRepository } from '@/databases/repositories/auth-provider-sync-history.repository';
-import { AuthIdentityRepository } from '@/databases/repositories/auth-identity.repository';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance

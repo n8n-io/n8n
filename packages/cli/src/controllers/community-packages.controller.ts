@@ -3,15 +3,15 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
-import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@/databases/entities/installed-packages';
-import type { CommunityPackages } from '@/interfaces';
-import { Push } from '@/push';
-import { CommunityPackagesService } from '@/services/community-packages.service';
+import { Delete, Get, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
+import type { CommunityPackages } from '@/interfaces';
+import { Push } from '@/push';
+import { NodeRequest } from '@/requests';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,

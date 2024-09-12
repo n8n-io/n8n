@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
 import type { XMLFileInfo } from 'xmllint-wasm';
+
 import { Logger } from '@/logger';
 
 let xml: XMLFileInfo;

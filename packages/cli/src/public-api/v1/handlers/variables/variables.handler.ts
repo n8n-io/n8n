@@ -1,11 +1,13 @@
+import type { Response } from 'express';
 import Container from 'typedi';
+
 import { VariablesRepository } from '@/databases/repositories/variables.repository';
 import { VariablesController } from '@/environments/variables/variables.controller.ee';
+import type { PaginatedRequest } from '@/public-api/types';
+import type { VariablesRequest } from '@/requests';
+
 import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import type { Response } from 'express';
-import type { VariablesRequest } from '@/requests';
-import type { PaginatedRequest } from '@/public-api/types';
 
 type Create = VariablesRequest.Create;
 type Delete = VariablesRequest.Delete;

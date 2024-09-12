@@ -1,8 +1,10 @@
-import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
 import InfisicalClient from 'infisical-node';
-import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
+import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { ApplicationError, type IDataObject, type INodeProperties } from 'n8n-workflow';
+
+import type { SecretsProvider, SecretsProviderSettings, SecretsProviderState } from '@/interfaces';
+
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 
 export interface InfisicalSettings {
