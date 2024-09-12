@@ -26,7 +26,7 @@ import {
 	getNodeAuthOptions,
 	getReferencedNodes,
 	getNodesSchemas,
-	processNodeForLLM,
+	processNodeForAssistant,
 	isNodeReferencingInputData,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
@@ -445,7 +445,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						firstName: usersStore.currentUser?.firstName ?? '',
 					},
 					error: context.error,
-					node: processNodeForLLM(context.node, ['position']),
+					node: processNodeForAssistant(context.node, ['position']),
 					nodeInputData,
 					executionSchema: schemas,
 					authType,

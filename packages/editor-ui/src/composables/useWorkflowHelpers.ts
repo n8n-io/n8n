@@ -696,22 +696,21 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	}
 
 	function resolveNodeExpressions(nodeParameters: INodeParameters): void {
-		function recurse(currentObj: Record<string, unknown>, currentPath: string): void {
+		function recurse(currentObj: { [key: string]: unknown }, currentPath: string) {
 			for (const key in currentObj) {
-				const value = currentObj[key];
+				const value = currentObj[key as keyof typeof currentObj];
 				const path = currentPath ? `${currentPath}.${key}` : key;
-
-				if (value && typeof value === 'object' && !Array.isArray(value)) {
-					recurse(value as Record<string, unknown>, path);
-				} else if (typeof value === 'string' && value.startsWith('={{')) {
-					// Resolve expression if it is one
+				if (typeof value === 'object' && value !== null) {
+					recurse(value as { [key: string]: unknown }, path);
+				} else if (typeof value === 'string' && String(value).startsWith('={{')) {
+					// Resolve the expression if it is one
 					let resolved;
 					try {
 						resolved = resolveExpression(value, nodeParameters);
 					} catch (error) {
-						resolved = `Error in expression: "${(error as Error).message}"`;
+						resolved = `Error in expression: "${error.message}"`;
 					}
-					// Update current value to include resolved value
+					// Updating the original object with the resolved value
 					currentObj[key] = {
 						value,
 						resolvedExpressionValue: resolved,
@@ -719,7 +718,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 				}
 			}
 		}
-
 		recurse(nodeParameters, '');
 	}
 

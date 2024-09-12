@@ -550,7 +550,7 @@ export function getReferencedNodes(node: INode): string[] {
  * @param propsToRemove
  * @returns processed node
  */
-export function processNodeForLLM(node: INode, propsToRemove: string[]): INode {
+export function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
 	// Make a copy of the node object so we don't modify the original
 	const nodeForLLM = { ...node };
 	propsToRemove.forEach((key) => {
@@ -558,6 +558,7 @@ export function processNodeForLLM(node: INode, propsToRemove: string[]): INode {
 	});
 	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
 	workflowHelpers.resolveNodeExpressions(nodeForLLM.parameters);
+	console.log('nodeForLLM', nodeForLLM.parameters);
 	return nodeForLLM;
 }
 
