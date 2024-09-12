@@ -9,6 +9,7 @@ import type { IWorkflowDb } from '@/interfaces';
 import type { ProjectRole } from '@/databases/entities/project-relation';
 import type { GlobalRole } from '@/databases/entities/user';
 import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import type { AiEventMap } from './ai-event-map';
 
 export type UserLike = {
 	id: string;
@@ -470,4 +471,4 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
-};
+} & AiEventMap;
