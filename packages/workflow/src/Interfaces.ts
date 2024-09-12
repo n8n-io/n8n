@@ -2447,7 +2447,7 @@ export type PublicInstalledPackage = {
 export type PublicInstalledNode = {
 	name: string;
 	type: string;
-	latestVersion: string;
+	latestVersion: number;
 	package: PublicInstalledPackage;
 };
 

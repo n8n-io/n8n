@@ -10,7 +10,7 @@ export class InstalledNodes {
 	type: string;
 
 	@Column()
-	latestVersion: string;
+	latestVersion: number;
 
 	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
