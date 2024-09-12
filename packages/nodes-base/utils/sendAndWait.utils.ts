@@ -143,11 +143,11 @@ export function getSendAndWaitProperties(
 			default: 'single',
 			options: [
 				{
-					name: 'Add an Approval Button',
+					name: 'Approve Only',
 					value: 'single',
 				},
 				{
-					name: 'Add Approval and Disapproval Button',
+					name: 'Approve and Disapprove',
 					value: 'double',
 				},
 			],
@@ -200,7 +200,7 @@ export function getSendAndWaitProperties(
 		...additionalProperties,
 		{
 			displayName:
-				'Use the Wait node for more complex approval. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
+				'Use the wait node for more complex approval flows. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait" target="_blank">More info</a>',
 			name: 'useWaitNotice',
 			type: 'notice',
 			default: '',
