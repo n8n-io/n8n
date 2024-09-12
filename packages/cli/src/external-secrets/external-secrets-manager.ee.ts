@@ -1,22 +1,21 @@
+import { Cipher } from 'n8n-core';
+import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
+import Container, { Service } from 'typedi';
+
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { EventService } from '@/events/event.service';
 import type {
 	ExternalSecretsSettings,
 	SecretsProvider,
 	SecretsProviderSettings,
 } from '@/interfaces';
-
-import { Cipher } from 'n8n-core';
-import Container, { Service } from 'typedi';
-
-import { Logger } from '@/logger';
-
-import { jsonParse, type IDataObject, ApplicationError } from 'n8n-workflow';
-import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { License } from '@/license';
-import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
+import { OrchestrationService } from '@/services/orchestration.service';
+
+import { EXTERNAL_SECRETS_INITIAL_BACKOFF, EXTERNAL_SECRETS_MAX_BACKOFF } from './constants';
 import { updateIntervalTime } from './external-secrets-helper.ee';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class ExternalSecretsManager {

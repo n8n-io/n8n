@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
+import type { Scope } from '@n8n/permissions';
 import type express from 'express';
 import { Container } from 'typedi';
 
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
+import { userHasScope } from '@/permissions/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
-import type { Scope } from '@n8n/permissions';
-import { userHasScope } from '@/permissions/check-access';
-import type { BooleanLicenseFeature } from '@/interfaces';
-import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 
 const UNLIMITED_USERS_QUOTA = -1;
 

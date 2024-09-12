@@ -1,20 +1,19 @@
-import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
+import Container from 'typedi';
 
-import type { User } from '@/databases/entities/user';
-import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
 import type {
 	WorkflowClosedMessage,
 	WorkflowOpenedMessage,
 } from '@/collaboration/collaboration.message';
-
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import type { User } from '@/databases/entities/user';
+import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
+import { Push } from '@/push';
+import { CacheService } from '@/services/cache/cache.service';
 import { mockInstance } from '@test/mocking';
-import * as testDb from '@test-integration/test-db';
-import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createWorkflow, shareWorkflowWithUsers } from '@test-integration/db/workflows';
+import * as testDb from '@test-integration/test-db';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock()));

@@ -1,13 +1,13 @@
-import { Service } from 'typedi';
 import type { Workflow } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
+import { Service } from 'typedi';
 
-import { Push } from '@/push';
-import type { ICollaboratorsChanged } from '@/interfaces';
-import type { OnPushMessage } from '@/push/types';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import type { User } from '@/databases/entities/user';
 import { CollaborationState } from '@/collaboration/collaboration.state';
+import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import type { ICollaboratorsChanged } from '@/interfaces';
+import { Push } from '@/push';
+import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
 
 import type { WorkflowClosedMessage, WorkflowOpenedMessage } from './collaboration.message';

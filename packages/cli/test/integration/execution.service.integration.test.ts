@@ -1,13 +1,15 @@
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { ExecutionService } from '@/executions/execution.service';
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import { createWorkflow } from './shared/db/workflows';
-import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
-import * as testDb from './shared/test-db';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionSummaries } from '@/executions/execution.types';
+
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ExecutionService } from '@/executions/execution.service';
+import type { ExecutionSummaries } from '@/executions/execution.types';
+
+import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
+import { createWorkflow } from './shared/db/workflows';
+import * as testDb from './shared/test-db';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;

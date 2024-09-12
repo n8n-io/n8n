@@ -1,11 +1,12 @@
-import { mock } from 'jest-mock-extended';
 import type express from 'express';
+import { mock } from 'jest-mock-extended';
+import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+
+import { Logger } from '@/logger';
+import { UrlService } from '@/services/url.service';
+import * as samlHelpers from '@/sso/saml/saml-helpers';
 import { SamlService } from '@/sso/saml/saml.service.ee';
 import { mockInstance } from '@test/mocking';
-import { UrlService } from '@/services/url.service';
-import { Logger } from '@/logger';
-import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
-import * as samlHelpers from '@/sso/saml/saml-helpers';
 
 describe('SamlService', () => {
 	const logger = mockInstance(Logger);

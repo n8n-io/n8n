@@ -1,5 +1,11 @@
-import { Service } from 'typedi';
-import pick from 'lodash/pick';
+import { GlobalConfig } from '@n8n/config';
+import type {
+	FindManyOptions,
+	FindOneOptions,
+	FindOperator,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 import {
 	Brackets,
 	DataSource,
@@ -13,15 +19,8 @@ import {
 	Repository,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
-import type {
-	FindManyOptions,
-	FindOneOptions,
-	FindOperator,
-	FindOptionsWhere,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
-import { GlobalConfig } from '@n8n/config';
+import pick from 'lodash/pick';
 import { BinaryDataService } from 'n8n-core';
 import {
 	ExecutionCancelledError,
@@ -34,26 +33,27 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import config from '@/config';
+import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
+import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
+import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
+import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
+import type { ExecutionSummaries } from '@/executions/execution.types';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
+import { Logger } from '@/logger';
+import { separate } from '@/utils';
 
-import config from '@/config';
+import { ExecutionDataRepository } from './execution-data.repository';
 import type { ExecutionData } from '../entities/execution-data';
 import { ExecutionEntity } from '../entities/execution-entity';
 import { ExecutionMetadata } from '../entities/execution-metadata';
-import { ExecutionDataRepository } from './execution-data.repository';
-import { Logger } from '@/logger';
-import type { ExecutionSummaries } from '@/executions/execution.types';
-import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
-import { separate } from '@/utils';
-import { AnnotationTagEntity } from '@/databases/entities/annotation-tag-entity';
-import { AnnotationTagMapping } from '@/databases/entities/annotation-tag-mapping';
-import { ExecutionAnnotation } from '@/databases/entities/execution-annotation';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;

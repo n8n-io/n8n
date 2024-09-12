@@ -1,8 +1,10 @@
 import Container from 'typedi';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+
 import { ExecutionDataRepository } from '@/databases/repositories/execution-data.repository';
-import * as testDb from '../../shared/test-db';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+
 import { createWorkflow } from '../../shared/db/workflows';
+import * as testDb from '../../shared/test-db';
 
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {

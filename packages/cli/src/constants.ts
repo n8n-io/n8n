@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
-import { resolve, join, dirname } from 'path';
 import type { n8n } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { resolve, join, dirname } from 'path';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';

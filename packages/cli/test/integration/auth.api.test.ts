@@ -8,11 +8,11 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
+import { createUser, createUserShell } from './shared/db/users';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/test-db';
-import * as utils from './shared/utils/';
-import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
+import * as utils from './shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;

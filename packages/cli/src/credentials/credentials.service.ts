@@ -1,3 +1,11 @@
+import type { Scope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import {
+	In,
+	type EntityManager,
+	type FindOptionsRelations,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -6,39 +14,32 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import {
-	In,
-	type EntityManager,
-	type FindOptionsRelations,
-	type FindOptionsWhere,
-} from '@n8n/typeorm';
-import type { Scope } from '@n8n/permissions';
-import * as Db from '@/db';
-import type { ICredentialsDb } from '@/interfaces';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { validateEntity } from '@/generic-helpers';
-import { ExternalHooks } from '@/external-hooks';
-import type { User } from '@/databases/entities/user';
-import type { CredentialRequest, ListQuery } from '@/requests';
-import { CredentialTypes } from '@/credential-types';
-import { OwnershipService } from '@/services/ownership.service';
-import { Logger } from '@/logger';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
 import { Service } from 'typedi';
-import { CredentialsTester } from '@/services/credentials-tester.service';
+
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
+import { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import type { ProjectRelation } from '@/databases/entities/project-relation';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { User } from '@/databases/entities/user';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectService } from '@/services/project.service';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import * as Db from '@/db';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectRelation } from '@/databases/entities/project-relation';
-import { RoleService } from '@/services/role.service';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { ICredentialsDb } from '@/interfaces';
+import { Logger } from '@/logger';
 import { userHasScope } from '@/permissions/check-access';
+import type { CredentialRequest, ListQuery } from '@/requests';
+import { CredentialsTester } from '@/services/credentials-tester.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service';
+import { RoleService } from '@/services/role.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }

@@ -1,16 +1,18 @@
-import { mock } from 'jest-mock-extended';
-import { ScalingService } from '../scaling.service';
-import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
-import config from '@/config';
-import * as BullModule from 'bull';
-import type { Job, JobData, JobOptions, JobQueue } from '../scaling.types';
-import { ApplicationError } from 'n8n-workflow';
-import { mockInstance } from '@test/mocking';
 import { GlobalConfig } from '@n8n/config';
+import * as BullModule from 'bull';
+import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { OrchestrationService } from '@/services/orchestration.service';
+import { ApplicationError } from 'n8n-workflow';
 import Container from 'typedi';
+
+import config from '@/config';
+import type { OrchestrationService } from '@/services/orchestration.service';
+import { mockInstance } from '@test/mocking';
+
+import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
+import { ScalingService } from '../scaling.service';
+import type { Job, JobData, JobOptions, JobQueue } from '../scaling.types';
 
 const queue = mock<JobQueue>({
 	client: { ping: jest.fn() },

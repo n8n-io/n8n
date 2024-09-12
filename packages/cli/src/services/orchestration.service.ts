@@ -1,13 +1,14 @@
-import { Service } from 'typedi';
-import { Logger } from '@/logger';
-import config from '@/config';
-import type { RedisServicePubSubPublisher } from './redis/redis-service-pub-sub-publisher';
-import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/redis-service-commands';
-
-import { RedisService } from './redis.service';
-import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
-import type { WorkflowActivateMode } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
+import type { WorkflowActivateMode } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { Logger } from '@/logger';
+
+import { MultiMainSetup } from './orchestration/main/multi-main-setup.ee';
+import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/redis-service-commands';
+import type { RedisServicePubSubPublisher } from './redis/redis-service-pub-sub-publisher';
+import { RedisService } from './redis.service';
 
 @Service()
 export class OrchestrationService {

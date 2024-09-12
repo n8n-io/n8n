@@ -1,10 +1,12 @@
 import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
+
 import { Logger } from '@/logger';
+import { WORKER_RESPONSE_REDIS_CHANNEL } from '@/services/redis/redis-constants';
+
+import type { MainResponseReceivedHandlerOptions } from './types';
 import { Push } from '../../../push';
 import type { RedisServiceWorkerResponseObject } from '../../redis/redis-service-commands';
-import { WORKER_RESPONSE_REDIS_CHANNEL } from '@/services/redis/redis-constants';
-import type { MainResponseReceivedHandlerOptions } from './types';
 
 export async function handleWorkerResponseMessageMain(
 	messageString: string,

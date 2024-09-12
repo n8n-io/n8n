@@ -1,30 +1,31 @@
-import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
-import { type RequestHandler, Response } from 'express';
 import { randomBytes } from 'crypto';
+import { type RequestHandler, Response } from 'express';
+import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
-import { Delete, Get, Patch, Post, RestController } from '@/decorators';
-import { PasswordUtility } from '@/services/password.utility';
-import { validateEntity } from '@/generic-helpers';
 import type { User } from '@/databases/entities/user';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import { validateEntity } from '@/generic-helpers';
+import type { PublicUser } from '@/interfaces';
+import { Logger } from '@/logger';
+import { MfaService } from '@/mfa/mfa.service';
+import { isApiEnabled } from '@/public-api';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type { PublicUser } from '@/interfaces';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { Logger } from '@/logger';
-import { ExternalHooks } from '@/external-hooks';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { isApiEnabled } from '@/public-api';
-import { EventService } from '@/events/event.service';
-import { MfaService } from '@/mfa/mfa.service';
-import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/saml-helpers';
+
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
 export const API_KEY_PREFIX = 'n8n_api_';

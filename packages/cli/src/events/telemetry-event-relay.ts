@@ -1,23 +1,25 @@
+import { GlobalConfig } from '@n8n/config';
+import { snakeCase } from 'change-case';
+import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
+import os from 'node:os';
+import { get as pslGet } from 'psl';
 import { Service } from 'typedi';
+
+import config from '@/config';
+import { N8N_VERSION } from '@/constants';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/relay-event-map';
-import { Telemetry } from '../telemetry';
-import config from '@/config';
-import os from 'node:os';
-import { License } from '@/license';
-import { GlobalConfig } from '@n8n/config';
-import { N8N_VERSION } from '@/constants';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { get as pslGet } from 'psl';
-import { TelemetryHelpers } from 'n8n-workflow';
-import { NodeTypes } from '@/node-types';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { IExecutionTrackProperties } from '@/interfaces';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle-hooks/shared/shared-hook-functions';
+import type { IExecutionTrackProperties } from '@/interfaces';
+import { License } from '@/license';
+import { NodeTypes } from '@/node-types';
+
 import { EventRelay } from './event-relay';
-import { snakeCase } from 'change-case';
+import { Telemetry } from '../telemetry';
 
 @Service()
 export class TelemetryEventRelay extends EventRelay {

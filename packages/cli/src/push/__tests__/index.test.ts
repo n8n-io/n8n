@@ -1,14 +1,13 @@
-import type { WebSocket } from 'ws';
 import { mock } from 'jest-mock-extended';
+import type { WebSocket } from 'ws';
 
 import config from '@/config';
 import type { User } from '@/databases/entities/user';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
-import { WebSocketPush } from '@/push/websocket.push';
 import type { WebSocketPushRequest, SSEPushRequest } from '@/push/types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
+import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
 
 jest.unmock('@/push');

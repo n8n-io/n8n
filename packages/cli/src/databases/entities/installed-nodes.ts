@@ -1,4 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+
 import { InstalledPackages } from './installed-packages';
 
 @Entity()
