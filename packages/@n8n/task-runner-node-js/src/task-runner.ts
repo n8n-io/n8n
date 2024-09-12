@@ -1,25 +1,5 @@
-import { runInNewContext, type Context } from 'node:vm';
-
 import { type MessageEvent, WebSocket } from 'ws';
 import { nanoid } from 'nanoid';
-import {
-	type INode,
-	type INodeType,
-	type ITaskDataConnections,
-	WorkflowDataProxy,
-	type WorkflowParameters,
-} from 'n8n-workflow';
-import {
-	type IDataObject,
-	type IExecuteData,
-	type INodeExecutionData,
-	type INodeParameters,
-	type IRunExecutionData,
-	type IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-	type WorkflowExecuteMode,
-} from 'n8n-workflow';
-
 import { RPC_ALLOW_LIST, type RunnerMessage, type BrokerMessage } from './runner-types';
 
 export interface Task<T = unknown> {
