@@ -51,9 +51,7 @@ describe('ProjectSettings', () => {
 		settingsStore = useSettingsStore();
 
 		vi.spyOn(usersStore, 'fetchUsers').mockImplementation(async () => await Promise.resolve());
-		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
-			async () => await Promise.resolve(),
-		);
+		vi.spyOn(projectsStore, 'getAvailableProjects').mockImplementation(async () => {});
 		vi.spyOn(projectsStore, 'projects', 'get').mockReturnValue(projects);
 		vi.spyOn(settingsStore, 'settings', 'get').mockReturnValue({
 			enterprise: {

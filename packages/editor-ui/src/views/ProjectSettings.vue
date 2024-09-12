@@ -60,7 +60,9 @@ const usersList = computed(() =>
 );
 
 const projects = computed(() =>
-	projectsStore.projects.filter((project) => project.id !== projectsStore.currentProjectId),
+	projectsStore.availableProjects.filter(
+		(project) => project.id !== projectsStore.currentProjectId,
+	),
 );
 const projectRoles = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
@@ -200,7 +202,7 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	await projectsStore.getAllProjects();
+	await projectsStore.getAvailableProjects();
 	dialogVisible.value = true;
 };
 

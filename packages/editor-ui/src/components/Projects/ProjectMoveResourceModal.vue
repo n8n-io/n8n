@@ -11,6 +11,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { ProjectTypes } from '@/types/projects.types';
 import ProjectMoveSuccessToastMessage from '@/components/Projects/ProjectMoveSuccessToastMessage.vue';
 import { useToast } from '@/composables/useToast';
+import { getResourcePermissions } from '@/permissions';
 
 const props = defineProps<{
 	modalName: string;
@@ -32,8 +33,12 @@ const processedName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 const availableProjects = computed(() =>
-	projectsStore.projects
-		.filter((p) => p.id !== props.data.resource.homeProject?.id)
+	projectsStore.availableProjects
+		.filter(
+			(p) =>
+				p.id !== props.data.resource.homeProject?.id &&
+				(!p.scopes || getResourcePermissions(p.scopes)[props.data.resourceType].create),
+		)
 		.sort((a, b) => a.name?.localeCompare(b.name ?? '') ?? 0),
 );
 const selectedProject = computed(() =>
