@@ -450,8 +450,19 @@ export class ExecutionService {
 			return await this.executionRepository.stopBeforeRun(execution);
 		}
 
+		// NOTE: old code
+		// NOTE: Should this actually stop the execution?
+		// Maybe this should just get the execution from the active executions,
+		// then cancel it and then let the workflow execute and workflow runner
+		// take care of the rest?
+		//if (this.activeExecutions.has(execution.id)) {
+		//	this.activeExecutions.stopExecution(execution.id);
+		//}
+
+		// NOTE: new code
+		// FIXME: Option 3
 		if (this.activeExecutions.has(execution.id)) {
-			this.activeExecutions.stopExecution(execution.id);
+			this.activeExecutions.cancelExecution(execution.id);
 		}
 
 		if (this.waitTracker.has(execution.id)) {

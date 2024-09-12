@@ -515,7 +515,11 @@ export class Wait extends Webhook {
 			// we just check the database every 60 seconds.
 			return await new Promise((resolve) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
+				context.onExecutionCancellation(() => {
+					clearTimeout(timer);
+					// FIXME: Don't let the promise dangle
+					resolve([context.getInputData()]);
+				});
 			});
 		}
 
