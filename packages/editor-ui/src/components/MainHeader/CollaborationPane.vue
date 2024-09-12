@@ -21,8 +21,9 @@ const showUserStack = computed(() => collaborationStore.collaborators.length > 1
 
 const collaboratorsSorted = computed(() => {
 	const users = collaborationStore.collaborators.map(({ user }) => user);
+	// Move the current user to the first position, if not already there.
 	const index = users.findIndex((user) => user.id === usersStore.currentUser?.id);
-	if (index === -1) return { defaultGroup: users };
+	if (index < 1) return { defaultGroup: users };
 	const [currentUser] = users.splice(index, 1);
 	return { defaultGroup: [currentUser, ...users] };
 });
