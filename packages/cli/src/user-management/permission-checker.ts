@@ -19,7 +19,9 @@ export class PermissionChecker {
 	 */
 	async check(workflowId: string, nodes: INode[]) {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		const homeProjectOwner = await this.ownershipService.getProjectOwnerCached(homeProject.id);
+		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
+			homeProject.id,
+		);
 		if (homeProject.type === 'personal' && homeProjectOwner?.hasGlobalScope('credential:list')) {
 			// Workflow belongs to a project by a user with privileges
 			// so all credentials are usable. Skip credential checks.
