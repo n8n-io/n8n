@@ -109,7 +109,6 @@ export class ClockifyTrigger implements INodeType {
 		let result = null;
 
 		switch (triggerField) {
-			// TODO
 			case EntryTypeEnum.FETCH_ALL_TIME_ENTRIES:
 				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
 				qs.hydrated = true;
@@ -129,7 +128,9 @@ export class ClockifyTrigger implements INodeType {
 		result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs);
 
 		if (Array.isArray(result) && result.length !== 0) {
-			if (triggerField === EntryTypeEnum.NEW_TIME_ENTRY) webhookData.lastTimeChecked = qs.end;
+			if (triggerField === EntryTypeEnum.NEW_TIME_ENTRY) {
+				webhookData.lastTimeChecked = result[0].end;
+			}
 			return [this.helpers.returnJsonArray(result)];
 		}
 		return null;
