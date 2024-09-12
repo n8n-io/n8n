@@ -1,6 +1,7 @@
 import Container from 'typedi';
-import { Logger } from '@/logger';
+
 import config from '@/config';
+import { Logger } from '@/logger';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '@test/mocking';
 

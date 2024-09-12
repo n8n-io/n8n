@@ -1,16 +1,16 @@
 import { Container } from 'typedi';
 
-import type { User } from '@/databases/entities/user';
 import config from '@/config';
+import type { User } from '@/databases/entities/user';
 import { SourceControlPreferencesService } from '@/environments/source-control/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments/source-control/source-control.service.ee';
 import type { SourceControlledFile } from '@/environments/source-control/types/source-controlled-file';
+import { Telemetry } from '@/telemetry';
+import { mockInstance } from '@test/mocking';
 
-import * as utils from '../shared/utils';
 import { createUser } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import { mockInstance } from '@test/mocking';
-import { Telemetry } from '@/telemetry';
+import * as utils from '../shared/utils';
 
 let authOwnerAgent: SuperAgentTest;
 let owner: User;

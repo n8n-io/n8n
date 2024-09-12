@@ -1,5 +1,3 @@
-import { Service } from 'typedi';
-import type PCancelable from 'p-cancelable';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -14,16 +12,19 @@ import {
 	sleep,
 } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
 
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
 } from '@/interfaces';
-import { isWorkflowIdValid } from '@/utils';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { Logger } from '@/logger';
+import { isWorkflowIdValid } from '@/utils';
+
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import config from './config';
 

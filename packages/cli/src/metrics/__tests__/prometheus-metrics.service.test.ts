@@ -1,13 +1,15 @@
-import config from '@/config';
-import promClient from 'prom-client';
+import { GlobalConfig } from '@n8n/config';
+import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
-import { PrometheusMetricsService } from '../prometheus-metrics.service';
-import type express from 'express';
+import promClient from 'prom-client';
+
+import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { mockInstance } from '@test/mocking';
-import { GlobalConfig } from '@n8n/config';
 import type { EventService } from '@/events/event.service';
+import { mockInstance } from '@test/mocking';
+
+import { PrometheusMetricsService } from '../prometheus-metrics.service';
 
 const mockMiddleware = (
 	_req: express.Request,

@@ -1,16 +1,13 @@
-import { deepCopy } from 'n8n-workflow';
 import { GlobalConfig } from '@n8n/config';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { deepCopy } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { CredentialsService } from './credentials.service';
-import { CredentialRequest } from '@/requests';
-import { Logger } from '@/logger';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NamingService } from '@/services/naming.service';
-import { License } from '@/license';
-import { EnterpriseCredentialsService } from './credentials.service.ee';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import * as Db from '@/db';
 import {
 	Delete,
 	Get,
@@ -22,15 +19,19 @@ import {
 	ProjectScope,
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserManagementMailer } from '@/user-management/email';
-import * as Db from '@/db';
-import * as utils from '@/utils';
-import { listQueryMiddleware } from '@/middlewares';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { z } from 'zod';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { License } from '@/license';
+import { Logger } from '@/logger';
+import { listQueryMiddleware } from '@/middlewares';
+import { CredentialRequest } from '@/requests';
+import { NamingService } from '@/services/naming.service';
+import { UserManagementMailer } from '@/user-management/email';
+import * as utils from '@/utils';
+
+import { CredentialsService } from './credentials.service';
+import { EnterpriseCredentialsService } from './credentials.service.ee';
 
 @RestController('/credentials')
 export class CredentialsController {

@@ -1,15 +1,16 @@
-import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
-import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
-import { toReportTitle } from '@/security-audit/utils';
+import { v4 as uuid } from 'uuid';
+
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { toReportTitle } from '@/security-audit/utils';
 import { CommunityPackagesService } from '@/services/community-packages.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
-import { mockInstance } from '../../shared/mocking';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
+import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/test-db';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);

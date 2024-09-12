@@ -1,5 +1,32 @@
-import { Container, Service } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
+import glob from 'fast-glob';
+import { readFile as fsReadFile } from 'fs/promises';
+import { Credentials, InstanceSettings } from 'n8n-core';
+import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import path from 'path';
+import { Container, Service } from 'typedi';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { Project } from '@/databases/entities/project';
+import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { Variables } from '@/databases/entities/variables';
+import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { VariablesRepository } from '@/databases/repositories/variables.repository';
+import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import type { IWorkflowToImport } from '@/interfaces';
+import { Logger } from '@/logger';
+import { isUniqueConstraintError } from '@/response-helper';
+import { assertNever } from '@/utils';
+
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -7,37 +34,12 @@ import {
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
-import glob from 'fast-glob';
-import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-import { readFile as fsReadFile } from 'fs/promises';
-import { Credentials, InstanceSettings } from 'n8n-core';
-import type { IWorkflowToImport } from '@/interfaces';
-import type { ExportableCredential } from './types/exportable-credential';
-import type { Variables } from '@/databases/entities/variables';
-import { SharedCredentials } from '@/databases/entities/shared-credentials';
-import type { WorkflowTagMapping } from '@/databases/entities/workflow-tag-mapping';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
-import { isUniqueConstraintError } from '@/response-helper';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { getCredentialExportPath, getWorkflowExportPath } from './source-control-helper.ee';
+import type { ExportableCredential } from './types/exportable-credential';
+import type { ResourceOwner } from './types/resource-owner';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { SourceControlledFile } from './types/source-controlled-file';
 import { VariablesService } from '../variables/variables.service.ee';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { Logger } from '@/logger';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { WorkflowTagMappingRepository } from '@/databases/repositories/workflow-tag-mapping.repository';
-import { VariablesRepository } from '@/databases/repositories/variables.repository';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { Project } from '@/databases/entities/project';
-import type { ResourceOwner } from './types/resource-owner';
-import { assertNever } from '@/utils';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Service()
 export class SourceControlImportService {

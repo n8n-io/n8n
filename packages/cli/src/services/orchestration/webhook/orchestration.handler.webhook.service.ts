@@ -1,7 +1,8 @@
 import { Service } from 'typedi';
-import { COMMAND_REDIS_CHANNEL } from '../../redis/redis-constants';
-import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+
 import { handleCommandMessageWebhook } from './handle-command-message-webhook';
+import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+import { COMMAND_REDIS_CHANNEL } from '../../redis/redis-constants';
 
 @Service()
 export class OrchestrationHandlerWebhookService extends OrchestrationHandlerService {

@@ -1,7 +1,8 @@
-import config from '@/config';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
-import type { AuthProviderType } from '@/databases/entities/auth-identity';
 import Container from 'typedi';
+
+import config from '@/config';
+import type { AuthProviderType } from '@/databases/entities/auth-identity';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
 
 /**
  * Only one authentication method can be active at a time. This function sets the current authentication method

@@ -1,25 +1,25 @@
 import type { Response } from 'express';
-import { Container } from 'typedi';
-import jwt from 'jsonwebtoken';
 import { mock, anyObject } from 'jest-mock-extended';
+import jwt from 'jsonwebtoken';
+import { Container } from 'typedi';
 
-import type { PublicUser } from '@/interfaces';
-import type { User } from '@/databases/entities/user';
-import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
-import { UserService } from '@/services/user.service';
-import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { badPasswords } from '@test/test-data';
-import { mockInstance } from '@test/mocking';
+import { API_KEY_PREFIX, MeController } from '@/controllers/me.controller';
+import type { User } from '@/databases/entities/user';
 import { AuthUserRepository } from '@/databases/repositories/auth-user.repository';
 import { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import { MfaService } from '@/mfa/mfa.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import type { PublicUser } from '@/interfaces';
+import { License } from '@/license';
+import { MfaService } from '@/mfa/mfa.service';
+import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
+import { mockInstance } from '@test/mocking';
+import { badPasswords } from '@test/test-data';
 
 const browserId = 'test-browser-id';
 

@@ -1,11 +1,13 @@
-import { Service } from 'typedi';
 import { BinaryDataService, InstanceSettings } from 'n8n-core';
-import { inTest, TIME } from '@/constants';
-import config from '@/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { Logger } from '@/logger';
 import { jsonStringify } from 'n8n-workflow';
+import { Service } from 'typedi';
+
+import config from '@/config';
+import { inTest, TIME } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { Logger } from '@/logger';
+
 import { OrchestrationService } from './orchestration.service';
 
 @Service()

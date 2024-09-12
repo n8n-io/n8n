@@ -1,29 +1,30 @@
-import { Service } from 'typedi';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
 import { ApplicationError, NodeOperationError, WorkflowActivationError } from 'n8n-workflow';
+import { Service } from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
+import { Project } from '@/databases/entities/project';
+import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import type { User } from '@/databases/entities/user';
 import type { WorkflowEntity } from '@/databases/entities/workflow-entity';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
-import { CredentialsService } from '@/credentials/credentials.service';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { Logger } from '@/logger';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service';
+
 import type {
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
-import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type EntityManager } from '@n8n/typeorm';
-import { Project } from '@/databases/entities/project';
-import { ProjectService } from '@/services/project.service';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 
 @Service()
 export class EnterpriseWorkflowService {

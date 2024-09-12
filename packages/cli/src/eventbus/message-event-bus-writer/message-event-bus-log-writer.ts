@@ -1,34 +1,36 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
-import { InstanceSettings } from 'n8n-core';
-import path, { parse } from 'path';
-import { Worker } from 'worker_threads';
+import { GlobalConfig } from '@n8n/config';
+import { once as eventOnce } from 'events';
 import { createReadStream, existsSync, rmSync } from 'fs';
-import readline from 'readline';
 import remove from 'lodash/remove';
-import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
-import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
-import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
-import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
-import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
+import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
+import path, { parse } from 'path';
+import readline from 'readline';
+import Container from 'typedi';
+import { Worker } from 'worker_threads';
+
+import { inTest } from '@/constants';
+import { Logger } from '@/logger';
+
+import type { EventMessageTypes } from '../event-message-classes';
+import { isEventMessageOptions } from '../event-message-classes/abstract-event-message';
+import type { AbstractEventMessageOptions } from '../event-message-classes/abstract-event-message-options';
 import type { EventMessageAuditOptions } from '../event-message-classes/event-message-audit';
 import { EventMessageAudit } from '../event-message-classes/event-message-audit';
-import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
-import { EventMessageNode } from '../event-message-classes/event-message-node';
-import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
-import type { EventMessageTypes } from '../event-message-classes';
 import type { EventMessageConfirmSource } from '../event-message-classes/event-message-confirm';
 import {
 	EventMessageConfirm,
 	isEventMessageConfirm,
 } from '../event-message-classes/event-message-confirm';
-import { once as eventOnce } from 'events';
-import { inTest } from '@/constants';
-import { Logger } from '@/logger';
-import Container from 'typedi';
-import { GlobalConfig } from '@n8n/config';
+import type { EventMessageGenericOptions } from '../event-message-classes/event-message-generic';
+import { EventMessageGeneric } from '../event-message-classes/event-message-generic';
+import type { EventMessageNodeOptions } from '../event-message-classes/event-message-node';
+import { EventMessageNode } from '../event-message-classes/event-message-node';
+import type { EventMessageWorkflowOptions } from '../event-message-classes/event-message-workflow';
+import { EventMessageWorkflow } from '../event-message-classes/event-message-workflow';
+import type { EventMessageReturnMode } from '../message-event-bus/message-event-bus';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;

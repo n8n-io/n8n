@@ -1,7 +1,8 @@
-import { Container } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
-import { type ServiceClass, ShutdownService } from '@/shutdown/shutdown.service';
+import { Container } from 'typedi';
+
 import { DEFAULT_SHUTDOWN_PRIORITY } from '@/constants';
+import { type ServiceClass, ShutdownService } from '@/shutdown/shutdown.service';
 
 /**
  * Decorator that registers a method as a shutdown hook. The method will

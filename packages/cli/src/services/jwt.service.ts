@@ -1,7 +1,8 @@
-import { Service } from 'typedi';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
+import { Service } from 'typedi';
+
 import config from '@/config';
 
 @Service()

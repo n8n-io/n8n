@@ -1,3 +1,4 @@
+import type Bull from 'bull';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -5,7 +6,6 @@ import type {
 	IRun,
 	WorkflowExecuteMode as WorkflowExecutionMode,
 } from 'n8n-workflow';
-import type Bull from 'bull';
 import type PCancelable from 'p-cancelable';
 
 export type JobQueue = Bull.Queue<JobData>;

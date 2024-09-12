@@ -1,13 +1,13 @@
 import { Container } from 'typedi';
 
-import { setupTestCommand } from '@test-integration/utils/test-command';
-import { mockInstance } from '../../shared/mocking';
-
 import { ClearLicenseCommand } from '@/commands/license/clear';
 import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { setupTestCommand } from '@test-integration/utils/test-command';
+
+import { mockInstance } from '../../shared/mocking';
 
 mockInstance(LoadNodesAndCredentials);
 const license = mockInstance(License);

@@ -1,5 +1,6 @@
-import { NoXss } from '../no-xss.validator';
 import { validate } from 'class-validator';
+
+import { NoXss } from '../no-xss.validator';
 
 describe('NoXss', () => {
 	class Entity {
