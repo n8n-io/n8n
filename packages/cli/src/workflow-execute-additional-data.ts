@@ -23,7 +23,6 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
-	EventNamesAiNodesType,
 	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -69,7 +68,7 @@ import { WorkflowStaticDataService } from './workflows/workflow-static-data.serv
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflow-execution.service';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { AiEventMap, AiEventPayload } from './events/ai-event-map';
 import { EventService } from './events/event.service';
 import { GlobalConfig } from '@n8n/config';
 import { SubworkflowPolicyChecker } from './subworkflows/subworkflow-policy-checker.service';
@@ -969,6 +968,8 @@ export async function getBase(
 
 	const variables = await WorkflowHelpers.getVariables();
 
+	const eventService = Container.get(EventService);
+
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
@@ -984,22 +985,8 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
-		logAiEvent: async (
-			eventName: EventNamesAiNodesType,
-			payload: {
-				msg?: string | undefined;
-				executionId: string;
-				nodeName: string;
-				workflowId?: string | undefined;
-				workflowName: string;
-				nodeType?: string | undefined;
-			},
-		) => {
-			return await Container.get(MessageEventBus).sendAiNodeEvent({
-				eventName,
-				payload,
-			});
-		},
+		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
+			eventService.emit(eventName, payload),
 	};
 }
 
