@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
-import { brandfetchApiRequest } from './GenericFunctions';
+import { brandfetchApiRequest, fetchAndPrepareBinaryData } from './GenericFunctions';
 
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
@@ -157,7 +157,6 @@ export class Brandfetch implements INodeType {
 			try {
 				const domain = this.getNodeParameter('domain', i) as string;
 				if (operation === 'logo') {
-
 					const download = this.getNodeParameter('download', i);
 
 					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
@@ -183,25 +182,26 @@ export class Brandfetch implements INodeType {
 
 						for (const imageType of imageTypes) {
 							for (const imageFormat of imageFormats) {
-								const url = response.logos[imageType][
-									imageFormat === 'png' ? 'image' : imageFormat
-								] as string;
+								const logoUrls = response.logos;
 
-								if (url !== null) {
-									const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, {
-										json: false,
-										encoding: null,
-									});
-
-									newItem.binary![`${imageType}_${imageFormat}`] =
-										await this.helpers.prepareBinaryData(
-											data as Buffer,
-											`${imageType}_${domain}.${imageFormat}`,
-										);
-
-									items[i] = newItem;
+								for (const logoUrl of logoUrls) {
+									if (logoUrl.type !== imageType) {
+										continue;
+									}
+									for (const logoFormats of logoUrl.formats) {
+										if (logoFormats.format === imageFormat && logoFormats.src !== null) {
+											await fetchAndPrepareBinaryData.call(
+												this,
+												imageType,
+												imageFormat,
+												logoFormats,
+												domain,
+												newItem,
+											);
+											items[i] = newItem;
+										}
+									}
 								}
-								items[i] = newItem;
 							}
 						}
 						if (Object.keys(items[i].binary!).length === 0) {

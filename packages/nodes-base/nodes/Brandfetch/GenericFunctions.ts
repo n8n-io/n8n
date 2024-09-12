@@ -3,8 +3,9 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
-	IHttpRequestOptions,
+	IRequestOptions,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -19,7 +20,7 @@ export async function brandfetchApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	try {
-		let options: IHttpRequestOptions = {
+		let options: IRequestOptions = {
 			method: method as IHttpRequestMethods,
 			qs,
 			body,
@@ -40,9 +41,7 @@ export async function brandfetchApiRequest(
 			delete options.qs;
 		}
 
-		console.log(options);
-
-		const response = await this.helpers.httpRequestWithAuthentication.call(
+		const response = await this.helpers.requestWithAuthentication.call(
 			this,
 			'brandfetchApi',
 			options,
@@ -56,4 +55,23 @@ export async function brandfetchApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function fetchAndPrepareBinaryData(
+	this: IExecuteFunctions,
+	imageType: string,
+	imageFormat: string,
+	logoFormats: IDataObject,
+	domain: string,
+	newItem: INodeExecutionData,
+) {
+	const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, logoFormats.src as string, {
+		json: false,
+		encoding: null,
+	});
+
+	newItem.binary![`${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(
+		Buffer.from(data),
+		`${imageType}_${domain}.${imageFormat}`,
+	);
 }
