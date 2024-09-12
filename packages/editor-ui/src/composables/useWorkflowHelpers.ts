@@ -69,6 +69,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import useWorkflowsEEStore from '@/stores/workflows.ee.store';
 import { useNpsSurveyStore } from '@/stores/npsSurvey.store';
 import type { NavigationGuardNext } from 'vue-router';
+import { ResolvedNodeParameters } from '@/types/assistant.types';
 
 type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -693,6 +694,33 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
+	// TODO: Fix types, add tests
+	function resolveNodeExpressions(nodeParameters: INodeParameters): void {
+		function recurse(currentObj: { [key: string]: unknown }, currentPath: string) {
+			for (const key in currentObj) {
+				const value = currentObj[key];
+				const path = currentPath ? `${currentPath}.${key}` : key;
+				// If the value is an object, recurse
+				if (typeof value === 'object' && value !== null) {
+					recurse(value, path);
+				} else if (typeof value === 'string' && value.startsWith('={{')) {
+					// Check for the custom expression syntax
+					let resolved;
+					try {
+						resolved = resolveExpression(value, nodeParameters);
+					} catch (error) {
+						resolved = `Error in expression: "${error.message}"`;
+					}
+					currentObj[key] = {
+						value,
+						resolvedExpressionValue: resolved,
+					};
+				}
+			}
+		}
+		recurse(nodeParameters, '');
+	}
+
 	function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
@@ -1159,5 +1187,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		getWorkflowProjectRole,
 		promptSaveUnsavedWorkflowChanges,
 		initState,
+		resolveNodeExpressions,
 	};
 }

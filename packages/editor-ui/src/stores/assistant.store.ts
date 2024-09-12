@@ -27,6 +27,7 @@ import {
 	getReferencedNodes,
 	getNodesSchemas,
 	processNodeForLLM,
+	isNodeReferencingInputData,
 } from '@/utils/nodeTypesUtils';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { usePostHog } from './posthog.store';
@@ -422,7 +423,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		}
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
 		const ndvInput = ndvStore.ndvInputData;
-		if (ndvInput?.length) {
+		if (isNodeReferencingInputData(context.node) && ndvInput?.length) {
 			const inputData = ndvStore.ndvInputData[0].json;
 			const inputNodeName = ndvStore.input.nodeName;
 			nodeInputData = {

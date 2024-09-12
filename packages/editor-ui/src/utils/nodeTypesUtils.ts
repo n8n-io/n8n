@@ -557,48 +557,15 @@ export function processNodeForLLM(node: INode, propsToRemove: string[]): INode {
 	propsToRemove.forEach((key) => {
 		delete nodeForLLM[key as keyof INode];
 	});
-	resolveNodeExpressions(nodeForLLM.parameters);
+	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
+	workflowHelpers.resolveNodeExpressions(nodeForLLM.parameters);
 	return nodeForLLM;
 }
 
-// TODO: Fix types, add tests
-function resolveNodeExpressions(nodeParameters: INodeParameters): void {
-	function recurse(currentObj: object, currentPath: string) {
-		for (const key in currentObj) {
-			const value = currentObj[key];
-			const path = currentPath ? `${currentPath}.${key}` : key;
-
-			// If the value is an object, recurse
-			if (typeof value === 'object' && value !== null) {
-				recurse(value, path);
-			} else if (typeof value === 'string' && value.startsWith('={{')) {
-				// Check for the custom expression syntax
-				const resolved = resolveExpression(
-					{ key: path, expression: value },
-					nodeParameters as INode,
-				);
-				currentObj[key] = {
-					value,
-					resolvedExpressionValue: resolved,
-				};
-			}
-		}
-	}
-	recurse(nodeParameters, '');
-}
-
-function resolveExpression(expression: { key: string; expression: string }, node: INode) {
-	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-	let resolvedExpressionValue = '';
-	try {
-		resolvedExpressionValue = workflowHelpers.resolveExpression(
-			expression.expression,
-			node.parameters
-		);
-	} catch (error) {
-		resolvedExpressionValue = `Error in expression: "${error.message}"`;
-	}
-	return resolvedExpressionValue;
+export function isNodeReferencingInputData(node: INode): boolean {
+	const parametersString = JSON.stringify(node.parameters);
+	const references = ['$json', '$input', '$binary'];
+	return references.some((ref) => parametersString.includes(ref));
 }
 
 /**
