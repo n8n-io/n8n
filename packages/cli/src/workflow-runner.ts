@@ -13,6 +13,7 @@ import type {
 	IRun,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -26,7 +27,7 @@ import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { ExternalHooks } from '@/external-hooks';
-import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/interfaces';
+import type { IExecutionResponse } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import type { Job, JobData, JobResult } from '@/scaling/scaling.types';
 import type { ScalingService } from '@/scaling/scaling.service';

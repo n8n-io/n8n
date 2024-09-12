@@ -7,9 +7,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
-	IPinData,
 	IRun,
-	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITelemetryTrackProperties,
@@ -22,7 +20,8 @@ import type {
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
-	StartNodeData,
+	IWorkflowExecutionDataProcess,
+	IUser,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -291,11 +290,11 @@ export type IPushData =
 	| PushDataWorkflowActivated
 	| PushDataWorkflowDeactivated
 	| PushDataWorkflowFailedToActivate
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataCollaboratorsChanged;
 
-type PushDataActiveWorkflowUsersChanged = {
-	data: IActiveWorkflowUsersChanged;
-	type: 'activeWorkflowUsersChanged';
+type PushDataCollaboratorsChanged = {
+	data: ICollaboratorsChanged;
+	type: 'collaboratorsChanged';
 };
 
 type PushDataWorkflowFailedToActivate = {
@@ -371,14 +370,14 @@ export type PushDataNodeDescriptionUpdated = {
 /** DateTime in the Iso8601 format, e.g. 2024-10-31T00:00:00.123Z */
 export type Iso8601DateTimeString = string;
 
-export interface IActiveWorkflowUser {
-	user: PublicUser;
+export interface ICollaborator {
+	user: IUser;
 	lastSeen: Iso8601DateTimeString;
 }
 
-export interface IActiveWorkflowUsersChanged {
+export interface ICollaboratorsChanged {
 	workflowId: Workflow['id'];
-	activeUsers: IActiveWorkflowUser[];
+	collaborators: ICollaborator[];
 }
 
 export interface IActiveWorkflowAdded {
@@ -493,21 +492,6 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
-}
-
-export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
-	restartExecutionId?: string;
-	executionMode: WorkflowExecuteMode;
-	executionData?: IRunExecutionData;
-	runData?: IRunData;
-	pinData?: IPinData;
-	retryOf?: string;
-	pushRef?: string;
-	startNodes?: StartNodeData[];
-	workflowData: IWorkflowBase;
-	userId?: string;
-	projectId?: string;
 }
 
 export interface IWorkflowExecuteProcess {

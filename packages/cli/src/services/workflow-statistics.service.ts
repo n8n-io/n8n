@@ -72,7 +72,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 				if (project.type === 'personal') {
-					const owner = await this.ownershipService.getProjectOwnerCached(project.id);
+					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
@@ -105,7 +105,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		// Compile the metrics since this was a new data loaded event
 		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
+		const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 
 		let metrics = {
 			userId: owner!.id,

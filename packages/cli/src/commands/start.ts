@@ -8,7 +8,7 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
-import { jsonParse, randomString } from 'n8n-workflow';
+import { jsonParse, randomString, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/active-executions';
@@ -26,7 +26,6 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/wait-tracker';
 import { BaseCommand } from './base-command';
-import type { IWorkflowExecutionDataProcess } from '@/interfaces';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';

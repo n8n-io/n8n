@@ -1,10 +1,13 @@
-import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
-import { NDV, WorkflowPage } from '../pages';
+import { clickCreateNewCredential, openCredentialSelect } from '../composables/ndv';
+import { GMAIL_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { AIAssistant } from '../pages/features/ai-assistant';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
 const aiAssistant = new AIAssistant();
+const credentialsPage = new CredentialsPage();
+const credentialsModal = new CredentialsModal();
 
 describe('AI Assistant::disabled', () => {
 	beforeEach(() => {
@@ -301,5 +304,73 @@ describe('AI Assistant::enabled', () => {
 		ndv.getters.nodeExecuteButton().click();
 		wf.getters.isWorkflowSaved();
 		aiAssistant.getters.placeholderMessage().should('not.exist');
+	});
+});
+
+describe('AI Assistant Credential Help', () => {
+	beforeEach(() => {
+		aiAssistant.actions.enableAssistant();
+		wf.actions.visit();
+	});
+
+	after(() => {
+		aiAssistant.actions.disableAssistant();
+	});
+
+	it('should start credential help from node credential', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+		wf.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		wf.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		wf.actions.openNode('Gmail');
+		openCredentialSelect();
+		clickCreateNewCredential();
+		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Gmail OAuth2 API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
+	});
+
+	it('should start credential help from credential list', () => {
+		cy.intercept('POST', '/rest/ai-assistant/chat', {
+			statusCode: 200,
+			fixture: 'aiAssistant/simple_message_response.json',
+		}).as('chatRequest');
+
+		cy.visit(credentialsPage.url);
+		credentialsPage.getters.emptyListCreateCredentialButton().click();
+
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+
+		credentialsModal.getters.newCredentialTypeButton().click();
+
+		aiAssistant.getters.credentialEditAssistantButton().should('be.visible');
+		aiAssistant.getters.credentialEditAssistantButton().click();
+		cy.wait('@chatRequest');
+		aiAssistant.getters.chatMessagesUser().should('have.length', 1);
+		aiAssistant.getters
+			.chatMessagesUser()
+			.eq(0)
+			.should('contain.text', 'How do I set up the credentials for Notion API?');
+
+		aiAssistant.getters
+			.chatMessagesAssistant()
+			.eq(0)
+			.should('contain.text', 'Hey, this is an assistant message');
+		aiAssistant.getters.credentialEditAssistantButton().should('be.disabled');
 	});
 });

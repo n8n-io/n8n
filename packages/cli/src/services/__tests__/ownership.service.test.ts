@@ -64,7 +64,7 @@ describe('OwnershipService', () => {
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
-			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const returnedOwner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(returnedOwner).toBe(mockOwner);
 		});
@@ -72,7 +72,7 @@ describe('OwnershipService', () => {
 		test('should not throw if no project owner found, should return null instead', async () => {
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
 
-			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
 		});
@@ -91,7 +91,7 @@ describe('OwnershipService', () => {
 
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
 
-			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const returnedOwner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(returnedOwner).toBe(mockOwner);
 		});
@@ -99,7 +99,7 @@ describe('OwnershipService', () => {
 		test('should not throw if no project owner found, should return null instead', async () => {
 			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
 
-			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
 		});
