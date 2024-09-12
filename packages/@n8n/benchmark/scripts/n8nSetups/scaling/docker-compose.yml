@@ -154,7 +154,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=password
 
     volumes:
-      - ${RUN_DIR}/n8n-main:/n8n
+      - ${RUN_DIR}/n8n-main1:/n8n
     depends_on:
       n8n_worker1:
         condition: service_healthy
