@@ -1,7 +1,8 @@
-import axios from 'axios';
 import * as aws4 from 'aws4';
-import type { AxiosRequestConfig } from 'axios';
 import type { Request as Aws4Options } from 'aws4';
+import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
+
 import type {
 	AwsSecretsManagerContext,
 	ConnectionTestResult,

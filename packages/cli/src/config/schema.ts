@@ -1,10 +1,11 @@
-import path from 'path';
+import { GlobalConfig } from '@n8n/config';
 import convict from 'convict';
-import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
 import { LOG_LEVELS } from 'n8n-workflow';
+import path from 'path';
+import { Container } from 'typedi';
+
 import { ensureStringArray } from './utils';
-import { GlobalConfig } from '@n8n/config';
 
 convict.addFormat({
 	name: 'comma-separated-list',

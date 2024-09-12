@@ -1,16 +1,17 @@
-import { OwnershipService } from '@/services/ownership.service';
-import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { mock } from 'jest-mock-extended';
+
+import { Project } from '@/databases/entities/project';
+import { ProjectRelation } from '@/databases/entities/project-relation';
+import type { SharedCredentials } from '@/databases/entities/shared-credentials';
 import { SharedWorkflow } from '@/databases/entities/shared-workflow';
 import { User } from '@/databases/entities/user';
-import type { SharedCredentials } from '@/databases/entities/shared-credentials';
-import { mockInstance } from '@test/mocking';
 import { WorkflowEntity } from '@/databases/entities/workflow-entity';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { mock } from 'jest-mock-extended';
-import { Project } from '@/databases/entities/project';
 import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import { ProjectRelation } from '@/databases/entities/project-relation';
+import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { OwnershipService } from '@/services/ownership.service';
 import { mockCredential, mockProject } from '@test/mock-objects';
+import { mockInstance } from '@test/mocking';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);

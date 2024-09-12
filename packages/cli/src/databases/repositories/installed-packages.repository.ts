@@ -1,8 +1,9 @@
-import { Service } from 'typedi';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { InstalledPackages } from '../entities/installed-packages';
-import { InstalledNodesRepository } from './installed-nodes.repository';
 import type { PackageDirectoryLoader } from 'n8n-core';
+import { Service } from 'typedi';
+
+import { InstalledNodesRepository } from './installed-nodes.repository';
+import { InstalledPackages } from '../entities/installed-packages';
 
 @Service()
 export class InstalledPackagesRepository extends Repository<InstalledPackages> {

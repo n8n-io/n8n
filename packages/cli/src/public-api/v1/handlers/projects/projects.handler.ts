@@ -1,10 +1,12 @@
-import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import type { Response } from 'express';
-import type { ProjectRequest } from '@/requests';
-import type { PaginatedRequest } from '@/public-api/types';
 import Container from 'typedi';
+
 import { ProjectController } from '@/controllers/project.controller';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { PaginatedRequest } from '@/public-api/types';
+import type { ProjectRequest } from '@/requests';
+
+import { globalScope, isLicensed, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = ProjectRequest.Create;

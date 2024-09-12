@@ -1,23 +1,23 @@
+import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import type { Socket } from 'net';
-import type { Application } from 'express';
-import { Server as WSServer } from 'ws';
-import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
+import { parse as parseUrl } from 'url';
+import { Server as WSServer } from 'ws';
 
-import config from '@/config';
-import { OnShutdown } from '@/decorators/on-shutdown';
 import { AuthService } from '@/auth/auth.service';
+import config from '@/config';
+import type { User } from '@/databases/entities/user';
+import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { IPushDataType } from '@/interfaces';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { TypedEmitter } from '@/typed-emitter';
 
 import { SSEPush } from './sse.push';
-import { WebSocketPush } from './websocket.push';
 import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
-import { TypedEmitter } from '@/typed-emitter';
-import type { User } from '@/databases/entities/user';
+import { WebSocketPush } from './websocket.push';
 
 type PushEvents = {
 	editorUiConnected: string;

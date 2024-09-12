@@ -1,10 +1,11 @@
-import { VariablesService } from '@/environments/variables/variables.service.ee';
-import { mockInstance } from '@test/mocking';
-import { getBase } from '@/workflow-execute-additional-data';
 import Container from 'typedi';
+
 import { CredentialsHelper } from '@/credentials-helper';
-import { SecretsHelper } from '@/secrets-helpers';
+import { VariablesService } from '@/environments/variables/variables.service.ee';
 import { EventService } from '@/events/event.service';
+import { SecretsHelper } from '@/secrets-helpers';
+import { getBase } from '@/workflow-execute-additional-data';
+import { mockInstance } from '@test/mocking';
 
 describe('WorkflowExecuteAdditionalData', () => {
 	const variablesService = mockInstance(VariablesService);

@@ -1,21 +1,21 @@
 import type express from 'express';
+import type { Response } from 'express';
 import { Container } from 'typedi';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import { InvitationController } from '@/controllers/invitation.controller';
+import { UsersController } from '@/controllers/users.controller';
+import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
+import { EventService } from '@/events/event.service';
+import type { UserRequest } from '@/requests';
 
-import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
 	globalScope,
 	isLicensed,
 	validCursor,
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
-import type { UserRequest } from '@/requests';
-import { EventService } from '@/events/event.service';
-import { ProjectRelationRepository } from '@/databases/repositories/project-relation.repository';
-import type { Response } from 'express';
-import { InvitationController } from '@/controllers/invitation.controller';
-import { UsersController } from '@/controllers/users.controller';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 type Create = UserRequest.Invite;
 type Delete = UserRequest.Delete;

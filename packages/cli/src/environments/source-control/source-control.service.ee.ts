@@ -1,5 +1,24 @@
-import { Service } from 'typedi';
+import { writeFileSync } from 'fs';
+import { ApplicationError } from 'n8n-workflow';
 import path from 'path';
+import type { PushResult } from 'simple-git';
+import { Service } from 'typedi';
+
+import type { TagEntity } from '@/databases/entities/tag-entity';
+import type { User } from '@/databases/entities/user';
+import type { Variables } from '@/databases/entities/variables';
+import { TagRepository } from '@/databases/repositories/tag.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
+
+import {
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+	SOURCE_CONTROL_README,
+} from './constants';
+import { SourceControlExportService } from './source-control-export.service.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
@@ -8,33 +27,16 @@ import {
 	getVariablesPath,
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
-import type { SourceControlPreferences } from './types/source-control-preferences';
-import {
-	SOURCE_CONTROL_DEFAULT_EMAIL,
-	SOURCE_CONTROL_DEFAULT_NAME,
-	SOURCE_CONTROL_README,
-} from './constants';
-import { SourceControlGitService } from './source-control-git.service.ee';
-import type { PushResult } from 'simple-git';
-import { SourceControlExportService } from './source-control-export.service.ee';
-import type { ImportResult } from './types/import-result';
-import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
-import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
-import type { SourceControlledFile } from './types/source-controlled-file';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { writeFileSync } from 'fs';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import type { User } from '@/databases/entities/user';
-import type { SourceControlGetStatus } from './types/source-control-get-status';
-import type { TagEntity } from '@/databases/entities/tag-entity';
-import type { Variables } from '@/databases/entities/variables';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { ExportableCredential } from './types/exportable-credential';
-import { EventService } from '@/events/event.service';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { Logger } from '@/logger';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ApplicationError } from 'n8n-workflow';
+import type { ImportResult } from './types/import-result';
+import type { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
+import type { SourceControllPullOptions } from './types/source-control-pull-work-folder';
+import type { SourceControlPushWorkFolder } from './types/source-control-push-work-folder';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import type { SourceControlledFile } from './types/source-controlled-file';
 
 @Service()
 export class SourceControlService {

@@ -1,9 +1,11 @@
-import * as testDb from '../shared/test-db';
 import Container from 'typedi';
+
 import { ExecutionMetadataRepository } from '@/databases/repositories/execution-metadata.repository';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { createExecution } from '@test-integration/db/executions';
 import { createWorkflow } from '@test-integration/db/workflows';
+
+import * as testDb from '../shared/test-db';
 
 let executionMetadataRepository: ExecutionMetadataRepository;
 let executionMetadataService: ExecutionMetadataService;
