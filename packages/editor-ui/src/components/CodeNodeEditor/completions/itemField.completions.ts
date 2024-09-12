@@ -54,7 +54,7 @@ export function useItemFieldCompletions(language: 'python' | 'javaScript') {
 		const patterns = {
 			first: new RegExp(`\\${prefix}input\\.first\\(\\)\\..*`),
 			last: new RegExp(`\\${prefix}input\\.last\\(\\)\\..*`),
-			item: new RegExp(`\\${prefix}item\\.first\\(\\)\\..*`),
+			item: new RegExp(`\\${prefix}input\\.item\\..*`),
 			all: /\$input\.all\(\)\[(?<index>\w+)\]\..*/,
 		};
 
