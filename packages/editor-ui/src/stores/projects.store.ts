@@ -44,7 +44,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const globalProjectPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).project,
 	);
-	const availableProjects = computed(() => globalProjectPermissions.value.list ? projects.value : myProjects.value);
+	const availableProjects = computed(() =>
+		globalProjectPermissions.value.list ? projects.value : myProjects.value,
+	);
 
 	const currentProjectId = computed(
 		() =>
