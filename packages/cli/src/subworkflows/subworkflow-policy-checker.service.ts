@@ -1,13 +1,14 @@
-import { Service } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
-import { Logger } from '@/logger';
-import { License } from '@/license';
-import { OwnershipService } from '@/services/ownership.service';
 import { type Workflow, type INode, type WorkflowSettings } from 'n8n-workflow';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { AccessService } from '@/services/access.service';
-import type { Project } from '@/databases/entities/project';
 import { strict as assert } from 'node:assert';
+import { Service } from 'typedi';
+
+import type { Project } from '@/databases/entities/project';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { License } from '@/license';
+import { Logger } from '@/logger';
+import { AccessService } from '@/services/access.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@/services/url.service';
 
 type Policy = WorkflowSettings.CallerPolicy;

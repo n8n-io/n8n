@@ -1,11 +1,19 @@
-import Container, { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
+import { InstanceSettings } from 'n8n-core';
 import { ApplicationError, BINARY_ENCODING, sleep, jsonStringify } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import Container, { Service } from 'typedi';
+
 import { ActiveExecutions } from '@/active-executions';
 import config from '@/config';
-import { Logger } from '@/logger';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { HIGHEST_SHUTDOWN_PRIORITY, Time } from '@/constants';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { OnShutdown } from '@/decorators/on-shutdown';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
+import { OrchestrationService } from '@/services/orchestration.service';
+
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
 import { JobProcessor } from './job-processor';
 import type {
@@ -18,12 +26,6 @@ import type {
 	QueueRecoveryContext,
 	PubSubMessage,
 } from './scaling.types';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { InstanceSettings } from 'n8n-core';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { EventService } from '@/events/event.service';
 
 @Service()
 export class ScalingService {

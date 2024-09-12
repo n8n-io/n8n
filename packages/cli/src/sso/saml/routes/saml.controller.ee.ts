@@ -1,33 +1,33 @@
-import express from 'express';
 import { validate } from 'class-validator';
+import express from 'express';
+import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
 import url from 'url';
 
-import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { AuthService } from '@/auth/auth.service';
-import { AuthenticatedRequest } from '@/requests';
-import querystring from 'querystring';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { AuthError } from '@/errors/response-errors/auth.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { AuthenticatedRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 
+import {
+	samlLicensedAndEnabledMiddleware,
+	samlLicensedMiddleware,
+} from '../middleware/saml-enabled-middleware';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../saml-helpers';
+import { SamlService } from '../saml.service.ee';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
 	getServiceProviderReturnUrl,
 } from '../service-provider.ee';
-import { getSamlConnectionTestSuccessView } from '../views/saml-connection-test-success';
-import { getSamlConnectionTestFailedView } from '../views/saml-connection-test-failed';
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../saml-helpers';
 import type { SamlLoginBinding } from '../types';
-import {
-	samlLicensedAndEnabledMiddleware,
-	samlLicensedMiddleware,
-} from '../middleware/saml-enabled-middleware';
-import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
 import { getInitSSOFormView } from '../views/init-sso-post';
-import { EventService } from '@/events/event.service';
+import { getSamlConnectionTestFailedView } from '../views/saml-connection-test-failed';
+import { getSamlConnectionTestSuccessView } from '../views/saml-connection-test-success';
 
 @RestController('/sso/saml')
 export class SamlController {

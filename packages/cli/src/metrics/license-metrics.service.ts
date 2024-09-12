@@ -1,5 +1,6 @@
-import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { Service } from 'typedi';
+
+import { LicenseMetricsRepository } from '@/databases/repositories/license-metrics.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @Service()

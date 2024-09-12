@@ -1,15 +1,17 @@
-import { Service } from 'typedi';
-import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from 'n8n-core';
-import { Logger } from '@/logger';
+import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import type PCancelable from 'p-cancelable';
+import { Service } from 'typedi';
+
 import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
-import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
 import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
-import type PCancelable from 'p-cancelable';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.

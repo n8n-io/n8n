@@ -1,5 +1,5 @@
-import { License } from '@/license';
 import config from '@/config';
+import { License } from '@/license';
 import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history/workflow-history-helper.ee';
 import { mockInstance } from '@test/mocking';
 

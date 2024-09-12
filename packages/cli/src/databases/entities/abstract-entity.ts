@@ -1,4 +1,3 @@
-import { Container } from 'typedi';
 import { GlobalConfig } from '@n8n/config';
 import type { ColumnOptions } from '@n8n/typeorm';
 import {
@@ -9,6 +8,8 @@ import {
 	UpdateDateColumn,
 } from '@n8n/typeorm';
 import type { Class } from 'n8n-core';
+import { Container } from 'typedi';
+
 import { generateNanoId } from '../utils/generators';
 
 export const { type: dbType } = Container.get(GlobalConfig).database;

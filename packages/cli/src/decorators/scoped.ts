@@ -1,4 +1,5 @@
 import type { Scope } from '@n8n/permissions';
+
 import { getRouteMetadata } from './controller.registry';
 import type { Controller } from './types';
 

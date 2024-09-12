@@ -1,18 +1,20 @@
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
-import type { User } from '@/databases/entities/user';
-import { CredentialsService } from './credentials.service';
-import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
-import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
-import { Service } from 'typedi';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { OwnershipService } from '@/services/ownership.service';
+import { Service } from 'typedi';
+
+import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
 import { Project } from '@/databases/entities/project';
-import { ProjectService } from '@/services/project.service';
-import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { SharedCredentials } from '@/databases/entities/shared-credentials';
+import type { User } from '@/databases/entities/user';
+import { SharedCredentialsRepository } from '@/databases/repositories/shared-credentials.repository';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service';
 import { RoleService } from '@/services/role.service';
+
+import { CredentialsService } from './credentials.service';
 
 @Service()
 export class EnterpriseCredentialsService {

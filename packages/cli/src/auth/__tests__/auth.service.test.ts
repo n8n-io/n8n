@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { mock } from 'jest-mock-extended';
 import type { NextFunction, Response } from 'express';
+import { mock } from 'jest-mock-extended';
+import jwt from 'jsonwebtoken';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -8,9 +8,9 @@ import { AUTH_COOKIE_NAME, Time } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import type { InvalidAuthTokenRepository } from '@/databases/repositories/invalid-auth-token.repository';
 import type { UserRepository } from '@/databases/repositories/user.repository';
+import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { AuthenticatedRequest } from '@/requests';
 
 describe('AuthService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');

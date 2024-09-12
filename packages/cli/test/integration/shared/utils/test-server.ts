@@ -1,27 +1,28 @@
-import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
 import request from 'supertest';
+import { Container } from 'typedi';
 import { URL } from 'url';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@/databases/entities/user';
 import { ControllerRegistry } from '@/decorators';
+import { License } from '@/license';
+import { Logger } from '@/logger';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
-import { License } from '@/license';
-import { Logger } from '@/logger';
-import { AuthService } from '@/auth/auth.service';
 import type { APIRequest } from '@/requests';
+import { Telemetry } from '@/telemetry';
 
 import { mockInstance } from '../../../shared/mocking';
-import * as testDb from '../test-db';
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
+import * as testDb from '../test-db';
+import type { SetupProps, TestServer } from '../types';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -90,6 +91,7 @@ export const setupTestServer = ({
 	mockInstance(Logger);
 	mockInstance(PostHogClient);
 	mockInstance(Push);
+	mockInstance(Telemetry);
 
 	const testServer: TestServer = {
 		app,

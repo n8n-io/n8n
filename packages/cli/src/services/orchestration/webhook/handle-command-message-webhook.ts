@@ -1,11 +1,13 @@
-import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
-import { License } from '@/license';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import Container from 'typedi';
 import { Logger } from 'winston';
-import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
+
 import config from '@/config';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
+import { License } from '@/license';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+
+import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
 
 export async function handleCommandMessageWebhook(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');

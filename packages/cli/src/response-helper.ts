@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from 'express';
-import picocolors from 'picocolors';
 import {
 	ErrorReporterProxy as ErrorReporter,
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeApiError,
 } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import picocolors from 'picocolors';
+import Container from 'typedi';
 
 import { inDevelopment } from '@/constants';
+
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import Container from 'typedi';
 import { Logger } from './logger';
 
 export function sendSuccessResponse(
