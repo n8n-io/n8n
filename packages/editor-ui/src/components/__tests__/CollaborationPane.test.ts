@@ -1,53 +1,27 @@
-import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
-import CollaborationPane from '@/components//MainHeader/CollaborationPane.vue';
+import { mock } from 'vitest-mock-extended';
+
+import { STORES } from '@/constants';
+import CollaborationPane from '@/components/MainHeader/CollaborationPane.vue';
+import { IUser } from '@/Interface';
+
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
+import { waitAllPromises } from '@/__tests__/utils';
 
-const OWNER_USER = {
-	createdAt: '2023-11-22T10:17:12.246Z',
-	id: 'aaaaaa',
-	email: 'owner@user.com',
-	firstName: 'Owner',
-	lastName: 'User',
-	role: ROLE.Owner,
-	disabled: false,
-	isPending: false,
-	fullName: 'Owner User',
-};
+const OWNER_USER = mock<IUser>({
+	id: 'owner-id',
+});
 
-const MEMBER_USER = {
-	createdAt: '2023-11-22T10:17:12.246Z',
-	id: 'aaabbb',
-	email: 'member@user.com',
-	firstName: 'Member',
-	lastName: 'User',
-	role: ROLE.Member,
-	disabled: false,
-	isPending: false,
-	fullName: 'Member User',
-};
+const MEMBER_USER = mock<IUser>({
+	id: 'member-id',
+});
 
-const MEMBER_USER_2 = {
-	createdAt: '2023-11-22T10:17:12.246Z',
-	id: 'aaaccc',
-	email: 'member2@user.com',
-	firstName: 'Another Member',
-	lastName: 'User',
-	role: ROLE.Member,
-	disabled: false,
-	isPending: false,
-	fullName: 'Another Member User',
-};
+const MEMBER_USER_2 = mock<IUser>({
+	id: 'member-id-2',
+});
 
 const initialState = {
-	[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-	[STORES.WORKFLOWS]: {
-		workflow: {
-			id: 'w1',
-		},
-	},
 	[STORES.USERS]: {
 		currentUserId: OWNER_USER.id,
 		usersById: {
@@ -57,10 +31,7 @@ const initialState = {
 		},
 	},
 	[STORES.COLLABORATION]: {
-		collaborators: [
-			{ lastSeen: '2023-11-22T10:17:12.246Z', user: MEMBER_USER },
-			{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER },
-		],
+		collaborators: [{ user: MEMBER_USER }, { user: OWNER_USER }],
 	},
 };
 
@@ -101,7 +72,7 @@ describe('CollaborationPane', () => {
 				initialState: {
 					...initialState,
 					[STORES.COLLABORATION]: {
-						collaborators: [{ lastSeen: '2023-11-22T10:17:12.246Z', user: OWNER_USER }],
+						collaborators: [{ user: OWNER_USER }],
 					},
 				},
 			}),
