@@ -1,3 +1,13 @@
+## [1.58.2](https://github.com/n8n-io/n8n/compare/n8n@1.58.1...n8n@1.58.2) (2024-09-12)
+
+
+### Bug Fixes
+
+* **core:** Restore queue listeners for `webhook` process ([#10781](https://github.com/n8n-io/n8n/issues/10781)) ([db9f6ff](https://github.com/n8n-io/n8n/commit/db9f6fff32f03f0739a94120edba9ac25c4aa90d))
+* **editor:** Show docs link in credential modal when docs sidebar is hidden ([#10750](https://github.com/n8n-io/n8n/issues/10750)) ([9340a8e](https://github.com/n8n-io/n8n/commit/9340a8eed9bfa6f9b9a8d079b323bdc2f438df7b))
+
+
+
 ## [1.58.1](https://github.com/n8n-io/n8n/compare/n8n@1.58.0...n8n@1.58.1) (2024-09-06)
 
 
