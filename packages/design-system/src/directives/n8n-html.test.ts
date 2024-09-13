@@ -1,15 +1,14 @@
 import { render } from '@testing-library/vue';
-import { defineComponent } from 'vue';
 import { n8nHtml } from './n8n-html';
 
-const TestComponent = defineComponent({
+const TestComponent = {
 	props: {
 		html: {
 			type: String,
 		},
 	},
 	template: '<div v-n8n-html="html"></div>',
-});
+};
 
 describe('Directive n8n-html', () => {
 	it('should sanitize html', async () => {
@@ -19,7 +18,7 @@ describe('Directive n8n-html', () => {
 			},
 			global: {
 				directives: {
-					'n8n-html': n8nHtml,
+					n8nHtml,
 				},
 			},
 		});
@@ -35,7 +34,7 @@ describe('Directive n8n-html', () => {
 			},
 			global: {
 				directives: {
-					'n8n-html': n8nHtml,
+					n8nHtml,
 				},
 			},
 		});
