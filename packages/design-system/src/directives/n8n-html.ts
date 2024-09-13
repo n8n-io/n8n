@@ -1,9 +1,10 @@
 import sanitize from 'sanitize-html';
 import type { DirectiveBinding, ObjectDirective } from 'vue';
 
-const configuredSanitize = (html: string) => sanitize(html, {
-	allowedTags: sanitize.defaults.allowedTags.concat([ 'img' ])
-});
+const configuredSanitize = (html: string) =>
+	sanitize(html, {
+		allowedTags: sanitize.defaults.allowedTags.concat(['img']),
+	});
 
 export const n8nHtml: ObjectDirective = {
 	beforeMount(el: HTMLElement, binding: DirectiveBinding) {

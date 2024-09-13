@@ -3,18 +3,36 @@ import { defineComponent } from 'vue';
 import { n8nHtml } from './n8n-html';
 
 const TestComponent = defineComponent({
-	setup() {
-		return {
-			unsafeHtml:
-				'<span>text</span><a href="https://malicious.com" onclick="alert(1)">malicious</a><img alt="Ok" src="./images/logo.svg" onerror="alert(2)<script>alert(3)</script>" />',
-		};
+	props: {
+		html: {
+			type: String,
+		},
 	},
-	template: '<div v-n8n-html="unsafeHtml"></div>',
+	template: '<div v-n8n-html="html"></div>',
 });
 
 describe('Directive n8n-html', () => {
 	it('should sanitize html', async () => {
 		const { html } = render(TestComponent, {
+			props: {
+				html: '<span>text</span><a href="https://malicious.com" onclick="alert(1)">malicious</a><img alt="Ok" src="./images/logo.svg" onerror="alert(2)" /><script>alert(3)</script>',
+			},
+			global: {
+				directives: {
+					'n8n-html': n8nHtml,
+				},
+			},
+		});
+		expect(html()).toBe(
+			'<div><span>text</span><a href="https://malicious.com">malicious</a><img alt="Ok" src="./images/logo.svg"></div>',
+		);
+	});
+
+	it('should not touch safe html', async () => {
+		const { html } = render(TestComponent, {
+			props: {
+				html: '<span>text</span><a href="https://malicious.com">malicious</a><img alt="Ok" src="./images/logo.svg" />',
+			},
 			global: {
 				directives: {
 					'n8n-html': n8nHtml,
