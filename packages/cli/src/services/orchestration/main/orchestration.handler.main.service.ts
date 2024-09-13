@@ -1,9 +1,10 @@
 import { Service } from 'typedi';
-import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/redis-constants';
-import { handleWorkerResponseMessageMain } from './handle-worker-response-message-main';
+
 import { handleCommandMessageMain } from './handle-command-message-main';
-import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+import { handleWorkerResponseMessageMain } from './handle-worker-response-message-main';
 import type { MainResponseReceivedHandlerOptions } from './types';
+import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
+import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from '../../redis/redis-constants';
 
 @Service()
 export class OrchestrationHandlerMainService extends OrchestrationHandlerService {

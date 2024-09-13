@@ -488,7 +488,7 @@ export class HttpRequestV3 implements INodeType {
 									type: 'string',
 									default: '',
 									description:
-										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								},
 								{
 									displayName: 'Value',

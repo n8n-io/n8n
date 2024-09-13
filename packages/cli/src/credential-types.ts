@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { loadClassInIsolation } from 'n8n-core';
 import {
 	ApplicationError,
@@ -6,6 +5,8 @@ import {
 	type ICredentialTypes,
 	type LoadedClass,
 } from 'n8n-workflow';
+import { Service } from 'typedi';
+
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 

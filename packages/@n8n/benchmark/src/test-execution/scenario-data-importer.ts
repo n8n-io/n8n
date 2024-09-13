@@ -1,6 +1,6 @@
-import type { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
-import type { Workflow } from '@/n8nApiClient/n8nApiClient.types';
-import { WorkflowApiClient } from '@/n8nApiClient/workflowsApiClient';
+import type { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
+import type { Workflow } from '@/n8n-api-client/n8n-api-client.types';
+import { WorkflowApiClient } from '@/n8n-api-client/workflows-api-client';
 
 /**
  * Imports scenario data into an n8n instance

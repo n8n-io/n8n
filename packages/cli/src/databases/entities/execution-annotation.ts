@@ -10,10 +10,11 @@ import {
 	PrimaryGeneratedColumn,
 	RelationId,
 } from '@n8n/typeorm';
-import { ExecutionEntity } from './execution-entity';
+import type { AnnotationVote } from 'n8n-workflow';
+
 import type { AnnotationTagEntity } from './annotation-tag-entity';
 import type { AnnotationTagMapping } from './annotation-tag-mapping';
-import type { AnnotationVote } from 'n8n-workflow';
+import { ExecutionEntity } from './execution-entity';
 
 @Entity({ name: 'execution_annotations' })
 export class ExecutionAnnotation {

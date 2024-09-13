@@ -1,11 +1,11 @@
+import type { GlobalConfig } from '@n8n/config';
+import axios from 'axios';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import axios from 'axios';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
-import type { GlobalConfig } from '@n8n/config';
-import type { PublicInstalledPackage } from 'n8n-workflow';
 import type { PackageDirectoryLoader } from 'n8n-core';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -13,15 +13,14 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
+import { InstalledNodes } from '@/databases/entities/installed-nodes';
 import { InstalledPackages } from '@/databases/entities/installed-packages';
-import type { CommunityPackages } from '@/interfaces';
-import { CommunityPackagesService } from '@/services/community-packages.service';
 import { InstalledNodesRepository } from '@/databases/repositories/installed-nodes.repository';
 import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
-import { InstalledNodes } from '@/databases/entities/installed-nodes';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { CommunityPackages } from '@/interfaces';
 import type { License } from '@/license';
-
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesService } from '@/services/community-packages.service';
 import { mockInstance } from '@test/mocking';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { randomName } from '@test-integration/random';

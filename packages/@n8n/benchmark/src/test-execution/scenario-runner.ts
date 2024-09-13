@@ -1,9 +1,9 @@
-import type { K6Executor } from './k6Executor';
+import type { K6Executor } from './k6-executor';
 import type { Scenario } from '@/types/scenario';
-import type { N8nApiClient } from '@/n8nApiClient/n8nApiClient';
-import type { ScenarioDataFileLoader } from '@/scenario/scenarioDataLoader';
-import { ScenarioDataImporter } from '@/testExecution/scenarioDataImporter';
-import { AuthenticatedN8nApiClient } from '@/n8nApiClient/authenticatedN8nApiClient';
+import type { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
+import type { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
+import { ScenarioDataImporter } from '@/test-execution/scenario-data-importer';
+import { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 
 /**
  * Runs scenarios

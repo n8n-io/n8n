@@ -1,16 +1,18 @@
 import { Container } from 'typedi';
-import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalSecretsManager } from '@/external-secrets/external-secrets-manager.ee';
 import { License } from '@/license';
 import { Logger } from '@/logger';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { Push } from '@/push';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CommunityPackagesService } from '@/services/community-packages.service';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+
+import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 
 // eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {

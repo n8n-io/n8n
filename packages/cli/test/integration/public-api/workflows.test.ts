@@ -1,28 +1,28 @@
-import { Container } from 'typedi';
 import type { INode } from 'n8n-workflow';
+import { Container } from 'typedi';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
 import { STARTING_NODES } from '@/constants';
+import type { Project } from '@/databases/entities/project';
 import type { TagEntity } from '@/databases/entities/tag-entity';
 import type { User } from '@/databases/entities/user';
-import type { Project } from '@/databases/entities/project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/shared-workflow.repository';
 import { WorkflowHistoryRepository } from '@/databases/repositories/workflow-history.repository';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
+import { ProjectService } from '@/services/project.service';
+import { Telemetry } from '@/telemetry';
+import { createTeamProject } from '@test-integration/db/projects';
 
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/test-db';
+import { mockInstance } from '../../shared/mocking';
+import { createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
-import { createTag } from '../shared/db/tags';
-import { mockInstance } from '../../shared/mocking';
+import { randomApiKey } from '../shared/random';
+import * as testDb from '../shared/test-db';
 import type { SuperAgentTest } from '../shared/types';
-import { Telemetry } from '@/telemetry';
-import { ProjectService } from '@/services/project.service';
-import { createTeamProject } from '@test-integration/db/projects';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 

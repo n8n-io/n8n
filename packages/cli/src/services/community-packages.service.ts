@@ -1,18 +1,13 @@
+import { GlobalConfig } from '@n8n/config';
+import axios from 'axios';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-
-import { Service } from 'typedi';
-import { promisify } from 'util';
-import axios from 'axios';
-
-import { GlobalConfig } from '@n8n/config';
-import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
+import { ApplicationError, type PublicInstalledPackage } from 'n8n-workflow';
+import { Service } from 'typedi';
+import { promisify } from 'util';
 
-import { toError } from '@/utils';
-import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
-import type { InstalledPackages } from '@/databases/entities/installed-packages';
 import {
 	LICENSE_FEATURES,
 	NODE_PACKAGE_PREFIX,
@@ -21,12 +16,16 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
+import type { InstalledPackages } from '@/databases/entities/installed-packages';
+import { InstalledPackagesRepository } from '@/databases/repositories/installed-packages.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { CommunityPackages } from '@/interfaces';
+import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
+import { toError } from '@/utils';
+
 import { OrchestrationService } from './orchestration.service';
-import { License } from '@/license';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 

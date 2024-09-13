@@ -1,8 +1,9 @@
 import { Column, Entity, Index, ManyToMany, OneToMany } from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
+
+import { WithTimestampsAndStringId } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 import type { WorkflowTagMapping } from './workflow-tag-mapping';
-import { WithTimestampsAndStringId } from './abstract-entity';
 
 @Entity()
 export class TagEntity extends WithTimestampsAndStringId {

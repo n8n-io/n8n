@@ -193,7 +193,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Conference Data',
@@ -214,7 +214,7 @@ export const eventFields: INodeProperties[] = [
 								name: 'conferenceSolution',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getConferenceSolutations',
 									loadOptionsDependsOn: ['calendar'],
@@ -859,7 +859,7 @@ export const eventFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The color of the event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',

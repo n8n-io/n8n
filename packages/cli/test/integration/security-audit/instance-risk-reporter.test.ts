@@ -1,6 +1,14 @@
+import { NodeConnectionType } from 'n8n-workflow';
+import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { SecurityAuditService } from '@/security-audit/security-audit.service';
+
+import config from '@/config';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { generateNanoId } from '@/databases/utils/generators';
 import { INSTANCE_REPORT, WEBHOOK_VALIDATOR_NODE_TYPES } from '@/security-audit/constants';
+import { SecurityAuditService } from '@/security-audit/security-audit.service';
+import { toReportTitle } from '@/security-audit/utils';
+
 import {
 	getRiskSection,
 	saveManualTriggerWorkflow,
@@ -9,12 +17,6 @@ import {
 	simulateUpToDateInstance,
 } from './utils';
 import * as testDb from '../shared/test-db';
-import { toReportTitle } from '@/security-audit/utils';
-import config from '@/config';
-import { generateNanoId } from '@/databases/utils/generators';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import Container from 'typedi';
-import { NodeConnectionType } from 'n8n-workflow';
 
 let securityAuditService: SecurityAuditService;
 

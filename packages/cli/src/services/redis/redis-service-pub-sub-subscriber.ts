@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+
 import { COMMAND_REDIS_CHANNEL, WORKER_RESPONSE_REDIS_CHANNEL } from './redis-constants';
 import { RedisServiceBaseReceiver } from './redis-service-base-classes';
 

@@ -1,6 +1,7 @@
-import type { BinaryData } from 'n8n-core';
-import type { schema } from './schema';
 import type { RedisOptions } from 'ioredis';
+import type { BinaryData } from 'n8n-core';
+
+import type { schema } from './schema';
 
 // -----------------------------------
 //          transformers

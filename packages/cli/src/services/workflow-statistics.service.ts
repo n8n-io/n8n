@@ -1,12 +1,14 @@
-import { Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { Service } from 'typedi';
+
 import { StatisticsNames } from '@/databases/entities/workflow-statistics';
 import { WorkflowStatisticsRepository } from '@/databases/repositories/workflow-statistics.repository';
-import { UserService } from '@/services/user.service';
-import { Logger } from '@/logger';
-import { OwnershipService } from './ownership.service';
-import { TypedEmitter } from '@/typed-emitter';
 import { EventService } from '@/events/event.service';
+import { Logger } from '@/logger';
+import { UserService } from '@/services/user.service';
+import { TypedEmitter } from '@/typed-emitter';
+
+import { OwnershipService } from './ownership.service';
 
 type WorkflowStatisticsEvents = {
 	nodeFetchedData: { workflowId: string; node: INode };
