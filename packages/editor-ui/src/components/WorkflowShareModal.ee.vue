@@ -239,10 +239,7 @@ export default defineComponent({
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
-				await Promise.all([
-					this.usersStore.fetchUsers(),
-					this.projectsStore.getAllProjects(),
-				]);
+				await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
 
 				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					await this.workflowsStore.fetchWorkflow(this.workflow.id);
