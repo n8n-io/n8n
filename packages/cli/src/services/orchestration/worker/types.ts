@@ -1,6 +1,5 @@
+import type { RunningJobSummary } from '@n8n/api-types';
 import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
-
-import type { RunningJobSummary } from '@/scaling/scaling.types';
 
 import type { RedisServicePubSubPublisher } from '../../redis/redis-service-pub-sub-publisher';
 
