@@ -4,6 +4,7 @@ import {
 	type IProcessedDataManager,
 	type IProcessedDataManagers,
 } from 'n8n-workflow';
+
 // eslint-disable-next-line import/no-cycle
 import { ProcessedDataManagerNativeDatabase } from './native-database';
 

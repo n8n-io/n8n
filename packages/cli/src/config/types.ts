@@ -1,8 +1,8 @@
 import type { RedisOptions } from 'ioredis';
 import type { BinaryData } from 'n8n-core';
+import type { IProcessedDataConfig } from 'n8n-workflow';
 
 import type { schema } from './schema';
-import type { IProcessedDataConfig } from 'n8n-workflow';
 
 // -----------------------------------
 //          transformers

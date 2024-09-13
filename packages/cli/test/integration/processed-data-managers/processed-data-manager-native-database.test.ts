@@ -1,14 +1,15 @@
-import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
 import { ProcessedDataManager } from 'n8n-core';
+import type { ICheckProcessedContextData, INodeTypeData } from 'n8n-workflow';
 import type { ICheckProcessedOutput, INode, ProcessedDataItemTypes } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
-import * as testDb from '../shared/test-db';
 import { mockInstance } from '@test/mocking';
-import { getProcessedDataManagers } from '../../../src/processed-data-managers';
 import { createWorkflow } from '@test-integration/db/workflows';
+
+import { getProcessedDataManagers } from '../../../src/processed-data-managers';
+import * as testDb from '../shared/test-db';
 
 let workflow: Workflow;
 

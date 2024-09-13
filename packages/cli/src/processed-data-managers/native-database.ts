@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	ICheckProcessedContextData,
@@ -8,11 +9,10 @@ import type {
 	ProcessedDataItemTypes,
 	ProcessedDataMode,
 } from 'n8n-workflow';
-import { createHash } from 'crypto';
-
-import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 import { Container } from 'typedi';
+
 import { ProcessedDataRepository } from '@/databases/repositories/processed-data.repository';
+import type { IProcessedDataEntries, IProcessedDataLatest } from '@/interfaces';
 
 export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager {
 	private static sortEntries(items: ProcessedDataItemTypes[]) {

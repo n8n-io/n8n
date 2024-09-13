@@ -14,7 +14,6 @@ import { CommunityNodes1652254514001 } from './1652254514001-CommunityNodes';
 import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654089251344 } from './1654089251344-IntroducePinData';
-import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 import { CreateWorkflowsEditorRole1663755770892 } from './1663755770892-CreateWorkflowsUserRole';
 import { WorkflowStatistics1664196174000 } from './1664196174000-WorkflowStatistics';
@@ -39,6 +38,7 @@ import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftD
 import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
 import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
+import { CreateProcessedDataTable1721319360300 } from './1721319360300-CreateProcessedDataTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
