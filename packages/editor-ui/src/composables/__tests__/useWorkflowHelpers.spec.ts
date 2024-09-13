@@ -86,7 +86,8 @@ describe('useWorkflowHelpers', () => {
 				infoMessage: '',
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+			const resolvedParameters =
+				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
 		});
 
@@ -109,7 +110,8 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+			const resolvedParameters =
+				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
 			const assignments = resolvedParameters.assignments as AssignmentCollectionValue;
 			expect(assignments).toHaveProperty('assignments');
