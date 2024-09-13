@@ -62,7 +62,7 @@ const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() =>
 });
 
 const projects = computed<ProjectListItem[]>(() => {
-	return projectsStore.availableProjects.filter(
+	return projectsStore.projects.filter(
 		(project) =>
 			project.id !== props.credential?.homeProject?.id &&
 			project.id !== credentialDataHomeProject.value?.id,
@@ -103,7 +103,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([usersStore.fetchUsers(), projectsStore.getAvailableProjects()]);
+	await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
 });
 
 function goToUpgrade() {

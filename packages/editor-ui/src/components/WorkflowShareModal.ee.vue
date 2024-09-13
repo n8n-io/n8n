@@ -111,7 +111,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.availableProjects.filter(
+			return this.projectsStore.projects.filter(
 				(project) => project.id !== this.workflow.homeProject?.id,
 			);
 		},
@@ -241,7 +241,7 @@ export default defineComponent({
 			if (this.isSharingEnabled) {
 				await Promise.all([
 					this.usersStore.fetchUsers(),
-					this.projectsStore.getAvailableProjects(),
+					this.projectsStore.getAllProjects(),
 				]);
 
 				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
