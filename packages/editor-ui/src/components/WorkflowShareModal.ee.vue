@@ -111,7 +111,7 @@ export default defineComponent({
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.projects.filter(
+			return this.projectsStore.personalProjects.filter(
 				(project) => project.id !== this.workflow.homeProject?.id,
 			);
 		},
