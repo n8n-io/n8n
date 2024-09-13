@@ -1,3 +1,4 @@
+import type { PushPayload, PushType } from '@n8n/api-types';
 import type { Application } from 'express';
 import { ServerResponse } from 'http';
 import type { Server } from 'http';
@@ -11,7 +12,6 @@ import config from '@/config';
 import type { User } from '@/databases/entities/user';
 import { OnShutdown } from '@/decorators/on-shutdown';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { IPushDataType } from '@/interfaces';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { TypedEmitter } from '@/typed-emitter';
 
@@ -45,6 +45,10 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
+	getBackend() {
+		return this.backend;
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			ws,
@@ -73,11 +77,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast(type: IPushDataType, data?: unknown) {
+	broadcast<Type extends PushType>(type: Type, data: PushPayload<Type>) {
 		this.backend.sendToAll(type, data);
 	}
 
-	send(type: IPushDataType, data: unknown, pushRef: string) {
+	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
@@ -93,11 +97,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToOne(type, data, pushRef);
 	}
 
-	getBackend() {
-		return this.backend;
-	}
-
-	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
+	sendToUsers<Type extends PushType>(
+		type: Type,
+		data: PushPayload<Type>,
+		userIds: Array<User['id']>,
+	) {
 		this.backend.sendToUsers(type, data, userIds);
 	}
 

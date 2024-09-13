@@ -1,3 +1,4 @@
+import type { PushPayload, PushType } from '@n8n/api-types';
 import { Request } from 'express';
 import Container from 'typedi';
 import { v4 as uuid } from 'uuid';
@@ -10,7 +11,7 @@ import { SettingsRepository } from '@/databases/repositories/settings.repository
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { Patch, Post, RestController } from '@/decorators';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { BooleanLicenseFeature, IPushDataType, NumericLicenseFeature } from '@/interfaces';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
 import { Logger } from '@/logger';
 import { MfaService } from '@/mfa/mfa.service';
@@ -56,13 +57,13 @@ type ResetRequest = Request<
 	}
 >;
 
-type PushRequest = Request<
+type PushRequest<T extends PushType> = Request<
 	{},
 	{},
 	{
-		type: IPushDataType;
+		type: T;
 		pushRef: string;
-		data: object;
+		data: PushPayload<T>;
 	}
 >;
 
@@ -132,7 +133,7 @@ export class E2EController {
 	}
 
 	@Post('/push', { skipAuth: true })
-	async pushSend(req: PushRequest) {
+	async pushSend(req: PushRequest<any>) {
 		this.push.broadcast(req.body.type, req.body.data);
 	}
 

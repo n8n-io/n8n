@@ -1,3 +1,4 @@
+import type { RunningJobSummary } from '@n8n/api-types';
 import { WorkflowExecute } from 'n8n-core';
 import { BINARY_ENCODING, ApplicationError, Workflow } from 'n8n-workflow';
 import type { ExecutionStatus, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
@@ -11,7 +12,7 @@ import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-import type { Job, JobId, JobResult, RunningJob, RunningJobSummary } from './scaling.types';
+import type { Job, JobId, JobResult, RunningJob } from './scaling.types';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
