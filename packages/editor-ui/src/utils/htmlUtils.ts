@@ -37,6 +37,13 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
+export const sanitizeInput = <T>(message: T): string | T => {
+	if (typeof message === 'string') {
+		return sanitizeHtml(message);
+	}
+	return message;
+};
+
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }

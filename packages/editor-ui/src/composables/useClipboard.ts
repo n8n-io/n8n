@@ -1,7 +1,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useClipboard as useClipboardCore } from '@vueuse/core';
 import { useDebounce } from '@/composables/useDebounce';
-import sanitizeHtml from 'sanitize-html';
+import { sanitizeInput } from '@/utils/htmlUtils';
 
 type ClipboardEventFn = (data: string, event?: ClipboardEvent) => void;
 
@@ -43,7 +43,7 @@ export function useClipboard(
 
 		const clipboardData = event.clipboardData;
 		if (clipboardData !== null) {
-			const clipboardValue = sanitizeHtml(clipboardData.getData('text/plain'));
+			const clipboardValue = sanitizeInput(clipboardData.getData('text/plain'));
 			onPasteCallback.value(clipboardValue, event);
 		}
 	}
