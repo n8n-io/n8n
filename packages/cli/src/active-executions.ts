@@ -95,12 +95,22 @@ export class ActiveExecutions {
 			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
+		const postExecutePromise = createDeferredPromise<IRun | undefined>();
+
 		this.activeExecutions[executionId] = {
 			executionData,
 			startedAt: new Date(),
-			postExecutePromises: [],
+			postExecutePromise,
 			status: executionStatus,
 		};
+
+		// Automatically remove execution once the postExecutePromise settles
+		void postExecutePromise.promise.finally(() => {
+			this.concurrencyControl.release({ mode: executionData.executionMode });
+			setImmediate(() => {
+				delete this.activeExecutions[executionId];
+			});
+		});
 
 		return executionId;
 	}
@@ -125,68 +135,24 @@ export class ActiveExecutions {
 		execution?.responsePromise?.resolve(response);
 	}
 
-	getPostExecutePromiseCount(executionId: string): number {
-		return this.activeExecutions[executionId]?.postExecutePromises.length ?? 0;
-	}
-
-	/**
-	 * Remove an active execution
-	 */
-	remove(executionId: string, fullRunData?: IRun): void {
-		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			return;
-		}
-
-		// Resolve all the waiting promises
-		for (const promise of execution.postExecutePromises) {
-			promise.resolve(fullRunData);
-		}
-
-		this.postExecuteCleanup(executionId);
-	}
-
-	/**
-	 * Forces an execution to stop
-	 */
+	/** Forces an execution to stop */
 	stopExecution(executionId: string): void {
-		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			// There is no execution running with that id
-			return;
-		}
-
-		execution.workflowExecution!.cancel();
-
-		// Reject all the waiting promises
-		const reason = new ExecutionCancelledError(executionId);
-		for (const promise of execution.postExecutePromises) {
-			promise.reject(reason);
-		}
-
-		this.postExecuteCleanup(executionId);
+		const execution = this.getExecution(executionId);
+		execution.workflowExecution?.cancel();
+		execution.postExecutePromise.reject(new ExecutionCancelledError(executionId));
 	}
 
-	private postExecuteCleanup(executionId: string) {
-		const execution = this.activeExecutions[executionId];
-		if (execution === undefined) {
-			return;
-		}
-
-		// Remove from the list of active executions
-		delete this.activeExecutions[executionId];
-
-		this.concurrencyControl.release({ mode: execution.executionData.executionMode });
+	/** Mark an execution as completed */
+	finishExecution(executionId: string, fullRunData?: IRun) {
+		const execution = this.getExecution(executionId);
+		execution.postExecutePromise.resolve(fullRunData);
 	}
 
 	/**
 	 * Returns a promise which will resolve with the data of the execution with the given id
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		// Create the promise which will be resolved when the execution finished
-		const waitPromise = createDeferredPromise<IRun | undefined>();
-		this.getExecution(executionId).postExecutePromises.push(waitPromise);
-		return await waitPromise.promise;
+		return await this.getExecution(executionId).postExecutePromise.promise;
 	}
 
 	/**

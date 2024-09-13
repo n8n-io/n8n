@@ -96,7 +96,7 @@ describe('ActiveExecutions', () => {
 	test('Should remove an existing execution', async () => {
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
-		activeExecutions.remove(executionId);
+		activeExecutions.finishExecution(executionId);
 
 		expect(activeExecutions.getActiveExecutions().length).toBe(0);
 	});
@@ -110,7 +110,7 @@ describe('ActiveExecutions', () => {
 			setTimeout(res, 100);
 		});
 		const fakeOutput = mockFullRunData();
-		activeExecutions.remove(executionId, fakeOutput);
+		activeExecutions.finishExecution(executionId, fakeOutput);
 
 		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
@@ -126,7 +126,7 @@ describe('ActiveExecutions', () => {
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
 		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
-		void activeExecutions.stopExecution(executionId);
+		activeExecutions.stopExecution(executionId);
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});
