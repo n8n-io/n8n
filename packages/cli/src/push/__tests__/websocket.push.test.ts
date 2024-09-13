@@ -1,9 +1,9 @@
+import type { PushMessage } from '@n8n/api-types';
 import { EventEmitter } from 'events';
 import { Container } from 'typedi';
 import type WebSocket from 'ws';
 
 import type { User } from '@/databases/entities/user';
-import type { PushDataExecutionRecovered } from '@/interfaces';
 import { Logger } from '@/logger';
 import { WebSocketPush } from '@/push/websocket.push';
 import { mockInstance } from '@test/mocking';
@@ -28,6 +28,18 @@ describe('WebSocketPush', () => {
 	const pushRef1 = 'test-session1';
 	const pushRef2 = 'test-session2';
 	const userId: User['id'] = 'test-user';
+	const pushMessage: PushMessage = {
+		type: 'executionRecovered',
+		data: {
+			executionId: 'test-execution-id',
+		},
+	};
+	const expectedMsg = JSON.stringify({
+		type: 'executionRecovered',
+		data: {
+			executionId: 'test-execution-id',
+		},
+	});
 
 	mockInstance(Logger);
 	const webSocketPush = Container.get(WebSocketPush);
@@ -61,50 +73,17 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		const data: PushDataExecutionRecovered = {
-			type: 'executionRecovered',
-			data: {
-				executionId: 'test-execution-id',
-			},
-		};
+		webSocketPush.sendToOne(pushMessage.type, pushMessage.data, pushRef1);
 
-		webSocketPush.sendToOne('executionRecovered', data, pushRef1);
-
-		expect(mockWebSocket1.send).toHaveBeenCalledWith(
-			JSON.stringify({
-				type: 'executionRecovered',
-				data: {
-					type: 'executionRecovered',
-					data: {
-						executionId: 'test-execution-id',
-					},
-				},
-			}),
-		);
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
 	});
 
 	it('sends data to all connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		const data: PushDataExecutionRecovered = {
-			type: 'executionRecovered',
-			data: {
-				executionId: 'test-execution-id',
-			},
-		};
+		webSocketPush.sendToAll(pushMessage.type, pushMessage.data);
 
-		webSocketPush.sendToAll('executionRecovered', data);
-
-		const expectedMsg = JSON.stringify({
-			type: 'executionRecovered',
-			data: {
-				type: 'executionRecovered',
-				data: {
-					executionId: 'test-execution-id',
-				},
-			},
-		});
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
 	});
@@ -122,24 +101,8 @@ describe('WebSocketPush', () => {
 	it('sends data to all users connections', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		const data: PushDataExecutionRecovered = {
-			type: 'executionRecovered',
-			data: {
-				executionId: 'test-execution-id',
-			},
-		};
+		webSocketPush.sendToUsers(pushMessage.type, pushMessage.data, [userId]);
 
-		webSocketPush.sendToUsers('executionRecovered', data, [userId]);
-
-		const expectedMsg = JSON.stringify({
-			type: 'executionRecovered',
-			data: {
-				type: 'executionRecovered',
-				data: {
-					executionId: 'test-execution-id',
-				},
-			},
-		});
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
 	});

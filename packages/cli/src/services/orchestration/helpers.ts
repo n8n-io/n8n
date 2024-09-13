@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import * as os from 'os';
+import os from 'node:os';
 import { Container } from 'typedi';
 
 import { Logger } from '@/logger';
