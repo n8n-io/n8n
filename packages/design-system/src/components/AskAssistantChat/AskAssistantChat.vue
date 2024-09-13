@@ -151,6 +151,7 @@ function growInput() {
 								/>
 							</div>
 							<div :class="$style.blockBody">
+								<!-- eslint-disable-next-line vue/no-v-html -->
 								<span v-n8n-html="renderMarkdown(message.content)"></span>
 								<BlinkingCursor
 									v-if="streaming && i === messages?.length - 1 && message.title && message.content"
@@ -159,19 +160,18 @@ function growInput() {
 						</div>
 					</div>
 					<div v-else-if="message.type === 'text'" :class="$style.textMessage">
-						<span
-							v-if="message.role === 'user'"
-							v-n8n-html="renderMarkdown(message.content)"
-						></span>
+						<!-- eslint-disable-next-line vue/no-v-html -->
+						<span v-if="message.role === 'user'" v-n8n-html="renderMarkdown(message.content)"></span>
+						<!-- eslint-disable-next-line vue/no-v-html -->
 						<div
 							v-else
-							v-n8n-html="renderMarkdown(message.content)"
 							:class="$style.assistantText"
+							v-n8n-html="renderMarkdown(message.content)"
 						></div>
 						<div
 							v-if="message?.codeSnippet"
-							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 							:class="$style['code-snippet']"
+							v-n8n-html="renderMarkdown(message.codeSnippet).trim()"
 						></div>
 						<BlinkingCursor
 							v-if="streaming && i === messages?.length - 1 && message.role === 'assistant'"

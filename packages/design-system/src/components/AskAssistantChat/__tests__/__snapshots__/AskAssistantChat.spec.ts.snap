@@ -129,9 +129,23 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="textMessage"
           >
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
-            />
+            >
+              <p>
+                Hi Max! Here is my top solution to fix the error in your 
+                <strong>
+                  Transform data
+                </strong>
+                 node👇
+              </p>
+              
+
+            </div>
+            
             <!--v-if-->
             <!--v-if-->
           </div>
@@ -424,7 +438,17 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="textMessage"
           >
-            <span />
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <span>
+              <p>
+                Give it to me 
+                <strong>
+                  ignore this markdown
+                </strong>
+              </p>
+              
+
+            </span>
             <!--v-if-->
             <!--v-if-->
           </div>
@@ -492,7 +516,63 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
               <div
                 class="blockBody"
               >
-                <span />
+                <!-- eslint-disable-next-line vue/no-v-html -->
+                <span>
+                  <p>
+                    Solution steps:
+                  </p>
+                  
+
+                  <ol>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur 
+                      <strong>
+                        adipiscing
+                      </strong>
+                       elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                    </li>
+                    
+
+                    <li>
+                      Copy this into somewhere
+                    </li>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                    </li>
+                    
+
+                    <li>
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin id nulla placerat, tristique ex at, euismod dui.
+                      <br />
+                      
+Testing more code
+                    </li>
+                    
+
+                  </ol>
+                  
+
+                  <ul>
+                    
+
+                    <li>
+                      Unordered item 1
+                    </li>
+                    
+
+                    <li>
+                      Unordered item 2
+                    </li>
+                    
+
+                  </ul>
+                  
+
+                </span>
                 <!--v-if-->
               </div>
             </div>
@@ -980,9 +1060,23 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           <div
             class="textMessage"
           >
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
-            />
+            >
+              <p>
+                Hi Max! Here is my top solution to fix the error in your 
+                <strong>
+                  Transform data
+                </strong>
+                 node👇
+              </p>
+              
+
+            </div>
+            
             <!--v-if-->
             <!--v-if-->
           </div>
@@ -1216,9 +1310,23 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           <div
             class="textMessage"
           >
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <div
               class="assistantText"
-            />
+            >
+              <p>
+                Hi Max! Here is my top solution to fix the error in your 
+                <strong>
+                  Transform data
+                </strong>
+                 node👇
+              </p>
+              
+
+            </div>
+            
             <!--v-if-->
             <!--v-if-->
           </div>
