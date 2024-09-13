@@ -23,16 +23,17 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ChatRequest } from '@/types/assistant.types';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { isJsonKeyObject } from '@/utils/typesUtils';
-import type {
-	IDataObject,
-	INode,
-	INodeCredentialDescription,
-	INodeExecutionData,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValueType,
-	ResourceMapperField,
-	Themed,
+import {
+	deepCopy,
+	type IDataObject,
+	type INode,
+	type INodeCredentialDescription,
+	type INodeExecutionData,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type NodeParameterValueType,
+	type ResourceMapperField,
+	type Themed,
 } from 'n8n-workflow';
 import { useRouter } from 'vue-router';
 
@@ -552,13 +553,13 @@ export function getReferencedNodes(node: INode): string[] {
  */
 export function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
 	// Make a copy of the node object so we don't modify the original
-	const nodeForLLM = { ...node };
+	const nodeForLLM = deepCopy(node);
 	propsToRemove.forEach((key) => {
 		delete nodeForLLM[key as keyof INode];
 	});
 	const workflowHelpers = useWorkflowHelpers({ router: useRouter() });
-	workflowHelpers.resolveNodeExpressions(nodeForLLM.parameters);
-	console.log('nodeForLLM', nodeForLLM.parameters);
+	const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeForLLM.parameters);
+	nodeForLLM.parameters = resolvedParameters;
 	return nodeForLLM;
 }
 

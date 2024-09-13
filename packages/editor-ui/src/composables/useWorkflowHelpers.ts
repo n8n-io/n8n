@@ -693,14 +693,15 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
 
-	function resolveNodeExpressions(nodeParameters: INodeParameters): void {
-		function recurse(currentObj: { [key: string]: unknown }, currentPath: string) {
+	function resolveNodeExpressions(nodeParameters: INodeParameters): INodeParameters {
+		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
+			const newObj: INodeParameters = {};
 			for (const key in currentObj) {
 				const value = currentObj[key as keyof typeof currentObj];
 				const path = currentPath ? `${currentPath}.${key}` : key;
 				if (typeof value === 'object' && value !== null) {
-					recurse(value as { [key: string]: unknown }, path);
-				} else if (typeof value === 'string' && String(value).startsWith('={{')) {
+					newObj[key] = recurse(value as INodeParameters, path);
+				} else if (typeof value === 'string' && String(value).startsWith('=')) {
 					// Resolve the expression if it is one
 					let resolved;
 					try {
@@ -708,15 +709,17 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
-					// Updating the original object with the resolved value
-					currentObj[key] = {
+					newObj[key] = {
 						value,
-						resolvedExpressionValue: resolved,
+						resolvedExpressionValue: String(resolved),
 					};
+				} else {
+					newObj[key] = value;
 				}
 			}
+			return newObj;
 		}
-		recurse(nodeParameters, '');
+		return recurse(nodeParameters, '');
 	}
 
 	function resolveExpression(

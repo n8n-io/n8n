@@ -7,6 +7,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { createTestWorkflow } from '@/__tests__/mocks';
+import type { AssignmentCollectionValue } from 'n8n-workflow';
 
 const getDuplicateTestWorkflow = (): IWorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
@@ -85,8 +86,8 @@ describe('useWorkflowHelpers', () => {
 				infoMessage: '',
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			workflowHelpers.resolveNodeExpressions(nodeParameters);
-			expect(nodeParameters.url).toHaveProperty('resolvedExpressionValue');
+			const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
 		});
 
 		it('should correctly detect and resolve expressions in a node with assignments (set node) ', () => {
@@ -108,10 +109,11 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			workflowHelpers.resolveNodeExpressions(nodeParameters);
-			expect(nodeParameters.assignments.assignments[0].value).toHaveProperty(
-				'resolvedExpressionValue',
-			);
+			const resolvedParameters = workflowHelpers.resolveNodeExpressions(nodeParameters);
+			expect(resolvedParameters).toHaveProperty('assignments');
+			const assignments = resolvedParameters.assignments as AssignmentCollectionValue;
+			expect(assignments).toHaveProperty('assignments');
+			expect(assignments.assignments[0].value).toHaveProperty('resolvedExpressionValue');
 		});
 
 		it('should correctly detect and resolve expressions in a node with filter component', () => {
@@ -147,8 +149,12 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			workflowHelpers.resolveNodeExpressions(nodeParameters);
-			expect(nodeParameters.rules.values[0].conditions.conditions[0].leftValue).toHaveProperty(
+			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+				nodeParameters,
+			) as typeof nodeParameters;
+			expect(resolvedParameters).toHaveProperty('rules');
+			expect(resolvedParameters.rules).toHaveProperty('values');
+			expect(resolvedParameters.rules.values[0].conditions.conditions[0].leftValue).toHaveProperty(
 				'resolvedExpressionValue',
 			);
 		});
@@ -172,9 +178,11 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			workflowHelpers.resolveNodeExpressions(nodeParameters);
-			expect(nodeParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
-			expect(nodeParameters.sheetName.value).toHaveProperty('resolvedExpressionValue');
+			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+				nodeParameters,
+			) as typeof nodeParameters;
+			expect(resolvedParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
+			expect(resolvedParameters.sheetName.value).toHaveProperty('resolvedExpressionValue');
 		});
 		it('should correctly detect and resolve expressions in a node with resource mapper component', () => {
 			const nodeParameters = {
@@ -209,8 +217,10 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers({ router });
-			workflowHelpers.resolveNodeExpressions(nodeParameters);
-			expect(nodeParameters.filtersUI.values[0].lookupValue).toHaveProperty(
+			const resolvedParameters = workflowHelpers.resolveNodeExpressions(
+				nodeParameters,
+			) as typeof nodeParameters;
+			expect(resolvedParameters.filtersUI.values[0].lookupValue).toHaveProperty(
 				'resolvedExpressionValue',
 			);
 		});
