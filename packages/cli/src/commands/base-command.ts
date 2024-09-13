@@ -1,14 +1,15 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
 import { Command, Errors } from '@oclif/core';
-import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import {
 	BinaryDataService,
 	InstanceSettings,
 	ObjectStoreService,
 	ProcessedDataManager,
 } from 'n8n-core';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import Container from 'typedi';
+
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
 import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
@@ -26,12 +27,9 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Logger } from '@/logger';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { getProcessedDataManagers } from '@/processed-data-managers';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager.ee';
-import { ShutdownService } from '@/shutdown/shutdown.service';
-import { TelemetryEventRelay } from '@/events/telemetry-event-relay';
-import { getProcessedDataManagers } from '@/processed-data-managers';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
