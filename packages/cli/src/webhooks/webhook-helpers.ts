@@ -437,9 +437,8 @@ export async function executeWebhook(
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
-			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
-			responsePromise
-				.promise()
+			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			responsePromise.promise
 				.then(async (response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
 						return;
@@ -550,7 +549,7 @@ export async function executeWebhook(
 
 					// in `responseNode` mode `responseCallback` is called by `responsePromise`
 					if (responseMode === 'responseNode' && responsePromise) {
-						await Promise.allSettled([responsePromise.promise()]);
+						await Promise.allSettled([responsePromise.promise]);
 						return undefined;
 					}
 

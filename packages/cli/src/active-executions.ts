@@ -184,9 +184,9 @@ export class ActiveExecutions {
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		// Create the promise which will be resolved when the execution finished
-		const waitPromise = await createDeferredPromise<IRun | undefined>();
+		const waitPromise = createDeferredPromise<IRun | undefined>();
 		this.getExecution(executionId).postExecutePromises.push(waitPromise);
-		return await waitPromise.promise();
+		return await waitPromise.promise;
 	}
 
 	/**
