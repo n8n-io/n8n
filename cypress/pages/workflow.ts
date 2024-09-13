@@ -366,6 +366,9 @@ export class WorkflowPage extends BasePage {
 		hitCopy: () => {
 			this.actions.hitComboShortcut(`{${META_KEY}}`, 'c');
 		},
+		hitPaste: () => {
+			this.actions.hitComboShortcut(`{${META_KEY}}`, 'p');
+		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');
 		},
