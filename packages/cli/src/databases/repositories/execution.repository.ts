@@ -343,7 +343,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async setRunning(executionId: string) {
-		await this.update({ id: executionId }, { status: 'running', startedAt: new Date() });
+		const startedAt = new Date();
+
+		await this.update({ id: executionId }, { status: 'running', startedAt });
+
+		return startedAt;
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
