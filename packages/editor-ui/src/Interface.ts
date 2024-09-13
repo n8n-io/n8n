@@ -1,13 +1,8 @@
-import type {
-	AI_NODE_CREATOR_VIEW,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	SignInType,
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-	AI_OTHERS_NODE_CREATOR_VIEW,
-	ROLE,
-} from '@/constants';
+import type { Component } from 'vue';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { Connection } from '@jsplumb/core';
+import type { Iso8601DateTimeString } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
 import type { IMenuItem, NodeCreatorTag } from 'n8n-design-system';
 import type {
 	GenericValue,
@@ -22,9 +17,7 @@ import type {
 	INodeTypeDescription,
 	IPinData,
 	IRunExecutionData,
-	IRun,
 	IRunData,
-	ITaskData,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
@@ -51,13 +44,21 @@ import type {
 	IPersonalizationSurveyAnswersV4,
 	AnnotationVote,
 } from 'n8n-workflow';
+
+import type {
+	AI_NODE_CREATOR_VIEW,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	SignInType,
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	ROLE,
+} from '@/constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
-import type { Component } from 'vue';
-import type { Scope } from '@n8n/permissions';
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+
 import type { ProjectSharingData } from '@/types/projects.types';
-import type { Connection } from '@jsplumb/core';
 import type { BaseTextKey } from './plugins/i18n';
 
 export * from 'n8n-design-system/types';
@@ -118,9 +119,6 @@ declare global {
 		};
 	}
 }
-
-/** String that represents a timestamp in the ISO8601 format, i.e. YYYY-MM-DDTHH:MM:SS.sssZ */
-export type Iso8601String = string;
 
 export type EndpointStyle = {
 	width?: number;
@@ -336,8 +334,8 @@ export interface IShareWorkflowsPayload {
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
-	createdAt: Iso8601String;
-	updatedAt: Iso8601String;
+	createdAt: Iso8601DateTimeString;
+	updatedAt: Iso8601DateTimeString;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
@@ -346,8 +344,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 }
 
 export interface ICredentialsBase {
-	createdAt: Iso8601String;
-	updatedAt: Iso8601String;
+	createdAt: Iso8601DateTimeString;
+	updatedAt: Iso8601DateTimeString;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
@@ -420,213 +418,6 @@ export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
 	filters?: ExecutionsQueryFilter;
 	ids?: string[];
-}
-
-export interface Collaborator {
-	user: IUser;
-	lastSeen: string;
-}
-
-export type PushDataCollaborators = {
-	workflowId: string;
-	collaborators: Collaborator[];
-};
-
-type PushDataCollaboratorsChanged = {
-	data: PushDataCollaborators;
-	type: 'collaboratorsChanged';
-};
-
-export type IPushData =
-	| PushDataExecutionFinished
-	| PushDataExecutionStarted
-	| PushDataExecuteAfter
-	| PushDataExecuteBefore
-	| PushDataNodeDescriptionUpdated
-	| PushDataConsoleMessage
-	| PushDataReloadNodeType
-	| PushDataRemoveNodeType
-	| PushDataTestWebhook
-	| PushDataExecutionRecovered
-	| PushDataWorkerStatusMessage
-	| PushDataActiveWorkflowAdded
-	| PushDataActiveWorkflowRemoved
-	| PushDataCollaboratorsChanged
-	| PushDataWorkflowFailedToActivate;
-
-export type PushDataActiveWorkflowAdded = {
-	data: IActiveWorkflowAdded;
-	type: 'workflowActivated';
-};
-
-export type PushDataActiveWorkflowRemoved = {
-	data: IActiveWorkflowRemoved;
-	type: 'workflowDeactivated';
-};
-
-export type PushDataWorkflowFailedToActivate = {
-	data: IWorkflowFailedToActivate;
-	type: 'workflowFailedToActivate';
-};
-
-export type PushDataExecutionRecovered = {
-	data: IPushDataExecutionRecovered;
-	type: 'executionRecovered';
-};
-
-export type PushDataExecutionFinished = {
-	data: IPushDataExecutionFinished;
-	type: 'executionFinished';
-};
-
-export type PushDataExecutionStarted = {
-	data: IPushDataExecutionStarted;
-	type: 'executionStarted';
-};
-
-export type PushDataExecuteAfter = {
-	data: IPushDataNodeExecuteAfter;
-	type: 'nodeExecuteAfter';
-};
-
-export type PushDataExecuteBefore = {
-	data: IPushDataNodeExecuteBefore;
-	type: 'nodeExecuteBefore';
-};
-
-export type PushDataNodeDescriptionUpdated = {
-	data: {};
-	type: 'nodeDescriptionUpdated';
-};
-
-export type PushDataConsoleMessage = {
-	data: IPushDataConsoleMessage;
-	type: 'sendConsoleMessage';
-};
-
-export type PushDataReloadNodeType = {
-	data: IPushDataReloadNodeType;
-	type: 'reloadNodeType';
-};
-
-export type PushDataRemoveNodeType = {
-	data: IPushDataRemoveNodeType;
-	type: 'removeNodeType';
-};
-
-export type PushDataTestWebhook = {
-	data: IPushDataTestWebhook;
-	type: 'testWebhookDeleted' | 'testWebhookReceived';
-};
-
-export type PushDataWorkerStatusMessage = {
-	data: IPushDataWorkerStatusMessage;
-	type: 'sendWorkerStatusMessage';
-};
-
-export interface IPushDataExecutionStarted {
-	executionId: string;
-	mode: WorkflowExecuteMode;
-	startedAt: Date;
-	retryOf?: string;
-	workflowId: string;
-	workflowName?: string;
-}
-export interface IPushDataExecutionRecovered {
-	executionId: string;
-}
-
-export interface IPushDataExecutionFinished {
-	data: IRun;
-	executionId: string;
-	retryOf?: string;
-}
-
-export interface IActiveWorkflowAdded {
-	workflowId: string;
-}
-
-export interface IActiveWorkflowRemoved {
-	workflowId: string;
-}
-
-export interface IWorkflowFailedToActivate {
-	workflowId: string;
-	errorMessage: string;
-}
-
-export interface IPushDataUnsavedExecutionFinished {
-	executionId: string;
-	data: { finished: true; stoppedAt: Date };
-}
-
-export interface IPushDataExecutionStarted {
-	executionId: string;
-}
-
-export interface IPushDataNodeExecuteAfter {
-	data: ITaskData;
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataNodeExecuteBefore {
-	executionId: string;
-	nodeName: string;
-}
-
-export interface IPushDataReloadNodeType {
-	name: string;
-	version: number;
-}
-export interface IPushDataRemoveNodeType {
-	name: string;
-	version: number;
-}
-
-export interface IPushDataTestWebhook {
-	executionId: string;
-	workflowId: string;
-}
-
-export interface IPushDataConsoleMessage {
-	source: string;
-	messages: string[];
-}
-
-export interface WorkerJobStatusSummary {
-	jobId: string;
-	executionId: string;
-	retryOf?: string;
-	startedAt: Date;
-	mode: WorkflowExecuteMode;
-	workflowName: string;
-	workflowId: string;
-	status: ExecutionStatus;
-}
-
-export interface IPushDataWorkerStatusPayload {
-	workerId: string;
-	runningJobsSummary: WorkerJobStatusSummary[];
-	freeMem: number;
-	totalMem: number;
-	uptime: number;
-	loadAvg: number[];
-	cpus: string;
-	arch: string;
-	platform: NodeJS.Platform;
-	hostname: string;
-	interfaces: Array<{
-		family: 'IPv4' | 'IPv6';
-		address: string;
-		internal: boolean;
-	}>;
-	version: string;
-}
-
-export interface IPushDataWorkerStatusMessage {
-	workerId: string;
-	status: IPushDataWorkerStatusPayload;
 }
 
 export type IPersonalizationSurveyAnswersV1 = {

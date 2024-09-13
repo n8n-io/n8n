@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useRoute } from 'vue-router';
+import type { Collaborator } from '@n8n/api-types';
 
 import { STORES, PLACEHOLDER_EMPTY_WORKFLOW_ID, TIME } from '@/constants';
 import { useBeforeUnload } from '@/composables/useBeforeUnload';
-import type { Collaborator } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useUsersStore } from '@/stores/users.store';
