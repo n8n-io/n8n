@@ -78,6 +78,7 @@ export class ActiveExecutions {
 			assert(executionId);
 
 			await this.concurrencyControl.throttle({ mode, executionId });
+			await this.executionRepository.setRunning(executionId);
 			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
