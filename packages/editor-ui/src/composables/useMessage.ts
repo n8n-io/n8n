@@ -1,6 +1,6 @@
 import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
-import { sanitizeInput } from '@/utils/htmlUtils';
+import { sanitizeIfString } from '@/utils/htmlUtils';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
 
@@ -29,11 +29,11 @@ export function useMessage() {
 		};
 
 		if (typeof configOrTitle === 'string') {
-			return await MessageBox.alert(sanitizeInput(message), configOrTitle, resolvedConfig).catch(
+			return await MessageBox.alert(sanitizeIfString(message), configOrTitle, resolvedConfig).catch(
 				handleCancelOrClose,
 			);
 		}
-		return await MessageBox.alert(sanitizeInput(message), resolvedConfig).catch(
+		return await MessageBox.alert(sanitizeIfString(message), resolvedConfig).catch(
 			handleCancelOrClose,
 		);
 	}
@@ -54,13 +54,13 @@ export function useMessage() {
 
 		if (typeof configOrTitle === 'string') {
 			return await MessageBox.confirm(
-				sanitizeInput(message),
-				sanitizeInput(configOrTitle),
+				sanitizeIfString(message),
+				sanitizeIfString(configOrTitle),
 				resolvedConfig,
 			).catch(handleCancelOrClose);
 		}
 
-		return await MessageBox.confirm(sanitizeInput(message), resolvedConfig).catch(
+		return await MessageBox.confirm(sanitizeIfString(message), resolvedConfig).catch(
 			handleCancelOrClose,
 		);
 	}
@@ -78,12 +78,12 @@ export function useMessage() {
 
 		if (typeof configOrTitle === 'string') {
 			return await MessageBox.prompt(
-				sanitizeInput(message),
-				sanitizeInput(configOrTitle),
+				sanitizeIfString(message),
+				sanitizeIfString(configOrTitle),
 				resolvedConfig,
 			).catch(handleCancelOrClosePrompt);
 		}
-		return await MessageBox.prompt(sanitizeInput(message), resolvedConfig).catch(
+		return await MessageBox.prompt(sanitizeIfString(message), resolvedConfig).catch(
 			handleCancelOrClosePrompt,
 		);
 	}
