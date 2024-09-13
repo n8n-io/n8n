@@ -90,6 +90,7 @@ export class ActiveExecutions {
 				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
+				// this is resuming, so keep `startedAt` as it was
 			};
 
 			await this.executionRepository.updateExistingExecution(executionId, execution);
