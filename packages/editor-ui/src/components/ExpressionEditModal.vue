@@ -166,7 +166,7 @@ async function onDrop(expression: string, event: MouseEvent) {
 						<N8nText
 							:class="$style.tip"
 							size="small"
-							v-html="i18n.baseText('expressionTip.javascript')"
+							v-n8n-html="i18n.baseText('expressionTip.javascript')"
 						/>
 					</div>
 

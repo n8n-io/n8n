@@ -75,7 +75,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">
 						<template #content>
-							<div @click="onTooltipClick(item.id, $event)" v-html="item.tooltip"></div>
+							<div @click="onTooltipClick(item.id, $event)" v-n8n-html="item.tooltip"></div>
 						</template>
 						<N8nIcon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</n8n-tooltip>
@@ -83,7 +83,7 @@ const onTooltipClick = (item: string, event: MouseEvent) => emit('tooltipClick',
 				</div>
 			</div>
 			<N8nText color="text-base" size="small" align="left">
-				<span v-html="description"></span>
+				<span v-n8n-html="description"></span>
 			</N8nText>
 			<slot name="customContent"></slot>
 		</div>

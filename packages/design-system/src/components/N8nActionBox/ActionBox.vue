@@ -37,7 +37,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
 			<N8nText color="text-base">
 				<slot name="description">
-					<span v-html="description"></span>
+					<span v-n8n-html="description"></span>
 				</slot>
 			</N8nText>
 		</div>
@@ -61,7 +61,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 			:class="$style.callout"
 		>
 			<N8nText color="text-base">
-				<span size="small" v-html="calloutText"></span>
+				<span size="small" v-n8n-html="calloutText"></span>
 			</N8nText>
 		</N8nCallout>
 	</div>

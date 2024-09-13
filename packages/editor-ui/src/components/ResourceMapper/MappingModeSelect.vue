@@ -128,7 +128,7 @@ defineExpose({
 							<div class="option-headline">
 								{{ option.name }}
 							</div>
-							<div class="option-description" v-html="option.description" />
+							<div class="option-description" v-n8n-html="option.description" />
 						</div>
 					</n8n-option>
 				</n8n-select>
