@@ -1,6 +1,6 @@
 import type { IRun, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 
-interface ExecutionStarted {
+type ExecutionStarted = {
 	type: 'executionStarted';
 	data: {
 		executionId: string;
@@ -10,40 +10,40 @@ interface ExecutionStarted {
 		workflowName?: string;
 		retryOf?: string;
 	};
-}
+};
 
-interface ExecutionFinished {
+type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
 		executionId: string;
 		data: IRun;
 		retryOf?: string;
 	};
-}
+};
 
-interface ExecutionRecovered {
+type ExecutionRecovered = {
 	type: 'executionRecovered';
 	data: {
 		executionId: string;
 	};
-}
+};
 
-interface NodeExecuteBefore {
+type NodeExecuteBefore = {
 	type: 'nodeExecuteBefore';
 	data: {
 		executionId: string;
 		nodeName: string;
 	};
-}
+};
 
-interface NodeExecuteAfter {
+type NodeExecuteAfter = {
 	type: 'nodeExecuteAfter';
 	data: {
 		executionId: string;
 		nodeName: string;
 		data: ITaskData;
 	};
-}
+};
 
 export type ExecutionPushMessage =
 	| ExecutionStarted

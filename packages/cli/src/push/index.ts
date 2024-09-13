@@ -45,6 +45,10 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (useWebSockets) this.backend.on('message', (msg) => this.emit('message', msg));
 	}
 
+	getBackend() {
+		return this.backend;
+	}
+
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
 			ws,
@@ -73,11 +77,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.emit('editorUiConnected', pushRef);
 	}
 
-	broadcast<T extends PushType>(type: T, data: PushPayload<T>) {
+	broadcast<Type extends PushType>(type: Type, data: PushPayload<Type>) {
 		this.backend.sendToAll(type, data);
 	}
 
-	send<T extends PushType>(type: T, data: PushPayload<T>, pushRef: string) {
+	send<Type extends PushType>(type: Type, data: PushPayload<Type>, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
@@ -93,11 +97,11 @@ export class Push extends TypedEmitter<PushEvents> {
 		this.backend.sendToOne(type, data, pushRef);
 	}
 
-	getBackend() {
-		return this.backend;
-	}
-
-	sendToUsers<T extends PushType>(type: T, data: PushPayload<T>, userIds: Array<User['id']>) {
+	sendToUsers<Type extends PushType>(
+		type: Type,
+		data: PushPayload<Type>,
+		userIds: Array<User['id']>,
+	) {
 		this.backend.sendToUsers(type, data, userIds);
 	}
 

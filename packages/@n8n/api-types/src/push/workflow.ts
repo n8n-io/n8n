@@ -1,9 +1,9 @@
-interface WorkflowActivated {
+type WorkflowActivated = {
 	type: 'workflowActivated';
 	data: {
 		workflowId: string;
 	};
-}
+};
 
 type WorkflowFailedToActivate = {
 	type: 'workflowFailedToActivate';

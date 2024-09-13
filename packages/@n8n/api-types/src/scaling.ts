@@ -1,6 +1,6 @@
 import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
-export interface RunningJobSummary {
+export type RunningJobSummary = {
 	executionId: string;
 	workflowId: string;
 	workflowName: string;
@@ -8,9 +8,9 @@ export interface RunningJobSummary {
 	startedAt: Date;
 	retryOf: string;
 	status: ExecutionStatus;
-}
+};
 
-export interface WorkerStatus {
+export type WorkerStatus = {
 	workerId: string;
 	runningJobsSummary: RunningJobSummary[];
 	freeMem: number;
@@ -27,4 +27,4 @@ export interface WorkerStatus {
 		internal: boolean;
 	}>;
 	version: string;
-}
+};

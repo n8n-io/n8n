@@ -1,11 +1,11 @@
 import type { WorkerStatus } from '../scaling';
 
-export interface WorkerStatusMessage {
+export type SendWorkerStatusMessage = {
 	type: 'sendWorkerStatusMessage';
 	data: {
 		workerId: string;
 		status: WorkerStatus;
 	};
-}
+};
 
-export type WorkerPushMessage = WorkerStatusMessage;
+export type WorkerPushMessage = SendWorkerStatusMessage;

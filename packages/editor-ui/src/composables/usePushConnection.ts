@@ -38,7 +38,7 @@ import type { PushMessageQueueItem } from '@/types';
 import { useAssistantStore } from '@/stores/assistant.store';
 import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
 
-type IPushDataExecutionFinished = PushPayload<'executionFinished'>;
+type IPushDataExecutionFinishedPayload = PushPayload<'executionFinished'>;
 
 export function usePushConnection({ router }: { router: ReturnType<typeof useRouter> }) {
 	const workflowHelpers = useWorkflowHelpers({ router });
@@ -168,7 +168,7 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		// recovered execution data is handled like executionFinished data, however for security reasons
 		// we need to fetch the data from the server again rather than push it to all clients
-		let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;
+		let recoveredPushData: IPushDataExecutionFinishedPayload | undefined = undefined;
 		if (receivedData.type === 'executionRecovered') {
 			const recoveredExecutionId = receivedData.data?.executionId;
 			const isWorkflowRunning = uiStore.isActionActive['workflowRunning'];
@@ -241,11 +241,11 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 
 		if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 			// The workflow finished executing
-			let pushData: IPushDataExecutionFinished;
+			let pushData: IPushDataExecutionFinishedPayload;
 			if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
 				pushData = recoveredPushData;
 			} else {
-				pushData = receivedData.data as IPushDataExecutionFinished;
+				pushData = receivedData.data as IPushDataExecutionFinishedPayload;
 			}
 
 			const { activeExecutionId } = workflowsStore;

@@ -1,17 +1,17 @@
-import type { Iso8601DateTimeString } from '../types';
-import type { User } from '../user';
+import type { Iso8601DateTimeString } from '../datetime';
+import type { MinimalUser } from '../user';
 
-export interface Collaborator {
-	user: User;
+export type Collaborator = {
+	user: MinimalUser;
 	lastSeen: Iso8601DateTimeString;
-}
+};
 
-interface CollaboratorsChanged {
+type CollaboratorsChanged = {
 	type: 'collaboratorsChanged';
 	data: {
 		workflowId: string;
 		collaborators: Collaborator[];
 	};
-}
+};
 
 export type CollaborationPushMessage = CollaboratorsChanged;
